@@ -1,0 +1,11 @@
+# This file controls the parameters for the circuit generator
+
+# The number of hardware threads per core
+export LogThreadsPerCore=4
+
+# The number of 32-bit instructions that fit in a core's instruction memory
+export LogInstrsPerCore=9
+
+# The number of 32-bit words that fit in a core's data memory
+# Condition: MaxDataMemWords > MaxInstrsPerCore
+export LogDataWordsPerCore=11
