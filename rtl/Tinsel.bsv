@@ -9,7 +9,9 @@ package Tinsel;
 import Vector   :: *;
 import FIFO     :: *;
 import BlockRam :: *;
+import Queue    :: *;
 import Util     :: *;
+import DReg     :: *;
 import Assert   :: *;
 
 // ============================================================================
@@ -31,8 +33,8 @@ typedef Bit#(TAdd#(`LogDataWordsPerCore, 2)) DataAddr;
 // Threads
 typedef Bit#(`LogThreadsPerCore) ThreadId;
 typedef struct {
-  ThreadId  id;
   InstrAddr pc;
+  ThreadId  id;
 } Thread deriving (Bits);
 
 // Register file index
@@ -276,14 +278,9 @@ endinterface
 // Diagram
 // =======
 //
-//                         +----------+    +-------------+
-//                         | Schedule |<-->| Run Queue   |<-+
-//                         +----------+    +-------------+  |
-//                             ||                           |
-//                             \/                           |
-//     +-----------+       +-------+                        |
-//     | Instr Mem |<----->| Fetch |                        |
-//     +-----------+       +-------+                        |
+//     +-----------+       +-------+       +-----------+
+//     | Instr Mem |<----->| Fetch |<----- | Run Queue |<---+ 
+//     +-----------+       +-------+       +-----------+    |
 //                             ||                           |
 //                             \/                           |
 //     +-----------+       +--------+                       |
@@ -315,14 +312,17 @@ module tinselCore (Tinsel);
 
   staticAssert(`LogThreadsPerCore >= 4, "Number of threads must be >= 16");
 
+  // Number of threads
+  Integer numThreads = 2 ** `LogThreadsPerCore;
+
   // Global state
   // ------------
 
   // Queue of runnable threads
-  BlockRamOpts runQueueOpts = defaultBlockRamOpts;
-  runQueueOpts.registerDataOut = True;
-  runQueueOpts.readDuringWrite = DontCare;
-  BlockRam#(ThreadId, InstrAddr) runQueue <- mkBlockRamOpts(runQueueOpts);
+  QueueInit runQueueInit;
+  runQueueInit.size = numThreads;
+  runQueueInit.file = Valid("RunQueue");
+  Queue#(`LogThreadsPerCore, Thread) runQueue <- mkQueueInit(runQueueInit);
 
   // Instruction memory
   BlockRamOpts instrMemOpts = defaultBlockRamOpts;
@@ -346,8 +346,7 @@ module tinselCore (Tinsel);
   BlockRamBE#(DataIndex, Bit#(32)) dataMem <- mkBlockRamBEOpts(dataMemOpts);
 
   // Pipeline stages
-  Reg#(ThreadId)      schedule2Input <- mkVReg;
-  Reg#(ThreadId)      fetch1Input    <- mkVReg;
+  Reg#(Bool)          fetch1Fire     <- mkDReg(False);
   Reg#(PipelineToken) fetch2Input    <- mkVReg;
   Reg#(PipelineToken) decode1Input   <- mkVReg;
   Reg#(PipelineToken) decode2Input   <- mkVReg;
@@ -362,28 +361,20 @@ module tinselCore (Tinsel);
   // Schedule stage
   // --------------
 
-  // Next thread to run
-  Reg#(ThreadId) nextThread <- mkReg(0);
-
   rule schedule1;
-    runQueue.read(nextThread);
-    nextThread <= nextThread+1;
+    // Request next thread from run queue
+    runQueue.deq;
     // Trigger next stage
-    schedule2Input <= nextThread;
-  endrule
-
-  rule schedule2;
-    // Trigger next stage
-    fetch1Input <= schedule2Input;
+    fetch1Fire <= True;
   endrule
 
   // Fetch stage
   // -----------
 
-  rule fetch1;
-    // Extract the next thread from the run queue
-    InstrAddr pc = runQueue.dataOut;
-    Thread next = Thread { id: fetch1Input, pc: pc };
+  rule fetch1 (fetch1Fire);
+    // Obtain scheduled thread
+    Thread next = runQueue.dataOut;
+$display("id: ", next.id, "pc: ", next.pc);
     // Create a pipeline token to hold new instruction
     PipelineToken token = ?;
     token.thread = next;
@@ -539,8 +530,8 @@ module tinselCore (Tinsel);
       regFileA.write({token.thread.id, rd(token.instr)}, writeVal);
       regFileB.write({token.thread.id, rd(token.instr)}, writeVal);
     end
-    // Update PC in the run queue
-    runQueue.write(token.thread.id, token.thread.pc);
+    // Put thread back in the run queue
+    runQueue.enq(token.thread);
   endrule
 
   method out = emitReg;

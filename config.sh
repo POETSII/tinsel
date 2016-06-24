@@ -7,5 +7,5 @@ export LogThreadsPerCore=4
 export LogInstrsPerCore=9
 
 # The number of 32-bit words that fit in a core's data memory
-# Condition: MaxDataMemWords > MaxInstrsPerCore
+# Condition: LogDataWordsPerCore >= LogInstrsPerCore
 export LogDataWordsPerCore=11
