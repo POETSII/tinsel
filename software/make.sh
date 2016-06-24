@@ -44,3 +44,13 @@ ihex-to-img.py DataMem.ihex mif 0 4 $DataBytes > ../de5/DataMem.mif
 # (used to initialise BRAM contents in Bluesim)
 ihex-to-img.py InstrMem.ihex hex 0 4 $InstrBytes > ../rtl/InstrMem.hex
 ihex-to-img.py DataMem.ihex hex 0 4 $DataBytes > ../rtl/DataMem.hex
+
+# Generate RunQueue.hex
+MaxThreadId=$((2 ** $LogThreadsPerCore - 1))
+for T in $(seq 0 $MaxThreadId); do
+  printf "%x\n" $T
+done > ../rtl/RunQueue.hex
+
+# Generate RunQueue.mif
+Width=$(($LogInstrsPerCore + $LogThreadsPerCore + 2))
+hex-to-mif.py ../rtl/RunQueue.hex $Width > ../de5/RunQueue.mif

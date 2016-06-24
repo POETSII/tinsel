@@ -24,6 +24,7 @@ case "$1" in
            ;;
 esac
 
+# Build
 echo Compiling $TOPMOD in file $TOPFILE
 if [ "$SYNTH" = "1" ]
 then
