@@ -277,10 +277,14 @@ endinterface
 
 // Diagram
 // =======
-//
-//     +-----------+       +-------+       +-----------+
-//     | Instr Mem |<----->| Fetch |<----- | Run Queue |<---+ 
-//     +-----------+       +-------+       +-----------+    |
+//                         +----------+    +-----------+
+//                         | Schedule |<---| Run Queue |<---+
+//                         +----------+    +-----------+    |
+//                             ||                           |
+//                             \/                           |
+//     +-----------+       +-------+                        |
+//     | Instr Mem |<----->| Fetch |                        | 
+//     +-----------+       +-------+                        |
 //                             ||                           |
 //                             \/                           |
 //     +-----------+       +--------+                       |
@@ -374,7 +378,6 @@ module tinselCore (Tinsel);
   rule fetch1 (fetch1Fire);
     // Obtain scheduled thread
     Thread next = runQueue.dataOut;
-$display("id: ", next.id, "pc: ", next.pc);
     // Create a pipeline token to hold new instruction
     PipelineToken token = ?;
     token.thread = next;
