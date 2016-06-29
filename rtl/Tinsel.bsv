@@ -58,15 +58,14 @@ typedef struct {
   Bool isBranchEq;       Bool isBranchNotEq;
   Bool isBranchLessThan; Bool isBranchGreaterOrEqualTo;
   Bool isLoad;           Bool isStore;
-  Bool isCSR;
+  Bool isCSR;            Bool isBitwise;
 } Op deriving (Bits);
 
 // Instruction result
 typedef struct {
   Bit#(32) add;       Bit#(33) sub;
   Bit#(32) shiftLeft; Bit#(32) shiftRight;
-  Bit#(32) band;      Bit#(32) bor;
-  Bit#(32) bxor;      Bit#(32) opui;
+  Bit#(32) bitwise;   Bit#(32) opui;
   Bit#(32) load;      Bit#(32) csr;
 } InstrResult deriving (Bits);
 
@@ -164,6 +163,7 @@ function Op decodeOp(Bit#(32) instr);
   ret.isAnd = minorOp == 'b111 && isArith;
   ret.isOr = minorOp == 'b110 && isArith;
   ret.isXor = minorOp == 'b100 && isArith;
+  ret.isBitwise = ret.isAnd || ret.isOr || ret.isXor;
   // Load or add-to upper immediate
   ret.isOpUI = op == 'b01101 || op == 'b00101;
   // Jump operations
@@ -460,9 +460,9 @@ module tinselCore (Tinsel);
     Bit#(1) shiftExt = isArithShift(token.instr) ? token.valA[31] : 1'b0;
     res.shiftRight = truncate({shiftExt, token.valA} >> token.aluB[4:0]);
     // Bitwise operations
-    res.band = token.valA & token.aluB;
-    res.bor  = token.valA | token.aluB;
-    res.bxor = token.valA ^ token.aluB;
+    res.bitwise = when (token.op.isAnd, token.valA & token.aluB)
+                | when (token.op.isOr,  token.valA | token.aluB)
+                | when (token.op.isXor, token.valA ^ token.aluB);
     // Load upper immediate (+ PC)
     res.opui = token.imm + (addPCtoUI(token.instr) ?
                               zeroExtend(token.thread.pc) : 0);
@@ -500,9 +500,7 @@ module tinselCore (Tinsel);
       | when(op.isSetIfLessThan, lt ? 1 : 0)
       | when(op.isShiftLeft,     res.shiftLeft)
       | when(op.isShiftRight,    res.shiftRight)
-      | when(op.isAnd,           res.band)
-      | when(op.isOr,            res.bor)
-      | when(op.isXor,           res.bxor)
+      | when(op.isBitwise,       res.bitwise)
       | when(op.isOpUI,          res.opui)
       | when(op.isJump,          zeroExtend(token.nextPC))
       | when(op.isCSR,           res.csr);

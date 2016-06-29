@@ -27,11 +27,11 @@ import Clocks    :: *;
 // Interface
 // =========
 
-// When "deq" is invoked, the deequeued item becomes available on the
+// When "deq" is invoked, the dequeued item becomes available on the
 // "dataOut" bus on the next clock cycle.  Note that "deq" will not
 // fire if the queue was empty on the previous cycle -- this condition
 // is captured by a guard on the "deq" method and also by the "canDeq"
-// method.
+// method: "canDeq" and "notEmpty" are not equivalent.
 
 interface Queue#(numeric type logSize, type elemType);
   method Action enq(elemType x);
