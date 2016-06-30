@@ -2,7 +2,8 @@
 
 # Obtain config parameters
 . ../config.sh
-DEFS="-D LogThreadsPerCore=$LogThreadsPerCore \
+DEFS="-D 'DeviceFamily=\"$DeviceFamily\"' \
+      -D LogThreadsPerCore=$LogThreadsPerCore \
       -D LogInstrsPerCore=$LogInstrsPerCore \
       -D LogDataWordsPerCore=$LogDataWordsPerCore"
 
@@ -28,11 +29,11 @@ esac
 echo Compiling $TOPMOD in file $TOPFILE
 if [ "$SYNTH" = "1" ]
 then
-  $BSC $BSCFLAGS -u -verilog -g $TOPMOD $TOPFILE
+  eval "$BSC $BSCFLAGS -u -verilog -g $TOPMOD $TOPFILE"
 else
-  if $BSC $BSCFLAGS -sim -g $TOPMOD -u $TOPFILE
+  if eval "$BSC $BSCFLAGS -sim -g $TOPMOD -u $TOPFILE"
   then
-    if $BSC $BSCFLAGS -sim -o $TOPMOD -e $TOPMOD  $TOPMOD.ba
+    if eval "$BSC $BSCFLAGS -sim -o $TOPMOD -e $TOPMOD $TOPMOD.ba"
     then
         echo Compilation complete
     else
