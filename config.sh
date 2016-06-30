@@ -1,5 +1,8 @@
 # This file controls the parameters for the circuit generator
 
+# The Altera device family being targetted
+export DeviceFamily="Stratix V"
+
 # The number of hardware threads per core
 export LogThreadsPerCore=4
 

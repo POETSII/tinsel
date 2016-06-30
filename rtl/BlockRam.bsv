@@ -7,6 +7,7 @@ package BlockRam;
 // =======
 
 import BRAMCore :: *;
+import Vector   :: *;
 
 // ==========
 // Interfaces
@@ -29,6 +30,27 @@ endinterface
 // Short-hand for byte-enables version
 typedef BlockRamByteEn#(addr, data, TDiv#(SizeOf#(data), 8))
   BlockRamBE#(type addr, type data);
+
+// True dual-port mixed-width block RAM with byte-enables
+// (Port B has the byte enables and must be smaller than port A)
+interface BlockRamTrueMixedByteEn#
+            (type addrA, type dataA,
+             type addrB, type dataB,
+             numeric type dataBBytes);
+  // Port A
+  method Action readA(addrA a);
+  method Action writeA(addrA a, dataA x);
+  method dataA dataOutA;
+  // Port B
+  method Action readB(addrB a);
+  method Action writeB(addrB a, dataB x, Bit#(dataBBytes) be);
+  method dataB dataOutB;
+endinterface
+
+// Short-hand for byte-enables version
+typedef BlockRamTrueMixedByteEn#(
+          addrA, dataA, addrB, dataB, TDiv#(SizeOf#(dataB), 8))
+  BlockRamTrueMixedBE#(type addrA, type dataA, type addrB, type dataB);
 
 // =======
 // Options
@@ -115,6 +137,7 @@ import "BVI" AlteraBlockRam =
         tagged Invalid: return "UNUSED";
         tagged Valid .str: return (str + ".mif");
       endcase;
+    parameter DEV_FAMILY = `DeviceFamily;
 
     method read(RD_ADDR) enable (RE) clocked_by(clk);
     method write(WR_ADDR, DI) enable (WE) clocked_by(clk);
@@ -195,6 +218,7 @@ import "BVI" AlteraBlockRam =
         tagged Invalid: return "UNUSED";
         tagged Valid .x: return (x + ".mif");
       endcase;
+    parameter DEV_FAMILY = `DeviceFamily;
 
     method read(RD_ADDR) enable (RE) clocked_by(clk);
     method write(WR_ADDR, DI, BE) enable (WE) clocked_by(clk);
@@ -209,6 +233,152 @@ import "BVI" AlteraBlockRam =
     schedule (read)    CF (write);
     schedule (write)   C  (write);
     schedule (read)    C  (read);
+  endmodule
+
+`endif
+
+// ======================================================
+// True dual-port mixed-width block RAM with byte-enables
+// ======================================================
+
+module mkBlockRamTrueMixedBE
+      (BlockRamTrueMixedByteEn#(addrA, dataA, addrB, dataB, dataBBytes))
+    provisos(Bits#(addrA, awidthA), Bits#(dataA, dwidthA),
+             Bits#(addrB, awidthB), Bits#(dataB, dwidthB),
+             Bounded#(addrA), Bounded#(addrB),
+             Add#(awidthA, aExtra, awidthB),
+             Mul#(TExp#(aExtra), dwidthB, dwidthA),
+             Mul#(dataBBytes, 8, dwidthB),
+             Div#(dwidthB, dataBBytes, 8),
+             Mul#(dataABytes, 8, dwidthA),
+             Div#(dwidthA, dataABytes, 8),
+             Mul#(TExp#(aExtra), dataBBytes, dataABytes));
+  let ram <- mkBlockRamTrueMixedBEOpts(defaultBlockRamOpts); return ram;
+endmodule
+
+`ifdef SIMULATE
+
+// BSV implementation using BRAMCore
+
+module mkBlockRamTrueMixedBEOpts#(BlockRamOpts opts)
+         (BlockRamTrueMixedByteEn#(addrA, dataA, addrB, dataB, dataBBytes))
+         provisos(Bits#(addrA, addrWidthA), Bits#(dataA, dataWidthA),
+                  Bits#(addrB, addrWidthB), Bits#(dataB, dataWidthB),
+                  Bounded#(addrA), Bounded#(addrB),
+                  Add#(addrWidthA, aExtra, addrWidthB),
+                  Mul#(TExp#(aExtra), dataWidthB, dataWidthA),
+                  Mul#(dataBBytes, 8, dataWidthB),
+                  Div#(dataWidthB, dataBBytes, 8),
+                  Mul#(dataABytes, 8, dataWidthA),
+                  Div#(dataWidthA, dataABytes, 8),
+                  Mul#(TExp#(aExtra), dataBBytes, dataABytes));
+  // For simulation, use a BRAMCore
+  BRAM_DUAL_PORT_BE#(addrA, dataA, dataABytes) ram <-
+      mkBRAMCore2BELoad(valueOf(TExp#(addrWidthA)), False,
+                          fromMaybe("Zero", opts.initFile) + ".hex", False);
+
+  // State
+  Reg#(dataA) dataAReg <- mkRegU;
+  Reg#(dataA) dataBReg <- mkRegU;
+  Reg#(Bit#(aExtra)) offsetB1 <- mkRegU;
+  Reg#(Bit#(aExtra)) offsetB2 <- mkRegU;
+
+  // Rules
+  rule update;
+    offsetB2 <= offsetB1;
+    dataAReg <= ram.a.read;
+    dataBReg <= ram.b.read;
+  endrule
+
+  // Port A
+  method Action readA(addrA address);
+    ram.a.put(0, address, ?);
+  endmethod
+
+  method Action writeA(addrA address, dataA x);
+    ram.a.put(-1, address, x);
+  endmethod
+
+  method dataA dataOutA = opts.registerDataOut ? dataAReg : ram.a.read;
+
+  // Port B
+  method Action readB(addrB address);
+    Bit#(aExtra) offset = truncate(pack(address));
+    Bit#(addrWidthA) addr = truncateLSB(pack(address));
+    ram.b.put(0, unpack(addr), ?);
+    offsetB1 <= offset;
+  endmethod
+
+  method Action writeB(addrB address, dataB val, Bit#(dataBBytes) be);
+    Bit#(aExtra) offset = truncate(pack(address));
+    Bit#(addrWidthA) addr = truncateLSB(pack(address));
+    Bit#(dataWidthA) vals = pack(replicate(val));
+    Vector#(TExp#(aExtra), Bit#(dataBBytes)) paddedBE;
+    for (Integer i = 0; i < valueOf(TExp#(aExtra)); i=i+1)
+      paddedBE[i] = (offset == fromInteger(i)) ? be : unpack(0);
+    ram.b.put(pack(paddedBE), unpack(addr), unpack(vals));
+  endmethod
+
+  method dataB dataOutB;
+    Vector#(TExp#(aExtra), dataB) vec = unpack(pack(
+      opts.registerDataOut ? dataBReg : ram.b.read));
+    return vec[opts.registerDataOut ? offsetB2 : offsetB1];
+  endmethod
+
+endmodule
+
+`else
+
+// Altera implementation
+
+import "BVI" AlteraBlockRamTrueMixed =
+  module mkBlockRamTrueMixedBEOpts#(BlockRamOpts opts)
+         (BlockRamTrueMixedByteEn#(addrA, dataA, addrB, dataB, dataBBytes))
+         provisos(Bits#(addrA, addrWidthA), Bits#(dataA, dataWidthA),
+                  Bits#(addrB, addrWidthB), Bits#(dataB, dataWidthB),
+                  Bounded#(addrA), Bounded#(addrB),
+                  Mul#(dataBBytes, 8, dataWidthB),
+                  Div#(dataWidthB, dataBBytes, 8));
+
+    parameter ADDR_WIDTH_A = valueOf(addrWidthA);
+    parameter ADDR_WIDTH_B = valueOf(addrWidthB);
+    parameter DATA_WIDTH_A = valueOf(dataWidthA);
+    parameter DATA_WIDTH_B = valueOf(dataWidthB);
+    parameter NUM_ELEMS_A  = valueOf(TExp#(addrWidthA));
+    parameter NUM_ELEMS_B  = valueOf(TExp#(addrWidthB));
+    parameter BE_WIDTH     = valueOf(dataBBytes);
+    parameter RD_DURING_WR = 
+      opts.readDuringWrite == OldData ? "OLD_DATA" : "DONT_CARE";
+    parameter DO_REG_A       =
+      opts.registerDataOut ? "CLOCK0" : "UNREGISTERED";
+    parameter DO_REG_B       =
+      opts.registerDataOut ? "CLOCK0" : "UNREGISTERED";
+    parameter INIT_FILE      =
+      case (opts.initFile) matches
+        tagged Invalid: return "UNUSED";
+        tagged Valid .x: return (x + ".mif");
+      endcase;
+    parameter DEV_FAMILY = `DeviceFamily;
+
+    // Port A
+    method readA(RD_ADDR_A) enable (RE_A) clocked_by(clk);
+    method writeA(WR_ADDR_A, DI_A) enable (WE_A) clocked_by(clk);
+    method DO_A dataOutA;
+
+    // Port B
+    method readB(RD_ADDR_B) enable (RE_B) clocked_by(clk);
+    method writeB(WR_ADDR_B, DI_B, BE_B) enable (WE_B) clocked_by(clk);
+    method DO_B dataOutB;
+
+    default_clock clk(CLK, (*unused*) clk_gate);
+    default_reset no_reset;
+
+    schedule (dataOutA, dataOutB) CF (dataOutA, dataOutB,
+                                      readA, readB,
+                                      writeA, writeB);
+    schedule (readA, writeA)      CF (readB, writeB);
+    schedule (readA, writeA)      C  (readA, writeA);
+    schedule (readB, writeB)      C  (readB, writeB);
   endmodule
 
 `endif
