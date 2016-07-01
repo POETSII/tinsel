@@ -9,7 +9,7 @@ DEFS="-D 'DeviceFamily=\"$DeviceFamily\"' \
 
 # Bluespec compiler flags
 BSC="bsc"
-BSCFLAGS="-wait-for-license $DEFS"
+BSCFLAGS="-wait-for-license -suppress-warnings S0015 $DEFS"
 
 case "$1" in
   sim)     TOPFILE=Tinsel.bsv
