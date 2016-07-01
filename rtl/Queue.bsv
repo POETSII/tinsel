@@ -73,8 +73,6 @@ module mkQueueInit#(QueueInit init) (Queue#(logSize, elemType))
 
   // Block RAM to hold contents of queue
   BlockRamOpts ramOpts = defaultBlockRamOpts;
-  ramOpts.registerDataOut = True;
-  ramOpts.readDuringWrite = DontCare;
   ramOpts.initFile = init.file;
   BlockRam#(Bit#(logSize), elemType) ram <- mkBlockRamOpts(ramOpts);
 

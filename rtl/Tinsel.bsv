@@ -330,22 +330,16 @@ module tinselCore (Tinsel);
 
   // Instruction memory
   BlockRamOpts instrMemOpts = defaultBlockRamOpts;
-  instrMemOpts.registerDataOut = True;
-  instrMemOpts.readDuringWrite = DontCare;
   instrMemOpts.initFile = Valid("InstrMem");
   BlockRam#(InstrIndex, Bit#(32)) instrMem <- mkBlockRamOpts(instrMemOpts);
 
   // Register file (duplicated to allow two reads per cycle)
   BlockRamOpts regFileOpts = defaultBlockRamOpts;
-  regFileOpts.readDuringWrite = DontCare;
-  regFileOpts.registerDataOut = True;
   BlockRam#(RegFileIndex, Bit#(32)) regFileA <- mkBlockRamOpts(regFileOpts);
   BlockRam#(RegFileIndex, Bit#(32)) regFileB <- mkBlockRamOpts(regFileOpts);
 
   // Data memory
   BlockRamOpts dataMemOpts = defaultBlockRamOpts;
-  dataMemOpts.readDuringWrite = DontCare;
-  dataMemOpts.registerDataOut = True;
   dataMemOpts.initFile = Valid("DataMem");
   BlockRamBE#(DataIndex, Bit#(32)) dataMem <- mkBlockRamBEOpts(dataMemOpts);
 
