@@ -5,8 +5,7 @@ and high clock rate on modern FPGAs.
 On Terasic's [DE5-NET](http://de5-net.terasic.com), Tinsel acheives an Fmax
 of 450MHz and uses 500 ALMs (0.2%) and 113K block RAM bits (0.2%).
 
-This repo contains an initial snapshot, not really intended for
-general use yet.
+This repo is not intended for general use yet.
 
 Directory layout:
 

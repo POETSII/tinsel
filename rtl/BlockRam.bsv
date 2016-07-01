@@ -38,12 +38,10 @@ interface BlockRamTrueMixedByteEn#
              type addrB, type dataB,
              numeric type dataBBytes);
   // Port A
-  method Action readA(addrA a);
-  method Action writeA(addrA a, dataA x);
+  method Action putA(Bool wr, addrA a, dataA x);
   method dataA dataOutA;
   // Port B
-  method Action readB(addrB a);
-  method Action writeB(addrB a, dataB x, Bit#(dataBBytes) be);
+  method Action putB(Bool wr, addrB a, dataB x, Bit#(dataBBytes) be);
   method dataB dataOutB;
 endinterface
 
@@ -291,32 +289,22 @@ module mkBlockRamTrueMixedBEOpts#(BlockRamOpts opts)
   endrule
 
   // Port A
-  method Action readA(addrA address);
-    ram.a.put(0, address, ?);
-  endmethod
-
-  method Action writeA(addrA address, dataA x);
-    ram.a.put(-1, address, x);
+  method Action putA(Bool wr, addrA address, dataA x);
+    ram.a.put(wr ? -1 : 0, address, x);
   endmethod
 
   method dataA dataOutA = opts.registerDataOut ? dataAReg : ram.a.read;
 
   // Port B
-  method Action readB(addrB address);
+  method Action putB(Bool wr, addrB address, dataB val, Bit#(dataBBytes) be);
     Bit#(aExtra) offset = truncate(pack(address));
-    Bit#(addrWidthA) addr = truncateLSB(pack(address));
-    ram.b.put(0, unpack(addr), ?);
     offsetB1 <= offset;
-  endmethod
-
-  method Action writeB(addrB address, dataB val, Bit#(dataBBytes) be);
-    Bit#(aExtra) offset = truncate(pack(address));
     Bit#(addrWidthA) addr = truncateLSB(pack(address));
     Bit#(dataWidthA) vals = pack(replicate(val));
     Vector#(TExp#(aExtra), Bit#(dataBBytes)) paddedBE;
     for (Integer i = 0; i < valueOf(TExp#(aExtra)); i=i+1)
       paddedBE[i] = (offset == fromInteger(i)) ? be : unpack(0);
-    ram.b.put(pack(paddedBE), unpack(addr), unpack(vals));
+    ram.b.put(wr ? pack(paddedBE) : 0, unpack(addr), unpack(vals));
   endmethod
 
   method dataB dataOutB;
@@ -361,24 +349,20 @@ import "BVI" AlteraBlockRamTrueMixed =
     parameter DEV_FAMILY = `DeviceFamily;
 
     // Port A
-    method readA(RD_ADDR_A) enable (RE_A) clocked_by(clk);
-    method writeA(WR_ADDR_A, DI_A) enable (WE_A) clocked_by(clk);
+    method putA(WE_A, ADDR_A, DI_A) enable (RE_A) clocked_by(clk);
     method DO_A dataOutA;
 
     // Port B
-    method readB(RD_ADDR_B) enable (RE_B) clocked_by(clk);
-    method writeB(WR_ADDR_B, DI_B, BE_B) enable (WE_B) clocked_by(clk);
+    method putB(WE_B, ADDR_B, DI_B, BE_B) enable (RE_B) clocked_by(clk);
     method DO_B dataOutB;
 
     default_clock clk(CLK, (*unused*) clk_gate);
     default_reset no_reset;
 
-    schedule (dataOutA, dataOutB) CF (dataOutA, dataOutB,
-                                      readA, readB,
-                                      writeA, writeB);
-    schedule (readA, writeA)      CF (readB, writeB);
-    schedule (readA, writeA)      C  (readA, writeA);
-    schedule (readB, writeB)      C  (readB, writeB);
+    schedule (dataOutA, dataOutB) CF (dataOutA, dataOutB, putA, putB);
+    schedule (putA)               CF (putB);
+    schedule (putA)               C  (putA);
+    schedule (putB)               C  (putB);
   endmodule
 
 `endif
