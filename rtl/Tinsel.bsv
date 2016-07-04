@@ -326,7 +326,8 @@ module tinselCore (Tinsel);
   QueueInit runQueueInit;
   runQueueInit.size = numThreads;
   runQueueInit.file = Valid("RunQueue");
-  Queue#(`LogThreadsPerCore, Thread) runQueue <- mkQueueInit(runQueueInit);
+  SizedQueue#(`LogThreadsPerCore, Thread) runQueue <-
+    mkSizedQueueInit(runQueueInit);
 
   // Instruction memory
   BlockRamOpts instrMemOpts = defaultBlockRamOpts;
