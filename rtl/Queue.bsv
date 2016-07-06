@@ -33,6 +33,7 @@ interface SizedQueue#(numeric type logSize, type elemType);
   method Bool notFull;
   method Bool notEmpty;
   method Bool canDeq;
+  method Bool canPeek;
   method Bool spaceFor(Integer n);
 endinterface
 
@@ -91,13 +92,10 @@ module mkUGQueue (Queue#(elemType))
   endmethod
 
   method elemType dataOut = front;
-
   method Bool notFull = !(frontValid && backValid);
-
   method Bool notEmpty = frontValid || backValid;
-
   method Bool canDeq = frontValid;
-
+  method Bool canPeek = frontValid;
   method Bool spaceFor(Integer n) =
     error ("Queue.spaceFor() not implemented");
 endmodule
@@ -119,13 +117,10 @@ module mkQueue (Queue#(elemType))
   endmethod
 
   method elemType dataOut = q.dataOut;
-
   method Bool notFull = q.notFull;
-
   method Bool notEmpty = q.notEmpty;
-
   method Bool canDeq = q.canDeq;
-
+  method Bool canPeek = q.canPeek;
   method Bool spaceFor(Integer n) = q.spaceFor(n);
 endmodule
 
@@ -163,8 +158,66 @@ module [Module] queueTest ();
 endmodule
 */
 
+// =================================
+// Implementation 2: 1-element Queue
+// =================================
+
+// Same as Bluespec's mkUGFIFOF1, but implemented in Bluespec rather
+// than Verilog.
+
+// Unguarded version
+module mkUGQueue1 (SizedQueue#(0, elemType))
+  provisos (Bits#(elemType, elemWidth));
+
+  // State
+  Reg#(elemType) elem   <- mkRegU;
+  Reg#(Bool) elemValid  <- mkReg(False);
+
+  // Methods
+  method Action deq;
+    elemValid <= False;
+  endmethod
+
+  method Action enq(elemType x);
+    elemValid <= True;
+    elem <= x;
+  endmethod
+
+  method elemType dataOut = elem;
+  method Bool notFull = !elemValid;
+  method Bool notEmpty = elemValid;
+  method Bool canDeq = elemValid;
+  method Bool canPeek = elemValid;
+  method Bool spaceFor(Integer n) =
+    error ("Queue.spaceFor() not implemented");
+endmodule
+
+// Guarded version
+module mkQueue1 (SizedQueue#(0, elemType))
+  provisos (Bits#(elemType, elemWidth));
+
+  // State
+  SizedQueue#(0, elemType) q <- mkUGQueue1;
+
+  // Methods
+  method Action deq if (q.canDeq);
+    q.deq;
+  endmethod
+
+  method Action enq(elemType x) if (q.notFull);
+    q.enq(x);
+  endmethod
+
+  method elemType dataOut = q.dataOut;
+  method Bool notFull = q.notFull;
+  method Bool notEmpty = q.notEmpty;
+  method Bool canDeq = q.canDeq;
+  method Bool canPeek = q.canPeek;
+  method Bool spaceFor(Integer n) = q.spaceFor(n);
+endmodule
+
 // =============================
-// Implementation 2: Sized Queue
+// Implementation 3: Sized Queue
 // =============================
 
 // Similar to Bluespec's mkSizedFIFOF but introduces a one-cycle delay
@@ -180,6 +233,17 @@ endmodule
 // is captured by a guard on the "deq" method and also by the "canDeq"
 // method: "canDeq" and "notEmpty" are not equivalent.
 
+// Unguarded version
+module mkUGSizedQueue (SizedQueue#(logSize, elemType))
+  provisos (Bits#(elemType, elemWidth));
+  QueueInit init;
+  init.size = 0;
+  init.file = Invalid;
+  let q <- mkUGSizedQueueInit(init);
+  return q;
+endmodule
+
+// Guarded version
 module mkSizedQueue (SizedQueue#(logSize, elemType))
   provisos (Bits#(elemType, elemWidth));
   QueueInit init;
@@ -195,7 +259,8 @@ typedef struct {
   Maybe#(String) file;
 } QueueInit;
 
-module mkSizedQueueInit#(QueueInit init) (SizedQueue#(logSize, elemType))
+// Unguarded version
+module mkUGSizedQueueInit#(QueueInit init) (SizedQueue#(logSize, elemType))
   provisos (Bits#(elemType, elemWidth));
 
   // Max length of queue
@@ -213,6 +278,7 @@ module mkSizedQueueInit#(QueueInit init) (SizedQueue#(logSize, elemType))
   Reg#(Bool) empty <- mkReg(init.size == 0);
   Reg#(Bool) full <- mkReg(init.size == maxLength);
   Reg#(Bool) deqEnable <- mkReg(False);
+  Reg#(Bool) canPeekReg <- mkReg(False);
 
   // Wires
   PulseWire doDeq <- mkPulseWire;
@@ -220,11 +286,12 @@ module mkSizedQueueInit#(QueueInit init) (SizedQueue#(logSize, elemType))
 
   // Rules
   rule update;
-    Bit#(logSize) incFront = front+1;
-    Bit#(logSize) newFront = doDeq ? incFront : front;
+    let incFront = front+1;
+    let newFront = doDeq ? incFront : front;
     ram.read(newFront);
     front <= newFront;
     Bool becomingEmpty = False;
+    let lengthInc = 0;
     case (doEnq.wget) matches
       tagged Invalid:
         if (doDeq) begin
@@ -233,7 +300,7 @@ module mkSizedQueueInit#(QueueInit init) (SizedQueue#(logSize, elemType))
             empty <= True;
             becomingEmpty = True;
           end
-          length <= length - 1;
+          lengthInc = -1;
         end
       tagged Valid .x: begin
         ram.write(back, x);
@@ -241,32 +308,55 @@ module mkSizedQueueInit#(QueueInit init) (SizedQueue#(logSize, elemType))
         if (!doDeq) begin
           full <= length == fromInteger(maxLength-1);
           empty <= False;
-          length <= length + 1;
+          lengthInc = 1;
         end
       end
     endcase
+    length <= length + lengthInc;
     if (becomingEmpty) deqEnable <= False;
     else deqEnable <= !empty;
+    canPeekReg <= !empty && !doDeq;
   endrule
 
   // Methods
-  method Action deq if (deqEnable);
+  method Action deq;
     doDeq.send;
   endmethod
 
-  method Action enq(elemType x) if (!full);
+  method Action enq(elemType x);
     doEnq.wset(x);
   endmethod
 
   method elemType dataOut = ram.dataOut;
-
   method Bool notFull = !full;
-
   method Bool notEmpty = !empty;
-
   method Bool canDeq = deqEnable;
-
+  method Bool canPeek = canPeekReg;
   method Bool spaceFor(Integer n) = length < fromInteger(maxLength-n);
+endmodule
+
+// Guarded version
+module mkSizedQueueInit#(QueueInit init) (SizedQueue#(logSize, elemType))
+  provisos (Bits#(elemType, elemWidth));
+
+  // State
+  SizedQueue#(logSize, elemType) q <- mkUGSizedQueueInit(init);
+
+  // Methods
+  method Action deq if (q.canDeq);
+    q.deq;
+  endmethod
+
+  method Action enq(elemType x) if (q.notFull);
+    q.enq(x);
+  endmethod
+
+  method elemType dataOut = q.dataOut;
+  method Bool notFull = q.notFull;
+  method Bool notEmpty = q.notEmpty;
+  method Bool canDeq = q.canDeq;
+  method Bool canPeek = q.canPeek;
+  method Bool spaceFor(Integer n) = q.spaceFor(n);
 endmodule
 
 /*
