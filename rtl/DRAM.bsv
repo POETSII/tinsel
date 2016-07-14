@@ -37,10 +37,16 @@ module mkDRAM (Mem);
   FIFOF#(MemStoreResp) storeRespFifo <- mkUGFIFOF;
   FIFOF#(MemLoadResp)  loadRespFifo  <- mkUGFIFOF;
   Reg#(Bool) toggle <- mkReg(False);
+  Reg#(Bit#(32)) outstanding <- mkReg(0);
+
+  // Wires
+  PulseWire incOutstanding <- mkPulseWire;
+  PulseWire decOutstanding <- mkPulseWire;
 
   // Constants
   Integer endIndex = `DRAMLatency-1;
   Integer wordsPerLine = `LineSize/32;
+  Integer maxOutstanding = `DRAMPipelineLen;
 
   // Merge load and store requests into single queue
   rule mergeReqs (reqFifo.notFull);
@@ -112,17 +118,29 @@ module mkDRAM (Mem);
     end
   endrule
 
+  // Track number of outstanding requests
+  rule countOutstanding;
+    if (incOutstanding && !decOutstanding)
+      outstanding <= outstanding + 1;
+    else if (decOutstanding && !incOutstanding)
+      outstanding <= outstanding - 1;
+  endrule
+
   // Methods
-  method Bool canPutLoad = loadReqFifo.notFull;
+  method Bool canPutLoad = loadReqFifo.notFull &&
+                outstanding < fromInteger(maxOutstanding);
   method Action putLoadReq(MemLoadReq req);
+    incOutstanding.send;
     loadReqFifo.enq(req);
   endmethod
-  method Bool canPutStore = storeReqFifo.notFull;
+  method Bool canPutStore = storeReqFifo.notFull &&
+                outstanding < fromInteger(maxOutstanding);
   method Action putStoreReq(MemStoreReq req);
     storeReqFifo.enq(req);
   endmethod
   method Bool canGetLoad = loadRespFifo.notEmpty;
   method ActionValue#(MemLoadResp) getLoadResp;
+    decOutstanding.send;
     loadRespFifo.deq; return loadRespFifo.first;
   endmethod
   method Bool canGetStore = storeRespFifo.notEmpty;
