@@ -14,16 +14,17 @@ import Assert  :: *;
 
 // Interface to C functions
 import "BDPI" function ActionValue#(Bit#(32)) getUInt32();
+import "BDPI" function ActionValue#(Bit#(8)) getChar();
 
 // ============================================================================
 // Constants
 // ============================================================================
 
 // Operator encoding
-Bit#(32) opEND   = 0;  // End of operation stream
-Bit#(32) opDELAY = 1;  // Delay for some number of cycles
-Bit#(32) opLW    = 2;  // Load word
-Bit#(32) opSW    = 3;  // Store word
+Bit#(8) opEND   = 69;  // 'E': end of operation stream
+Bit#(8) opDELAY = 68;  // 'D': delay for some number of cycles
+Bit#(8) opLW    = 76;  // 'L': load word
+Bit#(8) opSW    = 83;  // 'S': store word
 
 // ============================================================================
 // Types
@@ -32,7 +33,7 @@ Bit#(32) opSW    = 3;  // Store word
 // TraceGen request
 // (Fields read straight from stdin are all 32 bits)
 typedef struct {
-  Bit#(32) op;
+  Bit#(8)  op;
   Bit#(32) threadId;
   Bit#(32) addr;
   Bit#(32) data;
@@ -55,7 +56,7 @@ module traceGen ();
 
   // Record in-flight requests (max of one outstanding request per thread)
   RegFile#(DCacheClientId, TraceGenReq) inFlight <-
-    mkRegFile(minBound, maxBound);
+    mkRegFileWCF(minBound, maxBound);
   Vector#(TExp#(SizeOf#(DCacheClientId)), Reg#(Bool)) inFlightValid <-
     replicateM(mkReg(False));
 
@@ -79,7 +80,7 @@ module traceGen ();
   // Read raw requests from stdin and enqueue to rawReqs
   rule gatherRequests (! allReqsGathered);
     TraceGenReq req = ?;
-    let op <- getUInt32();
+    let op <- getChar();
     req.op = op;
     if (op == opEND)
       allReqsGathered <= True;
@@ -104,7 +105,7 @@ module traceGen ();
 
   // Both the request and responses handlers update the in-flight
   // valid bits, but they never both assign to the same bit
-  (* mutually_exclusive = "issueRequests, receiveResponses" *)
+  (* conflict_free = "issueRequests, receiveResponses" *)
 
   // Issue requests to data cache
   rule issueRequests (countdown == 0);
@@ -117,6 +118,7 @@ module traceGen ();
       if (!inFlightValid[id] && dcache.canPut) begin
         rawReqs.deq;
         DCacheReq req = ?;
+        req.id = id;
         req.cmd.isLoad  = rawReq.op == opLW ? True : False;
         req.cmd.isStore = rawReq.op == opSW ? True : False;
         req.addr = rawReq.addr;
@@ -139,7 +141,7 @@ module traceGen ();
     if (req.op == opLW)
       $display("%d: M[%d] == %d", id, req.addr, resp.data);
     else if (req.op == opSW)
-      $display("%d: M[%d] := %d", id, req.data);
+      $display("%d: M[%d] := %d", id, req.addr, req.data);
     inFlightValid[id] <= False;
   endrule
 

@@ -43,7 +43,7 @@ module mkDRAM (Mem);
   Integer wordsPerLine = `LineSize/32;
 
   // Merge load and store requests into single queue
-  rule mergeReqs;
+  rule mergeReqs (reqFifo.notFull);
     Pick pick = PickNone;
     if (storeReqFifo.notEmpty && loadReqFifo.notEmpty)
       pick = toggle ? PickStore : PickLoad;
@@ -70,8 +70,9 @@ module mkDRAM (Mem);
           if (loadRespFifo.notFull) begin
             shift = True;
             Vector#(`WordsPerLine, Bit#(32)) elems;
+            Bit#(32) addr = {req.addr, 0};
             for (Integer i = 0; i < `WordsPerLine; i=i+1) begin
-              let val <- ramRead(req.addr+fromInteger(i));
+              let val <- ramRead(addr+fromInteger(4*i));
               elems[i] = val;
             end
             MemLoadResp resp;
@@ -84,8 +85,9 @@ module mkDRAM (Mem);
           if (storeRespFifo.notFull) begin
             shift = True;
             Vector#(`WordsPerLine, Bit#(32)) elems = unpack(req.data);
+            Bit#(32) addr = {req.addr, 0};
             for (Integer i = 0; i < `WordsPerLine; i=i+1)
-              ramWrite(req.addr+fromInteger(i), elems[i]);
+              ramWrite(addr+fromInteger(4*i), elems[i]);
             MemStoreResp resp = ?;
             resp.id = req.id;
             storeRespFifo.enq(resp);
