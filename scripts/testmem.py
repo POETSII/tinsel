@@ -7,7 +7,7 @@
 #   * feeds the requests to the trace generator (see TraceGen.bsv);
 #   * passes the resulting trace the axe consistency checker;
 #   * reports an error if the trace is invalid;
-#   * repeats these steps, gradually increasing the number
+#   * repeats these steps, gradually increasing the number of requests.
 
 import os
 import sys
@@ -28,7 +28,6 @@ def usage():
   print "    * INIT_DEPTH"
   print "    * DEPTH_INCR"
   print "    * TESTS_PER_DEPTH"
-  print "    * NUM_OPS"
   print "    * NUM_THREADS"
   print "    * NUM_ADDRS"
   print "    * MAX_DELAY"
@@ -92,7 +91,7 @@ def genReqs():
   reqs = ""
   uniqueVal = 1;
   for i in range(0, numOps):
-    op = random.choice(['S']*5 + ['L']*4 + ['D'])
+    op = random.choice(['S']*7 + ['L']*5 + ['D'] + ['B'])
     thread = random.randint(0, numThreads-1)
     if mode == LineGrain:
       addr = random.choice(addrSet)
@@ -101,6 +100,9 @@ def genReqs():
     if op == 'D':
       delay = random.randint(1, maxDelay)
       reqs = reqs + "D " + str(delay) + "\n"
+    elif op == 'B':
+      delay = random.randint(1, maxDelay)
+      reqs = reqs + "B " + str(delay) + "\n"
     elif op == 'L':
       reqs = reqs + "L " + str(thread) + " " + str(addr) + "\n"
     elif op == 'S':

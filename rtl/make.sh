@@ -14,7 +14,8 @@ DEFS="-D 'DeviceFamily=\"$DeviceFamily\"' \
       -D DCacheLogSetsPerThread=$DCacheLogSetsPerThread \
       -D DCacheLogNumWays=$DCacheLogNumWays \
       -D LogNumDCaches=$LogNumDCaches \
-      -D DRAMLatency=$DRAMLatency"
+      -D DRAMLatency=$DRAMLatency \
+      -D DRAMPipelineLen=$DRAMPipelineLen"
 
 # Bluespec compiler flags
 BSC="bsc"

@@ -63,7 +63,8 @@ package DCache;
 //   a. determine correct way
 //   b. on read hit: send BRAM request for word data
 //   c. on write hit: write word data to BRAM
-//   d. on miss: send BRAM request for old line data
+//   d. on miss: if 4(a) not firing, send BRAM request for old line data,
+//      otherwise mark request to be retried
 // 
 // 3. external request:
 //   a. on hit: enqueue response FIFO, if ready
@@ -74,7 +75,7 @@ package DCache;
 //   d. if (a) or (b) not firing, send retry request to (4)
 //
 // 4. external response:
-//   a. if 2(d) not firing:
+//   a. consume response:
 //        * receive new line data from external memory, if ready
 //        * write new line to BRAM
 //        * put a fresh request, which will definitely hit if it starts
@@ -183,6 +184,7 @@ typedef struct {
   Way evictWay;
   Tag evictTag;
   Bool evictDirty;
+  Bool retry;
   SetMetaData metaData;
 } DCacheToken deriving (Bits);
 
@@ -255,7 +257,7 @@ module mkDCache#(Integer myId, Mem extMem) (DCache);
   Reg#(DCacheToken) extRequestInput    <- mkVReg;
   Reg#(DCacheReq)   extResponseInput   <- mkConfigRegU;
   Reg#(Bool)        extResponseTrigger <- mkDReg(False);
-  Reg#(DCacheReq)   feedbackReq        <- mkRegU;
+  Reg#(DCacheReq)   feedbackReq        <- mkConfigRegU;
   Reg#(Bool)        feedbackTrigger    <- mkDReg(False);
 
   // Line access unit
@@ -265,8 +267,8 @@ module mkDCache#(Integer myId, Mem extMem) (DCache);
   // externalResponse stage: dataLookup wishes to fetch the old line
   // data for writeback, and externalResponse wishes to write new line
   // data for a fill.  The line access unit resolves this conflict:
-  // read-line takes priorty over write-line and the write-line
-  // request wire must only be asserted when the read-line request
+  // write-line takes priorty over read-line and the read-line
+  // request wire must only be asserted when the write-line request
   // wire is low.
 
   // Control wires for modifying lines in dataMem
@@ -335,6 +337,8 @@ module mkDCache#(Integer myId, Mem extMem) (DCache);
 
   rule dataLookup2;
     DCacheToken token = dataLookup2Input;
+    // At the moment, request does not need to be retried
+    token.retry = False;
     // Convert index of match from one-hot to binary
     Way matchingWay = encode(token.matching);
     // Handle hit or miss
@@ -345,10 +349,15 @@ module mkDCache#(Integer myId, Mem extMem) (DCache);
                    wordIndex(token.req.id, token.req.addr, matchingWay),
                    token.req.data, token.req.byteEn);
     end else if (token.evictDirty) begin
-      // On miss: read old line data from dataMem, if dirty
-      lineReadReqWire <= True;
-      lineReadIndexWire <= lineIndex(token.req.id, token.req.addr,
-                                       token.evictWay);
+      // If the externalResponse stage is not trying to write line data, then:
+      if (!lineWriteReqWire) begin
+        // On miss: read old line data from dataMem, if dirty
+        lineReadReqWire <= True;
+        lineReadIndexWire <= lineIndex(token.req.id, token.req.addr,
+                                         token.evictWay);
+      end else
+        // Need to retry this request as dataMem is busy
+        token.retry = True;
     end
     // Trigger next stage
     dataLookup3Input <= token;
@@ -384,7 +393,7 @@ module mkDCache#(Integer myId, Mem extMem) (DCache);
         retry = False;
         respQueue.enq(resp);
       end
-    end else begin
+    end else if (!token.retry) begin
       // On miss:
       // * write old line data (if dirty) to external memory (if ready)
       // * send external request for new line data, if ready
@@ -445,11 +454,9 @@ module mkDCache#(Integer myId, Mem extMem) (DCache);
   Queue#(DCacheReq) retryBuffer <- mkUGQueue;
 
   rule externalResponse;
-    // If the dataLookup stage is not trying to read line data, 
-    // and new line data available from external memory, then:
-    if (!lineReadReqWire && extMem.canGetLoad
-           && fillQueue.canDeq && fillQueue.canPeek
-                && hitBuffer.notFull) begin
+    // If new line data available from external memory, then:
+    if (extMem.canGetLoad && fillQueue.canDeq
+          && fillQueue.canPeek && hitBuffer.notFull) begin
       // Remove item from fill queue
       let fill = fillQueue.dataOut;
       fillQueue.deq;
@@ -473,7 +480,7 @@ module mkDCache#(Integer myId, Mem extMem) (DCache);
         // Put retry request into buffer
         retryBuffer.enq(extResponseInput);
       end else begin
-        // Otherwise, feedback retry requet to tag lookup stage
+        // Otherwise, feedback retry request to tag lookup stage
         feedbackTrigger <= True;
         feedbackReq <= extResponseInput;
       end

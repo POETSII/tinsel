@@ -25,6 +25,7 @@ Bit#(8) opEND   = 69;  // 'E': end of operation stream
 Bit#(8) opDELAY = 68;  // 'D': delay for some number of cycles
 Bit#(8) opLW    = 76;  // 'L': load word
 Bit#(8) opSW    = 83;  // 'S': store word
+Bit#(8) opBACK  = 66;  // 'B': apply back-pressure for some number of cycles
 
 // ============================================================================
 // Types
@@ -69,6 +70,10 @@ module traceGen ();
   // Countdown timer
   Reg#(Bit#(32)) countdown <- mkReg(0);
 
+  // Back-pressure
+  Reg#(Bit#(32)) backPressure <- mkReg(0);
+  RWire#(Bit#(32)) backPressureWire <- mkRWire;
+
   // Constants
   // ---------
 
@@ -84,7 +89,7 @@ module traceGen ();
     req.op = op;
     if (op == opEND)
       allReqsGathered <= True;
-    else if (op == opDELAY) begin
+    else if (op == opDELAY || op == opBACK) begin
       let delay <- getUInt32();
       req.delay = delay;
       rawReqs.enq(req);
@@ -113,6 +118,9 @@ module traceGen ();
     if (rawReq.op == opDELAY) begin
       rawReqs.deq;
       countdown <= rawReq.delay;
+    end else if (rawReq.op == opBACK) begin
+      rawReqs.deq;
+      backPressureWire.wset(rawReq.delay);
     end else begin
       DCacheClientId id = truncate(rawReq.threadId);
       if (!inFlightValid[id] && dcache.canPut) begin
@@ -132,7 +140,7 @@ module traceGen ();
   endrule
 
   // Receive responses from data cache
-  rule receiveResponses (dcache.canGet);
+  rule receiveResponses (dcache.canGet && backPressure == 0);
     DCacheResp resp <- dcache.getResp;
     DCacheClientId id = resp.id;
     TraceGenReq req = inFlight.sub(id);
@@ -148,6 +156,17 @@ module traceGen ();
   // Delay for some number of cycles
   rule countdownTimer (countdown != 0);
     countdown <= countdown-1;
+  endrule
+
+  // Apply back-pressure for some number of cycles
+  rule applyBackPressure;
+    case (backPressureWire.wget()) matches
+      tagged Invalid:
+        if (backPressure != 0) backPressure <= backPressure-1;
+      tagged Valid .delay: begin
+        backPressure <= delay;
+      end
+    endcase
   endrule
 
   // Termination condition
