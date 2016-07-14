@@ -31,13 +31,13 @@ case "$1" in
     TOPMOD=tinselCore
     SYNTH=1
   ;;
-  trace-gen)
+  tracegen)
     TOPFILE=TraceGen.bsv
     TOPMOD="traceGen"
     BSCFLAGS="$BSCFLAGS -D SIMULATE"
   ;;
   *)
-    echo 'Usage: make.sh {sim|verilog|trace-gen}'
+    echo 'Usage: make.sh {sim|verilog|tracegen}'
     exit
   ;;
 esac

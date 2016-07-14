@@ -166,7 +166,7 @@ typedef struct {
 } Tag deriving (Bits);
 
 // A key holds the upper bits of an address
-typedef TSub#(30, TAdd#(`DCacheLogSetsPerThread, `WordsPerLine)) KeyNumBits;
+typedef TSub#(30, TAdd#(`DCacheLogSetsPerThread, `LogWordsPerLine)) KeyNumBits;
 typedef Bit#(KeyNumBits) Key;
 
 // Meta data per set
@@ -364,9 +364,11 @@ module mkDCache#(Integer myId, Mem extMem) (DCache);
 
   rule extRequest1;
     DCacheToken token = extRequestInput;
-    // Does the dirty bit for the matching line need to be set?
+    // Has a new dirty bit been set?
     Bool setDirtyBit = False;
-    // Has a line been successfully evicted
+    // New dirty bits
+    Vector#(DCacheNumWays, Bool) newDirtyBits = token.metaData.dirty;
+    // Has a line been evicted?
     Bool didEvict = False;
     // Does current request need to be retried?
     Bool retry = True;
@@ -376,7 +378,9 @@ module mkDCache#(Integer myId, Mem extMem) (DCache);
       resp.id = token.req.id;
       resp.data = dataMem.dataOutB;
       if (respQueue.notFull) begin
-        setDirtyBit = True;
+        setDirtyBit = token.req.cmd.isStore;
+        for (Integer i = 0; i < valueOf(DCacheNumWays); i=i+1)
+          if (token.matching[i]) newDirtyBits[i] = True;
         retry = False;
         respQueue.enq(resp);
       end
@@ -391,7 +395,7 @@ module mkDCache#(Integer myId, Mem extMem) (DCache);
         // Issue load request
         MemLoadReq load;
         load.id = fromInteger(myId);
-        load.addr = token.req.addr;
+        load.addr = truncateLSB(token.req.addr);
         extMem.putLoadReq(load);
         // Put request in fill queue
         Fill fill;
@@ -402,7 +406,8 @@ module mkDCache#(Integer myId, Mem extMem) (DCache);
         if (token.evictTag.valid && token.evictDirty) begin
           MemStoreReq store;
           store.id = fromInteger(myId);
-          store.addr = reconstructAddr(token.evictTag.key, token.req.addr);
+          store.addr = truncateLSB(reconstructAddr(
+                         token.evictTag.key, token.req.addr));
           store.data = dataMem.dataOutA;
           extMem.putStoreReq(store);
         end
@@ -411,18 +416,18 @@ module mkDCache#(Integer myId, Mem extMem) (DCache);
         newTag.valid = True;
         newTag.key = getKey(token.req.addr);
         for (Integer i = 0; i < valueOf(DCacheNumWays); i=i+1)
-          if (token.evictWay == fromInteger(i))
+          if (token.evictWay == fromInteger(i)) begin
+            newDirtyBits[i] = False;
             tagMem[i].write(setIndex(token.req.id, token.req.addr), newTag);
-        // A line has been evicted
+          end
+        // A line will be evicted
         didEvict = True;
       end
     end
     // Update meta data
     SetMetaData newMetaData;
     newMetaData.oldestWay = token.metaData.oldestWay + (didEvict ? 1 : 0);
-    for (Integer i = 0; i < valueOf(DCacheNumWays); i=i+1) 
-      newMetaData.dirty[i] = didEvict ? False : 
-        (token.metaData.dirty[i] || (token.matching[i] && setDirtyBit));
+    newMetaData.dirty = newDirtyBits;
     if (setDirtyBit || didEvict)
       metaData.write(setIndex(token.req.id, token.req.addr), newMetaData);
     // Retry request, if necessary

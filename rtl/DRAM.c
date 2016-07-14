@@ -29,7 +29,7 @@ void ramWrite(uint32_t addr, uint32_t data)
   if (ram == NULL) ramInit();
   if (ram[page] == NULL) {
     ram[page] = (uint32_t*) malloc((1<<10) * sizeof(uint32_t));
-    for (i = 0; i < (1<<10); i++) ram[page] = 0;
+    for (i = 0; i < (1<<10); i++) ram[page][i] = 0;
   }
   ram[page][offset] = data;
 }

@@ -7,16 +7,20 @@ package Mem;
 // Unique identifier per data cache
 typedef Bit#(`LogNumDCaches) DCacheId;
 
+// Memory address
+typedef TSub#(30, `LogWordsPerLine) MemAddrNumBits;
+typedef Bit#(MemAddrNumBits) MemAddr;
+
 // Load request
 typedef struct {
   DCacheId id;
-  Bit#(32) addr;
+  MemAddr addr;
 } MemLoadReq deriving (Bits);
 
 // Store request
 typedef struct {
   DCacheId id;
-  Bit#(32) addr;
+  MemAddr addr;
   Bit#(`LineSize) data;
 } MemStoreReq deriving (Bits);
 
