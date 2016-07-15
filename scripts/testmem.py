@@ -26,7 +26,7 @@ def usage():
   print "    * SEED"
   print "    * NUM_ITERATIONS"
   print "    * INIT_DEPTH"
-  print "    * DEPTH_INCR"
+  print "    * INCR_DEPTH"
   print "    * TESTS_PER_DEPTH"
   print "    * NUM_THREADS"
   print "    * NUM_ADDRS"
@@ -39,7 +39,7 @@ try:
   seed          = int(os.environ.get("SEED", "0"))
   numIterations = int(os.environ.get("NUM_ITERATIONS", "10"))
   initDepth     = int(os.environ.get("INIT_DEPTH", "100"))
-  depthIncr     = int(os.environ.get("DEPTH_INCR", "10"))
+  depthIncr     = int(os.environ.get("INCR_DEPTH", "10"))
   testsPerDepth = int(os.environ.get("TESTS_PER_DEPTH", "100"))
   numThreads    = int(os.environ.get("NUM_THREADS", "16"))
   numAddrs      = int(os.environ.get("NUM_ADDRS", "3"))

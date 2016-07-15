@@ -18,21 +18,13 @@ import "BDPI" function Action ramInit();
 import "BDPI" function Action ramWrite(Bit#(32) addr, Bit#(32) data);
 import "BDPI" function ActionValue#(Bit#(32)) ramRead(Bit#(32) addr);
 
-// Types
-// -----
-
-// Used for merging load and store requests into a single stream
-typedef enum { PickNone, PickLoad, PickStore } Pick deriving (Bits, Eq);
-
 // Implementation
 // --------------
 
-module mkDRAM (Mem);
+module mkDRAM (MemDualResp);
   // State
   Vector#(`DRAMLatency, Reg#(Bool)) valids <- replicateM(mkReg(False));
   Vector#(`DRAMLatency, Reg#(MemReq)) reqs <- replicateM(mkRegU);
-  FIFOF#(MemStoreReq)  storeReqFifo  <- mkUGFIFOF;
-  FIFOF#(MemLoadReq)   loadReqFifo   <- mkUGFIFOF;
   FIFOF#(MemReq)       reqFifo       <- mkUGFIFOF;
   FIFOF#(MemStoreResp) storeRespFifo <- mkUGFIFOF;
   FIFOF#(MemLoadResp)  loadRespFifo  <- mkUGFIFOF;
@@ -41,65 +33,45 @@ module mkDRAM (Mem);
 
   // Wires
   PulseWire incOutstanding <- mkPulseWire;
-  PulseWire decOutstanding <- mkPulseWire;
+  PulseWire decOutstanding1 <- mkPulseWire;
+  PulseWire decOutstanding2 <- mkPulseWire;
 
   // Constants
   Integer endIndex = `DRAMLatency-1;
   Integer wordsPerLine = `LineSize/32;
   Integer maxOutstanding = `DRAMPipelineLen;
 
-  // Merge load and store requests into single queue
-  rule mergeReqs (reqFifo.notFull);
-    Pick pick = PickNone;
-    if (storeReqFifo.notEmpty && loadReqFifo.notEmpty)
-      pick = toggle ? PickStore : PickLoad;
-    else if (storeReqFifo.notEmpty)
-      pick = PickStore;
-    else if (loadReqFifo.notEmpty)
-      pick = PickLoad;
-    if (pick == PickLoad) begin
-      loadReqFifo.deq;
-      reqFifo.enq(LoadReq(loadReqFifo.first));
-    end else if (pick == PickStore) begin
-      storeReqFifo.deq;
-      reqFifo.enq(StoreReq(storeReqFifo.first));
-    end
-    toggle <= !toggle;
-  endrule
-
   // Try to perform a request
   rule step;
     Bool shift = False;
     if (valids[0]) begin
-      case (reqs[0]) matches
-        tagged LoadReq .req: begin
-          if (loadRespFifo.notFull) begin
-            shift = True;
-            Vector#(`WordsPerLine, Bit#(32)) elems;
-            Bit#(32) addr = {req.addr, 0};
-            for (Integer i = 0; i < `WordsPerLine; i=i+1) begin
-              let val <- ramRead(addr+fromInteger(4*i));
-              elems[i] = val;
-            end
-            MemLoadResp resp;
-            resp.id = req.id;
-            resp.data = pack(elems);
-            loadRespFifo.enq(resp);
+      MemReq req = reqs[0];
+      if (! req.isStore) begin
+        if (loadRespFifo.notFull) begin
+          shift = True;
+          Vector#(`WordsPerLine, Bit#(32)) elems;
+          Bit#(32) addr = {req.addr, 0};
+          for (Integer i = 0; i < `WordsPerLine; i=i+1) begin
+            let val <- ramRead(addr+fromInteger(4*i));
+            elems[i] = val;
           end
+          MemLoadResp resp;
+          resp.id = req.id;
+          resp.data = pack(elems);
+          loadRespFifo.enq(resp);
         end
-        tagged StoreReq .req: begin
-          if (storeRespFifo.notFull) begin
-            shift = True;
-            Vector#(`WordsPerLine, Bit#(32)) elems = unpack(req.data);
-            Bit#(32) addr = {req.addr, 0};
-            for (Integer i = 0; i < `WordsPerLine; i=i+1)
-              ramWrite(addr+fromInteger(4*i), elems[i]);
-            MemStoreResp resp = ?;
-            resp.id = req.id;
-            storeRespFifo.enq(resp);
-          end
+      end else begin
+        if (storeRespFifo.notFull) begin
+          shift = True;
+          Vector#(`WordsPerLine, Bit#(32)) elems = unpack(req.data);
+          Bit#(32) addr = {req.addr, 0};
+          for (Integer i = 0; i < `WordsPerLine; i=i+1)
+            ramWrite(addr+fromInteger(4*i), elems[i]);
+          MemStoreResp resp = ?;
+          resp.id = req.id;
+          storeRespFifo.enq(resp);
         end
-      endcase
+      end
     end
     // Insert a new request
     if (reqFifo.notEmpty && (shift || !valids[endIndex])) begin
@@ -120,33 +92,38 @@ module mkDRAM (Mem);
 
   // Track number of outstanding requests
   rule countOutstanding;
-    if (incOutstanding && !decOutstanding)
-      outstanding <= outstanding + 1;
-    else if (decOutstanding && !incOutstanding)
-      outstanding <= outstanding - 1;
+    let count = outstanding;
+    if (incOutstanding) count = count+1;
+    if (decOutstanding1) count = count-1;
+    if (decOutstanding2) count = count-1;
+    outstanding <= count;
   endrule
 
-  // Methods
-  method Bool canPutLoad = loadReqFifo.notFull &&
-                outstanding < fromInteger(maxOutstanding);
-  method Action putLoadReq(MemLoadReq req);
-    incOutstanding.send;
-    loadReqFifo.enq(req);
-  endmethod
-  method Bool canPutStore = storeReqFifo.notFull &&
-                outstanding < fromInteger(maxOutstanding);
-  method Action putStoreReq(MemStoreReq req);
-    storeReqFifo.enq(req);
-  endmethod
-  method Bool canGetLoad = loadRespFifo.notEmpty;
-  method ActionValue#(MemLoadResp) getLoadResp;
-    decOutstanding.send;
-    loadRespFifo.deq; return loadRespFifo.first;
-  endmethod
-  method Bool canGetStore = storeRespFifo.notEmpty;
-  method ActionValue#(MemStoreResp) getStoreResp;
-    storeRespFifo.deq; return storeRespFifo.first;
-  endmethod
+  // Interfaces
+  interface Req req;
+    method Bool canPut = reqFifo.notFull &&
+                  outstanding < fromInteger(maxOutstanding);
+    method Action put(MemReq req);
+      incOutstanding.send;
+      reqFifo.enq(req);
+    endmethod
+  endinterface
+
+  interface Resp loadResp;
+    method Bool canGet = loadRespFifo.notEmpty;
+    method ActionValue#(MemLoadResp) get;
+      decOutstanding1.send;
+      loadRespFifo.deq; return loadRespFifo.first;
+    endmethod
+  endinterface
+
+  interface Resp storeResp;
+    method Bool canGet = storeRespFifo.notEmpty;
+    method ActionValue#(MemStoreResp) get;
+      decOutstanding2.send;
+      storeRespFifo.deq; return storeRespFifo.first;
+    endmethod
+  endinterface
 endmodule
 
 `else

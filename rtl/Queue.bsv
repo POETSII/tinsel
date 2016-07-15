@@ -13,6 +13,7 @@ package Queue;
 // =======
 
 import BlockRam  :: *;
+import ConfigReg :: *;
 
 // For BlueCheck test benches:
 /*
@@ -38,6 +39,7 @@ interface SizedQueue#(numeric type logSize, type elemType);
 endinterface
 
 typedef SizedQueue#(1, elemType) Queue#(type elemType);
+typedef SizedQueue#(0, elemType) Queue1#(type elemType);
 
 // =================================
 // Implementation 1: 2-element Queue
@@ -170,16 +172,26 @@ module mkUGQueue1 (SizedQueue#(0, elemType))
   provisos (Bits#(elemType, elemWidth));
 
   // State
-  Reg#(elemType) elem   <- mkRegU;
-  Reg#(Bool) elemValid  <- mkReg(False);
+  Reg#(elemType) elem   <- mkConfigRegU;
+  Reg#(Bool) elemValid  <- mkConfigReg(False);
+
+  // Wires
+  PulseWire deqFire <- mkPulseWire;
+  PulseWire enqFire <- mkPulseWire;
+
+  // Update rule
+  rule update;
+    if (deqFire) elemValid <= False;
+    else if (enqFire) elemValid <= True;
+  endrule
 
   // Methods
   method Action deq;
-    elemValid <= False;
+    deqFire.send;
   endmethod
 
   method Action enq(elemType x);
-    elemValid <= True;
+    enqFire.send;
     elem <= x;
   endmethod
 

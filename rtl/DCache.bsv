@@ -23,11 +23,6 @@ package DCache;
 // block RAM with a line-sized port and a word-sized port; each port
 // allows either a read or a write on each cycle.
 //
-// External memory has seperate ports for read requests and write
-// requests.  This means we can issue a read request and write request
-// at the same time, which is useful under a cache-miss (a new line
-// must be fetched and an old one written back).
-//
 // Pipeline structure
 // ------------------
 //
@@ -228,7 +223,13 @@ endinterface
 // Implementation
 // ============================================================================
 
-module mkDCache#(Integer myId, Mem extMem) (DCache);
+// This is the main data cache module; it assumes that external memory
+// has separate buses for loads and stores.  This means we can issue a
+// read request and write request at the same time, which is useful
+// under a cache-miss (a new line must be fetched and an old one
+// written back).
+
+module mkDCacheCore#(Integer myId, MemDualReqResp extMem) (DCache);
   // Tag block RAM
   Vector#(DCacheNumWays, BlockRam#(SetIndex, Tag)) tagMem <-
     replicateM(mkBlockRam);
@@ -398,14 +399,14 @@ module mkDCache#(Integer myId, Mem extMem) (DCache);
       // * write old line data (if dirty) to external memory (if ready)
       // * send external request for new line data, if ready
       // * update tag
-      if (fillQueue.notFull && extMem.canPutLoad &&
-            (token.evictDirty ? extMem.canPutStore : True)) begin
+      if (fillQueue.notFull && extMem.loadReq.canPut &&
+            (token.evictDirty ? extMem.storeReq.canPut : True)) begin
         retry = False;
         // Issue load request
         MemLoadReq load;
         load.id = fromInteger(myId);
         load.addr = truncateLSB(token.req.addr);
-        extMem.putLoadReq(load);
+        extMem.loadReq.put(load);
         // Put request in fill queue
         Fill fill;
         fill.req = token.req;
@@ -418,7 +419,7 @@ module mkDCache#(Integer myId, Mem extMem) (DCache);
           store.addr = truncateLSB(reconstructAddr(
                          token.evictTag.key, token.req.addr));
           store.data = dataMem.dataOutA;
-          extMem.putStoreReq(store);
+          extMem.storeReq.put(store);
         end
         // Update tag
         Tag newTag;
@@ -455,13 +456,13 @@ module mkDCache#(Integer myId, Mem extMem) (DCache);
 
   rule externalResponse;
     // If new line data available from external memory, then:
-    if (extMem.canGetLoad && fillQueue.canDeq
+    if (extMem.loadResp.canGet && fillQueue.canDeq
           && fillQueue.canPeek && hitBuffer.notFull) begin
       // Remove item from fill queue
       let fill = fillQueue.dataOut;
       fillQueue.deq;
       // Write new line data to dataMem
-      MemLoadResp resp <- extMem.getLoadResp;
+      MemLoadResp resp <- extMem.loadResp.get;
       lineWriteReqWire   <= True;
       lineWriteIndexWire <= lineIndex(fill.req.id, fill.req.addr, fill.way);
       lineWriteDataWire  <= resp.data;
@@ -506,8 +507,8 @@ module mkDCache#(Integer myId, Mem extMem) (DCache);
   // Until the cache supports explicit flushing,
   // ignore all store responses from external memory
   rule discardStoreResps;
-    if (extMem.canGetStore) begin
-      let _ <- extMem.getStoreResp;
+    if (extMem.storeResp.canGet) begin
+      let _ <- extMem.storeResp.get;
     end
   endrule
 
@@ -524,6 +525,15 @@ module mkDCache#(Integer myId, Mem extMem) (DCache);
     respQueue.deq;
     return respQueue.dataOut;
   endmethod
+endmodule
+
+// This is wrapper for the data cache which merges the load and store
+// request buses into a single request bus.
+
+module mkDCache#(Integer myId, MemDualResp extMem) (DCache);
+  let mem <- mkMergeLoadStoreReqs(extMem);
+  let dcache <- mkDCacheCore(myId, mem);
+  return dcache;
 endmodule
 
 endpackage

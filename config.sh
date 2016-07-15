@@ -35,7 +35,7 @@ export LogNumDCaches=0
 # DRAM latency in cycles (simulation only)
 export DRAMLatency=20
 
-# Max number of in-flight DRAM requests at any time
+# Max number of in-flight DRAM requests at any time (simulation only)
 export DRAMPipelineLen=4
 
 #==============================================================================

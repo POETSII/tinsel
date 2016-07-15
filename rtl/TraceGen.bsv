@@ -50,10 +50,10 @@ module traceGen ();
   // -----
 
   // DRAM instance
-  Mem dram <- mkDRAM;
+  let dram <- mkDRAM;
 
   // Data cache instance (id 0) connected directly to DRAM instance
-  DCache dcache <- mkDCache(0, dram);
+  let dcache <- mkDCache(0, dram);
 
   // Record in-flight requests (max of one outstanding request per thread)
   RegFile#(DCacheClientId, TraceGenReq) inFlight <-
