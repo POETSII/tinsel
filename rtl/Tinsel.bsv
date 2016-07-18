@@ -59,11 +59,12 @@ typedef struct {
   Bool isBranchLessThan; Bool isBranchGreaterOrEqualTo;
   Bool isLoad;           Bool isStore;
   Bool isCSR;            Bool isBitwise;
+  Bool isAddOrSub;
 } Op deriving (Bits);
 
 // Instruction result
 typedef struct {
-  Bit#(32) add;       Bit#(33) sub;
+  Bit#(33) add;
   Bit#(32) shiftLeft; Bit#(32) shiftRight;
   Bit#(32) bitwise;   Bit#(32) opui;
   Bit#(32) load;      Bit#(32) csr;
@@ -157,6 +158,7 @@ function Op decodeOp(Bit#(32) instr);
   Bool isArith = isArithReg || isArithImm;
   ret.isAdd = minorOp == 'b000 && (isArithImm || isArithReg && instr[30] == 0);
   ret.isSub = minorOp == 'b000 && isArithReg && instr[30] == 1;
+  ret.isAddOrSub = ret.isAdd || ret.isSub;
   ret.isSetIfLessThan = (minorOp == 'b010 || minorOp == 'b011) && isArith;
   ret.isShiftLeft = minorOp == 'b001 && isArith;
   ret.isShiftRight = minorOp == 'b101 && isArith;
@@ -442,13 +444,13 @@ module tinselCore (Tinsel);
 
   rule execute2;
     PipelineToken token = execute2Input;
-    // Addition
     InstrResult res = ?;
-    res.add = token.valA + token.aluB;
-    // 33-bit subtraction (result used for comparisons too)
+    // 33-bit addition/subtraction (result used for comparisons too)
     Bool ucmp = isUnsignedCmp(token.instr);
-    res.sub = {ucmp ? 1'b0 : token.valA[31], token.valA}
-            - {ucmp ? 1'b0 : token.valB[31], token.aluB};
+    let addA = {ucmp ? 1'b0 : token.valA[31], token.valA};
+    let addB = {ucmp ? 1'b0 : token.valB[31], token.aluB};
+    res.add = (addA + (token.op.isAdd ? addB : ~addB)) +
+                (token.op.isAdd ? 0 : 1);
     // Shift left
     res.shiftLeft = token.valA << token.aluB[4:0];
     // Shift right (both logical and arithmetic cases)
@@ -481,8 +483,8 @@ module tinselCore (Tinsel);
     PipelineToken token = execute3Input;
     // Compute results of comparison
     InstrResult res = token.instrResult;
-    Bool eq = res.sub == 0;
-    Bool lt = res.sub[32] == 1;
+    Bool eq = res.add == 0;
+    Bool lt = res.add[32] == 1;
     // Determine result of load
     token.instrResult.load =
       loadMux(dataMem.dataOut, token.accessWidth,
@@ -490,8 +492,7 @@ module tinselCore (Tinsel);
     // Setup write to destination register
     Op op = token.op;
     token.writeVal =
-        when(op.isAdd,           res.add)
-      | when(op.isSub,           res.sub[31:0])
+        when(op.isAddOrSub,      res.add[31:0])
       | when(op.isSetIfLessThan, lt ? 1 : 0)
       | when(op.isShiftLeft,     res.shiftLeft)
       | when(op.isShiftRight,    res.shiftRight)
