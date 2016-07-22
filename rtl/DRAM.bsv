@@ -1,5 +1,14 @@
 package DRAM;
 
+// ============================================================================
+// Interface
+// ============================================================================
+
+interface DRAM;
+  interface MemDualResp internal;
+  interface DRAMExtIfc external;
+endinterface
+
 `ifdef SIMULATE
 
 // ============================================================================
@@ -18,10 +27,16 @@ import "BDPI" function Action ramInit();
 import "BDPI" function Action ramWrite(Bit#(32) addr, Bit#(32) data);
 import "BDPI" function ActionValue#(Bit#(32)) ramRead(Bit#(32) addr);
 
+// Types
+// -----
+
+// In simulation, external interface is empty
+typedef Empty DRAMExtIfc;
+
 // Implementation
 // --------------
 
-module mkDRAM (MemDualResp);
+module mkDRAM (DRAM);
   // State
   Vector#(`DRAMLatency, Reg#(Bool)) valids <- replicateM(mkReg(False));
   Vector#(`DRAMLatency, Reg#(MemReq)) reqs <- replicateM(mkRegU);
@@ -39,7 +54,7 @@ module mkDRAM (MemDualResp);
   // Constants
   Integer endIndex = `DRAMLatency-1;
   Integer wordsPerLine = `LineSize/32;
-  Integer maxOutstanding = `DRAMPipelineLen;
+  Integer maxOutstanding = `DRAMLogMaxInFlight;
 
   // Try to perform a request
   rule step;
@@ -67,7 +82,7 @@ module mkDRAM (MemDualResp);
           Bit#(32) addr = {req.addr, 0};
           for (Integer i = 0; i < `WordsPerLine; i=i+1)
             ramWrite(addr+fromInteger(4*i), elems[i]);
-          MemStoreResp resp = ?;
+          MemStoreResp resp;
           resp.id = req.id;
           storeRespFifo.enq(resp);
         end
@@ -100,29 +115,34 @@ module mkDRAM (MemDualResp);
   endrule
 
   // Interfaces
-  interface Req req;
-    method Bool canPut = reqFifo.notFull &&
-                  outstanding < fromInteger(maxOutstanding);
-    method Action put(MemReq req);
-      incOutstanding.send;
-      reqFifo.enq(req);
-    endmethod
-  endinterface
+  interface MemDualResp internal;
+    interface Req req;
+      method Bool canPut = reqFifo.notFull &&
+                    outstanding < fromInteger(maxOutstanding);
+      method Action put(MemReq req);
+        incOutstanding.send;
+        reqFifo.enq(req);
+      endmethod
+    endinterface
 
-  interface Resp loadResp;
-    method Bool canGet = loadRespFifo.notEmpty;
-    method ActionValue#(MemLoadResp) get;
-      decOutstanding1.send;
-      loadRespFifo.deq; return loadRespFifo.first;
-    endmethod
-  endinterface
+    interface Resp loadResp;
+      method Bool canGet = loadRespFifo.notEmpty;
+      method ActionValue#(MemLoadResp) get;
+        decOutstanding1.send;
+        loadRespFifo.deq; return loadRespFifo.first;
+      endmethod
+    endinterface
 
-  interface Resp storeResp;
-    method Bool canGet = storeRespFifo.notEmpty;
-    method ActionValue#(MemStoreResp) get;
-      decOutstanding2.send;
-      storeRespFifo.deq; return storeRespFifo.first;
-    endmethod
+    interface Resp storeResp;
+      method Bool canGet = storeRespFifo.notEmpty;
+      method ActionValue#(MemStoreResp) get;
+        decOutstanding2.send;
+        storeRespFifo.deq; return storeRespFifo.first;
+      endmethod
+    endinterface
+  endinterface
+  
+  interface DRAMExtIfc external;
   endinterface
 endmodule
 
@@ -131,6 +151,145 @@ endmodule
 // ============================================================================
 // Synthesis
 // ============================================================================
+
+// Imports
+// -------
+
+import Mem    :: *;
+import Vector :: *;
+import Queue  :: *;
+
+// Types
+// -----
+
+// On FPGA, external interface is an Avalon master
+(* always_ready, always_enabled *)
+interface DRAMExtIfc;
+  method Action m0(
+    Bit#(`LineSize) readdata,
+    Bool readdatavalid,
+    Bool waitrequest,
+    Bool writeresponsevalid,
+    Bit#(2) response
+  );
+  method Bit#(`LineSize) m0_writedata;
+  method Bit#(`DRAMAddrWidth) m0_address;
+  method Bool m0_read;
+  method Bool m0_write;
+endinterface
+
+// In-flight request
+typedef struct {
+  DCacheId id;
+  Bool isStore;
+} DRAMInFlightReq deriving (Bits);
+
+// Implementation
+// --------------
+
+module mkDRAM (DRAM);
+  // Queues
+`ifdef DRAMPortHalfThroughput
+  SizedQueue#(`DRAMLogMaxInFlight, DRAMInFlightReq) inFlight <-
+    mkUGSizedQueue;
+  SizedQueue#(`DRAMLogMaxInFlight, Bit#(`LineSize)) respBuffer <-
+    mkUGSizedQueue;
+`else
+  SizedQueue#(`DRAMLogMaxInFlight, DRAMInFlightReq) inFlight <-
+    mkUGSizedQueuePrefetch;
+  SizedQueue#(`DRAMLogMaxInFlight, Bit#(`LineSize)) respBuffer <-
+    mkUGSizedQueuePrefetch;
+`endif
+
+  // Registers
+  Reg#(MemAddr) address <- mkRegU;
+  Reg#(Bit#(`LineSize)) writeData <- mkRegU;
+  Reg#(Bool) doRead <- mkReg(False);
+  Reg#(Bool) doWrite <- mkReg(False);
+
+  // Wires
+  Wire#(Bool) waitRequest <- mkBypassWire;
+  PulseWire putLoad <- mkPulseWire;
+  PulseWire putStore <- mkPulseWire;
+  PulseWire consumeLoadResp <- mkPulseWire;
+  PulseWire consumeStoreResp <- mkPulseWire;
+
+  // Rules
+  rule consumeResponse (consumeLoadResp || consumeStoreResp);
+    inFlight.deq;
+    respBuffer.deq;
+  endrule
+
+  rule putRequest;
+    if (putLoad) begin
+      doRead <= True;
+      doWrite <= False;
+    end else if (putStore) begin
+      doRead <= False;
+      doWrite <= True;
+    end else if (!waitRequest) begin
+      doRead <= False;
+      doWrite <= False;
+    end
+  endrule
+
+  // Internal interface
+  interface MemDualResp internal;
+    interface Req req;
+      method Bool canPut = !waitRequest && inFlight.notFull;
+      method Action put(MemReq req);
+        address   <= req.addr;
+        writeData <= req.data;
+        if (req.isStore) putStore.send; else putLoad.send;
+        DRAMInFlightReq inflightReq;
+        inflightReq.id = req.id;
+        inflightReq.isStore = req.isStore;
+        inFlight.enq(inflightReq);
+      endmethod
+    endinterface
+
+    interface Resp loadResp;
+      method Bool canGet =
+        inFlight.canPeek && inFlight.canDeq && !inFlight.dataOut.isStore &&
+          respBuffer.canPeek && respBuffer.canDeq;
+      method ActionValue#(MemLoadResp) get;
+        consumeLoadResp.send;
+        MemLoadResp resp;
+        resp.id = inFlight.dataOut.id;
+        resp.data = respBuffer.dataOut;
+        return resp;
+      endmethod
+    endinterface
+
+    interface Resp storeResp;
+      method Bool canGet =
+        inFlight.canPeek && inFlight.canDeq && inFlight.dataOut.isStore &&
+          respBuffer.canPeek && respBuffer.canDeq;
+      method ActionValue#(MemStoreResp) get;
+        consumeStoreResp.send;
+        MemStoreResp resp;
+        resp.id = inFlight.dataOut.id;
+        return resp;
+      endmethod
+    endinterface
+  endinterface
+
+  // External (Avalon master) interface
+  interface DRAMExtIfc external;
+    method Action m0(readdata,readdatavalid,waitrequest,
+                       writeresponsevalid, response);
+      if (readdatavalid || writeresponsevalid) respBuffer.enq(readdata);
+      waitRequest <= waitrequest;
+    endmethod
+    method m0_writedata  = writeData;
+    method m0_address;
+      Bit#(32) byteAddress = {address, 0};
+      return truncateLSB(byteAddress);
+    endmethod
+    method m0_read       = doRead;
+    method m0_write      = doWrite;
+  endinterface
+endmodule
 
 `endif
 

@@ -49,6 +49,13 @@ typedef struct {
   DCacheId id;
 } MemStoreResp deriving (Bits);
 
+// General response
+typedef struct {
+  Bool isStore;
+  DCacheId id;
+  Bit#(`LineSize) data;
+} MemResp deriving (Bits);
+
 // ============================================================================
 // Interfaces
 // ============================================================================

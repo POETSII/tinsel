@@ -18,29 +18,27 @@ inline void clear(int bits)
   asm volatile("csrc 0x800, %0" : : "r"(bits));
 }
 
-// Sleep (approximately) for a second
+// Sleep for a second (approximately)
 void sleep() {
   // Assuming 400MHz clock and 16 threads and 4 cycles per iteration
   volatile int delay = 6250000;
   while (delay > 0) delay--;
 }
 
-// Shared variable
-volatile int active = 0;
+#define N 10
 
 // Main
 int main()
 {
   int id = me();
+  int nums[N];
+  int i;
+  int sum = 0;
 
-  for (;;) {
-    if (id == active) {
-      clear(-1); // Clear all output bits
-      set(id);   // Put my id on output bits
-      sleep();
-      active = (id+1) & 0xf; // Activate next thread
-    }  
-  }
+  for (i = 0; i < N; i++) nums[i] = i;
+  for (i = 0; i < N; i++) sum = sum + nums[i];
+  if (sum == 45) set(1 << id); // Put my id on output bits
+  while (1);
 
   return 0;
 }
