@@ -32,17 +32,26 @@ export DCacheLogNumWays=2
 # Log of number of data caches present
 export LogNumDCaches=0
 
+# Max number of outstanding DRAM requests permitted
+export DRAMLogMaxInFlight=4
+
 # DRAM latency in cycles (simulation only)
 export DRAMLatency=20
 
-# Max number of in-flight DRAM requests at any time (simulation only)
-export DRAMPipelineLen=4
+# If set to 1, reduces logic usage, but each DRAM port is limited to
+# half throughput (one response every other cycle).  This may be
+# acceptable for various reasons, most notably when using a multi-port
+# front-end to DRAM, e.g. in Cyclone V or Arria 10 boards.
+export DRAMPortHalfThroughput=1
+
+# DRAM byte-address width
+export DRAMAddrWidth=30
 
 #==============================================================================
 # Derived Parameters
 #==============================================================================
 
-# (These must NOT be modified.)
+# (These should not be modified.)
 
 # Log of number of bytes per data cache line
 export LogBytesPerLine=$((2+$LogWordsPerLine))

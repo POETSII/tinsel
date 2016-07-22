@@ -2,8 +2,8 @@ Tinsel (working name) is a basic multi-threaded processor implementing
 the 32-bit RISC-V ISA (RV32I).  It's designed for low resource usage
 and high clock rate on modern FPGAs.
 
-On Terasic's [DE5-NET](http://de5-net.terasic.com), Tinsel acheives an Fmax
-of 450MHz and uses 500 ALMs (0.2%) and 113K block RAM bits (0.2%).
+On Terasic's [DE5-NET](http://de5-net.terasic.com), Tinsel acheives an
+Fmax of 450MHz and uses under 500 ALMs (0.2%).
 
 This repo is not intended for general use yet.
 

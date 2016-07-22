@@ -449,10 +449,10 @@ module mkDCacheCore#(Integer myId, MemDualReqResp extMem) (DCache);
   // -----------------------
 
   // 1-element buffer for requests that will hit
-  Queue#(DCacheReq) hitBuffer <- mkUGQueue;
+  Queue1#(DCacheReq) hitBuffer <- mkUGQueue1;
 
   // 1-element buffer for requests to be retried
-  Queue#(DCacheReq) retryBuffer <- mkUGQueue;
+  Queue1#(DCacheReq) retryBuffer <- mkUGQueue1;
 
   rule externalResponse;
     // If new line data available from external memory, then:

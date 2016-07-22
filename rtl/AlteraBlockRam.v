@@ -137,8 +137,8 @@ module AlteraBlockRamTrueMixed (
   parameter NUM_ELEMS_B  = 1;
   parameter BE_WIDTH     = 1;
   parameter RD_DURING_WR = "OLD_DATA";     // Or: "DONT_CARE"
-  parameter DO_A_REG     = "UNREGISTERED"; // Or: "CLOCK0"
-  parameter DO_B_REG     = "UNREGISTERED"; // Or: "CLOCK0"
+  parameter DO_REG_A     = "UNREGISTERED"; // Or: "CLOCK0"
+  parameter DO_REG_B     = "UNREGISTERED"; // Or: "CLOCK0"
   parameter DEV_FAMILY   = "Stratix V";
   parameter INIT_FILE    = "UNUSED";
 
@@ -207,8 +207,8 @@ module AlteraBlockRamTrueMixed (
     altsyncram_component.operation_mode = "BIDIR_DUAL_PORT",
     altsyncram_component.outdata_aclr_a = "NONE",
     altsyncram_component.outdata_aclr_b = "NONE",
-    altsyncram_component.outdata_reg_a = DO_A_REG,
-    altsyncram_component.outdata_reg_b = DO_B_REG,
+    altsyncram_component.outdata_reg_a = DO_REG_A,
+    altsyncram_component.outdata_reg_b = DO_REG_B,
     altsyncram_component.power_up_uninitialized = "FALSE",
     altsyncram_component.read_during_write_mode_mixed_ports = RD_DURING_WR,
     altsyncram_component.read_during_write_mode_port_a = "NEW_DATA_NO_NBE_READ",

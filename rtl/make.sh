@@ -14,8 +14,12 @@ DEFS="-D 'DeviceFamily=\"$DeviceFamily\"' \
       -D DCacheLogSetsPerThread=$DCacheLogSetsPerThread \
       -D DCacheLogNumWays=$DCacheLogNumWays \
       -D LogNumDCaches=$LogNumDCaches \
+      -D DRAMLogMaxInFlight=$DRAMLogMaxInFlight \
       -D DRAMLatency=$DRAMLatency \
-      -D DRAMPipelineLen=$DRAMPipelineLen"
+      -D DRAMAddrWidth=$DRAMAddrWidth "
+if [ "$DRAMPortHalfThroughput" == "1" ]; then
+  DEFS="$DEFS -D DRAMPortHalfThroughput"
+fi
 
 # Bluespec compiler flags
 BSC="bsc"
@@ -23,18 +27,18 @@ BSCFLAGS="-wait-for-license -suppress-warnings S0015 $DEFS"
 
 case "$1" in
   sim)
-    TOPFILE=Tinsel.bsv
-    TOPMOD=tinselCoreSim
+    TOPFILE=DE5Top.bsv
+    TOPMOD=de5Top
     BSCFLAGS="$BSCFLAGS -D SIMULATE"
   ;;
   verilog)
-    TOPFILE=Tinsel.bsv
-    TOPMOD=tinselCore
+    TOPFILE=DE5Top.bsv
+    TOPMOD=de5Top
     SYNTH=1
   ;;
   tracegen)
     TOPFILE=TraceGen.bsv
-    TOPMOD="traceGen"
+    TOPMOD=traceGen
     BSCFLAGS="$BSCFLAGS -D SIMULATE"
   ;;
   *)

@@ -31,7 +31,7 @@
 // ============================================================================
 //Date:  Tue Feb 28 09:17:32 2012
 // ============================================================================
-//`define ENABLE_DDR3A
+`define ENABLE_DDR3A
 //`define ENABLE_DDR3B
 //`define ENABLE_PCIE
 //`define ENABLE_QDRIIA
@@ -617,78 +617,35 @@ inout															TEMP_DATA;
 input															TEMP_INT_n;
 input															TEMP_OVERT_n;
 
+wire [31:0] tinselOut;
+assign LED[3:0] = tinselOut[3:0];
 wire reset_n;
-assign reset_n = 1'b1;
-//assign reset_n = CPU_RESET_n;
-
-
-wire clk_400;
+assign reset_n = 1;
 
 S5_DDR3_QSYS u0 (
-  .clk_clk       (OSC_50_B7A),
-  .reset_reset_n (reset_n),
-  .clk_400_clk   (clk_400)
+        .clk_clk                                   (OSC_50_B7A),                                   //                     clk.clk
+        .de5top_0_out_readdata                     (tinselOut),                     //            de5top_0_out.readdata
+        .reset_reset_n                             (reset_n),                             //                   reset.reset_n		  
+        .memory_mem_a                              (DDR3A_A),                              //                          memory.mem_a
+        .memory_mem_ba                             (DDR3A_BA),                             //                                .mem_ba
+        .memory_mem_ck                             (DDR3A_CK),                             //                                .mem_ck
+        .memory_mem_ck_n                           (DDR3A_CK_n),                           //                                .mem_ck_n
+        .memory_mem_cke                            (DDR3A_CKE),                            //                                .mem_cke
+        .memory_mem_cs_n                           (DDR3A_CS_n),                           //                                .mem_cs_n
+        .memory_mem_dm                             (DDR3A_DM),                             //                                .mem_dm
+        .memory_mem_ras_n                          (DDR3A_RAS_n),                          //                                .mem_ras_n
+        .memory_mem_cas_n                          (DDR3A_CAS_n),                          //                                .mem_cas_n
+        .memory_mem_we_n                           (DDR3A_WE_n),                           //                                .mem_we_n
+        .memory_mem_reset_n                        (DDR3A_RESET_n),                        //                                .mem_reset_n
+        .memory_mem_dq                             (DDR3A_DQ),                             //                                .mem_dq
+        .memory_mem_dqs                            (DDR3A_DQS),                            //                                .mem_dqs
+        .memory_mem_dqs_n                          (DDR3A_DQS_n),                          //                                .mem_dqs_n
+        .memory_mem_odt                            (DDR3A_ODT),                            //                                .mem_odt
+        .oct_rzqin                                 (RZQ_4),                                 //                             oct.rzqin
+        .mem_if_ddr3_emif_status_local_init_done   (ddr3_local_init_done),   //         mem_if_ddr3_emif_status.local_init_done
+        .mem_if_ddr3_emif_status_local_cal_success (ddr3_local_cal_success), //                                .local_cal_success
+        .mem_if_ddr3_emif_status_local_cal_fail    (ddr3_local_cal_fail)    //                                .		  
 );
-
-
-/*
-wire [31:0] c0_out;
-
-mkCount c0 (
-  .CLK   (clk_400),
-  .RST_N (reset_n),
-  .out   (c0_out)
-);
-
-assign LED[3:0] = c0_out[3:0];
-*/
-
-
-reg rst_n = 0;
-always @(negedge clk_400) begin
-//always @(negedge OSC_50_B7A) begin
-  rst_n <= 1;
-end
-
-
-wire [31:0] c0_out;
-
-tinselCore c0 (
-  .CLK   (clk_400),
-  //.CLK   (OSC_50_B7A),
-  .RST_N (rst_n),
-  .out   (c0_out)
-);
-
-assign LED[3:0] = c0_out[3:0];
-
-
-
-/*
-reg [31:0] count = 0;
-reg[3:0] out = 0;
-always @(negedge OSC_50_B7A) begin
-  if (count == 50000000) begin
-    count <= 0;
-	 out <= out+1; 
-  end else
-    count <= count+1;
-end
-assign LED[3:0] = out[3:0];
-*/
-
-/*
-reg [3:0] x;
-always @(negedge clk_400) begin
-  x <= x+1;
-end
-
-assign LED[3:0] = x[3:0];
-*/
-
-
-
-  
   
 /*
     S5_DDR3_QSYS u0 (

@@ -38,8 +38,8 @@ def usage():
 try:
   seed          = int(os.environ.get("SEED", "0"))
   numIterations = int(os.environ.get("NUM_ITERATIONS", "10"))
-  initDepth     = int(os.environ.get("INIT_DEPTH", "100"))
-  depthIncr     = int(os.environ.get("INCR_DEPTH", "10"))
+  initDepth     = int(os.environ.get("INIT_DEPTH", "1000"))
+  depthIncr     = int(os.environ.get("INCR_DEPTH", "1000"))
   testsPerDepth = int(os.environ.get("TESTS_PER_DEPTH", "100"))
   numThreads    = int(os.environ.get("NUM_THREADS", "16"))
   numAddrs      = int(os.environ.get("NUM_ADDRS", "3"))

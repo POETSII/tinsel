@@ -6,13 +6,15 @@ package Tinsel;
 // Imports
 // ============================================================================
 
-import Vector   :: *;
-import FIFO     :: *;
-import BlockRam :: *;
-import Queue    :: *;
-import Util     :: *;
-import DReg     :: *;
-import Assert   :: *;
+import Vector    :: *;
+import FIFO      :: *;
+import BlockRam  :: *;
+import Queue     :: *;
+import Util      :: *;
+import DReg      :: *;
+import Assert    :: *;
+import DCache    :: *;
+import ConfigReg :: *;
 
 // ============================================================================
 // Types
@@ -33,8 +35,8 @@ typedef Bit#(TAdd#(`LogDataWordsPerCore, 2)) DataAddr;
 // Threads
 typedef Bit#(`LogThreadsPerCore) ThreadId;
 typedef struct {
-  InstrAddr pc;
-  ThreadId  id;
+  InstrAddr pc;  // Program counter
+  ThreadId  id;  // Thread identifier
 } Thread deriving (Bits);
 
 // Register file index
@@ -64,10 +66,9 @@ typedef struct {
 
 // Instruction result
 typedef struct {
-  Bit#(33) add;
+  Bit#(33) add;       Bit#(32) csr;
   Bit#(32) shiftLeft; Bit#(32) shiftRight;
   Bit#(32) bitwise;   Bit#(32) opui;
-  Bit#(32) load;      Bit#(32) csr;
 } InstrResult deriving (Bits);
 
 // Width of load or store access
@@ -89,12 +90,32 @@ typedef struct {
   InstrType instrType;     // RV32I instruction type
   AccessWidth accessWidth; // Byte, half-word, or word access?
   Bit#(32) loadVal;        // Result of load instruction
-  Bit#(2) loadSelector;    // Byte offset of load address
+  Bit#(32) memAddr;        // Memory address for load or store
   Op op;                   // Decoded operation
   InstrResult instrResult; // Instruction result
   InstrAddr targetPC;      // Next PC if branch taken
   InstrAddr nextPC;        // Next PC if branch not taken
 } PipelineToken deriving (Bits);
+
+// For each suspended thread, we have the following info
+typedef struct {
+  InstrAddr pc;            // Program counter
+  Bool isLoad;             // Is it waiting for a load?
+  Bool isStore;            // Or a store?
+  Bit#(5) destReg;         // Destination register for the load result
+  Bit#(2) loadSelector;    // Bottom two bits of load address
+  AccessWidth accessWidth; // Access width of load (byte, half, word)
+  Bool isUnsignedLoad;     // Sign-extension behaviour for load
+} SuspendedThread deriving (Bits);
+
+// For each suspended thread in the writeback queue, we have:
+typedef struct {
+  Bool isLoad;
+  Bool isStore;
+  Thread thread;
+  Bit#(5) destReg;
+  Bit#(32) writeVal;
+} Writeback deriving (Bits);
 
 // ============================================================================
 // Decoder
@@ -223,7 +244,7 @@ function Bool isRegFileWrite(Op op) =
   || op.isShiftRight     || op.isAnd
   || op.isOr             || op.isXor
   || op.isOpUI           || op.isJump
-  || op.isLoad           || op.isCSR;
+  || op.isCSR;
 
 // ==============
 // Loads & Stores
@@ -279,29 +300,39 @@ endinterface
 
 // Diagram
 // =======
-//                         +----------+    +-----------+
-//                         | Schedule |<---| Run Queue |<---+
-//                         +----------+    +-----------+    |
-//                             ||                           |
-//                             \/                           |
-//     +-----------+       +-------+                        |
-//     | Instr Mem |<----->| Fetch |                        | 
-//     +-----------+       +-------+                        |
-//                             ||                           |
-//                             \/                           |
-//     +-----------+       +--------+                       |
-//  +->| Reg File  |<----->| Decode |                       |
-//  |  +-----------+       +--------+                       |
-//  |                          ||                           |
-//  |                          \/                           |
-//  |                      +---------+                      |
-//  |                      | Execute |                      |
-//  |                      +---------+                      |
-//  |                          ||                           |
-//  |                          \/                           |
-//  |                      +------------+                   |
-//  +----------------------| Write Back |-------------------+
-//                         +------------+
+//                                         +-----------+
+//                         +==========+  +-| Run Queue |<--------+
+//                         | Schedule |<-+ +-----------+         |
+//                         |          |<-+ +--------------+      |
+//                         +==========+  +-| Resume Queue |<-+   |
+//                             ||          +--------------+  |   |
+//                             \/                            |   |
+//     +-----------+       +=======+                         |   |
+//     | Instr Mem |<----->| Fetch |                         |   | 
+//     +-----------+       +=======+                         |   |
+//                             ||                            |   |
+//                             \/                            |   |
+//     +-----------+       +========+                        |   |
+//  +->| Reg File  |<----->| Decode |                        |   |
+//  |  +-----------+       +========+                        |   |
+//  |                          ||                            |   |
+//  |                          \/                            |   |
+//  |                      +============+                    |   |
+//  |                      | Execute    |                    |   |
+//  |                      | or Suspend |---+                |   |
+//  |                      +============+   |                |   |
+//  |                          ||           |                |   |
+//  |                          \/           |                |   |
+//  |                      +============+   |                |   |
+//  +----------------------| Write Back |--------------------+   |
+//                         |            |------------------------+
+//                         +============+   |        
+//                             /\           |        
+//                             ||           |        
+//                         +========+       |  +---------------+
+//                         | Resume |       +->| Suspend state |
+//                         |        |<---------| per thread    |
+//                         +========+          +---------------+
 
 // Properties
 // ==========
@@ -309,12 +340,16 @@ endinterface
 // Hazard-free: at most one instruction per thread in pipeline at any
 // time.
 //
-// Non-blocking: self-contained core with no I/O or resource sharing
-// with other cores.
+// Non-blocking: if instruction accesses busy resource (e.g. memory)
+// then it is retried later by requeueing into the run queue.
 //
 // Five high-level stages, but several are sub-pipelined.
+//
+// Loads and stores are suspended in the Execute stage.  The Resume
+// stage waits for memory responses and queues up writeback &
+// resumption requests for the Write Back stage.
 
-module tinselCore (Tinsel);
+module tinselCore#(Integer myId, DCache dcache) (Tinsel);
 
   staticAssert(`LogThreadsPerCore >= 4, "Number of threads must be >= 16");
 
@@ -329,7 +364,16 @@ module tinselCore (Tinsel);
   runQueueInit.size = numThreads;
   runQueueInit.file = Valid("RunQueue");
   SizedQueue#(`LogThreadsPerCore, Thread) runQueue <-
-    mkSizedQueueInit(runQueueInit);
+    mkUGSizedQueueInit(runQueueInit);
+
+  // Queue of suspended threads pending resumption
+  SizedQueue#(`LogThreadsPerCore, Thread) resumeQueue <- mkUGSizedQueue;
+
+  // Queue of writeback requests from threads pending resumption
+  Queue#(Writeback) writebackQueue <- mkUGQueue;
+
+  // Information about suspended threads
+  BlockRam#(ThreadId, SuspendedThread) suspended <- mkBlockRam;
 
   // Instruction memory
   BlockRamOpts instrMemOpts = defaultBlockRamOpts;
@@ -347,26 +391,37 @@ module tinselCore (Tinsel);
   BlockRamBE#(DataIndex, Bit#(32)) dataMem <- mkBlockRamBEOpts(dataMemOpts);
 
   // Pipeline stages
-  Reg#(Bool)          fetch1Fire     <- mkDReg(False);
-  Reg#(PipelineToken) fetch2Input    <- mkVReg;
-  Reg#(PipelineToken) decode1Input   <- mkVReg;
-  Reg#(PipelineToken) decode2Input   <- mkVReg;
-  Reg#(PipelineToken) execute1Input  <- mkVReg;
-  Reg#(PipelineToken) execute2Input  <- mkVReg;
-  Reg#(PipelineToken) execute3Input  <- mkVReg;
-  Reg#(PipelineToken) writebackInput <- mkVReg;
-  
+  Reg#(Bool)          fetch1Fire         <- mkDReg(False);
+  Reg#(PipelineToken) fetch2Input        <- mkVReg;
+  Reg#(PipelineToken) decode1Input       <- mkVReg;
+  Reg#(PipelineToken) decode2Input       <- mkVReg;
+  Reg#(PipelineToken) execute1Input      <- mkVReg;
+  Reg#(PipelineToken) execute2Input      <- mkVReg;
+  Reg#(PipelineToken) execute3Input      <- mkVReg;
+  Reg#(Bool)          writebackFire      <- mkDReg(False);
+  Reg#(PipelineToken) writebackInput     <- mkRegU;
+ 
   // This is (currently) the only output from the core
   Reg#(Bit#(32)) emitReg <- mkReg(0);
 
   // Schedule stage
   // --------------
 
-  rule schedule1;
-    // Request next thread from run queue
-    runQueue.deq;
-    // Trigger next stage
-    fetch1Fire <= True;
+  // True if previous thread was taken from runQueue;
+  // False if taken from resumeQueue
+  Reg#(Bool) prevFromRunQueue <- mkReg(False);
+
+  rule schedule1 (runQueue.canDeq || resumeQueue.canDeq);
+    // Take next thread from runQueue or resumeQueue using fair merge
+    if (prevFromRunQueue && resumeQueue.canDeq) begin
+      resumeQueue.deq;
+      prevFromRunQueue <= False;
+      fetch1Fire <= True;
+    end else if (runQueue.canDeq) begin
+      runQueue.deq;
+      prevFromRunQueue <= True;
+      fetch1Fire <= True;
+    end
   endrule
 
   // Fetch stage
@@ -374,7 +429,7 @@ module tinselCore (Tinsel);
 
   rule fetch1 (fetch1Fire);
     // Obtain scheduled thread
-    Thread next = runQueue.dataOut;
+    Thread next = prevFromRunQueue ? runQueue.dataOut : resumeQueue.dataOut;
     // Create a pipeline token to hold new instruction
     PipelineToken token = ?;
     token.thread = next;
@@ -427,17 +482,8 @@ module tinselCore (Tinsel);
     token.valB = regFileB.dataOut;
     // Compute ALU's second operand
     token.aluB = isALUImm(token.instr) ? token.imm : token.valB;
-    // Initiate load from data memory
-    DataAddr loadAddr = truncate(token.valA + immI(token.instr));
-    if (token.op.isLoad)
-      dataMem.read(truncateLSB(loadAddr));
-    token.loadSelector = loadAddr[1:0];
-    // Perform store to data memory
-    DataAddr storeAddr = truncate(token.valA + immS(token.instr));
-    Bit#(4) byteEn = genByteEnable(token.accessWidth, storeAddr[1:0]);
-    Bit#(32) writeData = writeAlign(token.accessWidth, token.valB);
-    if (token.op.isStore)
-      dataMem.write(truncateLSB(storeAddr), writeData, byteEn);
+    // Determine memory address for load or store
+    token.memAddr = token.valA + token.imm;
     // Triger next stage
     execute2Input <= token;
   endrule
@@ -463,8 +509,37 @@ module tinselCore (Tinsel);
     // Load upper immediate (+ PC)
     res.opui = token.imm + (addPCtoUI(token.instr) ?
                               zeroExtend(token.thread.pc) : 0);
+    // Load or store: send request to data cache
+    Bool retry = False;
+    Bool suspend = False;
+    if (token.op.isLoad || token.op.isStore) begin
+      if (dcache.canPut) begin
+        // Prepare data cache request
+        DCacheReq req;
+        req.id = {fromInteger(myId), token.thread.id};
+        req.cmd.isLoad = token.op.isLoad;
+        req.cmd.isStore = token.op.isStore;
+        req.addr = token.memAddr;
+        req.data = writeAlign(token.accessWidth, token.valB);
+        req.byteEn = genByteEnable(token.accessWidth, token.memAddr[1:0]);
+        // Issue data cache request
+        dcache.putReq(req);
+        // Record state of suspended thread
+        SuspendedThread susp;
+        susp.pc = token.thread.pc + 4;
+        susp.isLoad = token.op.isLoad;
+        susp.isStore = token.op.isStore;
+        susp.destReg = rd(token.instr);
+        susp.loadSelector = token.memAddr[1:0];
+        susp.accessWidth = token.accessWidth;
+        susp.isUnsignedLoad = isUnsignedLoad(token.instr);
+        suspended.write(token.thread.id, susp);
+        suspend = True;
+      end else
+        retry = True;
+    end
     // Compute next PC
-    token.nextPC = token.thread.pc + 4;
+    token.nextPC = token.thread.pc + (retry ? 0 : 4);
     // Compute jump/branch target
     token.targetPC = truncate(zeroExtend(token.thread.pc) + token.imm);
     // CSR read
@@ -476,7 +551,7 @@ module tinselCore (Tinsel);
                           : (emitReg | token.valA);
     // Trigger next stage
     token.instrResult = res;
-    execute3Input <= token;
+    if (! suspend) execute3Input <= token;
   endrule
 
   rule execute3;
@@ -485,10 +560,6 @@ module tinselCore (Tinsel);
     InstrResult res = token.instrResult;
     Bool eq = res.add == 0;
     Bool lt = res.add[32] == 1;
-    // Determine result of load
-    token.instrResult.load =
-      loadMux(dataMem.dataOut, token.accessWidth,
-                token.loadSelector, isUnsignedLoad(token.instr));
     // Setup write to destination register
     Op op = token.op;
     token.writeVal =
@@ -512,6 +583,7 @@ module tinselCore (Tinsel);
     token.writeRegFile =
       isRegFileWrite(token.op) && rd(token.instr) != 0;
     // Trigger next stage
+    writebackFire <= True;
     writebackInput <= token;
   endrule
 
@@ -519,30 +591,101 @@ module tinselCore (Tinsel);
   // ---------------
 
   rule writeback;
-    PipelineToken token = writebackInput;
-    // Register file write
-    Bit#(32) writeVal = token.op.isLoad ?
-                          token.instrResult.load : token.writeVal;
-    if (token.writeRegFile) begin
-      regFileA.write({token.thread.id, rd(token.instr)}, writeVal);
-      regFileB.write({token.thread.id, rd(token.instr)}, writeVal);
+    // Should we write to the register file?
+    Bool writeToRegFile = False;
+    // If so, what value and which destination?
+    Bit#(32) writeVal = ?;
+    RegFileIndex dest = ?;
+    // Process an instruction from execute stage
+    if (writebackFire) begin
+      PipelineToken token = writebackInput;
+      if (token.writeRegFile) begin
+        writeToRegFile = True;
+        writeVal = writebackInput.writeVal;
+        dest = {token.thread.id, rd(token.instr)};
+      end
+      // Put thread back in the run queue
+      runQueue.enq(token.thread);
+    end 
+    // Try to service a request from the writeback queue
+    if (writebackQueue.canPeek && writebackQueue.canDeq) begin
+      Writeback wb = writebackQueue.dataOut;
+      // Can the thread be resumed?
+      Bool resume = False;
+      // If register file's write-port is not in use then 
+      // a pending load result can be written back
+      if (!writeToRegFile && wb.isLoad) begin
+        // Write to register file
+        writeToRegFile = True;
+        writeVal = wb.writeVal;
+        dest = {wb.thread.id, wb.destReg};
+        writebackQueue.deq;
+        resume = True;
+      end else if (wb.isStore) begin
+        writebackQueue.deq;
+        resume = True;
+      end
+      // Put thread in the resume queue
+      if (resume) resumeQueue.enq(wb.thread);
     end
-    // Put thread back in the run queue
-    runQueue.enq(token.thread);
+    // Register file write
+    if (writeToRegFile) begin
+      regFileA.write(dest, writeVal);
+      regFileB.write(dest, writeVal);
+    end
   endrule
+
+  // Thread resumption stage
+  // -----------------------
+
+  // Pipeline sub-stages for thread resumption
+  Reg#(Bool)          resumeThread1Fire  <- mkDReg(False);
+  Reg#(DCacheResp)    resumeThread1Input <- mkConfigRegU;
+  Reg#(DCacheResp)    resumeThread2Input <- mkVReg;
+  Reg#(DCacheResp)    resumeThread3Input <- mkVReg;
+ 
+  rule resumeThread1 (dcache.canGet || resumeThread1Fire);
+    let resp = resumeThread1Input;
+    if (! resumeThread1Fire) begin
+      let r <- dcache.getResp;
+      resp = r;
+    end
+    // Fetch info about suspended thread
+    suspended.read(truncate(resp.id));
+    // Trigger next sub-stage
+    resumeThread2Input <= resp;
+  endrule
+
+  rule resumeThread2;
+    // Trigger next sub-stage
+    resumeThread3Input <= resumeThread2Input;
+  endrule
+
+  rule resumeThread3;
+    let susp = suspended.dataOut;
+    let resp = resumeThread3Input;
+    // Prepare request for writeback stage
+    Writeback wb;
+    wb.isLoad = susp.isLoad;
+    wb.isStore = susp.isStore;
+    wb.thread.id = truncate(resp.id);
+    wb.thread.pc = susp.pc;
+    wb.destReg = susp.destReg;
+    wb.writeVal = loadMux(resp.data, susp.accessWidth,
+                      susp.loadSelector, susp.isUnsignedLoad);
+    if (writebackQueue.notFull) begin
+      writebackQueue.enq(wb);
+    end else begin
+      // Retry if queue full
+      resumeThread1Fire <= True;
+      resumeThread1Input <= resp;
+    end
+  endrule
+
+  // Interface
+  // ---------
 
   method out = emitReg;
-endmodule
-
-// ============================================================================
-// Top-level core for simulation
-// ============================================================================
-
-module tinselCoreSim ();
-  Tinsel tinsel <- tinselCore;
-  rule display;
-    $display($time, ": ", tinsel.out);
-  endrule
 endmodule
 
 endpackage
