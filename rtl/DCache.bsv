@@ -242,11 +242,7 @@ endinterface
 // Implementation
 // ============================================================================
 
-// This is the main data cache module; it assumes that external memory
-// has separate buses for loads and stores.  This means we can issue a
-// read request and write request at the same time, which is useful
-// under a cache-miss (a new line must be fetched and an old one
-// written back).
+// This is the main data cache module.
 
 module mkDCache#(Integer myId, MemDualResp extMem) (DCache);
   // Tag block RAM
