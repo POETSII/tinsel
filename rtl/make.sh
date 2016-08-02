@@ -16,7 +16,8 @@ DEFS="-D 'DeviceFamily=\"$DeviceFamily\"' \
       -D LogNumDCaches=$LogNumDCaches \
       -D DRAMLogMaxInFlight=$DRAMLogMaxInFlight \
       -D DRAMLatency=$DRAMLatency \
-      -D DRAMAddrWidth=$DRAMAddrWidth "
+      -D DRAMAddrWidth=$DRAMAddrWidth \
+      -D BurstWidth=$BurstWidth "
 if [ "$DRAMPortHalfThroughput" == "1" ]; then
   DEFS="$DEFS -D DRAMPortHalfThroughput"
 fi

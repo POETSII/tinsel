@@ -21,6 +21,7 @@ endinterface
 import Mem    :: *;
 import FIFOF  :: *;
 import Vector :: *;
+import Assert :: *;
 
 // Interface to C functions
 import "BDPI" function Action ramInit();
@@ -62,6 +63,7 @@ module mkDRAM (DRAM);
     if (valids[0]) begin
       MemReq req = reqs[0];
       if (! req.isStore) begin
+        dynamicAssert(req.burst == 1, "DRAM: burst reads not yet supported");
         if (loadRespFifo.notFull) begin
           shift = True;
           Vector#(`WordsPerLine, Bit#(32)) elems;
@@ -76,6 +78,7 @@ module mkDRAM (DRAM);
           loadRespFifo.enq(resp);
         end
       end else begin
+        dynamicAssert(req.burst == 1, "DRAM: burst writes not yet supported");
         if (storeRespFifo.notFull) begin
           shift = True;
           Vector#(`WordsPerLine, Bit#(32)) elems = unpack(req.data);
@@ -176,6 +179,7 @@ interface DRAMExtIfc;
   method Bit#(`DRAMAddrWidth) m0_address;
   method Bool m0_read;
   method Bool m0_write;
+  method Bit#(`BurstWidth) m0_burstcount;
 endinterface
 
 // In-flight request
@@ -288,6 +292,7 @@ module mkDRAM (DRAM);
     endmethod
     method m0_read       = doRead;
     method m0_write      = doWrite;
+    method m0_burstcount = 1;
   endinterface
 endmodule
 

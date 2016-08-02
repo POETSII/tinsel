@@ -47,6 +47,9 @@ export DRAMPortHalfThroughput=1
 # DRAM byte-address width
 export DRAMAddrWidth=30
 
+# Longest possible burst transfer is 2^BurstWidth-1
+export BurstWidth=1
+
 #==============================================================================
 # Derived Parameters
 #==============================================================================

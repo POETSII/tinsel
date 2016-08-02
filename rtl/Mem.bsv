@@ -17,25 +17,13 @@ typedef Bit#(`LogNumDCaches) DCacheId;
 typedef TSub#(30, `LogWordsPerLine) MemAddrNumBits;
 typedef Bit#(MemAddrNumBits) MemAddr;
 
-// Load request
-typedef struct {
-  DCacheId id;
-  MemAddr addr;
-} MemLoadReq deriving (Bits);
-
-// Store request
-typedef struct {
-  DCacheId id;
-  MemAddr addr;
-  Bit#(`LineSize) data;
-} MemStoreReq deriving (Bits);
-
 // General request
 typedef struct {
   Bool isStore;
   DCacheId id;
   MemAddr addr;
   Bit#(`LineSize) data;
+  Bit#(`BurstWidth) burst;
 } MemReq deriving (Bits);
 
 // Load response
@@ -70,14 +58,6 @@ endinterface
 interface Resp#(type t);
   method Bool canGet;
   method ActionValue#(t) get();
-endinterface
-
-// Memory interface with seperate load & store, request & response streams
-interface MemDualReqResp;
-  interface Req#(MemLoadReq) loadReq;
-  interface Req#(MemStoreReq) storeReq;
-  interface Resp#(MemLoadResp) loadResp;
-  interface Resp#(MemStoreResp) storeResp;
 endinterface
 
 // Memory interface with seperate load & store response streams

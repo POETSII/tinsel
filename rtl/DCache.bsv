@@ -287,9 +287,8 @@ module mkDCache#(Integer myId, MemDualResp extMem) (DCache);
   // missUnit stage: dataLookup wishes to fetch the old line
   // data for writeback, and missUnit wishes to write new line
   // data for a fill.  The line access unit resolves this conflict:
-  // write-line takes priorty over read-line and the read-line
-  // request wire must only be asserted when the write-line request
-  // wire is low.
+  // write takes priorty over read and the read wire must only be
+  // asserted when the write wire is low.
 
   // Control wires for modifying lines in dataMem
   Wire#(Bool) lineReadReqWire <- mkDWire(False);
@@ -536,6 +535,7 @@ module mkDCache#(Integer myId, MemDualResp extMem) (DCache);
           store.addr = truncateLSB(reconstructAddr(
                          token.evictTag.key, token.req.addr));
           store.data = oldLineData;
+          store.burst = 1;
           extMem.req.put(store);
         end
       FETCH_NEW:
@@ -547,6 +547,7 @@ module mkDCache#(Integer myId, MemDualResp extMem) (DCache);
           load.id = fromInteger(myId);
           load.addr = truncateLSB(token.req.addr);
           load.data = ?;
+          load.burst = 1;
           extMem.req.put(load);
           // Put request in fill queue
           Fill fill;
