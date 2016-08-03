@@ -17,10 +17,10 @@ export LogInstrsPerCore=9
 export LogCoresPerDCache=2
 
 # Log of number of 32-bit words in a single memory transfer
-export LogWordsPerBeat=3
+export LogWordsPerBeat=1
 
 # Log of number of beats in a cache line
-export LogBeatsPerLine=0
+export LogBeatsPerLine=2
 
 # Log of number of sets per thread in set-associative data cache
 export DCacheLogSetsPerThread=5
@@ -74,7 +74,7 @@ export WordsPerBeat=$((2**$LogWordsPerBeat))
 export LogBytesPerBeat=$((2+$LogWordsPerBeat))
 
 # Number of data bytes in a memory transfer
-export BytesPerBeat=$((2**$LogWordsPerBeat))
+export BytesPerBeat=$((2**$LogBytesPerBeat))
 
 # Memory transfer bus width in bits
 export BusWidth=$(($WordsPerBeat * 32))
