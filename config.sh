@@ -17,10 +17,10 @@ export LogInstrsPerCore=9
 export LogCoresPerDCache=2
 
 # Log of number of 32-bit words in a single memory transfer
-export LogWordsPerBeat=1
+export LogWordsPerBeat=3
 
 # Log of number of beats in a cache line
-export LogBeatsPerLine=2
+export LogBeatsPerLine=0
 
 # Log of number of sets per thread in set-associative data cache
 export DCacheLogSetsPerThread=5
