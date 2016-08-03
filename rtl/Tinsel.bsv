@@ -26,12 +26,6 @@ typedef Bit#(`LogInstrsPerCore) InstrIndex;
 // A byte-address in instruction memory
 typedef Bit#(TAdd#(`LogInstrsPerCore, 2)) InstrAddr;
 
-// An index to data memory
-typedef Bit#(`LogDataWordsPerCore) DataIndex;
-
-// A byte-address in data memory
-typedef Bit#(TAdd#(`LogDataWordsPerCore, 2)) DataAddr;
-
 // Threads
 typedef Bit#(`LogThreadsPerCore) ThreadId;
 typedef struct {

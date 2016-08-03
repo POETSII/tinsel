@@ -14,7 +14,7 @@ import Queue :: *;
 typedef Bit#(`LogNumDCaches) DCacheId;
 
 // Memory address
-typedef TSub#(30, `LogWordsPerLine) MemAddrNumBits;
+typedef TSub#(30, `LogWordsPerBeat) MemAddrNumBits;
 typedef Bit#(MemAddrNumBits) MemAddr;
 
 // General request
@@ -22,14 +22,14 @@ typedef struct {
   Bool isStore;
   DCacheId id;
   MemAddr addr;
-  Bit#(`LineSize) data;
+  Bit#(`BusWidth) data;
   Bit#(`BurstWidth) burst;
 } MemReq deriving (Bits);
 
 // Load response
 typedef struct {
   DCacheId id;
-  Bit#(`LineSize) data;
+  Bit#(`BusWidth) data;
 } MemLoadResp deriving (Bits);
 
 // Store response
@@ -41,7 +41,7 @@ typedef struct {
 typedef struct {
   Bool isStore;
   DCacheId id;
-  Bit#(`LineSize) data;
+  Bit#(`BusWidth) data;
 } MemResp deriving (Bits);
 
 // ============================================================================
