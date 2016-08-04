@@ -16,6 +16,7 @@ import BlockRam  :: *;
 import ConfigReg :: *;
 import Assert    :: *;
 import DReg      :: *;
+import Vector    :: *;
 
 // For BlueCheck test benches:
 /*
@@ -43,45 +44,46 @@ endinterface
 typedef SizedQueue#(1, elemType) Queue#(type elemType);
 typedef SizedQueue#(0, elemType) Queue1#(type elemType);
 
-// =================================
-// Implementation 1: 2-element Queue
-// =================================
+// ======================================
+// Implementation 1: Register-based Queue
+// ======================================
 
-// Similar to Bluespec's mkFIFOF, except that it's possible for
-// "nonEmpty" to be true and "canDeq" to be False at the same time.
-// There is a 2-cycle latency between enqueing a value, say X, and
-// being able to dequeue X.  Nevertheless, full throughput is
-// maintained with parallel "enq" and "deq" permitted.  The
-// implementation requires hardly any logic at all (notably no mux,
-// unlike mkFIFOF).
+// N-element queue implemented using a shift register.  Uses a lot of
+// flip-flop resources but very little logic (notably, no muxing).
 
 // Unguarded version
-module mkUGQueue (Queue#(elemType))
-  provisos (Bits#(elemType, elemWidth));
+module mkUGRegQueue (SizedQueue#(logSize, elemType))
+  provisos (Bits#(elemType, elemWidth),
+            Add#(1, _any, TExp#(logSize)));
 
   // State
-  Reg#(Bool) frontValid <- mkReg(False);
-  Reg#(elemType) front  <- mkRegU;
-  Reg#(Bool) backValid  <- mkReg(False);
-  Reg#(elemType) back   <- mkRegU;
+  Vector#(TExp#(logSize), Reg#(Bool)) valids <- replicateM(mkReg(False));
+  Vector#(TExp#(logSize), Reg#(elemType)) elems <- replicateM(mkRegU);
 
   // Wires
   PulseWire doDeq <- mkPulseWire;
   RWire#(elemType) doEnq <- mkRWire;
 
+  // Values
+  Integer endIndex = 2**valueOf(logSize)-1;
+
   // Rules
   rule update;
-    Bool shift = doDeq || !frontValid;
-    if (shift) begin
-      frontValid <= backValid;
-      front      <= back;
+    // Shift elements
+    Bool shift = doDeq;
+    for (Integer i = 0; i < endIndex; i=i+1) begin
+      shift = shift || !valids[i];
+      if (shift) begin
+        elems[i] <= elems[i+1];
+        valids[i] <= valids[i+1];
+      end
     end
+    // Insert new element?
     case (doEnq.wget) matches
-      tagged Invalid:
-        if (shift) backValid <= False;
+      tagged Invalid: if (shift) valids[endIndex] <= False;
       tagged Valid .x: begin
-        backValid <= True;
-        back      <= x;
+        elems[endIndex] <= x;
+        valids[endIndex] <= True;
       end
     endcase
   endrule
@@ -95,21 +97,22 @@ module mkUGQueue (Queue#(elemType))
     doEnq.wset(x);
   endmethod
 
-  method elemType dataOut = front;
-  method Bool notFull = !(frontValid && backValid);
-  method Bool notEmpty = frontValid || backValid;
-  method Bool canDeq = frontValid;
-  method Bool canPeek = frontValid;
+  method elemType dataOut = elems[0];
+  method Bool notFull = !fold( \&& , readVReg(valids));
+  method Bool notEmpty = fold( \|| , readVReg(valids));
+  method Bool canDeq = valids[0];
+  method Bool canPeek = valids[0];
   method Bool spaceFor(Integer n) =
     error ("Queue.spaceFor() not implemented");
 endmodule
 
 // Guarded version
-module mkQueue (Queue#(elemType))
-  provisos (Bits#(elemType, elemWidth));
+module mkRegQueue (SizedQueue#(logSize, elemType))
+  provisos (Bits#(elemType, elemWidth),
+            Add#(1, _any, TExp#(logSize)));
 
   // State
-  Queue#(elemType) q <- mkUGQueue;
+  SizedQueue#(logSize, elemType) q <- mkUGRegQueue;
 
   // Methods
   method Action deq if (q.canDeq);
@@ -132,12 +135,12 @@ endmodule
 // Test bench
 // ----------
 
-module [Specification] queueSpec#(Reset r) ();
+module [Specification] regQueueSpec#(Reset r) ();
   // Specification instance
-  FIFOF#(Bit#(8)) fifo <- mkFIFOF(reset_by r);
+  FIFOF#(Bit#(8)) fifo <- mkSizedFIFOF(4, reset_by r);
 
   // Implementation instance
-  Queue#(Bit#(8)) q <- mkQueue(reset_by r);
+  SizedQueue#(2, Bit#(8)) q <- mkRegQueue(reset_by r);
 
   // Obtain function for making assertions
   Ensure ensure <- getEnsure;
@@ -155,84 +158,16 @@ module [Specification] queueSpec#(Reset r) ();
 endmodule
 
 // The test bench
-module [Module] queueTest ();
+module [Module] regQueueTest ();
   Clock clk <- exposeCurrentClock;
   MakeResetIfc r <- mkReset(0, True, clk);
-  blueCheckID(queueSpec(r.new_rst), r);
+  blueCheckID(regQueueSpec(r.new_rst), r);
 endmodule
 */
 
-// =================================
-// Implementation 2: 1-element Queue
-// =================================
-
-// Same as Bluespec's mkUGFIFOF1, but implemented in Bluespec rather
-// than Verilog.
-
-// Unguarded version
-module mkUGQueue1 (SizedQueue#(0, elemType))
-  provisos (Bits#(elemType, elemWidth));
-
-  // State
-  Reg#(elemType) elem   <- mkConfigRegU;
-  Reg#(Bool) elemValid  <- mkConfigReg(False);
-
-  // Wires
-  PulseWire deqFire <- mkPulseWire;
-  PulseWire enqFire <- mkPulseWire;
-
-  // Update rule
-  rule update;
-    if (deqFire) elemValid <= False;
-    else if (enqFire) elemValid <= True;
-  endrule
-
-  // Methods
-  method Action deq;
-    deqFire.send;
-  endmethod
-
-  method Action enq(elemType x);
-    enqFire.send;
-    elem <= x;
-  endmethod
-
-  method elemType dataOut = elem;
-  method Bool notFull = !elemValid;
-  method Bool notEmpty = elemValid;
-  method Bool canDeq = elemValid;
-  method Bool canPeek = elemValid;
-  method Bool spaceFor(Integer n) =
-    error ("Queue.spaceFor() not implemented");
-endmodule
-
-// Guarded version
-module mkQueue1 (SizedQueue#(0, elemType))
-  provisos (Bits#(elemType, elemWidth));
-
-  // State
-  SizedQueue#(0, elemType) q <- mkUGQueue1;
-
-  // Methods
-  method Action deq if (q.canDeq);
-    q.deq;
-  endmethod
-
-  method Action enq(elemType x) if (q.notFull);
-    q.enq(x);
-  endmethod
-
-  method elemType dataOut = q.dataOut;
-  method Bool notFull = q.notFull;
-  method Bool notEmpty = q.notEmpty;
-  method Bool canDeq = q.canDeq;
-  method Bool canPeek = q.canPeek;
-  method Bool spaceFor(Integer n) = q.spaceFor(n);
-endmodule
-
-// =============================
-// Implementation 3: Sized Queue
-// =============================
+// ==================================
+// Implementation 2: BRAM-based Queue
+// ==================================
 
 // Similar to Bluespec's mkSizedFIFOF but introduces a one-cycle delay
 // between dequeuing an element and obtaining the dequeued element.
@@ -242,10 +177,10 @@ endmodule
 // queue can be specified.
 
 // When "deq" is invoked, the dequeued item becomes available on the
-// "dataOut" bus on the next clock cycle.  Note that "deq" will not
-// fire if the queue was empty on the previous cycle -- this condition
-// is captured by a guard on the "deq" method and also by the "canDeq"
-// method: "canDeq" and "notEmpty" are not equivalent.
+// "dataOut" bus on the next clock cycle.  "deq" will not fire if the
+// queue was empty on the previous cycle -- this condition is captured
+// by a guard on the "deq" method and also by the "canDeq" method:
+// "canDeq" and "notEmpty" are not equivalent.
 
 // Unguarded version
 module mkUGSizedQueue (SizedQueue#(logSize, elemType))
@@ -417,11 +352,11 @@ endmodule
 */
 
 // ===========================================
-// Implementation 4: Sized Queue with Prefetch
+// Implementation 3: Sized Queue with Prefetch
 // ===========================================
 
-// Unlike a SizedQueue, this has no dequeue latency but costs two
-// extra registers and a mux.
+// This version has similar semantics as a Bluespec SizedFIFOF, at the
+// cost of two registers and a mux.
 
 module mkUGSizedQueuePrefetch (SizedQueue#(logSize, elemType))
   provisos (Bits#(elemType, elemWidth));
