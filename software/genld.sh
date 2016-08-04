@@ -3,13 +3,12 @@
 # Load config parameters
 . ../config.sh
 
-DataWordsPerCore=$((2**$LogDataWordsPerCore))
-DataMemTop=$((2*$DataWordsPerCore))
+DataMemStart=$((2**$LogInstrsPerCore))
 
 cat - << EOF
 OUTPUT_ARCH( "riscv" )
 
-DATA_MEM_TOP = $DataMemTop;
+DATA_MEM_TOP = 0x100000;
 
 SECTIONS
 {
@@ -17,7 +16,7 @@ SECTIONS
   . = 0x0;
   .text   : { *.o(.text*) }
   /* Data memory */
-  . = $DataWordsPerCore;
+  . = $DataMemStart;
   .bss    : { *.o(.bss*) }
   .data   : { *.o(.data*) }
   .rodata : { *.o(.rodata*) }

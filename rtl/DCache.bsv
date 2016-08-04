@@ -262,8 +262,8 @@ module mkDCache#(Integer myId, MemDualResp extMem) (DCache);
   BlockRam#(SetIndex, SetMetaData) metaData <- mkBlockRam;
   
   // Client request & response queues
-  Queue#(DCacheReq) reqQueue <- mkUGQueue;
-  Queue#(DCacheResp) respQueue <- mkUGQueue;
+  Queue#(DCacheReq) reqQueue <- mkUGRegQueue;
+  Queue#(DCacheResp) respQueue <- mkUGRegQueue;
 
   // The fill queue (16 elements) stores requests that have missed
   // while waiting for external memory to fetch the data.
@@ -440,10 +440,10 @@ module mkDCache#(Integer myId, MemDualResp extMem) (DCache);
   // ---------------------
 
   // 1-element buffer for requests that will hit
-  Queue1#(DCacheReq) hitBuffer <- mkUGQueue1;
+  Queue1#(DCacheReq) hitBuffer <- mkUGRegQueue;
 
   // 1-element buffer for requests to be retried
-  Queue1#(DCacheReq) retryBuffer <- mkUGQueue1;
+  Queue1#(DCacheReq) retryBuffer <- mkUGRegQueue;
 
   // Beat counter for responses
   Reg#(Beat) respBeat <- mkReg(0);

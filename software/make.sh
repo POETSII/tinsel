@@ -27,10 +27,9 @@ $LD -melf32lriscv -G 0 -T link.ld -o out.elf entry.o $OFILES
 
 # Emit Intel Hex for code and data sections
 InstrBytes=$((2**$LogInstrsPerCore * 4))
-DataBytes=$((2**$LogDataWordsPerCore * 4))
 $OBJCOPY --only-section=.text -O ihex out.elf InstrMem.ihex
-$OBJCOPY --change-address=-$DataBytes --remove-section=.text -O \
-         ihex out.elf DataMem.ihex
+#$OBJCOPY --change-address=-$InstrBytes --remove-section=.text -O \
+#         ihex out.elf DataMem.ihex
 
 # Put scripts into path
 export PATH=../scripts:$PATH
@@ -38,12 +37,12 @@ export PATH=../scripts:$PATH
 # Convert Intel Hex files to Altera mif files
 # (used to initialise BRAM contents in Quartus)
 ihex-to-img.py InstrMem.ihex mif 0 4 $InstrBytes > ../de5/InstrMem.mif
-ihex-to-img.py DataMem.ihex mif 0 4 $DataBytes > ../de5/DataMem.mif
+#ihex-to-img.py DataMem.ihex mif 0 4 $DataBytes > ../de5/DataMem.mif
 
 # Convert Intel Hex files to Bluesim hex files
 # (used to initialise BRAM contents in Bluesim)
 ihex-to-img.py InstrMem.ihex hex 0 4 $InstrBytes > ../rtl/InstrMem.hex
-ihex-to-img.py DataMem.ihex hex 0 4 $DataBytes > ../rtl/DataMem.hex
+#ihex-to-img.py DataMem.ihex hex 0 4 $DataBytes > ../rtl/DataMem.hex
 
 # Generate RunQueue.hex
 MaxThreadId=$((2 ** $LogThreadsPerCore - 1))
