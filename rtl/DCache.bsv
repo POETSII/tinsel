@@ -505,15 +505,16 @@ module mkDCache#(Integer myId, MemDualResp extMem) (DCache);
   // Token currently being processed by miss unit
   Reg#(DCacheToken) missUnitToken <- mkConfigRegU;
 
-  // Number of beats sent
-  Reg#(Beat) beatsSent <- mkReg(0);
-
   // Set of beat ids
   SetOfIds#(`LogBeatsPerLine) beats <- mkSetOfIds;
 
   // Request beat delayed by one or two cycles
-  Reg#(Maybe#(Beat)) reqBeat1 <- mkDReg(Invalid);
-  Reg#(Maybe#(Beat)) reqBeat2 <- mkReg(Invalid);
+  Reg#(Maybe#(Option#(Beat))) reqBeat1 <- mkDReg(Invalid);
+  Reg#(Maybe#(Option#(Beat))) reqBeat2 <- mkDReg(Invalid);
+
+  // Beats that have been sent
+  Vector#(`BeatsPerLine, Reg#(Bool)) beatsSent <- replicateM(mkRegU);
+  Reg#(Beat) beatsSentCount <- mkReg(0);
 
   rule missUnit;
     DCacheToken token = missUnitToken;
@@ -524,36 +525,40 @@ module mkDCache#(Integer myId, MemDualResp extMem) (DCache);
           missUnitToken <= dataLookup2Input;
         end
         beats.init;
+        for (Integer i = 0; i < `BeatsPerLine; i=i+1) beatsSent[i] <= False;
       end
       WRITEBACK: begin
         // If the memResponse stage is not writing line data, then:
-        if (!lineWriteReqWire && beats.notEmpty) begin
+        if (!lineWriteReqWire) begin
           // Read old line data from dataMem
           lineReadReqWire <= True;
           lineReadIndexWire <= beatIndex(beats.item, token.req.id,
                                  token.req.addr, token.evictWay);
-          reqBeat1 <= Valid(beats.item);
+          reqBeat1 <= Valid(option(beats.notEmpty, beats.item));
           beats.remove;
         end
         reqBeat2 <= reqBeat1;
         // Try to write beat to memory
         case (reqBeat2) matches
           tagged Valid .b:
-            if (extMem.req.canPut) begin
-              // Issue store reqeust
-              MemReq store;
-              store.isStore = True;
-              store.id = fromInteger(myId);
-              store.addr = {truncateLSB(reconstructAddr(
-                              token.evictTag.key, token.req.addr)), b};
-              store.data = dataMem.dataOutA;
-              store.burst = 1;
-              extMem.req.put(store);
-              beatsSent <= beatsSent+1;
-              if (allHigh(beatsSent)) missUnitState <= FETCH;
-            end else begin
-              // External memory is busy, retry
-              beats.insert(b);
+            if (!beatsSent[b.value]) begin
+              if (extMem.req.canPut) begin
+                // Issue store reqeust
+                MemReq store;
+                store.isStore = True;
+                store.id = fromInteger(myId);
+                store.addr = {truncateLSB(reconstructAddr(
+                                token.evictTag.key, token.req.addr)), b.value};
+                store.data = dataMem.dataOutA;
+                store.burst = 1;
+                extMem.req.put(store);
+                beatsSentCount <= beatsSentCount+1;
+                if (allHigh(beatsSentCount)) missUnitState <= FETCH;
+                beatsSent[b.value] <= True;
+              end else begin
+                // External memory is busy, retry
+                if (b.valid) beats.insert(b.value);
+              end
             end
         endcase
       end

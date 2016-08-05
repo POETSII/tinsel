@@ -27,6 +27,22 @@ endfunction
 // Are all bits high?
 function Bool allHigh(Bit#(n) x) = unpack(reduceAnd(x));
 
+// Are all bits low?
+function Bool allLow(Bit#(n) x) = !unpack(reduceOr(x));
+
+// Are all bools hight?
+function Bool andVec(Vector#(n, Bool) bools) = allHigh(pack(bools));
+
+// Alternative encoding of the Maybe type
+typedef struct {
+  Bool valid;
+  t value;
+} Option#(type t) deriving (Bits);
+
+// Friendly constrctor for Option type
+function Option#(t) option(Bool valid, t value) =
+  Option { valid: valid, value: value };
+
 // A VReg is a register that can only be read
 // on the clock cycle after it is written
 module mkVReg (Reg#(t)) provisos (Bits#(t, twidth));
@@ -76,7 +92,7 @@ module mkSetOfIds (SetOfIds#(logSize));
         tagged Invalid: begin
           for (Integer i = 0; i < size-1; i=i+1)
             if (doRemove) begin
-              elems[i] <= elems[i+1];
+              if (valids[i+1]) elems[i] <= elems[i+1];
               valids[i] <= valids[i+1];
             end
           if (doRemove) valids[size-1] <= False;
