@@ -32,7 +32,7 @@ export DCacheLogNumWays=2
 export LogNumDCaches=0
 
 # Max number of outstanding DRAM requests permitted
-export DRAMLogMaxInFlight=12
+export DRAMLogMaxInFlight=4
 
 # DRAM latency in cycles (simulation only)
 export DRAMLatency=20

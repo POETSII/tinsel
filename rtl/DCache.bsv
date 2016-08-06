@@ -298,15 +298,19 @@ module mkDCache#(Integer myId, MemDualResp extMem) (DCache);
   Wire#(Bool) lineReadReqWire <- mkDWire(False);
   Wire#(BeatIndex) lineReadIndexWire <- mkDWire(0);
   Wire#(Bool) lineWriteReqWire <- mkDWire(False);
+  Reg#(Bool) lineWriteReqReg <- mkReg(False);
   Wire#(BeatIndex) lineWriteIndexWire <- mkDWire(0);
-  Wire#(Bit#(`BusWidth)) lineWriteDataWire <- mkDWire(?);
+  Reg#(Bit#(`BusWidth)) lineWriteDataReg <- mkConfigRegU;
+  Reg#(BeatIndex) lineIndexReg <- mkRegU;
 
   // Use wires to issue line access in dataMem
   rule lineAccessUnit;
+    lineWriteReqReg <= lineWriteReqWire;
+    lineIndexReg <= lineReadIndexWire | lineWriteIndexWire;
     dataMem.putA(
-      lineWriteReqWire,
-      lineReadIndexWire | lineWriteIndexWire,
-      lineWriteDataWire);
+      lineWriteReqReg,
+      lineIndexReg,
+      lineWriteDataReg);
   endrule
 
   // Tag lookup stage
@@ -465,7 +469,7 @@ module mkDCache#(Integer myId, MemDualResp extMem) (DCache);
       lineWriteReqWire   <= True;
       lineWriteIndexWire <= beatIndex(respBeat, fill.req.id,
                               fill.req.addr, fill.way);
-      lineWriteDataWire  <= resp.data;
+      lineWriteDataReg <= resp.data;
       respBeat <= respBeat+1;
     end
     // Receive retry request from external request stage
@@ -508,9 +512,10 @@ module mkDCache#(Integer myId, MemDualResp extMem) (DCache);
   // Set of beat ids
   SetOfIds#(`LogBeatsPerLine) beats <- mkSetOfIds;
 
-  // Request beat delayed by one or two cycles
+  // Request beat delayed by one, two, or three cycles
   Reg#(Maybe#(Option#(Beat))) reqBeat1 <- mkDReg(Invalid);
   Reg#(Maybe#(Option#(Beat))) reqBeat2 <- mkDReg(Invalid);
+  Reg#(Maybe#(Option#(Beat))) reqBeat3 <- mkDReg(Invalid);
 
   // Beats that have been sent
   Vector#(`BeatsPerLine, Reg#(Bool)) beatsSent <- replicateM(mkRegU);
@@ -538,8 +543,9 @@ module mkDCache#(Integer myId, MemDualResp extMem) (DCache);
           beats.remove;
         end
         reqBeat2 <= reqBeat1;
+        reqBeat3 <= reqBeat2;
         // Try to write beat to memory
-        case (reqBeat2) matches
+        case (reqBeat3) matches
           tagged Valid .b:
             if (!beatsSent[b.value]) begin
               if (extMem.req.canPut) begin
