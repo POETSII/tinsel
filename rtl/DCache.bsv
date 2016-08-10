@@ -91,11 +91,11 @@ package DCache;
 // 5. miss unit:
 //      a. if state = READY:
 //           * accept new request
-//           * move to FETCH state if line dirty
-//           * move to WRITEBACK state if line clean
-//      b. if state = WRITEBACK and memResponse stage is not writing data:
-//           * read old line data from dataMem
-//      c. if state = WRITEBACK and data available from dataMem:
+//           * move to FETCH state if line clean
+//           * move to WRITEBACK state if line dirty
+//      b. if state = WRITEBACK and memory response stage is not writing data:
+//           * read old line data from BRAM
+//      c. if state = WRITEBACK and data available from BRAM:
 //           * write old line data to memory
 //           * if writeback finished, move to FETCH state
 //      d. if state = FETCH:
@@ -204,6 +204,13 @@ typedef enum {
 
 // Beat
 typedef Bit#(`LogBeatsPerLine) Beat;
+
+// Writeback request
+typedef struct {
+  Bool isStore;
+  MemAddr addr;
+  Bit#(`BusWidth) data;
+} WritebackReq deriving (Bits);
 
 // ============================================================================
 // Functions
@@ -509,19 +516,24 @@ module mkDCache#(Integer myId, MemDualResp extMem) (DCache);
   // Token currently being processed by miss unit
   Reg#(DCacheToken) missUnitToken <- mkConfigRegU;
 
-  // Set of beat ids
-  SetOfIds#(`LogBeatsPerLine) beats <- mkSetOfIds;
+  // Request beat delayed by one, two, and three cycles
+  Reg#(Beat) reqBeat <- mkReg(0);
+  Reg#(Maybe#(Beat)) reqBeat1 <- mkDReg(Invalid);
+  Reg#(Maybe#(Beat)) reqBeat2 <- mkDReg(Invalid);
+  Reg#(Maybe#(Beat)) reqBeat3 <- mkDReg(Invalid);
 
-  // Request beat delayed by one, two, or three cycles
-  Reg#(Maybe#(Option#(Beat))) reqBeat1 <- mkDReg(Invalid);
-  Reg#(Maybe#(Option#(Beat))) reqBeat2 <- mkDReg(Invalid);
-  Reg#(Maybe#(Option#(Beat))) reqBeat3 <- mkDReg(Invalid);
+  // Goes high when all beats have been read from dataMem
+  Reg#(Bool) gotAllBeats <- mkReg(False);
 
-  // Beats that have been sent
-  Vector#(`BeatsPerLine, Reg#(Bool)) beatsSent <- replicateM(mkRegU);
-  Reg#(Beat) beatsSentCount <- mkReg(0);
+  // Writeback buffers
+  Integer writeBufferSize = 2 ** `LogDCacheWriteBufferSize;
+  SizedQueue#(`LogDCacheWriteBufferSize, WritebackReq) writebackReqs <-
+    mkUGRegQueue;
 
-  rule missUnit;
+  // Outstanding beat requests
+  Count#(TAdd#(1, `LogDCacheWriteBufferSize)) writebackReqCount <- mkCount;
+
+  rule missUnit1;
     DCacheToken token = missUnitToken;
     case (missUnitState)
       READY: begin
@@ -529,57 +541,48 @@ module mkDCache#(Integer myId, MemDualResp extMem) (DCache);
           missUnitState <= dataLookup2Input.evictDirty ? WRITEBACK : FETCH;
           missUnitToken <= dataLookup2Input;
         end
-        beats.init;
-        for (Integer i = 0; i < `BeatsPerLine; i=i+1) beatsSent[i] <= False;
+        gotAllBeats <= False;
       end
       WRITEBACK: begin
         // If the memResponse stage is not writing line data, then:
-        if (!lineWriteReqWire) begin
+        if (!lineWriteReqWire && !gotAllBeats &&
+               writebackReqCount.value < fromInteger(writeBufferSize)) begin
           // Read old line data from dataMem
           lineReadReqWire <= True;
-          lineReadIndexWire <= beatIndex(beats.item, token.req.id,
+          lineReadIndexWire <= beatIndex(reqBeat, token.req.id,
                                  token.req.addr, token.evictWay);
-          reqBeat1 <= Valid(option(beats.notEmpty, beats.item));
-          beats.remove;
+          reqBeat <= reqBeat+1;
+          reqBeat1 <= Valid(reqBeat);
+          writebackReqCount.inc;
+          if (allHigh(reqBeat)) gotAllBeats <= True;
         end
         reqBeat2 <= reqBeat1;
         reqBeat3 <= reqBeat2;
         // Try to write beat to memory
         case (reqBeat3) matches
-          tagged Valid .b:
-            if (!beatsSent[b.value]) begin
-              if (extMem.req.canPut) begin
-                // Issue store reqeust
-                MemReq store;
-                store.isStore = True;
-                store.id = fromInteger(myId);
-                store.addr = {truncateLSB(reconstructAddr(
-                                token.evictTag.key, token.req.addr)), b.value};
-                store.data = dataMem.dataOutA;
-                store.burst = 1;
-                extMem.req.put(store);
-                beatsSentCount <= beatsSentCount+1;
-                if (allHigh(beatsSentCount)) missUnitState <= FETCH;
-                beatsSent[b.value] <= True;
-              end else begin
-                // External memory is busy, retry
-                if (b.valid) beats.insert(b.value);
-              end
-            end
+          tagged Valid .b: begin
+            // Put data into writeback buffer
+            WritebackReq req;
+            req.isStore = True;
+            req.addr = { truncateLSB(reconstructAddr(
+                           token.evictTag.key, token.req.addr)), b };
+            req.data = dataMem.dataOutA;
+            writebackReqs.enq(req);
+            if (allHigh(b)) missUnitState <= FETCH;
+          end
         endcase
       end
       FETCH: begin
-        if (fillQueue.notFull && extMem.req.canPut) begin
+        if (fillQueue.notFull && writebackReqs.notFull) begin
           missUnitState <= READY;
-          // Issue load request
+          // Enqueue load request (for new line data)
           Bit#(`LogBeatsPerLine) low = 0;
-          MemReq load;
-          load.isStore = False;
-          load.id = fromInteger(myId);
-          load.addr = {truncateLSB(token.req.addr), low};
-          load.data = ?;
-          load.burst = `BeatsPerLine;
-          extMem.req.put(load);
+          WritebackReq req;
+          req.isStore = False;
+          req.addr = { truncateLSB(token.req.addr), low };
+          req.data = ?;
+          writebackReqs.enq(req);
+          writebackReqCount.inc;
           // Put request in fill queue
           Fill fill;
           fill.req = token.req;
@@ -588,6 +591,21 @@ module mkDCache#(Integer myId, MemDualResp extMem) (DCache);
         end
       end
     endcase
+  endrule
+
+  rule missUnit2;
+    if (writebackReqs.canDeq && extMem.req.canPut) begin
+      WritebackReq req = writebackReqs.dataOut;
+      MemReq memReq;
+      memReq.isStore = req.isStore;
+      memReq.id = fromInteger(myId);
+      memReq.addr = req.addr;
+      memReq.data = req.data;
+      memReq.burst = req.isStore ? 1 : `BeatsPerLine;
+      extMem.req.put(memReq);
+      writebackReqs.deq;
+      writebackReqCount.dec;
+    end
   endrule
 
   // Discard store responses

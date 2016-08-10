@@ -23,7 +23,8 @@ DEFS="-D 'DeviceFamily=\"$DeviceFamily\"' \
       -D DRAMLogMaxInFlight=$DRAMLogMaxInFlight \
       -D DRAMLatency=$DRAMLatency \
       -D DRAMAddrWidth=$DRAMAddrWidth \
-      -D BurstWidth=$BurstWidth "
+      -D BurstWidth=$BurstWidth \
+      -D LogDCacheWriteBufferSize=$LogDCacheWriteBufferSize"
 if [ "$DRAMPortHalfThroughput" == "1" ]; then
   DEFS="$DEFS -D DRAMPortHalfThroughput"
 fi
