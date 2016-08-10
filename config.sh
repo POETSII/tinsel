@@ -81,3 +81,6 @@ export BusWidth=$(($WordsPerBeat * 32))
 
 # Longest possible burst transfer is 2^BurstWidth-1
 export BurstWidth=$(($LogBeatsPerLine+1))
+
+# Log of size of data cache writeback buffer
+export LogDCacheWriteBufferSize=$(($LogBeatsPerLine < 2 ? $LogBeatsPerLine : 2))

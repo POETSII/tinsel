@@ -2,11 +2,11 @@
 
 # Parameters
 ARCH="RV32I"
-CC="riscv64-unknown-linux-gnu-gcc"
-AS="riscv64-unknown-linux-gnu-as"
-LD="riscv64-unknown-linux-gnu-ld"
-OBJCOPY="riscv64-unknown-linux-gnu-objcopy"
-CFLAGS="-march=$ARCH -msoft-float -O2"
+CC="riscv64-unknown-elf-gcc"
+AS="riscv64-unknown-elf-as"
+LD="riscv64-unknown-elf-ld"
+OBJCOPY="riscv64-unknown-elf-objcopy"
+CFLAGS="-march=$ARCH -O2"
 CFILES="main"
 
 # Load config parameters
