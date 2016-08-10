@@ -47,12 +47,14 @@ function Option#(t) option(Bool valid, t value) =
 interface Count#(numeric type n);
   method Action inc;
   method Action dec;
+  method Bool notFull;
   method Bit#(n) value;
 endinterface
 
-module mkCount (Count#(n));
+module mkCount#(Integer maxVal) (Count#(n));
   // State
   Reg#(Bit#(n)) count <- mkReg(0);
+  Reg#(Bool) full <- mkReg(False);
 
   // Wires
   PulseWire incWire <- mkPulseWire;
@@ -61,8 +63,13 @@ module mkCount (Count#(n));
   // Rules
   rule update;
     Bit#(n) incAmount = 0;
-    if (incWire && !decWire) incAmount = 1;
-    else if (!incWire && decWire) incAmount = -1;
+    if (incWire && !decWire) begin
+      incAmount = 1;
+      full <= count == fromInteger(maxVal-1);
+    end else if (!incWire && decWire) begin
+      incAmount = -1;
+      full <= False;
+    end
     count <= count + incAmount;
   endrule
 
@@ -74,6 +81,8 @@ module mkCount (Count#(n));
   method Action dec;
     decWire.send;
   endmethod
+
+  method Bool notFull = !full;
 
   method Bit#(n) value = count;
 endmodule

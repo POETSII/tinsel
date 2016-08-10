@@ -17,6 +17,9 @@ typedef Bit#(`LogNumDCaches) DCacheId;
 typedef TSub#(30, `LogWordsPerBeat) MemAddrNumBits;
 typedef Bit#(MemAddrNumBits) MemAddr;
 
+// Cache line address
+typedef Bit#(TSub#(MemAddrNumBits, `LogBeatsPerLine)) MemLineAddr;
+
 // General request
 typedef struct {
   Bool isStore;
