@@ -5,18 +5,26 @@
 DEFS="-D 'DeviceFamily=\"$DeviceFamily\"' \
       -D LogThreadsPerCore=$LogThreadsPerCore \
       -D LogInstrsPerCore=$LogInstrsPerCore \
-      -D LogDataWordsPerCore=$LogDataWordsPerCore \
       -D LogCoresPerDCache=$LogCoresPerDCache \
+      -D LogWordsPerBeat=$LogWordsPerBeat \
+      -D LogBeatsPerLine=$LogBeatsPerLine \
       -D LogWordsPerLine=$LogWordsPerLine \
       -D LogBytesPerLine=$LogBytesPerLine \
       -D WordsPerLine=$WordsPerLine \
       -D LineSize=$LineSize \
+      -D BeatsPerLine=$BeatsPerLine \
+      -D WordsPerBeat=$WordsPerBeat \
+      -D LogBytesPerBeat=$LogBytesPerBeat \
+      -D BytesPerBeat=$BytesPerBeat \
+      -D BusWidth=$BusWidth \
       -D DCacheLogSetsPerThread=$DCacheLogSetsPerThread \
       -D DCacheLogNumWays=$DCacheLogNumWays \
       -D LogNumDCaches=$LogNumDCaches \
       -D DRAMLogMaxInFlight=$DRAMLogMaxInFlight \
       -D DRAMLatency=$DRAMLatency \
-      -D DRAMAddrWidth=$DRAMAddrWidth "
+      -D DRAMAddrWidth=$DRAMAddrWidth \
+      -D BurstWidth=$BurstWidth \
+      -D LogDCacheWriteBufferSize=$LogDCacheWriteBufferSize"
 if [ "$DRAMPortHalfThroughput" == "1" ]; then
   DEFS="$DEFS -D DRAMPortHalfThroughput"
 fi

@@ -24,6 +24,69 @@ function Bit#(n) encode(Vector#(TExp#(n), Bool) oneHot)
   return oneHotSelect(oneHot, map(fromInteger, genVector));
 endfunction
 
+// Are all bits high?
+function Bool allHigh(Bit#(n) x) = unpack(reduceAnd(x));
+
+// Are all bits low?
+function Bool allLow(Bit#(n) x) = !unpack(reduceOr(x));
+
+// Are all bools hight?
+function Bool andVec(Vector#(n, Bool) bools) = allHigh(pack(bools));
+
+// Alternative encoding of the Maybe type
+typedef struct {
+  Bool valid;
+  t value;
+} Option#(type t) deriving (Bits);
+
+// Friendly constrctor for Option type
+function Option#(t) option(Bool valid, t value) =
+  Option { valid: valid, value: value };
+
+// Simple counter
+interface Count#(numeric type n);
+  method Action inc;
+  method Action dec;
+  method Bool notFull;
+  method Bit#(n) value;
+endinterface
+
+module mkCount#(Integer maxVal) (Count#(n));
+  // State
+  Reg#(Bit#(n)) count <- mkReg(0);
+  Reg#(Bool) full <- mkReg(False);
+
+  // Wires
+  PulseWire incWire <- mkPulseWire;
+  PulseWire decWire <- mkPulseWire;
+
+  // Rules
+  rule update;
+    Bit#(n) incAmount = 0;
+    if (incWire && !decWire) begin
+      incAmount = 1;
+      full <= count == fromInteger(maxVal-1);
+    end else if (!incWire && decWire) begin
+      incAmount = -1;
+      full <= False;
+    end
+    count <= count + incAmount;
+  endrule
+
+  // Methods
+  method Action inc;
+    incWire.send;
+  endmethod
+
+  method Action dec;
+    decWire.send;
+  endmethod
+
+  method Bool notFull = !full;
+
+  method Bit#(n) value = count;
+endmodule
+
 // A VReg is a register that can only be read
 // on the clock cycle after it is written
 module mkVReg (Reg#(t)) provisos (Bits#(t, twidth));

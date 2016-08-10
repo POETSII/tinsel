@@ -21,6 +21,7 @@ endinterface
 import Mem    :: *;
 import FIFOF  :: *;
 import Vector :: *;
+import Assert :: *;
 
 // Interface to C functions
 import "BDPI" function Action ramInit();
@@ -45,15 +46,15 @@ module mkDRAM (DRAM);
   FIFOF#(MemLoadResp)  loadRespFifo  <- mkUGFIFOF;
   Reg#(Bool) toggle <- mkReg(False);
   Reg#(Bit#(32)) outstanding <- mkReg(0);
+  Reg#(Bit#(`BurstWidth)) beat <- mkReg(0);
 
   // Wires
-  PulseWire incOutstanding <- mkPulseWire;
+  Wire#(Bit#(32)) incOutstanding <- mkDWire(0);
   PulseWire decOutstanding1 <- mkPulseWire;
   PulseWire decOutstanding2 <- mkPulseWire;
 
   // Constants
   Integer endIndex = `DRAMLatency-1;
-  Integer wordsPerLine = `LineSize/32;
   Integer maxOutstanding = `DRAMLogMaxInFlight;
 
   // Try to perform a request
@@ -63,11 +64,16 @@ module mkDRAM (DRAM);
       MemReq req = reqs[0];
       if (! req.isStore) begin
         if (loadRespFifo.notFull) begin
-          shift = True;
-          Vector#(`WordsPerLine, Bit#(32)) elems;
+          if (beat+1 == req.burst) begin
+            shift = True;
+            beat <= 0;
+          end else
+            beat <= beat+1;
+          Vector#(`WordsPerBeat, Bit#(32)) elems;
           Bit#(32) addr = {req.addr, 0};
-          for (Integer i = 0; i < `WordsPerLine; i=i+1) begin
-            let val <- ramRead(addr+fromInteger(4*i));
+          for (Integer i = 0; i < `WordsPerBeat; i=i+1) begin
+            let val <- ramRead(addr + zeroExtend(beat)*`BytesPerBeat +
+                         fromInteger(4*i));
             elems[i] = val;
           end
           MemLoadResp resp;
@@ -76,11 +82,12 @@ module mkDRAM (DRAM);
           loadRespFifo.enq(resp);
         end
       end else begin
+        dynamicAssert(req.burst == 1, "DRAM: burst writes not yet supported");
         if (storeRespFifo.notFull) begin
           shift = True;
-          Vector#(`WordsPerLine, Bit#(32)) elems = unpack(req.data);
+          Vector#(`WordsPerBeat, Bit#(32)) elems = unpack(req.data);
           Bit#(32) addr = {req.addr, 0};
-          for (Integer i = 0; i < `WordsPerLine; i=i+1)
+          for (Integer i = 0; i < `WordsPerBeat; i=i+1)
             ramWrite(addr+fromInteger(4*i), elems[i]);
           MemStoreResp resp;
           resp.id = req.id;
@@ -89,12 +96,12 @@ module mkDRAM (DRAM);
       end
     end
     // Insert a new request
+    Bool insert = False;
     if (reqFifo.notEmpty && (shift || !valids[endIndex])) begin
       reqFifo.deq;
       reqs[endIndex] <= reqFifo.first;
-      valids[endIndex] <= True;
-    end else
-      valids[endIndex] <= False;
+      insert = True;
+    end
     // Shift requests
     for (Integer i = 0; i < endIndex; i=i+1) begin
       shift = shift || !valids[i];
@@ -103,12 +110,13 @@ module mkDRAM (DRAM);
         valids[i] <= valids[i+1];
       end
     end
+    if (insert) valids[endIndex] <= True;
+    else if (shift) valids[endIndex] <= False;
   endrule
 
   // Track number of outstanding requests
   rule countOutstanding;
-    let count = outstanding;
-    if (incOutstanding) count = count+1;
+    let count = outstanding + incOutstanding;
     if (decOutstanding1) count = count-1;
     if (decOutstanding2) count = count-1;
     outstanding <= count;
@@ -120,7 +128,7 @@ module mkDRAM (DRAM);
       method Bool canPut = reqFifo.notFull &&
                     outstanding < fromInteger(maxOutstanding);
       method Action put(MemReq req);
-        incOutstanding.send;
+        incOutstanding <= zeroExtend(req.burst);
         reqFifo.enq(req);
       endmethod
     endinterface
@@ -166,16 +174,17 @@ import Queue  :: *;
 (* always_ready, always_enabled *)
 interface DRAMExtIfc;
   method Action m0(
-    Bit#(`LineSize) readdata,
+    Bit#(`BusWidth) readdata,
     Bool readdatavalid,
     Bool waitrequest,
     Bool writeresponsevalid,
     Bit#(2) response
   );
-  method Bit#(`LineSize) m0_writedata;
+  method Bit#(`BusWidth) m0_writedata;
   method Bit#(`DRAMAddrWidth) m0_address;
   method Bool m0_read;
   method Bool m0_write;
+  method Bit#(`BurstWidth) m0_burstcount;
 endinterface
 
 // In-flight request
@@ -192,18 +201,18 @@ module mkDRAM (DRAM);
 `ifdef DRAMPortHalfThroughput
   SizedQueue#(`DRAMLogMaxInFlight, DRAMInFlightReq) inFlight <-
     mkUGSizedQueue;
-  SizedQueue#(`DRAMLogMaxInFlight, Bit#(`LineSize)) respBuffer <-
+  SizedQueue#(`DRAMLogMaxInFlight, Bit#(`BusWidth)) respBuffer <-
     mkUGSizedQueue;
 `else
   SizedQueue#(`DRAMLogMaxInFlight, DRAMInFlightReq) inFlight <-
     mkUGSizedQueuePrefetch;
-  SizedQueue#(`DRAMLogMaxInFlight, Bit#(`LineSize)) respBuffer <-
+  SizedQueue#(`DRAMLogMaxInFlight, Bit#(`BusWidth)) respBuffer <-
     mkUGSizedQueuePrefetch;
 `endif
 
   // Registers
   Reg#(MemAddr) address <- mkRegU;
-  Reg#(Bit#(`LineSize)) writeData <- mkRegU;
+  Reg#(Bit#(`BusWidth)) writeData <- mkRegU;
   Reg#(Bool) doRead <- mkReg(False);
   Reg#(Bool) doWrite <- mkReg(False);
 
@@ -288,6 +297,7 @@ module mkDRAM (DRAM);
     endmethod
     method m0_read       = doRead;
     method m0_write      = doWrite;
+    method m0_burstcount = 1;
   endinterface
 endmodule
 

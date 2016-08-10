@@ -26,12 +26,6 @@ typedef Bit#(`LogInstrsPerCore) InstrIndex;
 // A byte-address in instruction memory
 typedef Bit#(TAdd#(`LogInstrsPerCore, 2)) InstrAddr;
 
-// An index to data memory
-typedef Bit#(`LogDataWordsPerCore) DataIndex;
-
-// A byte-address in data memory
-typedef Bit#(TAdd#(`LogDataWordsPerCore, 2)) DataAddr;
-
 // Threads
 typedef Bit#(`LogThreadsPerCore) ThreadId;
 typedef struct {
@@ -370,7 +364,7 @@ module tinselCore#(Integer myId, DCache dcache) (Tinsel);
   SizedQueue#(`LogThreadsPerCore, Thread) resumeQueue <- mkUGSizedQueue;
 
   // Queue of writeback requests from threads pending resumption
-  Queue#(Writeback) writebackQueue <- mkUGQueue;
+  Queue#(Writeback) writebackQueue <- mkUGRegQueue;
 
   // Information about suspended threads
   BlockRam#(ThreadId, SuspendedThread) suspended <- mkBlockRam;
@@ -384,11 +378,6 @@ module tinselCore#(Integer myId, DCache dcache) (Tinsel);
   BlockRamOpts regFileOpts = defaultBlockRamOpts;
   BlockRam#(RegFileIndex, Bit#(32)) regFileA <- mkBlockRamOpts(regFileOpts);
   BlockRam#(RegFileIndex, Bit#(32)) regFileB <- mkBlockRamOpts(regFileOpts);
-
-  // Data memory
-  BlockRamOpts dataMemOpts = defaultBlockRamOpts;
-  dataMemOpts.initFile = Valid("DataMem");
-  BlockRamBE#(DataIndex, Bit#(32)) dataMem <- mkBlockRamBEOpts(dataMemOpts);
 
   // Pipeline stages
   Reg#(Bool)          fetch1Fire         <- mkDReg(False);
