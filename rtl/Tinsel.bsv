@@ -364,7 +364,7 @@ module tinselCore#(Integer myId, DCache dcache) (Tinsel);
   SizedQueue#(`LogThreadsPerCore, Thread) resumeQueue <- mkUGSizedQueue;
 
   // Queue of writeback requests from threads pending resumption
-  Queue#(Writeback) writebackQueue <- mkUGRegQueue;
+  Queue#(Writeback) writebackQueue <- mkUGShiftQueue(QueueOptFmax);
 
   // Information about suspended threads
   BlockRam#(ThreadId, SuspendedThread) suspended <- mkBlockRam;

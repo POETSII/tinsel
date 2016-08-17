@@ -44,15 +44,149 @@ endinterface
 typedef SizedQueue#(1, elemType) Queue#(type elemType);
 typedef SizedQueue#(0, elemType) Queue1#(type elemType);
 
-// ======================================
-// Implementation 1: Register-based Queue
-// ======================================
+// ====================
+// Register-based Queue
+// ====================
 
-// N-element queue implemented using a shift register.  Uses a lot of
-// flip-flop resources but very little logic (notably, no muxing).
+// Very similar to Bluespec's mkFIFOF, i.e. a 2-element FIFO
+// implemented using registers.  But mkFIFOF is implemented in verilog
+// and looks like it uses more area than the implementation below.
+
+// Strengths:
+//   * full throughput (parallel enq and deq on every cycle)
+//   * no combinatorial path between notFull and deq (a chain of
+//     queues will not result in a huge path)
+// Weaknesses: 
+//   * there's a mux on the element being enqueued
 
 // Unguarded version
-module mkUGRegQueue (SizedQueue#(logSize, elemType))
+module mkUGQueue (Queue#(elemType))
+  provisos (Bits#(elemType, elemWidth));
+
+  // State
+  Reg#(Bool) frontValid <- mkReg(False);
+  Reg#(elemType) frontReg <- mkRegU;
+  Reg#(Bool) bufferValid <- mkReg(False);
+  Reg#(elemType) buffer <- mkRegU;
+
+  // Wires
+  PulseWire doDeq <- mkPulseWire;
+  PulseWire doEnq <- mkPulseWire;
+  Wire#(elemType) enqVal <- mkDWire(?);
+
+  // Rules
+  rule update;
+    Bool updateBuffer = False;
+    if (!frontValid || doDeq) begin
+      frontValid <= bufferValid || doEnq;
+      frontReg <= bufferValid ? buffer : enqVal;
+      if (bufferValid) begin
+        bufferValid <= doEnq;
+        updateBuffer = True;
+      end
+    end else if (doEnq) begin
+      bufferValid <= True;
+      updateBuffer = True;
+    end
+    if (updateBuffer) buffer <= enqVal;
+  endrule
+
+  // Methods
+  method Action deq;
+    doDeq.send;
+  endmethod
+
+  method Action enq(elemType x);
+    doEnq.send;
+    enqVal <= x;
+  endmethod
+
+  method elemType dataOut = frontReg;
+  method Bool notFull = !bufferValid;
+  method Bool notEmpty = frontValid;
+  method Bool canDeq = frontValid;
+  method Bool canPeek = frontValid;
+  method Bool spaceFor(Integer n) =
+    error ("Queue.spaceFor() not implemented");
+
+endmodule
+
+// Guarded version
+module mkQueue (Queue#(elemType))
+  provisos (Bits#(elemType, elemWidth));
+
+  // State
+  Queue#(elemType) q <- mkUGQueue;
+
+  // Methods
+  method Action deq if (q.canDeq);
+    q.deq;
+  endmethod
+
+  method Action enq(elemType x) if (q.notFull);
+    q.enq(x);
+  endmethod
+
+  method elemType dataOut if (q.canPeek) = q.dataOut;
+  method Bool notFull = q.notFull;
+  method Bool notEmpty = q.notEmpty;
+  method Bool canDeq = q.canDeq;
+  method Bool canPeek = q.canPeek;
+  method Bool spaceFor(Integer n) = q.spaceFor(n);
+endmodule
+
+/*
+// Test bench
+// ----------
+
+module [Specification] regQueueSpec#(Reset r) ();
+  // Specification instance
+  FIFOF#(Bit#(8)) fifo <- mkFIFOF(reset_by r);
+
+  // Implementation instance
+  Queue#(Bit#(8)) q <- mkQueue(reset_by r);
+
+  // Properties
+  equiv("enq", fifo.enq, q.enq);
+  equiv("deq", fifo.deq, q.deq);
+  equiv("front", fifo.first, q.dataOut);
+  equiv("notFull", fifo.notFull, q.notFull);
+  equiv("notEmpty", fifo.notEmpty, q.notEmpty);
+  parallel(list("enq", "deq"));
+endmodule
+
+// The test bench
+module [Module] regQueueTest ();
+  Clock clk <- exposeCurrentClock;
+  MakeResetIfc r <- mkReset(0, True, clk);
+  blueCheckID(regQueueSpec(r.new_rst), r);
+endmodule
+*/
+
+// =================
+// Shift-based Queue
+// =================
+
+// N-element queue implemented using a shift register.
+
+// Strength: no muxes. Input element goes straight to a register and
+// output element comes straight from a register
+//
+// Weakness: there's an N-cycle latency between enqueuing an element
+// and being able to dequeue it, where N is the queue capacity.
+
+// There are two modes of operation
+//   1. Optimise throughput:
+//        * max throughput = 100%
+//        * but there's a combinatorial path between notFull and deq
+//   2. Optimise Fmax:
+//        * no combinatorial path between notFull and deq
+//        * but max throughput = N/(N+1), where N is the queue capacity
+
+typedef enum { QueueOptFmax, QueueOptThroughput } QueueOpt deriving (Eq);
+
+// Unguarded version
+module mkUGShiftQueue#(QueueOpt opt) (SizedQueue#(logSize, elemType))
   provisos (Bits#(elemType, elemWidth),
             Add#(1, _any, TExp#(logSize)));
 
@@ -98,7 +232,8 @@ module mkUGRegQueue (SizedQueue#(logSize, elemType))
   endmethod
 
   method elemType dataOut = elems[0];
-  method Bool notFull = !fold( \&& , readVReg(valids));
+  method Bool notFull = !fold( \&& , readVReg(valids))
+                     || (opt == QueueOptFmax ? False : doDeq);
   method Bool notEmpty = fold( \|| , readVReg(valids));
   method Bool canDeq = valids[0];
   method Bool canPeek = valids[0];
@@ -107,12 +242,12 @@ module mkUGRegQueue (SizedQueue#(logSize, elemType))
 endmodule
 
 // Guarded version
-module mkRegQueue (SizedQueue#(logSize, elemType))
+module mkShiftQueue#(QueueOpt opt) (SizedQueue#(logSize, elemType))
   provisos (Bits#(elemType, elemWidth),
             Add#(1, _any, TExp#(logSize)));
 
   // State
-  SizedQueue#(logSize, elemType) q <- mkUGRegQueue;
+  SizedQueue#(logSize, elemType) q <- mkUGShiftQueue(opt);
 
   // Methods
   method Action deq if (q.canDeq);
@@ -135,12 +270,12 @@ endmodule
 // Test bench
 // ----------
 
-module [Specification] regQueueSpec#(Reset r) ();
+module [Specification] shiftQueueSpec#(Reset r) ();
   // Specification instance
   FIFOF#(Bit#(8)) fifo <- mkSizedFIFOF(4, reset_by r);
 
   // Implementation instance
-  SizedQueue#(2, Bit#(8)) q <- mkRegQueue(reset_by r);
+  SizedQueue#(2, Bit#(8)) q <- mkShiftQueue(reset_by r);
 
   // Obtain function for making assertions
   Ensure ensure <- getEnsure;
@@ -158,16 +293,16 @@ module [Specification] regQueueSpec#(Reset r) ();
 endmodule
 
 // The test bench
-module [Module] regQueueTest ();
+module [Module] shiftQueueTest ();
   Clock clk <- exposeCurrentClock;
   MakeResetIfc r <- mkReset(0, True, clk);
-  blueCheckID(regQueueSpec(r.new_rst), r);
+  blueCheckID(shiftQueueSpec(r.new_rst), r);
 endmodule
 */
 
-// ==================================
-// Implementation 2: BRAM-based Queue
-// ==================================
+// ================
+// BRAM-based Queue
+// ================
 
 // Similar to Bluespec's mkSizedFIFOF but introduces a one-cycle delay
 // between dequeuing an element and obtaining the dequeued element.
@@ -351,9 +486,9 @@ module [Module] sizedQueueTest ();
 endmodule
 */
 
-// ===========================================
-// Implementation 3: Sized Queue with Prefetch
-// ===========================================
+// ==============================
+// BRAM-based Queue with Prefetch
+// ==============================
 
 // This version has similar semantics as a Bluespec SizedFIFOF, at the
 // cost of two registers and a mux.
