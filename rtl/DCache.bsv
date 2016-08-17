@@ -262,8 +262,8 @@ module mkDCache#(Integer myId, MemDualResp extMem) (DCache);
   BlockRam#(SetIndex, SetMetaData) metaData <- mkBlockRam;
   
   // Client request & response queues
-  Queue#(DCacheReq) reqQueue <- mkUGRegQueue;
-  Queue#(DCacheResp) respQueue <- mkUGRegQueue;
+  Queue#(DCacheReq) reqQueue <- mkUGShiftQueue(QueueOptFmax);
+  Queue#(DCacheResp) respQueue <- mkUGShiftQueue(QueueOptFmax);
 
   // The fill queue (16 elements) stores requests that have missed
   // while waiting for external memory to fetch the data.
@@ -444,10 +444,10 @@ module mkDCache#(Integer myId, MemDualResp extMem) (DCache);
   // ---------------------
 
   // 1-element buffer for requests that will hit
-  Queue1#(DCacheReq) hitBuffer <- mkUGRegQueue;
+  Queue1#(DCacheReq) hitBuffer <- mkUGShiftQueue(QueueOptFmax);
 
   // 1-element buffer for requests to be retried
-  Queue1#(DCacheReq) retryBuffer <- mkUGRegQueue;
+  Queue1#(DCacheReq) retryBuffer <- mkUGShiftQueue(QueueOptFmax);
 
   // Beat counter for responses
   Reg#(Beat) respBeat <- mkReg(0);
@@ -521,11 +521,11 @@ module mkDCache#(Integer myId, MemDualResp extMem) (DCache);
   Reg#(Bool) loadReqEnqueued <- mkReg(False);
 
   // Address buffer (addresses for lines being written out or read in)
-  Queue#(MissMemReq) missMemReqs <- mkUGRegQueue;
+  Queue#(MissMemReq) missMemReqs <- mkUGShiftQueue(QueueOptFmax);
 
   // Data buffer (data values for beats being written out)
   SizedQueue#(`LogDCacheWriteBufferSize, Bit#(`BusWidth)) beatBuffer <-
-    mkUGRegQueue;
+    mkUGShiftQueue(QueueOptFmax);
 
   // Used to allocate space in the beat buffer
   Count#(TAdd#(`LogDCacheWriteBufferSize, 1)) beatBufferCount <-
