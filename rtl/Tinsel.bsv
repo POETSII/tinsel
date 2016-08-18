@@ -15,6 +15,7 @@ import DReg      :: *;
 import Assert    :: *;
 import DCache    :: *;
 import ConfigReg :: *;
+import Interface :: *;
 
 // ============================================================================
 // Types
@@ -32,6 +33,9 @@ typedef struct {
   InstrAddr pc;  // Program counter
   ThreadId  id;  // Thread identifier
 } Thread deriving (Bits);
+
+// Core id
+typedef Bit#(`LogMaxCores) CoreId;
 
 // Register file index
 // (Register file constains 32 registers per thread)
@@ -284,6 +288,8 @@ endfunction
 // RISC-V programs via CSR instructions.
 
 interface Tinsel;
+  interface Out#(DCacheReq) dcacheReqOut;
+  interface In#(DCacheResp) dcacheRespIn;
   (* always_ready *)
   method Bit#(32) out;
 endinterface
@@ -343,15 +349,21 @@ endinterface
 // stage waits for memory responses and queues up writeback &
 // resumption requests for the Write Back stage.
 
-module tinselCore#(Integer myId, DCache dcache) (Tinsel);
+(* synthesize *)
+module tinselCore#(CoreId myId) (Tinsel);
 
   staticAssert(`LogThreadsPerCore >= 4, "Number of threads must be >= 16");
 
   // Number of threads
   Integer numThreads = 2 ** `LogThreadsPerCore;
 
+
   // Global state
   // ------------
+
+  // Ports
+  OutPort#(DCacheReq) dcacheReq  <- mkOutPort;
+  InPort#(DCacheResp) dcacheResp <- mkInPort;
 
   // Queue of runnable threads
   QueueInit runQueueInit;
@@ -502,17 +514,17 @@ module tinselCore#(Integer myId, DCache dcache) (Tinsel);
     Bool retry = False;
     Bool suspend = False;
     if (token.op.isLoad || token.op.isStore) begin
-      if (dcache.canPut) begin
+      if (dcacheReq.canPut) begin
         // Prepare data cache request
         DCacheReq req;
-        req.id = {fromInteger(myId), token.thread.id};
+        req.id = {truncate(myId), token.thread.id};
         req.cmd.isLoad = token.op.isLoad;
         req.cmd.isStore = token.op.isStore;
         req.addr = token.memAddr;
         req.data = writeAlign(token.accessWidth, token.valB);
         req.byteEn = genByteEnable(token.accessWidth, token.memAddr[1:0]);
         // Issue data cache request
-        dcache.putReq(req);
+        dcacheReq.put(req);
         // Record state of suspended thread
         SuspendedThread susp;
         susp.pc = token.thread.pc + 4;
@@ -532,7 +544,7 @@ module tinselCore#(Integer myId, DCache dcache) (Tinsel);
     // Compute jump/branch target
     token.targetPC = truncate(zeroExtend(token.thread.pc) + token.imm);
     // CSR read
-    res.csr = zeroExtend(token.thread.id);
+    res.csr = zeroExtend({myId, token.thread.id});
     // CSR set/clear bits
     Bool csrClear = unpack(token.instr[12]);
     if (token.op.isCSR)
@@ -633,11 +645,11 @@ module tinselCore#(Integer myId, DCache dcache) (Tinsel);
   Reg#(DCacheResp)    resumeThread2Input <- mkVReg;
   Reg#(DCacheResp)    resumeThread3Input <- mkVReg;
  
-  rule resumeThread1 (dcache.canGet || resumeThread1Fire);
+  rule resumeThread1 (dcacheResp.canGet || resumeThread1Fire);
     let resp = resumeThread1Input;
     if (! resumeThread1Fire) begin
-      let r <- dcache.getResp;
-      resp = r;
+      dcacheResp.get;
+      resp = dcacheResp.value;
     end
     // Fetch info about suspended thread
     suspended.read(truncate(resp.id));
@@ -674,7 +686,9 @@ module tinselCore#(Integer myId, DCache dcache) (Tinsel);
   // Interface
   // ---------
 
-  method out = emitReg;
+  interface Out dcacheReqOut = dcacheReq.out;
+  interface In  dcacheRespIn = dcacheResp.in;
+  method Bit#(32) out        = emitReg;
 endmodule
 
 endpackage

@@ -4,13 +4,15 @@ package TraceGen;
 // Imports
 // ============================================================================
 
-import Mem     :: *;
-import FIFOF   :: *;
-import DCache  :: *;
-import DRAM    :: *;
-import Vector  :: *;
-import RegFile :: *;
-import Assert  :: *;
+import Mem       :: *;
+import FIFOF     :: *;
+import DCache    :: *;
+import DRAM      :: *;
+import Vector    :: *;
+import RegFile   :: *;
+import Assert    :: *;
+import Interface :: *;
+import ConfigReg :: *;
 
 // Interface to C functions
 import "BDPI" function ActionValue#(Bit#(32)) getUInt32();
@@ -53,13 +55,24 @@ module traceGen ();
   let dram <- mkDRAM;
 
   // Data cache instance (id 0) connected directly to DRAM instance
-  let dcache <- mkDCache(0, dram.internal);
+  let dcache <- mkDCache(0);
+
+  // Connect cache to DRAM
+  connectQueue(dcache.reqOut, dram.reqIn);
+  connectQueue(dram.loadResp, dcache.loadRespIn);
+  connectQueue(dram.storeResp, dcache.storeRespIn);
+
+  // Connect trace generator to cache
+  OutPort#(DCacheReq) dcacheReq <- mkOutPort;
+  InPort#(DCacheResp) dcacheResp <- mkInPort;
+  connectQueue(dcacheReq.out, dcache.reqIn);
+  connectQueue(dcache.respOut, dcacheResp.in);
 
   // Record in-flight requests (max of one outstanding request per thread)
   RegFile#(DCacheClientId, TraceGenReq) inFlight <-
     mkRegFileWCF(minBound, maxBound);
   Vector#(TExp#(SizeOf#(DCacheClientId)), Reg#(Bool)) inFlightValid <-
-    replicateM(mkReg(False));
+    replicateM(mkConfigReg(False));
 
   // Raw requests from stdin
   FIFOF#(TraceGenReq) rawReqs <- mkFIFOF;
@@ -123,7 +136,7 @@ module traceGen ();
       backPressureWire.wset(rawReq.delay);
     end else begin
       DCacheClientId id = truncate(rawReq.threadId);
-      if (!inFlightValid[id] && dcache.canPut) begin
+      if (!inFlightValid[id] && dcacheReq.canPut) begin
         rawReqs.deq;
         DCacheReq req = ?;
         req.id = id;
@@ -132,7 +145,7 @@ module traceGen ();
         req.addr = rawReq.addr;
         req.data = rawReq.data;
         req.byteEn = -1;
-        dcache.putReq(req);
+        dcacheReq.put(req);
         inFlightValid[id] <= True;
         inFlight.upd(id, rawReq);
       end
@@ -140,8 +153,9 @@ module traceGen ();
   endrule
 
   // Receive responses from data cache
-  rule receiveResponses (dcache.canGet && backPressure == 0);
-    DCacheResp resp <- dcache.getResp;
+  rule receiveResponses (dcacheResp.canGet && backPressure == 0);
+    DCacheResp resp = dcacheResp.value;
+    dcacheResp.get;
     DCacheClientId id = resp.id;
     TraceGenReq req = inFlight.sub(id);
     dynamicAssert(inFlightValid[id],

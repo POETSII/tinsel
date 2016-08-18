@@ -275,7 +275,7 @@ module [Specification] shiftQueueSpec#(Reset r) ();
   FIFOF#(Bit#(8)) fifo <- mkSizedFIFOF(4, reset_by r);
 
   // Implementation instance
-  SizedQueue#(2, Bit#(8)) q <- mkShiftQueue(reset_by r);
+  SizedQueue#(2, Bit#(8)) q <- mkShiftQueue(QueueOptFmax, reset_by r);
 
   // Obtain function for making assertions
   Ensure ensure <- getEnsure;

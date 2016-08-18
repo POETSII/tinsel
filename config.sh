@@ -7,14 +7,21 @@
 # The Altera device family being targetted
 export DeviceFamily="Stratix V"
 
+# Log of max number of cores
+# (used to determine width of globally unique core id)
+export LogMaxCores=8
+
 # The number of hardware threads per core
 export LogThreadsPerCore=4
 
 # The number of 32-bit instructions that fit in a core's instruction memory
 export LogInstrsPerCore=9
 
-# Log of number of multi-threaded cores per data cache
-export LogCoresPerDCache=2
+# Log of number of multi-threaded cores per tile
+export LogCoresPerTile=2
+
+# Log of number of tiles per tree
+export LogTilesPerTree=0
 
 # Log of number of 32-bit words in a single memory transfer
 export LogWordsPerBeat=3
@@ -27,9 +34,6 @@ export DCacheLogSetsPerThread=5
 
 # Log of number of ways per set in set-associative data cache
 export DCacheLogNumWays=2
-
-# Log of number of data caches present
-export LogNumDCaches=0
 
 # Max number of outstanding DRAM requests permitted
 export DRAMLogMaxInFlight=4
