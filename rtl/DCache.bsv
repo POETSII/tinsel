@@ -6,11 +6,12 @@ package DCache;
 // Design overview
 // ============================================================================
 //
-// This is an N-way set-associative write-back cache.  It will
-// serve one or more highly-threaded cores, thus high throughput and
-// high Fmax are much more important than low latency.  It employs a
-// hash function that appends the thread id and some number of address
-// bits, thus lines are not shared between threads.
+// This is an N-way set-associative write-back cache.  It will serve
+// one or more highly-threaded cores, thus high throughput and high
+// Fmax are much more important than low latency, allowing deep
+// pipelining.  It employs a hash function that appends the thread id
+// and some number of address bits, thus lines are not shared between
+// threads.
 //
 // We assume there is a max of one request per thread in the cache
 // pipeline at any time.  Together with the no-sharing property
@@ -22,6 +23,8 @@ package DCache;
 // The block RAM used to cache data is a true dual-port mixed-width
 // block RAM with a bus-sized port and a word-sized port; each port
 // allows either a read or a write on each cycle.
+//
+// Cache lines are read and written in bus-sized chunks called beats.
 //
 // Pipeline structure
 // ------------------
@@ -108,13 +111,14 @@ import Vector    :: *;
 import DReg      :: *;
 import Assert    :: *;
 import ConfigReg :: *;
+import Interface :: *;
 
 // ============================================================================
 // Types  
 // ============================================================================
 
 // A single DCache may be shared my several multi-threaded cores
-typedef TAdd#(`LogThreadsPerCore, `LogCoresPerDCache) DCacheClientIdBits;
+typedef TAdd#(`LogThreadsPerCore, `LogCoresPerTile) DCacheClientIdBits;
 typedef Bit#(DCacheClientIdBits) DCacheClientId;
 
 // Number of ways
@@ -236,19 +240,19 @@ endfunction
 // ============================================================================
 
 interface DCache;
-  method Bool canPut;
-  method Action putReq(DCacheReq req);
-  method Bool canGet;
-  method ActionValue#(DCacheResp) getResp;
+  interface In#(DCacheReq)    reqIn;
+  interface Out#(DCacheResp)  respOut;
+  interface In#(MemLoadResp)  loadRespIn;
+  interface In#(MemStoreResp) storeRespIn;
+  interface Out#(MemReq)      reqOut;
 endinterface
 
 // ============================================================================
 // Implementation
 // ============================================================================
 
-// This is the main data cache module.
-
-module mkDCache#(Integer myId, MemDualResp extMem) (DCache);
+(* synthesize *)
+module mkDCache#(DCacheId myId) (DCache);
   // Tag block RAM
   Vector#(DCacheNumWays, BlockRam#(SetIndex, Tag)) tagMem <-
     replicateM(mkBlockRam);
@@ -261,9 +265,12 @@ module mkDCache#(Integer myId, MemDualResp extMem) (DCache);
   // Meta data for each set
   BlockRam#(SetIndex, SetMetaData) metaData <- mkBlockRam;
   
-  // Client request & response queues
-  Queue#(DCacheReq) reqQueue <- mkUGShiftQueue(QueueOptFmax);
-  Queue#(DCacheResp) respQueue <- mkUGShiftQueue(QueueOptFmax);
+  // Request & response ports
+  InPort#(DCacheReq)    reqPort       <- mkInPort;
+  OutPort#(DCacheResp)  respPort      <- mkOutPort;
+  InPort#(MemLoadResp)  loadRespPort  <- mkInPort;
+  InPort#(MemStoreResp) storeRespPort <- mkInPort;
+  OutPort#(MemReq)      memReqPort    <- mkOutPort;
 
   // The fill queue (16 elements) stores requests that have missed
   // while waiting for external memory to fetch the data.
@@ -316,11 +323,11 @@ module mkDCache#(Integer myId, MemDualResp extMem) (DCache);
   // Tag lookup stage
   // ----------------
 
-  rule tagLookup1 (feedbackTrigger || reqQueue.canDeq);
+  rule tagLookup1 (feedbackTrigger || reqPort.canGet);
     // Select fresh client request or feedback request
-    DCacheReq req = feedbackTrigger ? feedbackReq : reqQueue.dataOut;
+    DCacheReq req = feedbackTrigger ? feedbackReq : reqPort.value;
     // Dequeue request
-    if (! feedbackTrigger) reqQueue.deq;
+    if (! feedbackTrigger) reqPort.get;
     // Send read request for tags
     for (Integer i = 0; i < valueOf(DCacheNumWays); i=i+1)
       tagMem[i].read(setIndex(req.id, req.addr));
@@ -408,12 +415,12 @@ module mkDCache#(Integer myId, MemDualResp extMem) (DCache);
       DCacheResp resp;
       resp.id = token.req.id;
       resp.data = dataMem.dataOutB;
-      if (respQueue.notFull) begin
+      if (respPort.canPut) begin
         setDirtyBit = token.req.cmd.isStore;
         for (Integer i = 0; i < valueOf(DCacheNumWays); i=i+1)
           if (token.matching[i]) newDirtyBits[i] = True;
         retry = False;
-        respQueue.enq(resp);
+        respPort.put(resp);
       end
     end else if (!token.retry) begin
       retry = False;
@@ -454,7 +461,7 @@ module mkDCache#(Integer myId, MemDualResp extMem) (DCache);
 
   rule memResponse;
     // If new line data available from external memory, then:
-    if (extMem.loadResp.canGet && fillQueue.canDeq
+    if (loadRespPort.canGet && fillQueue.canDeq
           && fillQueue.canPeek && hitBuffer.notFull) begin
       // Remove item from fill queue and put associated request (which
       // will definitely hit if it starts again from the beginning of
@@ -465,7 +472,8 @@ module mkDCache#(Integer myId, MemDualResp extMem) (DCache);
         hitBuffer.enq(fill.req);
       end
       // Write new line data to dataMem
-      MemLoadResp resp <- extMem.loadResp.get;
+      MemLoadResp resp = loadRespPort.value;
+      loadRespPort.get;
       lineWriteReqWire   <= True;
       lineWriteIndexWire <= beatIndex(respBeat, fill.req.id,
                               fill.req.addr, fill.way);
@@ -596,11 +604,11 @@ module mkDCache#(Integer myId, MemDualResp extMem) (DCache);
   endrule
 
   rule missUnit2;
-    if (missMemReqs.canDeq && extMem.req.canPut) begin
+    if (missMemReqs.canDeq && memReqPort.canPut) begin
       MissMemReq miss = missMemReqs.dataOut;
       MemReq memReq;
       memReq.isStore = miss.isStore;
-      memReq.id = fromInteger(myId);
+      memReq.id = myId;
       memReq.addr = {miss.addr, writebackBeat};
       memReq.data = beatBuffer.dataOut;
       memReq.burst = miss.isStore ? 1 : `BeatsPerLine;
@@ -612,7 +620,7 @@ module mkDCache#(Integer myId, MemDualResp extMem) (DCache);
       end
       // Send request to memory
       if (!miss.isStore || beatBuffer.canDeq)
-        extMem.req.put(memReq);
+        memReqPort.put(memReq);
       // Deqeue the request buffer
       if (!miss.isStore || (beatBuffer.canDeq && allHigh(writebackBeat))) begin
         missMemReqs.deq;
@@ -626,24 +634,19 @@ module mkDCache#(Integer myId, MemDualResp extMem) (DCache);
   // Until the cache supports explicit flushing,
   // ignore all store responses from external memory
   rule discardStoreResps;
-    if (extMem.storeResp.canGet) begin
-      let _ <- extMem.storeResp.get;
+    if (storeRespPort.canGet) begin
+      storeRespPort.get;
     end
   endrule
 
-  // Methods
-  // -------
+  // Interface
+  // ---------
 
-  method Bool canPut = reqQueue.notFull;
-  method Action putReq(DCacheReq req);
-    reqQueue.enq(req);
-  endmethod
-
-  method Bool canGet = respQueue.canDeq;
-  method ActionValue#(DCacheResp) getResp;
-    respQueue.deq;
-    return respQueue.dataOut;
-  endmethod
+  interface In  reqIn       = reqPort.in;
+  interface Out respOut     = respPort.out;
+  interface In  loadRespIn  = loadRespPort.in;
+  interface In  storeRespIn = storeRespPort.in;
+  interface Out reqOut      = memReqPort.out;
 endmodule
 
 endpackage

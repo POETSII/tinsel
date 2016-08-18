@@ -5,7 +5,9 @@ package DRAM;
 // ============================================================================
 
 interface DRAM;
-  interface MemDualResp internal;
+  interface In#(MemReq) reqIn;
+  interface Out#(MemLoadResp) loadResp;
+  interface Out#(MemStoreResp) storeResp;
   interface DRAMExtIfc external;
 endinterface
 
@@ -18,10 +20,11 @@ endinterface
 // Imports
 // -------
 
-import Mem    :: *;
-import FIFOF  :: *;
-import Vector :: *;
-import Assert :: *;
+import Mem       :: *;
+import FIFOF     :: *;
+import Vector    :: *;
+import Assert    :: *;
+import Interface :: *;
 
 // Interface to C functions
 import "BDPI" function Action ramInit();
@@ -38,15 +41,17 @@ typedef Empty DRAMExtIfc;
 // --------------
 
 module mkDRAM (DRAM);
+  // Ports
+  InPort#(MemReq)        reqPort       <- mkInPort;
+  OutPort#(MemStoreResp) storeRespPort <- mkOutPort;
+  OutPort#(MemLoadResp)  loadRespPort  <- mkOutPort;
+
   // State
   Vector#(`DRAMLatency, Reg#(Bool)) valids <- replicateM(mkReg(False));
   Vector#(`DRAMLatency, Reg#(MemReq)) reqs <- replicateM(mkRegU);
-  FIFOF#(MemReq)       reqFifo       <- mkUGFIFOF;
-  FIFOF#(MemStoreResp) storeRespFifo <- mkUGFIFOF;
-  FIFOF#(MemLoadResp)  loadRespFifo  <- mkUGFIFOF;
   Reg#(Bool) toggle <- mkReg(False);
-  Reg#(Bit#(32)) outstanding <- mkReg(0);
   Reg#(Bit#(`BurstWidth)) beat <- mkReg(0);
+  Reg#(Bit#(32)) outstanding <- mkReg(0);
 
   // Wires
   Wire#(Bit#(32)) incOutstanding <- mkDWire(0);
@@ -63,7 +68,7 @@ module mkDRAM (DRAM);
     if (valids[0]) begin
       MemReq req = reqs[0];
       if (! req.isStore) begin
-        if (loadRespFifo.notFull) begin
+        if (loadRespPort.canPut) begin
           if (beat+1 == req.burst) begin
             shift = True;
             beat <= 0;
@@ -79,11 +84,12 @@ module mkDRAM (DRAM);
           MemLoadResp resp;
           resp.id = req.id;
           resp.data = pack(elems);
-          loadRespFifo.enq(resp);
+          loadRespPort.put(resp);
+          decOutstanding1.send;
         end
       end else begin
         dynamicAssert(req.burst == 1, "DRAM: burst writes not yet supported");
-        if (storeRespFifo.notFull) begin
+        if (storeRespPort.canPut) begin
           shift = True;
           Vector#(`WordsPerBeat, Bit#(32)) elems = unpack(req.data);
           Bit#(32) addr = {req.addr, 0};
@@ -91,16 +97,19 @@ module mkDRAM (DRAM);
             ramWrite(addr+fromInteger(4*i), elems[i]);
           MemStoreResp resp;
           resp.id = req.id;
-          storeRespFifo.enq(resp);
+          storeRespPort.put(resp);
+          decOutstanding2.send;
         end
       end
     end
     // Insert a new request
     Bool insert = False;
-    if (reqFifo.notEmpty && (shift || !valids[endIndex])) begin
-      reqFifo.deq;
-      reqs[endIndex] <= reqFifo.first;
+    if (reqPort.canGet && (shift || !valids[endIndex])
+                       && outstanding < fromInteger(maxOutstanding)) begin
+      reqPort.get;
+      reqs[endIndex] <= reqPort.value;
       insert = True;
+      incOutstanding <= zeroExtend(reqPort.value.burst);
     end
     // Shift requests
     for (Integer i = 0; i < endIndex; i=i+1) begin
@@ -123,33 +132,9 @@ module mkDRAM (DRAM);
   endrule
 
   // Interfaces
-  interface MemDualResp internal;
-    interface Req req;
-      method Bool canPut = reqFifo.notFull &&
-                    outstanding < fromInteger(maxOutstanding);
-      method Action put(MemReq req);
-        incOutstanding <= zeroExtend(req.burst);
-        reqFifo.enq(req);
-      endmethod
-    endinterface
-
-    interface Resp loadResp;
-      method Bool canGet = loadRespFifo.notEmpty;
-      method ActionValue#(MemLoadResp) get;
-        decOutstanding1.send;
-        loadRespFifo.deq; return loadRespFifo.first;
-      endmethod
-    endinterface
-
-    interface Resp storeResp;
-      method Bool canGet = storeRespFifo.notEmpty;
-      method ActionValue#(MemStoreResp) get;
-        decOutstanding2.send;
-        storeRespFifo.deq; return storeRespFifo.first;
-      endmethod
-    endinterface
-  endinterface
-  
+  interface In  reqIn           = reqPort.in;
+  interface Out loadResp        = loadRespPort.out;
+  interface Out storeResp       = storeRespPort.out;
   interface DRAMExtIfc external;
   endinterface
 endmodule
@@ -163,9 +148,10 @@ endmodule
 // Imports
 // -------
 
-import Mem    :: *;
-import Vector :: *;
-import Queue  :: *;
+import Mem       :: *;
+import Vector    :: *;
+import Queue     :: *;
+import Interface :: *;
 
 // Types
 // -----
@@ -197,6 +183,11 @@ typedef struct {
 // --------------
 
 module mkDRAM (DRAM);
+  // Ports
+  InPort#(MemReq)        reqPort       <- mkInPort;
+  OutPort#(MemStoreResp) storeRespPort <- mkOutPort;
+  OutPort#(MemLoadResp)  loadRespPort  <- mkOutPort;
+
   // Queues
 `ifdef DRAMPortHalfThroughput
   SizedQueue#(`DRAMLogMaxInFlight, DRAMInFlightReq) inFlight <-
@@ -242,46 +233,47 @@ module mkDRAM (DRAM);
     end
   endrule
 
+  rule consumeRequest;
+    if (reqPort.canGet && !waitRequest && inFlight.notFull) begin
+      MemReq req = reqPort.value;
+      reqPort.get;
+      address   <= req.addr;
+      writeData <= req.data;
+      if (req.isStore) putStore.send; else putLoad.send;
+      DRAMInFlightReq inflightReq;
+      inflightReq.id = req.id;
+      inflightReq.isStore = req.isStore;
+      inFlight.enq(inflightReq);
+    end
+  endrule
+
+  rule putLoadResp;
+    if (loadRespPort.canPut && inFlight.canPeek &&
+          inFlight.canDeq && !inFlight.dataOut.isStore &&
+            respBuffer.canPeek && respBuffer.canDeq) begin
+      consumeLoadResp.send;
+      MemLoadResp resp;
+      resp.id = inFlight.dataOut.id;
+      resp.data = respBuffer.dataOut;
+      loadRespPort.put(resp);
+    end
+  endrule
+
+  rule putStoreResp;
+    if (storeRespPort.canPut && inFlight.canPeek &&
+          inFlight.canDeq && inFlight.dataOut.isStore &&
+            respBuffer.canPeek && respBuffer.canDeq) begin
+      consumeStoreResp.send;
+      MemStoreResp resp;
+      resp.id = inFlight.dataOut.id;
+      storeRespPort.put(resp);
+    end
+  endrule
+
   // Internal interface
-  interface MemDualResp internal;
-    interface Req req;
-      method Bool canPut = !waitRequest && inFlight.notFull;
-      method Action put(MemReq req);
-        address   <= req.addr;
-        writeData <= req.data;
-        if (req.isStore) putStore.send; else putLoad.send;
-        DRAMInFlightReq inflightReq;
-        inflightReq.id = req.id;
-        inflightReq.isStore = req.isStore;
-        inFlight.enq(inflightReq);
-      endmethod
-    endinterface
-
-    interface Resp loadResp;
-      method Bool canGet =
-        inFlight.canPeek && inFlight.canDeq && !inFlight.dataOut.isStore &&
-          respBuffer.canPeek && respBuffer.canDeq;
-      method ActionValue#(MemLoadResp) get;
-        consumeLoadResp.send;
-        MemLoadResp resp;
-        resp.id = inFlight.dataOut.id;
-        resp.data = respBuffer.dataOut;
-        return resp;
-      endmethod
-    endinterface
-
-    interface Resp storeResp;
-      method Bool canGet =
-        inFlight.canPeek && inFlight.canDeq && inFlight.dataOut.isStore &&
-          respBuffer.canPeek && respBuffer.canDeq;
-      method ActionValue#(MemStoreResp) get;
-        consumeStoreResp.send;
-        MemStoreResp resp;
-        resp.id = inFlight.dataOut.id;
-        return resp;
-      endmethod
-    endinterface
-  endinterface
+  interface In  reqIn           = reqPort.in;
+  interface Out loadResp        = loadRespPort.out;
+  interface Out storeResp       = storeRespPort.out;
 
   // External (Avalon master) interface
   interface DRAMExtIfc external;

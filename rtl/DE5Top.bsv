@@ -4,10 +4,11 @@ package DE5Top;
 // Imports
 // ============================================================================
 
-import Tinsel :: *;
-import DCache :: *;
-import Mem    :: *;
-import DRAM   :: *;
+import Tinsel    :: *;
+import DCache    :: *;
+import Mem       :: *;
+import DRAM      :: *;
+import Interface :: *;
 
 // ============================================================================
 // Interface
@@ -21,7 +22,8 @@ typedef Empty DE5Top;
 
 interface DE5Top;
   interface DRAMExtIfc dramIfc;
-  interface Tinsel tinselIfc;
+  (* always_enabled *)
+  method Bit#(32) tinselOut;
 endinterface
 
 `endif
@@ -31,9 +33,19 @@ endinterface
 // ============================================================================
 
 module de5Top (DE5Top);
+  // Components
   let dram   <- mkDRAM;
-  let dcache <- mkDCache(0, dram.internal);
-  let tinsel <- tinselCore(0, dcache);
+  let dcache <- mkDCache(0);
+  let tinsel <- tinselCore(0);
+
+  // Connect core to data cache
+  connectRegFmax(tinsel.dcacheReqOut, dcache.reqIn);
+  connectRegFmax(dcache.respOut, tinsel.dcacheRespIn);
+
+  // Connect data cache to DRAM
+  connectRegFmax(dcache.reqOut, dram.reqIn);
+  connectRegFmax(dram.loadResp, dcache.loadRespIn);
+  connectRegFmax(dram.storeResp, dcache.storeRespIn);
 
   rule display;
     $display($time, ": ", tinsel.out);
@@ -41,7 +53,7 @@ module de5Top (DE5Top);
 
   `ifndef SIMULATE
   interface DRAMExtIfc dramIfc = dram.external;
-  interface Tinsel tinselIfc = tinsel;
+  method Bit#(32) tinselOut = tinsel.out;
   `endif
 endmodule
 

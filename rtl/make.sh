@@ -3,9 +3,11 @@
 # Obtain config parameters
 . ../config.sh
 DEFS="-D 'DeviceFamily=\"$DeviceFamily\"' \
+      -D LogMaxCores=$LogMaxCores \
       -D LogThreadsPerCore=$LogThreadsPerCore \
       -D LogInstrsPerCore=$LogInstrsPerCore \
-      -D LogCoresPerDCache=$LogCoresPerDCache \
+      -D LogCoresPerTile=$LogCoresPerTile \
+      -D LogTilesPerTree=$LogTilesPerTree \
       -D LogWordsPerBeat=$LogWordsPerBeat \
       -D LogBeatsPerLine=$LogBeatsPerLine \
       -D LogWordsPerLine=$LogWordsPerLine \

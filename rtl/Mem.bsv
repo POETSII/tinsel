@@ -11,7 +11,7 @@ import Queue :: *;
 // ============================================================================
 
 // Unique identifier per data cache
-typedef Bit#(`LogNumDCaches) DCacheId;
+typedef Bit#(`LogTilesPerTree) DCacheId;
 
 // Memory address
 typedef TSub#(30, `LogWordsPerBeat) MemAddrNumBits;
