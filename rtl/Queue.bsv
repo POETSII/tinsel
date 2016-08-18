@@ -266,6 +266,18 @@ module mkShiftQueue#(QueueOpt opt) (SizedQueue#(logSize, elemType))
   method Bool spaceFor(Integer n) = q.spaceFor(n);
 endmodule
 
+// Shorthands
+module mkUGShiftQueue1#(QueueOpt opt) (Queue1#(elemType))
+  provisos (Bits#(elemType, elemTypeWidth));
+  let q <- mkUGShiftQueue(opt); return q;
+endmodule
+
+module mkUGShiftQueue2#(QueueOpt opt) (Queue#(elemType))
+  provisos (Bits#(elemType, elemTypeWidth));
+  let q <- mkUGShiftQueue(opt); return q;
+endmodule
+
+
 /*
 // Test bench
 // ----------

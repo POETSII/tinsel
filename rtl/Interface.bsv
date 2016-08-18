@@ -132,8 +132,11 @@ endmodule
 // =============================================================================
 
 // Connect an Out interface to an In interface using the given queue.
-module connectUsing#(SizedQueue#(n, t) q, Out#(t) out, In#(t) in) (Empty)
+module connectUsing#(
+  module#(SizedQueue#(n, t)) mkQ, Out#(t) out, In#(t) in) (Empty)
   provisos (Bits#(t, twidth));
+
+  SizedQueue#(n, t) q <- mkQ;
 
   rule connection1a;
     if (q.notFull) out.tryGet;
@@ -150,45 +153,6 @@ module connectUsing#(SizedQueue#(n, t) q, Out#(t) out, In#(t) in) (Empty)
   rule connection2b;
     if (in.didPut) q.deq;
   endrule
-endmodule
-
-// =============================================================================
-// Common kinds of connection
-// =============================================================================
-
-// Connect using 1 reg, optimise Fmax
-module connectRegFmax#(Out#(t) out, In#(t) in) (Empty)
-  provisos (Bits#(t, twidth));
-  Queue1#(t) q <- mkUGShiftQueue(QueueOptFmax);
-  connectUsing(q, out, in);
-endmodule
-
-// Connect using 1 reg, optimise throughput
-module connectRegThroughput#(Out#(t) out, In#(t) in) (Empty)
-  provisos (Bits#(t, twidth));
-  Queue1#(t) q <- mkUGShiftQueue(QueueOptThroughput);
-  connectUsing(q, out, in);
-endmodule
-
-// Connect using 2 regs, optimise Fmax
-module connectShiftFmax#(Out#(t) out, In#(t) in) (Empty)
-  provisos (Bits#(t, twidth));
-  Queue#(t) q <- mkUGShiftQueue(QueueOptFmax);
-  connectUsing(q, out, in);
-endmodule
-
-// Connect using 2 regs, optimise throughput
-module connectShiftThroughput#(Out#(t) out, In#(t) in) (Empty)
-  provisos (Bits#(t, twidth));
-  Queue#(t) q <- mkUGShiftQueue(QueueOptThroughput);
-  connectUsing(q, out, in);
-endmodule
-
-// Connect using standard queue
-module connectQueue#(Out#(t) out, In#(t) in) (Empty)
-  provisos (Bits#(t, twidth));
-  Queue#(t) q <- mkUGQueue;
-  connectUsing(q, out, in);
 endmodule
 
 endpackage
