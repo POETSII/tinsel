@@ -13,6 +13,7 @@ import RegFile   :: *;
 import Assert    :: *;
 import Interface :: *;
 import ConfigReg :: *;
+import Queue     :: *;
 
 // Interface to C functions
 import "BDPI" function ActionValue#(Bit#(32)) getUInt32();
@@ -58,15 +59,15 @@ module traceGen ();
   let dcache <- mkDCache(0);
 
   // Connect cache to DRAM
-  connectQueue(dcache.reqOut, dram.reqIn);
-  connectQueue(dram.loadResp, dcache.loadRespIn);
-  connectQueue(dram.storeResp, dcache.storeRespIn);
+  connectUsing(mkUGQueue, dcache.reqOut, dram.reqIn);
+  connectUsing(mkUGQueue, dram.loadResp, dcache.loadRespIn);
+  connectUsing(mkUGQueue, dram.storeResp, dcache.storeRespIn);
 
   // Connect trace generator to cache
   OutPort#(DCacheReq) dcacheReq <- mkOutPort;
   InPort#(DCacheResp) dcacheResp <- mkInPort;
-  connectQueue(dcacheReq.out, dcache.reqIn);
-  connectQueue(dcache.respOut, dcacheResp.in);
+  connectUsing(mkUGQueue, dcacheReq.out, dcache.reqIn);
+  connectUsing(mkUGQueue, dcache.respOut, dcacheResp.in);
 
   // Record in-flight requests (max of one outstanding request per thread)
   RegFile#(DCacheClientId, TraceGenReq) inFlight <-

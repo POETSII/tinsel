@@ -9,6 +9,7 @@ import DCache    :: *;
 import Mem       :: *;
 import DRAM      :: *;
 import Interface :: *;
+import Queue     :: *;
 
 // ============================================================================
 // Interface
@@ -39,13 +40,18 @@ module de5Top (DE5Top);
   let tinsel <- tinselCore(0);
 
   // Connect core to data cache
-  connectRegFmax(tinsel.dcacheReqOut, dcache.reqIn);
-  connectRegFmax(dcache.respOut, tinsel.dcacheRespIn);
+  connectUsing(mkUGShiftQueue1(QueueOptFmax),
+                 tinsel.dcacheReqOut, dcache.reqIn);
+  connectUsing(mkUGShiftQueue1(QueueOptFmax),
+                 dcache.respOut, tinsel.dcacheRespIn);
 
   // Connect data cache to DRAM
-  connectRegFmax(dcache.reqOut, dram.reqIn);
-  connectRegFmax(dram.loadResp, dcache.loadRespIn);
-  connectRegFmax(dram.storeResp, dcache.storeRespIn);
+  connectUsing(mkUGShiftQueue1(QueueOptFmax),
+                 dcache.reqOut, dram.reqIn);
+  connectUsing(mkUGShiftQueue1(QueueOptFmax),
+                 dram.loadResp, dcache.loadRespIn);
+  connectUsing(mkUGShiftQueue1(QueueOptFmax),
+                 dram.storeResp, dcache.storeRespIn);
 
   rule display;
     $display($time, ": ", tinsel.out);
