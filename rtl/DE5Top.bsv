@@ -10,6 +10,7 @@ import Mem       :: *;
 import DRAM      :: *;
 import Interface :: *;
 import Queue     :: *;
+import Vector    :: *;
 
 // ============================================================================
 // Interface
@@ -24,7 +25,7 @@ typedef Empty DE5Top;
 interface DE5Top;
   interface DRAMExtIfc dramIfc;
   (* always_enabled *)
-  method Bit#(32) tinselOut;
+  method Bit#(32) coreOut;
 endinterface
 
 `endif
@@ -37,13 +38,26 @@ module de5Top (DE5Top);
   // Components
   let dram   <- mkDRAM;
   let dcache <- mkDCache(0);
-  let tinsel <- tinselCore(0);
+  Vector#(`CoresPerTile, Core) cores;
+  for (Integer i = 0; i < `CoresPerTile; i=i+1)
+    cores[i] <- mkCore(fromInteger(i));
+  
+  // Connect cores to data cache request line
+  function getDCacheReqOut(core) = core.dcacheReqOut;
+  let dcacheReqs <- mkMergeTree(Fair,
+                      mkUGShiftQueue1(QueueOptFmax),
+                      map(getDCacheReqOut, cores));
+  connectUsing(mkUGQueue, dcacheReqs, dcache.reqIn);
 
-  // Connect core to data cache
-  connectUsing(mkUGShiftQueue1(QueueOptFmax),
-                 tinsel.dcacheReqOut, dcache.reqIn);
-  connectUsing(mkUGShiftQueue1(QueueOptFmax),
-                 dcache.respOut, tinsel.dcacheRespIn);
+  // Connect data cache response line to cores
+  function Bit#(`LogCoresPerTile) getDCacheRespKey(DCacheResp resp) =
+    truncateLSB(resp.id);
+  function getDCacheRespIn(core) = core.dcacheRespIn;
+  let dcacheResps <- mkResponseDistributor(
+                      getDCacheRespKey,
+                      mkUGShiftQueue1(QueueOptFmax),
+                      map(getDCacheRespIn, cores));
+  connectUsing(mkUGQueue, dcache.respOut, dcacheResps);
 
   // Connect data cache to DRAM
   connectUsing(mkUGShiftQueue1(QueueOptFmax),
@@ -54,12 +68,13 @@ module de5Top (DE5Top);
                  dram.storeResp, dcache.storeRespIn);
 
   rule display;
-    $display($time, ": ", tinsel.out);
+    for (Integer i = 0; i < `CoresPerTile; i=i+1)
+      $display(i, " @ ", $time, ": ", cores[i].out);
   endrule
 
   `ifndef SIMULATE
   interface DRAMExtIfc dramIfc = dram.external;
-  method Bit#(32) tinselOut = tinsel.out;
+  method Bit#(32) coreOut = core.out;
   `endif
 endmodule
 
