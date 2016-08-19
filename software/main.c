@@ -2,7 +2,7 @@
 inline int me()
 {
   int id;
-  asm volatile("csrr %0, 0xf15" : "=r"(id));
+  asm volatile("csrr %0, 0xf14" : "=r"(id));
   return id;
 }
 
@@ -34,6 +34,10 @@ int main()
   int nums[N];
   int i;
   int sum = 0;
+
+  // Mask off core id
+  // (assuming 16 threads per core)
+  id = id & 0xf;
 
   for (i = 0; i < N; i++) nums[i] = i;
   for (i = 0; i < N; i++) sum = sum + nums[i];

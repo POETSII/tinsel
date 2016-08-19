@@ -26,8 +26,11 @@ package Interface;
 // Imports
 // =============================================================================
 
-import Queue :: *;
-import Util :: *;
+import Queue     :: *;
+import Util      :: *;
+import Assert    :: *;
+import List      :: *;
+import Vector    :: *;
 
 // =============================================================================
 // In & Out interfaces
@@ -153,6 +156,153 @@ module connectUsing#(
   rule connection2b;
     if (in.didPut) q.deq;
   endrule
+endmodule
+
+// =============================================================================
+// Merge unit
+// =============================================================================
+
+interface MergeUnit#(type t);
+  interface In#(t)  inA;
+  interface In#(t)  inB;
+  interface Out#(t) out;
+endinterface
+
+// Left-biased merge unit
+module mkMergeUnit (MergeUnit#(t))
+  provisos (Bits#(t, twidth));
+
+  // Ports
+  InPort#(t) inPortA <- mkInPort;
+  InPort#(t) inPortB <- mkInPort;
+  OutPort#(t) outPort <- mkOutPort;
+
+  // Rules
+  rule merge (outPort.canPut);
+    // Consume input
+    if (inPortA.canGet) inPortA.get;
+    else if (inPortB.canGet) inPortB.get;
+    // Produce output
+    if (inPortA.canGet || inPortB.canGet)
+      outPort.put(inPortA.canGet ? inPortA.value : inPortB.value);
+  endrule
+
+  // Interface
+  interface In  inA = inPortA.in;
+  interface In  inB = inPortB.in;
+  interface Out out = outPort.out;
+endmodule
+
+// Fair merge unit
+module mkMergeUnitFair (MergeUnit#(t))
+  provisos (Bits#(t, twidth));
+
+  // Ports
+  InPort#(t) inPortA <- mkInPort;
+  InPort#(t) inPortB <- mkInPort;
+  OutPort#(t) outPort <- mkOutPort;
+
+  // State
+  Reg#(Bool) prevChoiceWasA <- mkReg(False);
+
+  // Rules
+  rule merge (outPort.canPut);
+    Bool chooseB = inPortB.canGet && (!inPortA.canGet || prevChoiceWasA);
+    // Consume input
+    if (chooseB) inPortB.get;
+    else if (inPortA.canGet) inPortA.get;
+    // Produce output
+    if (inPortA.canGet || inPortB.canGet) begin
+      outPort.put(chooseB ? inPortB.value : inPortA.value);
+      prevChoiceWasA <= !chooseB;
+    end
+  endrule
+
+  // Interface
+  interface In  inA = inPortA.in;
+  interface In  inB = inPortB.in;
+  interface Out out = outPort.out;
+endmodule
+
+// Allow the merge method to be specified as a module parameter
+typedef enum { LeftBiased, Fair } MergeMethod deriving (Eq);
+
+// Merge unit helper: merge two output interfaces to a single output interface
+module mkMergeTwo#(MergeMethod m, module#(SizedQueue#(n, t)) mkQ,
+                     Out#(t) a, Out#(t) b) (Out#(t))
+         provisos (Bits#(t, twidth));
+
+  // Create a merge unit
+  MergeUnit#(t) merger;
+  if (m == LeftBiased) merger <- mkMergeUnit;
+  else merger <- mkMergeUnitFair;
+
+  // Connect output interfaces to merge unit
+  connectUsing(mkQ, a, merger.inA);
+  connectUsing(mkQ, b, merger.inB);
+
+  // Return output of merge unit
+  return merger.out;
+endmodule
+
+// =============================================================================
+// Tree-based request merger
+// =============================================================================
+
+// Merge a list of output interfaces to a single output interface
+module mkMergeTreeList#(MergeMethod m, module#(SizedQueue#(n, t)) mkQ,
+                         List#(Out#(t)) list) (Out#(t))
+         provisos (Bits#(t, twidth));
+
+  Integer n = length(list);
+  staticAssert(n > 0, "mergeTree applied to empty list");
+
+  List#(Out#(t)) xs = list;
+  while (n > 1) begin
+    let y <- mkMergeTwo(m, mkQ, xs[0], xs[1]);
+    xs = List::append(List::drop(2, xs), List::cons(y, Nil));
+    n=n-1;
+  end
+
+  return xs[0];
+endmodule
+
+// As above, but for vectors instead of lists
+module mkMergeTree#(MergeMethod m, module#(SizedQueue#(n, t)) mkQ,
+                      Vector#(m, Out#(t)) vec) (Out#(t))
+         provisos (Bits#(t, twidth));
+  let out <- mkMergeTreeList(m, mkQ, Vector::toList(vec));
+  return out;
+endmodule
+
+// =============================================================================
+// Response distributor
+// =============================================================================
+
+module mkResponseDistributor#
+         (function Bit#(TLog#(n)) getKey(t val),
+          module#(SizedQueue#(m, t)) mkQ,
+          Vector#(n, In#(t)) sinks) (In#(t))
+         provisos (Bits#(t, twidth));
+
+  InPort#(t) inPort <- mkInPort;
+  Vector#(n, OutPort#(t)) outPorts <- replicateM(mkOutPort);
+
+  for (Integer i = 0; i < valueOf(n); i=i+1) begin
+    // Put a queue in front of each sink
+    connectUsing(mkQ, outPorts[i].out, sinks[i]);
+
+    // Fill the queue for each sink
+    rule distribute (inPort.canGet && getKey(inPort.value) == fromInteger(i));
+      if (outPorts[i].canPut) begin
+        outPorts[i].put(inPort.value);
+        inPort.get;
+      end
+    endrule
+  end
+
+  // Interface
+  return inPort.in;
 endmodule
 
 endpackage

@@ -88,3 +88,6 @@ export BurstWidth=$(($LogBeatsPerLine+1))
 
 # Log of size of data cache writeback buffer
 export LogDCacheWriteBufferSize=$(($LogBeatsPerLine < 2 ? $LogBeatsPerLine : 2))
+
+# Cores per tile
+export CoresPerTile=$((2**$LogCoresPerTile))

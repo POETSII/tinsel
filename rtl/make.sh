@@ -7,6 +7,7 @@ DEFS="-D 'DeviceFamily=\"$DeviceFamily\"' \
       -D LogThreadsPerCore=$LogThreadsPerCore \
       -D LogInstrsPerCore=$LogInstrsPerCore \
       -D LogCoresPerTile=$LogCoresPerTile \
+      -D CoresPerTile=$CoresPerTile \
       -D LogTilesPerTree=$LogTilesPerTree \
       -D LogWordsPerBeat=$LogWordsPerBeat \
       -D LogBeatsPerLine=$LogBeatsPerLine \

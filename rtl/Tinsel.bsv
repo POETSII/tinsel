@@ -287,7 +287,7 @@ endfunction
 // Currently I/O is limited to a single 32-bit output accessible to
 // RISC-V programs via CSR instructions.
 
-interface Tinsel;
+interface Core;
   interface Out#(DCacheReq) dcacheReqOut;
   interface In#(DCacheResp) dcacheRespIn;
   (* always_ready *)
@@ -350,7 +350,7 @@ endinterface
 // resumption requests for the Write Back stage.
 
 (* synthesize *)
-module tinselCore#(CoreId myId) (Tinsel);
+module mkCore#(CoreId myId) (Core);
 
   staticAssert(`LogThreadsPerCore >= 4, "Number of threads must be >= 16");
 
