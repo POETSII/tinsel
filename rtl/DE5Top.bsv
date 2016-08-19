@@ -4,7 +4,7 @@ package DE5Top;
 // Imports
 // ============================================================================
 
-import Tinsel    :: *;
+import Core      :: *;
 import DCache    :: *;
 import Mem       :: *;
 import DRAM      :: *;
