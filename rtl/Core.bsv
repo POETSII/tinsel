@@ -1,6 +1,6 @@
 // Copyright (c) Matthew Naylor
 
-package Tinsel;
+package Core;
 
 // ============================================================================
 // Imports
