@@ -1,7 +1,9 @@
 #!/bin/bash
 
 # Load config parameters
-. ../config.sh
+while read -r EXPORT; do
+  eval $EXPORT
+done <<< `python ../config.py bash`
 
 DataMemStart=$((2**$LogInstrsPerCore))
 

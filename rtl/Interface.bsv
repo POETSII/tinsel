@@ -9,11 +9,11 @@ package Interface;
 //      be easily created.
 
 // Typical usage is as follows:
-//   * If a module needs an output with control-flow, then it
+//   * If a module needs an output with flow-control, then it
 //     creates an "output port" using mkOutPort.  The module writes
 //     to the port using "port.canPut" and "port.put()" and returns
 //     the "port.out" interface.
-//   * If a module needs an input with control-flow, then it
+//   * If a module needs an input with flow-control, then it
 //     creates an "input port" using mkInPort.  The module reads from
 //     the port using "port.canGet" and "port.get" and returns the
 //     "port.in" interface.
@@ -36,7 +36,7 @@ import Vector    :: *;
 // In & Out interfaces
 // =============================================================================
 
-// These are handshake interfaces with control-flow
+// In & Out interfaces with flow-control
 
 interface Out#(type t);
   (* always_ready *)

@@ -10,7 +10,9 @@ CFLAGS="-march=$ARCH -O2"
 CFILES="main"
 
 # Load config parameters
-. ../config.sh
+while read -r EXPORT; do
+  eval $EXPORT
+done <<< `python ../config.py bash`
 
 # Build object files
 OFILES=""

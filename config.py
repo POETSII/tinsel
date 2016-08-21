@@ -1,5 +1,3 @@
-#!/usr/bin/python
-
 # This file controls the parameters for the circuit generator
 
 import sys
@@ -101,11 +99,21 @@ p["LogDCacheWriteBufferSize"] = (p["LogBeatsPerLine"]
 p["CoresPerTile"] = 2**p["LogCoresPerTile"]
 
 #==============================================================================
-# Emit Parameters
+# Main 
 #==============================================================================
 
-for var in p:
-  if isinstance(p[var], bool):
-    if p[var]: print("-D " + str(var)),
-  else:
-    print("-D " + var + "=" + str(p[var])),
+if len(sys.argv) > 1:
+  mode = sys.argv[1]
+else:
+  print "Usage: config.py <cpp|bash>"
+  sys.exit(-1)
+
+if mode == "cpp":
+  for var in p:
+    if isinstance(p[var], bool):
+      if p[var]: print("-D " + var),
+    else:
+      print("-D " + var + "=" + str(p[var])),
+elif mode == "bash":
+  for var in p:
+    print("export " + var + "=" + str(p[var]))
