@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Obtain config parameters
-DEFS=`python ../config.py`
+DEFS=`python ../config.py cpp`
 
 # Bluespec compiler flags
 BSC="bsc"

@@ -2,7 +2,7 @@
 inline int me()
 {
   int id;
-  asm volatile("csrr %0, 0xf14" : "=r"(id));
+  asm ("csrr %0, 0xf14" : "=r"(id));
   return id;
 }
 
