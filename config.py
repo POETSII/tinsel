@@ -1,54 +1,61 @@
+#!/usr/bin/python
+
 # This file controls the parameters for the circuit generator
+
+import sys
 
 #==============================================================================
 # Configurable parameters
 #==============================================================================
 
+# Intialise parameter map
+p = {}
+
 # The Altera device family being targetted
-export DeviceFamily="Stratix V"
+p["DeviceFamily"] = "'Stratix V'"
 
 # Log of max number of cores
 # (used to determine width of globally unique core id)
-export LogMaxCores=8
+p["LogMaxCores"] = 8
 
 # The number of hardware threads per core
-export LogThreadsPerCore=4
+p["LogThreadsPerCore"] = 4
 
 # The number of 32-bit instructions that fit in a core's instruction memory
-export LogInstrsPerCore=9
+p["LogInstrsPerCore"] = 9
 
 # Log of number of multi-threaded cores per tile
-export LogCoresPerTile=2
+p["LogCoresPerTile"] = 2
 
 # Log of number of tiles per tree
-export LogTilesPerTree=0
+p["LogTilesPerTree"] = 0
 
 # Log of number of 32-bit words in a single memory transfer
-export LogWordsPerBeat=3
+p["LogWordsPerBeat"] = 3
 
 # Log of number of beats in a cache line
-export LogBeatsPerLine=0
+p["LogBeatsPerLine"] = 0
 
 # Log of number of sets per thread in set-associative data cache
-export DCacheLogSetsPerThread=5
+p["DCacheLogSetsPerThread"] = 5
 
 # Log of number of ways per set in set-associative data cache
-export DCacheLogNumWays=2
+p["DCacheLogNumWays"] = 2
 
 # Max number of outstanding DRAM requests permitted
-export DRAMLogMaxInFlight=4
+p["DRAMLogMaxInFlight"] = 4
 
 # DRAM latency in cycles (simulation only)
-export DRAMLatency=20
+p["DRAMLatency"] = 20
 
 # If set to 1, reduces logic usage, but each DRAM port is limited to
 # half throughput (one response every other cycle).  This may be
 # acceptable for various reasons, most notably when using a multi-port
 # front-end to DRAM, e.g. on a Cyclone V board.
-export DRAMPortHalfThroughput=1
+p["DRAMPortHalfThroughput"] = True
 
 # DRAM byte-address width
-export DRAMAddrWidth=30
+p["DRAMAddrWidth"] = 30
 
 #==============================================================================
 # Derived Parameters
@@ -57,37 +64,48 @@ export DRAMAddrWidth=30
 # (These should not be modified.)
 
 # Log of number of 32-bit words per data cache line
-export LogWordsPerLine=$(($LogWordsPerBeat+$LogBeatsPerLine))
+p["LogWordsPerLine"] = p["LogWordsPerBeat"]+p["LogBeatsPerLine"]
 
 # Log of number of bytes per data cache line
-export LogBytesPerLine=$((2+$LogWordsPerLine))
+p["LogBytesPerLine"] = 2+p["LogWordsPerLine"]
 
 # Number of 32-bit words per data cache line
-export WordsPerLine=$((2**$LogWordsPerLine))
+p["WordsPerLine"] = 2**p["LogWordsPerLine"]
 
 # Data cache line size in bits
-export LineSize=$(($WordsPerLine * 32))
+p["LineSize"] = p["WordsPerLine"] * 32
 
 # Number of beats per cache line
-export BeatsPerLine=$((2**$LogBeatsPerLine))
+p["BeatsPerLine"] = 2**p["LogBeatsPerLine"]
 
 # Number of 32-bit words in a memory transfer
-export WordsPerBeat=$((2**$LogWordsPerBeat))
+p["WordsPerBeat"] = 2**p["LogWordsPerBeat"]
 
 # Log of number of bytes per data transfer
-export LogBytesPerBeat=$((2+$LogWordsPerBeat))
+p["LogBytesPerBeat"] = 2+p["LogWordsPerBeat"]
 
 # Number of data bytes in a memory transfer
-export BytesPerBeat=$((2**$LogBytesPerBeat))
+p["BytesPerBeat"] = 2**p["LogBytesPerBeat"]
 
 # Memory transfer bus width in bits
-export BusWidth=$(($WordsPerBeat * 32))
+p["BusWidth"] = p["WordsPerBeat"] * 32
 
 # Longest possible burst transfer is 2^BurstWidth-1
-export BurstWidth=$(($LogBeatsPerLine+1))
+p["BurstWidth"] = p["LogBeatsPerLine"]+1
 
 # Log of size of data cache writeback buffer
-export LogDCacheWriteBufferSize=$(($LogBeatsPerLine < 2 ? $LogBeatsPerLine : 2))
+p["LogDCacheWriteBufferSize"] = (p["LogBeatsPerLine"]
+                                   if p["LogBeatsPerLine"] < 2 else 2)
 
 # Cores per tile
-export CoresPerTile=$((2**$LogCoresPerTile))
+p["CoresPerTile"] = 2**p["LogCoresPerTile"]
+
+#==============================================================================
+# Emit Parameters
+#==============================================================================
+
+for var in p:
+  if isinstance(p[var], bool):
+    if p[var]: print("-D " + str(var)),
+  else:
+    print("-D " + var + "=" + str(p[var])),
