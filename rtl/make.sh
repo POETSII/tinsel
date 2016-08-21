@@ -1,36 +1,7 @@
 #!/bin/bash
 
 # Obtain config parameters
-. ../config.sh
-DEFS="-D 'DeviceFamily=\"$DeviceFamily\"' \
-      -D LogMaxCores=$LogMaxCores \
-      -D LogThreadsPerCore=$LogThreadsPerCore \
-      -D LogInstrsPerCore=$LogInstrsPerCore \
-      -D LogCoresPerTile=$LogCoresPerTile \
-      -D CoresPerTile=$CoresPerTile \
-      -D LogTilesPerTree=$LogTilesPerTree \
-      -D LogWordsPerBeat=$LogWordsPerBeat \
-      -D LogBeatsPerLine=$LogBeatsPerLine \
-      -D LogWordsPerLine=$LogWordsPerLine \
-      -D LogBytesPerLine=$LogBytesPerLine \
-      -D WordsPerLine=$WordsPerLine \
-      -D LineSize=$LineSize \
-      -D BeatsPerLine=$BeatsPerLine \
-      -D WordsPerBeat=$WordsPerBeat \
-      -D LogBytesPerBeat=$LogBytesPerBeat \
-      -D BytesPerBeat=$BytesPerBeat \
-      -D BusWidth=$BusWidth \
-      -D DCacheLogSetsPerThread=$DCacheLogSetsPerThread \
-      -D DCacheLogNumWays=$DCacheLogNumWays \
-      -D LogNumDCaches=$LogNumDCaches \
-      -D DRAMLogMaxInFlight=$DRAMLogMaxInFlight \
-      -D DRAMLatency=$DRAMLatency \
-      -D DRAMAddrWidth=$DRAMAddrWidth \
-      -D BurstWidth=$BurstWidth \
-      -D LogDCacheWriteBufferSize=$LogDCacheWriteBufferSize"
-if [ "$DRAMPortHalfThroughput" == "1" ]; then
-  DEFS="$DEFS -D DRAMPortHalfThroughput"
-fi
+DEFS=`python ../config.py`
 
 # Bluespec compiler flags
 BSC="bsc"

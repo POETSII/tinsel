@@ -25,7 +25,7 @@ typedef Empty DE5Top;
 interface DE5Top;
   interface DRAMExtIfc dramIfc;
   (* always_enabled *)
-  method Bit#(32) coreOut;
+  method Vector#(`CoresPerTile, Bit#(32)) coreOut;
 endinterface
 
 `endif
@@ -74,7 +74,8 @@ module de5Top (DE5Top);
 
   `ifndef SIMULATE
   interface DRAMExtIfc dramIfc = dram.external;
-  method Bit#(32) coreOut = core.out;
+  function Bit#(32) getOut(Core core) = core.out;
+  method Vector#(`CoresPerTile, Bit#(32)) coreOut = map(getOut, cores);
   `endif
 endmodule
 
