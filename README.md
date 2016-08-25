@@ -1,19 +1,172 @@
-Tinsel (working name) is a basic multi-threaded processor implementing
-the 32-bit RISC-V ISA (RV32I).  It's designed for low resource usage
-and high clock rate on modern FPGAs.
+# Tinsel
 
-On Terasic's [DE5-NET](http://de5-net.terasic.com), Tinsel acheives an
-Fmax of 450MHz and uses under 500 ALMs (0.2%).
+**Tinsel** is a **many-core message-passing** machine designed for
+massively parallel computing on an **FPGA cluster**.  It is not
+specific to any particular FPGA board, but the description below
+uses Terasic's [DE5-NET](http://de5-net.terasic.com) for illustration
+purposes.  (This is a fairly high-end board that the
+[CL](http://www.cl.cam.ac.uk/) has in plentiful supply.)
 
-This repo is not intended for general use yet.
+This respository is work-in-progress: many elements are incomplete and
+everything is subject to change!
 
-Directory layout:
+## Contents
 
-  * [rtl](rtl/) -- Bluespec and Verilog RTL designs.
+Like any large system, Tinsel is comprised of several modules:
 
-  * [de5](de5/) -- basic Quartus project for Terasic's
-    [DE5-NET](http://de5-net.terasic.com) that instantiates a single
-    Tinsel core connected to a 400MHz PLL.
+1. [Tinsel Core](#tinsel-core)
+2. [Tinsel Cache](#tinsel-cache)
+3. [Tinsel Router](#tinsel-router)
+4. [Tinsel Mesh](#tinsel-mesh)
+5. [Tinsel Board](#tinsel-board)
 
-  * [software](software/) -- sample C program that runs on
-    Tinsel.
+## Tinsel Core
+
+**Tinsel Core** is a 32-bit **multi-threaded** processor implementing the
+[RISC-V](https://riscv.org/specifications/) ISA (RV32I).
+
+The number of hardware threads must be a power of two and is
+controlled by a sythesis-time parameter `LogThreadsPerCore`.
+
+It employs a generous **9-stage pipeline** to achieve an Fmax in
+excess of 400MHz on the [DE5-NET](http://de5-net.terasic.com), while
+consuming less than 450 LUTs (0.2%).
+
+The pipeline is **hazard-free**: at most one instruction per thread
+can be present in the pipeline at any time.  To achieve **full
+throughput** -- execution of an instruction on every clock cycle -- the
+number of hardware threads must be greater than the pipeline depth.
+The first power of two that satisfies this requirement is 16.
+
+In fact, the requirement is slightly stronger than this: for full
+throughput, there must exist at least 9 **runnable** threads at any time.
+When a thread executes a multi-cycle instruction (such as a DRAM
+load/store or a blocking send/receive), it becomes **suspended** and is
+only made runnable again when the instruction completes.  While
+suspended, a thread is not present in the queue of runnable threads
+from which the scheduler will select the next thread, so does
+not burn CPU cycles.
+
+Increasing `LogThreadsPerCore` will increase the on-chip memory
+usage of the core but not the computational resource.  The
+[DE5-NET](http://de5-net.terasic.com) has over 7MB of on-chip block
+RAM, allowing large numbers of threads if desired.
+
+A 9-stage pipeline is perhaps excessive but incurs little cost on
+FPGA, and there will be no shortage of program threads in the
+massively-parallel applications for which the machine is intended.
+
+The core fetches instructions from a 2-cycle latent **instruction
+memory** implemented using on-chip block RAM.  The size of this memory
+is controlled by the synthesis-time parameter `LogInstrsPerCore`.  All
+threads in a core share the same instruction memory.  In fact, the instruction
+memory is dual-ported and may be shared by two cores.  The initial
+contents of the memory is specified in the FPGA bitstream which can be
+regenerated in seconds during application development.
+
+A globally unique identifier for the currently running thread can be
+obtained from a RISC-V [control/status
+register](https://riscv.org/specifications/privileged-isa/) (CSR
+`0xF14`).  The `Tinsel.h` header file provides a function to read this
+register:
+
+```
+// Return a globally unique id for the calling hardware thread
+inline uint32_t me()
+{
+  uint32_t id;
+  asm("csrr %0, 0xF14" : "=r"(id));
+  return id;
+}
+
+```
+
+A summary of parameters introduced in this section:
+
+  Parameter                 | Description
+  ------------------------- | ------------------------
+  `LogThreadsPerCore`       | Number of hardware threads per core
+  `LogInstrsPerCore`        | Size of each instruction memory
+
+## Tinsel Cache
+
+The [DE5-NET](http://de5-net.terasic.com) contains two DDR3 DIMMs,
+each capable of performing two 64-bit memory operations on every cycle
+of an 800MHz clock (one operation on the rising edge and one on the
+falling edge).  By serial-to-parallel conversion, a single 256-bit
+memory operation can be performed by a single DIMM on every cycle of a
+400MHz core clock.  This means that when a core performs a 32-bit
+load, it potentially throws away 224 of the bits returned by DRAM.  To
+avoid this, we use a **data cache** local to a group of cores, giving
+the illusion of a 32-bit memory while behind-the-scenes transferring
+256-bit **lines** (or larger, see below) between the cache and DRAM.
+
+The cache line size *may* be larger than the DRAM data bus width: lines
+are read and written by the cache in contiguous chunks called
+**beats**.  The width of a beat is defined by the synthesis-time
+parameter `DCacheLogWordsPerBeat` and the width of a line is defined
+by `DCacheLogBeatsPerLine`.  The width of the DRAM data bus
+must equal the width of a cache beat.
+
+The number of cores sharing a cache is controlled by the
+synthesis-time parameter `LogCoresPerDCache`.  A sensible value for
+this parameter is four, based on the observation that a RISC core will
+typically issue a memory instruction once in every four instructions.
+For low-bandwidth applications, the value might be increased to eight
+or sixteen.
+
+**Tinsel Cache** is an *N*-way **set-associative write-back** cache.
+It is designed to serve one or more highly-threaded cores, where high
+throughput and high Fmax are more important than low latency.  It
+employs a hash function that appends the thread id and some number of
+address bits.  This means that cache lines are **not shared** between
+threads.  Provided there is good spatial and temporal locality
+*within* each thread, the full bandwidth of a single
+[DE5-NET](http://de5-net.terasic.com) SODIMM will be saturated by 32
+cores at 400MHz (assuming one memory access in every four cyles per
+core).
+
+The cache pipeline is **hazard-free**: at most one request per thread
+is present in the pipeline at any time which, combined with the
+no-sharing property above, implies that in-flight requests 
+always operate on different lines.  To allow cores to meet this
+assumption, store responses are issued in addition to load responses.
+
+The cache implements a low-cost **coherence mechanism**.  When a
+thread issues a `fence` instruction, all cache lines for that thread are
+invalidated and all dirty lines are written out to DRAM.  If a thread
+wishes to make its writes visible to other threads then it issues a
+`fence`.  Similarly, if a thread wishes to make sure it can read the
+latest values written by other threads then it also issues a `fence`.
+This scheme meets the [WMO without local dependencies]
+(https://github.com/CTSRD-CHERI/axe/raw/master/doc/manual.pdf)
+consistency model, where a thread may observe operations by
+another thread out-of-order but reorderings over a `fence` are
+forbidden.
+
+`Tinsel.h` defines a `fence()` function as follows.
+
+```
+// Memory fence: memory operations can't appear to be reordered over this
+inline void fence()
+{
+  asm volatile("fence");
+}
+
+```
+
+There is intentionally no support for **atomic** memory operations.
+Tinsel is a message-passing machine and it is not clear that atomics
+are needed.  For example, instead of gaining exclusive write access to
+a block of shared memory in order to perform an atomic update, a
+message can be sent to the owner of the block (by software) telling it
+to perform the update.
+
+The following parameters control the structure of cache.
+
+  Parameter                 | Description
+  ------------------------- | ------------------------
+  `DCacheLogWordsPerBeat`   | Number of 32-bit words per beat
+  `DCacheLogBeatsPerLine`   | Beats per cache line
+  `DCacheLogNumWays`        | Cache lines in each associative set
+  `DCacheLogSetsPerThread`  | Associative sets per thread
