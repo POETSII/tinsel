@@ -311,6 +311,9 @@ module mkDCache#(DCacheId myId) (DCache);
   Reg#(BeatIndex) lineIndexReg <- mkRegU;
 
   // Use wires to issue line access in dataMem
+  // (This is a potential timing bottleneck for large beat widths:
+  // the wider the beat, the more block RAMs needed to implement data
+  // memory and the higher the fan-out of the address/write-enable lines.)
   rule lineAccessUnit;
     lineWriteReqReg <= lineWriteReqWire;
     lineIndexReg <= lineReadIndexWire | lineWriteIndexWire;
