@@ -101,36 +101,50 @@ avoid this, we use a **data cache** local to a group of cores, giving
 the illusion of a 32-bit memory while behind-the-scenes transferring
 256-bit **lines** (or larger, see below) between the cache and DRAM.
 
-The cache line size *may* be larger than the DRAM data bus width: lines
-are read and written by the cache in contiguous chunks called
-**beats**.  The width of a beat is defined by the synthesis-time
-parameter `DCacheLogWordsPerBeat` and the width of a line is defined
-by `DCacheLogBeatsPerLine`.  The width of the DRAM data bus
-must equal the width of a cache beat.
+The cache line size must be larger than or equal to the DRAM data bus
+width: lines are read and written by the cache in contiguous chunks
+called **beats**.  The width of a beat is defined by
+`DCacheLogWordsPerBeat` and the width of a line by
+`DCacheLogBeatsPerLine`.  The width of the DRAM data bus must equal
+the width of a cache beat.
 
 The number of cores sharing a cache is controlled by the
 synthesis-time parameter `LogCoresPerDCache`.  A sensible value for
-this parameter is four, based on the observation that a RISC core will
-typically issue a memory instruction once in every four instructions.
-For low-bandwidth applications, the value might be increased to eight
-or sixteen.
+this parameter is two (giving four cores per cache), based on the
+observation that a typical RISC workload will issue a memory
+instruction once in every four instructions.
 
-**Tinsel Cache** is an *N*-way **set-associative write-back** cache.
+The number of caches sharing a DRAM is controlled by
+`LogDCachesPerDRAM`.  A sensible value for this parameter on the
+[DE5-NET](http://de5-net.terasic.com) with a 400MHz core clock might
+be three, which combined with a `LogCoresPerDCache` of two, gives 32
+cores per DRAM: assuming one cache miss in every eight accesses (ratio
+between 32-bit word and 256-bit DRAM bus) and one memory instruction
+in every four cycles per core, the full bandwidth will be saturated by
+32 cores (1/8 \* 1/4 = 1/32).
+
+For applications with lower memory-bandwidth requirements, the value
+of `LogCoresPerDCache` might be increased to three, giving 64 cores
+per DRAM.  (As a point of comparison,
+[SpiNNaker](http://apt.cs.manchester.ac.uk/projects/SpiNNaker/) shares
+a 1.6GB/s DRAM amongst 16 x 200MHz cores, giving 5MB/s per million
+core-cycles.  For the same bandwidth per core-cycles, each 12.8GB/s
+DIMM on the [DE5-NET](http://de5-net.terasic.com) could serve 64 x
+400MHz cores.)
+
+The cache is an *N*-way **set-associative write-back** cache.
 It is designed to serve one or more highly-threaded cores, where high
 throughput and high Fmax are more important than low latency.  It
 employs a hash function that appends the thread id and some number of
 address bits.  This means that cache lines are **not shared** between
-threads.  Provided there is good spatial and temporal locality
-*within* each thread, the full bandwidth of a single
-[DE5-NET](http://de5-net.terasic.com) SODIMM will be saturated by 32
-cores at 400MHz (assuming one memory access in every four cyles per
-core).
+threads (and consequently, there is no aliasing between threads).
 
 The cache pipeline is **hazard-free**: at most one request per thread
 is present in the pipeline at any time which, combined with the
-no-sharing property above, implies that in-flight requests 
-always operate on different lines.  To allow cores to meet this
-assumption, store responses are issued in addition to load responses.
+no-sharing property above, implies that in-flight requests always
+operate on different lines, simplifying the implementation.  To allow
+cores to meet this assumption, store responses are issued in addition
+to load responses.
 
 The cache implements a low-cost **coherence mechanism**.  When a
 thread issues a `fence` instruction, all cache lines for that thread are
@@ -162,10 +176,13 @@ a block of shared memory in order to perform an atomic update, a
 message can be sent to the owner of the block (by software) telling it
 to perform the update.
 
-The following parameters control the structure of cache.
+The following parameters control the number of caches and the
+structure of each cache.
 
   Parameter                 | Description
   ------------------------- | ------------------------
+  `LogCoresPerDCache`       | Cores per cache
+  `LogDCachesPerDRAM`       | Caches per DRAM
   `DCacheLogWordsPerBeat`   | Number of 32-bit words per beat
   `DCacheLogBeatsPerLine`   | Beats per cache line
   `DCacheLogNumWays`        | Cache lines in each associative set
