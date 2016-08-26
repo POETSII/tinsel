@@ -47,11 +47,6 @@ suspended, a thread is not present in the queue of runnable threads
 from which the scheduler will select the next thread, so does
 not burn CPU cycles.
 
-Increasing `LogThreadsPerCore` will increase the on-chip memory
-usage of the core but not the computational resource.  The
-[DE5-NET](http://de5-net.terasic.com) has over 7MB of on-chip block
-RAM, allowing large numbers of threads if desired.
-
 A 9-stage pipeline is perhaps excessive but incurs little cost on
 FPGA, and there will be no shortage of program threads in the
 massively-parallel applications for which the machine is intended.
