@@ -127,8 +127,8 @@ For applications with lower memory-bandwidth requirements, the value
 of `LogCoresPerDCache` might be increased to three, giving 64 cores
 per DRAM.  (As a point of comparison,
 [SpiNNaker](http://apt.cs.manchester.ac.uk/projects/SpiNNaker/) shares
-a 1.6GB/s DRAM amongst 16 x 200MHz cores, giving 5MB/s per million
-core-cycles.  For the same bandwidth per core-cycles, each 12.8GB/s
+a 1.6GB/s DRAM amongst 16 x 200MHz cores, giving 2 bytes per
+core-cycle.  For the same data width per core-cycle, each 12.8GB/s
 DIMM on the [DE5-NET](http://de5-net.terasic.com) could serve 64 x
 400MHz cores.)
 
