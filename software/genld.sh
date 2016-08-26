@@ -3,7 +3,7 @@
 # Load config parameters
 while read -r EXPORT; do
   eval $EXPORT
-done <<< `python ../config.py bash`
+done <<< `python ../config.py envs`
 
 DataMemStart=$((2**$LogInstrsPerCore))
 
