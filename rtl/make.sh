@@ -1,11 +1,11 @@
 #!/bin/bash
 
 # Obtain config parameters
-DEFS=`python ../config.py cpp`
+DEFS=`python ../config.py defs`
 
 # Bluespec compiler flags
 BSC="bsc"
-BSCFLAGS="-wait-for-license -suppress-warnings S0015 $DEFS"
+BSCFLAGS="-wait-for-license -suppress-warnings S0015 $DEFS "
 
 case "$1" in
   sim)

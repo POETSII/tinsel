@@ -3,6 +3,12 @@
 import sys
 
 #==============================================================================
+# Helper functions
+#==============================================================================
+
+def quoted(s): return "'\"" + s + "\"'"
+
+#==============================================================================
 # Configurable parameters
 #==============================================================================
 
@@ -10,7 +16,7 @@ import sys
 p = {}
 
 # The Altera device family being targetted
-p["DeviceFamily"] = "'Stratix V'"
+p["DeviceFamily"] = quoted("Stratix V")
 
 # Log of max number of cores
 # (used to determine width of globally unique core id)
@@ -35,7 +41,7 @@ p["LogWordsPerBeat"] = 3
 p["LogBeatsPerLine"] = 0
 
 # Log of number of sets per thread in set-associative data cache
-p["DCacheLogSetsPerThread"] = 5
+p["DCacheLogSetsPerThread"] = 3
 
 # Log of number of ways per set in set-associative data cache
 p["DCacheLogNumWays"] = 2
@@ -105,15 +111,15 @@ p["CoresPerTile"] = 2**p["LogCoresPerTile"]
 if len(sys.argv) > 1:
   mode = sys.argv[1]
 else:
-  print "Usage: config.py <cpp|bash>"
+  print "Usage: config.py <defs|envs>"
   sys.exit(-1)
 
-if mode == "cpp":
+if mode == "defs":
   for var in p:
     if isinstance(p[var], bool):
       if p[var]: print("-D " + var),
     else:
       print("-D " + var + "=" + str(p[var])),
-elif mode == "bash":
+elif mode == "envs":
   for var in p:
     print("export " + var + "=" + str(p[var]))

@@ -12,7 +12,7 @@ CFILES="main"
 # Load config parameters
 while read -r EXPORT; do
   eval $EXPORT
-done <<< `python ../config.py bash`
+done <<< `python ../config.py envs`
 
 # Build object files
 OFILES=""
