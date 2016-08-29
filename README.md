@@ -285,7 +285,6 @@ are:
   Parameter             | Description
   --------------------- | -----------
   `LogCoresPerRouter`   | Cores per router
-  `LogWordsPerPacket`   | Number of 32-bit words per packet
   `LogMeshHeight`       | Height of 2D mesh of routers within an FPGA
   `LogMeshWidth`        | Width of 2D mesh of routers within an FPGA
   `NumWordsPerPacket`   | Number of 32-bit words in a packet
