@@ -1,21 +1,39 @@
 #!/bin/bash
 
-# Obtain config parameters
+# Obtain config parameters as compile flags
 DEFS=`python ../config.py defs`
+
+# Load config parameters into shell variables
+while read -r EXPORT; do
+  eval $EXPORT
+done <<< `python ../config.py envs`
 
 # Bluespec compiler flags
 BSC="bsc"
 BSCFLAGS="-wait-for-license -suppress-warnings S0015 $DEFS "
 
-case "$1" in
-  sim)
+# Determine top-level module
+case `eval echo $TargetBoard` in
+  DE5)
     TOPFILE=DE5Top.bsv
     TOPMOD=de5Top
+  ;;
+  SoCKit)
+    TOPFILE=SoCKitTop.bsv
+    TOPMOD=sockitTop
+  ;;
+  *)
+    echo "Unknown target board '$TargetBoard'"
+    exit
+  ;;
+esac
+
+# Determine compiler options
+case "$1" in
+  sim)
     BSCFLAGS="$BSCFLAGS -D SIMULATE"
   ;;
   verilog)
-    TOPFILE=DE5Top.bsv
-    TOPMOD=de5Top
     SYNTH=1
   ;;
   tracegen)

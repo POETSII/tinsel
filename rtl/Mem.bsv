@@ -11,7 +11,7 @@ import Queue :: *;
 // ============================================================================
 
 // Unique identifier per data cache
-typedef Bit#(`LogDCachesPerDRAM) DCacheId;
+typedef Bit#(`LogDCachesPerDRAMPort) DCacheId;
 
 // Memory address
 typedef TSub#(30, `LogWordsPerBeat) MemAddrNumBits;

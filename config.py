@@ -9,60 +9,13 @@ import sys
 def quoted(s): return "'\"" + s + "\"'"
 
 # Target board must be "de5" or "sockit"
-target = "de5"
-
-#==============================================================================
-# Configurable parameters
-#==============================================================================
+target = "sockit"
 
 # Intialise parameter map
 p = {}
 
-# Log of max number of cores
-# (used to determine width of globally unique core id)
-p["LogMaxCores"] = 8
-
-# The number of hardware threads per core
-p["LogThreadsPerCore"] = 4
-
-# The number of 32-bit instructions that fit in a core's instruction memory
-p["LogInstrsPerCore"] = 9
-
-# Log of number of multi-threaded cores sharing a DCache
-p["LogCoresPerDCache"] = 2
-
-# Log of number of caches per DRAM
-p["LogDCachesPerDRAM"] = 0
-
-# Log of number of 32-bit words in a single memory transfer
-p["LogWordsPerBeat"] = 3
-
-# Log of number of beats in a cache line
-p["LogBeatsPerLine"] = 0
-
-# Log of number of sets per thread in set-associative data cache
-p["DCacheLogSetsPerThread"] = 3
-
-# Log of number of ways per set in set-associative data cache
-p["DCacheLogNumWays"] = 2
-
-# Max number of outstanding DRAM requests permitted
-p["DRAMLogMaxInFlight"] = 4
-
-# DRAM latency in cycles (simulation only)
-p["DRAMLatency"] = 20
-
-# If set to 1, reduces logic usage, but each DRAM port is limited to
-# half throughput (one response every other cycle).  This may be
-# acceptable for various reasons, most notably when using a multi-port
-# front-end to DRAM, e.g. on a Cyclone V board.
-p["DRAMPortHalfThroughput"] = False
-
-# DRAM byte-address width
-p["DRAMAddrWidth"] = 30
-
 #==============================================================================
-# DE5-specific choices
+# DE5 config
 #==============================================================================
 
 if target == "de5":
@@ -71,7 +24,54 @@ if target == "de5":
   p["DeviceFamily"] = quoted("Stratix V")
 
   # FPGA board being targetted
-  p["DE5"] = 1
+  p["TargetBoard"] = quoted("DE5")
+
+  # Log of max number of cores
+  # (used to determine width of globally unique core id)
+  p["LogMaxCores"] = 8
+
+  # The number of hardware threads per core
+  p["LogThreadsPerCore"] = 4
+
+  # The number of 32-bit instructions that fit in a core's instruction memory
+  p["LogInstrsPerCore"] = 9
+
+  # Log of number of multi-threaded cores sharing a DCache
+  p["LogCoresPerDCache"] = 2
+
+  # Number of DRAM ports on each DRAM
+  # (e.g. when using Altera's MPFE)
+  p["NumDRAMPorts"] = 1
+
+  # Log of number of caches per DRAM port
+  p["LogDCachesPerDRAMPort"] = 0
+
+  # Log of number of 32-bit words in a single memory transfer
+  p["LogWordsPerBeat"] = 3
+
+  # Log of number of beats in a cache line
+  p["LogBeatsPerLine"] = 0
+
+  # Log of number of sets per thread in set-associative data cache
+  p["DCacheLogSetsPerThread"] = 3
+
+  # Log of number of ways per set in set-associative data cache
+  p["DCacheLogNumWays"] = 2
+
+  # Max number of outstanding DRAM requests permitted
+  p["DRAMLogMaxInFlight"] = 4
+
+  # DRAM latency in cycles (simulation only)
+  p["DRAMLatency"] = 20
+
+  # If true, reduces logic usage, but each DRAM port is limited to
+  # half throughput (one response every other cycle).  This may be
+  # acceptable for various reasons, most notably when using a multi-port
+  # front-end to DRAM, e.g. on a Cyclone V board.
+  p["DRAMPortHalfThroughput"] = False
+
+  # DRAM byte-address width
+  p["DRAMAddrWidth"] = 30
 
 #==============================================================================
 # SoCkit-specific choices
@@ -83,10 +83,54 @@ if target == "sockit":
   p["DeviceFamily"] = quoted("Cyclone V")
 
   # FPGA board being targetted
-  p["SoCKit"] = 1
+  p["TargetBoard"] = quoted("SoCKit")
 
-  # Override defaults
+  # Log of max number of cores
+  # (used to determine width of globally unique core id)
+  p["LogMaxCores"] = 4
+
+  # The number of hardware threads per core
+  p["LogThreadsPerCore"] = 4
+
+  # The number of 32-bit instructions that fit in a core's instruction memory
+  p["LogInstrsPerCore"] = 9
+
+  # Log of number of multi-threaded cores sharing a DCache
+  p["LogCoresPerDCache"] = 2
+
+  # Number of DRAM ports on each DRAM
+  # (e.g. when using Altera's MPFE)
+  p["NumDRAMPorts"] = 4
+
+  # Log of number of caches per DRAM port
+  p["LogDCachesPerDRAMPort"] = 0
+
+  # Log of number of 32-bit words in a single memory transfer
+  p["LogWordsPerBeat"] = 1
+
+  # Log of number of beats in a cache line
+  p["LogBeatsPerLine"] = 1
+
+  # Log of number of sets per thread in set-associative data cache
+  p["DCacheLogSetsPerThread"] = 2
+
+  # Log of number of ways per set in set-associative data cache
+  p["DCacheLogNumWays"] = 2
+
+  # Max number of outstanding DRAM requests permitted
+  p["DRAMLogMaxInFlight"] = 4
+
+  # DRAM latency in cycles (simulation only)
+  p["DRAMLatency"] = 20
+
+  # If true, reduces logic usage, but each DRAM port is limited to
+  # half throughput (one response every other cycle).  This may be
+  # acceptable for various reasons, most notably when using a multi-port
+  # front-end to DRAM, e.g. on a Cyclone V board.
   p["DRAMPortHalfThroughput"] = True
+
+  # DRAM byte-address width
+  p["DRAMAddrWidth"] = 30
 
 #==============================================================================
 # Derived Parameters
