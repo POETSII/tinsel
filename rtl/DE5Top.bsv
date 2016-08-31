@@ -38,8 +38,8 @@ module de5Top (DE5Top);
   // Components
   let dram   <- mkDRAM;
   let dcache <- mkDCache(0);
-  Vector#(`CoresPerTile, Core) cores;
-  for (Integer i = 0; i < `CoresPerTile; i=i+1)
+  Vector#(`CoresPerDCache, Core) cores;
+  for (Integer i = 0; i < `CoresPerDCache; i=i+1)
     cores[i] <- mkCore(fromInteger(i));
   
   // Connect cores to data cache request line
@@ -50,7 +50,7 @@ module de5Top (DE5Top);
   connectUsing(mkUGQueue, dcacheReqs, dcache.reqIn);
 
   // Connect data cache response line to cores
-  function Bit#(`LogCoresPerTile) getDCacheRespKey(DCacheResp resp) =
+  function Bit#(`LogCoresPerDCache) getDCacheRespKey(DCacheResp resp) =
     truncateLSB(resp.id);
   function getDCacheRespIn(core) = core.dcacheRespIn;
   let dcacheResps <- mkResponseDistributor(
@@ -68,7 +68,7 @@ module de5Top (DE5Top);
                  dram.storeResp, dcache.storeRespIn);
 
   rule display;
-    for (Integer i = 0; i < `CoresPerTile; i=i+1)
+    for (Integer i = 0; i < `CoresPerDCache; i=i+1)
       $display(i, " @ ", $time, ": ", cores[i].out);
   endrule
 

@@ -3,10 +3,13 @@
 import sys
 
 #==============================================================================
-# Helper functions
+# Prelude
 #==============================================================================
 
 def quoted(s): return "'\"" + s + "\"'"
+
+# Target board must be "de5" or "sockit"
+target = "de5"
 
 #==============================================================================
 # Configurable parameters
@@ -14,9 +17,6 @@ def quoted(s): return "'\"" + s + "\"'"
 
 # Intialise parameter map
 p = {}
-
-# The Altera device family being targetted
-p["DeviceFamily"] = quoted("Stratix V")
 
 # Log of max number of cores
 # (used to determine width of globally unique core id)
@@ -28,11 +28,11 @@ p["LogThreadsPerCore"] = 4
 # The number of 32-bit instructions that fit in a core's instruction memory
 p["LogInstrsPerCore"] = 9
 
-# Log of number of multi-threaded cores per tile
-p["LogCoresPerTile"] = 2
+# Log of number of multi-threaded cores sharing a DCache
+p["LogCoresPerDCache"] = 2
 
-# Log of number of tiles per tree
-p["LogTilesPerTree"] = 0
+# Log of number of caches per DRAM
+p["LogDCachesPerDRAM"] = 0
 
 # Log of number of 32-bit words in a single memory transfer
 p["LogWordsPerBeat"] = 3
@@ -56,10 +56,37 @@ p["DRAMLatency"] = 20
 # half throughput (one response every other cycle).  This may be
 # acceptable for various reasons, most notably when using a multi-port
 # front-end to DRAM, e.g. on a Cyclone V board.
-p["DRAMPortHalfThroughput"] = True
+p["DRAMPortHalfThroughput"] = False
 
 # DRAM byte-address width
 p["DRAMAddrWidth"] = 30
+
+#==============================================================================
+# DE5-specific choices
+#==============================================================================
+
+if target == "de5":
+
+  # The Altera device family being targetted
+  p["DeviceFamily"] = quoted("Stratix V")
+
+  # FPGA board being targetted
+  p["DE5"] = 1
+
+#==============================================================================
+# SoCkit-specific choices
+#==============================================================================
+
+if target == "sockit":
+
+  # The Altera device family being targetted
+  p["DeviceFamily"] = quoted("Cyclone V")
+
+  # FPGA board being targetted
+  p["SoCKit"] = 1
+
+  # Override defaults
+  p["DRAMPortHalfThroughput"] = True
 
 #==============================================================================
 # Derived Parameters
@@ -101,8 +128,8 @@ p["BurstWidth"] = p["LogBeatsPerLine"]+1
 p["LogDCacheWriteBufferSize"] = (p["LogBeatsPerLine"]
                                    if p["LogBeatsPerLine"] < 2 else 2)
 
-# Cores per tile
-p["CoresPerTile"] = 2**p["LogCoresPerTile"]
+# Cores per DCache
+p["CoresPerDCache"] = 2**p["LogCoresPerDCache"]
 
 #==============================================================================
 # Main 
