@@ -118,7 +118,7 @@ import Interface :: *;
 // ============================================================================
 
 // A single DCache may be shared my several multi-threaded cores
-typedef TAdd#(`LogThreadsPerCore, `LogCoresPerTile) DCacheClientIdBits;
+typedef TAdd#(`LogThreadsPerCore, `LogCoresPerDCache) DCacheClientIdBits;
 typedef Bit#(DCacheClientIdBits) DCacheClientId;
 
 // Number of ways
