@@ -159,18 +159,18 @@ import Interface :: *;
 // On FPGA, external interface is an Avalon master
 (* always_ready, always_enabled *)
 interface DRAMExtIfc;
-  method Action m0(
+  method Action m(
     Bit#(`BusWidth) readdata,
     Bool readdatavalid,
     Bool waitrequest,
     Bool writeresponsevalid,
     Bit#(2) response
   );
-  method Bit#(`BusWidth) m0_writedata;
-  method Bit#(`DRAMAddrWidth) m0_address;
-  method Bool m0_read;
-  method Bool m0_write;
-  method Bit#(`BurstWidth) m0_burstcount;
+  method Bit#(`BusWidth) m_writedata;
+  method Bit#(`DRAMAddrWidth) m_address;
+  method Bool m_read;
+  method Bool m_write;
+  method Bit#(`BurstWidth) m_burstcount;
 endinterface
 
 // In-flight request
@@ -206,10 +206,12 @@ module mkDRAM (DRAM);
   Reg#(Bit#(`BusWidth)) writeData <- mkRegU;
   Reg#(Bool) doRead <- mkReg(False);
   Reg#(Bool) doWrite <- mkReg(False);
+  Reg#(Bit#(`BurstWidth)) burstReg <- mkReg(0);
 
   // Wires
   Wire#(Bool) waitRequest <- mkBypassWire;
   PulseWire putLoad <- mkPulseWire;
+  Wire#(Bit#(`BurstWidth)) burstWire <- mkDWire(0);
   PulseWire putStore <- mkPulseWire;
   PulseWire consumeLoadResp <- mkPulseWire;
   PulseWire consumeStoreResp <- mkPulseWire;
@@ -224,12 +226,15 @@ module mkDRAM (DRAM);
     if (putLoad) begin
       doRead <= True;
       doWrite <= False;
+      burstReg <= burstWire;
     end else if (putStore) begin
       doRead <= False;
       doWrite <= True;
+      burstReg <= burstWire;
     end else if (!waitRequest) begin
       doRead <= False;
       doWrite <= False;
+      burstReg <= 0;
     end
   endrule
 
@@ -240,6 +245,7 @@ module mkDRAM (DRAM);
       address   <= req.addr;
       writeData <= req.data;
       if (req.isStore) putStore.send; else putLoad.send;
+      burstWire <= req.burst;
       DRAMInFlightReq inflightReq;
       inflightReq.id = req.id;
       inflightReq.isStore = req.isStore;
@@ -277,19 +283,19 @@ module mkDRAM (DRAM);
 
   // External (Avalon master) interface
   interface DRAMExtIfc external;
-    method Action m0(readdata,readdatavalid,waitrequest,
+    method Action m(readdata,readdatavalid,waitrequest,
                        writeresponsevalid, response);
       if (readdatavalid || writeresponsevalid) respBuffer.enq(readdata);
       waitRequest <= waitrequest;
     endmethod
-    method m0_writedata  = writeData;
-    method m0_address;
+    method m_writedata  = writeData;
+    method m_address;
       Bit#(32) byteAddress = {address, 0};
       return truncateLSB(byteAddress);
     endmethod
-    method m0_read       = doRead;
-    method m0_write      = doWrite;
-    method m0_burstcount = 1;
+    method m_read       = doRead;
+    method m_write      = doWrite;
+    method m_burstcount = burstReg;
   endinterface
 endmodule
 
