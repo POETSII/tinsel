@@ -189,17 +189,10 @@ module mkDRAM (DRAM);
   OutPort#(MemLoadResp)  loadRespPort  <- mkOutPort;
 
   // Queues
-`ifdef DRAMPortHalfThroughput
-  SizedQueue#(`DRAMLogMaxInFlight, DRAMInFlightReq) inFlight <-
-    mkUGSizedQueue;
-  SizedQueue#(`DRAMLogMaxInFlight, Bit#(`BusWidth)) respBuffer <-
-    mkUGSizedQueue;
-`else
   SizedQueue#(`DRAMLogMaxInFlight, DRAMInFlightReq) inFlight <-
     mkUGSizedQueuePrefetch;
   SizedQueue#(`DRAMLogMaxInFlight, Bit#(`BusWidth)) respBuffer <-
     mkUGSizedQueuePrefetch;
-`endif
 
   // Registers
   Reg#(MemAddr) address <- mkRegU;
