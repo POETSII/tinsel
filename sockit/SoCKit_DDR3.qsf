@@ -1102,14 +1102,16 @@ set_global_assignment -name STRATIX_DEVICE_IO_STANDARD "2.5 V"
 
 
 
+set_global_assignment -name MIN_CORE_JUNCTION_TEMP 0
+set_global_assignment -name MAX_CORE_JUNCTION_TEMP 85
+set_global_assignment -name OPTIMIZATION_MODE BALANCED
+set_global_assignment -name SEED 2
+set_global_assignment -name MIF_FILE InstrMem.mif
+set_global_assignment -name MIF_FILE RunQueue.mif
 set_global_assignment -name VERILOG_FILE ../rtl/AlteraBlockRam.v
 set_global_assignment -name VERILOG_FILE ../rtl/mkCore.v
 set_global_assignment -name VERILOG_FILE ../rtl/mkDCache.v
 set_global_assignment -name VERILOG_FILE ../rtl/sockitTop.v
 set_global_assignment -name QIP_FILE DDR3_Qsys/synthesis/submodules/DDR3_Qsys_pll_qsys.qip
 set_global_assignment -name QIP_FILE DDR3_Qsys/synthesis/DDR3_Qsys.qip
-set_global_assignment -name MIN_CORE_JUNCTION_TEMP 0
-set_global_assignment -name MAX_CORE_JUNCTION_TEMP 85
-set_global_assignment -name OPTIMIZATION_MODE "HIGH PERFORMANCE EFFORT"
-set_global_assignment -name SEED 2
 set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
