@@ -14,6 +14,13 @@ while read -r EXPORT; do
   eval $EXPORT
 done <<< `python ../config.py envs`
 
+# Determine location of quartus project
+if [ `eval echo $TargetBoard` == "SoCKit" ]; then
+  QPDIR=../sockit
+else
+  QPDIR=../de5
+fi
+
 # Build object files
 OFILES=""
 for F in $CFILES
@@ -38,8 +45,8 @@ export PATH=../scripts:$PATH
 
 # Convert Intel Hex files to Altera mif files
 # (used to initialise BRAM contents in Quartus)
-ihex-to-img.py InstrMem.ihex mif 0 4 $InstrBytes > ../de5/InstrMem.mif
-#ihex-to-img.py DataMem.ihex mif 0 4 $DataBytes > ../de5/DataMem.mif
+ihex-to-img.py InstrMem.ihex mif 0 4 $InstrBytes > $QPDIR/InstrMem.mif
+#ihex-to-img.py DataMem.ihex mif 0 4 $DataBytes > $QPDIR/DataMem.mif
 
 # Convert Intel Hex files to Bluesim hex files
 # (used to initialise BRAM contents in Bluesim)
@@ -54,4 +61,4 @@ done > ../rtl/RunQueue.hex
 
 # Generate RunQueue.mif
 Width=$(($LogInstrsPerCore + $LogThreadsPerCore + 2))
-hex-to-mif.py ../rtl/RunQueue.hex $Width > ../de5/RunQueue.mif
+hex-to-mif.py ../rtl/RunQueue.hex $Width > $QPDIR/RunQueue.mif

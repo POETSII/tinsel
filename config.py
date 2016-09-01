@@ -39,12 +39,8 @@ if target == "de5":
   # Log of number of multi-threaded cores sharing a DCache
   p["LogCoresPerDCache"] = 2
 
-  # Number of DRAM ports on each DRAM
-  # (e.g. when using Altera's MPFE)
-  p["NumDRAMPorts"] = 1
-
   # Log of number of caches per DRAM port
-  p["LogDCachesPerDRAMPort"] = 0
+  p["LogDCachesPerDRAM"] = 0
 
   # Log of number of 32-bit words in a single memory transfer
   p["LogWordsPerBeat"] = 3
@@ -63,12 +59,6 @@ if target == "de5":
 
   # DRAM latency in cycles (simulation only)
   p["DRAMLatency"] = 20
-
-  # If true, reduces logic usage, but each DRAM port is limited to
-  # half throughput (one response every other cycle).  This may be
-  # acceptable for various reasons, most notably when using a multi-port
-  # front-end to DRAM, e.g. on a Cyclone V board.
-  p["DRAMPortHalfThroughput"] = False
 
   # DRAM byte-address width
   p["DRAMAddrWidth"] = 30
@@ -98,18 +88,14 @@ if target == "sockit":
   # Log of number of multi-threaded cores sharing a DCache
   p["LogCoresPerDCache"] = 2
 
-  # Number of DRAM ports on each DRAM
-  # (e.g. when using Altera's MPFE)
-  p["NumDRAMPorts"] = 4
-
   # Log of number of caches per DRAM port
-  p["LogDCachesPerDRAMPort"] = 0
+  p["LogDCachesPerDRAM"] = 2
 
   # Log of number of 32-bit words in a single memory transfer
-  p["LogWordsPerBeat"] = 1
+  p["LogWordsPerBeat"] = 2
 
   # Log of number of beats in a cache line
-  p["LogBeatsPerLine"] = 1
+  p["LogBeatsPerLine"] = 0
 
   # Log of number of sets per thread in set-associative data cache
   p["DCacheLogSetsPerThread"] = 2
@@ -122,12 +108,6 @@ if target == "sockit":
 
   # DRAM latency in cycles (simulation only)
   p["DRAMLatency"] = 20
-
-  # If true, reduces logic usage, but each DRAM port is limited to
-  # half throughput (one response every other cycle).  This may be
-  # acceptable for various reasons, most notably when using a multi-port
-  # front-end to DRAM, e.g. on a Cyclone V board.
-  p["DRAMPortHalfThroughput"] = True
 
   # DRAM byte-address width
   p["DRAMAddrWidth"] = 30
@@ -174,6 +154,9 @@ p["LogDCacheWriteBufferSize"] = (p["LogBeatsPerLine"]
 
 # Cores per DCache
 p["CoresPerDCache"] = 2**p["LogCoresPerDCache"]
+
+# Caches per DRAM
+p["DCachesPerDRAM"] = 2**p["LogDCachesPerDRAM"]
 
 #==============================================================================
 # Main 
