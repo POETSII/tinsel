@@ -7,8 +7,7 @@ uses Terasic's [DE5-NET](http://de5-net.terasic.com) for illustration
 purposes.  (This is a fairly high-end board that the
 [CL](http://www.cl.cam.ac.uk/) has in plentiful supply.)
 
-This respository is work-in-progress: many elements are incomplete and
-everything is subject to change!
+(This respository is work-in-progress.)
 
 ## Contents
 
@@ -16,8 +15,7 @@ Like any large system, Tinsel is comprised of several modules:
 
 1. [Tinsel Core](#tinsel-core)
 2. [Tinsel Cache](#tinsel-cache)
-3. [Tinsel Router](#tinsel-router)
-4. [Tinsel Board](#tinsel-board)
+3. [Tinsel Mailbox](#tinsel-mailbox)
 
 ## Tinsel Core
 
@@ -182,114 +180,6 @@ structure of each cache.
   `DCacheLogNumWays`        | Cache lines in each associative set
   `DCacheLogSetsPerThread`  | Associative sets per thread
 
-## Tinsel Router
+## Tinsel Mailbox
 
-A **2D mesh** of **routers** implements the intra-FPGA communication
-fabric, enabling any thread to send a **packet** to any other thread
-on the same FPGA.
-
-<img src="doc/img/routers.png"></img>
-
-Each router has five bi-directional links: *north*, *south*, *east*
-and *west*, and a link to a group of *local* cores.  The width and
-height of the 2D mesh is defined by synthesis-time parameters
-`LogMeshWidth` and `LogMeshHeight`, and the number of cores local to
-each router is defined by `LogCoresPerRouter`.
-
-Packets have a **fixed-size** defined by `NumWordsPerPacket`.  The
-first word in a packet contains the address of the destination thread,
-and has the following bit-level representation.
-
-```
-   LogMeshWidth    LogMeshHeight   LogCoresPerRouter LogThreadsPerCore
- <--------------> <--------------> <---------------> <--------------->
-+----------------+----------------+-----------------+-----------------+
-| Router X coord | Router Y coord | Core id         | Thread id       |
-+----------------+----------------+-----------------+-----------------+
-MSB                                                                 LSB
-```
-
-The remainder of the packet is referred to as the **payload** or the
-**message**.
-
-The flow of a packet from source to destination is as follows:
-
-  1. The sending thread enqueues a packet, one word at a time, into its
-     **tx buffer**, provided there is space available.
-
-  2. At some point, the packet is moved from the thread's tx buffer
-     into the **outbox** of that thread's router.
-
-  3. The router takes a packet from one of its input links, or its
-     outbox, and emits it
-
-       * on the west/east link  if the X coordinate
-         of the destination is less/larger than the X coordinate
-         of the router;
-
-       * otherwise, on the north/south link if the Y
-         coordinate of the destination is less/larger than
-         the Y coordinate of the router.
-
-  4. When the packet reaches the router with X and Y
-     coordinates equal to its destination, the packet is placed in the
-     router's **inbox**, provided there is space available.
-
-  5. At some point, the packet is moved from the router's inbox into
-     the **rx buffer** of the destination thread, provided
-     there is space available.
-
-This routing method is known as **dimension-ordered** routing (the X
-direction is resolved first, then the Y direction).
-
-The rx and tx buffers are accessed by each thread using the following RISC-V
-[control/status
-registers](https://riscv.org/specifications/privileged-isa/) (CSRs).
-
-  CSR name    | CSR id  | Access      | Function
-  ----------- | ------- | ----------- | --------
-  `TxReady`   | `0x800` | read-only   | Return 1 if can send, 0 otherwise
-  `RxReady`   | `0x801` | read-only   | Return 1 if can receive, 0 otherwise
-  `TxSleep`   | `0x802` | read-only   | Suspend thread until it can send
-  `RxSleep`   | `0x803` | read-only   | Suspend thread until it can receive
-  `TxWrite`   | `0x804` | write-only  | Put word into send buffer
-  `RxRead`    | `0x805` | read-only   | Consume word from recieve buffer
-  `TxRxSleep` | `0x806` | read-only   | Suspend until can send or receive; return 1 if can send, 0 otherwise
-
-The following programming API is implemented on top of the CSR interface.
-
-```c
-// Number of 32-bit words in a packet's payload
-const uint32_t MSG_SIZE;
-
-// A packet's payload
-typedef struct { uint32_t word[MSG_SIZE]; } msg_t;
-
-// Ask whether a send or receive is possible
-uint32_t can_send();
-uint32_t can_recv();
-
-// Sleep until a send or receive is possible
-void sleep_until_can_send();
-void sleep_until_can_recv();
-uint32_t sleep_until_can_send_or_recv();
-
-// Non-blocking send and receive
-void send(uint32_t dest, msg_t* msg);
-void recv(msg_t* msg);
-```
-
-To summarise, the synthesis-time parameters introduced in this section
-are:
-
-  Parameter             | Description
-  --------------------- | -----------
-  `LogCoresPerRouter`   | Cores per router
-  `LogMeshHeight`       | Height of 2D mesh of routers within an FPGA
-  `LogMeshWidth`        | Width of 2D mesh of routers within an FPGA
-  `NumWordsPerPacket`   | Number of 32-bit words in a packet
-
-## Tinsel Board
-
-Details of the inter-FPGA links and the host interface are currently
-under development.
+**Under construction.**
