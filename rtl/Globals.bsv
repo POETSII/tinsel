@@ -1,17 +1,17 @@
-package Mem;
+package Globals;
+
+// Global types and interfaces defined here.
 
 // ============================================================================
-// Imports
-// ============================================================================
-
-import Queue :: *;
-
-// ============================================================================
-// Types
+// Caches
 // ============================================================================
 
 // Unique identifier per data cache
 typedef Bit#(`LogDCachesPerDRAM) DCacheId;
+
+// ============================================================================
+// External memory
+// ============================================================================
 
 // Memory address
 typedef TSub#(30, `LogWordsPerBeat) MemAddrNumBits;
@@ -47,10 +47,6 @@ typedef struct {
   Bit#(`BusWidth) data;
 } MemResp deriving (Bits);
 
-// ============================================================================
-// Interfaces
-// ============================================================================
-
 // Request interface
 interface Req#(type t);
   method Bool canPut;
@@ -69,5 +65,21 @@ interface MemDualResp;
   interface Resp#(MemLoadResp) loadResp;
   interface Resp#(MemStoreResp) storeResp;
 endinterface
+
+// ============================================================================
+// Packets
+// ============================================================================
+
+// We use the term "message" to refer to packet payload
+typedef TMul#(`WordsPerMsg, 32) MsgBits;
+typedef Bit#(MsgBits) Msg;
+
+// Packet type
+typedef struct {
+  // Destination address
+  Bit#(`LogMaxThreads) dest;
+  // Payload
+  Msg payload;
+} Packet deriving (Bits);
 
 endpackage

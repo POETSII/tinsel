@@ -105,7 +105,7 @@ package DCache;
 
 import BlockRam  :: *;
 import Queue     :: *;
-import Mem       :: *;
+import Globals   :: *;
 import Util      :: *;
 import Vector    :: *;
 import DReg      :: *;

@@ -20,7 +20,7 @@ endinterface
 // Imports
 // -------
 
-import Mem       :: *;
+import Globals   :: *;
 import FIFOF     :: *;
 import Vector    :: *;
 import Assert    :: *;
@@ -60,7 +60,7 @@ module mkDRAM (DRAM);
 
   // Constants
   Integer endIndex = `DRAMLatency-1;
-  Integer maxOutstanding = `DRAMLogMaxInFlight;
+  Integer maxOutstanding = 2 ** `DRAMLogMaxInFlight;
 
   // Try to perform a request
   rule step;

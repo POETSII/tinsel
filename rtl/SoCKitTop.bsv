@@ -6,7 +6,7 @@ package SoCKitTop;
 
 import Core      :: *;
 import DCache    :: *;
-import Mem       :: *;
+import Globals   :: *;
 import DRAM      :: *;
 import Interface :: *;
 import Queue     :: *;
