@@ -36,13 +36,18 @@ case "$1" in
   verilog)
     SYNTH=1
   ;;
-  tracegen)
-    TOPFILE=TraceGen.bsv
-    TOPMOD=traceGen
+  test-mem)
+    TOPFILE=TestMem.bsv
+    TOPMOD=testMem
+    BSCFLAGS="$BSCFLAGS -D SIMULATE"
+  ;;
+  test-mailbox)
+    TOPFILE=TestMailbox.bsv
+    TOPMOD=testMailbox
     BSCFLAGS="$BSCFLAGS -D SIMULATE"
   ;;
   *)
-    echo 'Usage: make.sh {sim|verilog|tracegen}'
+    echo 'Usage: make.sh {sim|verilog|tracegen|test-mailbox}'
     exit
   ;;
 esac

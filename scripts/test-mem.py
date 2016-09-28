@@ -20,7 +20,7 @@ import subprocess
 
 # Command-line usage
 def usage():
-  print "Usage: testmem.py"
+  print "Usage: test-mem.py"
   print ""
   print "  Environment variables:"
   print "    * SEED"
@@ -45,7 +45,7 @@ try:
   numAddrs      = int(os.environ.get("NUM_ADDRS", "3"))
   maxDelay      = int(os.environ.get("MAX_DELAY", "8"))
   assoc         = int(os.environ.get("ASSOC", "4"))
-  logDir        = os.environ.get("LOG_DIR", "testmem_log")
+  logDir        = os.environ.get("LOG_DIR", "test-mem-log")
 except:
   print "Invalid options"
   usage()
@@ -121,7 +121,7 @@ def genTrace():
   try:
     reqsFile = logDir + "/reqs.txt"
     traceFile = logDir + "/trace.axe"
-    cmd = "./traceGen < " + reqsFile + "| grep -v Warn > " + traceFile
+    cmd = "./testMem < " + reqsFile + "| grep -v Warn > " + traceFile
     os.system(cmd)
   except:
     print "Problem invoking 'traceGen'"

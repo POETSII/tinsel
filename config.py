@@ -63,6 +63,15 @@ if target == "de5":
   # DRAM byte-address width
   p["DRAMAddrWidth"] = 30
 
+  # Size of packet payload
+  p["LogWordsPerMsg"] = 3
+
+  # Space available per thread in mailbox scratchpad
+  p["LogMsgsPerThread"] = 4
+
+  # Number of cores sharing a mailbox
+  p["LogCoresPerMailbox"] = 2
+
 #==============================================================================
 # SoCkit-specific choices
 #==============================================================================
@@ -112,11 +121,23 @@ if target == "sockit":
   # DRAM byte-address width
   p["DRAMAddrWidth"] = 30
 
+  # Size of packet payload
+  p["LogWordsPerMsg"] = 3
+
+  # Space available per thread in mailbox scratchpad
+  p["LogMsgsPerThread"] = 4
+
+  # Number of cores sharing a mailbox
+  p["LogCoresPerMailbox"] = 2
+
 #==============================================================================
 # Derived Parameters
 #==============================================================================
 
 # (These should not be modified.)
+
+# Max number of threads
+p["LogMaxThreads"] = p["LogMaxCores"]+p["LogThreadsPerCore"]
 
 # Log of number of 32-bit words per data cache line
 p["LogWordsPerLine"] = p["LogWordsPerBeat"]+p["LogBeatsPerLine"]
@@ -157,6 +178,12 @@ p["CoresPerDCache"] = 2**p["LogCoresPerDCache"]
 
 # Caches per DRAM
 p["DCachesPerDRAM"] = 2**p["LogDCachesPerDRAM"]
+
+# Number of words per message
+p["WordsPerMsg"] = 2**p["LogWordsPerMsg"]
+
+# Number of threads sharing a mailbox
+p["LogThreadsPerMailbox"] = p["LogCoresPerMailbox"]+p["LogThreadsPerCore"]
 
 #==============================================================================
 # Main 

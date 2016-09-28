@@ -30,7 +30,7 @@ function Bool allHigh(Bit#(n) x) = unpack(reduceAnd(x));
 // Are all bits low?
 function Bool allLow(Bit#(n) x) = !unpack(reduceOr(x));
 
-// Are all bools hight?
+// Are all bools high?
 function Bool andVec(Vector#(n, Bool) bools) = allHigh(pack(bools));
 
 // Alternative encoding of the Maybe type
@@ -39,7 +39,7 @@ typedef struct {
   t value;
 } Option#(type t) deriving (Bits);
 
-// Friendly constrctor for Option type
+// Friendly constructor for Option type
 function Option#(t) option(Bool valid, t value) =
   Option { valid: valid, value: value };
 

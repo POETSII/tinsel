@@ -1,10 +1,10 @@
-package TraceGen;
+package TestMem;
 
 // ============================================================================
 // Imports
 // ============================================================================
 
-import Mem       :: *;
+import Globals   :: *;
 import FIFOF     :: *;
 import DCache    :: *;
 import DRAM      :: *;
@@ -48,7 +48,7 @@ typedef struct {
 // Implementation
 // ============================================================================
 
-module traceGen ();
+module testMem ();
   // State
   // -----
 

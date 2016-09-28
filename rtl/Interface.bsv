@@ -36,7 +36,7 @@ import Vector    :: *;
 // In & Out interfaces
 // =============================================================================
 
-// In & Out interfaces with flow-control
+// I/O interfaces with flow-control
 
 interface Out#(type t);
   (* always_ready *)
@@ -52,6 +52,22 @@ interface In#(type t);
   method Action tryPut(t val);
   (* always_enabled *)
   method Bool didPut;
+endinterface
+
+// =============================================================================
+// Buffered Out interface
+// =============================================================================
+
+// This type is equivalent to the Out interface (but is used with a
+// different semantics).  It is intended to capture buffered output
+// interfaces at the type level.
+
+interface BOut#(type t);
+  method Action get;
+  (* always_enabled *)
+  method Bool valid;
+  (* always_enabled *)
+  method t value;
 endinterface
 
 // =============================================================================
@@ -303,6 +319,43 @@ module mkResponseDistributor#
 
   // Interface
   return inPort.in;
+endmodule
+
+// =============================================================================
+// Routines for buffered interfaces
+// =============================================================================
+
+// Connect a buffered output interface to an input interface, without
+// needing an intermediate buffer.  (Attempting this with an
+// unbuffered output interface yields a combinatorial cycle.)
+module connectDirect#(BOut#(t) out, In#(t) in) ()
+  provisos (Bits#(t, twidth));
+
+  rule connection1;
+    if (out.valid) in.tryPut(out.value);
+  endrule
+
+  rule connection2;
+    if (in.didPut) out.get;
+  endrule
+endmodule
+
+// Convert a queue to a buffered output interface
+module convertQueuetoBOut#(SizedQueue#(n, t) q) (BOut#(t));
+  method Action get;
+    q.deq;
+  endmethod
+  method Bool valid = q.canDeq;
+  method t value = q.dataOut;
+endmodule
+
+// Convert a buffered output interface to an unbuffered one
+module convertBOutToOut#(BOut#(t) out) (Out#(t));
+  method Action tryGet;
+    if (out.valid) out.get;
+  endmethod
+  method Bool valid = out.valid;
+  method t value = out.value;
 endmodule
 
 endpackage
