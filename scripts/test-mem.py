@@ -4,7 +4,7 @@
 #
 # This script:
 #   * generates a random sequence of memory requests;
-#   * feeds the requests to the trace generator (see TraceGen.bsv);
+#   * feeds the requests to the trace generator (see TestMem.bsv);
 #   * passes the resulting trace the axe consistency checker;
 #   * reports an error if the trace is invalid;
 #   * repeats these steps, gradually increasing the number of requests.
@@ -124,7 +124,7 @@ def genTrace():
     cmd = "./testMem < " + reqsFile + "| grep -v Warn > " + traceFile
     os.system(cmd)
   except:
-    print "Problem invoking 'traceGen'"
+    print "Problem invoking 'traceMem'"
     sys.exit()
   
 # Generate a trace and check it

@@ -47,7 +47,7 @@ case "$1" in
     BSCFLAGS="$BSCFLAGS -D SIMULATE"
   ;;
   *)
-    echo 'Usage: make.sh {sim|verilog|tracegen|test-mailbox}'
+    echo 'Usage: make.sh {sim|verilog|test-mem|test-mailbox}'
     exit
   ;;
 esac

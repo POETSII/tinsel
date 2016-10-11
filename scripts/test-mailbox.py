@@ -48,7 +48,7 @@ except:
   sys.exit()
 
 # Create log directory
-os.system("mkdir -p " + logDir)
+subprocess.call("mkdir -p " + logDir, shell=True);
 
 # Set random seed
 random.seed(seed)
@@ -90,9 +90,10 @@ def genTrace():
     reqsFile = logDir + "/reqs.txt"
     traceFile = logDir + "/trace.txt"
     cmd = "./testMailbox < " + reqsFile + "| grep -v Warn > " + traceFile
-    os.system(cmd)
+    #os.system(cmd)
+    subprocess.call(cmd, shell=True);
   except:
-    print "Problem invoking 'traceGen'"
+    print "Problem invoking 'testMem'"
     sys.exit()
  
 # Check a trace
@@ -130,18 +131,19 @@ def checkTrace():
 # Main
 # =============================================================================
 
-genTrace()
-checkTrace()
-
-for i in range(0, numIterations):
-  print "Depth", numOps
-  for t in range(0, testsPerDepth):
-    print t+1, "\r",
-    sys.stdout.flush()
-    genTrace()
-    ok = checkTrace()
-    if not ok:
-      print ("Test failed.  For details, see directory '" + logDir + "/'")
-      sys.exit()
-  print "OK, passed", testsPerDepth, "tests"
-  numOps = numOps+depthIncr
+try:
+  for i in range(0, numIterations):
+    print "Depth", numOps
+    for t in range(0, testsPerDepth):
+      print t+1, "\r",
+      sys.stdout.flush()
+      genTrace()
+      ok = checkTrace()
+      if not ok:
+        print ("Test failed.  For details, see directory '" + logDir + "/'")
+        sys.exit()
+    print "OK, passed", testsPerDepth, "tests"
+    numOps = numOps+depthIncr
+except:
+  print "Exception. Exiting..."
+  sys.exit();
