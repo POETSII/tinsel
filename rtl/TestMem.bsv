@@ -34,7 +34,7 @@ Bit#(8) opBACK  = 66;  // 'B': apply back-pressure for some number of cycles
 // Types
 // ============================================================================
 
-// TraceGen request
+// External request
 // (Fields read straight from stdin are all 32 bits)
 typedef struct {
   Bit#(8)  op;
@@ -42,7 +42,7 @@ typedef struct {
   Bit#(32) addr;
   Bit#(32) data;
   Bit#(32) delay;
-} TraceGenReq deriving (Bits);
+} TestMemReq deriving (Bits);
 
 // ============================================================================
 // Implementation
@@ -70,13 +70,13 @@ module testMem ();
   connectUsing(mkUGQueue, dcache.respOut, dcacheResp.in);
 
   // Record in-flight requests (max of one outstanding request per thread)
-  RegFile#(DCacheClientId, TraceGenReq) inFlight <-
+  RegFile#(DCacheClientId, TestMemReq) inFlight <-
     mkRegFileWCF(minBound, maxBound);
   Vector#(TExp#(SizeOf#(DCacheClientId)), Reg#(Bool)) inFlightValid <-
     replicateM(mkConfigReg(False));
 
   // Raw requests from stdin
-  FIFOF#(TraceGenReq) rawReqs <- mkFIFOF;
+  FIFOF#(TestMemReq) rawReqs <- mkFIFOF;
 
   // Goes high when the opEND operation is encountered
   Reg#(Bool) allReqsGathered <- mkReg(False);
@@ -98,7 +98,7 @@ module testMem ();
 
   // Read raw requests from stdin and enqueue to rawReqs
   rule gatherRequests (! allReqsGathered);
-    TraceGenReq req = ?;
+    TestMemReq req = ?;
     let op <- getChar();
     req.op = op;
     if (op == opEND)
@@ -110,7 +110,7 @@ module testMem ();
     end else begin
       let threadId <- getUInt32();
       dynamicAssert(threadId <= fromInteger(maxThreadId),
-                      "TraceGen.bsv: thread id too large");
+                      "TestMem.bsv: thread id too large");
       req.threadId = threadId;
       let addr <- getUInt32();
       req.addr = addr;
@@ -128,7 +128,7 @@ module testMem ();
 
   // Issue requests to data cache
   rule issueRequests (countdown == 0);
-    TraceGenReq rawReq = rawReqs.first;
+    TestMemReq rawReq = rawReqs.first;
     if (rawReq.op == opDELAY) begin
       rawReqs.deq;
       countdown <= rawReq.delay;
@@ -158,9 +158,9 @@ module testMem ();
     DCacheResp resp = dcacheResp.value;
     dcacheResp.get;
     DCacheClientId id = resp.id;
-    TraceGenReq req = inFlight.sub(id);
+    TestMemReq req = inFlight.sub(id);
     dynamicAssert(inFlightValid[id],
-                    "TraceGen.bsv: response has no associated request");
+                    "TestMem.bsv: response has no associated request");
     if (req.op == opLW)
       $display("%d: M[%d] == %d", id, req.addr, resp.data);
     else if (req.op == opSW)
