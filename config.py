@@ -185,6 +185,9 @@ p["WordsPerMsg"] = 2**p["LogWordsPerMsg"]
 # Number of threads sharing a mailbox
 p["LogThreadsPerMailbox"] = p["LogCoresPerMailbox"]+p["LogThreadsPerCore"]
 
+# Size of memory-mapped mailbox scratchpad in bytes
+P["LogScratchpadBytes"] = 2 ** (p["LogWordsPerMsg"]+2+p["LogMsgsPerThread"])
+
 #==============================================================================
 # Main 
 #==============================================================================

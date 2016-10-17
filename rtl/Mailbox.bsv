@@ -192,6 +192,16 @@ typedef struct {
 } ReceiveAlert deriving (Bits);
 
 // =============================================================================
+// Functions
+// =============================================================================
+
+// Convert message address to byte address
+function Bit#(32) msgAddrToByteAddr(MailboxThreadMsgAddr msgAddr);
+  Bit#(`LogWordsPerMsg) wordOffset = 0;
+  return {0, msgAddr, wordOffset, 2'b0};
+endfunction
+
+// =============================================================================
 // Interface
 // =============================================================================
 
@@ -537,7 +547,7 @@ endmodule
 // Mailbox client
 // =============================================================================
 
-// The interface implemented by mailbox client (e.g. a Tinsel core)
+// The interface implemented by a mailbox client (e.g. a Tinsel core)
 interface MailboxClient;
   // Scratchpad
   interface Out#(ScratchpadReq) spadReq;
@@ -549,6 +559,36 @@ interface MailboxClient;
   interface Out#(AllocReq)      allocReq;
   interface In#(AllocResp)      allocResp;
   interface In#(ReceiveAlert)   rxAlert;
+endinterface
+
+// =============================================================================
+// Mailbox client unit
+// =============================================================================
+
+// We capture much of a mailbox client's behaviour here,
+// avoiding clutter in Tinsel core
+interface MailboxClientUnit;
+  // Scratchpad request & response
+  interface OutPort#(ScratchpadReq) scratchpadReq;
+  interface InPort#(ScratchpadResp) scratchpadResp;
+  // Allocate request and response
+  interface OutPort#(AllocReq)      allocateReq;
+  interface InPort#(AllocResp)      allocateResp;
+  // Prepare for mailbox access by given thread
+  method Action prepare(ThreadId id);
+  // Is a send/receive possible on prepared thread?
+  // (Valid on 2nd cycle after call to "prepare")
+  method Bool canSend;
+  method Bool canRecv;
+  // Trigger send/receive
+  // (Must only be called on 2nd cycle after call to "prepare")
+  method Action send(ThreadId id, PacketDest dest, MailboxThreadMsgAddr addr);
+  method Action recv;
+  // Scratchpad address of message received
+  // (Valid on 2nd cycle after call to "recv")
+  method MailboxThreadMsgAddr msgAddr;
+  // Tinsel core's interface to the mailbox
+  interface MailboxClient client;
 endinterface
 
 endpackage
