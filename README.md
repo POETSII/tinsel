@@ -48,13 +48,11 @@ A 9-stage pipeline is perhaps excessive but incurs little cost on
 FPGA, and there will be no shortage of program threads in the
 massively-parallel applications for which the machine is intended.
 
-The core fetches instructions from a 2-cycle latent **instruction
-memory** implemented using on-chip block RAM.  The size of this memory
-is controlled by the synthesis-time parameter `LogInstrsPerCore`.  All
-threads in a core share the same instruction memory.  In fact, the instruction
-memory is dual-ported and may be shared by two cores.  The initial
-contents of the memory is specified in the FPGA bitstream which can be
-regenerated in seconds during application development.
+The core fetches instructions from an **instruction memory**
+implemented using on-chip block RAM.  The size of this memory is
+controlled by the synthesis-time parameter `LogInstrsPerCore`.  All
+threads in a core share the same instruction memory.  The initial
+contents of the memory is specified in the FPGA bitstream.
 
 A globally unique identifier for the currently running thread can be
 obtained from a RISC-V [control/status
