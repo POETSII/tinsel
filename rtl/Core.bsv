@@ -225,7 +225,7 @@ function Op decodeOp(Bit#(32) instr);
   ret.isLoad = op == 'b00000;
   ret.isStore = op == 'b01000;
   // Mailbox custom instruction
-  ret.isMailboxOp = op == 5'b00010;
+  ret.isMailboxOp = `MailboxEnabled && op == 5'b00010;
   ret.isMailboxAlloc = ret.isMailboxOp && instr[27:25] == 0;
   // CSR set/clear operations
   ret.isCSR = op == 'b11100 && minorOp[2:1] == 'b01;
@@ -548,7 +548,7 @@ module mkCore#(CoreId myId) (Core);
       // Determine data to write and assoicated byte-enables
       Bit#(32) writeData = writeAlign(token.accessWidth, token.valB);
       Bit#(4)  byteEn    = genByteEnable(token.accessWidth, token.memAddr[1:0]);
-      if (token.op.isScratchpadAccess) begin
+      if (`MailboxEnabled && token.op.isScratchpadAccess) begin
         if (mailbox.scratchpadReq.canPut) begin
           // Prepare scratchpad request
           ScratchpadReq;
@@ -580,7 +580,7 @@ module mkCore#(CoreId myId) (Core);
       end
     end
     // Allocate space for an incoming message in mailbox scratchpad
-    if (topen.op.isMailboxAlloc) begin
+    if (`MailboxEnabled && token.op.isMailboxAlloc) begin
       if (mailbox.allocateReq.canPut) begin
         // Prepare mailbox allocation request
         AllocReq req;
@@ -710,23 +710,24 @@ module mkCore#(CoreId myId) (Core);
   Reg#(ResumeToken)   resumeThread2Input <- mkVReg;
   Reg#(ResumeToken)   resumeThread3Input <- mkVReg;
  
-  rule resumeThread1 (resumeThread1Fire ||
-                      dcacheResp.canGet ||
-                      mailbox.scratchpadResp.canGet ||
-                      mailbox.allocateResp.canGet);
-    ResumeToken token = ?;
-    if (resumeThread1Fire) resp = resumeThread1Input;
-    else if (dcacheResp.canGet) begin
-      dcacheResp.get;
-      token.id   = truncate(dcacheResp.value.id);
-      token.data = dcacheResp.value.data;
-    end else if (mailbox.scratchpadReq.canGet) begin
-      mailbox.scratchpadResp.get;
-      token.id   = truncate(mailbox.scratchpadResp.value.id);
-      token.data = mailbox.scratchpadResp.value.data;
-    end else if (mailbox.allocateResp.canGet) begin
-      mailbox.allocateResp.get;
-      token.id = truncate(mailbox.allocateResp.value.id);
+  rule resumeThread1 (resumeThread1Fire
+                       || dcacheResp.canGet
+                       || `MailboxEnabled && mailbox.scratchpadResp.canGet
+                       || `MailboxEnabled && mailbox.allocateResp.canGet);
+    ResumeToken token = resumeThread1Input;
+    if (!resumeThread1Fire) begin
+      if (dcacheResp.canGet) begin
+        dcacheResp.get;
+        token.id   = truncate(dcacheResp.value.id);
+        token.data = dcacheResp.value.data;
+      end else if (`MailboxEnabled && mailbox.scratchpadReq.canGet) begin
+        mailbox.scratchpadResp.get;
+        token.id   = truncate(mailbox.scratchpadResp.value.id);
+        token.data = mailbox.scratchpadResp.value.data;
+      end else if (`MailboxEnabled && mailbox.allocateResp.canGet) begin
+        mailbox.allocateResp.get;
+        token.id = truncate(mailbox.allocateResp.value.id);
+      end
     end
     // Fetch info about suspended thread
     suspended.read(token.id);

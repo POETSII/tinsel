@@ -72,6 +72,9 @@ if target == "de5":
   # Number of cores sharing a mailbox
   p["LogCoresPerMailbox"] = 2
 
+  # Enable mailbox (message-passing between threads/cores)
+  p["MailboxEnabled"] = "True"
+
 #==============================================================================
 # SoCkit-specific choices
 #==============================================================================
@@ -130,6 +133,9 @@ if target == "sockit":
   # Number of cores sharing a mailbox
   p["LogCoresPerMailbox"] = 2
 
+  # Enable mailbox (message-passing between threads/cores)
+  p["MailboxEnabled"] = "True"
+
 #==============================================================================
 # Derived Parameters
 #==============================================================================
@@ -186,7 +192,7 @@ p["WordsPerMsg"] = 2**p["LogWordsPerMsg"]
 p["LogThreadsPerMailbox"] = p["LogCoresPerMailbox"]+p["LogThreadsPerCore"]
 
 # Size of memory-mapped mailbox scratchpad in bytes
-P["LogScratchpadBytes"] = 2 ** (p["LogWordsPerMsg"]+2+p["LogMsgsPerThread"])
+p["LogScratchpadBytes"] = 2 ** (p["LogWordsPerMsg"]+2+p["LogMsgsPerThread"])
 
 #==============================================================================
 # Main 
