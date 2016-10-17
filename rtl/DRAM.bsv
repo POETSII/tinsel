@@ -23,7 +23,7 @@ endinterface
 import Globals   :: *;
 import FIFOF     :: *;
 import Vector    :: *;
-import Assert    :: *;
+import Util      :: *;
 import Interface :: *;
 
 // Interface to C functions
@@ -88,7 +88,7 @@ module mkDRAM (DRAM);
           decOutstanding1.send;
         end
       end else begin
-        dynamicAssert(req.burst == 1, "DRAM: burst writes not yet supported");
+        myAssert(req.burst == 1, "DRAM: burst writes not yet supported");
         if (storeRespPort.canPut) begin
           shift = True;
           Vector#(`WordsPerBeat, Bit#(32)) elems = unpack(req.data);
@@ -148,7 +148,7 @@ endmodule
 // Imports
 // -------
 
-import Mem       :: *;
+import Globals   :: *;
 import Vector    :: *;
 import Queue     :: *;
 import Interface :: *;

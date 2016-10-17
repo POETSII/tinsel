@@ -14,7 +14,7 @@ package Queue;
 
 import BlockRam  :: *;
 import ConfigReg :: *;
-import Assert    :: *;
+import Util      :: *;
 import DReg      :: *;
 import Vector    :: *;
 
@@ -414,12 +414,12 @@ module mkUGSizedQueueInit#(QueueInit init) (SizedQueue#(logSize, elemType))
 
   // Methods
   method Action deq;
-    dynamicAssert(deqEnable, "Queue: deq() called when canDeq() false");
+    myAssert(deqEnable, "Queue: deq() called when canDeq() false");
     doDeq.send;
   endmethod
 
   method Action enq(elemType x);
-    dynamicAssert(!full, "Queue: enq() called when queue full");
+    myAssert(!full, "Queue: enq() called when queue full");
     doEnq.wset(x);
   endmethod
 

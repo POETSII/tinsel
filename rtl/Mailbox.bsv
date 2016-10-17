@@ -71,8 +71,8 @@ package Mailbox;
 //   3. a notification (or alert) is sent to the thread indicating
 //      the location of the new message in the scratchpad.
 //
-// If there are no hot bits in the status vector, backpressure is applied
-// to the network.
+// If there are no hot bits in the status vector for the receiving
+// thread, backpressure is applied to the network.
 //
 // Allocate Unit
 // -------------
@@ -88,7 +88,6 @@ package Mailbox;
 
 import Vector     :: *;
 import Queue      :: *;
-import Assert     :: *;
 import Interface  :: *;
 import BlockRam   :: *;
 import ArrayOfSet :: *;
@@ -159,7 +158,7 @@ typedef struct {
   // Thread-local message address
   MailboxThreadMsgAddr msgIndex;
   // Destination thread
-  Bit#(`LogMaxThreads) dest;
+  PacketDest dest;
 } TransmitReq deriving (Bits);
 
 // Transmit unit response
@@ -362,7 +361,7 @@ module mkMailbox (Mailbox);
   rule receive5;
     ReceiveAlert alert = receive5Input;
     // Issue response
-    dynamicAssert(alertBuffer.notFull, "Mailbox: alertBuffer overflow");
+    myAssert(alertBuffer.notFull, "Mailbox: alertBuffer overflow");
     alertBuffer.enq(alert);
   endrule
 
@@ -436,10 +435,10 @@ module mkMailbox (Mailbox);
     // Message available on scratchpad output bus
     Msg msg = scratchpad.dataOutA;
     // Put packet into transmit buffer
-    dynamicAssert(transmitBuffer.notFull, "transmitBuffer overflow");
+    myAssert(transmitBuffer.notFull, "transmitBuffer overflow");
     transmitBuffer.enq(Packet { dest: zeroExtend(req.dest), payload: msg });
     // Put response
-    dynamicAssert(transmitRespBuffer.notFull, "transmitRespBuffer overflow");
+    myAssert(transmitRespBuffer.notFull, "transmitRespBuffer overflow");
     transmitRespBuffer.enq(TransmitResp { id: req.id });
   endrule
   
@@ -533,5 +532,23 @@ module mkMailbox (Mailbox);
   endinterface
 
 endmodule
+
+// =============================================================================
+// Mailbox client
+// =============================================================================
+
+// The interface implemented by mailbox client (e.g. a Tinsel core)
+interface MailboxClient;
+  // Scratchpad
+  interface Out#(ScratchpadReq) spadReq;
+  interface In#(ScratchpadResp) spadResp;
+  // Transmit unit
+  interface Out#(TransmitReq)   txReq;
+  interface In#(TransmitResp)   txResp;
+  // Receive unit
+  interface Out#(AllocReq)      allocReq;
+  interface In#(AllocResp)      allocResp;
+  interface In#(ReceiveAlert)   rxAlert;
+endinterface
 
 endpackage

@@ -27,7 +27,6 @@ package Interface;
 // =============================================================================
 
 import Queue     :: *;
-import Util      :: *;
 import Assert    :: *;
 import List      :: *;
 import Vector    :: *;

@@ -10,7 +10,7 @@ import DCache    :: *;
 import DRAM      :: *;
 import Vector    :: *;
 import RegFile   :: *;
-import Assert    :: *;
+import Util      :: *;
 import Interface :: *;
 import ConfigReg :: *;
 import Queue     :: *;
@@ -109,8 +109,8 @@ module testMem ();
       rawReqs.enq(req);
     end else begin
       let threadId <- getUInt32();
-      dynamicAssert(threadId <= fromInteger(maxThreadId),
-                      "TestMem.bsv: thread id too large");
+      myAssert(threadId <= fromInteger(maxThreadId),
+                "TestMem.bsv: thread id too large");
       req.threadId = threadId;
       let addr <- getUInt32();
       req.addr = addr;
@@ -159,7 +159,7 @@ module testMem ();
     dcacheResp.get;
     DCacheClientId id = resp.id;
     TestMemReq req = inFlight.sub(id);
-    dynamicAssert(inFlightValid[id],
+    myAssert(inFlightValid[id],
                     "TestMem.bsv: response has no associated request");
     if (req.op == opLW)
       $display("%d: M[%d] == %d", id, req.addr, resp.data);

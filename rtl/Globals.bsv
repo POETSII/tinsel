@@ -74,10 +74,13 @@ endinterface
 typedef TMul#(`WordsPerMsg, 32) MsgBits;
 typedef Bit#(MsgBits) Msg;
 
+// Desination address of a packet
+typedef Bit#(`LogMaxThreads) PacketDest;
+
 // Packet type
 typedef struct {
   // Destination address
-  Bit#(`LogMaxThreads) dest;
+  PacketDest dest;
   // Payload
   Msg payload;
 } Packet deriving (Bits);
