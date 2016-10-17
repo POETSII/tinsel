@@ -6,9 +6,10 @@ package BlockRam;
 // Imports
 // =======
 
-import BRAMCore :: *;
-import Vector   :: *;
-import Assert   :: *;
+import BRAMCore  :: *;
+import Vector    :: *;
+import Assert    :: *;
+import ConfigReg :: *;
 
 // ==========
 // Interfaces
@@ -284,10 +285,10 @@ module mkBlockRamTrueMixedOpts#(BlockRamOpts opts)
 
   // State
   Reg#(BlockRamHandle) ramReg <- mkReg(0);
-  Reg#(dataA) dataAReg1 <- mkRegU;
-  Reg#(dataA) dataAReg2 <- mkRegU;
-  Reg#(dataB) dataBReg1 <- mkRegU;
-  Reg#(dataB) dataBReg2 <- mkRegU;
+  Reg#(dataA) dataAReg1 <- mkConfigRegU;
+  Reg#(dataA) dataAReg2 <- mkConfigRegU;
+  Reg#(dataB) dataBReg1 <- mkConfigRegU;
+  Reg#(dataB) dataBReg2 <- mkConfigRegU;
 
   // Wires
   Wire#(BlockRamHandle) ram <- mkBypassWire;

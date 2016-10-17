@@ -6,7 +6,6 @@ package TestMailbox;
 
 import FIFOF     :: *;
 import Vector    :: *;
-import Assert    :: *;
 import Interface :: *;
 import ConfigReg :: *;
 import Mailbox   :: *;
@@ -95,12 +94,12 @@ module testMailbox ();
       mbReqs.enq(req);
     end else if (op == opSEND) begin
       let src <- getUInt32();
-      dynamicAssert(src <= fromInteger(maxThreadId),
-                      "TestMailbox.bsv: thread id too large");
+      myAssert(src <= fromInteger(maxThreadId),
+                 "TestMailbox.bsv: thread id too large");
       req.src = src;
       let dst <- getUInt32();
-      dynamicAssert(dst <= fromInteger(maxThreadId),
-                      "TestMailbox.bsv: thread id too large");
+      myAssert(dst <= fromInteger(maxThreadId),
+                 "TestMailbox.bsv: thread id too large");
       req.dst = dst;
       mbReqs.enq(req);
     end

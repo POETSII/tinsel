@@ -31,6 +31,8 @@ interface ArrayOfQueue#(numeric type logNumQueues,
   method Bool didEnq;
   // Prepare to dequeue an item from the queue at the given array index
   method Action tryDeq(Bit#(logNumQueues) index);
+  // Explicit guard on above method
+  method Bool canTryDeq(Bit#(logNumQueues) index);
   // Can an item be sucessfully dequeued?
   // (Valid on 2nd cycle after call to "tryDeq")
   method Bool canDeq;
@@ -57,13 +59,26 @@ typedef struct {
 // Implementation
 // =============================================================================
 
+// This is a fairly conservative implementation:
+//   * we use a single memory to store the meta-data, limiting opportunities
+//     for fully parallel enq & deq;
+//   * deq always succeeds, whereas enq can fail if invalidated by
+//     parallel, conflicting deq;
+//   * deq is fully pipelined (can be called on every cycle) provided
+//     there is no data hazard (see the "canTryDeq" method);
+//   * the deq data hazard only occurs when a queue is dequeued more
+//     than once within 3 consecutive cycles (i.e. it can be ignored
+//     in a multi-threaded setting where there is one queue per thread
+//     and more than three pipeline stages, e.g. Tinsel core);
+//   * the max enq rate is 33% (max of one successful enq every three
+//     cycles).
+
 module mkArrayOfQueue (ArrayOfQueue#(logNumQueues, logQueueSize, itemType))
   provisos (Log#(TExp#(logQueueSize), logQueueSize),
             Bits#(itemType, itemTypeWidth));
 
   // Queue meta data
   BlockRamOpts metaDataOpts = defaultBlockRamOpts;
-  metaDataOpts.readDuringWrite = OldData;
   BlockRamTrueMixed#(
     // Read/write port
     Bit#(logNumQueues), QueueStatus#(logQueueSize),
@@ -89,9 +104,10 @@ module mkArrayOfQueue (ArrayOfQueue#(logNumQueues, logQueueSize, itemType))
   Wire#(Bit#(logNumQueues)) deqIndexWire <- mkDWire(?);
 
   // Pipeline registers
-  Reg#(Bit#(logNumQueues)) deqIndexReg  <- mkConfigRegU;
   Reg#(Bit#(logNumQueues)) deqIndexReg1 <- mkConfigRegU;
   Reg#(Bit#(logNumQueues)) deqIndexReg2 <- mkConfigRegU;
+  Reg#(Bool) deqIndexRegValid1 <- mkReg(False);
+  Reg#(Bool) deqIndexRegValid2 <- mkReg(False);
 
   // Is queue empty?
   Bool empty = metaData.dataOutB.length == 0;
@@ -110,16 +126,17 @@ module mkArrayOfQueue (ArrayOfQueue#(logNumQueues, logQueueSize, itemType))
       // Update meta data
       metaData.putA(True, deqIndexReg2, newStatus);
       // Fetch data
-      contents.read({deqIndexReg, status.front});
+      contents.read({deqIndexReg2, status.front});
       // Announce success
       didEnqWire <= True;
     end
   endrule
 
   rule deqSave;
-    deqIndexReg  <= deqIndexWire;
-    deqIndexReg1 <= deqIndexReg;
+    deqIndexReg1 <= deqIndexWire;
     deqIndexReg2 <= deqIndexReg1;
+    deqIndexRegValid1 <= doTryDeq;
+    deqIndexRegValid2 <= deqIndexRegValid1;
   endrule
 
   // Enqueue rules
@@ -138,7 +155,7 @@ module mkArrayOfQueue (ArrayOfQueue#(logNumQueues, logQueueSize, itemType))
   // State of enqueue unit
   Reg#(Bit#(2)) enqStage <- mkConfigReg(0);
 
-  // Dequeue rules may lead to abortion of enqueue unit
+  // Dequeue rules may lead to abortion of enqueue
   Bool abort0 = doDeq || doTryDeq && deqIndexWire == enqIndexWire;
   Bool abort1 = doDeq && enqIndexReg == deqIndexReg2;
   Bool abort2 = doTryDeq && deqIndexWire == enqIndexReg;
@@ -201,6 +218,9 @@ module mkArrayOfQueue (ArrayOfQueue#(logNumQueues, logQueueSize, itemType))
   method Bool canEnq = enqStage == 0;
   method Bool didEnq = didEnqWire;
   method Bool canDeq = !empty;
+  method Bool canTryDeq(Bit#(logNumQueues) index) =
+    !( (deqIndexRegValid1 && deqIndexReg1 == index) ||
+       (deqIndexRegValid2 && deqIndexReg2 == index) );
   method itemType itemOut = contents.dataOut;
 
 endmodule
