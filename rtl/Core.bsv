@@ -28,7 +28,6 @@ typedef Bit#(`LogInstrsPerCore) InstrIndex;
 typedef Bit#(TAdd#(`LogInstrsPerCore, 2)) InstrAddr;
 
 // Threads
-typedef Bit#(`LogThreadsPerCore) ThreadId;
 typedef struct {
   InstrAddr pc;  // Program counter
   ThreadId  id;  // Thread identifier

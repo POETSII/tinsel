@@ -176,12 +176,6 @@ typedef struct {
   MailboxThreadMsgAddr msgIndex;
 } AllocReq deriving (Bits);
 
-// Allocation response
-typedef struct {
-  // Message destination
-  MailboxClientId id;
-} AllocResp deriving (Bits);
-
 // Receive notification
 // (Notification that a message has been received)
 typedef struct {
@@ -214,7 +208,6 @@ interface Mailbox;
   interface BOut#(TransmitResp)   txResp;
   // Core-side interfaces to receive unit
   interface In#(AllocReq)         allocReq;
-  interface Out#(AllocResp)       allocResp;
   interface BOut#(ReceiveAlert)   rxAlert;
   // Network-side interface
   interface In#(Packet)           packetIn;
@@ -247,7 +240,6 @@ module mkMailbox (Mailbox);
   InPort#(TransmitReq)     txReqPort     <- mkInPort;
   InPort#(Packet)          packetInPort  <- mkInPort;
   InPort#(AllocReq)        allocReqPort  <- mkInPort;
-  OutPort#(AllocResp)      allocRespPort <- mkOutPort;
 
   // Message access unit
   // ===================
@@ -381,11 +373,10 @@ module mkMailbox (Mailbox);
   // Allocate space in scratchpad for a message
 
   rule allocHandler;
-    if (allocReqPort.canGet && statusMem.canPut && allocRespPort.canPut) begin
+    if (allocReqPort.canGet && statusMem.canPut) begin
       AllocReq req = allocReqPort.value;
       statusMem.put(truncate(req.id), req.msgIndex);
       allocReqPort.get;
-      allocRespPort.put(AllocResp {id : req.id});
     end
   endrule
 
@@ -503,7 +494,6 @@ module mkMailbox (Mailbox);
   interface In  allocReq  = allocReqPort.in;
   interface In  spadReq   = spadReqPort.in;
   interface In  packetIn  = packetInPort.in;
-  interface Out allocResp = allocRespPort.out;
 
   interface BOut rxAlert;
     method Action get;
@@ -557,7 +547,6 @@ interface MailboxClient;
   interface In#(TransmitResp)   txResp;
   // Receive unit
   interface Out#(AllocReq)      allocReq;
-  interface In#(AllocResp)      allocResp;
   interface In#(ReceiveAlert)   rxAlert;
 endinterface
 
@@ -571,9 +560,8 @@ interface MailboxClientUnit;
   // Scratchpad request & response
   interface OutPort#(ScratchpadReq) scratchpadReq;
   interface InPort#(ScratchpadResp) scratchpadResp;
-  // Allocate request and response
-  interface OutPort#(AllocReq)      allocateReq;
-  interface InPort#(AllocResp)      allocateResp;
+  // Allocate request
+  interface OutPort#(AllocReq) allocateReq;
   // Prepare for mailbox access by given thread
   method Action prepare(ThreadId id);
   // Is a send/receive possible on prepared thread?
