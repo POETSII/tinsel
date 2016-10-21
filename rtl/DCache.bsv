@@ -652,4 +652,40 @@ module mkDCache#(DCacheId myId) (DCache);
   interface Out reqOut      = memReqPort.out;
 endmodule
 
+// ============================================================================
+// DCache client
+// ============================================================================
+
+interface DCacheClient;
+  interface Out#(DCacheReq) dcacheReqOut;
+  interface In#(DCacheResp) dcacheRespIn;
+endinterface
+
+// ============================================================================
+// Connections
+// ============================================================================
+
+module connectCoresToDCache#(
+         Vector#(`CoresPerDCache, DCacheClient) clients,
+         DCache dcache) ();
+
+  // Connect requests
+  function getDCacheReqOut(client) = client.dcacheReqOut;
+  let dcacheReqs <- mkMergeTree(Fair,
+                      mkUGShiftQueue1(QueueOptFmax),
+                      map(getDCacheReqOut, clients));
+  connectUsing(mkUGQueue, dcacheReqs, dcache.reqIn);
+
+  // Connect responses
+  function Bit#(`LogCoresPerDCache) getDCacheRespKey(DCacheResp resp) =
+    truncateLSB(resp.id);
+  function getDCacheRespIn(client) = client.dcacheRespIn;
+  let dcacheResps <- mkResponseDistributor(
+                      getDCacheRespKey,
+                      mkUGShiftQueue1(QueueOptFmax),
+                      map(getDCacheRespIn, clients));
+  connectUsing(mkUGQueue, dcache.respOut, dcacheResps);
+
+endmodule
+
 endpackage

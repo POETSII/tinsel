@@ -16,6 +16,8 @@ import DReg      :: *;
 import DCache    :: *;
 import ConfigReg :: *;
 import Interface :: *;
+import Mailbox   :: *;
+import Globals   :: *;
 
 // ============================================================================
 // Types
@@ -32,9 +34,6 @@ typedef struct {
   InstrAddr pc;  // Program counter
   ThreadId  id;  // Thread identifier
 } Thread deriving (Bits);
-
-// Core id
-typedef Bit#(`LogMaxCores) CoreId;
 
 // Register file index
 // (Register file constains 32 registers per thread)
@@ -61,6 +60,9 @@ typedef struct {
   Bool isAddOrSub;
   // Mailbox custom instructions
   Bool isMailboxOp;      Bool isMailboxAlloc;
+  Bool isMailboxSend;    Bool isMailboxCanSend;
+  Bool isMailboxRecv;    Bool isMailboxCanRecv;
+  Bool isMailboxNonRecv;
 } Op deriving (Bits);
 
 // Instruction result
@@ -90,11 +92,12 @@ typedef struct {
   AccessWidth accessWidth; // Byte, half-word, or word access?
   Bit#(32) loadVal;        // Result of load instruction
   Bit#(32) memAddr;        // Memory address for load or store
-  Bool isScrachpadAccess;  // Does memory address map to scratchpad?
+  Bool isScratchpadAccess; // Does memory address map to scratchpad?
   Op op;                   // Decoded operation
   InstrResult instrResult; // Instruction result
   InstrAddr targetPC;      // Next PC if branch taken
   InstrAddr nextPC;        // Next PC if branch not taken
+  Bool mailboxSuccess;     // Is mailbox operation successful?
 } PipelineToken deriving (Bits);
 
 // For each suspended thread, we have the following info
@@ -130,13 +133,13 @@ typedef struct {
 // i.e. instructions for sending/receiving messages to/from other
 // cores and threads.
 //
-// Name    | Opcode | rd,r1,r2 | Function
-// ------- | ------ | -------- | --------
-// Alloc   | 0      | N,Y,N    | Allocate space for new message in scratchpad
-// CanSend | 1      | Y,N,N    | 1 if can send, 0 otherwise
-// CanRecv | 2      | Y,N,N    | 1 if can receive, 0 otherwise
-// Send    | 3      | Y,Y,Y    | Send message (at pointer) to destination
-// Recv    | 4      | Y,N,N    | Consume message-pointer from receive buffer
+// Name    | Opcode | rd,rs1,rs2 | Function
+// ------- | ------ | ---------- | --------
+// Alloc   | 0      | Y,Y,N      | Allocate space for new message in scratchpad
+// CanSend | 1      | Y,N,N      | 1 if can send, 0 otherwise
+// CanRecv | 2      | Y,N,N      | 1 if can receive, 0 otherwise
+// Send    | 3      | Y,Y,Y      | Send message (at pointer) to destination
+// Recv    | 4      | Y,N,N      | Consume message-pointer from receive buffer
 
 // ============================================================================
 // Decoder
@@ -191,7 +194,7 @@ endfunction
 
 // Decode operation
 function Op decodeOp(Bit#(32) instr);
-  Op ret;
+  Op ret = ?;
   Bit#(5) op = instr[6:2];
   Bit#(3) minorOp = funct3(instr);
   // Arithmetic operations
@@ -223,11 +226,19 @@ function Op decodeOp(Bit#(32) instr);
   // Load & store operations
   ret.isLoad = op == 'b00000;
   ret.isStore = op == 'b01000;
-  // Mailbox custom instruction
-  ret.isMailboxOp = `MailboxEnabled && op == 5'b00010;
-  ret.isMailboxAlloc = ret.isMailboxOp && instr[27:25] == 0;
   // CSR set/clear operations
   ret.isCSR = op == 'b11100 && minorOp[2:1] == 'b01;
+  // Mailbox custom instruction
+  `ifdef MailboxEnabled
+    Bit#(3) mailboxOp    = instr[27:25];
+    ret.isMailboxOp      = op == 5'b00010;
+    ret.isMailboxAlloc   = ret.isMailboxOp && mailboxOp == 0;
+    ret.isMailboxCanSend = ret.isMailboxOp && mailboxOp == 1;
+    ret.isMailboxCanRecv = ret.isMailboxOp && mailboxOp == 2;
+    ret.isMailboxSend    = ret.isMailboxOp && mailboxOp == 3;
+    ret.isMailboxRecv    = ret.isMailboxOp && mailboxOp == 4;
+    ret.isMailboxNonRecv = ret.isMailboxOp && mailboxOp != 4;
+  `endif
   return ret;
 endfunction
 
@@ -314,9 +325,10 @@ endfunction
 // RISC-V programs via CSR instructions.
 
 interface Core;
-  interface Out#(DCacheReq) dcacheReqOut;
-  interface In#(DCacheResp) dcacheRespIn;
+  interface DCacheClient    dcacheClient;
+  `ifdef MailboxEnabled
   interface MailboxClient   mailboxClient;
+  `endif
   (* always_ready *)
   method Bit#(32) out;
 endinterface
@@ -418,7 +430,9 @@ module mkCore#(CoreId myId) (Core);
   BlockRam#(RegFileIndex, Bit#(32)) regFileB <- mkBlockRamOpts(regFileOpts);
 
   // Mailbox
-  MailboxClientUnit mailbox <- mkMailboxClientUnit;
+  `ifdef MailboxEnabled
+  MailboxClientUnit mailbox <- mkMailboxClientUnit(myId);
+  `endif
 
   // Pipeline stages
   Reg#(Bool)          fetch1Fire         <- mkDReg(False);
@@ -490,6 +504,11 @@ module mkCore#(CoreId myId) (Core);
     token.instrType = decodeInstrType(token.instr);
     // Compute access width of load or store
     token.accessWidth = decodeAccessWidth(token.instr);
+    // Prepare mailbox operation
+    `ifdef MailboxEnabled
+      if (token.op.isMailboxOp)
+        mailbox.prepare(token.thread.id);
+    `endif
     // Trigger second decode sub-stage
     decode2Input <= token;
   endrule
@@ -514,7 +533,20 @@ module mkCore#(CoreId myId) (Core);
     token.aluB = isALUImm(token.instr) ? token.imm : token.valB;
     // Determine memory address for load or store
     token.memAddr = token.valA + token.imm;
-    token.isScratchpadAccess = token.memAddr[31:`LogScratchpadBytes] == 0;
+    // Issue mailbox operation
+    token.isScratchpadAccess = False;
+    `ifdef MailboxEnabled
+      token.isScratchpadAccess = token.memAddr[31:`LogScratchpadBytes] == 0;
+      Bool isSend = token.op.isMailboxSend || token.op.isMailboxCanSend;
+      Bool isRecv = token.op.isMailboxRecv || token.op.isMailboxCanRecv;
+      token.mailboxSuccess = mailbox.canSend && isSend ||
+                               mailbox.canRecv && isRecv;
+      if (mailbox.canSend && token.op.isMailboxSend)
+        mailbox.send(token.thread.id, truncate(token.valB),
+                                      truncate(token.valA));
+      if (mailbox.canRecv && token.op.isMailboxRecv)
+        mailbox.recv;
+    `endif
     // Triger next stage
     execute2Input <= token;
   endrule
@@ -547,20 +579,22 @@ module mkCore#(CoreId myId) (Core);
       // Determine data to write and assoicated byte-enables
       Bit#(32) writeData = writeAlign(token.accessWidth, token.valB);
       Bit#(4)  byteEn    = genByteEnable(token.accessWidth, token.memAddr[1:0]);
-      if (`MailboxEnabled && token.op.isScratchpadAccess) begin
-        if (mailbox.scratchpadReq.canPut) begin
-          // Prepare scratchpad request
-          ScratchpadReq;
-          req.id = {truncate(myId), token.thread.id};
-          req.isStore  = token.op.isStore;
-          req.wordAddr = truncate(token.memAddr[31:2]);
-          req.data     = writeData;
-          req.byteEn   = byteEn;
-          // Issue scratchpad request
-          mailbox.scratchpadReq.put(req);
-          suspend = True;
-        end else
-          retry = True;
+      if (token.isScratchpadAccess) begin
+        `ifdef MailboxEnabled
+          if (mailbox.scratchpadReq.canPut) begin
+            // Prepare scratchpad request
+            ScratchpadReq req;
+            req.id = {truncate(myId), token.thread.id};
+            req.isStore  = token.op.isStore;
+            req.wordAddr = truncate(token.memAddr[31:2]);
+            req.data     = writeData;
+            req.byteEn   = byteEn;
+            // Issue scratchpad request
+            mailbox.scratchpadReq.put(req);
+            suspend = True;
+          end else
+            retry = True;
+        `endif
       end else begin
         if (dcacheReq.canPut) begin
           // Prepare data cache request
@@ -579,18 +613,19 @@ module mkCore#(CoreId myId) (Core);
       end
     end
     // Allocate space for an incoming message in mailbox scratchpad
-    if (`MailboxEnabled && token.op.isMailboxAlloc) begin
-      if (mailbox.allocateReq.canPut) begin
-        // Prepare mailbox allocation request
-        AllocReq req;
-        req.id = {truncate(myId), token.thread.id};
-        req.msgIndex = msgAddrToByteAddr(truncate(token.valA));
-        // Issue request
-        mailbox.allocateReq.put(req);
-        suspend = True;
-      end else
-        retry = True;
-    end
+    `ifdef MailboxEnabled
+      if (token.op.isMailboxAlloc) begin
+        if (mailbox.allocateReq.canPut) begin
+          // Prepare mailbox allocation request
+          AllocReq req;
+          req.id = {truncate(myId), token.thread.id};
+          req.msgIndex = byteAddrToMsgIndex(truncate(token.valA));
+          // Issue request
+          mailbox.allocateReq.put(req);
+        end else
+          retry = True;
+      end
+    `endif
     // Record state of suspended thread
     if (suspend) begin
       SuspendedThread susp;
@@ -628,14 +663,18 @@ module mkCore#(CoreId myId) (Core);
     // Setup write to destination register
     Op op = token.op;
     token.writeVal =
-        when(op.isAddOrSub,      res.add[31:0])
-      | when(op.isSetIfLessThan, lt ? 1 : 0)
-      | when(op.isShiftLeft,     res.shiftLeft)
-      | when(op.isShiftRight,    res.shiftRight)
-      | when(op.isBitwise,       res.bitwise)
-      | when(op.isOpUI,          res.opui)
-      | when(op.isJump,          zeroExtend(token.nextPC))
-      | when(op.isCSR,           res.csr);
+        when(op.isAddOrSub,       res.add[31:0])
+      | when(op.isSetIfLessThan,  lt ? 1 : 0)
+      | when(op.isShiftLeft,      res.shiftLeft)
+      | when(op.isShiftRight,     res.shiftRight)
+      | when(op.isBitwise,        res.bitwise)
+      | when(op.isOpUI,           res.opui)
+      | when(op.isJump,           zeroExtend(token.nextPC))
+      | when(op.isCSR,            res.csr)
+      `ifdef MailboxEnabled
+      | when(op.isMailboxRecv,    mailbox.recvAddr)
+      | when(op.isMailboxNonRecv, {0, pack(token.mailboxSuccess)})
+      `endif ;
     // Setup new PC
     Bool takeBranch =
          op.isJump
@@ -709,24 +748,29 @@ module mkCore#(CoreId myId) (Core);
   Reg#(ResumeToken)   resumeThread2Input <- mkVReg;
   Reg#(ResumeToken)   resumeThread3Input <- mkVReg;
  
+  `ifdef MailboxEnabled
+  Bool mailboxResp = mailbox.scratchpadResp.canGet;
+  `else
+  Bool mailboxResp = False;
+  `endif
+
   rule resumeThread1 (resumeThread1Fire
                        || dcacheResp.canGet
-                       || `MailboxEnabled && mailbox.scratchpadResp.canGet
-                       || `MailboxEnabled && mailbox.allocateResp.canGet);
+                       || mailboxResp);
     ResumeToken token = resumeThread1Input;
     if (!resumeThread1Fire) begin
       if (dcacheResp.canGet) begin
         dcacheResp.get;
         token.id   = truncate(dcacheResp.value.id);
         token.data = dcacheResp.value.data;
-      end else if (`MailboxEnabled && mailbox.scratchpadReq.canGet) begin
+      end
+      `ifdef MailboxEnabled
+      else if (mailbox.scratchpadResp.canGet) begin
         mailbox.scratchpadResp.get;
         token.id   = truncate(mailbox.scratchpadResp.value.id);
         token.data = mailbox.scratchpadResp.value.data;
-      end else if (`MailboxEnabled && mailbox.allocateResp.canGet) begin
-        mailbox.allocateResp.get;
-        token.id = truncate(mailbox.allocateResp.value.id);
       end
+      `endif
     end
     // Fetch info about suspended thread
     suspended.read(token.id);
@@ -755,16 +799,22 @@ module mkCore#(CoreId myId) (Core);
     end else begin
       // Retry if queue full
       resumeThread1Fire <= True;
-      resumeThread1Input <= resp;
+      resumeThread1Input <= token;
     end
   endrule
 
   // Interface
   // ---------
 
-  interface Out dcacheReqOut = dcacheReq.out;
-  interface In  dcacheRespIn = dcacheResp.in;
+  interface DCacheClient dcacheClient;
+    interface Out dcacheReqOut = dcacheReq.out;
+    interface In  dcacheRespIn = dcacheResp.in;
+  endinterface
+
+  `ifdef MailboxEnabled
   interface MailboxClient mailboxClient = mailbox.client;
+  `endif
+
   method Bit#(32) out = emitReg;
 endmodule
 

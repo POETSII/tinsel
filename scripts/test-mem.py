@@ -122,7 +122,8 @@ def genTrace():
     reqsFile = logDir + "/reqs.txt"
     traceFile = logDir + "/trace.axe"
     cmd = "./testMem < " + reqsFile + "| grep -v Warn > " + traceFile
-    os.system(cmd)
+    #os.system(cmd)
+    subprocess.call(cmd, shell=True);
   except:
     print "Problem invoking 'traceMem'"
     sys.exit()

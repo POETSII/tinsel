@@ -1,7 +1,8 @@
 package Util;
 
-import DReg :: *;
-import Vector :: *;
+import DReg      :: *;
+import ConfigReg :: *;
+import Vector    :: *;
 
 // Useful function for constructing a mux with a one-hot select
 function t when(Bool b, t x)
@@ -51,6 +52,36 @@ typedef struct {
 // Friendly constructor for Option type
 function Option#(t) option(Bool valid, t value) =
   Option { valid: valid, value: value };
+
+// Set/reset flip-flop
+interface SetReset;
+  method Action set;
+  method Action clear;
+  method Bool value;
+endinterface
+
+module mkSetReset#(Bool init) (SetReset);
+  Reg#(Bool) state <- mkConfigReg(init);
+  PulseWire setWire <- mkPulseWire;
+  PulseWire clearWire <- mkPulseWire;
+
+  rule update;
+    if (setWire)
+      state <= True;
+    else if (clearWire)
+      state <= False;
+  endrule
+
+  method Action set;
+    setWire.send;
+  endmethod
+
+  method Action clear;
+    clearWire.send;
+  endmethod
+
+  method Bool value = state;
+endmodule
 
 // Simple counter
 interface Count#(numeric type n);

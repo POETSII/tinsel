@@ -13,20 +13,8 @@ BSC="bsc"
 BSCFLAGS="-wait-for-license -suppress-warnings S0015 $DEFS "
 
 # Determine top-level module
-case `eval echo $TargetBoard` in
-  DE5)
-    TOPFILE=DE5Top.bsv
-    TOPMOD=de5Top
-  ;;
-  SoCKit)
-    TOPFILE=SoCKitTop.bsv
-    TOPMOD=sockitTop
-  ;;
-  *)
-    echo "Unknown target board '$TargetBoard'"
-    exit
-  ;;
-esac
+TOPFILE=DE5Top.bsv
+TOPMOD=de5Top
 
 # Determine compiler options
 case "$1" in
