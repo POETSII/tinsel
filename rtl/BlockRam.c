@@ -13,7 +13,7 @@
 uint64_t createBlockRam(uint32_t sizeInBits)
 {
   int8_t* ram = (int8_t*) malloc(sizeInBits);
-  for (int i = 0; i < sizeInBits; i++) ram[i] = 0;
+  for (uint32_t i = 0; i < sizeInBits; i++) ram[i] = 0;
   return (uint64_t) ram;
 }
 
@@ -29,7 +29,7 @@ void blockRamWrite(
   int8_t* ram = (int8_t*) handle;
   int base = *addr * dataWidth;
   int bitCount = 0;
-  for (int i = 0; i < dataWidth; i++) {
+  for (uint32_t i = 0; i < dataWidth; i++) {
     ram[base+i] = *data & 1;
     *data >>= 1;
     bitCount++;
@@ -53,7 +53,7 @@ void blockRamRead(
   int base = *addr * dataWidth;
   int bitCount = 0;
   uint32_t msb = 0x80000000;
-  for (int i = 0; i < dataWidth; i++) {
+  for (uint32_t i = 0; i < dataWidth; i++) {
     *data = (*data >> 1) | (ram[base+i] ? msb : 0);
     bitCount++;
     if (bitCount == 32) {

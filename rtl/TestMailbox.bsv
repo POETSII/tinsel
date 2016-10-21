@@ -55,16 +55,14 @@ module testMailbox ();
   OutPort#(ScratchpadReq) spadReq   <- mkOutPort;
   InPort#(ScratchpadResp) spadResp  <- mkInPort;
   OutPort#(TransmitReq)   txReq     <- mkOutPort;
-  InPort#(TransmitResp)   txResp    <- mkInPort;
   OutPort#(AllocReq)      allocReq  <- mkOutPort;
   InPort#(ReceiveAlert)   rxAlert   <- mkInPort;
 
-  connectUsing(mkUGQueue, spadReq.out, mb.spadReq);
-  connectDirect(mb.spadResp, spadResp.in);
-  connectUsing(mkUGQueue, txReq.out, mb.txReq);
-  connectDirect(mb.txResp, txResp.in);
-  connectUsing(mkUGQueue, allocReq.out, mb.allocReq);
-  connectDirect(mb.rxAlert, rxAlert.in);
+  connectUsing(mkUGQueue, spadReq.out, mb.spadReqIn);
+  connectDirect(mb.spadRespOut, spadResp.in);
+  connectUsing(mkUGQueue, txReq.out, mb.txReqIn);
+  connectUsing(mkUGQueue, allocReq.out, mb.allocReqIn);
+  connectDirect(mb.rxAlertOut, rxAlert.in);
 
   // Constants
   // ---------
@@ -201,11 +199,6 @@ module testMailbox ();
 
   Reg#(Bit#(1)) recvState <- mkReg(0);
   Reg#(Bit#(32)) recvReg <- mkRegU;
-
-  rule ignoreResponses;
-    // Ignore transmit and allocate responses
-    if (txResp.canGet) txResp.get;
-  endrule
 
   rule handleResponses (!init && spadResp.canGet);
     ScratchpadResp resp = spadResp.value;
