@@ -15,11 +15,7 @@ while read -r EXPORT; do
 done <<< `python ../config.py envs`
 
 # Determine location of quartus project
-if [ `eval echo $TargetBoard` == "SoCKit" ]; then
-  QPDIR=../sockit
-else
-  QPDIR=../de5
-fi
+QPDIR=../de5
 
 # Build object files
 OFILES=""
