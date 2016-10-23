@@ -355,7 +355,6 @@ import "BVI" AlteraBlockRamTrueMixed =
     parameter DATA_WIDTH_B = valueOf(dataWidthB);
     parameter NUM_ELEMS_A  = valueOf(TExp#(addrWidthA));
     parameter NUM_ELEMS_B  = valueOf(TExp#(addrWidthB));
-    parameter BE_WIDTH     = 1;
     parameter RD_DURING_WR = 
       opts.readDuringWrite == OldData ? "OLD_DATA" : "DONT_CARE";
     parameter DO_REG_A       =

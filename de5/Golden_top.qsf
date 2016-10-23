@@ -1921,6 +1921,8 @@ set_instance_assignment -name IO_STANDARD "SSTL-15 CLASS I" -to DDR3A_DM[7] -tag
 set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to DDR3A_DM[7] -tag __S5_DDR3_QSYS_mem_if_ddr3_emif_p0
 set_global_assignment -name SEED 6
 set_global_assignment -name OPTIMIZATION_MODE BALANCED
+
+set_global_assignment -name VERILOG_FILE ../rtl/mkMailbox.v
 set_global_assignment -name VERILOG_FILE ../rtl/de5Top.v
 set_global_assignment -name VERILOG_FILE ../rtl/mkCore.v
 set_global_assignment -name VERILOG_FILE ../rtl/mkDCache.v
