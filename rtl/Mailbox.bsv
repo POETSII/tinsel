@@ -162,6 +162,12 @@ typedef struct {
   PacketDest dest;
 } TransmitReq deriving (Bits);
 
+// Transmit unit response
+typedef struct {
+  // Source of request
+  MailboxClientId id;
+} TransmitResp deriving (Bits);
+
 // Allocation request
 // (Request to allocate space for a message)
 typedef struct {
@@ -206,6 +212,7 @@ interface Mailbox;
   interface BOut#(ScratchpadResp) spadRespOut;
   // Core-side interfaces to transmit unit
   interface In#(TransmitReq)      txReqIn;
+  interface BOut#(TransmitResp)   txRespOut;
   // Core-side interfaces to receive unit
   interface In#(AllocReq)         allocReqIn;
   interface BOut#(ReceiveAlert)   rxAlertOut;
@@ -388,8 +395,14 @@ module mkMailbox (Mailbox);
   SizedQueue#(`LogTransmitBufferLen, Packet) transmitBuffer <-
     mkUGShiftQueue(QueueOptFmax);
 
+  // Transmit response-buffer
+  SizedQueue#(`LogTransmitBufferLen, TransmitResp) transmitRespBuffer <-
+    mkUGShiftQueue(QueueOptFmax);
+
   // Track number of in-flight requests
   Count#(TAdd#(`LogTransmitBufferLen, 1)) inFlightTransmits <-
+    mkCount(2 ** `LogTransmitBufferLen);
+  Count#(TAdd#(`LogTransmitBufferLen, 1)) inFlightTransmitResps <-
     mkCount(2 ** `LogTransmitBufferLen);
 
   // Pipeline state
@@ -400,11 +413,13 @@ module mkMailbox (Mailbox);
   rule transmit1;
     if (txReqPort.canGet &&
           inFlightTransmits.notFull &&
-            !msgWriteWire) begin
+            inFlightTransmitResps.notFull &&
+              !msgWriteWire) begin
       TransmitReq req = txReqPort.value;
       // Consume request
       txReqPort.get;
       inFlightTransmits.inc;
+      inFlightTransmitResps.inc;
       // Read message from scratchpad
       msgReadWire      <= True;
       msgReadIndexWire <= { truncate(req.id), req.msgIndex };
@@ -430,6 +445,9 @@ module mkMailbox (Mailbox);
     // Put packet into transmit buffer
     myAssert(transmitBuffer.notFull, "transmitBuffer overflow");
     transmitBuffer.enq(Packet { dest: zeroExtend(req.dest), payload: msg });
+    // Put response
+    myAssert(transmitRespBuffer.notFull, "transmitRespBuffer overflow");
+    transmitRespBuffer.enq(TransmitResp { id: req.id });
   endrule
   
   // Scratchpad interface
@@ -493,6 +511,15 @@ module mkMailbox (Mailbox);
     method ReceiveAlert value = alertBuffer.dataOut;
   endinterface
 
+  interface BOut txRespOut;
+    method Action get;
+      transmitRespBuffer.deq;
+      inFlightTransmitResps.dec;
+    endmethod
+    method Bool valid = transmitRespBuffer.canDeq;
+    method TransmitResp value = transmitRespBuffer.dataOut;
+  endinterface
+
   interface BOut spadRespOut;
     method Action get;
       scratchpadRespBuffer.deq;
@@ -524,6 +551,7 @@ interface MailboxClient;
   interface In#(ScratchpadResp) spadRespIn;
   // Transmit unit
   interface Out#(TransmitReq)   txReqOut;
+  interface In#(TransmitResp)   txRespIn;
   // Receive unit
   interface Out#(AllocReq)      allocReqOut;
   interface In#(ReceiveAlert)   rxAlertIn;
@@ -564,6 +592,7 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
   InPort#(ScratchpadResp) scratchpadRespPort <- mkInPort;
   OutPort#(AllocReq)      allocReqPort       <- mkOutPort;
   OutPort#(TransmitReq)   transmitPort       <- mkOutPort;
+  InPort#(TransmitResp)   transmitRespPort   <- mkInPort;
   InPort#(ReceiveAlert)   alertPort          <- mkInPort;
 
   // Transmit logic
@@ -584,16 +613,22 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
   Reg#(Bool) canSendReg2 <- mkConfigReg(False);
 
   rule transmit;
+    canSendReg2 <= canSendReg1;
+    // Send transmit requests
     if (transmitQueue.canDeq &&
           transmitQueue.canPeek &&
             transmitPort.canPut) begin
       TransmitReq req = transmitQueue.dataOut;
       transmitQueue.deq;
       transmitPort.put(req);
-      Bit#(`LogThreadsPerCore) tid = truncate(req.id);
+    end
+    // Receive transmit responses
+    if (transmitRespPort.canGet) begin
+      TransmitResp resp = transmitRespPort.value;
+      transmitRespPort.get;
+      Bit#(`LogThreadsPerCore) tid = truncate(resp.id);
       canThreadSend[tid].set;
     end
-    canSendReg2 <= canSendReg1;
   endrule
 
   // Receive logic
@@ -685,6 +720,7 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
     interface spadRespIn  = scratchpadRespPort.in;
     // Transmit unit
     interface txReqOut    = transmitPort.out;
+    interface txRespIn    = transmitRespPort.in;
     // Receive unit
     interface allocReqOut = allocReqPort.out;
     interface rxAlertIn   = alertPort.in;
@@ -730,6 +766,16 @@ module connectCoresToMailbox#(
                      mkUGShiftQueue1(QueueOptFmax),
                      map(spadRespIn, clients));
   connectDirect(server.spadRespOut, spadResps);
+
+  // Connect transmit responses
+  function Bit#(`LogCoresPerMailbox) txRespKey(TransmitResp resp) =
+    truncateLSB(resp.id);
+  function txRespIn(client) = client.txRespIn;
+  let txResps <- mkResponseDistributor(
+                   txRespKey,
+                    mkUGShiftQueue1(QueueOptFmax),
+                   map(txRespIn, clients));
+  connectDirect(server.txRespOut, txResps);
 
   // Connect receive-alerts
   function Bit#(`LogCoresPerMailbox) alertRespKey(ReceiveAlert alert) =
