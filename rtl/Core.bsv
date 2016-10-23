@@ -20,6 +20,22 @@ import Mailbox   :: *;
 import Globals   :: *;
 
 // ============================================================================
+// Custom instructions
+// ============================================================================
+
+// We use the RISC-V custom-0 space to implement mailbox instructions,
+// i.e. instructions for sending/receiving messages to/from other
+// cores and threads.
+//
+// Name    | Opcode | rd,rs1,rs2 | Function
+// ------- | ------ | ---------- | --------
+// Alloc   | 0      | Y,Y,N      | Allocate space for new message in scratchpad
+// CanSend | 1      | Y,N,N      | 1 if can send, 0 otherwise
+// CanRecv | 2      | Y,N,N      | 1 if can receive, 0 otherwise
+// Send    | 3      | Y,Y,Y      | Send message (at pointer) to destination
+// Recv    | 4      | Y,N,N      | Consume message-pointer from receive buffer
+
+// ============================================================================
 // Types
 // ============================================================================
 
@@ -124,22 +140,6 @@ typedef struct {
   ThreadId id;
   Bit#(32) data;
 } ResumeToken deriving (Bits);
-
-// ============================================================================
-// Custom instructions
-// ============================================================================
-
-// We use the RISC-V custom-0 space to implement mailbox instructions,
-// i.e. instructions for sending/receiving messages to/from other
-// cores and threads.
-//
-// Name    | Opcode | rd,rs1,rs2 | Function
-// ------- | ------ | ---------- | --------
-// Alloc   | 0      | Y,Y,N      | Allocate space for new message in scratchpad
-// CanSend | 1      | Y,N,N      | 1 if can send, 0 otherwise
-// CanRecv | 2      | Y,N,N      | 1 if can receive, 0 otherwise
-// Send    | 3      | Y,Y,Y      | Send message (at pointer) to destination
-// Recv    | 4      | Y,N,N      | Consume message-pointer from receive buffer
 
 // ============================================================================
 // Decoder
@@ -289,8 +289,8 @@ function Bool isRegFileWrite(Op op) =
 // and bottom two bits of address
 function Bit#(4) genByteEnable(AccessWidth access, Bit#(2) a);
   return when(access.w, 4'b1111)
-       | when(access.h, {~a[1],~a[1],a[1],a[1]})
-       | when(access.b, {pack(a==0),pack(a==1),pack(a==2),pack(a==3)});
+       | when(access.h, {a[1],a[1],~a[1],~a[1]})
+       | when(access.b, {pack(a==3),pack(a==2),pack(a==1),pack(a==0)});
 endfunction
 
 // Align a write using access width
@@ -619,7 +619,7 @@ module mkCore#(CoreId myId) (Core);
           // Prepare mailbox allocation request
           AllocReq req;
           req.id = {truncate(myId), token.thread.id};
-          req.msgIndex = byteAddrToMsgIndex(truncate(token.valA));
+          req.msgIndex = byteAddrToMsgIndex(token.valA);
           // Issue request
           mailbox.allocateReq.put(req);
         end else

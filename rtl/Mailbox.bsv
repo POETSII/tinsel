@@ -140,7 +140,7 @@ typedef struct {
   Bit#(32) data;
   // For store operation: byte enables
   Bit#(4) byteEn;
-} ScratchpadReq deriving (Bits);
+} ScratchpadReq deriving (Bits, FShow);
 
 // Scratchpad response
 typedef struct {
@@ -375,7 +375,7 @@ module mkMailbox (Mailbox);
   rule allocHandler;
     if (allocReqPort.canGet && statusMem.canPut) begin
       AllocReq req = allocReqPort.value;
-      statusMem.put(truncate(req.id), req.msgIndex);
+      statusMem.put(req.id, req.msgIndex);
       allocReqPort.get;
     end
   endrule
@@ -571,7 +571,7 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
 
   // Transmit queue, big enough to hold one request for each thread
   SizedQueue#(`LogThreadsPerCore, TransmitReq) transmitQueue <-
-    mkSizedQueue;
+    mkUGSizedQueue;
 
   // Track whether each thread can send a new message
   // (We allow each thread to have at most one in-flight send
@@ -588,8 +588,10 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
           transmitQueue.canPeek &&
             transmitPort.canPut) begin
       TransmitReq req = transmitQueue.dataOut;
+      transmitQueue.deq;
       transmitPort.put(req);
-      canThreadSend[req.id].set;
+      Bit#(`LogThreadsPerCore) tid = truncate(req.id);
+      canThreadSend[tid].set;
     end
     canSendReg2 <= canSendReg1;
   endrule
