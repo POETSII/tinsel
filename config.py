@@ -141,7 +141,7 @@ p["LogScratchpadBytes"] = p["LogWordsPerMsg"]+2+p["LogMsgsPerThread"]
 if len(sys.argv) > 1:
   mode = sys.argv[1]
 else:
-  print "Usage: config.py <defs|envs>"
+  print "Usage: config.py <defs|envs|cpp>"
   sys.exit(-1)
 
 if mode == "defs":
@@ -153,3 +153,6 @@ if mode == "defs":
 elif mode == "envs":
   for var in p:
     print("export " + var + "=" + str(p[var]))
+elif mode == "cpp":
+  for var in p:
+    print("#define " + var + " " + str(p[var]))

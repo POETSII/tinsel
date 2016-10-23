@@ -58,6 +58,8 @@ module de5Top (DE5Top);
   `ifdef MailboxEnabled
   function mailboxClient(core) = core.mailboxClient;
   connectCoresToMailbox(map(mailboxClient, cores), mailbox);
+  // Connect packet-out to packet-in (i.e. only one mailbox)
+  connectDirect(mailbox.packetOut, mailbox.packetIn);
   `endif
 
   // Connect data cache to DRAM
