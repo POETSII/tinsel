@@ -46,8 +46,8 @@ int main()
     while (! mb_can_recv());
     msg_t* msg = recv();
     set(1 << msg->value);
-    out->value = msg->value + 1;
     while (! mb_can_send());
+    out->value = msg->value + 1;
     mb_send(msg->source, out);
     mb_alloc(msg);
   }
