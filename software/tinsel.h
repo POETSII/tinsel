@@ -26,12 +26,11 @@ inline int me()
 #define OPCODE_MB_SEND      "3"
 #define OPCODE_MB_RECV      "4"
 
-// Pointer to base of memory-mapped scratchpad
-const volatile char* mb_scratchpad_base = (char*) 0x0;
-
 // Get pointer to message-aligned slot in mailbox scratchpad
 inline volatile void* mailbox(int n)
 {
+  const volatile char* mb_scratchpad_base =
+    (char*) (1 << (LogBytesPerMsg + LogMsgsPerThread));
   return (void*) (mb_scratchpad_base + (n << LogBytesPerMsg));
 }
 

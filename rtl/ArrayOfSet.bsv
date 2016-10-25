@@ -84,7 +84,7 @@ module mkArrayOfSet (ArrayOfSet#(logNumSets, logSetSize))
     let index = readStage2Input;
     // Output of arrayMem available
     let set = arrayMem.dataOutA;
-    let item = countZerosLSB(set);
+    let item = countZerosMSB(set);
     // If the set is non-empty, then the "get" is successful
     if (set != 0) begin
       getSuccessWire <= True;
