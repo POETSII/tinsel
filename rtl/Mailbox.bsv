@@ -636,9 +636,15 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
   // =============
 
   // One queue of unread message-pointers per thread
-  ArrayOfQueue#(`LogThreadsPerCore, `LogMsgsPerThread, MailboxThreadMsgAddr)
-    unread <- mkArrayOfQueue;
-
+  ArrayOfQueue#(`LogThreadsPerCore,
+                `LogMsgsPerThread,
+                MailboxThreadMsgAddr) unread;
+  `ifdef MailboxClientUseSet
+  unread <- mkArrayOfSetCompat;
+  `else
+  unread <- mkArrayOfQueue;
+  `endif
+  
   // Receive unit state
   Reg#(Bit#(2))      recvState <- mkConfigReg(0);
   Reg#(ReceiveAlert) alertReg  <- mkConfigRegU;

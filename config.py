@@ -70,6 +70,9 @@ p["LogCoresPerMailbox"] = 2
 # Enable mailbox (message-passing between threads)
 p["MailboxEnabled"] = True
 
+# Use array of set instead of array of queue in mailbox client helper
+#p["MailboxClientUseSet"] = True
+
 #==============================================================================
 # Derived Parameters
 #==============================================================================
