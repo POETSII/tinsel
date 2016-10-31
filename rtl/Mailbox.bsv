@@ -327,7 +327,7 @@ module mkMailbox (Mailbox);
     if (triggerNextStage) begin
       receive2Fire <= True;
       // Extract a bit from the status vector
-      statusMem.get(truncate(pkt.dest));
+      statusMem.tryGet(truncate(pkt.dest));
     end
     // Prepare input for next stage
     receive2Input <= pkt;
@@ -344,7 +344,8 @@ module mkMailbox (Mailbox);
     // Prepare inputs for next stage
     receive4Input <= pkt;
     // Has destination for packet been determined?
-    if (statusMem.success) begin
+    if (statusMem.canGet) begin
+      statusMem.get;
       // Trigger final pipeline stage
       receive4Fire <= True;
     end else begin

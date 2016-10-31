@@ -23,13 +23,16 @@ interface ArrayOfSet#(type logNumSets, type logSetSize);
   method Action put(Bit#(logNumSets) index, Bit#(logSetSize) item);
   // Guard for above method
   method Bool canPut;
-  // Remove any item from the set at the given array index
-  method Action get(Bit#(logNumSets) index);
-  // Was an item sucessfully removed? (That is, was the set non-empty?)
-  // (Valid on 2nd cycle after call to "get")
-  method Bool success;
+  // Try to remove any item from the set at the given array index
+  method Action tryGet(Bit#(logNumSets) index);
+  // Can an item be successfully removed? (Is the set non-empty?)
+  // (Valid on 2nd cycle after call to "tryGet")
+  method Bool canGet;
+  // Remove item
+  // (Must only be called on 2nd cycle after call to "tryGet")
+  method Action get;
   // The item removed
-  // (Valid on 3rd cycle after call to "get")
+  // (Valid on 3rd cycle after call to "tryGet")
   method Bit#(logSetSize) itemOut;
 endinterface
 
@@ -67,7 +70,7 @@ module mkArrayOfSet (ArrayOfSet#(logNumSets, logSetSize))
   Reg#(Bit#(logNumSets)) clearIndexReg <- mkConfigRegU;
 
   // Wires
-  Wire#(Bool) getSuccessWire <- mkDWire(False);
+  Wire#(Bool) canGetWire <- mkDWire(False);
   Wire#(Bool) doSetBit <- mkDWire(False);
   Wire#(Bit#(logNumSets)) setIndexWire <- mkDWire(?);
   Wire#(Bit#(logSetSize)) setItemWire  <- mkDWire(?);
@@ -85,12 +88,8 @@ module mkArrayOfSet (ArrayOfSet#(logNumSets, logSetSize))
     // Output of arrayMem available
     let set = arrayMem.dataOutA;
     let item = countZerosMSB(set);
-    // If the set is non-empty, then the "get" is successful
-    if (set != 0) begin
-      getSuccessWire <= True;
-      // Trigger update stage
-      doClearBit <= True;
-    end
+    // If the set is non-empty, then the "get" can be called
+    if (set != 0) canGetWire <= True;
     // Inputs to update stage
     getItemReg <= pack(item)[valueOf(logSetSize)-1:0];
     clearIndexReg <= index;
@@ -115,12 +114,16 @@ module mkArrayOfSet (ArrayOfSet#(logNumSets, logSetSize))
 
   method Bool canPut = !doClearBit;
 
-  method Action get(Bit#(logNumSets) index);
+  method Action tryGet(Bit#(logNumSets) index);
     arrayMem.putA(False, index, ?);
     readStage1Input <= index;
   endmethod
 
-  method Bool success = getSuccessWire;
+  method Action get;
+    doClearBit <= True;
+  endmethod
+
+  method Bool canGet = canGetWire;
 
   method Bit#(logSetSize) itemOut = getItemReg;
 
