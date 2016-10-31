@@ -121,15 +121,10 @@ module mkArrayOfQueue (ArrayOfQueue#(logNumQueues, logQueueSize, itemType))
     let newStatus = status;
     newStatus.front = status.front + 1;
     newStatus.length = status.length - 1;
-    // Commit new data if queue not empty
-    if (!empty) begin
-      // Update meta data
-      metaData.putA(True, deqIndexReg2, newStatus);
-      // Fetch data
-      contents.read({deqIndexReg2, status.front});
-      // Announce success
-      didEnqWire <= True;
-    end
+    // Update meta data
+    metaData.putA(True, deqIndexReg2, newStatus);
+    // Fetch dequeued data
+    contents.read({deqIndexReg2, status.front});
   endrule
 
   rule deqSave;
