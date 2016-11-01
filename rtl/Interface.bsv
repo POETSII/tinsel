@@ -307,8 +307,12 @@ module mkResponseDistributor#
     // Put a queue in front of each sink
     connectUsing(mkQ, outPorts[i].out, sinks[i]);
 
+    // Is this sink the target?
+    Bool selected = valueOf(twidth) == 0 ? True :
+      getKey(inPort.value) == fromInteger(i);
+
     // Fill the queue for each sink
-    rule distribute (inPort.canGet && getKey(inPort.value) == fromInteger(i));
+    rule distribute (inPort.canGet && selected);
       if (outPorts[i].canPut) begin
         outPorts[i].put(inPort.value);
         inPort.get;

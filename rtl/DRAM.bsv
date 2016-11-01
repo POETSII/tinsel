@@ -25,6 +25,8 @@ import FIFOF     :: *;
 import Vector    :: *;
 import Util      :: *;
 import Interface :: *;
+import DCache    :: *;
+import Queue     :: *;
 
 // Interface to C functions
 import "BDPI" function Action ramInit();
@@ -152,6 +154,7 @@ import Globals   :: *;
 import Vector    :: *;
 import Queue     :: *;
 import Interface :: *;
+import DCache    :: *;
 
 // Types
 // -----
@@ -293,5 +296,40 @@ module mkDRAM (DRAM);
 endmodule
 
 `endif
+
+// ============================================================================
+// Connections
+// ============================================================================
+
+// Connect vector of data caches to DRAM
+module connectDCachesToDRAM#(
+         Vector#(`DCachesPerDRAM, DCache) caches, DRAM dram) ();
+
+  // Connect requests
+  function getReqOut(cache) = cache.reqOut;
+  let dramReqs <- mkMergeTree(Fair,
+                    mkUGShiftQueue1(QueueOptFmax),
+                    map(getReqOut, caches));
+  connectUsing(mkUGQueue, dramReqs, dram.reqIn);
+
+  // Connect load responses
+  function DCacheId getLoadRespKey(MemLoadResp resp) = resp.id;
+  function getLoadRespIn(cache) = cache.loadRespIn;
+  let dramLoadResps <- mkResponseDistributor(
+                        getLoadRespKey,
+                        mkUGShiftQueue1(QueueOptFmax),
+                        map(getLoadRespIn, caches));
+  connectUsing(mkUGQueue, dram.loadResp, dramLoadResps);
+
+  // Connect store responses
+  function DCacheId getStoreRespKey(MemStoreResp resp) = resp.id;
+  function getStoreRespIn(cache) = cache.storeRespIn;
+  let dramStoreResps <- mkResponseDistributor(
+                         getStoreRespKey,
+                         mkUGShiftQueue1(QueueOptFmax),
+                         map(getStoreRespIn, caches));
+  connectUsing(mkUGQueue, dram.storeResp, dramStoreResps);
+
+endmodule
 
 endpackage
