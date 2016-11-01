@@ -6,7 +6,7 @@ package Globals;
 // Cores
 // ============================================================================
 
-// Core id
+// Global core id
 typedef Bit#(`LogMaxCores) CoreId;
 
 // Core-local thread id
