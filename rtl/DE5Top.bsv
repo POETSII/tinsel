@@ -12,6 +12,7 @@ import Interface :: *;
 import Queue     :: *;
 import Vector    :: *;
 import Mailbox   :: *;
+import Ring      :: *;
 
 // ============================================================================
 // Interface
@@ -44,17 +45,13 @@ module de5Top (DE5Top);
   for (Integer i = 0; i < `DCachesPerDRAM; i=i+1)
     dcaches[i] <- mkDCache(fromInteger(i));
 
-  // Create mailbox
-  `ifdef MailboxEnabled
-  let mailbox <- mkMailbox;
-  `endif
-
   // Create cores
+  Integer coreCount = 0;
   Vector#(`DCachesPerDRAM, Vector#(`CoresPerDCache, Core)) cores = newVector;
   for (Integer i = 0; i < `DCachesPerDRAM; i=i+1)
     for (Integer j = 0; j < `CoresPerDCache; j=j+1) begin
-      Integer id = i * `DCachesPerDRAM + j;
-      cores[i][j] <- mkCore(fromInteger(id));
+      cores[i][j] <- mkCore(fromInteger(coreCount));
+      coreCount = coreCount+1;
     end
   
   // Connect cores to data caches
@@ -63,22 +60,38 @@ module de5Top (DE5Top);
     connectCoresToDCache(map(dcacheClient, cores[i]), dcaches[i]);
   end
 
-  // Connect cores to mailbox
-  `ifdef MailboxEnabled
-  function mailboxClient(core) = core.mailboxClient;
-  connectCoresToMailbox(map(mailboxClient, concat(cores)), mailbox);
-  // Connect packet-out to packet-in (i.e. only one mailbox)
-  connectDirect(mailbox.packetOut, mailbox.packetIn);
-  `endif
-
   // Connect data caches to DRAM
   connectDCachesToDRAM(dcaches, dram);
 
+  // Mailboxes
+  `ifdef MailboxEnabled
+
+  // Create mailboxes
+  Vector#(`RingSize, Mailbox) mailboxes;
+  for (Integer i = 0; i < `RingSize; i=i+1)
+    mailboxes[i] <- mkMailbox;
+
+  // Connect cores to mailboxes
+  for (Integer i = 0; i < `RingSize; i=i+1) begin
+    // Get sub-vector of cores to be connected to mailbox i
+    Vector#(`CoresPerMailbox, Core) cs =
+      takeAt(`CoresPerMailbox*i, concat(cores));
+    function mailboxClient(core) = core.mailboxClient;
+    // Connect sub-vector of cores to mailbox
+    connectCoresToMailbox(map(mailboxClient, cs), mailboxes[i]);
+  end
+
+  // Create ring of mailboxes
+  mkRing(mailboxes);
+
+  `endif
+
   rule display;
+    Integer id = 0;
     for (Integer i = 0; i < `DCachesPerDRAM; i=i+1)
       for (Integer j = 0; j < `CoresPerDCache; j=j+1) begin
-        Integer id = i * `DCachesPerDRAM + j;
         $display(id, " @ ", $time, ": ", cores[i][j].out);
+        id = id+1;
       end
   endrule
 

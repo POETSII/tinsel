@@ -35,7 +35,7 @@ p["LogInstrsPerCore"] = 9
 p["LogCoresPerDCache"] = 2
 
 # Log of number of caches per DRAM port
-p["LogDCachesPerDRAM"] = 0
+p["LogDCachesPerDRAM"] = 3
 
 # Log of number of 32-bit words in a single memory transfer
 p["LogWordsPerBeat"] = 3
@@ -72,6 +72,9 @@ p["MailboxEnabled"] = True
 
 # Use array of set instead of array of queue in mailbox client helper
 #p["MailboxClientUseSet"] = True
+
+# Number of mailboxes per ring
+p["LogRingSize"] = 3;
 
 #==============================================================================
 # Derived Parameters
@@ -136,6 +139,9 @@ p["LogThreadsPerMailbox"] = p["LogCoresPerMailbox"]+p["LogThreadsPerCore"]
 
 # Size of memory-mapped region for mailbox scratchpad in bytes
 p["LogScratchpadBytes"] = 1+p["LogWordsPerMsg"]+2+p["LogMsgsPerThread"]
+
+# Number of mailboxes per ring
+p["RingSize"] = 2 ** p["LogRingSize"];
 
 #==============================================================================
 # Main 

@@ -10,7 +10,8 @@ done <<< `python ../config.py envs`
 
 # Bluespec compiler flags
 BSC="bsc"
-BSCFLAGS="-wait-for-license -suppress-warnings S0015 $DEFS "
+BSCFLAGS="-wait-for-license -suppress-warnings S0015 \
+          -steps-warn-interval 200000 $DEFS "
 
 # Determine top-level module
 TOPFILE=DE5Top.bsv
@@ -54,6 +55,7 @@ esac
 echo Compiling $TOPMOD in file $TOPFILE
 if [ "$SYNTH" = "1" ]
 then
+  BSCFLAGS="-opt-undetermined-vals -unspecified-to X $BSCFLAGS"
   eval "$BSC $BSCFLAGS -u -verilog -g $TOPMOD $TOPFILE"
 else
   if eval "$BSC $BSCFLAGS -sim -g $TOPMOD -u $TOPFILE"
