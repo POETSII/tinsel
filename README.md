@@ -25,9 +25,9 @@ Like any large system, Tinsel is comprised of several modules:
 The number of hardware threads must be a power of two and is
 controlled by a sythesis-time parameter `LogThreadsPerCore`.
 
-It employs a generous **9-stage pipeline** to achieve an Fmax in
-excess of 400MHz on the [DE5-NET](http://de5-net.terasic.com), while
-consuming less than 450 LUTs (0.2%).
+Tinsel employs a generous **9-stage pipeline** to achieve an Fmax of
+450MHz on the [DE5-NET](http://de5-net.terasic.com), while consuming
+less than 450 ALMs (0.2%).
 
 The pipeline is **hazard-free**: at most one instruction per thread
 can be present in the pipeline at any time.  To achieve **full
@@ -48,13 +48,11 @@ A 9-stage pipeline is perhaps excessive but incurs little cost on
 FPGA, and there will be no shortage of program threads in the
 massively-parallel applications for which the machine is intended.
 
-The core fetches instructions from a 2-cycle latent **instruction
-memory** implemented using on-chip block RAM.  The size of this memory
-is controlled by the synthesis-time parameter `LogInstrsPerCore`.  All
-threads in a core share the same instruction memory.  In fact, the instruction
-memory is dual-ported and may be shared by two cores.  The initial
-contents of the memory is specified in the FPGA bitstream which can be
-regenerated in seconds during application development.
+The core fetches instructions from an **instruction memory**
+implemented using on-chip block RAM.  The size of this memory is
+controlled by the synthesis-time parameter `LogInstrsPerCore`.  All
+threads in a core share the same instruction memory.  The initial
+contents of the memory is specified in the FPGA bitstream.
 
 A globally unique identifier for the currently running thread can be
 obtained from a RISC-V [control/status
@@ -119,7 +117,7 @@ For applications with lower memory-bandwidth requirements, the value
 of `LogCoresPerDCache` might be increased to three, giving 64 cores
 per DRAM.  (As a point of comparison,
 [SpiNNaker](http://apt.cs.manchester.ac.uk/projects/SpiNNaker/) shares
-a 1.6GB/s DRAM amongst 16 x 200MHz cores, giving 2 bytes per
+a 1.6GB/s DRAM amongst 16 x 200MHz cores, giving 4 bits per
 core-cycle.  For the same data width per core-cycle, each 12.8GB/s
 DIMM on the [DE5-NET](http://de5-net.terasic.com) could serve 64 x
 400MHz cores.)

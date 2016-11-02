@@ -11,6 +11,8 @@ import DRAM      :: *;
 import Interface :: *;
 import Queue     :: *;
 import Vector    :: *;
+import Mailbox   :: *;
+import Ring      :: *;
 
 // ============================================================================
 // Interface
@@ -35,47 +37,68 @@ endinterface
 // ============================================================================
 
 module de5Top (DE5Top);
-  // Components
-  let dram   <- mkDRAM;
-  let dcache <- mkDCache(0);
-  Vector#(`CoresPerDCache, Core) cores;
-  for (Integer i = 0; i < `CoresPerDCache; i=i+1)
-    cores[i] <- mkCore(fromInteger(i));
+  // Create DRAM
+  let dram <- mkDRAM;
+
+  // Create data caches
+  Vector#(`DCachesPerDRAM, DCache) dcaches;
+  for (Integer i = 0; i < `DCachesPerDRAM; i=i+1)
+    dcaches[i] <- mkDCache(fromInteger(i));
+
+  // Create cores
+  Integer coreCount = 0;
+  Vector#(`DCachesPerDRAM, Vector#(`CoresPerDCache, Core)) cores = newVector;
+  for (Integer i = 0; i < `DCachesPerDRAM; i=i+1)
+    for (Integer j = 0; j < `CoresPerDCache; j=j+1) begin
+      cores[i][j] <- mkCore(fromInteger(coreCount));
+      coreCount = coreCount+1;
+    end
   
-  // Connect cores to data cache request line
-  function getDCacheReqOut(core) = core.dcacheReqOut;
-  let dcacheReqs <- mkMergeTree(Fair,
-                      mkUGShiftQueue1(QueueOptFmax),
-                      map(getDCacheReqOut, cores));
-  connectUsing(mkUGQueue, dcacheReqs, dcache.reqIn);
+  // Connect cores to data caches
+  function dcacheClient(core) = core.dcacheClient;
+  for (Integer i = 0; i < `DCachesPerDRAM; i=i+1) begin
+    connectCoresToDCache(map(dcacheClient, cores[i]), dcaches[i]);
+  end
 
-  // Connect data cache response line to cores
-  function Bit#(`LogCoresPerDCache) getDCacheRespKey(DCacheResp resp) =
-    truncateLSB(resp.id);
-  function getDCacheRespIn(core) = core.dcacheRespIn;
-  let dcacheResps <- mkResponseDistributor(
-                      getDCacheRespKey,
-                      mkUGShiftQueue1(QueueOptFmax),
-                      map(getDCacheRespIn, cores));
-  connectUsing(mkUGQueue, dcache.respOut, dcacheResps);
+  // Connect data caches to DRAM
+  connectDCachesToDRAM(dcaches, dram);
 
-  // Connect data cache to DRAM
-  connectUsing(mkUGShiftQueue1(QueueOptFmax),
-                 dcache.reqOut, dram.reqIn);
-  connectUsing(mkUGShiftQueue1(QueueOptFmax),
-                 dram.loadResp, dcache.loadRespIn);
-  connectUsing(mkUGShiftQueue1(QueueOptFmax),
-                 dram.storeResp, dcache.storeRespIn);
+  // Mailboxes
+  `ifdef MailboxEnabled
+
+  // Create mailboxes
+  Vector#(`RingSize, Mailbox) mailboxes;
+  for (Integer i = 0; i < `RingSize; i=i+1)
+    mailboxes[i] <- mkMailbox;
+
+  // Connect cores to mailboxes
+  for (Integer i = 0; i < `RingSize; i=i+1) begin
+    // Get sub-vector of cores to be connected to mailbox i
+    Vector#(`CoresPerMailbox, Core) cs =
+      takeAt(`CoresPerMailbox*i, concat(cores));
+    function mailboxClient(core) = core.mailboxClient;
+    // Connect sub-vector of cores to mailbox
+    connectCoresToMailbox(map(mailboxClient, cs), mailboxes[i]);
+  end
+
+  // Create ring of mailboxes
+  mkRing(mailboxes);
+
+  `endif
 
   rule display;
-    for (Integer i = 0; i < `CoresPerDCache; i=i+1)
-      $display(i, " @ ", $time, ": ", cores[i].out);
+    Integer id = 0;
+    for (Integer i = 0; i < `DCachesPerDRAM; i=i+1)
+      for (Integer j = 0; j < `CoresPerDCache; j=j+1) begin
+        $display(id, " @ ", $time, ": ", cores[i][j].out);
+        id = id+1;
+      end
   endrule
 
   `ifndef SIMULATE
   function Bit#(32) getOut(Core core) = core.out;
   interface DRAMExtIfc dramIfc = dram.external;
-  method Bit#(32) coreOut = cores[0].out;
+  method Bit#(32) coreOut = cores[0][0].out;
   `endif
 endmodule
 

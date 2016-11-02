@@ -8,9 +8,6 @@ import sys
 
 def quoted(s): return "'\"" + s + "\"'"
 
-# Target board must be "de5" or "sockit"
-target = "sockit"
-
 # Intialise parameter map
 p = {}
 
@@ -18,117 +15,66 @@ p = {}
 # DE5 config
 #==============================================================================
 
-if target == "de5":
+# The Altera device family being targetted
+p["DeviceFamily"] = quoted("Stratix V")
 
-  # The Altera device family being targetted
-  p["DeviceFamily"] = quoted("Stratix V")
+# FPGA board being targetted
+p["TargetBoard"] = quoted("DE5")
 
-  # FPGA board being targetted
-  p["TargetBoard"] = quoted("DE5")
+# Log of max number of cores
+# (used to determine width of globally unique core id)
+p["LogMaxCores"] = 8
 
-  # Log of max number of cores
-  # (used to determine width of globally unique core id)
-  p["LogMaxCores"] = 8
+# The number of hardware threads per core
+p["LogThreadsPerCore"] = 4
 
-  # The number of hardware threads per core
-  p["LogThreadsPerCore"] = 4
+# The number of 32-bit instructions that fit in a core's instruction memory
+p["LogInstrsPerCore"] = 9
 
-  # The number of 32-bit instructions that fit in a core's instruction memory
-  p["LogInstrsPerCore"] = 9
+# Log of number of multi-threaded cores sharing a DCache
+p["LogCoresPerDCache"] = 2
 
-  # Log of number of multi-threaded cores sharing a DCache
-  p["LogCoresPerDCache"] = 2
+# Log of number of caches per DRAM port
+p["LogDCachesPerDRAM"] = 3
 
-  # Log of number of caches per DRAM port
-  p["LogDCachesPerDRAM"] = 0
+# Log of number of 32-bit words in a single memory transfer
+p["LogWordsPerBeat"] = 3
 
-  # Log of number of 32-bit words in a single memory transfer
-  p["LogWordsPerBeat"] = 3
+# Log of number of beats in a cache line
+p["LogBeatsPerLine"] = 0
 
-  # Log of number of beats in a cache line
-  p["LogBeatsPerLine"] = 0
+# Log of number of sets per thread in set-associative data cache
+p["DCacheLogSetsPerThread"] = 3
 
-  # Log of number of sets per thread in set-associative data cache
-  p["DCacheLogSetsPerThread"] = 3
+# Log of number of ways per set in set-associative data cache
+p["DCacheLogNumWays"] = 2
 
-  # Log of number of ways per set in set-associative data cache
-  p["DCacheLogNumWays"] = 2
+# Max number of outstanding DRAM requests permitted
+p["DRAMLogMaxInFlight"] = 4
 
-  # Max number of outstanding DRAM requests permitted
-  p["DRAMLogMaxInFlight"] = 4
+# DRAM latency in cycles (simulation only)
+p["DRAMLatency"] = 20
 
-  # DRAM latency in cycles (simulation only)
-  p["DRAMLatency"] = 20
+# DRAM byte-address width
+p["DRAMAddrWidth"] = 30
 
-  # DRAM byte-address width
-  p["DRAMAddrWidth"] = 30
+# Size of packet payload
+p["LogWordsPerMsg"] = 3
 
-  # Size of packet payload
-  p["LogWordsPerMsg"] = 3
+# Space available per thread in mailbox scratchpad
+p["LogMsgsPerThread"] = 4
 
-  # Space available per thread in mailbox scratchpad
-  p["LogMsgsPerThread"] = 4
+# Number of cores sharing a mailbox
+p["LogCoresPerMailbox"] = 2
 
-  # Number of cores sharing a mailbox
-  p["LogCoresPerMailbox"] = 2
+# Enable mailbox (message-passing between threads)
+p["MailboxEnabled"] = True
 
-#==============================================================================
-# SoCkit-specific choices
-#==============================================================================
+# Use array of set instead of array of queue in mailbox client helper
+#p["MailboxClientUseSet"] = True
 
-if target == "sockit":
-
-  # The Altera device family being targetted
-  p["DeviceFamily"] = quoted("Cyclone V")
-
-  # FPGA board being targetted
-  p["TargetBoard"] = quoted("SoCKit")
-
-  # Log of max number of cores
-  # (used to determine width of globally unique core id)
-  p["LogMaxCores"] = 4
-
-  # The number of hardware threads per core
-  p["LogThreadsPerCore"] = 4
-
-  # The number of 32-bit instructions that fit in a core's instruction memory
-  p["LogInstrsPerCore"] = 9
-
-  # Log of number of multi-threaded cores sharing a DCache
-  p["LogCoresPerDCache"] = 2
-
-  # Log of number of caches per DRAM port
-  p["LogDCachesPerDRAM"] = 2
-
-  # Log of number of 32-bit words in a single memory transfer
-  p["LogWordsPerBeat"] = 2
-
-  # Log of number of beats in a cache line
-  p["LogBeatsPerLine"] = 0
-
-  # Log of number of sets per thread in set-associative data cache
-  p["DCacheLogSetsPerThread"] = 2
-
-  # Log of number of ways per set in set-associative data cache
-  p["DCacheLogNumWays"] = 2
-
-  # Max number of outstanding DRAM requests permitted
-  p["DRAMLogMaxInFlight"] = 4
-
-  # DRAM latency in cycles (simulation only)
-  p["DRAMLatency"] = 20
-
-  # DRAM byte-address width
-  p["DRAMAddrWidth"] = 30
-
-  # Size of packet payload
-  p["LogWordsPerMsg"] = 3
-
-  # Space available per thread in mailbox scratchpad
-  p["LogMsgsPerThread"] = 4
-
-  # Number of cores sharing a mailbox
-  p["LogCoresPerMailbox"] = 2
+# Number of mailboxes per ring
+p["LogRingSize"] = 3;
 
 #==============================================================================
 # Derived Parameters
@@ -179,11 +125,23 @@ p["CoresPerDCache"] = 2**p["LogCoresPerDCache"]
 # Caches per DRAM
 p["DCachesPerDRAM"] = 2**p["LogDCachesPerDRAM"]
 
+# Number of bytes per message
+p["LogBytesPerMsg"] = p["LogWordsPerMsg"] + 2
+
 # Number of words per message
 p["WordsPerMsg"] = 2**p["LogWordsPerMsg"]
 
+# Number of cores sharing a mailbox
+p["CoresPerMailbox"] = 2 ** p["LogCoresPerMailbox"]
+
 # Number of threads sharing a mailbox
 p["LogThreadsPerMailbox"] = p["LogCoresPerMailbox"]+p["LogThreadsPerCore"]
+
+# Size of memory-mapped region for mailbox scratchpad in bytes
+p["LogScratchpadBytes"] = 1+p["LogWordsPerMsg"]+2+p["LogMsgsPerThread"]
+
+# Number of mailboxes per ring
+p["RingSize"] = 2 ** p["LogRingSize"];
 
 #==============================================================================
 # Main 
@@ -192,7 +150,7 @@ p["LogThreadsPerMailbox"] = p["LogCoresPerMailbox"]+p["LogThreadsPerCore"]
 if len(sys.argv) > 1:
   mode = sys.argv[1]
 else:
-  print "Usage: config.py <defs|envs>"
+  print "Usage: config.py <defs|envs|cpp>"
   sys.exit(-1)
 
 if mode == "defs":
@@ -204,3 +162,6 @@ if mode == "defs":
 elif mode == "envs":
   for var in p:
     print("export " + var + "=" + str(p[var]))
+elif mode == "cpp":
+  for var in p:
+    print("#define " + var + " " + str(p[var]))

@@ -1,10 +1,6 @@
-// Get the hardware thread id
-inline int me()
-{
-  int id;
-  asm ("csrr %0, 0xf14" : "=r"(id));
-  return id;
-}
+// Compute Nth triangular number, verify result, and output success
+
+#include "tinsel.h"
 
 // Set output bits
 inline void set(int bits)

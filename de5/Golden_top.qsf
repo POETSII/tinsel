@@ -1921,12 +1921,14 @@ set_instance_assignment -name IO_STANDARD "SSTL-15 CLASS I" -to DDR3A_DM[7] -tag
 set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to DDR3A_DM[7] -tag __S5_DDR3_QSYS_mem_if_ddr3_emif_p0
 set_global_assignment -name SEED 6
 set_global_assignment -name OPTIMIZATION_MODE BALANCED
+
+set_global_assignment -name MIF_FILE InstrMem.mif
+set_global_assignment -name MIF_FILE RunQueue.mif
+set_global_assignment -name VERILOG_FILE ../rtl/mkMailbox.v
 set_global_assignment -name VERILOG_FILE ../rtl/de5Top.v
 set_global_assignment -name VERILOG_FILE ../rtl/mkCore.v
 set_global_assignment -name VERILOG_FILE ../rtl/mkDCache.v
 set_global_assignment -name VERILOG_FILE ../rtl/AlteraBlockRam.v
-set_global_assignment -name MIF_FILE ../software/DataMem.mif
-set_global_assignment -name MIF_FILE ../software/InstrMem.mif
 set_global_assignment -name QIP_FILE S5_DDR3_QSYS/synthesis/S5_DDR3_QSYS.qip
 set_global_assignment -name SDC_FILE Golden_top.sdc
 set_global_assignment -name VERILOG_FILE Golden_top.v

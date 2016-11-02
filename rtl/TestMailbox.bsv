@@ -57,16 +57,14 @@ module testMailbox ();
   OutPort#(TransmitReq)   txReq     <- mkOutPort;
   InPort#(TransmitResp)   txResp    <- mkInPort;
   OutPort#(AllocReq)      allocReq  <- mkOutPort;
-  InPort#(AllocResp)      allocResp <- mkInPort;
   InPort#(ReceiveAlert)   rxAlert   <- mkInPort;
 
-  connectUsing(mkUGQueue, spadReq.out, mb.spadReq);
-  connectDirect(mb.spadResp, spadResp.in);
-  connectUsing(mkUGQueue, txReq.out, mb.txReq);
-  connectDirect(mb.txResp, txResp.in);
-  connectUsing(mkUGQueue, allocReq.out, mb.allocReq);
-  connectUsing(mkUGQueue, mb.allocResp, allocResp.in);
-  connectDirect(mb.rxAlert, rxAlert.in);
+  connectUsing(mkUGQueue, spadReq.out, mb.spadReqIn);
+  connectDirect(mb.spadRespOut, spadResp.in);
+  connectUsing(mkUGQueue, txReq.out, mb.txReqIn);
+  connectDirect(mb.txRespOut, txResp.in);
+  connectUsing(mkUGQueue, allocReq.out, mb.allocReqIn);
+  connectDirect(mb.rxAlertOut, rxAlert.in);
 
   // Constants
   // ---------
@@ -205,9 +203,8 @@ module testMailbox ();
   Reg#(Bit#(32)) recvReg <- mkRegU;
 
   rule ignoreResponses;
-    // Ignore transmit and allocate responses
+    // Ignore transmit responses
     if (txResp.canGet) txResp.get;
-    if (allocResp.canGet) allocResp.get;
   endrule
 
   rule handleResponses (!init && spadResp.canGet);
