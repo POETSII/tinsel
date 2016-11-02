@@ -108,16 +108,16 @@ set_interface_property avalon_master PORT_NAME_MAP ""
 set_interface_property avalon_master CMSIS_SVD_VARIABLES ""
 set_interface_property avalon_master SVD_ADDRESS_GROUP ""
 
-add_interface_port avalon_master dramIfc_m0_readdata readdata Input 256
-add_interface_port avalon_master dramIfc_m0_readdatavalid readdatavalid Input 1
-add_interface_port avalon_master dramIfc_m0_waitrequest waitrequest Input 1
-add_interface_port avalon_master dramIfc_m0_writeresponsevalid writeresponsevalid Input 1
-add_interface_port avalon_master dramIfc_m0_writedata writedata Output 256
-add_interface_port avalon_master dramIfc_m0_address address Output 30
-add_interface_port avalon_master dramIfc_m0_read read Output 1
-add_interface_port avalon_master dramIfc_m0_write write Output 1
-add_interface_port avalon_master dramIfc_m0_response response Input 2
-add_interface_port avalon_master dramIfc_m0_burstcount burstcount Output 1
+add_interface_port avalon_master dramIfc_m_readdata readdata Input 256
+add_interface_port avalon_master dramIfc_m_readdatavalid readdatavalid Input 1
+add_interface_port avalon_master dramIfc_m_waitrequest waitrequest Input 1
+add_interface_port avalon_master dramIfc_m_writeresponsevalid writeresponsevalid Input 1
+add_interface_port avalon_master dramIfc_m_writedata writedata Output 256
+add_interface_port avalon_master dramIfc_m_address address Output 30
+add_interface_port avalon_master dramIfc_m_read read Output 1
+add_interface_port avalon_master dramIfc_m_write write Output 1
+add_interface_port avalon_master dramIfc_m_response response Input 2
+add_interface_port avalon_master dramIfc_m_burstcount burstcount Output 1
 
 
 # 

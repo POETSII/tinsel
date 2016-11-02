@@ -1,25 +1,39 @@
 #!/bin/bash
 
+# Dertmine files to compile based on make target
+case "$1" in
+  tri)
+    CFILES="tri"
+  ;;
+  ping)
+    CFILES="ping"
+  ;;
+  *)
+    echo 'Build targets: '
+    echo '  tri'
+    echo '  ping'
+    exit 0
+  ;;
+esac
+
 # Parameters
-ARCH="RV32I"
+ARCH="RV32IXcustom"
 CC="riscv64-unknown-elf-gcc"
 AS="riscv64-unknown-elf-as"
 LD="riscv64-unknown-elf-ld"
 OBJCOPY="riscv64-unknown-elf-objcopy"
 CFLAGS="-march=$ARCH -O2"
-CFILES="main"
 
 # Load config parameters
 while read -r EXPORT; do
   eval $EXPORT
 done <<< `python ../config.py envs`
 
+# Generate config.h
+python ../config.py cpp > config.h
+
 # Determine location of quartus project
-if [ `eval echo $TargetBoard` == "SoCKit" ]; then
-  QPDIR=../sockit
-else
-  QPDIR=../de5
-fi
+QPDIR=../de5
 
 # Build object files
 OFILES=""

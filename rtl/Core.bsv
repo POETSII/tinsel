@@ -16,6 +16,24 @@ import DReg      :: *;
 import DCache    :: *;
 import ConfigReg :: *;
 import Interface :: *;
+import Mailbox   :: *;
+import Globals   :: *;
+
+// ============================================================================
+// Custom instructions
+// ============================================================================
+
+// We use the RISC-V custom-0 space to implement mailbox instructions,
+// i.e. instructions for sending/receiving messages to/from other
+// cores and threads.
+//
+// Name    | Opcode | rd,rs1,rs2 | Function
+// ------- | ------ | ---------- | --------
+// Alloc   | 0      | Y,Y,N      | Allocate space for new message in scratchpad
+// CanSend | 1      | Y,N,N      | 1 if can send, 0 otherwise
+// CanRecv | 2      | Y,N,N      | 1 if can receive, 0 otherwise
+// Send    | 3      | Y,Y,Y      | Send message (at pointer) to destination
+// Recv    | 4      | Y,N,N      | Consume message-pointer from receive buffer
 
 // ============================================================================
 // Types
@@ -28,14 +46,10 @@ typedef Bit#(`LogInstrsPerCore) InstrIndex;
 typedef Bit#(TAdd#(`LogInstrsPerCore, 2)) InstrAddr;
 
 // Threads
-typedef Bit#(`LogThreadsPerCore) ThreadId;
 typedef struct {
   InstrAddr pc;  // Program counter
   ThreadId  id;  // Thread identifier
 } Thread deriving (Bits);
-
-// Core id
-typedef Bit#(`LogMaxCores) CoreId;
 
 // Register file index
 // (Register file constains 32 registers per thread)
@@ -60,6 +74,11 @@ typedef struct {
   Bool isLoad;           Bool isStore;
   Bool isCSR;            Bool isBitwise;
   Bool isAddOrSub;
+  // Mailbox custom instructions
+  Bool isMailboxOp;      Bool isMailboxAlloc;
+  Bool isMailboxSend;    Bool isMailboxCanSend;
+  Bool isMailboxRecv;    Bool isMailboxCanRecv;
+  Bool isMailboxNonRecv;
 } Op deriving (Bits);
 
 // Instruction result
@@ -89,10 +108,12 @@ typedef struct {
   AccessWidth accessWidth; // Byte, half-word, or word access?
   Bit#(32) loadVal;        // Result of load instruction
   Bit#(32) memAddr;        // Memory address for load or store
+  Bool isScratchpadAccess; // Does memory address map to scratchpad?
   Op op;                   // Decoded operation
   InstrResult instrResult; // Instruction result
   InstrAddr targetPC;      // Next PC if branch taken
   InstrAddr nextPC;        // Next PC if branch not taken
+  Bool mailboxSuccess;     // Is mailbox operation successful?
 } PipelineToken deriving (Bits);
 
 // For each suspended thread, we have the following info
@@ -108,12 +129,17 @@ typedef struct {
 
 // For each suspended thread in the writeback queue, we have:
 typedef struct {
-  Bool isLoad;
-  Bool isStore;
+  Bool write;
   Thread thread;
   Bit#(5) destReg;
   Bit#(32) writeVal;
 } Writeback deriving (Bits);
+
+// Token for thread-resumption pipeline
+typedef struct {
+  ThreadId id;
+  Bit#(32) data;
+} ResumeToken deriving (Bits);
 
 // ============================================================================
 // Decoder
@@ -168,7 +194,7 @@ endfunction
 
 // Decode operation
 function Op decodeOp(Bit#(32) instr);
-  Op ret;
+  Op ret = ?;
   Bit#(5) op = instr[6:2];
   Bit#(3) minorOp = funct3(instr);
   // Arithmetic operations
@@ -202,6 +228,17 @@ function Op decodeOp(Bit#(32) instr);
   ret.isStore = op == 'b01000;
   // CSR set/clear operations
   ret.isCSR = op == 'b11100 && minorOp[2:1] == 'b01;
+  // Mailbox custom instruction
+  `ifdef MailboxEnabled
+    Bit#(3) mailboxOp    = instr[27:25];
+    ret.isMailboxOp      = op == 5'b00010;
+    ret.isMailboxAlloc   = ret.isMailboxOp && mailboxOp == 0;
+    ret.isMailboxCanSend = ret.isMailboxOp && mailboxOp == 1;
+    ret.isMailboxCanRecv = ret.isMailboxOp && mailboxOp == 2;
+    ret.isMailboxSend    = ret.isMailboxOp && mailboxOp == 3;
+    ret.isMailboxRecv    = ret.isMailboxOp && mailboxOp == 4;
+    ret.isMailboxNonRecv = ret.isMailboxOp && mailboxOp != 4;
+  `endif
   return ret;
 endfunction
 
@@ -242,7 +279,7 @@ function Bool isRegFileWrite(Op op) =
   || op.isShiftRight     || op.isAnd
   || op.isOr             || op.isXor
   || op.isOpUI           || op.isJump
-  || op.isCSR;
+  || op.isCSR            || op.isMailboxOp;
 
 // ==============
 // Loads & Stores
@@ -252,8 +289,8 @@ function Bool isRegFileWrite(Op op) =
 // and bottom two bits of address
 function Bit#(4) genByteEnable(AccessWidth access, Bit#(2) a);
   return when(access.w, 4'b1111)
-       | when(access.h, {~a[1],~a[1],a[1],a[1]})
-       | when(access.b, {pack(a==0),pack(a==1),pack(a==2),pack(a==3)});
+       | when(access.h, {a[1],a[1],~a[1],~a[1]})
+       | when(access.b, {pack(a==3),pack(a==2),pack(a==1),pack(a==0)});
 endfunction
 
 // Align a write using access width
@@ -288,8 +325,10 @@ endfunction
 // RISC-V programs via CSR instructions.
 
 interface Core;
-  interface Out#(DCacheReq) dcacheReqOut;
-  interface In#(DCacheResp) dcacheRespIn;
+  interface DCacheClient    dcacheClient;
+  `ifdef MailboxEnabled
+  interface MailboxClient   mailboxClient;
+  `endif
   (* always_ready *)
   method Bit#(32) out;
 endinterface
@@ -357,7 +396,6 @@ module mkCore#(CoreId myId) (Core);
   // Number of threads
   Integer numThreads = 2 ** `LogThreadsPerCore;
 
-
   // Global state
   // ------------
 
@@ -390,6 +428,11 @@ module mkCore#(CoreId myId) (Core);
   BlockRamOpts regFileOpts = defaultBlockRamOpts;
   BlockRam#(RegFileIndex, Bit#(32)) regFileA <- mkBlockRamOpts(regFileOpts);
   BlockRam#(RegFileIndex, Bit#(32)) regFileB <- mkBlockRamOpts(regFileOpts);
+
+  // Mailbox
+  `ifdef MailboxEnabled
+  MailboxClientUnit mailbox <- mkMailboxClientUnit(myId);
+  `endif
 
   // Pipeline stages
   Reg#(Bool)          fetch1Fire         <- mkDReg(False);
@@ -461,6 +504,11 @@ module mkCore#(CoreId myId) (Core);
     token.instrType = decodeInstrType(token.instr);
     // Compute access width of load or store
     token.accessWidth = decodeAccessWidth(token.instr);
+    // Prepare mailbox operation
+    `ifdef MailboxEnabled
+      if (token.op.isMailboxOp)
+        mailbox.prepare(token.thread.id);
+    `endif
     // Trigger second decode sub-stage
     decode2Input <= token;
   endrule
@@ -485,6 +533,20 @@ module mkCore#(CoreId myId) (Core);
     token.aluB = isALUImm(token.instr) ? token.imm : token.valB;
     // Determine memory address for load or store
     token.memAddr = token.valA + token.imm;
+    // Issue mailbox operation
+    token.isScratchpadAccess = False;
+    `ifdef MailboxEnabled
+      token.isScratchpadAccess = token.memAddr[31:`LogScratchpadBytes] == 0;
+      Bool isSend = token.op.isMailboxSend || token.op.isMailboxCanSend;
+      Bool isRecv = token.op.isMailboxRecv || token.op.isMailboxCanRecv;
+      token.mailboxSuccess = mailbox.canSend && isSend ||
+                               mailbox.canRecv && isRecv;
+      if (mailbox.canSend && token.op.isMailboxSend)
+        mailbox.send(token.thread.id, truncate(token.valB),
+                                      truncate(token.valA));
+      if (mailbox.canRecv && token.op.isMailboxRecv)
+        mailbox.recv;
+    `endif
     // Triger next stage
     execute2Input <= token;
   endrule
@@ -510,35 +572,72 @@ module mkCore#(CoreId myId) (Core);
     // Load upper immediate (+ PC)
     res.opui = token.imm + (addPCtoUI(token.instr) ?
                               zeroExtend(token.thread.pc) : 0);
-    // Load or store: send request to data cache
+    // Load or store: send request to data cache or scratchpad
     Bool retry = False;
     Bool suspend = False;
     if (token.op.isLoad || token.op.isStore) begin
-      if (dcacheReq.canPut) begin
-        // Prepare data cache request
-        DCacheReq req;
-        req.id = {truncate(myId), token.thread.id};
-        req.cmd.isLoad = token.op.isLoad;
-        req.cmd.isStore = token.op.isStore;
-        req.addr = token.memAddr;
-        req.data = writeAlign(token.accessWidth, token.valB);
-        req.byteEn = genByteEnable(token.accessWidth, token.memAddr[1:0]);
-        // Issue data cache request
-        dcacheReq.put(req);
-        // Record state of suspended thread
-        SuspendedThread susp;
-        susp.pc = token.thread.pc + 4;
-        susp.isLoad = token.op.isLoad;
-        susp.isStore = token.op.isStore;
-        susp.destReg = rd(token.instr);
-        susp.loadSelector = token.memAddr[1:0];
-        susp.accessWidth = token.accessWidth;
-        susp.isUnsignedLoad = isUnsignedLoad(token.instr);
-        suspended.write(token.thread.id, susp);
-        suspend = True;
-      end else
-        retry = True;
+      // Determine data to write and assoicated byte-enables
+      Bit#(32) writeData = writeAlign(token.accessWidth, token.valB);
+      Bit#(4)  byteEn    = genByteEnable(token.accessWidth, token.memAddr[1:0]);
+      if (token.isScratchpadAccess) begin
+        `ifdef MailboxEnabled
+          if (mailbox.scratchpadReq.canPut) begin
+            // Prepare scratchpad request
+            ScratchpadReq req;
+            req.id = {truncate(myId), token.thread.id};
+            req.isStore  = token.op.isStore;
+            req.wordAddr = truncate(token.memAddr[31:2]);
+            req.data     = writeData;
+            req.byteEn   = byteEn;
+            // Issue scratchpad request
+            mailbox.scratchpadReq.put(req);
+            suspend = True;
+          end else
+            retry = True;
+        `endif
+      end else begin
+        if (dcacheReq.canPut) begin
+          // Prepare data cache request
+          DCacheReq req;
+          req.id = {truncate(myId), token.thread.id};
+          req.cmd.isLoad = token.op.isLoad;
+          req.cmd.isStore = token.op.isStore;
+          req.addr = token.memAddr;
+          req.data = writeData;
+          req.byteEn = byteEn;
+          // Issue data cache request
+          dcacheReq.put(req);
+          suspend = True;
+        end else
+          retry = True;
+      end
     end
+    // Allocate space for an incoming message in mailbox scratchpad
+    `ifdef MailboxEnabled
+      if (token.op.isMailboxAlloc) begin
+        if (mailbox.allocateReq.canPut) begin
+          // Prepare mailbox allocation request
+          AllocReq req;
+          req.id = {truncate(myId), token.thread.id};
+          req.msgIndex = byteAddrToMsgIndex(token.valA);
+          // Issue request
+          mailbox.allocateReq.put(req);
+        end else
+          retry = True;
+      end
+    `endif
+    // Record state of suspended thread
+    if (suspend) begin
+      SuspendedThread susp;
+      susp.pc = token.thread.pc + 4;
+      susp.isLoad = token.op.isLoad;
+      susp.isStore = token.op.isStore;
+      susp.destReg = rd(token.instr);
+      susp.loadSelector = token.memAddr[1:0];
+      susp.accessWidth = token.accessWidth;
+      susp.isUnsignedLoad = isUnsignedLoad(token.instr);
+      suspended.write(token.thread.id, susp);
+    end 
     // Compute next PC
     token.nextPC = token.thread.pc + (retry ? 0 : 4);
     // Compute jump/branch target
@@ -564,14 +663,18 @@ module mkCore#(CoreId myId) (Core);
     // Setup write to destination register
     Op op = token.op;
     token.writeVal =
-        when(op.isAddOrSub,      res.add[31:0])
-      | when(op.isSetIfLessThan, lt ? 1 : 0)
-      | when(op.isShiftLeft,     res.shiftLeft)
-      | when(op.isShiftRight,    res.shiftRight)
-      | when(op.isBitwise,       res.bitwise)
-      | when(op.isOpUI,          res.opui)
-      | when(op.isJump,          zeroExtend(token.nextPC))
-      | when(op.isCSR,           res.csr);
+        when(op.isAddOrSub,       res.add[31:0])
+      | when(op.isSetIfLessThan,  lt ? 1 : 0)
+      | when(op.isShiftLeft,      res.shiftLeft)
+      | when(op.isShiftRight,     res.shiftRight)
+      | when(op.isBitwise,        res.bitwise)
+      | when(op.isOpUI,           res.opui)
+      | when(op.isJump,           zeroExtend(token.nextPC))
+      | when(op.isCSR,            res.csr)
+      `ifdef MailboxEnabled
+      | when(op.isMailboxRecv,    mailbox.recvAddr)
+      | when(op.isMailboxNonRecv, {0, pack(token.mailboxSuccess)})
+      `endif ;
     // Setup new PC
     Bool takeBranch =
          op.isJump
@@ -615,14 +718,14 @@ module mkCore#(CoreId myId) (Core);
       Bool resume = False;
       // If register file's write-port is not in use then 
       // a pending load result can be written back
-      if (!writeToRegFile && wb.isLoad) begin
+      if (!writeToRegFile && wb.write) begin
         // Write to register file
         writeToRegFile = True;
         writeVal = wb.writeVal;
         dest = {wb.thread.id, wb.destReg};
         writebackQueue.deq;
         resume = True;
-      end else if (wb.isStore) begin
+      end else if (!wb.write) begin
         writebackQueue.deq;
         resume = True;
       end
@@ -641,20 +744,38 @@ module mkCore#(CoreId myId) (Core);
 
   // Pipeline sub-stages for thread resumption
   Reg#(Bool)          resumeThread1Fire  <- mkDReg(False);
-  Reg#(DCacheResp)    resumeThread1Input <- mkConfigRegU;
-  Reg#(DCacheResp)    resumeThread2Input <- mkVReg;
-  Reg#(DCacheResp)    resumeThread3Input <- mkVReg;
+  Reg#(ResumeToken)   resumeThread1Input <- mkConfigRegU;
+  Reg#(ResumeToken)   resumeThread2Input <- mkVReg;
+  Reg#(ResumeToken)   resumeThread3Input <- mkVReg;
  
-  rule resumeThread1 (dcacheResp.canGet || resumeThread1Fire);
-    let resp = resumeThread1Input;
-    if (! resumeThread1Fire) begin
-      dcacheResp.get;
-      resp = dcacheResp.value;
+  `ifdef MailboxEnabled
+  Bool mailboxResp = mailbox.scratchpadResp.canGet;
+  `else
+  Bool mailboxResp = False;
+  `endif
+
+  rule resumeThread1 (resumeThread1Fire
+                       || dcacheResp.canGet
+                       || mailboxResp);
+    ResumeToken token = resumeThread1Input;
+    if (!resumeThread1Fire) begin
+      if (dcacheResp.canGet) begin
+        dcacheResp.get;
+        token.id   = truncate(dcacheResp.value.id);
+        token.data = dcacheResp.value.data;
+      end
+      `ifdef MailboxEnabled
+      else if (mailbox.scratchpadResp.canGet) begin
+        mailbox.scratchpadResp.get;
+        token.id   = truncate(mailbox.scratchpadResp.value.id);
+        token.data = mailbox.scratchpadResp.value.data;
+      end
+      `endif
     end
     // Fetch info about suspended thread
-    suspended.read(truncate(resp.id));
+    suspended.read(token.id);
     // Trigger next sub-stage
-    resumeThread2Input <= resp;
+    resumeThread2Input <= token;
   endrule
 
   rule resumeThread2;
@@ -664,31 +785,37 @@ module mkCore#(CoreId myId) (Core);
 
   rule resumeThread3;
     let susp = suspended.dataOut;
-    let resp = resumeThread3Input;
+    let token = resumeThread3Input;
     // Prepare request for writeback stage
     Writeback wb;
-    wb.isLoad = susp.isLoad;
-    wb.isStore = susp.isStore;
-    wb.thread.id = truncate(resp.id);
+    wb.write = susp.isLoad;
+    wb.thread.id = token.id;
     wb.thread.pc = susp.pc;
     wb.destReg = susp.destReg;
-    wb.writeVal = loadMux(resp.data, susp.accessWidth,
+    wb.writeVal = loadMux(token.data, susp.accessWidth,
                       susp.loadSelector, susp.isUnsignedLoad);
     if (writebackQueue.notFull) begin
       writebackQueue.enq(wb);
     end else begin
       // Retry if queue full
       resumeThread1Fire <= True;
-      resumeThread1Input <= resp;
+      resumeThread1Input <= token;
     end
   endrule
 
   // Interface
   // ---------
 
-  interface Out dcacheReqOut = dcacheReq.out;
-  interface In  dcacheRespIn = dcacheResp.in;
-  method Bit#(32) out        = emitReg;
+  interface DCacheClient dcacheClient;
+    interface Out dcacheReqOut = dcacheReq.out;
+    interface In  dcacheRespIn = dcacheResp.in;
+  endinterface
+
+  `ifdef MailboxEnabled
+  interface MailboxClient mailboxClient = mailbox.client;
+  `endif
+
+  method Bit#(32) out = emitReg;
 endmodule
 
 endpackage

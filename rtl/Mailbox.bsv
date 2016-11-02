@@ -86,15 +86,16 @@ package Mailbox;
 // Imports
 // =============================================================================
 
-import Vector     :: *;
-import Queue      :: *;
-import Interface  :: *;
-import BlockRam   :: *;
-import ArrayOfSet :: *;
-import ConfigReg  :: *;
-import Util       :: *;
-import Globals    :: *;
-import DReg       :: *;
+import Vector       :: *;
+import Queue        :: *;
+import Interface    :: *;
+import BlockRam     :: *;
+import ArrayOfSet   :: *;
+import ArrayOfQueue :: *;
+import ConfigReg    :: *;
+import Util         :: *;
+import Globals      :: *;
+import DReg         :: *;
 
 // =============================================================================
 // Types
@@ -139,7 +140,7 @@ typedef struct {
   Bit#(32) data;
   // For store operation: byte enables
   Bit#(4) byteEn;
-} ScratchpadReq deriving (Bits);
+} ScratchpadReq deriving (Bits, FShow);
 
 // Scratchpad response
 typedef struct {
@@ -176,12 +177,6 @@ typedef struct {
   MailboxThreadMsgAddr msgIndex;
 } AllocReq deriving (Bits);
 
-// Allocation response
-typedef struct {
-  // Message destination
-  MailboxClientId id;
-} AllocResp deriving (Bits);
-
 // Receive notification
 // (Notification that a message has been received)
 typedef struct {
@@ -192,20 +187,35 @@ typedef struct {
 } ReceiveAlert deriving (Bits);
 
 // =============================================================================
+// Functions
+// =============================================================================
+
+// Convert byte address to message index
+function MailboxThreadMsgAddr byteAddrToMsgIndex(Bit#(32) addr);
+  MailboxThreadMsgAddr msgAddr = truncate(addr[31:`LogBytesPerMsg]);
+  return msgAddr;
+endfunction
+
+// Convert message address to byte address
+function Bit#(32) msgAddrToByteAddr(MailboxThreadMsgAddr msgAddr);
+  Bit#(`LogWordsPerMsg) wordOffset = 0;
+  return {0, msgAddr, wordOffset, 2'b0};
+endfunction
+
+// =============================================================================
 // Interface
 // =============================================================================
 
 interface Mailbox;
   // Core-side interfaces to scratchpad
-  interface In#(ScratchpadReq)    spadReq;
-  interface BOut#(ScratchpadResp) spadResp;
+  interface In#(ScratchpadReq)    spadReqIn;
+  interface BOut#(ScratchpadResp) spadRespOut;
   // Core-side interfaces to transmit unit
-  interface In#(TransmitReq)      txReq;
-  interface BOut#(TransmitResp)   txResp;
+  interface In#(TransmitReq)      txReqIn;
+  interface BOut#(TransmitResp)   txRespOut;
   // Core-side interfaces to receive unit
-  interface In#(AllocReq)         allocReq;
-  interface Out#(AllocResp)       allocResp;
-  interface BOut#(ReceiveAlert)   rxAlert;
+  interface In#(AllocReq)         allocReqIn;
+  interface BOut#(ReceiveAlert)   rxAlertOut;
   // Network-side interface
   interface In#(Packet)           packetIn;
   interface BOut#(Packet)         packetOut;
@@ -237,7 +247,6 @@ module mkMailbox (Mailbox);
   InPort#(TransmitReq)     txReqPort     <- mkInPort;
   InPort#(Packet)          packetInPort  <- mkInPort;
   InPort#(AllocReq)        allocReqPort  <- mkInPort;
-  OutPort#(AllocResp)      allocRespPort <- mkOutPort;
 
   // Message access unit
   // ===================
@@ -318,7 +327,7 @@ module mkMailbox (Mailbox);
     if (triggerNextStage) begin
       receive2Fire <= True;
       // Extract a bit from the status vector
-      statusMem.get(truncate(pkt.dest));
+      statusMem.tryGet(truncate(pkt.dest));
     end
     // Prepare input for next stage
     receive2Input <= pkt;
@@ -335,7 +344,8 @@ module mkMailbox (Mailbox);
     // Prepare inputs for next stage
     receive4Input <= pkt;
     // Has destination for packet been determined?
-    if (statusMem.success) begin
+    if (statusMem.canGet) begin
+      statusMem.get;
       // Trigger final pipeline stage
       receive4Fire <= True;
     end else begin
@@ -371,11 +381,10 @@ module mkMailbox (Mailbox);
   // Allocate space in scratchpad for a message
 
   rule allocHandler;
-    if (allocReqPort.canGet && statusMem.canPut && allocRespPort.canPut) begin
+    if (allocReqPort.canGet && statusMem.canPut) begin
       AllocReq req = allocReqPort.value;
-      statusMem.put(truncate(req.id), req.msgIndex);
+      statusMem.put(req.id, req.msgIndex);
       allocReqPort.get;
-      allocRespPort.put(AllocResp {id : req.id});
     end
   endrule
 
@@ -489,13 +498,12 @@ module mkMailbox (Mailbox);
   // Interfaces
   // ==========
 
-  interface In  txReq     = txReqPort.in;
-  interface In  allocReq  = allocReqPort.in;
-  interface In  spadReq   = spadReqPort.in;
-  interface In  packetIn  = packetInPort.in;
-  interface Out allocResp = allocRespPort.out;
+  interface In txReqIn    = txReqPort.in;
+  interface In allocReqIn = allocReqPort.in;
+  interface In spadReqIn  = spadReqPort.in;
+  interface In packetIn   = packetInPort.in;
 
-  interface BOut rxAlert;
+  interface BOut rxAlertOut;
     method Action get;
       alertBuffer.deq;
       inFlightRecvs.dec;
@@ -504,7 +512,7 @@ module mkMailbox (Mailbox);
     method ReceiveAlert value = alertBuffer.dataOut;
   endinterface
 
-  interface BOut txResp;
+  interface BOut txRespOut;
     method Action get;
       transmitRespBuffer.deq;
       inFlightTransmitResps.dec;
@@ -513,7 +521,7 @@ module mkMailbox (Mailbox);
     method TransmitResp value = transmitRespBuffer.dataOut;
   endinterface
 
-  interface BOut spadResp;
+  interface BOut spadRespOut;
     method Action get;
       scratchpadRespBuffer.deq;
       inFlightScratchpadReqs.dec;
@@ -537,18 +545,254 @@ endmodule
 // Mailbox client
 // =============================================================================
 
-// The interface implemented by mailbox client (e.g. a Tinsel core)
+// The interface implemented by a mailbox client (e.g. a Tinsel core)
 interface MailboxClient;
   // Scratchpad
-  interface Out#(ScratchpadReq) spadReq;
-  interface In#(ScratchpadResp) spadResp;
+  interface Out#(ScratchpadReq) spadReqOut;
+  interface In#(ScratchpadResp) spadRespIn;
   // Transmit unit
-  interface Out#(TransmitReq)   txReq;
-  interface In#(TransmitResp)   txResp;
+  interface Out#(TransmitReq)   txReqOut;
+  interface In#(TransmitResp)   txRespIn;
   // Receive unit
-  interface Out#(AllocReq)      allocReq;
-  interface In#(AllocResp)      allocResp;
-  interface In#(ReceiveAlert)   rxAlert;
+  interface Out#(AllocReq)      allocReqOut;
+  interface In#(ReceiveAlert)   rxAlertIn;
 endinterface
+
+// =============================================================================
+// Mailbox client unit
+// =============================================================================
+
+// We capture much of a mailbox client's behaviour here,
+// avoiding clutter in Tinsel core
+interface MailboxClientUnit;
+  // Scratchpad request & response
+  interface OutPort#(ScratchpadReq) scratchpadReq;
+  interface InPort#(ScratchpadResp) scratchpadResp;
+  // Allocate request
+  interface OutPort#(AllocReq) allocateReq;
+  // Prepare for mailbox access by given thread
+  method Action prepare(ThreadId id);
+  // Is a send/receive possible on prepared thread?
+  // (Valid on 2nd cycle after call to "prepare")
+  method Bool canSend;
+  method Bool canRecv;
+  // Trigger send/receive
+  // (Must only be called on 2nd cycle after call to "prepare")
+  method Action recv;
+  method Action send(ThreadId id, PacketDest dest, MailboxThreadMsgAddr addr);
+  // Scratchpad address of message received
+  // (Valid on 2nd cycle after call to "recv")
+  method Bit#(32) recvAddr;
+  // Tinsel core's interface to the mailbox
+  interface MailboxClient client;
+endinterface
+
+module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
+  // Ports
+  OutPort#(ScratchpadReq) scratchpadReqPort  <- mkOutPort;
+  InPort#(ScratchpadResp) scratchpadRespPort <- mkInPort;
+  OutPort#(AllocReq)      allocReqPort       <- mkOutPort;
+  OutPort#(TransmitReq)   transmitPort       <- mkOutPort;
+  InPort#(TransmitResp)   transmitRespPort   <- mkInPort;
+  InPort#(ReceiveAlert)   alertPort          <- mkInPort;
+
+  // Transmit logic
+  // ==============
+
+  // Transmit queue, big enough to hold one request for each thread
+  SizedQueue#(`LogThreadsPerCore, TransmitReq) transmitQueue <-
+    mkUGSizedQueue;
+
+  // Track whether each thread can send a new message
+  // (We allow each thread to have at most one in-flight send
+  // at a time, to implement the can-send instruction)
+  Vector#(`LogThreadsPerCore, SetReset) canThreadSend <-
+    replicateM(mkSetReset(True));
+
+  // Flag indicating whether client thread can send
+  Reg#(Bool) canSendReg1 <- mkConfigReg(False);
+  Reg#(Bool) canSendReg2 <- mkConfigReg(False);
+
+  rule transmit;
+    canSendReg2 <= canSendReg1;
+    // Send transmit requests
+    if (transmitQueue.canDeq &&
+          transmitQueue.canPeek &&
+            transmitPort.canPut) begin
+      TransmitReq req = transmitQueue.dataOut;
+      transmitQueue.deq;
+      transmitPort.put(req);
+    end
+    // Receive transmit responses
+    if (transmitRespPort.canGet) begin
+      TransmitResp resp = transmitRespPort.value;
+      transmitRespPort.get;
+      Bit#(`LogThreadsPerCore) tid = truncate(resp.id);
+      canThreadSend[tid].set;
+    end
+  endrule
+
+  // Receive logic
+  // =============
+
+  // One queue of unread message-pointers per thread
+  ArrayOfQueue#(`LogThreadsPerCore,
+                `LogMsgsPerThread,
+                MailboxThreadMsgAddr) unread;
+  `ifdef MailboxClientUseSet
+  unread <- mkArrayOfSetCompat;
+  `else
+  unread <- mkArrayOfQueue;
+  `endif
+  
+  // Receive unit state
+  Reg#(Bit#(2))      recvState <- mkConfigReg(0);
+  Reg#(ReceiveAlert) alertReg  <- mkConfigRegU;
+
+  rule receive0 (recvState == 0);
+    if (alertPort.canGet) begin
+      alertPort.get;
+      alertReg <= alertPort.value;
+      recvState <= 1;
+    end
+  endrule
+
+  rule receive1 (recvState == 1);
+    if (unread.canEnq) begin
+      unread.enq(truncate(alertReg.id), alertReg.index);
+      recvState <= 2;
+    end
+  endrule
+
+  rule receive2 (recvState == 2);
+    recvState <= 3;
+  endrule
+
+  rule receive3 (recvState == 3);
+    if (unread.didEnq) begin
+      if (alertPort.canGet) begin
+        alertPort.get;
+        alertReg <= alertPort.value;
+        recvState <= 1;
+      end else
+        recvState <= 0;
+    end else
+      recvState <= 1;
+  endrule
+
+  // Methods
+  // =======
+
+  method Action prepare(ThreadId id);
+    myAssert(unread.canTryDeq(id), "MailboxClientUnit: prepare vilation");
+    unread.tryDeq(id);
+    canSendReg1 <= canThreadSend[id].value;
+  endmethod
+
+  method Bool canRecv = unread.canDeq;
+
+  method Action recv;
+    myAssert(unread.canDeq, "MailboxClientUnit: recv violation");
+    unread.deq;
+  endmethod
+
+  method Bool canSend = canSendReg2;
+
+  method Action send(ThreadId id, PacketDest dest, MailboxThreadMsgAddr addr);
+    myAssert(canSendReg2, "MailboxClientUnit: send violation");
+    // Construct transmit request
+    TransmitReq req;
+    req.id = {truncate(myId), id};
+    req.msgIndex = addr;
+    req.dest = dest;
+    // Put in queue
+    myAssert(transmitQueue.notFull, "MailboxClientUnit: transmitQueue full");
+    transmitQueue.enq(req);
+    // Mark thread as busy
+    canThreadSend[id].clear;
+  endmethod
+
+  method Bit#(32) recvAddr = msgAddrToByteAddr(unread.itemOut);
+
+  // Interfaces
+  // ==========
+
+  interface scratchpadReq  = scratchpadReqPort;
+  interface scratchpadResp = scratchpadRespPort;
+  interface allocateReq    = allocReqPort;
+
+  interface MailboxClient client;
+    // Scratchpad
+    interface spadReqOut  = scratchpadReqPort.out;
+    interface spadRespIn  = scratchpadRespPort.in;
+    // Transmit unit
+    interface txReqOut    = transmitPort.out;
+    interface txRespIn    = transmitRespPort.in;
+    // Receive unit
+    interface allocReqOut = allocReqPort.out;
+    interface rxAlertIn   = alertPort.in;
+  endinterface
+endmodule
+
+// =============================================================================
+// Mailbox connections
+// =============================================================================
+
+// Connect a vector of mailbox clients to a mailbox
+module connectCoresToMailbox#(
+         Vector#(`CoresPerMailbox, MailboxClient) clients,
+         Mailbox server) ();
+
+  // Connect scratchpad requests
+  function spadReqOut(client) = client.spadReqOut;
+  let spadReqs <- mkMergeTree(Fair,
+                     mkUGShiftQueue1(QueueOptFmax),
+                     map(spadReqOut, clients));
+  connectUsing(mkUGQueue, spadReqs, server.spadReqIn);
+
+  // Connect transmit requests
+  function txReqOut(client) = client.txReqOut;
+  let txReqs <- mkMergeTree(Fair,
+                  mkUGShiftQueue1(QueueOptFmax),
+                  map(txReqOut, clients));
+  connectUsing(mkUGQueue, txReqs, server.txReqIn);
+
+  // Connect allocation requests
+  function allocReqOut(client) = client.allocReqOut;
+  let allocReqs <- mkMergeTree(Fair,
+                     mkUGShiftQueue1(QueueOptFmax),
+                     map(allocReqOut, clients));
+  connectUsing(mkUGQueue, allocReqs, server.allocReqIn);
+
+  // Connect scratchpad responses
+  function Bit#(`LogCoresPerMailbox) spadRespKey(ScratchpadResp resp) =
+    truncateLSB(resp.id);
+  function spadRespIn(client) = client.spadRespIn;
+  let spadResps <- mkResponseDistributor(
+                     spadRespKey,
+                     mkUGShiftQueue1(QueueOptFmax),
+                     map(spadRespIn, clients));
+  connectDirect(server.spadRespOut, spadResps);
+
+  // Connect transmit responses
+  function Bit#(`LogCoresPerMailbox) txRespKey(TransmitResp resp) =
+    truncateLSB(resp.id);
+  function txRespIn(client) = client.txRespIn;
+  let txResps <- mkResponseDistributor(
+                   txRespKey,
+                    mkUGShiftQueue1(QueueOptFmax),
+                   map(txRespIn, clients));
+  connectDirect(server.txRespOut, txResps);
+
+  // Connect receive-alerts
+  function Bit#(`LogCoresPerMailbox) alertRespKey(ReceiveAlert alert) =
+    truncateLSB(alert.id);
+  function rxAlertIn(client) = client.rxAlertIn;
+  let rxAlerts <- mkResponseDistributor(
+                    alertRespKey,
+                    mkUGShiftQueue1(QueueOptFmax),
+                    map(rxAlertIn, clients));
+  connectDirect(server.rxAlertOut, rxAlerts);
+endmodule
 
 endpackage
