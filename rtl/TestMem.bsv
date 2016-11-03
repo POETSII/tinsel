@@ -60,8 +60,8 @@ module testMem ();
 
   // Connect cache to DRAM
   connectUsing(mkUGQueue, dcache.reqOut, dram.reqIn);
-  connectUsing(mkUGQueue, dram.loadResp, dcache.loadRespIn);
-  connectUsing(mkUGQueue, dram.storeResp, dcache.storeRespIn);
+  connectDirect(dram.loadResp, dcache.loadRespIn);
+  connectDirect(dram.storeResp, dcache.storeRespIn);
 
   // Connect trace generator to cache
   OutPort#(DCacheReq) dcacheReq <- mkOutPort;

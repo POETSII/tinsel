@@ -6,8 +6,8 @@ package DRAM;
 
 interface DRAM;
   interface In#(MemReq) reqIn;
-  interface Out#(MemLoadResp) loadResp;
-  interface Out#(MemStoreResp) storeResp;
+  interface BOut#(MemLoadResp) loadResp;
+  interface BOut#(MemStoreResp) storeResp;
   interface DRAMExtIfc external;
 endinterface
 
@@ -44,9 +44,7 @@ typedef Empty DRAMExtIfc;
 
 module mkDRAM (DRAM);
   // Ports
-  InPort#(MemReq)        reqPort       <- mkInPort;
-  OutPort#(MemStoreResp) storeRespPort <- mkOutPort;
-  OutPort#(MemLoadResp)  loadRespPort  <- mkOutPort;
+  InPort#(MemReq) reqPort <- mkInPort;
 
   // State
   SizedQueue#(`DRAMLatency, MemReq) reqs <- mkUGShiftQueueCore(QueueOptFmax);
@@ -58,17 +56,20 @@ module mkDRAM (DRAM);
   PulseWire decOutstanding1 <- mkPulseWire;
   PulseWire decOutstanding2 <- mkPulseWire;
 
+  // Response buffers
+  FIFOF#(MemLoadResp)  loadResps  <- mkUGSizedFIFOF(16);
+  FIFOF#(MemStoreResp) storeResps <- mkUGSizedFIFOF(16);
+
   // Constants
   Integer maxOutstanding = 2 ** `DRAMLogMaxInFlight;
 
-  // Try to perform a request
   rule step;
+    // Try to perform a request
     if (reqs.canDeq) begin
       MemReq req = reqs.dataOut;
       if (! req.isStore) begin
-        if (loadRespPort.canPut) begin
+        if (loadResps.notFull) begin
           if (beat+1 == req.burst) begin
-            //shift = True;
             reqs.deq;
             beat <= 0;
           end else
@@ -83,12 +84,12 @@ module mkDRAM (DRAM);
           MemLoadResp resp;
           resp.id = req.id;
           resp.data = pack(elems);
-          loadRespPort.put(resp);
+          loadResps.enq(resp);
           decOutstanding1.send;
         end
       end else begin
         myAssert(req.burst == 1, "DRAM: burst writes not yet supported");
-        if (storeRespPort.canPut) begin
+        if (storeResps.notFull) begin
           reqs.deq;
           Vector#(`WordsPerBeat, Bit#(32)) elems = unpack(req.data);
           Bit#(32) addr = {req.addr, 0};
@@ -96,7 +97,7 @@ module mkDRAM (DRAM);
             ramWrite(addr+fromInteger(4*i), elems[i]);
           MemStoreResp resp;
           resp.id = req.id;
-          storeRespPort.put(resp);
+          storeResps.enq(resp);
           decOutstanding2.send;
         end
       end
@@ -119,9 +120,24 @@ module mkDRAM (DRAM);
   endrule
 
   // Interfaces
-  interface In  reqIn           = reqPort.in;
-  interface Out loadResp        = loadRespPort.out;
-  interface Out storeResp       = storeRespPort.out;
+  interface In reqIn = reqPort.in;
+
+  interface BOut loadResp;
+    method Action get;
+      loadResps.deq;
+    endmethod
+    method Bool valid = loadResps.notEmpty;
+    method MemLoadResp value = loadResps.first;
+  endinterface
+
+  interface BOut storeResp;
+    method Action get;
+      storeResps.deq;
+    endmethod
+    method Bool valid = storeResps.notEmpty;
+    method MemStoreResp value = storeResps.first;
+  endinterface
+
   interface DRAMExtIfc external;
   endinterface
 endmodule
@@ -172,9 +188,7 @@ typedef struct {
 
 module mkDRAM (DRAM);
   // Ports
-  InPort#(MemReq)        reqPort       <- mkInPort;
-  OutPort#(MemStoreResp) storeRespPort <- mkOutPort;
-  OutPort#(MemLoadResp)  loadRespPort  <- mkOutPort;
+  InPort#(MemReq) reqPort <- mkInPort;
 
   // Queues
   SizedQueue#(`DRAMLogMaxInFlight, DRAMInFlightReq) inFlight <-
@@ -234,33 +248,37 @@ module mkDRAM (DRAM);
     end
   endrule
 
-  rule putLoadResp;
-    if (loadRespPort.canPut && inFlight.canPeek &&
-          inFlight.canDeq && !inFlight.dataOut.isStore &&
-            respBuffer.canPeek && respBuffer.canDeq) begin
+  // Internal interfaces
+  interface In reqIn = reqPort.in;
+
+  interface BOut loadResp;
+    method Action get;
       consumeLoadResp.send;
+    endmethod
+    method Bool valid = inFlight.canPeek && inFlight.canDeq &&
+                          respBuffer.canPeek && respBuffer.canDeq &&
+                            !inFlight.dataOut.isStore;
+    method MemLoadResp value;
       MemLoadResp resp;
       resp.id = inFlight.dataOut.id;
       resp.data = respBuffer.dataOut;
-      loadRespPort.put(resp);
-    end
-  endrule
+      return resp;
+    endmethod
+  endinterface
 
-  rule putStoreResp;
-    if (storeRespPort.canPut && inFlight.canPeek &&
-          inFlight.canDeq && inFlight.dataOut.isStore &&
-            respBuffer.canPeek && respBuffer.canDeq) begin
+  interface BOut storeResp;
+    method Action get;
       consumeStoreResp.send;
+    endmethod
+    method Bool valid = inFlight.canPeek && inFlight.canDeq &&
+                          respBuffer.canPeek && respBuffer.canDeq &&
+                            inFlight.dataOut.isStore;
+    method MemStoreResp value;
       MemStoreResp resp;
       resp.id = inFlight.dataOut.id;
-      storeRespPort.put(resp);
-    end
-  endrule
-
-  // Internal interface
-  interface In  reqIn           = reqPort.in;
-  interface Out loadResp        = loadRespPort.out;
-  interface Out storeResp       = storeRespPort.out;
+      return resp;
+    endmethod
+  endinterface
 
   // External (Avalon master) interface
   interface DRAMExtIfc external;
@@ -283,7 +301,7 @@ endmodule
 `endif
 
 // ============================================================================
-// Connections
+// Connect data caches to DRAM
 // ============================================================================
 
 // Connect vector of data caches to DRAM
@@ -304,7 +322,7 @@ module connectDCachesToDRAM#(
                         getLoadRespKey,
                         mkUGShiftQueue1(QueueOptFmax),
                         map(getLoadRespIn, caches));
-  connectUsing(mkUGQueue, dram.loadResp, dramLoadResps);
+  connectDirect(dram.loadResp, dramLoadResps);
 
   // Connect store responses
   function DCacheId getStoreRespKey(MemStoreResp resp) = resp.id;
@@ -313,7 +331,7 @@ module connectDCachesToDRAM#(
                          getStoreRespKey,
                          mkUGShiftQueue1(QueueOptFmax),
                          map(getStoreRespIn, caches));
-  connectUsing(mkUGQueue, dram.storeResp, dramStoreResps);
+  connectDirect(dram.storeResp, dramStoreResps);
 
 endmodule
 
