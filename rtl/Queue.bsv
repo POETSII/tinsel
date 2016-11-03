@@ -185,21 +185,21 @@ endmodule
 
 typedef enum { QueueOptFmax, QueueOptThroughput } QueueOpt deriving (Eq);
 
-// Unguarded version
-module mkUGShiftQueue#(QueueOpt opt) (SizedQueue#(logSize, elemType))
+// The core version allows any size of queue to be created
+module mkUGShiftQueueCore#(QueueOpt opt) (SizedQueue#(size, elemType))
   provisos (Bits#(elemType, elemWidth),
-            Add#(1, _any, TExp#(logSize)));
+            Add#(1, _any, size));
 
   // State
-  Vector#(TExp#(logSize), Reg#(Bool)) valids <- replicateM(mkReg(False));
-  Vector#(TExp#(logSize), Reg#(elemType)) elems <- replicateM(mkRegU);
+  Vector#(size, Reg#(Bool)) valids <- replicateM(mkReg(False));
+  Vector#(size, Reg#(elemType)) elems <- replicateM(mkRegU);
 
   // Wires
   PulseWire doDeq <- mkPulseWire;
   RWire#(elemType) doEnq <- mkRWire;
 
   // Values
-  Integer endIndex = 2**valueOf(logSize)-1;
+  Integer endIndex = valueOf(size)-1;
 
   // Rules
   rule update;
@@ -239,9 +239,30 @@ module mkUGShiftQueue#(QueueOpt opt) (SizedQueue#(logSize, elemType))
   method Bool canPeek = valids[0];
   method Bool spaceFor(Integer n) =
     error ("Queue.spaceFor() not implemented");
+
 endmodule
 
-// Guarded version
+// This version requires the size to be a power of 2
+module mkUGShiftQueue#(QueueOpt opt) (SizedQueue#(logSize, elemType))
+  provisos (Bits#(elemType, elemWidth),
+            Add#(1, _any, TExp#(logSize)));
+
+  // State
+  SizedQueue#(TExp#(logSize), elemType) q <- mkUGShiftQueueCore(opt);
+
+  // Methods
+  method Action deq = q.deq;
+  method Action enq(elemType x) = q.enq(x);
+  method elemType dataOut = q.dataOut;
+  method Bool notFull = q.notFull;
+  method Bool notEmpty = q.notEmpty;
+  method Bool canDeq = q.canDeq;
+  method Bool canPeek = q.canPeek;
+  method Bool spaceFor(Integer n) = q.spaceFor(n);
+
+endmodule
+
+// Guarded version of the above
 module mkShiftQueue#(QueueOpt opt) (SizedQueue#(logSize, elemType))
   provisos (Bits#(elemType, elemWidth),
             Add#(1, _any, TExp#(logSize)));

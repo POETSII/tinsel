@@ -259,7 +259,7 @@ module mkDCache#(DCacheId myId) (DCache);
 
   // True dual-port mixed-width data block RAM
   // (One bus-sized port and one word-sized port)
-  BlockRamTrueMixedBE#(BeatIndex, Bit#(`BusWidth), WordIndex, Bit#(32))
+  BlockRamTrueMixedBE#(BeatIndex, Bit#(`BeatWidth), WordIndex, Bit#(32))
     dataMem <- mkBlockRamTrueMixedBE;
 
   // Meta data for each set
@@ -307,7 +307,7 @@ module mkDCache#(DCacheId myId) (DCache);
   Wire#(Bool) lineWriteReqWire <- mkDWire(False);
   Reg#(Bool) lineWriteReqReg <- mkReg(False);
   Wire#(BeatIndex) lineWriteIndexWire <- mkDWire(0);
-  Reg#(Bit#(`BusWidth)) lineWriteDataReg <- mkConfigRegU;
+  Reg#(Bit#(`BeatWidth)) lineWriteDataReg <- mkConfigRegU;
   Reg#(BeatIndex) lineIndexReg <- mkRegU;
 
   // Use wires to issue line access in dataMem
@@ -535,7 +535,7 @@ module mkDCache#(DCacheId myId) (DCache);
   Queue#(MissMemReq) missMemReqs <- mkUGShiftQueue(QueueOptFmax);
 
   // Data buffer (data values for beats being written out)
-  SizedQueue#(`LogDCacheWriteBufferSize, Bit#(`BusWidth)) beatBuffer <-
+  SizedQueue#(`LogDCacheWriteBufferSize, Bit#(`BeatWidth)) beatBuffer <-
     mkUGShiftQueue(QueueOptFmax);
 
   // Used to allocate space in the beat buffer

@@ -11,7 +11,7 @@ done <<< `python ../config.py envs`
 # Bluespec compiler flags
 BSC="bsc"
 BSCFLAGS="-wait-for-license -suppress-warnings S0015 \
-          -steps-warn-interval 200000 $DEFS "
+          -steps-warn-interval 200000 -check-assert $DEFS "
 
 # Determine top-level module
 TOPFILE=DE5Top.bsv
