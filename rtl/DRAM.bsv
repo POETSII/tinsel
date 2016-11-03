@@ -49,9 +49,7 @@ module mkDRAM (DRAM);
   OutPort#(MemLoadResp)  loadRespPort  <- mkOutPort;
 
   // State
-  Vector#(`DRAMLatency, Reg#(Bool)) valids <- replicateM(mkReg(False));
-  Vector#(`DRAMLatency, Reg#(MemReq)) reqs <- replicateM(mkRegU);
-  Reg#(Bool) toggle <- mkReg(False);
+  SizedQueue#(`DRAMLatency, MemReq) reqs <- mkUGShiftQueueCore(QueueOptFmax);
   Reg#(Bit#(`BurstWidth)) beat <- mkReg(0);
   Reg#(Bit#(32)) outstanding <- mkReg(0);
 
@@ -61,18 +59,17 @@ module mkDRAM (DRAM);
   PulseWire decOutstanding2 <- mkPulseWire;
 
   // Constants
-  Integer endIndex = `DRAMLatency-1;
   Integer maxOutstanding = 2 ** `DRAMLogMaxInFlight;
 
   // Try to perform a request
   rule step;
-    Bool shift = False;
-    if (valids[0]) begin
-      MemReq req = reqs[0];
+    if (reqs.canDeq) begin
+      MemReq req = reqs.dataOut;
       if (! req.isStore) begin
         if (loadRespPort.canPut) begin
           if (beat+1 == req.burst) begin
-            shift = True;
+            //shift = True;
+            reqs.deq;
             beat <= 0;
           end else
             beat <= beat+1;
@@ -92,7 +89,7 @@ module mkDRAM (DRAM);
       end else begin
         myAssert(req.burst == 1, "DRAM: burst writes not yet supported");
         if (storeRespPort.canPut) begin
-          shift = True;
+          reqs.deq;
           Vector#(`WordsPerBeat, Bit#(32)) elems = unpack(req.data);
           Bit#(32) addr = {req.addr, 0};
           for (Integer i = 0; i < `WordsPerBeat; i=i+1)
@@ -105,24 +102,12 @@ module mkDRAM (DRAM);
       end
     end
     // Insert a new request
-    Bool insert = False;
-    if (reqPort.canGet && (shift || !valids[endIndex])
-                       && outstanding < fromInteger(maxOutstanding)) begin
+    if (reqPort.canGet && reqs.notFull &&
+          outstanding < fromInteger(maxOutstanding)) begin
       reqPort.get;
-      reqs[endIndex] <= reqPort.value;
-      insert = True;
+      reqs.enq(reqPort.value);
       incOutstanding <= zeroExtend(reqPort.value.burst);
     end
-    // Shift requests
-    for (Integer i = 0; i < endIndex; i=i+1) begin
-      shift = shift || !valids[i];
-      if (shift) begin
-        reqs[i] <= reqs[i+1];
-        valids[i] <= valids[i+1];
-      end
-    end
-    if (insert) valids[endIndex] <= True;
-    else if (shift) valids[endIndex] <= False;
   endrule
 
   // Track number of outstanding requests
@@ -163,13 +148,13 @@ import DCache    :: *;
 (* always_ready, always_enabled *)
 interface DRAMExtIfc;
   method Action m(
-    Bit#(`BusWidth) readdata,
+    Bit#(`BeatWidth) readdata,
     Bool readdatavalid,
     Bool waitrequest,
     Bool writeresponsevalid,
     Bit#(2) response
   );
-  method Bit#(`BusWidth) m_writedata;
+  method Bit#(`BeatWidth) m_writedata;
   method Bit#(`DRAMAddrWidth) m_address;
   method Bool m_read;
   method Bool m_write;
@@ -194,12 +179,12 @@ module mkDRAM (DRAM);
   // Queues
   SizedQueue#(`DRAMLogMaxInFlight, DRAMInFlightReq) inFlight <-
     mkUGSizedQueuePrefetch;
-  SizedQueue#(`DRAMLogMaxInFlight, Bit#(`BusWidth)) respBuffer <-
+  SizedQueue#(`DRAMLogMaxInFlight, Bit#(`BeatWidth)) respBuffer <-
     mkUGSizedQueuePrefetch;
 
   // Registers
   Reg#(MemAddr) address <- mkRegU;
-  Reg#(Bit#(`BusWidth)) writeData <- mkRegU;
+  Reg#(Bit#(`BeatWidth)) writeData <- mkRegU;
   Reg#(Bool) doRead <- mkReg(False);
   Reg#(Bool) doWrite <- mkReg(False);
   Reg#(Bit#(`BurstWidth)) burstReg <- mkReg(0);

@@ -109,8 +109,8 @@ p["LogBytesPerBeat"] = 2+p["LogWordsPerBeat"]
 # Number of data bytes in a memory transfer
 p["BytesPerBeat"] = 2**p["LogBytesPerBeat"]
 
-# Memory transfer bus width in bits
-p["BusWidth"] = p["WordsPerBeat"] * 32
+# Data cache beat width in bits
+p["BeatWidth"] = p["WordsPerBeat"] * 32
 
 # Longest possible burst transfer is 2^BurstWidth-1
 p["BurstWidth"] = p["LogBeatsPerLine"]+1
