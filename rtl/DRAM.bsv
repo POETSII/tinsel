@@ -1,13 +1,45 @@
 package DRAM;
 
 // ============================================================================
+// Types
+// ============================================================================
+
+// DRAM request id
+typedef DCacheId DRAMReqId;
+
+// DRAM address
+typedef TSub#(30, `LogDRAMWidthInWords) DRAMAddrNumBits;
+typedef Bit#(DRAMAddrNumBits) DRAMAddr;
+
+// DRAM request
+typedef struct {
+  Bool isStore;
+  DRAMReqId id;
+  DRAMAddr addr;
+  Bit#(`DRAMWidth) data;
+  Bit#(`DRAMBurstWidth) burst;
+  Bit#(`DRAMWidthInBytes) byteEn;
+} DRAMReq deriving (Bits);
+
+// DRAM load response
+typedef struct {
+  DRAMReqId id;
+  Bit#(`DRAMWidth) data;
+} DRAMLoadResp deriving (Bits);
+
+// DRAM store response
+typedef struct {
+  DRAMReqId id;
+} DRAMStoreResp deriving (Bits);
+
+// ============================================================================
 // Interface
 // ============================================================================
 
 interface DRAM;
-  interface In#(MemReq) reqIn;
-  interface BOut#(MemLoadResp) loadResp;
-  interface BOut#(MemStoreResp) storeResp;
+  interface In#(DRAMReq) reqIn;
+  interface BOut#(DRAMLoadResp) loadResp;
+  interface BOut#(DRAMStoreResp) storeResp;
   interface DRAMExtIfc external;
 endinterface
 
@@ -30,8 +62,9 @@ import Queue     :: *;
 
 // Interface to C functions
 import "BDPI" function Action ramInit();
-import "BDPI" function Action ramWrite(Bit#(32) addr, Bit#(32) data);
 import "BDPI" function ActionValue#(Bit#(32)) ramRead(Bit#(32) addr);
+import "BDPI" function Action ramWrite(Bit#(32) addr, Bit#(32) data,
+                                         Bit#(32) bitEn);
 
 // Types
 // -----
@@ -39,16 +72,25 @@ import "BDPI" function ActionValue#(Bit#(32)) ramRead(Bit#(32) addr);
 // In simulation, external interface is empty
 typedef Empty DRAMExtIfc;
 
+// Functions
+// ---------
+
+// Convert 4-bit byte-enable to 32-bit bit-enable
+function Bit#(32) byteEnToBitEn(Bit#(4) x);
+  function Bit#(8) ext(Bit#(1) b) = signExtend(b);
+  return { ext(x[3]), ext(x[2]), ext(x[1]), ext(x[0]) };
+endfunction
+
 // Implementation
 // --------------
 
 module mkDRAM (DRAM);
   // Ports
-  InPort#(MemReq) reqPort <- mkInPort;
+  InPort#(DRAMReq) reqPort <- mkInPort;
 
   // State
-  SizedQueue#(`DRAMLatency, MemReq) reqs <- mkUGShiftQueueCore(QueueOptFmax);
-  Reg#(Bit#(`BurstWidth)) beat <- mkReg(0);
+  SizedQueue#(`DRAMLatency, DRAMReq) reqs <- mkUGShiftQueueCore(QueueOptFmax);
+  Reg#(Bit#(`DRAMBurstWidth)) burstCount <- mkReg(0);
   Reg#(Bit#(32)) outstanding <- mkReg(0);
 
   // Wires
@@ -57,8 +99,8 @@ module mkDRAM (DRAM);
   PulseWire decOutstanding2 <- mkPulseWire;
 
   // Response buffers
-  FIFOF#(MemLoadResp)  loadResps  <- mkUGSizedFIFOF(16);
-  FIFOF#(MemStoreResp) storeResps <- mkUGSizedFIFOF(16);
+  FIFOF#(DRAMLoadResp)  loadResps  <- mkUGSizedFIFOF(16);
+  FIFOF#(DRAMStoreResp) storeResps <- mkUGSizedFIFOF(16);
 
   // Constants
   Integer maxOutstanding = 2 ** `DRAMLogMaxInFlight;
@@ -66,22 +108,23 @@ module mkDRAM (DRAM);
   rule step;
     // Try to perform a request
     if (reqs.canDeq) begin
-      MemReq req = reqs.dataOut;
+      DRAMReq req = reqs.dataOut;
       if (! req.isStore) begin
         if (loadResps.notFull) begin
-          if (beat+1 == req.burst) begin
+          if (burstCount+1 == req.burst) begin
             reqs.deq;
-            beat <= 0;
+            burstCount <= 0;
           end else
-            beat <= beat+1;
-          Vector#(`WordsPerBeat, Bit#(32)) elems;
+            burstCount <= burstCount+1;
+          Vector#(`DRAMWidthInWords, Bit#(32)) elems;
           Bit#(32) addr = {req.addr, 0};
-          for (Integer i = 0; i < `WordsPerBeat; i=i+1) begin
-            let val <- ramRead(addr + zeroExtend(beat)*`BytesPerBeat +
-                         fromInteger(4*i));
+          for (Integer i = 0; i < `DRAMWidthInWords; i=i+1) begin
+            let val <- ramRead(addr + zeroExtend(burstCount) *
+                                        `DRAMWidthInBytes
+                                    + fromInteger(4*i));
             elems[i] = val;
           end
-          MemLoadResp resp;
+          DRAMLoadResp resp;
           resp.id = req.id;
           resp.data = pack(elems);
           loadResps.enq(resp);
@@ -91,11 +134,13 @@ module mkDRAM (DRAM);
         myAssert(req.burst == 1, "DRAM: burst writes not yet supported");
         if (storeResps.notFull) begin
           reqs.deq;
-          Vector#(`WordsPerBeat, Bit#(32)) elems = unpack(req.data);
+          Vector#(`DRAMWidthInWords, Bit#(32)) elems = unpack(req.data);
+          Vector#(`DRAMWidthInWords, Bit#(4)) byteEns = unpack(req.byteEn);
           Bit#(32) addr = {req.addr, 0};
-          for (Integer i = 0; i < `WordsPerBeat; i=i+1)
-            ramWrite(addr+fromInteger(4*i), elems[i]);
-          MemStoreResp resp;
+          for (Integer i = 0; i < `DRAMWidthInWords; i=i+1)
+            ramWrite(addr+fromInteger(4*i), elems[i],
+                       byteEnToBitEn(byteEns[i]));
+          DRAMStoreResp resp;
           resp.id = req.id;
           storeResps.enq(resp);
           decOutstanding2.send;
@@ -127,7 +172,7 @@ module mkDRAM (DRAM);
       loadResps.deq;
     endmethod
     method Bool valid = loadResps.notEmpty;
-    method MemLoadResp value = loadResps.first;
+    method DRAMLoadResp value = loadResps.first;
   endinterface
 
   interface BOut storeResp;
@@ -135,7 +180,7 @@ module mkDRAM (DRAM);
       storeResps.deq;
     endmethod
     method Bool valid = storeResps.notEmpty;
-    method MemStoreResp value = storeResps.first;
+    method DRAMStoreResp value = storeResps.first;
   endinterface
 
   interface DRAMExtIfc external;
@@ -164,22 +209,23 @@ import DCache    :: *;
 (* always_ready, always_enabled *)
 interface DRAMExtIfc;
   method Action m(
-    Bit#(`BeatWidth) readdata,
+    Bit#(`DRAMWidth) readdata,
     Bool readdatavalid,
     Bool waitrequest,
     Bool writeresponsevalid,
     Bit#(2) response
   );
-  method Bit#(`BeatWidth) m_writedata;
+  method Bit#(`DRAMWidth) m_writedata;
   method Bit#(`DRAMAddrWidth) m_address;
   method Bool m_read;
   method Bool m_write;
-  method Bit#(`BurstWidth) m_burstcount;
+  method Bit#(`DRAMBurstWidth) m_burstcount;
+  method Bit#(`DRAMWidthInBytes) m_byteenable;
 endinterface
 
 // In-flight request
 typedef struct {
-  DCacheId id;
+  DRAMReqId id;
   Bool isStore;
 } DRAMInFlightReq deriving (Bits);
 
@@ -188,25 +234,26 @@ typedef struct {
 
 module mkDRAM (DRAM);
   // Ports
-  InPort#(MemReq) reqPort <- mkInPort;
+  InPort#(DRAMReq) reqPort <- mkInPort;
 
   // Queues
   SizedQueue#(`DRAMLogMaxInFlight, DRAMInFlightReq) inFlight <-
     mkUGSizedQueuePrefetch;
-  SizedQueue#(`DRAMLogMaxInFlight, Bit#(`BeatWidth)) respBuffer <-
+  SizedQueue#(`DRAMLogMaxInFlight, Bit#(`DRAMWidth)) respBuffer <-
     mkUGSizedQueuePrefetch;
 
   // Registers
-  Reg#(MemAddr) address <- mkRegU;
-  Reg#(Bit#(`BeatWidth)) writeData <- mkRegU;
+  Reg#(DRAMAddr) address <- mkRegU;
+  Reg#(Bit#(`DRAMWidth)) writeData <- mkRegU;
+  Reg#(Bit#(`DRAMWidthInBytes)) byteEn <- mkRegU;
   Reg#(Bool) doRead <- mkReg(False);
   Reg#(Bool) doWrite <- mkReg(False);
-  Reg#(Bit#(`BurstWidth)) burstReg <- mkReg(0);
+  Reg#(Bit#(`DRAMBurstWidth)) burstReg <- mkReg(0);
 
   // Wires
   Wire#(Bool) waitRequest <- mkBypassWire;
   PulseWire putLoad <- mkPulseWire;
-  Wire#(Bit#(`BurstWidth)) burstWire <- mkDWire(0);
+  Wire#(Bit#(`DRAMBurstWidth)) burstWire <- mkDWire(0);
   PulseWire putStore <- mkPulseWire;
   PulseWire consumeLoadResp <- mkPulseWire;
   PulseWire consumeStoreResp <- mkPulseWire;
@@ -235,10 +282,11 @@ module mkDRAM (DRAM);
 
   rule consumeRequest;
     if (reqPort.canGet && !waitRequest && inFlight.notFull) begin
-      MemReq req = reqPort.value;
+      DRAMReq req = reqPort.value;
       reqPort.get;
       address   <= req.addr;
       writeData <= req.data;
+      byteEn    <= req.byteEn;
       if (req.isStore) putStore.send; else putLoad.send;
       burstWire <= req.burst;
       DRAMInFlightReq inflightReq;
@@ -258,8 +306,8 @@ module mkDRAM (DRAM);
     method Bool valid = inFlight.canPeek && inFlight.canDeq &&
                           respBuffer.canPeek && respBuffer.canDeq &&
                             !inFlight.dataOut.isStore;
-    method MemLoadResp value;
-      MemLoadResp resp;
+    method DRAMLoadResp value;
+      DRAMLoadResp resp;
       resp.id = inFlight.dataOut.id;
       resp.data = respBuffer.dataOut;
       return resp;
@@ -273,8 +321,8 @@ module mkDRAM (DRAM);
     method Bool valid = inFlight.canPeek && inFlight.canDeq &&
                           respBuffer.canPeek && respBuffer.canDeq &&
                             inFlight.dataOut.isStore;
-    method MemStoreResp value;
-      MemStoreResp resp;
+    method DRAMStoreResp value;
+      DRAMStoreResp resp;
       resp.id = inFlight.dataOut.id;
       return resp;
     endmethod
@@ -295,14 +343,142 @@ module mkDRAM (DRAM);
     method m_read       = doRead;
     method m_write      = doWrite;
     method m_burstcount = burstReg;
+    method m_byteenable = byteEn;
   endinterface
 endmodule
 
 `endif
 
 // ============================================================================
-// Connect data caches to DRAM
+// Connections to DRAM
 // ============================================================================
+
+`ifdef DRAMUseDualPortFrontend
+
+// Convert to DRAM request
+function DRAMReq toDRAMReq(MemReq req);
+  function Bit#(`BytesPerBeat) ext(Bit#(1) b) = signExtend(b);
+  return DRAMReq {
+    id:      req.id,
+    isStore: req.isStore,
+    addr:    truncateLSB(req.addr),
+    data:    {req.data, req.data},
+    burst:   req.isStore ? 1 : truncateLSB(req.burst),
+    byteEn:  { ext(~req.addr[0]), ext(req.addr[0]) }
+  };
+endfunction
+
+// Convert from DRAM store response
+function MemStoreResp fromDRAMStoreResp(DRAMStoreResp resp) =
+  MemStoreResp { id: resp.id };
+
+// Connect vector of data caches to DRAM via dual-port frontend
+module connectDCachesToDRAM#(
+         Vector#(`DCachesPerDRAM, DCache) caches, DRAM dram) ();
+
+  // Connect requests
+  function getReqOut(cache) = cache.reqOut;
+  let reqs <- mkMergeTree(Fair,
+                mkUGShiftQueue1(QueueOptFmax),
+                map(getReqOut, caches));
+  let dramReqs <- onOut(toDRAMReq, reqs);
+  connectUsing(mkUGQueue, dramReqs, dram.reqIn);
+
+  // Connect store responses
+  function DCacheId getStoreRespKey(MemStoreResp resp) = resp.id;
+  function getStoreRespIn(cache) = cache.storeRespIn;
+  let dramStoreResps <- mkResponseDistributor(
+                         getStoreRespKey,
+                         mkUGShiftQueue1(QueueOptFmax),
+                         map(getStoreRespIn, caches));
+  let storeResp <- onBOut(fromDRAMStoreResp, dram.storeResp);
+  connectDirect(storeResp, dramStoreResps);
+
+  // Connect load responses
+  // ======================
+
+  // Create port to access responses from DRAM
+  InPort#(DRAMLoadResp) respPort <- mkInPort;
+  connectDirect(dram.loadResp, respPort.in);
+  Bit#(1) respWay = truncateLSB(respPort.value.id);
+
+  // Partition caches into halves
+  Vector#(2, Vector#(TDiv#(`DCachesPerDRAM, 2), DCache)) half = newVector;
+  half[0] = take(caches);
+  half[1] = drop(caches);
+
+  // Create response distributor for each half
+  Vector#(2, In#(MemLoadResp)) loadResps;
+  function Bit#(TSub#(`LogDCachesPerDRAM, 1))
+    getLoadRespKey(MemLoadResp resp) = truncate(resp.id);
+  function getLoadRespIn(cache) = cache.loadRespIn;
+  for (Integer i = 0; i < 2; i=i+1) begin
+    loadResps[i] <- mkResponseDistributor(
+                      getLoadRespKey,
+                      mkUGShiftQueue2(QueueOptFmax),
+                      map(getLoadRespIn, half[i]));
+  end
+ 
+  // State machine used to serialise DRAM response
+  Vector#(2, Reg#(DRAMLoadResp)) buffer <- replicateM(mkRegU);
+  Vector#(2, Reg#(Bit#(2)))      state  <- replicateM(mkReg(0));
+
+  // Serialise DRAM response
+  for (Integer i = 0; i < 2; i=i+1) begin
+
+    // Consume response from DRAM
+    rule consume (respPort.canGet &&
+                    respWay == fromInteger(i) &&
+                      state[i] == 0);
+      respPort.get;
+      buffer[i] <= respPort.value;
+      state[i] <= 1;
+    endrule
+
+
+    // Produce response to distributor
+    rule produceTry (state[i] != 0);
+      MemLoadResp resp;
+      resp.id = buffer[i].id;
+      resp.data = truncateLSB(buffer[i].data);
+      loadResps[i].tryPut(resp);
+    endrule
+
+    rule produce (state[i] != 0);
+      if (loadResps[i].didPut) begin
+        if (state[i] == 1) begin
+          state[i] <= 2;
+          Bit#(`BeatWidth) rest = truncate(buffer[i].data);
+          buffer[i] <= DRAMLoadResp { id: buffer[i].id, data: {rest, ?} };
+        end else
+          state[i] <= 0;
+      end
+    endrule
+
+  end
+
+endmodule
+
+`else /* Don't use dual-port frontend */
+
+// Convert to DRAM request
+function DRAMReq toDRAMReq(MemReq req) =
+  DRAMReq {
+    id:      req.id,
+    isStore: req.isStore,
+    addr:    req.addr,
+    data:    req.data,
+    burst:   req.burst,
+    byteEn:  -1
+  };
+
+// Convert from DRAM load response
+function MemLoadResp fromDRAMLoadResp(DRAMLoadResp resp) =
+  MemLoadResp { id: resp.id, data: resp.data };
+
+// Convert from DRAM store response
+function MemStoreResp fromDRAMStoreResp(DRAMStoreResp resp) =
+  MemStoreResp { id: resp.id };
 
 // Connect vector of data caches to DRAM
 module connectDCachesToDRAM#(
@@ -310,9 +486,10 @@ module connectDCachesToDRAM#(
 
   // Connect requests
   function getReqOut(cache) = cache.reqOut;
-  let dramReqs <- mkMergeTree(Fair,
-                    mkUGShiftQueue1(QueueOptFmax),
-                    map(getReqOut, caches));
+  let reqs <- mkMergeTree(Fair,
+                mkUGShiftQueue1(QueueOptFmax),
+                map(getReqOut, caches));
+  let dramReqs <- onOut(toDRAMReq, reqs);
   connectUsing(mkUGQueue, dramReqs, dram.reqIn);
 
   // Connect load responses
@@ -322,7 +499,8 @@ module connectDCachesToDRAM#(
                         getLoadRespKey,
                         mkUGShiftQueue1(QueueOptFmax),
                         map(getLoadRespIn, caches));
-  connectDirect(dram.loadResp, dramLoadResps);
+  let loadResp <- onBOut(fromDRAMLoadResp, dram.loadResp);
+  connectDirect(loadResp, dramLoadResps);
 
   // Connect store responses
   function DCacheId getStoreRespKey(MemStoreResp resp) = resp.id;
@@ -331,8 +509,11 @@ module connectDCachesToDRAM#(
                          getStoreRespKey,
                          mkUGShiftQueue1(QueueOptFmax),
                          map(getStoreRespIn, caches));
-  connectDirect(dram.storeResp, dramStoreResps);
+  let storeResp <- onBOut(fromDRAMStoreResp, dram.storeResp);
+  connectDirect(storeResp, dramStoreResps);
 
 endmodule
+
+`endif
 
 endpackage

@@ -174,6 +174,50 @@ module connectUsing#(
 endmodule
 
 // =============================================================================
+// Helper functions on In and Out interfaces
+// =============================================================================
+
+// Apply pure function to value flowing through In interface
+module onIn#(function t f(u x), In#(t) in) (In#(u));
+  method Action tryPut(u val) = in.tryPut(f(val));
+  method Bool didPut = in.didPut;
+endmodule
+
+// Apply pure function to value flowing through Out interface
+module onOut#(function u f(t x), Out#(t) out) (Out#(u));
+  method Action tryGet = out.tryGet;
+  method Bool valid = out.valid;
+  method u value = f(out.value);
+endmodule
+
+// Apply pure function to value flowing through BOut interface
+module onBOut#(function u f(t x), BOut#(t) out) (BOut#(u));
+  method Action get = out.get;
+  method Bool valid = out.valid;
+  method u value = f(out.value);
+endmodule
+
+// A null In port accepts and discards all inputs
+module mkNullIn (In#(t));
+  method Action tryPut(u val); endmethod
+  method Bool didPut = True;
+endmodule
+
+// A null Out port never produces any output
+module mkNullOut (Out#(t));
+  method Action tryGet; endmethod
+  method Bool valid = False;
+  method t value = ?;
+endmodule
+
+// A null BOut port never produces any output
+module mkNullBOut (BOut#(t));
+  method Action get; endmethod
+  method Bool valid = False;
+  method t value = ?;
+endmodule
+
+// =============================================================================
 // Merge unit
 // =============================================================================
 
@@ -307,12 +351,8 @@ module mkResponseDistributor#
     // Put a queue in front of each sink
     connectUsing(mkQ, outPorts[i].out, sinks[i]);
 
-    // Is this sink the target?
-    Bool selected = valueOf(twidth) == 0 ? True :
-      getKey(inPort.value) == fromInteger(i);
-
     // Fill the queue for each sink
-    rule distribute (inPort.canGet && selected);
+    rule distribute (inPort.canGet && getKey(inPort.value) == fromInteger(i));
       if (outPorts[i].canPut) begin
         outPorts[i].put(inPort.value);
         inPort.get;

@@ -28,7 +28,7 @@ case "$1" in
   test-mem)
     TOPFILE=TestMem.bsv
     TOPMOD=testMem
-    BSCFLAGS="$BSCFLAGS -D SIMULATE"
+    BSCFLAGS="$BSCFLAGS -D SIMULATE -suppress-warnings G0023 "
   ;;
   test-mailbox)
     TOPFILE=TestMailbox.bsv

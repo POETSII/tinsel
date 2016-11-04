@@ -21,7 +21,7 @@ void ramInit()
 }
 
 // Write
-void ramWrite(uint32_t addr, uint32_t data)
+void ramWrite(uint32_t addr, uint32_t data, uint32_t bitEn)
 {
   uint32_t page = addr >> 12;
   uint32_t offset = (addr & 0xfff) >> 2;
@@ -31,7 +31,8 @@ void ramWrite(uint32_t addr, uint32_t data)
     ram[page] = (uint32_t*) malloc((1<<10) * sizeof(uint32_t));
     for (i = 0; i < (1<<10); i++) ram[page][i] = 0;
   }
-  ram[page][offset] = data;
+  uint32_t val = ram[page][offset];
+  ram[page][offset] = (data & bitEn) | (val & ~bitEn);
 }
 
 // Read
