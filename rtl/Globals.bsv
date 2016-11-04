@@ -36,7 +36,7 @@ typedef struct {
   DCacheId id;
   MemAddr addr;
   Bit#(`BeatWidth) data;
-  Bit#(`BurstWidth) burst;
+  Bit#(`BeatBurstWidth) burst;
 } MemReq deriving (Bits);
 
 // Load response

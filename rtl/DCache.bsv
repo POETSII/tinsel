@@ -688,4 +688,27 @@ module connectCoresToDCache#(
 
 endmodule
 
+// ============================================================================
+// Dummy cache
+// ============================================================================
+
+// This data cache ignores its inputs and doesn't generate any outputs
+module mkDummyDCache (DCache);
+
+  // Ports
+  Out#(DCacheResp)  respNull      <- mkNullOut;
+  In#(MemLoadResp)  loadRespNull  <- mkNullIn;
+  In#(MemStoreResp) storeRespNull <- mkNullIn;
+  Out#(MemReq)      memReqNull    <- mkNullOut;
+
+  interface In reqIn =
+    error("Request input to dummy cache must be unconnected");
+
+  interface Out respOut     = respNull;
+  interface In  loadRespIn  = loadRespNull;
+  interface In  storeRespIn = storeRespNull;
+  interface Out reqOut      = memReqNull;
+
+endmodule
+
 endpackage
