@@ -55,19 +55,20 @@ module testMem ();
   // DRAM instance
   let dram <- mkDRAM;
 
-  // Data cache instance (id 0) connected directly to DRAM instance
-  let dcache <- mkDCache(0);
+  // Dummy caches
+  Vector#(`DCachesPerDRAM, DCache) dcaches <- replicateM(mkDummyDCache);
 
-  // Connect cache to DRAM
-  connectUsing(mkUGQueue, dcache.reqOut, dram.reqIn);
-  connectUsing(mkUGQueue, dram.loadResp, dcache.loadRespIn);
-  connectUsing(mkUGQueue, dram.storeResp, dcache.storeRespIn);
+  // One data cache instance (id 0)
+  dcaches[0] <- mkDCache(0);
+
+  // Connect caches to DRAM
+  connectDCachesToDRAM(dcaches, dram);
 
   // Connect trace generator to cache
   OutPort#(DCacheReq) dcacheReq <- mkOutPort;
   InPort#(DCacheResp) dcacheResp <- mkInPort;
-  connectUsing(mkUGQueue, dcacheReq.out, dcache.reqIn);
-  connectUsing(mkUGQueue, dcache.respOut, dcacheResp.in);
+  connectUsing(mkUGQueue, dcacheReq.out, dcaches[0].reqIn);
+  connectUsing(mkUGQueue, dcaches[0].respOut, dcacheResp.in);
 
   // Record in-flight requests (max of one outstanding request per thread)
   RegFile#(DCacheClientId, TestMemReq) inFlight <-

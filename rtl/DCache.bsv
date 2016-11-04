@@ -259,7 +259,7 @@ module mkDCache#(DCacheId myId) (DCache);
 
   // True dual-port mixed-width data block RAM
   // (One bus-sized port and one word-sized port)
-  BlockRamTrueMixedBE#(BeatIndex, Bit#(`BusWidth), WordIndex, Bit#(32))
+  BlockRamTrueMixedBE#(BeatIndex, Bit#(`BeatWidth), WordIndex, Bit#(32))
     dataMem <- mkBlockRamTrueMixedBE;
 
   // Meta data for each set
@@ -307,7 +307,7 @@ module mkDCache#(DCacheId myId) (DCache);
   Wire#(Bool) lineWriteReqWire <- mkDWire(False);
   Reg#(Bool) lineWriteReqReg <- mkReg(False);
   Wire#(BeatIndex) lineWriteIndexWire <- mkDWire(0);
-  Reg#(Bit#(`BusWidth)) lineWriteDataReg <- mkConfigRegU;
+  Reg#(Bit#(`BeatWidth)) lineWriteDataReg <- mkConfigRegU;
   Reg#(BeatIndex) lineIndexReg <- mkRegU;
 
   // Use wires to issue line access in dataMem
@@ -535,7 +535,7 @@ module mkDCache#(DCacheId myId) (DCache);
   Queue#(MissMemReq) missMemReqs <- mkUGShiftQueue(QueueOptFmax);
 
   // Data buffer (data values for beats being written out)
-  SizedQueue#(`LogDCacheWriteBufferSize, Bit#(`BusWidth)) beatBuffer <-
+  SizedQueue#(`LogDCacheWriteBufferSize, Bit#(`BeatWidth)) beatBuffer <-
     mkUGShiftQueue(QueueOptFmax);
 
   // Used to allocate space in the beat buffer
@@ -685,6 +685,29 @@ module connectCoresToDCache#(
                       mkUGShiftQueue1(QueueOptFmax),
                       map(getDCacheRespIn, clients));
   connectUsing(mkUGQueue, dcache.respOut, dcacheResps);
+
+endmodule
+
+// ============================================================================
+// Dummy cache
+// ============================================================================
+
+// This data cache ignores its inputs and doesn't generate any outputs
+module mkDummyDCache (DCache);
+
+  // Ports
+  Out#(DCacheResp)  respNull      <- mkNullOut;
+  In#(MemLoadResp)  loadRespNull  <- mkNullIn;
+  In#(MemStoreResp) storeRespNull <- mkNullIn;
+  Out#(MemReq)      memReqNull    <- mkNullOut;
+
+  interface In reqIn =
+    error("Request input to dummy cache must be unconnected");
+
+  interface Out respOut     = respNull;
+  interface In  loadRespIn  = loadRespNull;
+  interface In  storeRespIn = storeRespNull;
+  interface Out reqOut      = memReqNull;
 
 endmodule
 

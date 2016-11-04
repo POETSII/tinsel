@@ -71,10 +71,22 @@ p["LogCoresPerMailbox"] = 2
 p["MailboxEnabled"] = True
 
 # Use array of set instead of array of queue in mailbox client helper
-#p["MailboxClientUseSet"] = True
+p["MailboxClientUseSet"] = False
 
 # Number of mailboxes per ring
-p["LogRingSize"] = 3;
+p["LogRingSize"] = 3
+
+# Use the dual-port frontend to DRAM: turn a DRAM port with an n-bit
+# wide data bus into two DRAM ports each with an n/2-bit wide data
+# bus.  This halves the data width of the request and response
+# networks between the data caches and DRAM, saving area.
+# Full bandwidth for loads is maintained but bandwidth for stores is
+# (at present) halved.
+p["DRAMUseDualPortFrontend"] = False
+
+# If using dual port frontend, there must be at least two beats per line
+if p["DRAMUseDualPortFrontend"]:
+  assert p["LogBeatsPerLine"] > 0
 
 #==============================================================================
 # Derived Parameters
@@ -103,17 +115,14 @@ p["BeatsPerLine"] = 2**p["LogBeatsPerLine"]
 # Number of 32-bit words in a memory transfer
 p["WordsPerBeat"] = 2**p["LogWordsPerBeat"]
 
-# Log of number of bytes per data transfer
-p["LogBytesPerBeat"] = 2+p["LogWordsPerBeat"]
+# Number of bytes in a memory transfer
+p["BytesPerBeat"] = 4 * p["WordsPerBeat"]
 
-# Number of data bytes in a memory transfer
-p["BytesPerBeat"] = 2**p["LogBytesPerBeat"]
+# Data cache beat width in bits
+p["BeatWidth"] = p["WordsPerBeat"] * 32
 
-# Memory transfer bus width in bits
-p["BusWidth"] = p["WordsPerBeat"] * 32
-
-# Longest possible burst transfer is 2^BurstWidth-1
-p["BurstWidth"] = p["LogBeatsPerLine"]+1
+# Longest possible burst transfer is 2^BeatBurstWidth-1
+p["BeatBurstWidth"] = p["LogBeatsPerLine"]+1
 
 # Log of size of data cache writeback buffer
 p["LogDCacheWriteBufferSize"] = (p["LogBeatsPerLine"]
@@ -141,7 +150,29 @@ p["LogThreadsPerMailbox"] = p["LogCoresPerMailbox"]+p["LogThreadsPerCore"]
 p["LogScratchpadBytes"] = 1+p["LogWordsPerMsg"]+2+p["LogMsgsPerThread"]
 
 # Number of mailboxes per ring
-p["RingSize"] = 2 ** p["LogRingSize"];
+p["RingSize"] = 2 ** p["LogRingSize"]
+
+# DRAM data bus width in bits
+if p["DRAMUseDualPortFrontend"]:
+  p["DRAMWidth"] = p["BeatWidth"] * 2
+else:
+  p["DRAMWidth"] = p["BeatWidth"]
+
+# Log of DRAM data bus width in words
+if p["DRAMUseDualPortFrontend"]:
+  p["LogDRAMWidthInWords"] = p["LogWordsPerBeat"] + 1
+else:
+  p["LogDRAMWidthInWords"] = p["LogWordsPerBeat"]
+
+# DRAM data bus width in words and bytes
+p["DRAMWidthInWords"] = 2 ** p["LogDRAMWidthInWords"]
+p["DRAMWidthInBytes"] = p["DRAMWidthInWords"] * 4
+
+# DRAM burst width
+if p["DRAMUseDualPortFrontend"]:
+  p["DRAMBurstWidth"] = p["BeatBurstWidth"] - 1
+else:
+  p["DRAMBurstWidth"] = p["BeatBurstWidth"]
 
 #==============================================================================
 # Main 
