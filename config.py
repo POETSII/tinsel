@@ -49,6 +49,9 @@ p["DCacheLogSetsPerThread"] = 3
 # Log of number of ways per set in set-associative data cache
 p["DCacheLogNumWays"] = 2
 
+# Number of DRAMs per FPGA board
+p["DRAMsPerBoard"] = 1
+
 # Max number of outstanding DRAM requests permitted
 p["DRAMLogMaxInFlight"] = 4
 

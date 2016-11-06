@@ -23,6 +23,7 @@ case "$1" in
     BSCFLAGS="$BSCFLAGS -D SIMULATE"
   ;;
   verilog)
+    BSCFLAGS="$BSCFLAGS +RTS -K16M -RTS"
     SYNTH=1
   ;;
   test-mem)
