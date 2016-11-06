@@ -53,7 +53,7 @@ module testMem ();
   // -----
 
   // DRAM instance
-  let dram <- mkDRAM;
+  let dram <- mkDRAM(0);
 
   // Dummy caches
   Vector#(`DCachesPerDRAM, DCache) dcaches <- replicateM(mkDummyDCache);

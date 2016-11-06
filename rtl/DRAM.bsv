@@ -60,17 +60,20 @@ import Interface :: *;
 import DCache    :: *;
 import Queue     :: *;
 
-// Interface to C functions
-import "BDPI" function Action ramInit();
-import "BDPI" function ActionValue#(Bit#(32)) ramRead(Bit#(32) addr);
-import "BDPI" function Action ramWrite(Bit#(32) addr, Bit#(32) data,
-                                         Bit#(32) bitEn);
-
 // Types
 // -----
 
 // In simulation, external interface is empty
 typedef Empty DRAMExtIfc;
+
+// DRAM identifier
+typedef Bit#(3) DRAMId;
+
+// Interface to C functions
+import "BDPI" function ActionValue#(Bit#(32)) ramRead(
+                DRAMId ramId, Bit#(32) addr);
+import "BDPI" function Action ramWrite(DRAMId ramId,
+                Bit#(32) addr, Bit#(32) data, Bit#(32) bitEn);
 
 // Functions
 // ---------
@@ -84,7 +87,7 @@ endfunction
 // Implementation
 // --------------
 
-module mkDRAM (DRAM);
+module mkDRAM#(DRAMId id) (DRAM);
   // Ports
   InPort#(DRAMReq) reqPort <- mkInPort;
 
@@ -119,7 +122,7 @@ module mkDRAM (DRAM);
           Vector#(`DRAMWidthInWords, Bit#(32)) elems;
           Bit#(32) addr = {req.addr, 0};
           for (Integer i = 0; i < `DRAMWidthInWords; i=i+1) begin
-            let val <- ramRead(addr + zeroExtend(burstCount) *
+            let val <- ramRead(id, addr + zeroExtend(burstCount) *
                                         `DRAMWidthInBytes
                                     + fromInteger(4*i));
             elems[i] = val;
@@ -138,7 +141,7 @@ module mkDRAM (DRAM);
           Vector#(`DRAMWidthInWords, Bit#(4)) byteEns = unpack(req.byteEn);
           Bit#(32) addr = {req.addr, 0};
           for (Integer i = 0; i < `DRAMWidthInWords; i=i+1)
-            ramWrite(addr+fromInteger(4*i), elems[i],
+            ramWrite(id, addr+fromInteger(4*i), elems[i],
                        byteEnToBitEn(byteEns[i]));
           DRAMStoreResp resp;
           resp.id = req.id;
@@ -232,7 +235,7 @@ typedef struct {
 // Implementation
 // --------------
 
-module mkDRAM (DRAM);
+module mkDRAM#(t id) (DRAM);
   // Ports
   InPort#(DRAMReq) reqPort <- mkInPort;
 

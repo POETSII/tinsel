@@ -8,39 +8,46 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <assert.h>
+
+#define MAX_DRAMS_PER_BOARD 8
 
 // Globals
-uint32_t** ram = NULL;
+uint32_t** ram[MAX_DRAMS_PER_BOARD] =
+  {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
 
 // Initialise
-void ramInit()
+void ramInit(uint8_t ramId)
 {
   int i;
-  ram = (uint32_t**) malloc((1<<20) * sizeof(uint32_t*));
-  for (i = 0; i < (1<<20); i++) ram[i] = NULL;
+  assert(ramId < MAX_DRAMS_PER_BOARD);
+  ram[ramId] = (uint32_t**) malloc((1<<20) * sizeof(uint32_t*));
+  for (i = 0; i < (1<<20); i++) ram[ramId][i] = NULL;
 }
 
 // Write
-void ramWrite(uint32_t addr, uint32_t data, uint32_t bitEn)
+void ramWrite(uint8_t ramId, uint32_t addr, uint32_t data, uint32_t bitEn)
 {
   uint32_t page = addr >> 12;
   uint32_t offset = (addr & 0xfff) >> 2;
   int i;
-  if (ram == NULL) ramInit();
-  if (ram[page] == NULL) {
-    ram[page] = (uint32_t*) malloc((1<<10) * sizeof(uint32_t));
-    for (i = 0; i < (1<<10); i++) ram[page][i] = 0;
+  assert(ramId < MAX_DRAMS_PER_BOARD);
+  if (ram[ramId] == NULL) ramInit(ramId);
+  if (ram[ramId][page] == NULL) {
+    ram[ramId][page] = (uint32_t*) malloc((1<<10) * sizeof(uint32_t));
+    for (i = 0; i < (1<<10); i++) ram[ramId][page][i] = 0;
   }
-  uint32_t val = ram[page][offset];
-  ram[page][offset] = (data & bitEn) | (val & ~bitEn);
+  uint32_t val = ram[ramId][page][offset];
+  ram[ramId][page][offset] = (data & bitEn) | (val & ~bitEn);
 }
 
 // Read
-uint32_t ramRead(uint32_t addr)
+uint32_t ramRead(uint8_t ramId, uint32_t addr)
 {
   uint32_t page = addr >> 12;
   uint32_t offset = (addr & 0xfff) >> 2;
-  if (ram == NULL) ramInit();
-  if (ram[page] == NULL) return 0;
-  return ram[page][offset];
+  assert(ramId < MAX_DRAMS_PER_BOARD);
+  if (ram[ramId] == NULL) ramInit(ramId);
+  if (ram[ramId][page] == NULL) return 0;
+  return ram[ramId][page][offset];
 }
