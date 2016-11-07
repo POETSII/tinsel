@@ -50,7 +50,7 @@ p["DCacheLogSetsPerThread"] = 3
 p["DCacheLogNumWays"] = 2
 
 # Number of DRAMs per FPGA board
-p["DRAMsPerBoard"] = 1
+p["DRAMsPerBoard"] = 2
 
 # Max number of outstanding DRAM requests permitted
 p["DRAMLogMaxInFlight"] = 4
