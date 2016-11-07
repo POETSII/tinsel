@@ -32,7 +32,7 @@
 //Date:  Tue Feb 28 09:17:32 2012
 // ============================================================================
 `define ENABLE_DDR3A
-//`define ENABLE_DDR3B
+`define ENABLE_DDR3B
 //`define ENABLE_PCIE
 //`define ENABLE_QDRIIA
 //`define ENABLE_QDRIIB
@@ -623,28 +623,47 @@ wire reset_n;
 assign reset_n = 1;
 
 S5_DDR3_QSYS u0 (
-        .clk_clk                                   (OSC_50_B7A),                                   //                     clk.clk
-        .de5top_0_out_readdata                     (tinselOut),                     //            de5top_0_out.readdata
-        .reset_reset_n                             (reset_n),                             //                   reset.reset_n		  
-        .memory_mem_a                              (DDR3A_A),                              //                          memory.mem_a
-        .memory_mem_ba                             (DDR3A_BA),                             //                                .mem_ba
-        .memory_mem_ck                             (DDR3A_CK),                             //                                .mem_ck
-        .memory_mem_ck_n                           (DDR3A_CK_n),                           //                                .mem_ck_n
-        .memory_mem_cke                            (DDR3A_CKE),                            //                                .mem_cke
-        .memory_mem_cs_n                           (DDR3A_CS_n),                           //                                .mem_cs_n
-        .memory_mem_dm                             (DDR3A_DM),                             //                                .mem_dm
-        .memory_mem_ras_n                          (DDR3A_RAS_n),                          //                                .mem_ras_n
-        .memory_mem_cas_n                          (DDR3A_CAS_n),                          //                                .mem_cas_n
-        .memory_mem_we_n                           (DDR3A_WE_n),                           //                                .mem_we_n
-        .memory_mem_reset_n                        (DDR3A_RESET_n),                        //                                .mem_reset_n
-        .memory_mem_dq                             (DDR3A_DQ),                             //                                .mem_dq
-        .memory_mem_dqs                            (DDR3A_DQS),                            //                                .mem_dqs
-        .memory_mem_dqs_n                          (DDR3A_DQS_n),                          //                                .mem_dqs_n
-        .memory_mem_odt                            (DDR3A_ODT),                            //                                .mem_odt
-        .oct_rzqin                                 (RZQ_4),                                 //                             oct.rzqin
-        .mem_if_ddr3_emif_status_local_init_done   (ddr3_local_init_done),   //         mem_if_ddr3_emif_status.local_init_done
-        .mem_if_ddr3_emif_status_local_cal_success (ddr3_local_cal_success), //                                .local_cal_success
-        .mem_if_ddr3_emif_status_local_cal_fail    (ddr3_local_cal_fail)    //                                .		  
+        .clk_clk                                   (OSC_50_B7A),          
+        .de5top_0_out_readdata                     (tinselOut),              
+        .reset_reset_n                             (reset_n),                            
+        .memory_mem_a                              (DDR3A_A),                              
+        .memory_mem_ba                             (DDR3A_BA),                             
+        .memory_mem_ck                             (DDR3A_CK),                             
+        .memory_mem_ck_n                           (DDR3A_CK_n),                           
+        .memory_mem_cke                            (DDR3A_CKE),                            
+        .memory_mem_cs_n                           (DDR3A_CS_n),                           
+        .memory_mem_dm                             (DDR3A_DM),                             
+        .memory_mem_ras_n                          (DDR3A_RAS_n),                          
+        .memory_mem_cas_n                          (DDR3A_CAS_n),                          
+        .memory_mem_we_n                           (DDR3A_WE_n),                           
+        .memory_mem_reset_n                        (DDR3A_RESET_n),                        
+        .memory_mem_dq                             (DDR3A_DQ),                             
+        .memory_mem_dqs                            (DDR3A_DQS),                            
+        .memory_mem_dqs_n                          (DDR3A_DQS_n),                          
+        .memory_mem_odt                            (DDR3A_ODT),                            
+        .oct_rzqin                                 (RZQ_4),                                
+        .mem_if_ddr3_emif_status_local_init_done   (ddr3_local_init_done),   
+        .mem_if_ddr3_emif_status_local_cal_success (ddr3_local_cal_success), 
+        .mem_if_ddr3_emif_status_local_cal_fail    (ddr3_local_cal_fail),
+		  
+		  .memory_2_mem_a                              (DDR3B_A),                              
+        .memory_2_mem_ba                             (DDR3B_BA),                             
+        .memory_2_mem_ck                             (DDR3B_CK),                             
+        .memory_2_mem_ck_n                           (DDR3B_CK_n),                           
+        .memory_2_mem_cke                            (DDR3B_CKE),                           
+        .memory_2_mem_cs_n                           (DDR3B_CS_n),                      
+        .memory_2_mem_dm                             (DDR3B_DM),                         
+        .memory_2_mem_ras_n                          (DDR3B_RAS_n),                      
+        .memory_2_mem_cas_n                          (DDR3B_CAS_n),                      
+        .memory_2_mem_we_n                           (DDR3B_WE_n),                       
+        .memory_2_mem_reset_n                        (DDR3B_RESET_n),                      
+        .memory_2_mem_dq                             (DDR3B_DQ),                           
+        .memory_2_mem_dqs                            (DDR3B_DQS),                           
+        .memory_2_mem_dqs_n                          (DDR3B_DQS_n),                         
+        .memory_2_mem_odt                            (DDR3B_ODT),                      
+        .mem_if_ddr3_emif_2_status_local_init_done   (ddr3_2_local_init_done),   
+        .mem_if_ddr3_emif_2_status_local_cal_success (ddr3_2_local_cal_success), 
+        .mem_if_ddr3_emif_2_status_local_cal_fail    (ddr3_2_local_cal_fail)    
 );
   
 /*
