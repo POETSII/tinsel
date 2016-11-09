@@ -11,7 +11,8 @@ done <<< `python ../config.py envs`
 # Bluespec compiler flags
 BSC="bsc"
 BSCFLAGS="-wait-for-license -suppress-warnings S0015 \
-          -steps-warn-interval 200000 -check-assert $DEFS "
+          -steps-warn-interval 400000 -check-assert \
+          +RTS -K16M -RTS $DEFS "
 
 # Determine top-level module
 TOPFILE=DE5Top.bsv
@@ -23,7 +24,6 @@ case "$1" in
     BSCFLAGS="$BSCFLAGS -D SIMULATE"
   ;;
   verilog)
-    BSCFLAGS="$BSCFLAGS +RTS -K16M -RTS"
     SYNTH=1
   ;;
   test-mem)
