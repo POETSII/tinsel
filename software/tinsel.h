@@ -25,6 +25,7 @@ inline int me()
 #define OPCODE_MB_CAN_RECV  "2"
 #define OPCODE_MB_SEND      "3"
 #define OPCODE_MB_RECV      "4"
+#define OPCODE_MB_SETBURST  "5"
 
 // Get pointer to message-aligned slot in mailbox scratchpad
 inline volatile void* mailbox(int n)
@@ -67,11 +68,17 @@ inline int mb_send(int dest, volatile void* addr)
 }
 
 // Receive message
-inline void* recv()
+inline void* mb_recv()
 {
   void* ok;
   asm volatile("custom0 %0,zero,zero," OPCODE_MB_RECV : "=r"(ok));
   return ok;
+}
+
+// Set burst length
+inline void mb_set_burst(int n)
+{
+  asm volatile("custom0 zero,%0,zero," OPCODE_MB_SETBURST : : "r"(n));
 }
 
 #endif

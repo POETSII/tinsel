@@ -157,6 +157,7 @@ module testMailbox ();
     req.id = truncate(mbReq.src);
     req.dest = truncate(mbReq.dst);
     req.msgIndex = 0;
+    req.burst = 0;
     txReq.put(req);
     mbReqs.deq;
     $display("S %d %d", req.id, req.dest);

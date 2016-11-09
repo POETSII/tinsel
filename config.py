@@ -62,7 +62,7 @@ p["DRAMLatency"] = 20
 p["DRAMAddrWidth"] = 30
 
 # Size of packet payload
-p["LogWordsPerMsg"] = 3
+p["LogWordsPerMsg"] = 2
 
 # Space available per thread in mailbox scratchpad
 p["LogMsgsPerThread"] = 4
@@ -76,8 +76,14 @@ p["MailboxEnabled"] = True
 # Use array of set instead of array of queue in mailbox client helper
 p["MailboxClientUseSet"] = False
 
+# Max message burst length
+# (A burst of length N contains N+1 messages)
+# (Note: this parameter affects internal buffer sizes,
+# so there is a cost to increasing it)
+p["LogMaxMsgBurst"] = 2
+
 # Number of mailboxes per ring
-p["LogRingSize"] = 3
+p["LogRingSize"] = 4
 
 # Use the dual-port frontend to DRAM: turn a DRAM port with an n-bit
 # wide data bus into two DRAM ports each with an n/2-bit wide data
@@ -151,6 +157,10 @@ p["LogThreadsPerMailbox"] = p["LogCoresPerMailbox"]+p["LogThreadsPerCore"]
 
 # Size of memory-mapped region for mailbox scratchpad in bytes
 p["LogScratchpadBytes"] = 1+p["LogWordsPerMsg"]+2+p["LogMsgsPerThread"]
+
+# Size of mailbox transmit buffer
+p["LogTransmitBufferLen"] = (p["LogMaxMsgBurst"]
+                               if p["LogMaxMsgBurst"] > 1 else 1)
 
 # Number of mailboxes per ring
 p["RingSize"] = 2 ** p["LogRingSize"]

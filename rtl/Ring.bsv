@@ -13,6 +13,7 @@ import Mailbox   :: *;
 import Interface :: *;
 import Vector    :: *;
 import Queue     :: *;
+import ConfigReg :: *;
 
 // =============================================================================
 // Ring Router
@@ -29,6 +30,9 @@ import Queue     :: *;
 //                           |   Router   |
 //  Packet from mailbox ---->|            |----> Packet to mailbox
 //                           +------------+
+//
+// Care is taken to ensure that message bursts are atomic, i.e.
+// messages within a burst are not interleaved with other messages.
 
 interface RingRouter;
   interface In#(Packet)  ringIn;
@@ -55,42 +59,54 @@ module mkRingRouter#(RouterId myId) (RingRouter);
   InPort#(Packet)  fromMailboxPort <- mkInPort;
   OutPort#(Packet) toMailboxPort   <- mkOutPort;
 
+  // Is the to-mailbox port is locked by mailbox-to-mailbox route?
+  // (i.e. is there a burst in progress on that route?)
+  Reg#(Bool) toMailboxLock <- mkConfigReg(False);
+
+  // Is the to-ring port is locked by the mailbox-to-ring route?
+  // (i.e. is there a burst in progress on that route?)
+  Reg#(Bool) toRingLock <- mkConfigReg(False);
+
   // Is the packet from the ring for me?
-  Bool ringInForMe    = destRouter(ringInPort.value) == myId;
+  Bool ringInForMe = destRouter(ringInPort.value) == myId;
 
   // Is the packet from the mailbox for me?
   Bool mailboxInForMe = destRouter(fromMailboxPort.value) == myId;
 
+  // Can we route from the ring to the mailbox?
+  Bool routeRingToMailbox = ringInPort.canGet && ringInForMe && !toMailboxLock;
+
+  // Can we route from the ring to the ring?
+  Bool routeRingToRing = ringInPort.canGet && !ringInForMe && !toRingLock;
+
   // Route packet from ring to mailbox
-  rule ringToMailbox (toMailboxPort.canPut &&
-                        ringInPort.canGet &&
-                          ringInForMe);
+  rule ringToMailbox (toMailboxPort.canPut && routeRingToMailbox);
     ringInPort.get;
     toMailboxPort.put(ringInPort.value);
   endrule
 
   // Route packet from mailbox to mailbox
   rule mailboxToMailbox (toMailboxPort.canPut &&
-                           !(ringInPort.canGet && ringInForMe) &&
+                           !routeRingToMailbox &&
                               fromMailboxPort.canGet && mailboxInForMe);
     fromMailboxPort.get;
     toMailboxPort.put(fromMailboxPort.value);
+    toMailboxLock <= fromMailboxPort.value.notEndOfBurst;
   endrule
 
   // Route packet from ring to ring
-  rule ringToRing (ringOutPort.canPut &&
-                     ringInPort.canGet &&
-                       !ringInForMe);
+  rule ringToRing (ringOutPort.canPut && routeRingToRing);
     ringInPort.get;
     ringOutPort.put(ringInPort.value);
   endrule
 
   // Route packet from mailbox to ring
   rule mailboxToRing (ringOutPort.canPut &&
-                        !(ringInPort.canGet && !ringInForMe) &&
+                        !routeRingToRing &&
                            fromMailboxPort.canGet && !mailboxInForMe);
     fromMailboxPort.get;
     ringOutPort.put(fromMailboxPort.value);
+    toRingLock <= fromMailboxPort.value.notEndOfBurst;
   endrule
 
   // Interface
