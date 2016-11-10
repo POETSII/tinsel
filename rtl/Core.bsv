@@ -27,13 +27,14 @@ import Globals   :: *;
 // i.e. instructions for sending/receiving messages to/from other
 // cores and threads.
 //
-// Name    | Opcode | rd,rs1,rs2 | Function
-// ------- | ------ | ---------- | --------
-// Alloc   | 0      | Y,Y,N      | Allocate space for new message in scratchpad
-// CanSend | 1      | Y,N,N      | 1 if can send, 0 otherwise
-// CanRecv | 2      | Y,N,N      | 1 if can receive, 0 otherwise
-// Send    | 3      | Y,Y,Y      | Send message (at pointer) to destination
-// Recv    | 4      | Y,N,N      | Consume message-pointer from receive buffer
+// Name     | Opcode | rd,rs1,rs2 | Function
+// -------- | ------ | ---------- | --------
+// Alloc    | 0      | Y,Y,N      | Allocate space for new message in scratchpad
+// CanSend  | 1      | Y,N,N      | 1 if can send, 0 otherwise
+// CanRecv  | 2      | Y,N,N      | 1 if can receive, 0 otherwise
+// Send     | 3      | Y,Y,Y      | Send message (at pointer) to destination
+// Recv     | 4      | Y,N,N      | Consume message-pointer from receive buffer
+// SetBurst | 5      | Y,Y,N      | Message burst length
 
 // ============================================================================
 // Types
@@ -45,11 +46,12 @@ typedef Bit#(`LogInstrsPerCore) InstrIndex;
 // A byte-address in instruction memory
 typedef Bit#(TAdd#(`LogInstrsPerCore, 2)) InstrAddr;
 
-// Threads
+// For each thread, we keep the following info
 typedef struct {
-  InstrAddr pc;  // Program counter
-  ThreadId  id;  // Thread identifier
-} Thread deriving (Bits);
+  InstrAddr pc;       // Program counter
+  MsgBurst  msgBurst; // Burst length for sending messages
+  ThreadId  id;       // Thread identifier (must be final field of struct)
+} ThreadState deriving (Bits);
 
 // Register file index
 // (Register file constains 32 registers per thread)
@@ -78,7 +80,7 @@ typedef struct {
   Bool isMailboxOp;      Bool isMailboxAlloc;
   Bool isMailboxSend;    Bool isMailboxCanSend;
   Bool isMailboxRecv;    Bool isMailboxCanRecv;
-  Bool isMailboxNonRecv;
+  Bool isMailboxNonRecv; Bool isMailboxSetBurst;
 } Op deriving (Bits);
 
 // Instruction result
@@ -96,7 +98,7 @@ typedef struct {
 
 // The type for data passed between each pipeline stage
 typedef struct {
-  Thread thread;           // Current thread
+  ThreadState thread;      // Current thread state
   Bit#(32) instr;          // RV32I-encoded instruction
   Bit#(32) valA;           // Value of 1st register operand
   Bit#(32) valB;           // Value of 2nd register operand
@@ -118,19 +120,19 @@ typedef struct {
 
 // For each suspended thread, we have the following info
 typedef struct {
-  InstrAddr pc;            // Program counter
+  ThreadState thread;      // Thread state
   Bool isLoad;             // Is it waiting for a load?
   Bool isStore;            // Or a store?
   Bit#(5) destReg;         // Destination register for the load result
   Bit#(2) loadSelector;    // Bottom two bits of load address
   AccessWidth accessWidth; // Access width of load (byte, half, word)
   Bool isUnsignedLoad;     // Sign-extension behaviour for load
-} SuspendedThread deriving (Bits);
+} SuspendedThreadState deriving (Bits);
 
 // For each suspended thread in the writeback queue, we have:
 typedef struct {
   Bool write;
-  Thread thread;
+  ThreadState thread;
   Bit#(5) destReg;
   Bit#(32) writeVal;
 } Writeback deriving (Bits);
@@ -230,14 +232,15 @@ function Op decodeOp(Bit#(32) instr);
   ret.isCSR = op == 'b11100 && minorOp[2:1] == 'b01;
   // Mailbox custom instruction
   `ifdef MailboxEnabled
-    Bit#(3) mailboxOp    = instr[27:25];
-    ret.isMailboxOp      = op == 5'b00010;
-    ret.isMailboxAlloc   = ret.isMailboxOp && mailboxOp == 0;
-    ret.isMailboxCanSend = ret.isMailboxOp && mailboxOp == 1;
-    ret.isMailboxCanRecv = ret.isMailboxOp && mailboxOp == 2;
-    ret.isMailboxSend    = ret.isMailboxOp && mailboxOp == 3;
-    ret.isMailboxRecv    = ret.isMailboxOp && mailboxOp == 4;
-    ret.isMailboxNonRecv = ret.isMailboxOp && mailboxOp != 4;
+    Bit#(3) mailboxOp     = instr[27:25];
+    ret.isMailboxOp       = op == 5'b00010;
+    ret.isMailboxAlloc    = ret.isMailboxOp && mailboxOp == 0;
+    ret.isMailboxCanSend  = ret.isMailboxOp && mailboxOp == 1;
+    ret.isMailboxCanRecv  = ret.isMailboxOp && mailboxOp == 2;
+    ret.isMailboxSend     = ret.isMailboxOp && mailboxOp == 3;
+    ret.isMailboxRecv     = ret.isMailboxOp && mailboxOp == 4;
+    ret.isMailboxNonRecv  = ret.isMailboxOp && mailboxOp != 4;
+    ret.isMailboxSetBurst = ret.isMailboxOp && mailboxOp == 5;
   `endif
   return ret;
 endfunction
@@ -407,17 +410,17 @@ module mkCore#(CoreId myId) (Core);
   QueueInit runQueueInit;
   runQueueInit.size = numThreads;
   runQueueInit.file = Valid("RunQueue");
-  SizedQueue#(`LogThreadsPerCore, Thread) runQueue <-
+  SizedQueue#(`LogThreadsPerCore, ThreadState) runQueue <-
     mkUGSizedQueueInit(runQueueInit);
 
   // Queue of suspended threads pending resumption
-  SizedQueue#(`LogThreadsPerCore, Thread) resumeQueue <- mkUGSizedQueue;
+  SizedQueue#(`LogThreadsPerCore, ThreadState) resumeQueue <- mkUGSizedQueue;
 
   // Queue of writeback requests from threads pending resumption
   Queue#(Writeback) writebackQueue <- mkUGShiftQueue(QueueOptFmax);
 
   // Information about suspended threads
-  BlockRam#(ThreadId, SuspendedThread) suspended <- mkBlockRam;
+  BlockRam#(ThreadId, SuspendedThreadState) suspended <- mkBlockRam;
 
   // Instruction memory
   BlockRamOpts instrMemOpts = defaultBlockRamOpts;
@@ -473,7 +476,8 @@ module mkCore#(CoreId myId) (Core);
 
   rule fetch1 (fetch1Fire);
     // Obtain scheduled thread
-    Thread next = prevFromRunQueue ? runQueue.dataOut : resumeQueue.dataOut;
+    ThreadState next = prevFromRunQueue ? runQueue.dataOut
+                                        : resumeQueue.dataOut;
     // Create a pipeline token to hold new instruction
     PipelineToken token = ?;
     token.thread = next;
@@ -542,10 +546,12 @@ module mkCore#(CoreId myId) (Core);
       token.mailboxSuccess = mailbox.canSend && isSend ||
                                mailbox.canRecv && isRecv;
       if (mailbox.canSend && token.op.isMailboxSend)
-        mailbox.send(token.thread.id, truncate(token.valB),
-                                      truncate(token.valA));
+        mailbox.send(token.thread.id, token.thread.msgBurst,
+                       truncate(token.valB), truncate(token.valA));
       if (mailbox.canRecv && token.op.isMailboxRecv)
         mailbox.recv;
+      if (token.op.isMailboxSetBurst)
+        token.thread.msgBurst = truncate(token.valA);
     `endif
     // Triger next stage
     execute2Input <= token;
@@ -628,8 +634,9 @@ module mkCore#(CoreId myId) (Core);
     `endif
     // Record state of suspended thread
     if (suspend) begin
-      SuspendedThread susp;
-      susp.pc = token.thread.pc + 4;
+      SuspendedThreadState susp;
+      susp.thread = token.thread;
+      susp.thread.pc = token.thread.pc + 4;
       susp.isLoad = token.op.isLoad;
       susp.isStore = token.op.isStore;
       susp.destReg = rd(token.instr);
@@ -789,8 +796,8 @@ module mkCore#(CoreId myId) (Core);
     // Prepare request for writeback stage
     Writeback wb;
     wb.write = susp.isLoad;
+    wb.thread = susp.thread;
     wb.thread.id = token.id;
-    wb.thread.pc = susp.pc;
     wb.destReg = susp.destReg;
     wb.writeVal = loadMux(token.data, susp.accessWidth,
                       susp.loadSelector, susp.isUnsignedLoad);

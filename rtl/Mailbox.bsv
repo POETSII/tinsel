@@ -79,7 +79,7 @@ package Mailbox;
 //
 // A thread can set bits in its status vector by sending an "allocate"
 // request.  In this way, a thread can allocate locations for incoming
-// messages in the scrachpad, giving the Receive Unit permission to
+// messages in the scratchpad, giving the Receive Unit permission to
 // overwrite the values at these locations.
 
 // =============================================================================
@@ -158,6 +158,8 @@ typedef struct {
   MailboxClientId id;
   // Thread-local message address
   MailboxThreadMsgAddr msgIndex;
+  // Burst count
+  MsgBurst burst;
   // Destination thread
   PacketDest dest;
 } TransmitReq deriving (Bits);
@@ -185,6 +187,12 @@ typedef struct {
   // Index of message scratchpad
   Bit#(`LogMsgsPerThread) index;
 } ReceiveAlert deriving (Bits);
+
+// Transmit pipeline token
+typedef struct {
+  PacketDest dest;
+  Bool notEndOfBurst;
+} TransmitToken deriving (Bits);
 
 // =============================================================================
 // Functions
@@ -276,100 +284,84 @@ module mkMailbox (Mailbox);
       msgWriteDataReg);
   endrule
 
-  // Receive pipeline
-  // ================
+  // Receive Unit
+  // ============
 
-  // Note that this pipeline contains a retry loop and hence it may
-  // reorder incoming packets.  However, only one packet for a
-  // particular thread may be in the pipeline at any time.  Hence,
-  // packets to the same destination are not reorderd.
-
-  // Pipeline stages for receive unit
-  Reg#(Bool)         receiveRetryFire <- mkDReg(False);
-  Reg#(Bool)         receive2Fire     <- mkDReg(False);
-  Reg#(Packet)       receive2Input    <- mkConfigRegU;
-  Reg#(Bool)         receive3Fire     <- mkDReg(False);
-  Reg#(Packet)       receive3Input    <- mkConfigRegU;
-  Reg#(Bool)         receive4Fire     <- mkDReg(False);
-  Reg#(Packet)       receive4Input    <- mkConfigRegU;
-  Reg#(ReceiveAlert) receive5Input    <- mkVReg;
+  // State
+  Reg#(Bit#(2))      recvState      <- mkConfigReg(0);
+  Reg#(Packet)       pktBuffer      <- mkConfigRegU;
+  Reg#(Packet)       receive3Input  <- mkVReg;
+  Reg#(MsgBurst)     recvBurstCount <- mkConfigReg(0);
+  Reg#(ReceiveAlert) receive4Input  <- mkVReg;
 
   // Keep track of the number of in-flight packets being received
   Count#(TAdd#(`LogAlertBufferLen, 1)) inFlightRecvs <-
     mkCount(2 ** `LogAlertBufferLen);
 
-  rule receive1 (packetInPort.canGet || receiveRetryFire);
-    // To begin, assume packet out of stage 3 cannot be written to
-    // scratchpad and hence needs to be retried
-    let pkt = receive4Input;
-    // Determine whether a new packet can be inserted into the
-    // pipeline without introducing a hazard. A hazard occurs
-    // when multiple packets for the same destination are present in
-    // the pipeline at the same time. See ArrayOfSet.bsv to
-    // understand why such hazards need to be avoided.
-    MailboxClientId dest = truncate(packetInPort.value.dest);
-    Bool stall = receive2Fire && truncate(receive2Input.dest) == dest
-              || receive3Fire && truncate(receive3Input.dest) == dest
-              || receive4Fire && truncate(receive4Input.dest) == dest;
-    // Retry failed receive or insert a new packet into the pipeline
-    Bool triggerNextStage = False;
-    if (receiveRetryFire) begin
-      // Retry
-      triggerNextStage = True;
-    end else if (inFlightRecvs.notFull && !stall) begin
-      // Insert new packet into the pipeline
-      inFlightRecvs.inc;
+  // Argument passed to the call of "statusMem.get" on previous
+  // clock cycle, if there was one
+  Reg#(Maybe#(Bit#(`LogThreadsPerMailbox))) prevDestReg <-
+    mkDReg(Invalid);
+
+  rule receive0 (recvState == 0 || recvState == 2 && statusMem.canGet);
+    let pkt = packetInPort.value;
+    // Determine destination thread
+    Bit#(`LogThreadsPerMailbox) destThread = truncate(pkt.dest);
+    // The stall condition ensures that "statusMem.get" and
+    // "statusMem.tryGet" are not called with the same argument
+    // within two consecutive cycles (see ArrayOfSet.bsv)
+    Bool stall = prevDestReg == Valid(destThread);
+    // Setup write to scratchpad
+    if (recvState == 2) begin
+      if (!pktBuffer.notEndOfBurst) begin
+        statusMem.get; 
+        prevDestReg <= Valid(truncate(pktBuffer.dest));
+        stall = stall || destThread == truncate(pktBuffer.dest);
+      end
+      receive3Input <= pktBuffer;
+    end
+    // Setup read from status memory
+    if (packetInPort.canGet && inFlightRecvs.notFull && !stall) begin
       packetInPort.get;
-      pkt = packetInPort.value;
-      triggerNextStage = True;
-    end
-    // Tigger next stage
-    if (triggerNextStage) begin
-      receive2Fire <= True;
-      // Extract a bit from the status vector
-      statusMem.tryGet(truncate(pkt.dest));
-    end
-    // Prepare input for next stage
-    receive2Input <= pkt;
+      if (!pkt.notEndOfBurst) inFlightRecvs.inc;
+      statusMem.tryGet(destThread);
+      pktBuffer <= pkt;
+      recvState <= 1;
+    end else
+      recvState <= 0;
   endrule
 
-  rule receive2 (receive2Fire);
-    // Trigger next stage
-    receive3Fire <= True;
-    receive3Input <= receive2Input;
+  rule receive1 (recvState == 1);
+    recvState <= 2;
   endrule
 
-  rule receive3 (receive3Fire);
+  rule receive2 (recvState == 2 && !statusMem.canGet);
+    statusMem.tryGet(truncate(pktBuffer.dest));
+    recvState <= 1;
+  endrule
+
+  rule receive3;
     let pkt = receive3Input;
-    // Prepare inputs for next stage
-    receive4Input <= pkt;
-    // Has destination for packet been determined?
-    if (statusMem.canGet) begin
-      statusMem.get;
-      // Trigger final pipeline stage
-      receive4Fire <= True;
-    end else begin
-      // No space available for incoming message, retry
-      receiveRetryFire <= True;
-    end
-  endrule
-      
-  rule receive4 (receive4Fire);
-    let pkt = receive4Input;
     let index = statusMem.itemOut;
     // Update scratchpad
     msgWriteWire      <= True;
-    msgWriteIndexWire <= { truncate(pkt.dest), index };
+    msgWriteIndexWire <= { truncate(pkt.dest),
+                             index + zeroExtend(recvBurstCount) };
     msgWriteDataReg   <= pkt.payload;
-    // Trigger next stage
-    ReceiveAlert alert;
-    alert.id = truncate(pkt.dest);
-    alert.index = index;
-    receive5Input <= alert;
+    // Update burst count
+    if (!pkt.notEndOfBurst) begin
+      recvBurstCount <= 0;
+      // Trigger next stage
+      ReceiveAlert alert;
+      alert.id = truncate(pkt.dest);
+      alert.index = index;
+      receive4Input <= alert;
+    end else
+      recvBurstCount <= recvBurstCount+1;
   endrule
 
-  rule receive5;
-    ReceiveAlert alert = receive5Input;
+  rule receive4;
+    ReceiveAlert alert = receive4Input;
     // Issue response
     myAssert(alertBuffer.notFull, "Mailbox: alertBuffer overflow");
     alertBuffer.enq(alert);
@@ -392,40 +384,49 @@ module mkMailbox (Mailbox);
   // =============
 
   // Transmit packet-buffer
-  `define LogTransmitBufferLen 1
   SizedQueue#(`LogTransmitBufferLen, Packet) transmitBuffer <-
-    mkUGShiftQueue(QueueOptFmax);
-
-  // Transmit response-buffer
-  SizedQueue#(`LogTransmitBufferLen, TransmitResp) transmitRespBuffer <-
     mkUGShiftQueue(QueueOptFmax);
 
   // Track number of in-flight requests
   Count#(TAdd#(`LogTransmitBufferLen, 1)) inFlightTransmits <-
     mkCount(2 ** `LogTransmitBufferLen);
-  Count#(TAdd#(`LogTransmitBufferLen, 1)) inFlightTransmitResps <-
-    mkCount(2 ** `LogTransmitBufferLen);
+
+  // Transmit response-buffer
+  Queue#(TransmitResp) transmitRespBuffer <- mkUGShiftQueue(QueueOptFmax);
+
+  // Burst count
+  Reg#(MsgBurst) transmitBurstCount <- mkConfigReg(0);
 
   // Pipeline state
-  Reg#(TransmitReq) transmit2Input <- mkVReg;
-  Reg#(TransmitReq) transmit3Input <- mkVReg;
-  Reg#(TransmitReq) transmit4Input <- mkVReg;
+  Reg#(TransmitToken) transmit2Input <- mkVReg;
+  Reg#(TransmitToken) transmit3Input <- mkVReg;
+  Reg#(TransmitToken) transmit4Input <- mkVReg;
 
   rule transmit1;
     if (txReqPort.canGet &&
           inFlightTransmits.notFull &&
-            inFlightTransmitResps.notFull &&
+            transmitRespBuffer.notFull &&
               !msgWriteWire) begin
       TransmitReq req = txReqPort.value;
-      // Consume request
-      txReqPort.get;
-      inFlightTransmits.inc;
-      inFlightTransmitResps.inc;
+      // Is this the final beat of the burst?
+      Bool endOfBurst = False;
+      if (transmitBurstCount == req.burst) begin
+        endOfBurst = True;
+        transmitBurstCount <= 0;
+        // Consume request
+        txReqPort.get;
+        // Put response
+        transmitRespBuffer.enq(TransmitResp { id: req.id });
+      end else
+        transmitBurstCount <= transmitBurstCount+1;
       // Read message from scratchpad
+      let index        =  req.msgIndex + zeroExtend(transmitBurstCount);
       msgReadWire      <= True;
-      msgReadIndexWire <= { truncate(req.id), req.msgIndex };
+      msgReadIndexWire <= { truncate(req.id), index };
       // Trigger next stage
-      transmit2Input <= req;
+      inFlightTransmits.inc;
+      let token = TransmitToken {dest: req.dest, notEndOfBurst: !endOfBurst};
+      transmit2Input <= token;
     end
   endrule
 
@@ -440,15 +441,13 @@ module mkMailbox (Mailbox);
   endrule
 
   rule transmit4;
-    TransmitReq req = transmit4Input;
-    // Message available on scratchpad output bus
-    Msg msg = scratchpad.dataOutA;
+    TransmitToken token = transmit4Input;
     // Put packet into transmit buffer
     myAssert(transmitBuffer.notFull, "transmitBuffer overflow");
-    transmitBuffer.enq(Packet { dest: zeroExtend(req.dest), payload: msg });
-    // Put response
-    myAssert(transmitRespBuffer.notFull, "transmitRespBuffer overflow");
-    transmitRespBuffer.enq(TransmitResp { id: req.id });
+    let pkt = Packet { dest:          token.dest
+                     , payload:       scratchpad.dataOutA
+                     , notEndOfBurst: token.notEndOfBurst };
+    transmitBuffer.enq(pkt);
   endrule
   
   // Scratchpad interface
@@ -515,7 +514,6 @@ module mkMailbox (Mailbox);
   interface BOut txRespOut;
     method Action get;
       transmitRespBuffer.deq;
-      inFlightTransmitResps.dec;
     endmethod
     method Bool valid = transmitRespBuffer.canDeq;
     method TransmitResp value = transmitRespBuffer.dataOut;
@@ -579,7 +577,8 @@ interface MailboxClientUnit;
   // Trigger send/receive
   // (Must only be called on 2nd cycle after call to "prepare")
   method Action recv;
-  method Action send(ThreadId id, PacketDest dest, MailboxThreadMsgAddr addr);
+  method Action send(ThreadId id, MsgBurst burst,
+                       PacketDest dest, MailboxThreadMsgAddr addr);
   // Scratchpad address of message received
   // (Valid on 2nd cycle after call to "recv")
   method Bit#(32) recvAddr;
@@ -698,12 +697,14 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
 
   method Bool canSend = canSendReg2;
 
-  method Action send(ThreadId id, PacketDest dest, MailboxThreadMsgAddr addr);
+  method Action send(ThreadId id, MsgBurst burst,
+                       PacketDest dest, MailboxThreadMsgAddr addr);
     myAssert(canSendReg2, "MailboxClientUnit: send violation");
     // Construct transmit request
     TransmitReq req;
     req.id = {truncate(myId), id};
     req.msgIndex = addr;
+    req.burst = burst;
     req.dest = dest;
     // Put in queue
     myAssert(transmitQueue.notFull, "MailboxClientUnit: transmitQueue full");

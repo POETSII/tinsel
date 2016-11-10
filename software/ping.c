@@ -27,7 +27,10 @@ int main()
 
   // Pointers into scratchpad for incoming and outgoing msgs
   volatile msg_t* out = mailbox(0);
-  volatile msg_t* in  = mailbox(1);
+  volatile msg_t* in  = mailbox(2);
+
+  // Set message-burst length
+  mb_set_burst(1);
 
   // Initialise ping message
   out->source = id;
@@ -44,7 +47,7 @@ int main()
 
   for (;;) {
     while (! mb_can_recv());
-    msg_t* msg = recv();
+    msg_t* msg = mb_recv();
     set(1 << msg->value);
     while (! mb_can_send());
     out->value = msg->value + 1;
