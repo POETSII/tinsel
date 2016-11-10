@@ -54,6 +54,9 @@ typedef struct {
 // Packets
 // ============================================================================
 
+// Message burst length
+typedef Bit#(`LogMaxMsgBurst) MsgBurst;
+
 // We use the term "message" to refer to packet payload
 typedef TMul#(`WordsPerMsg, 32) MsgBits;
 typedef Bit#(MsgBits) Msg;
@@ -67,6 +70,8 @@ typedef struct {
   PacketDest dest;
   // Payload
   Msg payload;
+  // Is this the final packet in the burst? (Active-low)
+  Bool notEndOfBurst;
 } Packet deriving (Bits);
 
 endpackage

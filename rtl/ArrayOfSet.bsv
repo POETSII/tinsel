@@ -37,11 +37,9 @@ interface ArrayOfSet#(type logNumSets, type logSetSize);
   method Bit#(logSetSize) itemOut;
 endinterface
 
-// TIMING CONSTRAINT: when the "get" method is called, an item is not
-// removed from the set until the 3rd cycle after the call.  This
-// means that two "get" calls to the same set should always be
-// seperated by three cycles, otherwise it will be possible to remove
-// the same item several times (without having reinserted it).
+// TIMING CONSTRAINT: when the "get" method is called, a subsequent
+// call to "tryGet" with the same index should not occur until the 2nd
+// cycle after the call to "get".
 
 // =============================================================================
 // Implementation
