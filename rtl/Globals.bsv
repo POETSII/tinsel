@@ -51,27 +51,27 @@ typedef struct {
 } MemStoreResp deriving (Bits);
 
 // ============================================================================
-// Packets
+// Messages
 // ============================================================================
 
-// Message burst length
-typedef Bit#(`LogMaxMsgBurst) MsgBurst;
+// Message length in flits
+// (A length of N corresponds to N+1 flits)
+typedef Bit#(`LogMaxFlitsPerMsg) MsgLen;
 
-// We use the term "message" to refer to packet payload
-typedef TMul#(`WordsPerMsg, 32) MsgBits;
-typedef Bit#(MsgBits) Msg;
+// Flit payload
+typedef Bit#(TMul#(`WordsPerFlit, 32)) FlitPayload;
 
-// Desination address of a packet
-typedef Bit#(`LogMaxThreads) PacketDest;
+// Desination address of a message
+typedef Bit#(`LogMaxThreads) FlitDest;
 
-// Packet type
+// Flit type
 typedef struct {
   // Destination address
-  PacketDest dest;
+  FlitDest dest;
   // Payload
-  Msg payload;
-  // Is this the final packet in the burst? (Active-low)
-  Bool notEndOfBurst;
-} Packet deriving (Bits);
+  FlitPayload payload;
+  // Is this the final flit in the message? (Active-low)
+  Bool notFinalFlit;
+} Flit deriving (Bits);
 
 endpackage

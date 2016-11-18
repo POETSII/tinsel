@@ -23,9 +23,9 @@ package Mailbox;
 //                 |                                  |
 //                 |       +---------------+          | 
 //              <--------->| Transmit Unit |          |
-//    Group        |       +---------------+          |<----- Packet in
+//    Group        |       +---------------+          |<----- Flit in
 //     of          |                                  | 
-//    cores        |       +--------------+           |-----> Packet out
+//    cores        |       +--------------+           |-----> Flit out
 //              <--------->| Receive Unit |           |
 //                 |       +--------------+           |
 //                 |                                  |
@@ -40,10 +40,12 @@ package Mailbox;
 // ----------
 // 
 // The scratchpad is a mixed-width dual-port block RAM with a 32-bit bus
-// on the core side and a message-sized bus on the network side (we use
-// the term "message" to mean "packet payload".)  The scratchpad is
+// on the core side and a flit-sized bus on the network side (a
+// message is comprised of several flits).  The scratchpad is
 // partitioned by thread id.  The number of 32-bit words available to
-// each thread is 2^LogMsgsPerThread * 2^LogWordsPerMsg.
+// each thread is:
+//
+//   2^LogMsgsPerThread * 2^LogMaxFlitsPerMsg * 2^LogWordsPerFlit.
 // 
 // One attraction of using a scratchpad is that a message can be forwarded
 // (recieved and sent) without serialising it through the 32-bit core.
@@ -105,8 +107,13 @@ import DReg         :: *;
 typedef Bit#(`LogThreadsPerMailbox) MailboxClientId;
 
 // Thread-local word address in scratchpad memory
-typedef TAdd#(`LogMsgsPerThread, `LogWordsPerMsg) MailboxThreadWordAddrBits;
+typedef TAdd#(`LogMsgsPerThread,
+          TAdd#(`LogMaxFlitsPerMsg, `LogWordsPerFlit))
+            MailboxThreadWordAddrBits;
 typedef Bit#(MailboxThreadWordAddrBits) MailboxThreadWordAddr;
+
+// Thread-local flit address in scratchpad memory
+typedef Bit#(`LogFlitsPerThread) MailboxThreadFlitAddr;
 
 // Thread-local message address in scratchpad memory
 typedef Bit#(`LogMsgsPerThread) MailboxThreadMsgAddr;
@@ -115,6 +122,10 @@ typedef Bit#(`LogMsgsPerThread) MailboxThreadMsgAddr;
 typedef TAdd#(`LogThreadsPerMailbox, MailboxThreadWordAddrBits)
           MailboxWordAddrBits;
 typedef Bit#(MailboxWordAddrBits) MailboxWordAddr;
+
+// Flit address in scratchpad memory
+typedef TAdd#(`LogThreadsPerMailbox, `LogFlitsPerThread) MailboxFlitAddrBits;
+typedef Bit#(MailboxFlitAddrBits) MailboxFlitAddr;
 
 // Message address in scratchpad memory
 typedef TAdd#(`LogThreadsPerMailbox, `LogMsgsPerThread) MailboxMsgAddrBits;
@@ -158,10 +169,10 @@ typedef struct {
   MailboxClientId id;
   // Thread-local message address
   MailboxThreadMsgAddr msgIndex;
-  // Burst count
-  MsgBurst burst;
+  // Message length
+  MsgLen len;
   // Destination thread
-  PacketDest dest;
+  FlitDest dest;
 } TransmitReq deriving (Bits);
 
 // Transmit unit response
@@ -190,8 +201,8 @@ typedef struct {
 
 // Transmit pipeline token
 typedef struct {
-  PacketDest dest;
-  Bool notEndOfBurst;
+  FlitDest dest;
+  Bool notFinalFlit;
 } TransmitToken deriving (Bits);
 
 // =============================================================================
@@ -206,8 +217,9 @@ endfunction
 
 // Convert message address to byte address
 function Bit#(32) msgAddrToByteAddr(MailboxThreadMsgAddr msgAddr);
-  Bit#(`LogWordsPerMsg) wordOffset = 0;
-  return {0, msgAddr, wordOffset, 2'b0};
+  Bit#(`LogWordsPerFlit) wordOffset = 0;
+  Bit#(`LogMaxFlitsPerMsg) flitOffset = 0;
+  return {0, msgAddr, flitOffset, wordOffset, 2'b0};
 endfunction
 
 // =============================================================================
@@ -225,8 +237,8 @@ interface Mailbox;
   interface In#(AllocReq)         allocReqIn;
   interface BOut#(ReceiveAlert)   rxAlertOut;
   // Network-side interface
-  interface In#(Packet)           packetIn;
-  interface BOut#(Packet)         packetOut;
+  interface In#(Flit)             flitIn;
+  interface BOut#(Flit)           flitOut;
 endinterface
 
 // =============================================================================
@@ -236,8 +248,8 @@ endinterface
 (* synthesize *)
 module mkMailbox (Mailbox);
   // True dual-port mixed-width scratchpad
-  // (One message-sized port and one word-sized port)
-  BlockRamTrueMixedBE#(MailboxMsgAddr, Msg, MailboxWordAddr, Bit#(32))
+  // (One flit-sized port and one word-sized port)
+  BlockRamTrueMixedBE#(MailboxFlitAddr, FlitPayload, MailboxWordAddr, Bit#(32))
     scratchpad <- mkBlockRamTrueMixedBE;
 
   // Alert buffer (to notify threads about received messages)
@@ -253,7 +265,7 @@ module mkMailbox (Mailbox);
   // Request & response ports
   InPort#(ScratchpadReq)   spadReqPort   <- mkInPort;
   InPort#(TransmitReq)     txReqPort     <- mkInPort;
-  InPort#(Packet)          packetInPort  <- mkInPort;
+  InPort#(Flit)            flitInPort    <- mkInPort;
   InPort#(AllocReq)        allocReqPort  <- mkInPort;
 
   // Message access unit
@@ -266,22 +278,22 @@ module mkMailbox (Mailbox);
   // write wire must only be asserted when the read wire is low.
 
   // Control wires for modifying messages in scratchpad
-  Wire#(Bool) msgReadWire  <- mkDWire(False);
-  Wire#(Bool) msgWriteWire <- mkDWire(False);
-  Reg#(Bool) msgWriteReg <- mkRegU;
-  Wire#(MailboxMsgAddr) msgReadIndexWire <- mkDWire(0);
-  Wire#(MailboxMsgAddr) msgWriteIndexWire <- mkDWire(0);
-  Reg#(Msg) msgWriteDataReg <- mkConfigRegU;
-  Reg#(MailboxMsgAddr) msgIndexReg <- mkRegU;
+  Wire#(Bool) flitReadWire  <- mkDWire(False);
+  Wire#(Bool) flitWriteWire <- mkDWire(False);
+  Reg#(Bool) flitWriteReg <- mkRegU;
+  Wire#(MailboxFlitAddr) flitReadIndexWire <- mkDWire(0);
+  Wire#(MailboxFlitAddr) flitWriteIndexWire <- mkDWire(0);
+  Reg#(FlitPayload) flitWriteDataReg <- mkConfigRegU;
+  Reg#(MailboxFlitAddr) flitIndexReg <- mkRegU;
 
-  // Use wires to issue message access in scratchpad
-  rule msgAccessUnit;
-    msgWriteReg <= msgWriteWire;
-    msgIndexReg <= msgReadIndexWire | msgWriteIndexWire;
+  // Use wires to issue flit access in scratchpad
+  rule flitAccessUnit;
+    flitWriteReg <= flitWriteWire;
+    flitIndexReg <= flitReadIndexWire | flitWriteIndexWire;
     scratchpad.putA(
-      msgWriteReg,
-      msgIndexReg,
-      msgWriteDataReg);
+      flitWriteReg,
+      flitIndexReg,
+      flitWriteDataReg);
   endrule
 
   // Receive Unit
@@ -289,75 +301,101 @@ module mkMailbox (Mailbox);
 
   // State
   Reg#(Bit#(2))      recvState      <- mkConfigReg(0);
-  Reg#(Packet)       pktBuffer      <- mkConfigRegU;
-  Reg#(Packet)       receive3Input  <- mkVReg;
-  Reg#(MsgBurst)     recvBurstCount <- mkConfigReg(0);
+  Reg#(Flit)         flitBuffer     <- mkConfigRegU;
+  Reg#(Flit)         receive3Input  <- mkVReg;
+  Reg#(MsgLen)       recvFlitCount  <- mkConfigReg(0);
   Reg#(ReceiveAlert) receive4Input  <- mkVReg;
 
-  // Keep track of the number of in-flight packets being received
+  // Keep track of the number of in-flight flits being received
   Count#(TAdd#(`LogAlertBufferLen, 1)) inFlightRecvs <-
     mkCount(2 ** `LogAlertBufferLen);
 
   // Argument passed to the call of "statusMem.get" on previous
   // clock cycle, if there was one
-  Reg#(Maybe#(Bit#(`LogThreadsPerMailbox))) prevDestReg <-
+  Reg#(Maybe#(Bit#(`LogThreadsPerMailbox))) prevGet <-
     mkDReg(Invalid);
 
-  rule receive0 (recvState == 0 || recvState == 2 && statusMem.canGet);
-    let pkt = packetInPort.value;
-    // Determine destination thread
-    Bit#(`LogThreadsPerMailbox) destThread = truncate(pkt.dest);
+  // Are we processing the first flit of a message?
+  Reg#(Bool) firstFlit <- mkConfigReg(True);
+
+  // Inputs to receive stage 3
+  Reg#(Bool) receive3Fire <- mkDReg(False);
+  Reg#(Bool) receive3FirstFlit <- mkConfigRegU;
+
+  // The index in the scratchpad that the message is being written to
+  Reg#(Bit#(`LogMsgsPerThread)) destIndex <- mkConfigRegU;
+
+  rule receive0 (recvState == 0);
+    let flit = flitInPort.value;
+    flitBuffer <= flit;
     // The stall condition ensures that "statusMem.get" and
     // "statusMem.tryGet" are not called with the same argument
     // within two consecutive cycles (see ArrayOfSet.bsv)
-    Bool stall = prevDestReg == Valid(destThread);
-    // Setup write to scratchpad
-    if (recvState == 2) begin
-      if (!pktBuffer.notEndOfBurst) begin
-        statusMem.get; 
-        prevDestReg <= Valid(truncate(pktBuffer.dest));
-        stall = stall || destThread == truncate(pktBuffer.dest);
+    Bool stall = prevGet == Valid(truncate(flit.dest));
+    // Try to consume an incoming flit
+    if (flitInPort.canGet && inFlightRecvs.notFull) begin
+      if (firstFlit) begin
+        if (!stall) begin
+          flitInPort.get;
+          inFlightRecvs.inc;
+          statusMem.tryGet(truncate(flit.dest));
+          recvState <= 1;
+        end
+      end else begin
+        flitInPort.get;
+        recvState <= 2;
       end
-      receive3Input <= pktBuffer;
     end
-    // Setup read from status memory
-    if (packetInPort.canGet && inFlightRecvs.notFull && !stall) begin
-      packetInPort.get;
-      if (!pkt.notEndOfBurst) inFlightRecvs.inc;
-      statusMem.tryGet(destThread);
-      pktBuffer <= pkt;
-      recvState <= 1;
-    end else
-      recvState <= 0;
   endrule
 
   rule receive1 (recvState == 1);
     recvState <= 2;
   endrule
 
-  rule receive2 (recvState == 2 && !statusMem.canGet);
-    statusMem.tryGet(truncate(pktBuffer.dest));
-    recvState <= 1;
+  rule receive2 (recvState == 2);
+    Bool retry = False;
+    if (firstFlit) begin
+      // Do we have somewhere to put the incoming message?
+      if (statusMem.canGet) begin
+        statusMem.get;
+        prevGet <= Valid(truncate(flitBuffer.dest));
+        recvState <= 0;
+      end else begin
+        // If not, retry the lookup
+        statusMem.tryGet(truncate(flitBuffer.dest));
+        recvState <= 1;
+        retry = True;
+      end
+    end else
+      recvState <= 0;
+    if (!retry) begin
+      // Trigger receive stage 3
+      receive3Fire <= True;
+      receive3FirstFlit <= firstFlit;
+      // We may have finished processing this message,
+      // in which case reset firstFlit back to True
+      firstFlit <= !flitBuffer.notFinalFlit;
+    end
   endrule
 
-  rule receive3;
-    let pkt = receive3Input;
-    let index = statusMem.itemOut;
+  rule receive3 (receive3Fire);
+    let flit = flitBuffer;
+    let index = receive3FirstFlit ? statusMem.itemOut : destIndex;
+    if (receive3FirstFlit) destIndex <= statusMem.itemOut;
     // Update scratchpad
-    msgWriteWire      <= True;
-    msgWriteIndexWire <= { truncate(pkt.dest),
-                             index + zeroExtend(recvBurstCount) };
-    msgWriteDataReg   <= pkt.payload;
-    // Update burst count
-    if (!pkt.notEndOfBurst) begin
-      recvBurstCount <= 0;
+    flitWriteWire      <= True;
+    flitWriteIndexWire <= { truncate(flit.dest), index, recvFlitCount };
+    flitWriteDataReg   <= flit.payload;
+    // Update flit count
+    if (!flit.notFinalFlit) begin
+      recvFlitCount <= 0;
       // Trigger next stage
       ReceiveAlert alert;
-      alert.id = truncate(pkt.dest);
+      alert.id = truncate(flit.dest);
       alert.index = index;
       receive4Input <= alert;
     end else
-      recvBurstCount <= recvBurstCount+1;
+      recvFlitCount <= recvFlitCount+1;
   endrule
 
   rule receive4;
@@ -383,8 +421,8 @@ module mkMailbox (Mailbox);
   // Transmit Unit
   // =============
 
-  // Transmit packet-buffer
-  SizedQueue#(`LogTransmitBufferLen, Packet) transmitBuffer <-
+  // Transmit flit-buffer
+  SizedQueue#(`LogTransmitBufferLen, Flit) transmitBuffer <-
     mkUGShiftQueue(QueueOptFmax);
 
   // Track number of in-flight requests
@@ -394,8 +432,8 @@ module mkMailbox (Mailbox);
   // Transmit response-buffer
   Queue#(TransmitResp) transmitRespBuffer <- mkUGShiftQueue(QueueOptFmax);
 
-  // Burst count
-  Reg#(MsgBurst) transmitBurstCount <- mkConfigReg(0);
+  // Flit count
+  Reg#(MsgLen) transmitFlitCount <- mkConfigReg(0);
 
   // Pipeline state
   Reg#(TransmitToken) transmit2Input <- mkVReg;
@@ -406,26 +444,26 @@ module mkMailbox (Mailbox);
     if (txReqPort.canGet &&
           inFlightTransmits.notFull &&
             transmitRespBuffer.notFull &&
-              !msgWriteWire) begin
+              !flitWriteWire) begin
       TransmitReq req = txReqPort.value;
-      // Is this the final beat of the burst?
-      Bool endOfBurst = False;
-      if (transmitBurstCount == req.burst) begin
-        endOfBurst = True;
-        transmitBurstCount <= 0;
+      // Is this the final beat of the message?
+      Bool endOfMsg = False;
+      if (transmitFlitCount == req.len) begin
+        endOfMsg = True;
+        transmitFlitCount <= 0;
         // Consume request
         txReqPort.get;
         // Put response
         transmitRespBuffer.enq(TransmitResp { id: req.id });
       end else
-        transmitBurstCount <= transmitBurstCount+1;
+        transmitFlitCount <= transmitFlitCount+1;
       // Read message from scratchpad
-      let index        =  req.msgIndex + zeroExtend(transmitBurstCount);
-      msgReadWire      <= True;
-      msgReadIndexWire <= { truncate(req.id), index };
+      flitReadWire      <= True;
+      flitReadIndexWire <=
+        { truncate(req.id), req.msgIndex, transmitFlitCount };
       // Trigger next stage
       inFlightTransmits.inc;
-      let token = TransmitToken {dest: req.dest, notEndOfBurst: !endOfBurst};
+      let token = TransmitToken {dest: req.dest, notFinalFlit: !endOfMsg};
       transmit2Input <= token;
     end
   endrule
@@ -442,12 +480,12 @@ module mkMailbox (Mailbox);
 
   rule transmit4;
     TransmitToken token = transmit4Input;
-    // Put packet into transmit buffer
+    // Put flit into transmit buffer
     myAssert(transmitBuffer.notFull, "transmitBuffer overflow");
-    let pkt = Packet { dest:          token.dest
-                     , payload:       scratchpad.dataOutA
-                     , notEndOfBurst: token.notEndOfBurst };
-    transmitBuffer.enq(pkt);
+    let flit = Flit { dest:         token.dest
+                    , payload:      scratchpad.dataOutA
+                    , notFinalFlit: token.notFinalFlit };
+    transmitBuffer.enq(flit);
   endrule
   
   // Scratchpad interface
@@ -500,7 +538,7 @@ module mkMailbox (Mailbox);
   interface In txReqIn    = txReqPort.in;
   interface In allocReqIn = allocReqPort.in;
   interface In spadReqIn  = spadReqPort.in;
-  interface In packetIn   = packetInPort.in;
+  interface In flitIn     = flitInPort.in;
 
   interface BOut rxAlertOut;
     method Action get;
@@ -528,13 +566,13 @@ module mkMailbox (Mailbox);
     method ScratchpadResp value = scratchpadRespBuffer.dataOut;
   endinterface
 
-  interface BOut packetOut;
+  interface BOut flitOut;
     method Action get;
       transmitBuffer.deq;
       inFlightTransmits.dec;
     endmethod
     method Bool valid = transmitBuffer.canDeq;
-    method Packet value = transmitBuffer.dataOut;
+    method Flit value = transmitBuffer.dataOut;
   endinterface
 
 endmodule
@@ -577,8 +615,8 @@ interface MailboxClientUnit;
   // Trigger send/receive
   // (Must only be called on 2nd cycle after call to "prepare")
   method Action recv;
-  method Action send(ThreadId id, MsgBurst burst,
-                       PacketDest dest, MailboxThreadMsgAddr addr);
+  method Action send(ThreadId id, MsgLen len,
+                       FlitDest dest, MailboxThreadMsgAddr addr);
   // Scratchpad address of message received
   // (Valid on 2nd cycle after call to "recv")
   method Bit#(32) recvAddr;
@@ -697,14 +735,14 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
 
   method Bool canSend = canSendReg2;
 
-  method Action send(ThreadId id, MsgBurst burst,
-                       PacketDest dest, MailboxThreadMsgAddr addr);
+  method Action send(ThreadId id, MsgLen len,
+                       FlitDest dest, MailboxThreadMsgAddr addr);
     myAssert(canSendReg2, "MailboxClientUnit: send violation");
     // Construct transmit request
     TransmitReq req;
     req.id = {truncate(myId), id};
     req.msgIndex = addr;
-    req.burst = burst;
+    req.len = len;
     req.dest = dest;
     // Put in queue
     myAssert(transmitQueue.notFull, "MailboxClientUnit: transmitQueue full");

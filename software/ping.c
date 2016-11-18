@@ -29,8 +29,8 @@ int main()
   volatile msg_t* out = mailbox(0);
   volatile msg_t* in  = mailbox(2);
 
-  // Set message-burst length
-  mb_set_burst(1);
+  // Set message length
+  mb_set_len(1);
 
   // Initialise ping message
   out->source = id;

@@ -34,7 +34,7 @@ import Globals   :: *;
 // CanRecv  | 2      | Y,N,N      | 1 if can receive, 0 otherwise
 // Send     | 3      | Y,Y,Y      | Send message (at pointer) to destination
 // Recv     | 4      | Y,N,N      | Consume message-pointer from receive buffer
-// SetBurst | 5      | Y,Y,N      | Message burst length
+// SetLen   | 5      | Y,Y,N      | Set message length (in flits)
 
 // ============================================================================
 // Types
@@ -49,7 +49,7 @@ typedef Bit#(TAdd#(`LogInstrsPerCore, 2)) InstrAddr;
 // For each thread, we keep the following info
 typedef struct {
   InstrAddr pc;       // Program counter
-  MsgBurst  msgBurst; // Burst length for sending messages
+  MsgLen    msgLen;   // Length to use when sending messages
   ThreadId  id;       // Thread identifier (must be final field of struct)
 } ThreadState deriving (Bits);
 
@@ -80,7 +80,7 @@ typedef struct {
   Bool isMailboxOp;      Bool isMailboxAlloc;
   Bool isMailboxSend;    Bool isMailboxCanSend;
   Bool isMailboxRecv;    Bool isMailboxCanRecv;
-  Bool isMailboxNonRecv; Bool isMailboxSetBurst;
+  Bool isMailboxNonRecv; Bool isMailboxSetLen;
 } Op deriving (Bits);
 
 // Instruction result
@@ -240,7 +240,7 @@ function Op decodeOp(Bit#(32) instr);
     ret.isMailboxSend     = ret.isMailboxOp && mailboxOp == 3;
     ret.isMailboxRecv     = ret.isMailboxOp && mailboxOp == 4;
     ret.isMailboxNonRecv  = ret.isMailboxOp && mailboxOp != 4;
-    ret.isMailboxSetBurst = ret.isMailboxOp && mailboxOp == 5;
+    ret.isMailboxSetLen   = ret.isMailboxOp && mailboxOp == 5;
   `endif
   return ret;
 endfunction
@@ -546,12 +546,12 @@ module mkCore#(CoreId myId) (Core);
       token.mailboxSuccess = mailbox.canSend && isSend ||
                                mailbox.canRecv && isRecv;
       if (mailbox.canSend && token.op.isMailboxSend)
-        mailbox.send(token.thread.id, token.thread.msgBurst,
+        mailbox.send(token.thread.id, token.thread.msgLen,
                        truncate(token.valB), truncate(token.valA));
       if (mailbox.canRecv && token.op.isMailboxRecv)
         mailbox.recv;
-      if (token.op.isMailboxSetBurst)
-        token.thread.msgBurst = truncate(token.valA);
+      if (token.op.isMailboxSetLen)
+        token.thread.msgLen = truncate(token.valA);
     `endif
     // Triger next stage
     execute2Input <= token;
