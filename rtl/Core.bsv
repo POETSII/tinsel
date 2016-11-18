@@ -23,18 +23,17 @@ import Globals   :: *;
 // Custom instructions
 // ============================================================================
 
-// We use the RISC-V custom-0 space to implement mailbox instructions,
-// i.e. instructions for sending/receiving messages to/from other
-// cores and threads.
+// We use the RISC-V custom-0 space to implement custom instructions.
 //
-// Name     | Opcode | rd,rs1,rs2 | Function
-// -------- | ------ | ---------- | --------
-// Alloc    | 0      | Y,Y,N      | Allocate space for new message in scratchpad
-// CanSend  | 1      | Y,N,N      | 1 if can send, 0 otherwise
-// CanRecv  | 2      | Y,N,N      | 1 if can receive, 0 otherwise
-// Send     | 3      | Y,Y,Y      | Send message (at pointer) to destination
-// Recv     | 4      | Y,N,N      | Consume message-pointer from receive buffer
-// SetLen   | 5      | Y,Y,N      | Set message length (in flits)
+// Name       | Opcode | rd,rs1,rs2 | Function
+// ---------- | ------ | ---------- | --------
+// Alloc      | 0      | Y,Y,N      | Alloc space for new message in scratchpad
+// CanSend    | 1      | Y,N,N      | 1 if can send, 0 otherwise
+// CanRecv    | 2      | Y,N,N      | 1 if can receive, 0 otherwise
+// Send       | 3      | Y,Y,Y      | Send message (at pointer) to destination
+// Recv       | 4      | Y,N,N      | Consume message-ptr from receive buffer
+// SetLen     | 5      | Y,Y,N      | Set message length (in flits)
+// WriteInstr | 16     | Y,Y,Y      | Write to instruction memory
 
 // ============================================================================
 // Types
@@ -75,9 +74,10 @@ typedef struct {
   Bool isBranchLessThan; Bool isBranchGreaterOrEqualTo;
   Bool isLoad;           Bool isStore;
   Bool isCSR;            Bool isBitwise;
-  Bool isAddOrSub;
+  Bool isAddOrSub;       Bool isWriteInstr;
+  Bool isCustomInstr;
   // Mailbox custom instructions
-  Bool isMailboxOp;      Bool isMailboxAlloc;
+  Bool isMailboxAlloc;
   Bool isMailboxSend;    Bool isMailboxCanSend;
   Bool isMailboxRecv;    Bool isMailboxCanRecv;
   Bool isMailboxNonRecv; Bool isMailboxSetLen;
@@ -230,17 +230,20 @@ function Op decodeOp(Bit#(32) instr);
   ret.isStore = op == 'b01000;
   // CSR set/clear operations
   ret.isCSR = op == 'b11100 && minorOp[2:1] == 'b01;
+  // Custom instruction
+  ret.isCustomInstr = op == 5'b00010;
+  // Write to instrution memory
+  ret.isWriteInstr = ret.isCustomInstr && instr[29] == 1;
   // Mailbox custom instruction
   `ifdef MailboxEnabled
     Bit#(3) mailboxOp     = instr[27:25];
-    ret.isMailboxOp       = op == 5'b00010;
-    ret.isMailboxAlloc    = ret.isMailboxOp && mailboxOp == 0;
-    ret.isMailboxCanSend  = ret.isMailboxOp && mailboxOp == 1;
-    ret.isMailboxCanRecv  = ret.isMailboxOp && mailboxOp == 2;
-    ret.isMailboxSend     = ret.isMailboxOp && mailboxOp == 3;
-    ret.isMailboxRecv     = ret.isMailboxOp && mailboxOp == 4;
-    ret.isMailboxNonRecv  = ret.isMailboxOp && mailboxOp != 4;
-    ret.isMailboxSetLen   = ret.isMailboxOp && mailboxOp == 5;
+    ret.isMailboxAlloc    = ret.isCustomInstr && mailboxOp == 0;
+    ret.isMailboxCanSend  = ret.isCustomInstr && mailboxOp == 1;
+    ret.isMailboxCanRecv  = ret.isCustomInstr && mailboxOp == 2;
+    ret.isMailboxSend     = ret.isCustomInstr && mailboxOp == 3;
+    ret.isMailboxRecv     = ret.isCustomInstr && mailboxOp == 4;
+    ret.isMailboxNonRecv  = ret.isCustomInstr && mailboxOp != 4;
+    ret.isMailboxSetLen   = ret.isCustomInstr && mailboxOp == 5;
   `endif
   return ret;
 endfunction
@@ -282,7 +285,7 @@ function Bool isRegFileWrite(Op op) =
   || op.isShiftRight     || op.isAnd
   || op.isOr             || op.isXor
   || op.isOpUI           || op.isJump
-  || op.isCSR            || op.isMailboxOp;
+  || op.isCSR            || op.isCustomInstr;
 
 // ==============
 // Loads & Stores
@@ -510,7 +513,7 @@ module mkCore#(CoreId myId) (Core);
     token.accessWidth = decodeAccessWidth(token.instr);
     // Prepare mailbox operation
     `ifdef MailboxEnabled
-      if (token.op.isMailboxOp)
+      if (token.op.isCustomInstr)
         mailbox.prepare(token.thread.id);
     `endif
     // Trigger second decode sub-stage
@@ -578,6 +581,9 @@ module mkCore#(CoreId myId) (Core);
     // Load upper immediate (+ PC)
     res.opui = token.imm + (addPCtoUI(token.instr) ?
                               zeroExtend(token.thread.pc) : 0);
+    // Write to instruction memory
+    if (token.op.isWriteInstr)
+      instrMem.write(truncate(token.valA), token.valB);
     // Load or store: send request to data cache or scratchpad
     Bool retry = False;
     Bool suspend = False;

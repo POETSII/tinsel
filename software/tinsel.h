@@ -1,7 +1,23 @@
 #ifndef _TINSEL_H_
 #define _TINSEL_H_
 
+#include <stdint.h>
 #include "config.h"
+
+// =============================================================================
+// Custom instruciton opcodes
+// =============================================================================
+
+// Opcodes for mailbox custom instructions
+#define OPCODE_MB_ALLOC     "0"
+#define OPCODE_MB_CAN_SEND  "1"
+#define OPCODE_MB_CAN_RECV  "2"
+#define OPCODE_MB_SEND      "3"
+#define OPCODE_MB_RECV      "4"
+#define OPCODE_MB_SETLEN    "5"
+
+// Opcode fo writing to instruction memory
+#define OPCODE_WRITE_INSTR  "16"
 
 // =============================================================================
 // General
@@ -15,17 +31,16 @@ inline int me()
   return id;
 }
 
+// Write a word to instruction memory
+void write_instr (uint32_t index, uint32_t word)
+{
+  asm volatile("custom0 zero,%0,%1," OPCODE_WRITE_INSTR : :
+        "r"(index), "r"(word));
+}
+
 // =============================================================================
 // Mailbox
 // =============================================================================
-
-// Opcodes for mailbox custom instructions
-#define OPCODE_MB_ALLOC     "0"
-#define OPCODE_MB_CAN_SEND  "1"
-#define OPCODE_MB_CAN_RECV  "2"
-#define OPCODE_MB_SEND      "3"
-#define OPCODE_MB_RECV      "4"
-#define OPCODE_MB_SETLEN    "5"
 
 // Get pointer to message-aligned slot in mailbox scratchpad
 inline volatile void* mailbox(int n)
@@ -75,7 +90,8 @@ inline void* mb_recv()
   return ok;
 }
 
-// Set burst length
+// Set message length
+// (A length of N is comprised of N+1 flits)
 inline void mb_set_len(int n)
 {
   asm volatile("custom0 zero,%0,zero," OPCODE_MB_SETLEN : : "r"(n));
