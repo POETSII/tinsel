@@ -61,8 +61,11 @@ p["DRAMLatency"] = 20
 # DRAM byte-address width
 p["DRAMAddrWidth"] = 30
 
-# Size of packet payload
-p["LogWordsPerMsg"] = 2
+# Size of internal flit payload
+p["LogWordsPerFlit"] = 2
+
+# Max flits per message
+p["LogMaxFlitsPerMsg"] = 2
 
 # Space available per thread in mailbox scratchpad
 p["LogMsgsPerThread"] = 4
@@ -75,12 +78,6 @@ p["MailboxEnabled"] = True
 
 # Use array of set instead of array of queue in mailbox client helper
 p["MailboxClientUseSet"] = False
-
-# Max message burst length
-# (A burst of length N contains N+1 messages)
-# (Note: this parameter affects internal buffer sizes,
-# so there is a cost to increasing it)
-p["LogMaxMsgBurst"] = 2
 
 # Number of mailboxes per ring
 p["LogRingSize"] = 4
@@ -143,11 +140,17 @@ p["CoresPerDCache"] = 2**p["LogCoresPerDCache"]
 # Caches per DRAM
 p["DCachesPerDRAM"] = 2**p["LogDCachesPerDRAM"]
 
+# Words per glit
+p["WordsPerFlit"] = 2**p["LogWordsPerFlit"]
+
+# Words per message
+p["LogWordsPerMsg"] = p["LogWordsPerFlit"] + p["LogMaxFlitsPerMsg"]
+
 # Number of bytes per message
 p["LogBytesPerMsg"] = p["LogWordsPerMsg"] + 2
 
-# Number of words per message
-p["WordsPerMsg"] = 2**p["LogWordsPerMsg"]
+# Number of flits per thread in scratchpad
+p["LogFlitsPerThread"] = p["LogMsgsPerThread"] + p["LogMaxFlitsPerMsg"]
 
 # Number of cores sharing a mailbox
 p["CoresPerMailbox"] = 2 ** p["LogCoresPerMailbox"]
@@ -156,11 +159,13 @@ p["CoresPerMailbox"] = 2 ** p["LogCoresPerMailbox"]
 p["LogThreadsPerMailbox"] = p["LogCoresPerMailbox"]+p["LogThreadsPerCore"]
 
 # Size of memory-mapped region for mailbox scratchpad in bytes
-p["LogScratchpadBytes"] = 1+p["LogWordsPerMsg"]+2+p["LogMsgsPerThread"]
+p["LogScratchpadBytes"] = (1+p["LogWordsPerFlit"]+2+
+                             p["LogMaxFlitsPerMsg"]+
+                             p["LogMsgsPerThread"])
 
 # Size of mailbox transmit buffer
-p["LogTransmitBufferLen"] = (p["LogMaxMsgBurst"]
-                               if p["LogMaxMsgBurst"] > 1 else 1)
+p["LogTransmitBufferLen"] = (p["LogMaxFlitsPerMsg"]
+                               if p["LogMaxFlitsPerMsg"] > 1 else 1)
 
 # Number of mailboxes per ring
 p["RingSize"] = 2 ** p["LogRingSize"]

@@ -48,8 +48,8 @@ module testMailbox ();
   // Create mailbox
   let mb <- mkMailbox;
 
-  // Connect packet-out to packet-in (i.e. only one mailbox)
-  connectDirect(mb.packetOut, mb.packetIn);
+  // Connect flit-out to flit-in (i.e. only one mailbox)
+  connectDirect(mb.flitOut, mb.flitIn);
 
   // Connect test driver to mailbox
   OutPort#(ScratchpadReq) spadReq   <- mkOutPort;
@@ -157,7 +157,7 @@ module testMailbox ();
     req.id = truncate(mbReq.src);
     req.dest = truncate(mbReq.dst);
     req.msgIndex = 0;
-    req.burst = 0;
+    req.len = -1;
     txReq.put(req);
     mbReqs.deq;
     $display("S %d %d", req.id, req.dest);

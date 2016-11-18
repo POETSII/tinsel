@@ -131,11 +131,16 @@ endmodule
 // on the clock cycle after it is written
 module mkVReg (Reg#(t)) provisos (Bits#(t, twidth));
   Reg#(t) register <- mkRegU;
+  Wire#(t) valWire <- mkDWire(?);
   Reg#(Bool) valid <- mkDReg(False);
 
+  rule update;
+    register <= valWire;
+  endrule
+
   method Action _write (t val);
-    register <= val;
-    valid    <= True;
+    valWire <= val;
+    valid   <= True;
   endmethod
 
   method t _read if (valid) = register;
