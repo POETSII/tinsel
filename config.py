@@ -79,8 +79,8 @@ p["MailboxEnabled"] = True
 # Use array of set instead of array of queue in mailbox client helper
 p["MailboxClientUseSet"] = False
 
-# Number of mailboxes per ring
-p["LogRingSize"] = 4
+# Number of mailboxes per board
+p["LogMailboxesPerBoard"] = 4
 
 # Use the dual-port frontend to DRAM: turn a DRAM port with an n-bit
 # wide data bus into two DRAM ports each with an n/2-bit wide data
@@ -140,11 +140,20 @@ p["CoresPerDCache"] = 2**p["LogCoresPerDCache"]
 # Caches per DRAM
 p["DCachesPerDRAM"] = 2**p["LogDCachesPerDRAM"]
 
-# Words per glit
+# Flits per message
+p["MaxFlitsPerMsg"] = 2**p["LogMaxFlitsPerMsg"]
+
+# Words per flit
 p["WordsPerFlit"] = 2**p["LogWordsPerFlit"]
+
+# Bytes per flit
+p["LogBytesPerFlit"] = p["LogWordsPerFlit"] + 2
 
 # Words per message
 p["LogWordsPerMsg"] = p["LogWordsPerFlit"] + p["LogMaxFlitsPerMsg"]
+
+# Bytes per message
+p["LogBytesPerMsg"] = p["LogWordsPerMsg"] + 2
 
 # Number of bytes per message
 p["LogBytesPerMsg"] = p["LogWordsPerMsg"] + 2
@@ -167,8 +176,8 @@ p["LogScratchpadBytes"] = (1+p["LogWordsPerFlit"]+2+
 p["LogTransmitBufferLen"] = (p["LogMaxFlitsPerMsg"]
                                if p["LogMaxFlitsPerMsg"] > 1 else 1)
 
-# Number of mailboxes per ring
-p["RingSize"] = 2 ** p["LogRingSize"]
+# Number of mailboxes per board
+p["MailboxesPerBoard"] = 2 ** p["LogMailboxesPerBoard"]
 
 # DRAM data bus width in bits
 if p["DRAMUseDualPortFrontend"]:

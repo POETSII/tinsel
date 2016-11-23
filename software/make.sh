@@ -8,10 +8,15 @@ case "$1" in
   ping)
     CFILES="ping"
   ;;
+  echo)
+    CFILES="echo"
+  ;;
+
   *)
     echo 'Build targets: '
     echo '  tri'
     echo '  ping'
+    echo '  echo'
     exit 0
   ;;
 esac
