@@ -13,6 +13,8 @@ import Queue     :: *;
 import Vector    :: *;
 import Mailbox   :: *;
 import Ring      :: *;
+import Host      :: *;
+import JtagUart  :: *;
 
 // ============================================================================
 // Interface
@@ -26,8 +28,7 @@ typedef Empty DE5Top;
 
 interface DE5Top;
   interface Vector#(`DRAMsPerBoard, DRAMExtIfc) dramIfcs;
-  (* always_enabled *)
-  method Bit#(32) coreOut;
+  interface JtagUartAvalon jtagIfc;
 endinterface
 
 `endif
@@ -75,13 +76,13 @@ module de5Top (DE5Top);
   `ifdef MailboxEnabled
 
   // Create mailboxes
-  Vector#(`RingSize, Mailbox) mailboxes;
-  for (Integer i = 0; i < `RingSize; i=i+1)
+  Vector#(`MailboxesPerBoard, Mailbox) mailboxes;
+  for (Integer i = 0; i < `MailboxesPerBoard; i=i+1)
     mailboxes[i] <- mkMailbox;
 
   // Connect cores to mailboxes
   let vecOfCores = concat(concat(cores));
-  for (Integer i = 0; i < `RingSize; i=i+1) begin
+  for (Integer i = 0; i < `MailboxesPerBoard; i=i+1) begin
     // Get sub-vector of cores to be connected to mailbox i
     Vector#(`CoresPerMailbox, Core) cs =
       takeAt(`CoresPerMailbox*i, vecOfCores);
@@ -90,25 +91,19 @@ module de5Top (DE5Top);
     connectCoresToMailbox(map(mailboxClient, cs), mailboxes[i]);
   end
 
+  // Create host interface
+  Host host <- mkHost;
+
   // Create ring of mailboxes
-  mkRing(mailboxes);
+  function MailboxNet mailboxNet(Mailbox mbox) = mbox.net;
+  mkRing(append(map(mailboxNet, mailboxes), cons(host.net, nil)));
 
   `endif
-
-  rule display;
-    Integer id = 0;
-    for (Integer i = 0; i < `DRAMsPerBoard; i=i+1)
-      for (Integer j = 0; j < `DCachesPerDRAM; j=j+1)
-        for (Integer k = 0; k < `CoresPerDCache; k=k+1) begin
-          $display(id, " @ ", $time, ": ", cores[i][j][k].out);
-          id = id+1;
-        end
-  endrule
 
   `ifndef SIMULATE
   function DRAMExtIfc getDRAMExtIfc(DRAM dram) = dram.external;
   interface dramIfcs = map(getDRAMExtIfc, drams);
-  method Bit#(32) coreOut = cores[0][0][0].out;
+  interface jtagIfc = host.jtagAvalon;
   `endif
 endmodule
 

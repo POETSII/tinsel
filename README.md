@@ -4,7 +4,7 @@
 massively parallel computing on an **FPGA cluster**.  It is not
 specific to any particular FPGA board, but the description below
 uses Terasic's [DE5-NET](http://de5-net.terasic.com) for illustration
-purposes.  (This is a fairly high-end board that the
+purposes.  (This is a fairly high-end board from 2012 that the
 [CL](http://www.cl.cam.ac.uk/) has in plentiful supply.)
 
 (This respository is work-in-progress.)

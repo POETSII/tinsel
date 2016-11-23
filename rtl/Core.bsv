@@ -327,16 +327,11 @@ endfunction
 // Interface
 // ============================================================================
 
-// Currently I/O is limited to a single 32-bit output accessible to
-// RISC-V programs via CSR instructions.
-
 interface Core;
   interface DCacheClient    dcacheClient;
   `ifdef MailboxEnabled
   interface MailboxClient   mailboxClient;
   `endif
-  (* always_ready *)
-  method Bit#(32) out;
 endinterface
 
 // ============================================================================
@@ -451,9 +446,6 @@ module mkCore#(CoreId myId) (Core);
   Reg#(Bool)          writebackFire      <- mkDReg(False);
   Reg#(PipelineToken) writebackInput     <- mkRegU;
  
-  // This is (currently) the only output from the core
-  Reg#(Bit#(32)) emitReg <- mkReg(0);
-
   // Schedule stage
   // --------------
 
@@ -657,11 +649,6 @@ module mkCore#(CoreId myId) (Core);
     token.targetPC = truncate(zeroExtend(token.thread.pc) + token.imm);
     // CSR read
     res.csr = zeroExtend({myId, token.thread.id});
-    // CSR set/clear bits
-    Bool csrClear = unpack(token.instr[12]);
-    if (token.op.isCSR)
-      emitReg <= csrClear ? (emitReg & ~token.valA)
-                          : (emitReg | token.valA);
     // Trigger next stage
     token.instrResult = res;
     if (! suspend) execute3Input <= token;
@@ -828,7 +815,6 @@ module mkCore#(CoreId myId) (Core);
   interface MailboxClient mailboxClient = mailbox.client;
   `endif
 
-  method Bit#(32) out = emitReg;
 endmodule
 
 endpackage

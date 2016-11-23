@@ -428,10 +428,10 @@ module mkBlockRamTrueMixedBEOpts#(BlockRamOpts opts)
                           fromMaybe("Zero", opts.initFile) + ".hex", False);
 
   // State
-  Reg#(dataA) dataAReg <- mkRegU;
-  Reg#(dataA) dataBReg <- mkRegU;
-  Reg#(Bit#(aExtra)) offsetB1 <- mkRegU;
-  Reg#(Bit#(aExtra)) offsetB2 <- mkRegU;
+  Reg#(dataA) dataAReg <- mkConfigRegU;
+  Reg#(dataA) dataBReg <- mkConfigRegU;
+  Reg#(Bit#(aExtra)) offsetB1 <- mkConfigRegU;
+  Reg#(Bit#(aExtra)) offsetB2 <- mkConfigRegU;
 
   // Rules
   rule update;
