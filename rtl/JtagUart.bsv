@@ -95,7 +95,6 @@ module mkJtagUart (JtagUart);
         JTAG_READ_DATA:
           if (!uart_waitrequest) begin
             if (uart_readdata[15] == 1) begin
-              myAssert(outPort.canPut, "JtagUart: outPort.put error");
               outPort.put(uart_readdata[7:0]);
             end
             state <= JTAG_IDLE;
@@ -105,7 +104,6 @@ module mkJtagUart (JtagUart);
             state <= uart_readdata[31:16] > 0 ? JTAG_WRITE_DATA : JTAG_IDLE;
         JTAG_WRITE_DATA:
           if (!uart_waitrequest) begin
-            myAssert(inPort.canGet, "JtagUart: inPort.get error");
             inPort.get;
             state <= JTAG_IDLE;
           end
