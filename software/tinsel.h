@@ -32,7 +32,7 @@ inline int me()
 }
 
 // Write a word to instruction memory
-void write_instr (uint32_t index, uint32_t word)
+inline void write_instr (uint32_t index, uint32_t word)
 {
   asm volatile("custom0 zero,%0,%1," OPCODE_WRITE_INSTR : :
         "r"(index), "r"(word));
