@@ -90,7 +90,8 @@ typedef struct {
 // Default options
 BlockRamOpts defaultBlockRamOpts =
   BlockRamOpts {
-    readDuringWrite: DontCare,
+    //readDuringWrite: DontCare,
+    readDuringWrite: OldData,
     registerDataOut: True,
     initFile:        Invalid
   };
@@ -369,11 +370,11 @@ import "BVI" AlteraBlockRamTrueMixed =
     parameter DEV_FAMILY = `DeviceFamily;
 
     // Port A
-    method putA(WE_A, ADDR_A, DI_A) enable (RE_A) clocked_by(clk);
+    method putA(WE_A, ADDR_A, DI_A) enable (EN_A) clocked_by(clk);
     method DO_A dataOutA;
 
     // Port B
-    method putB(WE_B, ADDR_B, DI_B) enable (RE_B) clocked_by(clk);
+    method putB(WE_B, ADDR_B, DI_B) enable (EN_B) clocked_by(clk);
     method DO_B dataOutB;
 
     default_clock clk(CLK, (*unused*) clk_gate);
@@ -428,10 +429,10 @@ module mkBlockRamTrueMixedBEOpts#(BlockRamOpts opts)
                           fromMaybe("Zero", opts.initFile) + ".hex", False);
 
   // State
-  Reg#(dataA) dataAReg <- mkRegU;
-  Reg#(dataA) dataBReg <- mkRegU;
-  Reg#(Bit#(aExtra)) offsetB1 <- mkRegU;
-  Reg#(Bit#(aExtra)) offsetB2 <- mkRegU;
+  Reg#(dataA) dataAReg <- mkConfigRegU;
+  Reg#(dataA) dataBReg <- mkConfigRegU;
+  Reg#(Bit#(aExtra)) offsetB1 <- mkConfigRegU;
+  Reg#(Bit#(aExtra)) offsetB2 <- mkConfigRegU;
 
   // Rules
   rule update;
@@ -501,11 +502,11 @@ import "BVI" AlteraBlockRamTrueMixedBE =
     parameter DEV_FAMILY = `DeviceFamily;
 
     // Port A
-    method putA(WE_A, ADDR_A, DI_A) enable (RE_A) clocked_by(clk);
+    method putA(WE_A, ADDR_A, DI_A) enable (EN_A) clocked_by(clk);
     method DO_A dataOutA;
 
     // Port B
-    method putB(WE_B, ADDR_B, DI_B, BE_B) enable (RE_B) clocked_by(clk);
+    method putB(WE_B, ADDR_B, DI_B, BE_B) enable (EN_B) clocked_by(clk);
     method DO_B dataOutB;
 
     default_clock clk(CLK, (*unused*) clk_gate);

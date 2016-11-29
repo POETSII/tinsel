@@ -8,21 +8,26 @@ case "$1" in
   ping)
     CFILES="ping"
   ;;
+  echo)
+    CFILES="echo"
+  ;;
+
   *)
     echo 'Build targets: '
     echo '  tri'
     echo '  ping'
+    echo '  echo'
     exit 0
   ;;
 esac
 
 # Parameters
-ARCH="RV32IXcustom"
+ARCH="RV32I"
 CC="riscv64-unknown-elf-gcc"
 AS="riscv64-unknown-elf-as"
 LD="riscv64-unknown-elf-ld"
 OBJCOPY="riscv64-unknown-elf-objcopy"
-CFLAGS="-march=$ARCH -O2"
+CFLAGS="-march=$ARCH -msoft-float -O2"
 
 # Load config parameters
 while read -r EXPORT; do

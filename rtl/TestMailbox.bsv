@@ -49,7 +49,7 @@ module testMailbox ();
   let mb <- mkMailbox;
 
   // Connect flit-out to flit-in (i.e. only one mailbox)
-  connectDirect(mb.flitOut, mb.flitIn);
+  connectDirect(mb.net.flitOut, mb.net.flitIn);
 
   // Connect test driver to mailbox
   OutPort#(ScratchpadReq) spadReq   <- mkOutPort;

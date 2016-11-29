@@ -122,8 +122,8 @@ module AlteraBlockRamTrueMixed (
   ADDR_B, // Port B address
   WE_A,   // Port A write enable
   WE_B,   // Port B write enable
-  RE_A,   // Port A read enable
-  RE_B,   // Port B read enable
+  EN_A,   // Port A enable
+  EN_B,   // Port B enable
   DO_A,   // Port A data out
   DO_B    // Port B data out
   );
@@ -147,8 +147,8 @@ module AlteraBlockRamTrueMixed (
   input   [DATA_WIDTH_B-1:0]  DI_B;
   input   WE_A;
   input  WE_B;
-  input  RE_A;
-  input  RE_B;
+  input  EN_A;
+  input  EN_B;
   output [DATA_WIDTH_A-1:0]  DO_A;
   output [DATA_WIDTH_B-1:0]  DO_B;
 `ifndef ALTERA_RESERVED_QIS
@@ -168,8 +168,8 @@ module AlteraBlockRamTrueMixed (
         .clock0 (CLK),
         .data_a (DI_A),
         .data_b (DI_B),
-        .wren_a (WE_A),
-        .wren_b (WE_B),
+        .wren_a (EN_A & WE_A),
+        .wren_b (EN_B & WE_B),
         .q_a (DO_A),
         .q_b (DO_B),
         .aclr0 (1'b0),
@@ -232,8 +232,8 @@ module AlteraBlockRamTrueMixedBE (
   BE_B,   // Port B byte enable
   WE_A,   // Port A write enable
   WE_B,   // Port B write enable
-  RE_A,   // Port A read enable
-  RE_B,   // Port B read enable
+  EN_A,   // Port A enable
+  EN_B,   // Port B enable
   DO_A,   // Port A data out
   DO_B    // Port B data out
   );
@@ -259,8 +259,8 @@ module AlteraBlockRamTrueMixedBE (
   input   [DATA_WIDTH_B-1:0]  DI_B;
   input   WE_A;
   input  WE_B;
-  input  RE_A;
-  input  RE_B;
+  input  EN_A;
+  input  EN_B;
   output [DATA_WIDTH_A-1:0]  DO_A;
   output [DATA_WIDTH_B-1:0]  DO_B;
 `ifndef ALTERA_RESERVED_QIS
@@ -281,8 +281,8 @@ module AlteraBlockRamTrueMixedBE (
         .clock0 (CLK),
         .data_a (DI_A),
         .data_b (DI_B),
-        .wren_a (WE_A),
-        .wren_b (WE_B),
+        .wren_a (EN_A & WE_A),
+        .wren_b (EN_B & WE_B),
         .q_a (DO_A),
         .q_b (DO_B),
         .aclr0 (1'b0),
