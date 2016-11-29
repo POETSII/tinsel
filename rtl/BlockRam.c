@@ -29,7 +29,7 @@ void blockRamWrite(
   int8_t* ram = (int8_t*) handle;
   int base = *addr * dataWidth;
   int bitCount = 0;
-  for (int i = dataWidth-1; i >= 0; i--) {
+  for (int i = 0; i < dataWidth; i++) {
     ram[base+i] = *data & 1;
     *data >>= 1;
     bitCount++;
@@ -53,7 +53,7 @@ void blockRamRead(
   int base = *addr * dataWidth;
   int bitCount = 0;
   *data = 0;
-  for (int i = 0; i < dataWidth; i++) {
+  for (int i = dataWidth-1; i >= 0; i--) {
     *data = (*data << 1) | ram[base+i];
     bitCount++;
     if (bitCount == 32) {

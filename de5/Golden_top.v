@@ -617,14 +617,14 @@ inout															TEMP_DATA;
 input															TEMP_INT_n;
 input															TEMP_OVERT_n;
 
-wire [31:0] tinselOut;
-assign LED[3:0] = tinselOut[3:0];
+
+assign LED[3:0] = 12;
+
 wire reset_n;
 assign reset_n = 1;
 
 S5_DDR3_QSYS u0 (
         .clk_clk                                   (OSC_50_B7A),          
-        .de5top_0_out_readdata                     (tinselOut),              
         .reset_reset_n                             (reset_n),                            
         .memory_mem_a                              (DDR3A_A),                              
         .memory_mem_ba                             (DDR3A_BA),                             

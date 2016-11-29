@@ -237,8 +237,12 @@ interface Mailbox;
   interface In#(AllocReq)         allocReqIn;
   interface BOut#(ReceiveAlert)   rxAlertOut;
   // Network-side interface
-  interface In#(Flit)             flitIn;
-  interface BOut#(Flit)           flitOut;
+  interface MailboxNet            net;
+endinterface
+
+interface MailboxNet;
+  interface In#(Flit)   flitIn;
+  interface BOut#(Flit) flitOut;
 endinterface
 
 // =============================================================================
@@ -538,7 +542,6 @@ module mkMailbox (Mailbox);
   interface In txReqIn    = txReqPort.in;
   interface In allocReqIn = allocReqPort.in;
   interface In spadReqIn  = spadReqPort.in;
-  interface In flitIn     = flitInPort.in;
 
   interface BOut rxAlertOut;
     method Action get;
@@ -566,13 +569,17 @@ module mkMailbox (Mailbox);
     method ScratchpadResp value = scratchpadRespBuffer.dataOut;
   endinterface
 
-  interface BOut flitOut;
-    method Action get;
-      transmitBuffer.deq;
-      inFlightTransmits.dec;
-    endmethod
-    method Bool valid = transmitBuffer.canDeq;
-    method Flit value = transmitBuffer.dataOut;
+  interface MailboxNet net;
+    interface In flitIn = flitInPort.in;
+
+    interface BOut flitOut;
+      method Action get;
+        transmitBuffer.deq;
+        inFlightTransmits.dec;
+      endmethod
+      method Bool valid = transmitBuffer.canDeq;
+      method Flit value = transmitBuffer.dataOut;
+    endinterface
   endinterface
 
 endmodule

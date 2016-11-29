@@ -42,7 +42,9 @@ interface RingRouter;
 endinterface
 
 // Router id
-typedef Bit#(`LogRingSize) RouterId;
+// (The +1 is because the ring will contain an extra node to
+// forwards flits to a from a host machine)
+typedef Bit#(TAdd#(`LogMailboxesPerBoard, 1)) RouterId;
 
 // Extract destination router id from flit
 function RouterId destRouter(Flit flit);
@@ -50,6 +52,13 @@ function RouterId destRouter(Flit flit);
     truncateLSB(flit.dest);
   return truncate(topBits);
 endfunction
+
+// Routes are locked to prevent interleaving
+typedef enum {
+  Unlocked,     // Route is unlocked
+  FromMailbox,  // Route source must mailbox
+  FromRing      // Route source must be ring
+} RouteLock deriving (Bits, Eq);
 
 module mkRingRouter#(RouterId myId) (RingRouter);
 
@@ -59,13 +68,11 @@ module mkRingRouter#(RouterId myId) (RingRouter);
   InPort#(Flit)  fromMailboxPort <- mkInPort;
   OutPort#(Flit) toMailboxPort   <- mkOutPort;
 
-  // Is the to-mailbox port is locked by mailbox-to-mailbox route?
-  // (i.e. is there a transaction in progress on that route?)
-  Reg#(Bool) toMailboxLock <- mkConfigReg(False);
+  // Lock on the to-mailbox route
+  Reg#(RouteLock) toMailboxLock <- mkConfigReg(Unlocked);
 
-  // Is the to-ring port is locked by the mailbox-to-ring route?
-  // (i.e. is there a transaction in progress on that route?)
-  Reg#(Bool) toRingLock <- mkConfigReg(False);
+  // Lock on the to-ring route
+  Reg#(RouteLock) toRingLock <- mkConfigReg(Unlocked);
 
   // Is the flit from the ring for me?
   Bool ringInForMe = destRouter(ringInPort.value) == myId;
@@ -73,40 +80,46 @@ module mkRingRouter#(RouterId myId) (RingRouter);
   // Is the flit from the mailbox for me?
   Bool mailboxInForMe = destRouter(fromMailboxPort.value) == myId;
 
-  // Can we route from the ring to the mailbox?
-  Bool routeRingToMailbox = ringInPort.canGet && ringInForMe && !toMailboxLock;
+  // Route from the ring to the mailbox?
+  Bool routeRingToMailbox = ringInPort.canGet && ringInForMe &&
+                              toMailboxLock != FromMailbox;
 
-  // Can we route from the ring to the ring?
-  Bool routeRingToRing = ringInPort.canGet && !ringInForMe && !toRingLock;
+  // Route from the ring to the ring?
+  Bool routeRingToRing = ringInPort.canGet && !ringInForMe &&
+                           toRingLock != FromMailbox;
 
   // Route flit from ring to mailbox
   rule ringToMailbox (toMailboxPort.canPut && routeRingToMailbox);
     ringInPort.get;
     toMailboxPort.put(ringInPort.value);
+    toMailboxLock <= ringInPort.value.notFinalFlit ? FromRing : Unlocked;
   endrule
 
   // Route flit from mailbox to mailbox
   rule mailboxToMailbox (toMailboxPort.canPut &&
                            !routeRingToMailbox &&
-                              fromMailboxPort.canGet && mailboxInForMe);
+                             fromMailboxPort.canGet && mailboxInForMe &&
+                               toMailboxLock != FromRing);
     fromMailboxPort.get;
     toMailboxPort.put(fromMailboxPort.value);
-    toMailboxLock <= fromMailboxPort.value.notFinalFlit;
+    toMailboxLock <= fromMailboxPort.value.notFinalFlit ?
+                       FromMailbox : Unlocked;
   endrule
 
   // Route flit from ring to ring
   rule ringToRing (ringOutPort.canPut && routeRingToRing);
     ringInPort.get;
     ringOutPort.put(ringInPort.value);
+    toRingLock <= ringInPort.value.notFinalFlit ? FromRing : Unlocked;
   endrule
 
   // Route flit from mailbox to ring
-  rule mailboxToRing (ringOutPort.canPut &&
-                        !routeRingToRing &&
-                           fromMailboxPort.canGet && !mailboxInForMe);
+  rule mailboxToRing (ringOutPort.canPut && !routeRingToRing &&
+                        fromMailboxPort.canGet && !mailboxInForMe &&
+                          toRingLock != FromRing);
     fromMailboxPort.get;
     ringOutPort.put(fromMailboxPort.value);
-    toRingLock <= fromMailboxPort.value.notFinalFlit;
+    toRingLock <= fromMailboxPort.value.notFinalFlit ? FromMailbox : Unlocked;
   endrule
 
   // Interface
@@ -121,19 +134,20 @@ endmodule
 // Ring of Mailboxes
 // =============================================================================
 
-module mkRing#(Vector#(`RingSize, Mailbox) mailboxes) ();
+module mkRing#(Vector#(n, MailboxNet) mailboxes) ();
 
   // Create routers
-  Vector#(`RingSize, RingRouter) routers;
-  for (Integer i = 0; i < `RingSize; i=i+1)
+  Vector#(n, RingRouter) routers;
+  for (Integer i = 0; i < valueOf(n); i=i+1) begin
     routers[i] <- mkRingRouter(fromInteger(i));
+  end
 
   // Connect each router to a mailbox and form ring of routers
-  for (Integer i = 0; i < `RingSize; i=i+1) begin
+  for (Integer i = 0; i < valueOf(n); i=i+1) begin
     connectDirect(mailboxes[i].flitOut, routers[i].fromMailbox);
     connectUsing(mkUGShiftQueue1(QueueOptFmax),
                    routers[i].toMailbox, mailboxes[i].flitIn);
-    Integer next = (i+1) % `RingSize;
+    Integer next = (i+1) % valueOf(n);
     connectUsing(mkUGShiftQueue1(QueueOptFmax),
                    routers[i].ringOut, routers[next].ringIn);
   end

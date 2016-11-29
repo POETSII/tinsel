@@ -4,43 +4,32 @@
 #include <stdint.h>
 #include "config.h"
 
-// =============================================================================
-// Custom instruciton opcodes
-// =============================================================================
-
-// Opcodes for mailbox custom instructions
-#define OPCODE_MB_ALLOC     "0"
-#define OPCODE_MB_CAN_SEND  "1"
-#define OPCODE_MB_CAN_RECV  "2"
-#define OPCODE_MB_SEND      "3"
-#define OPCODE_MB_RECV      "4"
-#define OPCODE_MB_SETLEN    "5"
-
-// Opcode fo writing to instruction memory
-#define OPCODE_WRITE_INSTR  "16"
-
-// =============================================================================
-// General
-// =============================================================================
+// Control/status registers
+#define CSR_INSTR_ADDR "0x800"
+#define CSR_INSTR      "0x801"
+#define CSR_ALLOC      "0x802"
+#define CSR_CAN_SEND   "0x803"
+#define CSR_HART_ID    "0xf14"
+#define CSR_CAN_RECV   "0x805"
+#define CSR_SEND_LEN   "0x806"
+#define CSR_SEND_PTR   "0x807"
+#define CSR_SEND       "0x808"
+#define CSR_RECV       "0x809"
 
 // Get globally unique thread id of caller
 inline int me()
 {
   int id;
-  asm ("csrr %0, 0xf14" : "=r"(id));
+  asm ("csrr %0, " CSR_HART_ID : "=r"(id));
   return id;
 }
 
 // Write a word to instruction memory
-void write_instr (uint32_t index, uint32_t word)
+inline void write_instr (uint32_t index, uint32_t word)
 {
-  asm volatile("custom0 zero,%0,%1," OPCODE_WRITE_INSTR : :
-        "r"(index), "r"(word));
+  asm volatile("csrw " CSR_INSTR_ADDR ", %0" : : "r"(index));
+  asm volatile("csrw " CSR_INSTR ", %0" : : "r"(word));
 }
-
-// =============================================================================
-// Mailbox
-// =============================================================================
 
 // Get pointer to message-aligned slot in mailbox scratchpad
 inline volatile void* mailbox(int n)
@@ -50,18 +39,17 @@ inline volatile void* mailbox(int n)
   return (void*) (mb_scratchpad_base + (n << LogBytesPerMsg));
 }
 
-// Give mailbox permission to use given address to store incoming
-// message in scratchpad
+// Give mailbox permission to use given address to store an message
 inline void mb_alloc(volatile void* addr)
 {
-  asm volatile("custom0 zero,%0,zero," OPCODE_MB_ALLOC : : "r"(addr));
+  asm volatile("csrw " CSR_ALLOC ", %0" : : "r"(addr));
 }
 
 // Determine if calling thread can send a message
 inline int mb_can_send()
 {
   int ok;
-  asm volatile("custom0 %0,zero,zero," OPCODE_MB_CAN_SEND : "=r"(ok));
+  asm volatile("csrr %0, " CSR_CAN_SEND : "=r"(ok));
   return ok;
 }
 
@@ -69,24 +57,7 @@ inline int mb_can_send()
 inline int mb_can_recv()
 {
   int ok;
-  asm volatile("custom0 %0,zero,zero," OPCODE_MB_CAN_RECV : "=r"(ok));
-  return ok;
-}
-
-// Send message at addr to dest
-inline int mb_send(int dest, volatile void* addr)
-{
-  int ok;
-  asm volatile("custom0 %0,%1,%2," OPCODE_MB_SEND :
-          "=r"(ok) : "r"(addr), "r"(dest));
-  return ok;
-}
-
-// Receive message
-inline void* mb_recv()
-{
-  void* ok;
-  asm volatile("custom0 %0,zero,zero," OPCODE_MB_RECV : "=r"(ok));
+  asm volatile("csrr %0, " CSR_CAN_RECV : "=r"(ok));
   return ok;
 }
 
@@ -94,7 +65,22 @@ inline void* mb_recv()
 // (A length of N is comprised of N+1 flits)
 inline void mb_set_len(int n)
 {
-  asm volatile("custom0 zero,%0,zero," OPCODE_MB_SETLEN : : "r"(n));
+  asm volatile("csrw " CSR_SEND_LEN ", %0" : : "r"(n));
+}
+
+// Send message at addr to dest
+inline void mb_send(int dest, volatile void* addr)
+{
+  asm volatile("csrw " CSR_SEND_PTR ", %0" : : "r"(addr));
+  asm volatile("csrw " CSR_SEND ", %0" : : "r"(dest));
+}
+
+// Receive message
+inline void* mb_recv()
+{
+  void* ok;
+  asm volatile("csrr %0, " CSR_RECV : "=r"(ok));
+  return ok;
 }
 
 #endif
