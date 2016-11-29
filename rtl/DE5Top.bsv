@@ -72,9 +72,6 @@ module de5Top (DE5Top);
   for (Integer i = 0; i < `DRAMsPerBoard; i=i+1)
     connectDCachesToDRAM(dcaches[i], drams[i]);
 
-  // Mailboxes
-  `ifdef MailboxEnabled
-
   // Create mailboxes
   Vector#(`MailboxesPerBoard, Mailbox) mailboxes;
   for (Integer i = 0; i < `MailboxesPerBoard; i=i+1)
@@ -97,8 +94,6 @@ module de5Top (DE5Top);
   // Create ring of mailboxes
   function MailboxNet mailboxNet(Mailbox mbox) = mbox.net;
   mkRing(append(map(mailboxNet, mailboxes), cons(host.net, nil)));
-
-  `endif
 
   `ifndef SIMULATE
   function DRAMExtIfc getDRAMExtIfc(DRAM dram) = dram.external;
