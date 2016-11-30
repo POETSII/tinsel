@@ -40,11 +40,11 @@ endinterface
 // Host -> FPGA byte stream format:
 //   * byte 0 contains N-1, the number of flits in the message minus 1
 //   * bytes 1..4 contain the destination address of the message
-//   * reamaining N*BytesPerFlit bytes contain the message payload
+//   * remaining N*BytesPerFlit bytes contain the message payload
 //
 // FPGA -> Host byte stream format:
 //   * byte 0 contains N-1, the number of flits in the message minus 1
-//   * reamaining N*BytesPerFlit bytes contain the message payload
+//   * remaining N*BytesPerFlit bytes contain the message payload
 
 // State machine for the deserialiser
 typedef enum {
@@ -62,11 +62,15 @@ typedef enum {
   EMIT_BYTE
 } EmitterState deriving (Bits, Eq);
 
-// Size of the serialise buffer
-typedef 6 LogMsgsPerSerialiseBuffer;
+// Size of the serialise buffer.  (This dual-port buffer has a
+// half-flit-sized write port and a byte-sized read port.)
+typedef 5 LogMsgsPerSerialiseBuffer;
 typedef TAdd#(LogMsgsPerSerialiseBuffer, `LogMaxFlitsPerMsg)
   LogFlitsPerSerialiseBuffer;
-typedef Bit#(LogFlitsPerSerialiseBuffer) SerialiseBufferFlitAddr;
+typedef Bit#(TMul#(`WordsPerFlit, 16)) HalfFlitPayload;
+typedef TAdd#(LogFlitsPerSerialiseBuffer, 1) 
+  LogHalfFlitsPerSerialiseBuffer;
+typedef Bit#(LogHalfFlitsPerSerialiseBuffer) SerialiseBufferHalfFlitAddr;
 typedef Bit#(TAdd#(LogFlitsPerSerialiseBuffer, `LogBytesPerFlit))
   SerialiseBufferByteAddr;
 
@@ -167,13 +171,13 @@ module mkHost (Host);
 
   // Block RAM to store incoming flit payload data
   BlockRamOpts bufferOpts = defaultBlockRamOpts;
-  BlockRamTrueMixed#(SerialiseBufferFlitAddr, FlitPayload,
+  BlockRamTrueMixed#(SerialiseBufferHalfFlitAddr, HalfFlitPayload,
                      SerialiseBufferByteAddr, Bit#(8))
     serialiseBuffer <- mkBlockRamTrueMixedOpts(bufferOpts);
 
   // Above block RAM is treated like a queue, with front and back pointers
   Reg#(SerialiseBufferByteAddr) payloadFront <- mkReg(0);
-  Reg#(SerialiseBufferFlitAddr) payloadBack <- mkReg(0);
+  Reg#(SerialiseBufferHalfFlitAddr) payloadBack <- mkReg(0);
 
   // Queue of requests for the byte emitter
   SizedQueue#(LogMsgsPerSerialiseBuffer, MsgLen) emitQueue <-
@@ -182,16 +186,36 @@ module mkHost (Host);
   // Count the number of flits in the incoming message
   Reg#(Bit#(`LogMaxFlitsPerMsg)) serFlitCount <- mkReg(0);
 
-  rule serialise (fromNet.canGet && emitQueue.notFull);
+  // Are we currently writing the 1st or 2nd half of the flit?
+  Reg#(Bit#(1)) half <- mkReg(0);
+
+  // The second half of the flit is buffered in this register
+  Reg#(HalfFlitPayload) secondHalf <- mkRegU;
+
+  // Are we writing the final flit of a message
+  Reg#(Bool) finalFlit <- mkReg(False);
+
+  // Write first half of incoming flit to buffer
+  rule serialise0 (half == 0 && fromNet.canGet && emitQueue.notFull);
     fromNet.get;
     Flit flit = fromNet.value;
-    serialiseBuffer.putA(True, payloadBack, flit.payload);
+    serialiseBuffer.putA(True, payloadBack, truncate(flit.payload));
     payloadBack <= payloadBack+1;
-    if (!flit.notFinalFlit) begin
+    half <= 1;
+    secondHalf <= truncateLSB(flit.payload);
+    finalFlit <= !flit.notFinalFlit;
+  endrule
+
+  // Write second half of incoming flit to buffer
+  rule serialise1 (half == 1 && emitQueue.notFull);
+    serialiseBuffer.putA(True, payloadBack, secondHalf);
+    payloadBack <= payloadBack+1;
+    if (finalFlit) begin
       emitQueue.enq(serFlitCount);
       serFlitCount <= 0;
     end else
       serFlitCount <= serFlitCount+1;
+    half <= 0;
   endrule
 
   // Emitter
@@ -213,16 +237,16 @@ module mkHost (Host);
       EMIT_LEN:
         if (toJtag.canPut && emitQueue.canPeek && emitQueue.canDeq) begin
           let len = emitQueue.dataOut;
-          emitQueue.deq;
           toJtag.put(zeroExtend(len));
           Bit#(`LogBytesPerFlit) offset = 0;
           emitBytes <= {zeroExtend(len)+1, offset};
           emitState <= EMIT_FETCH_BYTE_1;
         end
       EMIT_FETCH_BYTE_1:
-        if (emitBytes == 0)
+        if (emitBytes == 0) begin
           emitState <= EMIT_LEN;
-        else begin
+          emitQueue.deq;
+        end else begin
           serialiseBuffer.putB(False, payloadFront, ?);
           payloadFront <= payloadFront+1;
           emitBytes <= emitBytes-1;
