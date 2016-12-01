@@ -7,6 +7,8 @@ int main()
   int id = me();
   while (id != 0);
 
+  int host = get_host_id();
+
   // Pointers into scratchpad for incoming and outgoing msgs
   volatile uint8_t* out = mailbox(0);
   volatile uint8_t* in  = mailbox(1);
@@ -22,7 +24,7 @@ int main()
     // Send message
     while (! mb_can_send());
     out[0] = msg[0]+1;
-    mb_send(128, out);
+    mb_send(host, out);
 
     // Reallocate space for incoming message
     mb_alloc(msg);

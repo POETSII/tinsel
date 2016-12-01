@@ -10,7 +10,6 @@ import BlockRam     :: *;
 import Util         :: *;
 import DReg         :: *;
 import ConfigReg    :: *;
-import ArrayOfQueue :: *;
 
 // =============================================================================
 // Interface
@@ -125,42 +124,6 @@ module mkArrayOfSet (ArrayOfSet#(logNumSets, logSetSize))
   method Bool canGet = canGetWire;
 
   method Bit#(logSetSize) itemOut = getItemReg;
-
-endmodule
-
-// =============================================================================
-// Implementation compatible with ArrayOfQueue interface
-// =============================================================================
-
-module mkArrayOfSetCompat (ArrayOfQueue#(logNumSets, logSetSize,
-                             Bit#(logSetSize)))
-  provisos (Log#(TExp#(logSetSize), logSetSize));
-
-  // Create array of set
-  ArrayOfSet#(logNumSets, logSetSize) array <- mkArrayOfSet;
-
-  // Buffer for item out
-  Reg#(Bit#(logSetSize)) itemOutReg <- mkRegU;
-
-  rule update;
-    itemOutReg <= array.itemOut;
-  endrule
-
-  // ArrayOfQueue interface
-  method Action enq(Bit#(logNumSets) index, Bit#(logSetSize) item);
-    array.put(index, item);
-  endmethod
-  method Bool canEnq = array.canPut;
-  method Bool didEnq = True;
-  method Action tryDeq(Bit#(logNumSets) index);
-    array.tryGet(index);
-  endmethod
-  method Bool canTryDeq(Bit#(logNumSets) index) = True;
-  method Bool canDeq = array.canGet;
-  method Action deq;
-    array.get;
-  endmethod
-  method Bit#(logSetSize) itemOut = itemOutReg;
 
 endmodule
 

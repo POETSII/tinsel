@@ -93,7 +93,6 @@ import Queue        :: *;
 import Interface    :: *;
 import BlockRam     :: *;
 import ArrayOfSet   :: *;
-import ArrayOfQueue :: *;
 import ConfigReg    :: *;
 import Util         :: *;
 import Globals      :: *;
@@ -679,18 +678,12 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
   // Receive logic
   // =============
 
-  // One queue of unread message-pointers per thread
-  ArrayOfQueue#(`LogThreadsPerCore,
-                `LogMsgsPerThread,
-                MailboxThreadMsgAddr) unread;
-  `ifdef MailboxClientUseSet
-  unread <- mkArrayOfSetCompat;
-  `else
-  unread <- mkArrayOfQueue;
-  `endif
-  
+  // One ste of unread message-pointers per thread
+  ArrayOfSet#(`LogThreadsPerCore,
+              `LogMsgsPerThread) unread <- mkArrayOfSet;
+
   // Receive unit state
-  Reg#(Bit#(2))      recvState <- mkConfigReg(0);
+  Reg#(Bit#(1))      recvState <- mkConfigReg(0);
   Reg#(ReceiveAlert) alertReg  <- mkConfigRegU;
 
   rule receive0 (recvState == 0);
@@ -702,42 +695,25 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
   endrule
 
   rule receive1 (recvState == 1);
-    if (unread.canEnq) begin
-      unread.enq(truncate(alertReg.id), alertReg.index);
-      recvState <= 2;
+    if (unread.canPut) begin
+      unread.put(truncate(alertReg.id), alertReg.index);
+      recvState <= 0;
     end
-  endrule
-
-  rule receive2 (recvState == 2);
-    recvState <= 3;
-  endrule
-
-  rule receive3 (recvState == 3);
-    if (unread.didEnq) begin
-      if (alertPort.canGet) begin
-        alertPort.get;
-        alertReg <= alertPort.value;
-        recvState <= 1;
-      end else
-        recvState <= 0;
-    end else
-      recvState <= 1;
   endrule
 
   // Methods
   // =======
 
   method Action prepare(ThreadId id);
-    myAssert(unread.canTryDeq(id), "MailboxClientUnit: prepare vilation");
-    unread.tryDeq(id);
+    unread.tryGet(id);
     canSendReg1 <= canThreadSend[id].value;
   endmethod
 
-  method Bool canRecv = unread.canDeq;
+  method Bool canRecv = unread.canGet;
 
   method Action recv;
-    myAssert(unread.canDeq, "MailboxClientUnit: recv violation");
-    unread.deq;
+    myAssert(unread.canGet, "MailboxClientUnit: recv violation");
+    unread.get;
   endmethod
 
   method Bool canSend = canSendReg2;

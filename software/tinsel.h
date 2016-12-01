@@ -24,6 +24,13 @@ inline int me()
   return id;
 }
 
+// Get id for communicating with host
+inline int get_host_id()
+{
+  int threadsPerBoard = 1 << (LogThreadsPerMailbox + LogMailboxesPerBoard);
+  return threadsPerBoard+1;
+}
+
 // Write a word to instruction memory
 inline void write_instr (uint32_t index, uint32_t word)
 {

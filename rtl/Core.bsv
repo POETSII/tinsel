@@ -78,7 +78,6 @@ typedef struct {
   Bool isHartId;      Bool isCanRecv;
   Bool isSendLen;     Bool isSendPtr;
   Bool isSend;        Bool isRecv;
-  Bool isNonRecv;
 } CSR deriving (Bits);
 
 // Decoded operation
@@ -257,7 +256,6 @@ function Op decodeOp(Bit#(32) instr);
   ret.csr.isSendPtr  = ret.isCSR && csrIndex == 'h7;
   ret.csr.isSend     = ret.isCSR && csrIndex == 'h8;
   ret.csr.isRecv     = ret.isCSR && csrIndex == 'h9;
-  ret.csr.isNonRecv  = ret.isCSR && csrIndex != 'h9;
   return ret;
 endfunction
 
@@ -659,7 +657,8 @@ module mkCore#(CoreId myId) (Core);
     res.csr =
         when(token.op.csr.isCanSend, zeroExtend(pack(token.canSend)))
       | when(token.op.csr.isCanRecv, zeroExtend(pack(token.canRecv)))
-      | when(token.op.csr.isHartId,  zeroExtend({myId, token.thread.id}));
+      | when(token.op.csr.isHartId,  zeroExtend({myId, token.thread.id}))
+      | when(token.op.csr.isRecv,    mailbox.recvAddr);
     // Trigger next stage
     token.instrResult = res;
     if (! suspend) execute3Input <= token;
@@ -681,8 +680,7 @@ module mkCore#(CoreId myId) (Core);
       | when(op.isBitwise,        res.bitwise)
       | when(op.isOpUI,           res.opui)
       | when(op.isJump,           zeroExtend(token.nextPC))
-      | when(op.csr.isRecv,       mailbox.recvAddr)
-      | when(op.csr.isNonRecv,    res.csr);
+      | when(op.isCSR,            res.csr);
     // Setup new PC
     Bool takeBranch =
          op.isJump
