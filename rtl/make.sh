@@ -36,18 +36,12 @@ case "$1" in
     TOPMOD=testMailbox
     BSCFLAGS="$BSCFLAGS -D SIMULATE"
   ;;
-  test-array-of-queue)
-    TOPFILE=TestArrayOfQueue.bsv
-    TOPMOD=testArrayOfQueue
-    BSCFLAGS="$BSCFLAGS -D SIMULATE"
-  ;;
   *)
     echo 'Build targets: '
     echo '  sim                  generate simulator'
     echo '  verilog              generate verilog'
     echo '  test-mem             cache/memory test bench'
     echo '  test-mailbox         mailbox test bench'
-    echo '  test-array-of-queue  ArrayOfQueue test bench'
     exit
   ;;
 esac
