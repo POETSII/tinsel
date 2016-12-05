@@ -600,6 +600,16 @@ interface MailboxClient;
   interface In#(ReceiveAlert)   rxAlertIn;
 endinterface
 
+// A bit vector of events that can cause a sleeping thread to wake up
+// (Bit 0 represents can-send, bit 1 represents can-receive)
+typedef Bit#(2) WakeEvent;
+
+// Pair containing thread id and wake event
+typedef struct {
+  ThreadId id;
+  WakeEvent wakeEvent;
+} ThreadEventPair deriving (Bits);
+
 // =============================================================================
 // Mailbox client unit
 // =============================================================================
@@ -610,8 +620,10 @@ interface MailboxClientUnit;
   // Scratchpad request & response
   interface OutPort#(ScratchpadReq) scratchpadReq;
   interface InPort#(ScratchpadResp) scratchpadResp;
+
   // Allocate request
   interface OutPort#(AllocReq) allocateReq;
+
   // Prepare for mailbox access by given thread
   method Action prepare(ThreadId id);
   // Is a send/receive possible on prepared thread?
@@ -626,18 +638,28 @@ interface MailboxClientUnit;
   // Scratchpad address of message received
   // (Valid on 2nd cycle after call to "recv")
   method Bit#(32) recvAddr;
+
+  // Suspend thread until event(s)
+  method Action sleep(ThreadId id, WakeEvent e);
+  // Port used to indicate when a thread should be woken
+  interface Out#(ThreadEventPair) wakeup;
+
   // Tinsel core's interface to the mailbox
   interface MailboxClient client;
 endinterface
 
 module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
   // Ports
-  OutPort#(ScratchpadReq) scratchpadReqPort  <- mkOutPort;
-  InPort#(ScratchpadResp) scratchpadRespPort <- mkInPort;
-  OutPort#(AllocReq)      allocReqPort       <- mkOutPort;
-  OutPort#(TransmitReq)   transmitPort       <- mkOutPort;
-  InPort#(TransmitResp)   transmitRespPort   <- mkInPort;
-  InPort#(ReceiveAlert)   alertPort          <- mkInPort;
+  OutPort#(ScratchpadReq)   scratchpadReqPort  <- mkOutPort;
+  InPort#(ScratchpadResp)   scratchpadRespPort <- mkInPort;
+  OutPort#(AllocReq)        allocReqPort       <- mkOutPort;
+  OutPort#(TransmitReq)     transmitPort       <- mkOutPort;
+  InPort#(TransmitResp)     transmitRespPort   <- mkInPort;
+  InPort#(ReceiveAlert)     alertPort          <- mkInPort;
+  OutPort#(ThreadEventPair) wakeupPort         <- mkOutPort;
+
+  // Sleep queue (threads sit in here while waiting for events)
+  SizedQueue#(`LogThreadsPerCore, ThreadEventPair) sleepQueue <- mkUGSizedQueue;
 
   // Transmit logic
   // ==============
@@ -652,12 +674,7 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
   Vector#(`LogThreadsPerCore, SetReset) canThreadSend <-
     replicateM(mkSetReset(True));
 
-  // Flag indicating whether client thread can send
-  Reg#(Bool) canSendReg1 <- mkConfigReg(False);
-  Reg#(Bool) canSendReg2 <- mkConfigReg(False);
-
   rule transmit;
-    canSendReg2 <= canSendReg1;
     // Send transmit requests
     if (transmitQueue.canDeq &&
           transmitQueue.canPeek &&
@@ -678,7 +695,7 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
   // Receive logic
   // =============
 
-  // One ste of unread message-pointers per thread
+  // One set of unread message-pointers per thread
   ArrayOfSet#(`LogThreadsPerCore,
               `LogMsgsPerThread) unread <- mkArrayOfSet;
 
@@ -701,12 +718,106 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
     end
   endrule
 
+  // Status unit
+  // ===========
+  //
+  // Determine can-send and can-recv status for each thread.  There is a
+  // conflict between the call to "prepare" and the wakeup unit.  The
+  // status unit resolves this conflict, giving priority to the
+  // "prepare" method.
+
+  // When read unit is triggered by call to "prepare"
+  Wire#(Bool)     doPrepare <- mkDWire(False);
+  Wire#(ThreadId) prepareId <- mkDWire(?);
+
+  // Flag indicating whether client thread can send
+  Reg#(Bool) canSendReg1 <- mkConfigReg(False);
+  Reg#(Bool) canSendReg2 <- mkConfigReg(False);
+
+  rule statusUnit;
+    ThreadId id = doPrepare ? prepareId : sleepQueue.dataOut.id;
+    unread.tryGet(id);
+    canSendReg1 <= canThreadSend[id].value;
+    canSendReg2 <= canSendReg1;
+  endrule
+
+  // Sleep unit
+  // ==========
+  //
+  // There is a conflict between the the sleep method and the wakeup
+  // unit: both would like to write to the sleep queue.  The sleep unit
+  // resolves this conflict, giving priority to the sleep method.
+
+  // Signals from the sleep method
+  Wire#(Bool) doSleep <- mkDWire(False);
+  Wire#(ThreadEventPair) sleepThread <- mkDWire(?);
+
+  // Signals from the wakeup unit
+  Wire#(Bool) doRequeue <- mkDWire(False);
+  Reg#(ThreadEventPair) wakeupReg <- mkRegU;
+
+  rule sleepUnit (doSleep || doRequeue);
+    myAssert(sleepQueue.notFull, "MailboxClientUnit: sleep violation");
+    sleepQueue.enq(doSleep ? sleepThread : wakeupReg);
+  endrule
+
+  // Wakeup unit
+  // ===========
+  //
+  // In the background, cycle through the sleep queue, waking
+  // each sleeping thread if the events it is waiting for are
+  // satisfied.
+
+  // Buffer for the active events
+  Reg#(WakeEvent) eventMatchReg <- mkRegU;
+
+  // State machine control
+  Reg#(Bit#(2)) wakeupState <- mkReg(0);
+  Reg#(Bool) wakeup2Fire <- mkDReg(False);
+
+  rule wakeup0 (!doPrepare && wakeupState == 0 &&
+                  sleepQueue.canPeek && sleepQueue.canDeq);
+    let thread = sleepQueue.dataOut;
+    sleepQueue.deq;
+    wakeupReg <= thread;
+    wakeupState <= 1;
+  endrule
+
+  rule wakeup1 (wakeupState == 1);
+    wakeupState <= 2;
+    wakeup2Fire <= True;
+  endrule
+
+  rule wakeup2 (wakeupState == 2);
+    // Select only the bits of the event that match
+    let eventMatchNow = wakeupReg.wakeEvent &
+                          {pack(unread.canGet), pack(canSendReg2)};
+    let eventMatch = wakeup2Fire ? eventMatchNow : eventMatchReg;
+    eventMatchReg <= eventMatch;
+    // Should a wakeup be sent?
+    Bool wakeupCond = eventMatch != 0;
+    // When wakeup port is ready
+    if (wakeupPort.canPut) begin
+      let wakeup = wakeupReg;
+      wakeup.wakeEvent = eventMatch;
+      if (wakeupCond) begin
+        // Send wakeup
+        wakeupPort.put(wakeup);
+        wakeupState <= 0;
+      end else if (!doSleep) begin
+        // Retry later
+        doRequeue <= True;
+        wakeupState <= 0;
+      end
+    end
+  endrule
+
   // Methods
   // =======
 
   method Action prepare(ThreadId id);
-    unread.tryGet(id);
-    canSendReg1 <= canThreadSend[id].value;
+    doPrepare <= True;
+    prepareId <= id;
   endmethod
 
   method Bool canRecv = unread.canGet;
@@ -736,6 +847,11 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
 
   method Bit#(32) recvAddr = msgAddrToByteAddr(unread.itemOut);
 
+  method Action sleep(ThreadId id, WakeEvent e);
+    doSleep <= True;
+    sleepThread <= ThreadEventPair { id: id, wakeEvent: e };
+  endmethod
+
   // Interfaces
   // ==========
 
@@ -754,6 +870,8 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
     interface allocReqOut = allocReqPort.out;
     interface rxAlertIn   = alertPort.in;
   endinterface
+
+  interface wakeup = wakeupPort.out;
 endmodule
 
 // =============================================================================

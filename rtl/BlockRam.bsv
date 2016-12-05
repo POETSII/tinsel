@@ -90,8 +90,8 @@ typedef struct {
 // Default options
 BlockRamOpts defaultBlockRamOpts =
   BlockRamOpts {
-    //readDuringWrite: DontCare,
-    readDuringWrite: OldData,
+    readDuringWrite: DontCare,
+    //readDuringWrite: OldData,
     registerDataOut: True,
     initFile:        Invalid
   };

@@ -15,6 +15,7 @@
 #define CSR_SEND_PTR   "0x807"
 #define CSR_SEND       "0x808"
 #define CSR_RECV       "0x809"
+#define CSR_WAIT_UNTIL "0x80a"
 
 // Get globally unique thread id of caller
 inline int me()
@@ -88,6 +89,13 @@ inline void* mb_recv()
   void* ok;
   asm volatile("csrr %0, " CSR_RECV : "=r"(ok));
   return ok;
+}
+
+// Suspend thread until condition satisfied
+typedef enum {CAN_SEND = 1, CAN_RECV = 2} WaitCond;
+inline void mb_wait_until(WaitCond cond)
+{
+  asm volatile("csrw " CSR_WAIT_UNTIL ", %0" : : "r"(cond));
 }
 
 #endif
