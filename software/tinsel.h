@@ -33,10 +33,11 @@ inline int get_host_id()
 }
 
 // Write a word to instruction memory
-inline void write_instr (uint32_t index, uint32_t word)
+inline void write_instr(uint32_t index, uint32_t word)
 {
-  asm volatile("csrw " CSR_INSTR_ADDR ", %0" : : "r"(index));
-  asm volatile("csrw " CSR_INSTR ", %0" : : "r"(word));
+  asm volatile("csrw " CSR_INSTR_ADDR ", %0\n"
+               "csrw " CSR_INSTR ", %1\n"
+               : : "r"(index), "r"(word));
 }
 
 // Get pointer to message-aligned slot in mailbox scratchpad
@@ -69,8 +70,8 @@ inline int mb_can_recv()
   return ok;
 }
 
-// Set message length
-// (A length of N is comprised of N+1 flits)
+// Set message length for send operation
+// (A message of length N is comprised of N+1 flits)
 inline void mb_set_len(int n)
 {
   asm volatile("csrw " CSR_SEND_LEN ", %0" : : "r"(n));
@@ -91,9 +92,11 @@ inline void* mb_recv()
   return ok;
 }
 
-// Suspend thread until condition satisfied
-typedef enum {CAN_SEND = 1, CAN_RECV = 2} WaitCond;
-inline void mb_wait_until(WaitCond cond)
+// Thread can be woken by a logical-OR of these events
+typedef enum {CAN_SEND = 1, CAN_RECV = 2} WakeupCond;
+
+// Suspend thread until wakeup condition satisfied
+inline void mb_wait_until(WakeupCond cond)
 {
   asm volatile("csrw " CSR_WAIT_UNTIL ", %0" : : "r"(cond));
 }

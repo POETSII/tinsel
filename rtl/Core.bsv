@@ -25,17 +25,17 @@ import Globals   :: *;
 
 // Name       | CSR    | R/W | Function
 // ---------- | ------ | --- | --------
-// InstrAddr  | 0xc00  | W   | Set address for instruction write
-// Instr      | 0xc01  | W   | Write to instruction memory
-// Alloc      | 0xc02  | W   | Alloc space for new message in scratchpad
-// CanSend    | 0xc03  | R   | 1 if can send, 0 otherwise
+// InstrAddr  | 0x800  | W   | Set address for instruction write
+// Instr      | 0x801  | W   | Write to instruction memory
+// Alloc      | 0x802  | W   | Alloc space for new message in scratchpad
+// CanSend    | 0x803  | R   | 1 if can send, 0 otherwise
 // HartId     | 0xf14  | R   | Globally unique hardware thread id
-// CanRecv    | 0xc05  | R   | 1 if can receive, 0 otherwise
-// SendLen    | 0xc06  | W   | Set message length for send
-// SendPtr    | 0xc07  | W   | Set message pointer for send
-// Send       | 0xc08  | W   | Send message to supplied destination
-// Recv       | 0xc09  | R   | Return pointer to message received
-// WaitUntil  | 0xc0a  | W   | Sleep until can-send or can-recv
+// CanRecv    | 0x805  | R   | 1 if can receive, 0 otherwise
+// SendLen    | 0x806  | W   | Set message length for send
+// SendPtr    | 0x807  | W   | Set message pointer for send
+// Send       | 0x808  | W   | Send message to supplied destination
+// Recv       | 0x809  | R   | Return pointer to message received
+// WaitUntil  | 0x80a  | W   | Sleep until can-send or can-recv
 
 // ============================================================================
 // Types
