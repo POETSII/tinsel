@@ -18,11 +18,13 @@ int main()
 
   for (;;) {
     // Receive message
-    while (! mb_can_recv());
+    //while (! mb_can_recv());
+    mb_wait_until(CAN_RECV);
     uint8_t* msg = mb_recv();
 
     // Send message
-    while (! mb_can_send());
+    //while (! mb_can_send());
+    mb_wait_until(CAN_SEND);
     out[0] = msg[0]+1;
     mb_send(host, out);
 

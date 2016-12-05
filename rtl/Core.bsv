@@ -35,6 +35,7 @@ import Globals   :: *;
 // SendPtr    | 0xc07  | W   | Set message pointer for send
 // Send       | 0xc08  | W   | Send message to supplied destination
 // Recv       | 0xc09  | R   | Return pointer to message received
+// WaitUntil  | 0xc0a  | W   | Sleep until can-send or can-recv
 
 // ============================================================================
 // Types
@@ -78,6 +79,7 @@ typedef struct {
   Bool isHartId;      Bool isCanRecv;
   Bool isSendLen;     Bool isSendPtr;
   Bool isSend;        Bool isRecv;
+  Bool isWaitUntil;
 } CSR deriving (Bits);
 
 // Decoded operation
@@ -249,13 +251,14 @@ function Op decodeOp(Bit#(32) instr);
   ret.csr.isInstrAddr = ret.isCSR && csrIndex == 'h0;
   ret.csr.isInstr = ret.isCSR && csrIndex == 'h1;
   // Mailbox CSR
-  ret.csr.isAlloc    = ret.isCSR && csrIndex == 'h2;
-  ret.csr.isCanSend  = ret.isCSR && csrIndex == 'h3;
-  ret.csr.isCanRecv  = ret.isCSR && csrIndex == 'h5;
-  ret.csr.isSendLen  = ret.isCSR && csrIndex == 'h6;
-  ret.csr.isSendPtr  = ret.isCSR && csrIndex == 'h7;
-  ret.csr.isSend     = ret.isCSR && csrIndex == 'h8;
-  ret.csr.isRecv     = ret.isCSR && csrIndex == 'h9;
+  ret.csr.isAlloc     = ret.isCSR && csrIndex == 'h2;
+  ret.csr.isCanSend   = ret.isCSR && csrIndex == 'h3;
+  ret.csr.isCanRecv   = ret.isCSR && csrIndex == 'h5;
+  ret.csr.isSendLen   = ret.isCSR && csrIndex == 'h6;
+  ret.csr.isSendPtr   = ret.isCSR && csrIndex == 'h7;
+  ret.csr.isSend      = ret.isCSR && csrIndex == 'h8;
+  ret.csr.isRecv      = ret.isCSR && csrIndex == 'h9;
+  ret.csr.isWaitUntil = ret.isCSR && csrIndex == 'ha;
   return ret;
 endfunction
 
@@ -442,6 +445,11 @@ module mkCore#(CoreId myId) (Core);
   // Mailbox
   MailboxClientUnit mailbox <- mkMailboxClientUnit(myId);
 
+  // Connection to mailbox client wakeup queue
+  InPort#(ThreadEventPair) wakeupPort <- mkInPort;
+  connectUsing(mkUGShiftQueue1(QueueOptFmax),
+                 mailbox.wakeup, wakeupPort.in);
+
   // Pipeline stages
   Reg#(Bool)          fetch1Fire         <- mkDReg(False);
   Reg#(PipelineToken) fetch2Input        <- mkVReg;
@@ -513,6 +521,9 @@ module mkCore#(CoreId myId) (Core);
     // Prepare mailbox operation
     if (token.op.isCSR)
       mailbox.prepare(token.thread.id);
+    // CSR-immediate instructions not yet supported
+    if (token.op.isCSR)
+      myAssert(token.instr[14] == 0, "CSR-immediate instrs not supported");
     // Trigger second decode sub-stage
     decode2Input <= token;
   endrule
@@ -636,6 +647,11 @@ module mkCore#(CoreId myId) (Core);
       end else
         retry = True;
     end
+    // Handle access to WaitUntil CSR
+    if (token.op.csr.isWaitUntil) begin
+      mailbox.sleep(token.thread.id, truncate(token.valA));
+      suspend = True;
+    end
     // Record state of suspended thread
     if (suspend) begin
       SuspendedThreadState susp;
@@ -756,7 +772,8 @@ module mkCore#(CoreId myId) (Core);
  
   rule resumeThread1 (resumeThread1Fire
                        || dcacheResp.canGet
-                       || mailbox.scratchpadResp.canGet);
+                       || mailbox.scratchpadResp.canGet
+                       || wakeupPort.canGet);
     ResumeToken token = resumeThread1Input;
     if (!resumeThread1Fire) begin
       if (dcacheResp.canGet) begin
@@ -767,6 +784,9 @@ module mkCore#(CoreId myId) (Core);
         mailbox.scratchpadResp.get;
         token.id   = truncate(mailbox.scratchpadResp.value.id);
         token.data = mailbox.scratchpadResp.value.data;
+      end else if (wakeupPort.canGet) begin
+        wakeupPort.get;
+        token.id = truncate(wakeupPort.value.id);
       end
     end
     // Fetch info about suspended thread
@@ -785,12 +805,12 @@ module mkCore#(CoreId myId) (Core);
     let token = resumeThread3Input;
     // Prepare request for writeback stage
     Writeback wb;
-    wb.write = susp.isLoad;
+    wb.write = susp.isLoad && susp.destReg != 0;
     wb.thread = susp.thread;
     wb.thread.id = token.id;
     wb.destReg = susp.destReg;
     wb.writeVal = loadMux(token.data, susp.accessWidth,
-                      susp.loadSelector, susp.isUnsignedLoad);
+                    susp.loadSelector, susp.isUnsignedLoad);
     if (writebackQueue.notFull) begin
       writebackQueue.enq(wb);
     end else begin
