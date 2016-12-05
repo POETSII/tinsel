@@ -29,7 +29,7 @@ p["LogMaxCores"] = 8
 p["LogThreadsPerCore"] = 4
 
 # The number of 32-bit instructions that fit in a core's instruction memory
-p["LogInstrsPerCore"] = 9
+p["LogInstrsPerCore"] = 11
 
 # Log of number of multi-threaded cores sharing a DCache
 p["LogCoresPerDCache"] = 2

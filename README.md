@@ -2,12 +2,10 @@
 
 **Tinsel** is a **many-core message-passing** machine designed for
 massively parallel computing on an **FPGA cluster**.  It is not
-specific to any particular FPGA board, but the description below
-uses Terasic's [DE5-NET](http://de5-net.terasic.com) for illustration
-purposes.  (This is a fairly high-end board from 2012 that the
+specific to any particular FPGA board, but the description below uses
+Terasic's [DE5-NET](http://de5-net.terasic.com) for illustration
+purposes.  (This is a Stratix V board from circa 2012 that the
 [CL](http://www.cl.cam.ac.uk/) has in plentiful supply.)
-
-(This respository is work-in-progress.)
 
 ## Contents
 
@@ -17,23 +15,35 @@ Like any large system, Tinsel is comprised of several modules:
 2. [Tinsel Cache](#tinsel-cache)
 3. [Tinsel Mailbox](#tinsel-mailbox)
 
+For reference:
+
+* [Tinsel Parameters](#tinsel-parameters)
+* [Tinsel Memory Map](#tinsel-memory-map)
+* [Tinsel CSRs](#tinsel-csrs)
+* [Tinsel API](#tinsel-api)
+
 ## Tinsel Core
 
-**Tinsel Core** is a 32-bit **multi-threaded** processor implementing the
-[RISC-V](https://riscv.org/specifications/) ISA (RV32I).
+**Tinsel Core** is a customised 32-bit **multi-threaded** processor
+implementing a subset of the RV32IM profile of the
+[RISC-V](https://riscv.org/specifications/) ISA.  At present, this
+excludes integer division and system instructions.  Custom features
+are provided through varios control/status registers
+([CSRs](#tinsel-csrs)).
 
 The number of hardware threads must be a power of two and is
 controlled by a sythesis-time parameter `LogThreadsPerCore`.
 
 Tinsel employs a generous **9-stage pipeline** to achieve an Fmax of
 450MHz on the [DE5-NET](http://de5-net.terasic.com), while consuming
-less than 450 ALMs (0.2%).
+less than 450 ALMs (0.2%).  These figures are for a standalone
+configuration without caches and custom features.
 
-The pipeline is **hazard-free**: at most one instruction per thread
-can be present in the pipeline at any time.  To achieve **full
-throughput** -- execution of an instruction on every clock cycle -- the
-number of hardware threads must be greater than the pipeline depth.
-The first power of two that satisfies this requirement is 16.
+The pipeline is **hazard-free**: at most one instruction per thread is
+present in the pipeline at any time.  To achieve **full throughput**
+-- execution of an instruction on every clock cycle -- the number of
+hardware threads must be greater than the pipeline depth.  The first
+power of two that satisfies this requirement is 16.
 
 In fact, the requirement is slightly stronger than this: for full
 throughput, there must exist at least 9 **runnable** threads at any time.
@@ -52,31 +62,35 @@ The core fetches instructions from an **instruction memory**
 implemented using on-chip block RAM.  The size of this memory is
 controlled by the synthesis-time parameter `LogInstrsPerCore`.  All
 threads in a core share the same instruction memory.  The initial
-contents of the memory is specified in the FPGA bitstream.
+contents of the memory is specified in the FPGA bitstream, typically
+containing a boot loader.  The instruction memory is not memory-mapped
+(i.e. not accessible via load/store instructions) but two CSRs are
+provided for writing instructions into the memory: `InstrAddr` and
+`Instr`.
 
-A globally unique identifier for the currently running thread can be
-obtained from a RISC-V [control/status
-register](https://riscv.org/specifications/privileged-isa/) (CSR
-`0xF14`).  The `Tinsel.h` header file provides a function to read this
-register:
+  CSR Name    | CSR    | R/W | Function
+  ----------- | ------ | --- | --------
+  `InstrAddr` | 0x800  | W   | Set address for instruction write
+  `Instr`     | 0x801  | W   | Write to instruction memory
+  `HartId`    | 0xf14  | R   | Globally unique hardware thread id
 
+Access to these CSRs is wrapped up by the following C functions in
+the [Tinsel API](#tinsel-api).
+
+```c
+// Write 32-bit word to instruction memory
+inline void write_instr(uint32_t addr, uint32_t word);
+
+// Return a globally unique id for the calling thread
+inline uint32_t me();
 ```
-// Return a globally unique id for the calling hardware thread
-inline uint32_t me()
-{
-  uint32_t id;
-  asm("csrr %0, 0xF14" : "=r"(id));
-  return id;
-}
 
-```
+A summary of synthesis-time parameters introduced in this section:
 
-A summary of parameters introduced in this section:
-
-  Parameter                 | Description
-  ------------------------- | -----------
-  `LogThreadsPerCore`       | Number of hardware threads per core
-  `LogInstrsPerCore`        | Size of each instruction memory
+  Parameter           | Default | Description
+  ------------------- | ------- | -----------
+  `LogThreadsPerCore` |       4 | Number of hardware threads per core
+  `LogInstrsPerCore`  |      11 | Size of each instruction memory
 
 ## Tinsel Cache
 
@@ -95,8 +109,8 @@ The cache line size must be larger than or equal to the DRAM data bus
 width: lines are read and written by the cache in contiguous chunks
 called **beats**.  The width of a beat is defined by
 `DCacheLogWordsPerBeat` and the width of a line by
-`DCacheLogBeatsPerLine`.  The width of the DRAM data bus must equal
-the width of a cache beat.
+`DCacheLogBeatsPerLine`.  At present, the width of the DRAM data bus
+must equal the width of a cache beat.
 
 The number of cores sharing a cache is controlled by the
 synthesis-time parameter `LogCoresPerDCache`.  A sensible value for
@@ -136,48 +150,238 @@ operate on different lines, simplifying the implementation.  To allow
 cores to meet this assumption, store responses are issued in addition
 to load responses.
 
-The cache implements a low-cost **coherence mechanism**.  When a
-thread issues a `fence` instruction, all cache lines for that thread are
-invalidated and all dirty lines are written out to DRAM.  If a thread
-wishes to make its writes visible to other threads then it issues a
-`fence`.  Similarly, if a thread wishes to make sure it can read the
-latest values written by other threads then it also issues a `fence`.
-This scheme meets the [WMO without local dependencies]
-(https://github.com/CTSRD-CHERI/axe/raw/master/doc/manual.pdf)
-consistency model, where a thread may observe operations by
-another thread out-of-order but reorderings over a `fence` are
-forbidden.
-
-`Tinsel.h` defines a `fence()` function as follows.
-
-```
-// Memory fence: memory operations can't appear to be reordered over this
-inline void fence()
-{
-  asm volatile("fence");
-}
-
-```
-
-There is no support for **atomic** memory operations.  Tinsel is a
-message-passing machine and it is not clear that atomics are needed.
-For example, instead of gaining exclusive write access to a block of
-shared memory in order to perform an atomic update, a message can be
-sent to the owner of the block (by software) telling it to perform the
-update.
+At present, there is no cache coherence mechanism and no support for
+atomic memory operations.  As a message-passing machine, the role of
+shared memory for communicating between threads is not yet clear.
 
 The following parameters control the number of caches and the
 structure of each cache.
 
-  Parameter                 | Description
-  ------------------------- | -----------
-  `LogCoresPerDCache`       | Cores per cache
-  `LogDCachesPerDRAM`       | Caches per DRAM
-  `DCacheLogWordsPerBeat`   | Number of 32-bit words per beat
-  `DCacheLogBeatsPerLine`   | Beats per cache line
-  `DCacheLogNumWays`        | Cache lines in each associative set
-  `DCacheLogSetsPerThread`  | Associative sets per thread
+  Parameter                | Default | Description
+  ------------------------ | ------- | -----------
+  `LogCoresPerDCache`      |       2 | Cores per cache
+  `LogDCachesPerDRAM`      |       3 | Caches per DRAM
+  `DCacheLogWordsPerBeat`  |       3 | Number of 32-bit words per beat
+  `DCacheLogBeatsPerLine`  |       0 | Beats per cache line
+  `DCacheLogNumWays`       |       2 | Cache lines in each associative set
+  `DCacheLogSetsPerThread` |       3 | Associative sets per thread
 
 ## Tinsel Mailbox
 
-**Under construction.**
+The **mailbox** is a component used by threads to send and receive
+messages.  A single mailbox serves multiple threads, defined by
+`LogCoresPerMailbox`.  Mailboxes are connected together to form a
+network on which any thread can send a message to any other thread
+(this network is discussed in the next section), but communication is
+more efficient between threads that share the same mailbox.
+
+A tinsel **message** is comprised of a bounded number of **flits**.  A
+thread can send a message containing any number of flits (up to the
+bound defined by `LogMaxFlitsPerMsg`), but conceptually the message is
+treated as an **atomic unit**: at any moment, either the whole message
+has reached the destination or none of it has.  As one would expect,
+it is more efficient to send shorter messages than longer ones.  The
+size of a flit is defined by `LogWordsPerFlit`.
+
+At the heart of a mailbox is a memory-mapped **scratchpad** that
+stores both incoming and outgoing messages.  Each thread has access to
+space for several messages in the scratchpad, defined by
+`LogMsgsPerThread`.  As well as storing messages, the scratchpad may
+also be used as a small thread-local general-purpose memory.
+
+Once a thread has written a message to the scratchpad, it can trigger
+a *send* operation, provided that the `CanSend` CSR returns true.  It
+does so by: (1) writing the number of flits in the message to the
+`SendLen` CSR; (2) writing the address of the message in the
+scratchpad to the `SendPtr` CSR; and (3) writing the destination
+thread id to the `Send` CSR.
+
+  CSR Name   | CSR    | R/W | Function
+  ---------- | ------ | --- | --------
+  `CanSend`  | 0x803  | R   | 1 if can send, 0 otherwise
+  `SendLen`  | 0x806  | W   | Set message length for send
+  `SendPtr`  | 0x807  | W   | Set message pointer for send
+  `Send`     | 0x808  | W   | Send message to supplied destination
+
+The [Tinsel API](#tinsel-api) provides wrapper functions for accessing
+these CSRs.
+
+```c
+// Determine if calling thread can send a message
+inline uint32_t mb_can_send();
+
+// Set message length for send operation
+// (A message of length N is comprised of N+1 flits)
+inline void mb_set_len(uint32_t n);
+
+// Send message at address to destination
+// (Address must be aligned on message boundary)
+inline void mb_send(uint32_t dest, volatile void* addr);
+
+// Get pointer to nth message-aligned slot in mailbox scratchpad
+inline volatile void* mailbox(uint32_t n);
+```
+
+Several things to note:
+
+* When sending a message, a thread must not modify the
+contents of that message while `can_send()` returns false, otherwise
+the in-flight message could be corrupted.
+
+* The `SendLen` and `SendPtr` CSRs are persistent: if two consecutive
+send operations wish to use the same length and address then the CSRs
+need only be written once.
+
+* The scratchpad pointer must be aligned on a message boundary, which
+we refer to as a message **slot**. The `mailbox` function yields a 
+pointer to the nth slot in the calling thread's mailbox.
+
+To *receive* a message, a thread must first *allocate* a slot in the
+scratchpad for an incoming message to be stored.  This is done by
+writing the address of the slot to the `Alloc` CSR.  Multiple slots
+can be allocated, bounded by `LogMsgsPerThread`, creating a receive
+buffer of the desired capacity.  The hardware may use any one of the
+allocated slots, but as soon as a slot is used it will be
+automatically *deallocated*.  Now, provided the `CanRecv` CSR returns
+true, the `Recv` CSR can be read, yielding a pointer to the message
+received.  As soon as the thread is finished with the message, it can
+*reallocate* it, restoring capacity to the receive buffer.
+
+  CSR Name   | CSR    | R/W | Function
+  ---------- | ------ | --- | --------
+  `Alloc`    | 0x802  | W   | Alloc space for new message in scratchpad
+  `CanRecv`  | 0x805  | R   | 1 if can receive, 0 otherwise
+  `Recv`     | 0x809  | R   | Return pointer to message received
+
+Again, the [Tinsel API](#tinsel-api) hides these low-level CSRs.
+
+```c
+// Give mailbox permission to use given address to store an incoming message
+inline void mb_alloc(volatile void* addr);
+
+// Determine if calling thread can receive a message
+inline uint32_t mb_can_recv();
+
+// Receive message
+inline void* mb_recv();
+```
+
+Sometimes, a thread may wish to wait until it can send or receive.  To
+avoid busy waiting on the `can_send()` and `can_recv()` functions, a
+thread can be suspended by writing to the `WaitUntil` CSR.
+
+  CSR Name    | CSR    | R/W | Function
+  ----------- | ------ | --- | --------
+  `WaitUntil` | 0x80a  | W   | Sleep until can send or receive
+
+This CSR is treated as a bit string: bit 0 indicates whether the
+thread would like to be woken when a send is possible, and bit 1
+indicates whether the thread would like to be woken when a receive is
+possible.  Both bits may be set. The [Tinsel API](tinsel-api)
+abstracts this CSR as follows.
+
+```c
+// Thread can be woken by a logical-OR of these events
+typedef enum {CAN_SEND = 1, CAN_RECV = 2} WakeupCond;
+
+// Suspend thread until wakeup condition satisfied
+inline void mb_wait_until(WakeupCond cond);
+```
+
+Finally, a quick note on the design.  One of the main goals of the
+mailbox is to support efficient software multicasting: when a message
+is received, it can be forwarded on to multiple destinations without
+having to serialise the message contents into and out of the 32-bit
+core.  The mailbox scratchpad has a flit-sized port on the network
+side, providing much more efficient access to messages.
+
+A summary of synthesis-time parameters introduced in this section:
+
+  Parameter                | Default | Description
+  ------------------------ | ------- | -----------
+  `LogCoresPerMailbox`     |       2 | Number of cores sharing a mailbox
+  `LogWordsPerFlit`        |       2 | Number of 32-bit words in a flit
+  `LogMaxFlitsPerMsg`      |       1 | Max number of flits in a message
+  `LogMsgsPerThread`       |       4 | Number of slots per thread in scratchpad
+
+## Tinsel Board
+
+### Tinsel Parameters
+
+  Parameter                | Default | Description
+  ------------------------ | ------- | -----------
+  `LogThreadsPerCore`      |       4 | Number of hardware threads per core
+  `LogInstrsPerCore`       |      11 | Size of each instruction memory
+  `LogCoresPerDCache`      |       2 | Cores per cache
+  `LogDCachesPerDRAM`      |       3 | Caches per DRAM
+  `DCacheLogWordsPerBeat`  |       3 | Number of 32-bit words per beat
+  `DCacheLogBeatsPerLine`  |       0 | Beats per cache line
+  `DCacheLogNumWays`       |       2 | Cache lines in each associative set
+  `DCacheLogSetsPerThread` |       3 | Associative sets per thread
+  `LogCoresPerMailbox`     |       2 | Number of cores sharing a mailbox
+  `LogWordsPerFlit`        |       2 | Number of 32-bit words in a flit
+  `LogMaxFlitsPerMsg`      |       1 | Max number of flits in a message
+  `LogMsgsPerThread`       |       4 | Number of slots per thread in scratchpad
+
+### Tinsel Memory Map
+
+  Region                  | Description
+  ----------------------- | -----------
+  `0x00000000-0x000003ff` | Unmapped
+  `0x00000400-0x000007ff` | Thread-local mailbox scratchpad
+  `0x00000800-0x4fffffff` | Off-chip DRAM
+
+### Tinsel CSRs
+
+  CSR Name    | CSR    | R/W | Function
+  ----------- | ------ | --- | --------
+  `InstrAddr` | 0x800  | W   | Set address for instruction write
+  `Instr`     | 0x801  | W   | Write to instruction memory
+  `Alloc`     | 0x802  | W   | Alloc space for new message in scratchpad
+  `CanSend`   | 0x803  | R   | 1 if can send, 0 otherwise
+  `HartId`    | 0xf14  | R   | Globally unique hardware thread id
+  `CanRecv`   | 0x805  | R   | 1 if can receive, 0 otherwise
+  `SendLen`   | 0x806  | W   | Set message length for send
+  `SendPtr`   | 0x807  | W   | Set message pointer for send
+  `Send`      | 0x808  | W   | Send message to supplied destination
+  `Recv`      | 0x809  | R   | Return pointer to message received
+  `WaitUntil` | 0x80a  | W   | Sleep until can send or receive
+
+### Tinsel API
+
+```c
+// Return a globally unique id for the calling thread
+inline uint32_t me();
+
+// Write 32-bit word to instruction memory
+inline void write_instr(uint32_t addr, uint32_t word);
+
+// Get pointer to nth message-aligned slot in mailbox scratchpad
+inline volatile void* mailbox(uint32_t n);
+
+// Determine if calling thread can send a message
+inline uint32_t mb_can_send();
+
+// Set message length for send operation
+// (A message of length N is comprised of N+1 flits)
+inline void mb_set_len(uint32_t n);
+
+// Send message at address to destination
+// (Address must be aligned on message boundary)
+inline void mb_send(uint32_t dest, volatile void* addr);
+
+// Give mailbox permission to use given address to store an incoming message
+inline void mb_alloc(volatile void* addr);
+
+// Determine if calling thread can receive a message
+inline uint32_t mb_can_recv();
+
+// Receive message
+inline void* mb_recv();
+
+// Thread can be woken by a logical-OR of these events
+typedef enum {CAN_SEND = 1, CAN_RECV = 2} WakeupCond;
+
+// Suspend thread until wakeup condition satisfied
+inline void mb_wait_until(WakeupCond cond);
+```
