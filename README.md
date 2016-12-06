@@ -22,7 +22,7 @@ For reference:
 * [Tinsel CSRs](#tinsel-csrs)
 * [Tinsel API](#tinsel-api)
 
-## Tinsel Core
+## 1. Tinsel Core
 
 **Tinsel Core** is a customised 32-bit **multi-threaded** processor
 implementing a subset of the RV32IM profile of the
@@ -92,7 +92,7 @@ A summary of synthesis-time parameters introduced in this section:
   `LogThreadsPerCore` |       4 | Number of hardware threads per core
   `LogInstrsPerCore`  |      11 | Size of each instruction memory
 
-## Tinsel Cache
+## 2. Tinsel Cache
 
 The [DE5-NET](http://de5-net.terasic.com) contains two DDR3 DIMMs,
 each capable of performing two 64-bit memory operations on every cycle
@@ -166,7 +166,7 @@ structure of each cache.
   `DCacheLogNumWays`       |       2 | Cache lines in each associative set
   `DCacheLogSetsPerThread` |       3 | Associative sets per thread
 
-## Tinsel Mailbox
+## 3. Tinsel Mailbox
 
 The **mailbox** is a component used by threads to send and receive
 messages.  A single mailbox serves multiple threads, defined by
@@ -211,7 +211,7 @@ these CSRs.
 inline uint32_t mb_can_send();
 
 // Set message length for send operation
-// (A message of length N is comprised of N+1 flits)
+// (A message of length n is comprised of n+1 flits)
 inline void mb_set_len(uint32_t n);
 
 // Send message at address to destination
@@ -304,7 +304,7 @@ A summary of synthesis-time parameters introduced in this section:
   `LogMaxFlitsPerMsg`      |       1 | Max number of flits in a message
   `LogMsgsPerThread`       |       4 | Number of slots per thread in scratchpad
 
-## Tinsel Board
+## Reference
 
 ### Tinsel Parameters
 
@@ -329,7 +329,7 @@ A summary of synthesis-time parameters introduced in this section:
   ----------------------- | -----------
   `0x00000000-0x000003ff` | Unmapped
   `0x00000400-0x000007ff` | Thread-local mailbox scratchpad
-  `0x00000800-0x4fffffff` | Off-chip DRAM
+  `0x00000800-0x7fffffff` | Off-chip DRAM
 
 ### Tinsel CSRs
 
@@ -363,7 +363,7 @@ inline volatile void* mailbox(uint32_t n);
 inline uint32_t mb_can_send();
 
 // Set message length for send operation
-// (A message of length N is comprised of N+1 flits)
+// (A message of length n is comprised of n+1 flits)
 inline void mb_set_len(uint32_t n);
 
 // Send message at address to destination
