@@ -68,7 +68,7 @@ module testMem ();
   OutPort#(DCacheReq) dcacheReq <- mkOutPort;
   InPort#(DCacheResp) dcacheResp <- mkInPort;
   connectUsing(mkUGQueue, dcacheReq.out, dcaches[0].reqIn);
-  connectUsing(mkUGQueue, dcaches[0].respOut, dcacheResp.in);
+  connectDirect(dcaches[0].respOut, dcacheResp.in);
 
   // Record in-flight requests (max of one outstanding request per thread)
   RegFile#(DCacheClientId, TestMemReq) inFlight <-

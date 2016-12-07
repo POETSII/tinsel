@@ -28,7 +28,7 @@ For reference:
 implementing a subset of the RV32IM profile of the
 [RISC-V](https://riscv.org/specifications/) ISA.  At present, this
 excludes integer division and system instructions.  Custom features
-are provided through varios control/status registers
+are provided through a range of control/status registers
 ([CSRs](#tinsel-csrs)).
 
 The number of hardware threads must be a power of two and is
