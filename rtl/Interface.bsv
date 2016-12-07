@@ -304,6 +304,24 @@ module mkMergeTwo#(MergeMethod m, module#(SizedQueue#(n, t)) mkQ,
   return merger.out;
 endmodule
 
+// Merge unit helper: merge two buffered output interfaces to a
+// single output interface
+module mkMergeTwoB#(MergeMethod m, BOut#(t) a, BOut#(t) b) (Out#(t))
+         provisos (Bits#(t, twidth));
+
+  // Create a merge unit
+  MergeUnit#(t) merger;
+  if (m == LeftBiased) merger <- mkMergeUnit;
+  else merger <- mkMergeUnitFair;
+
+  // Connect output interfaces to merge unit
+  connectDirect(a, merger.inA);
+  connectDirect(b, merger.inB);
+
+  // Return output of merge unit
+  return merger.out;
+endmodule
+
 // =============================================================================
 // Tree-based request merger
 // =============================================================================
@@ -327,10 +345,26 @@ module mkMergeTreeList#(MergeMethod m, module#(SizedQueue#(n, t)) mkQ,
 endmodule
 
 // As above, but for vectors instead of lists
-module mkMergeTree#(MergeMethod m, module#(SizedQueue#(n, t)) mkQ,
-                      Vector#(m, Out#(t)) vec) (Out#(t))
+module mkMergeTree#(MergeMethod m, module#(SizedQueue#(d, t)) mkQ,
+                      Vector#(n, Out#(t)) vec) (Out#(t))
          provisos (Bits#(t, twidth));
   let out <- mkMergeTreeList(m, mkQ, Vector::toList(vec));
+  return out;
+endmodule
+
+// Similar to above, but takes a vector of buffered output interfaces
+module mkMergeTreeB#(MergeMethod m, module#(SizedQueue#(d, t)) mkQ,
+                       Vector#(n, BOut#(t)) vec) (Out#(t))
+         provisos (Bits#(t, twidth), Mul#(_any, 2, n));
+
+  // Reduce first level of tree using mkMergeTwoB
+  List#(Out#(t)) xs = Nil;
+  for (Integer i = 0; i < valueOf(n); i=i+2) begin
+    let x <- mkMergeTwoB(m, vec[i], vec[i+1]);
+    xs = List::cons(x, xs);
+  end
+
+  let out <- mkMergeTreeList(m, mkQ, xs);
   return out;
 endmodule
 

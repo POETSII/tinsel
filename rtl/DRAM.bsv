@@ -489,7 +489,7 @@ module connectDCachesToDRAM#(
 
   // Connect requests
   function getReqOut(cache) = cache.reqOut;
-  let reqs <- mkMergeTree(Fair,
+  let reqs <- mkMergeTreeB(Fair,
                 mkUGShiftQueue1(QueueOptFmax),
                 map(getReqOut, caches));
   let dramReqs <- onOut(toDRAMReq, reqs);
