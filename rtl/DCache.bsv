@@ -283,21 +283,17 @@ module mkDCache#(DCacheId myId) (DCache);
   // asserted when the write wire is low.
 
   // Control wires for modifying lines in dataMem
-  Wire#(Bool) lineReadReqWire <- mkDWire(False);
-  Wire#(BeatIndex) lineReadIndexWire <- mkDWire(0);
+  Wire#(BeatIndex) lineReadIndexWire <- mkDWire(?);
   Wire#(Bool) lineWriteReqWire <- mkDWire(False);
   Reg#(Bool) lineWriteReqReg <- mkReg(False);
-  Wire#(BeatIndex) lineWriteIndexWire <- mkDWire(0);
+  Wire#(BeatIndex) lineWriteIndexWire <- mkDWire(?);
   Reg#(Bit#(`BeatWidth)) lineWriteDataReg <- mkConfigRegU;
   Reg#(BeatIndex) lineIndexReg <- mkRegU;
 
   // Use wires to issue line access in dataMem
-  // (This is a potential timing bottleneck for large beat widths:
-  // the wider the beat, the more block RAMs needed to implement data
-  // memory and the higher the fan-out of the address/write-enable lines.)
   rule lineAccessUnit;
     lineWriteReqReg <= lineWriteReqWire;
-    lineIndexReg <= lineReadIndexWire | lineWriteIndexWire;
+    lineIndexReg <= lineWriteReqWire ? lineWriteIndexWire : lineReadIndexWire;
     dataMem.putA(
       lineWriteReqReg,
       lineIndexReg,
@@ -491,33 +487,37 @@ module mkDCache#(DCacheId myId) (DCache);
     memReq.burst = isLoad ? `BeatsPerLine : 1;
     // Are we going to send a memory request to the next stage?
     Bool sendMemReq = False;
-    if (missUnitState == 0) begin
-      // Are we ready to request the new line?
-      if (isLoad) begin
-        if (fillQueue.notFull) begin
-          missQueue.deq;
-          writebackDone <= False;
-          sendMemReq = True;
-          // Put request in fill queue
-          Fill fill;
-          fill.req = miss.req;
-          fill.way = miss.evictWay;
-          fillQueue.enq(fill);
+    if (missQueue.canPeek && missQueue.canDeq && memReqQueue.notFull) begin
+      if (missUnitState == 0) begin
+        // Are we ready to request the new line?
+        if (isLoad) begin
+          if (fillQueue.notFull) begin
+            missQueue.deq;
+            writebackDone <= False;
+            sendMemReq = True;
+            // Put request in fill queue
+            Fill fill;
+            fill.req = miss.req;
+            fill.way = miss.evictWay;
+            fillQueue.enq(fill);
+          end
+        // Or are we still writing back old data?
+        end else if (!lineWriteReqWire) begin
+          // Assignment to lineReadIndexWire is performed below
+          // (outside complex condition) to improve timing
+          missUnitState <= 1;
         end
-      // Or are we still writing back old data?
-      end else if (!lineWriteReqWire) begin
-        lineReadReqWire <= True;
-        lineReadIndexWire <= beatIndex(reqBeat, miss.req.id,
-                               miss.req.addr, miss.evictWay);
-        missUnitState <= 1;
-      end
-    end else if (missUnitState == 3) begin
-      sendMemReq = True;
-      reqBeat <= reqBeat+1;
-      if (allHigh(reqBeat)) writebackDone <= True;
-      missUnitState <= 0;
-    end else
-      missUnitState <= missUnitState+1;
+      end else if (missUnitState == 3) begin
+        sendMemReq = True;
+        reqBeat <= reqBeat+1;
+        if (allHigh(reqBeat)) writebackDone <= True;
+        missUnitState <= 0;
+      end else
+        missUnitState <= missUnitState+1;
+    end
+    // If reading old line data then where from?
+    lineReadIndexWire <= beatIndex(reqBeat, miss.req.id,
+                           miss.req.addr, miss.evictWay);
     // Send memory request to next stage
     if (sendMemReq) memReqQueue.enq(memReq);
   endrule
