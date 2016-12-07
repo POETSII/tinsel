@@ -468,8 +468,7 @@ module mkDCache#(DCacheId myId) (DCache);
   // Is a beat ready on the output of dataMem?
   Reg#(Bit#(2)) missUnitState  <- mkReg(0);
 
-  rule missUnit0 (missQueue.canPeek && missQueue.canDeq &&
-                    memReqQueue.notFull);
+  rule missUnit;
     MissReq miss = missQueue.dataOut;
     // Send a load request?
     Bool isLoad = !miss.evictDirty || writebackDone;
