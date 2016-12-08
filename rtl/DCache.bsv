@@ -283,21 +283,17 @@ module mkDCache#(DCacheId myId) (DCache);
   // asserted when the write wire is low.
 
   // Control wires for modifying lines in dataMem
-  Wire#(BeatIndex) lineReadIndexWire <- mkDWire(?);
+  Wire#(BeatIndex) lineReadIndexWire <- mkBypassWire;
   Wire#(Bool) lineWriteReqWire <- mkDWire(False);
-  Reg#(Bool) lineWriteReqReg <- mkReg(False);
-  Wire#(BeatIndex) lineWriteIndexWire <- mkDWire(?);
-  Reg#(Bit#(`BeatWidth)) lineWriteDataReg <- mkConfigRegU;
-  Reg#(BeatIndex) lineIndexReg <- mkRegU;
+  Wire#(BeatIndex) lineWriteIndexWire <- mkBypassWire;
+  Wire#(Bit#(`BeatWidth)) lineWriteDataWire <- mkBypassWire;
 
   // Use wires to issue line access in dataMem
   rule lineAccessUnit;
-    lineWriteReqReg <= lineWriteReqWire;
-    lineIndexReg <= lineWriteReqWire ? lineWriteIndexWire : lineReadIndexWire;
     dataMem.putA(
-      lineWriteReqReg,
-      lineIndexReg,
-      lineWriteDataReg);
+      lineWriteReqWire,
+      lineWriteReqWire ? lineWriteIndexWire : lineReadIndexWire,
+      lineWriteDataWire);
   endrule
 
   // Tag lookup stage
@@ -431,33 +427,35 @@ module mkDCache#(DCacheId myId) (DCache);
   Reg#(Beat) respBeat <- mkReg(0);
 
   rule memResponse;
+    let fill = fillQueue.dataOut;
     // If new line data available from external memory, then:
     if (loadRespPort.canGet && fillQueue.canDeq && fillQueue.canPeek) begin
       // Remove item from fill queue and put associated request (which
       // will definitely hit if it starts again from the beginning of
       // the pipeline) into the hit buffer
-      let fill = fillQueue.dataOut;
       if (allHigh(respBeat)) begin
         fillQueue.deq;
-        feedbackReq <= fill.req;
         feedbackTrigger <= True;
       end
       // Write new line data to dataMem
-      MemLoadResp resp = loadRespPort.value;
+      // (The write parameters are set outside condition for better timing)
       loadRespPort.get;
-      lineWriteReqWire   <= True;
-      lineWriteIndexWire <= beatIndex(respBeat, fill.req.id,
-                              fill.req.addr, fill.way);
-      lineWriteDataReg <= resp.data;
+      lineWriteReqWire <= True;
       respBeat <= respBeat+1;
     end
+    // Set write parameters
+    lineWriteDataWire <= loadRespPort.value.data;
+    lineWriteIndexWire <= beatIndex(respBeat, fill.req.id,
+                            fill.req.addr, fill.way);
+    // Set feedback request
+    feedbackReq <= fill.req;
   endrule
 
   // Miss unit
   // ---------
 
   // Memory request queue
-  Queue#(MemReq) memReqQueue    <- mkUGShiftQueue(QueueOptFmax);
+  Queue#(MemReq) memReqQueue <- mkUGShiftQueue(QueueOptFmax);
 
   // Index of next beat to read
   Reg#(Beat) reqBeat <- mkReg(0);
@@ -466,7 +464,7 @@ module mkDCache#(DCacheId myId) (DCache);
   Reg#(Bool) writebackDone <- mkReg(False);
 
   // Is a beat ready on the output of dataMem?
-  Reg#(Bit#(2)) missUnitState  <- mkReg(0);
+  Reg#(Bit#(2)) missUnitState <- mkReg(0);
 
   rule missUnit;
     MissReq miss = missQueue.dataOut;
@@ -506,7 +504,7 @@ module mkDCache#(DCacheId myId) (DCache);
           // (outside complex condition) to improve timing
           missUnitState <= 1;
         end
-      end else if (missUnitState == 3) begin
+      end else if (missUnitState == 2) begin
         sendMemReq = True;
         reqBeat <= reqBeat+1;
         if (allHigh(reqBeat)) writebackDone <= True;
