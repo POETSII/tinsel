@@ -28,6 +28,7 @@ Bit#(8) opEND   = 69;  // 'E': end of operation stream
 Bit#(8) opDELAY = 68;  // 'D': delay for some number of cycles
 Bit#(8) opLW    = 76;  // 'L': load word
 Bit#(8) opSW    = 83;  // 'S': store word
+Bit#(8) opFLUSH = 70;  // 'F': cache flush
 Bit#(8) opBACK  = 66;  // 'B': apply back-pressure for some number of cycles
 
 // ============================================================================
@@ -104,7 +105,13 @@ module testMem ();
     req.op = op;
     if (op == opEND)
       allReqsGathered <= True;
-    else if (op == opDELAY || op == opBACK) begin
+    else if (op == opFLUSH) begin
+      let threadId <- getUInt32();
+      myAssert(threadId <= fromInteger(maxThreadId),
+                "TestMem.bsv: thread id too large");
+      req.threadId = threadId;
+      rawReqs.enq(req);
+    end else if (op == opDELAY || op == opBACK) begin
       let delay <- getUInt32();
       req.delay = delay;
       rawReqs.enq(req);
@@ -142,11 +149,19 @@ module testMem ();
         rawReqs.deq;
         DCacheReq req = ?;
         req.id = id;
-        req.cmd.isLoad  = rawReq.op == opLW ? True : False;
-        req.cmd.isStore = rawReq.op == opSW ? True : False;
-        req.addr = rawReq.addr;
-        req.data = rawReq.data;
-        req.byteEn = -1;
+        req.cmd.isLoad  = rawReq.op == opLW;
+        req.cmd.isStore = rawReq.op == opSW;
+        req.cmd.isFlush = rawReq.op == opFLUSH;
+        req.cmd.isFlushResp = False;
+        if (req.cmd.isFlush) begin
+          req.addr = 0;
+          req.data = 0;
+          req.byteEn = 0;
+        end else begin
+          req.addr = rawReq.addr;
+          req.data = rawReq.data;
+          req.byteEn = -1;
+        end
         dcacheReq.put(req);
         inFlightValid[id] <= True;
         inFlight.upd(id, rawReq);
