@@ -150,9 +150,17 @@ operate on different lines, simplifying the implementation.  To allow
 cores to meet this assumption, store responses are issued in addition
 to load responses.
 
-At present, there is no cache coherence mechanism and no support for
-atomic memory operations.  As a message-passing machine, the role of
-shared memory for communicating between threads is not yet clear.
+A **cache flush** operation is provided that evicts all cache lines
+owned by the calling thread.  This operation is invoked through the
+RISC-V `fence` opcode, or the tinsel API:
+
+```c
+// Cache flush
+inline void flush();
+```
+
+At present, there is no support for atomic memory operations.  As a
+message-passing machine, the role of atomics is not yet clear.
 
 The following parameters control the number of caches and the
 structure of each cache.
@@ -355,6 +363,9 @@ inline uint32_t me();
 
 // Write 32-bit word to instruction memory
 inline void write_instr(uint32_t addr, uint32_t word);
+
+// Cache flush
+inline void flush();
 
 // Get pointer to nth message-aligned slot in mailbox scratchpad
 inline volatile void* mailbox(uint32_t n);

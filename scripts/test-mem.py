@@ -45,6 +45,7 @@ try:
   numAddrs      = int(os.environ.get("NUM_ADDRS", "3"))
   maxDelay      = int(os.environ.get("MAX_DELAY", "8"))
   assoc         = int(os.environ.get("ASSOC", "4"))
+  insertFlushes = int(os.environ.get("FLUSHES", "0"))
   logDir        = os.environ.get("LOG_DIR", "test-mem-log")
 except:
   print "Invalid options"
@@ -91,7 +92,8 @@ def genReqs():
   reqs = ""
   uniqueVal = 1;
   for i in range(0, numOps):
-    op = random.choice(['S']*7 + ['L']*5 + ['D'] + ['B'])
+    flushes = ['F'] if random.randint(1,20) <= insertFlushes else []
+    op = random.choice(['S']*7 + ['L']*5 + ['D'] + ['B'] + flushes)
     thread = random.randint(0, numThreads-1)
     if mode == LineGrain:
       addr = random.choice(addrSet)
@@ -109,6 +111,8 @@ def genReqs():
       reqs = reqs + "S " + str(thread) + " " + str(addr)
       reqs = reqs + " " + str(uniqueVal) + "\n"
       uniqueVal = uniqueVal+1
+    elif op == 'F':
+      reqs = reqs + "F " + str(thread) + "\n"
   reqs = reqs + "E\n"
   return reqs
 
