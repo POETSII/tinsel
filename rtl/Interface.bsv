@@ -217,6 +217,14 @@ module mkNullBOut (BOut#(t));
   method t value = ?;
 endmodule
 
+// Convert BOut interface to Out interface
+module mkBOutToOut#(BOut#(t) a) (Out#(t))
+         provisos (Bits#(t, twidth));
+  method Action tryGet; if (a.valid) a.get; endmethod
+  method Bool valid = a.valid;
+  method t value = a.value;
+endmodule
+
 // =============================================================================
 // Merge unit
 // =============================================================================
@@ -355,12 +363,13 @@ endmodule
 // Similar to above, but takes a vector of buffered output interfaces
 module mkMergeTreeB#(MergeMethod m, module#(SizedQueue#(d, t)) mkQ,
                        Vector#(n, BOut#(t)) vec) (Out#(t))
-         provisos (Bits#(t, twidth), Mul#(_any, 2, n));
+         provisos (Bits#(t, twidth));
 
   // Reduce first level of tree using mkMergeTwoB
   List#(Out#(t)) xs = Nil;
   for (Integer i = 0; i < valueOf(n); i=i+2) begin
-    let x <- mkMergeTwoB(m, vec[i], vec[i+1]);
+    let x <- i+1 == valueOf(n) ? mkBOutToOut(vec[i]) :
+                                 mkMergeTwoB(m, vec[i], vec[i+1]);
     xs = List::cons(x, xs);
   end
 
