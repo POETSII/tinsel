@@ -173,6 +173,7 @@ structure of each cache.
   `DCacheLogBeatsPerLine`  |       0 | Beats per cache line
   `DCacheLogNumWays`       |       2 | Cache lines in each associative set
   `DCacheLogSetsPerThread` |       3 | Associative sets per thread
+  `LogBeatsPerDRAM`        |      25 | Size of DRAM
 
 ## 3. Tinsel Mailbox
 
@@ -326,6 +327,7 @@ A summary of synthesis-time parameters introduced in this section:
   `DCacheLogBeatsPerLine`  |       0 | Beats per cache line
   `DCacheLogNumWays`       |       2 | Cache lines in each associative set
   `DCacheLogSetsPerThread` |       3 | Associative sets per thread
+  `LogBeatsPerDRAM`        |      25 | Size of DRAM
   `LogCoresPerMailbox`     |       2 | Number of cores sharing a mailbox
   `LogWordsPerFlit`        |       2 | Number of 32-bit words in a flit
   `LogMaxFlitsPerMsg`      |       1 | Max number of flits in a message

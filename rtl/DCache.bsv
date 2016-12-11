@@ -102,6 +102,7 @@ import DReg      :: *;
 import Assert    :: *;
 import ConfigReg :: *;
 import Interface :: *;
+import DRAM      :: *;
 
 // ============================================================================
 // Types  
@@ -172,7 +173,7 @@ typedef struct {
 } Tag deriving (Bits);
 
 // A key holds the upper bits of an address
-typedef TSub#(30, TAdd#(`DCacheLogSetsPerThread, `LogWordsPerLine)) KeyNumBits;
+typedef TSub#(`LogLinesPerDRAM, `DCacheLogSetsPerThread) KeyNumBits;
 typedef Bit#(KeyNumBits) Key;
 
 // Meta data per set
@@ -234,13 +235,14 @@ function WordIndex wordIndex(DCacheClientId id, Bit#(32) addr, Way way) =
   {way, id, truncate(addr[31:2])};
 
 // Determine the bits that make up a tag
-function Key getKey(Bit#(32) addr) = truncateLSB(addr);
-
-// Reconstruct a 32-bit address from an aliasing address and a tag
-function Bit#(32) reconstructAddr(Key key, Bit#(32) addr);
-  Bit#(`LogBytesPerLine) low = 0;
-  return {key, truncate(addr[31:`LogBytesPerLine]), low};
+function Key getKey(Bit#(32) addr);
+  Bit#(`LogBytesPerDRAM) byteAddr = truncate(addr);
+  return truncateLSB(byteAddr);
 endfunction
+
+// Reconstruct line address from an aliasing address and a tag
+function Bit#(`LogLinesPerDRAM) reconstructLineAddr(Key key, Bit#(32) addr) =
+  {key, truncate(addr[31:`LogBytesPerLine])};
 
 // ============================================================================
 // Interface
@@ -249,9 +251,8 @@ endfunction
 interface DCache;
   interface In#(DCacheReq)    reqIn;
   interface BOut#(DCacheResp) respOut;
-  interface In#(MemLoadResp)  loadRespIn;
-  interface In#(MemStoreResp) storeRespIn;
-  interface BOut#(MemReq)     reqOut;
+  interface In#(DRAMResp)     respIn;
+  interface BOut#(DRAMReq)    reqOut;
 endinterface
 
 // ============================================================================
@@ -273,9 +274,8 @@ module mkDCache#(DCacheId myId) (DCache);
   BlockRam#(SetIndex, SetMetaData) metaData <- mkBlockRam;
   
   // Request & response ports
-  InPort#(DCacheReq)    reqPort       <- mkInPort;
-  InPort#(MemLoadResp)  loadRespPort  <- mkInPort;
-  InPort#(MemStoreResp) storeRespPort <- mkInPort;
+  InPort#(DCacheReq) reqPort  <- mkInPort;
+  InPort#(DRAMResp)  respPort <- mkInPort;
 
   // The fill queue (16 elements) stores requests that have missed
   // while waiting for external memory to fetch the data.
@@ -472,7 +472,7 @@ module mkDCache#(DCacheId myId) (DCache);
     let fill = fillQueue.dataOut;
     // This rule may write new line data to dataMem
     // If so, here are the parameters for the write
-    lineWriteDataWire <= loadRespPort.value.data;
+    lineWriteDataWire <= respPort.value.data;
     lineWriteIndexWire <= beatIndex(respBeat, fill.req.id,
                             fill.req.addr, fill.way);
     // Ready to consume fill queue?
@@ -495,15 +495,15 @@ module mkDCache#(DCacheId myId) (DCache);
         // We need to wait for a response only on the final line of
         // the flush (this response signifies that all evictions due
         // to the flush have reached DRAM)
-        Bool step = fill.flushDone ? loadRespPort.canGet : True;
+        Bool step = fill.flushDone ? respPort.canGet : True;
         if (step) begin
           // Feed request back to beginning of pipeline
           fillQueue.deq;
           feedbackTrigger <= True;
-          if (fill.flushDone) loadRespPort.get;
+          if (fill.flushDone) respPort.get;
         end
       // Otherwise, is new line data available from external memory?
-      end else if (loadRespPort.canGet) begin
+      end else if (respPort.canGet) begin
         // Remove item from fill queue and feed associated request (which
         // will definitely hit if it starts again from the beginning of
         // the pipeline) back to beginning of the pipeline
@@ -514,7 +514,7 @@ module mkDCache#(DCacheId myId) (DCache);
         // Write new line data to dataMem
         // (The write parameters are set outside condition for better timing)
         lineWriteReqWire <= True;
-        loadRespPort.get;
+        respPort.get;
         respBeat <= respBeat+1;
       end
     end
@@ -526,7 +526,7 @@ module mkDCache#(DCacheId myId) (DCache);
   // ---------
 
   // Memory request queue
-  Queue#(MemReq) memReqQueue <- mkUGShiftQueue(QueueOptFmax);
+  Queue#(DRAMReq) memReqQueue <- mkUGShiftQueue(QueueOptFmax);
 
   // Index of next beat to read
   Reg#(Beat) reqBeat <- mkReg(0);
@@ -542,12 +542,12 @@ module mkDCache#(DCacheId myId) (DCache);
     // Send a load request?
     Bool isLoad = !miss.evictDirty || writebackDone;
     // Determine line address
-    MemLineAddr writeLineAddr =
-      truncateLSB(reconstructAddr(
-        miss.evictTag.key, miss.req.addr));
-    MemLineAddr readLineAddr = truncateLSB(miss.req.addr);
+    Bit#(`LogLinesPerDRAM) writeLineAddr =
+      reconstructLineAddr(miss.evictTag.key, miss.req.addr);
+    Bit#(`LogLinesPerDRAM) readLineAddr = 
+      miss.req.addr[`LogBytesPerDRAM-1:`LogBytesPerLine];
     // Create memory request
-    MemReq memReq;
+    DRAMReq memReq;
     memReq.isStore = !isLoad;
     memReq.id = myId;
     memReq.addr = {isLoad ? readLineAddr : writeLineAddr, reqBeat};
@@ -594,30 +594,18 @@ module mkDCache#(DCacheId myId) (DCache);
     if (sendMemReq) memReqQueue.enq(memReq);
   endrule
 
-  // Discard store responses
-  // -----------------------
-
-  // Until the cache supports explicit flushing,
-  // ignore all store responses from external memory
-  rule discardStoreResps;
-    if (storeRespPort.canGet) begin
-      storeRespPort.get;
-    end
-  endrule
-
   // Interface
   // ---------
 
-  interface In  reqIn       = reqPort.in;
-  interface In  loadRespIn  = loadRespPort.in;
-  interface In  storeRespIn = storeRespPort.in;
+  interface In reqIn  = reqPort.in;
+  interface In respIn = respPort.in;
 
   interface BOut reqOut;
     method Action get;
       memReqQueue.deq;
     endmethod
     method Bool valid = memReqQueue.canDeq;
-    method MemReq value = memReqQueue.dataOut;
+    method DRAMReq value = memReqQueue.dataOut;
   endinterface
 
   interface BOut respOut;
@@ -666,6 +654,27 @@ module connectCoresToDCache#(
 
 endmodule
 
+module connectDCachesToDRAM#(
+         Vector#(`DCachesPerDRAM, DCache) caches, DRAM dram) ();
+
+  // Connect requests
+  function getReqOut(cache) = cache.reqOut;
+  let reqs <- mkMergeTreeB(Fair,
+                mkUGShiftQueue1(QueueOptFmax),
+                map(getReqOut, caches));
+  connectUsing(mkUGQueue, reqs, dram.reqIn);
+
+  // Connect load responses
+  function DCacheId getRespKey(DRAMResp resp) = resp.id;
+  function getRespIn(cache) = cache.respIn;
+  let dramResps <- mkResponseDistributor(
+                    getRespKey,
+                    mkUGShiftQueue1(QueueOptFmax),
+                    map(getRespIn, caches));
+  connectDirect(dram.respOut, dramResps);
+
+endmodule
+
 // ============================================================================
 // Dummy cache
 // ============================================================================
@@ -674,18 +683,16 @@ endmodule
 module mkDummyDCache (DCache);
 
   // Ports
-  BOut#(DCacheResp) respNull      <- mkNullBOut;
-  In#(MemLoadResp)  loadRespNull  <- mkNullIn;
-  In#(MemStoreResp) storeRespNull <- mkNullIn;
-  BOut#(MemReq)     memReqNull    <- mkNullBOut;
+  BOut#(DCacheResp) respOutNull <- mkNullBOut;
+  In#(DRAMResp)     respInNull  <- mkNullIn;
+  BOut#(DRAMReq)    memReqNull  <- mkNullBOut;
 
   interface In reqIn =
     error("Request input to dummy cache must be unconnected");
 
-  interface BOut respOut     = respNull;
-  interface In   loadRespIn  = loadRespNull;
-  interface In   storeRespIn = storeRespNull;
-  interface BOut reqOut      = memReqNull;
+  interface BOut respOut = respOutNull;
+  interface In   respIn  = respInNull;
+  interface BOut reqOut  = memReqNull;
 
 endmodule
 
