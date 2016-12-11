@@ -94,6 +94,7 @@ typedef struct {
   Bool isLoad;           Bool isStore;
   Bool isCSR;            CSR csr;
   Bool isAddOrSub;       Bool isBitwise;
+  Bool isFence;
 } Op deriving (Bits);
 
 // Instruction result
@@ -242,6 +243,8 @@ function Op decodeOp(Bit#(32) instr);
   // Load & store operations
   ret.isLoad = op == 'b00000;
   ret.isStore = op == 'b01000;
+  // Fence operation
+  ret.isFence = op == 'b00011;
   // CSR read/write operation
   ret.isCSR = op == 'b11100;
   Bit#(4) csrIndex = instr[23:20];
@@ -600,11 +603,11 @@ module mkCore#(CoreId myId) (Core);
     // Load or store: send request to data cache or scratchpad
     Bool retry = False;
     Bool suspend = False;
-    if (token.op.isLoad || token.op.isStore) begin
+    if (token.op.isLoad || token.op.isStore || token.op.isFence) begin
       // Determine data to write and assoicated byte-enables
       Bit#(32) writeData = writeAlign(token.accessWidth, token.valB);
       Bit#(4)  byteEn    = genByteEnable(token.accessWidth, token.memAddr[1:0]);
-      if (token.isScratchpadAccess) begin
+      if (token.isScratchpadAccess && !token.op.isFence) begin
         if (mailbox.scratchpadReq.canPut) begin
           // Prepare scratchpad request
           ScratchpadReq req;
@@ -625,8 +628,10 @@ module mkCore#(CoreId myId) (Core);
           req.id = {truncate(myId), token.thread.id};
           req.cmd.isLoad = token.op.isLoad;
           req.cmd.isStore = token.op.isStore;
-          req.addr = token.memAddr;
-          req.data = writeData;
+          req.cmd.isFlush = token.op.isFence;
+          req.cmd.isFlushResp = False;
+          req.addr = token.op.isFence ? 0 : token.memAddr;
+          req.data = token.op.isFence ? 0 : writeData;
           req.byteEn = byteEn;
           // Issue data cache request
           dcacheReq.put(req);
