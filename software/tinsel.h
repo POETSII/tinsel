@@ -32,6 +32,12 @@ inline int get_host_id()
   return threadsPerBoard+1;
 }
 
+// Cache flush
+inline int flush()
+{
+  asm volatile("fence\n");
+}
+
 // Write a word to instruction memory
 inline void write_instr(uint32_t index, uint32_t word)
 {

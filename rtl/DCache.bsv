@@ -29,20 +29,19 @@ package DCache;
 // Pipeline structure
 // ------------------
 //
-//            +-------------+
-// req  ----->| tag lookup  |<---------------------+
-//            +-------------+                      |
-//                 ||                              |
-//                 \/                              |
-//            +-------------+      +------+        |
-//            | data lookup |----->| miss |        |
-//            +-------------+      | unit |        |
-//                 ||              +------+        |
-//                 \/                              |
-//            +----------+         +----------+    |
-// resp <-----| hit unit |-------->| memory   |----+
-//            +----------+  retry  | response |
-//                                 +----------+
+//            +-------------+      +----------------------+
+// req  ----->| tag lookup  |<-----| memory response unit |
+//            +-------------+      +----------------------+
+//                 ||                               
+//                 \/                               
+//            +-------------+      +-----------+    
+//            | data lookup |----->| miss unit |    
+//            +-------------+      +-----------+    
+//                 ||
+//                 \/
+//            +----------+
+// resp <-----| hit unit |
+//            +----------+
 //
 //
 // NOTE: each pipeline stage may be composed of several pipelined
@@ -53,7 +52,7 @@ package DCache;
 // ---------------
 //
 // 1. tag lookup:
-//   a. consume feedback request from the "external request" stage, if present
+//   a. consume request from the "memory response unit", if present
 //   b. otherwise, consume a fresh client request instead
 //   c. send BRAM request for the tag
 //
@@ -61,43 +60,34 @@ package DCache;
 //   a. determine correct way
 //   b. on read hit: send BRAM request for word data
 //   c. on write hit: write word data to BRAM
-//   d. on miss: send request to miss unit, if ready
-//      (if not, mark request to be retried)
+//   d. on miss: send request to miss unit
 // 
 // 3. hit unit:
-//   a. on hit: enqueue response FIFO, if ready
+//   a. on hit: enqueue response FIFO
 //   b. on miss: update tag
 //   c. update meta data
-//   d. if (a) not firing or request marked for retry, then
-//      send retry request to (4)
 //
 // 4. memory response:
-//   a. consume response:
-//        * receive new line data from external memory, if ready
+//   a. if response available:
+//        * receive new line data from external memory
 //        * write new line data to BRAM
-//        * put a fresh request, which will definitely hit if it starts
-//          again from (1), into "hit buffer"
-//   b. receive retry request from (3):
-//        * if "retry buffer" not full and "hit buffer" not empty,
-//          dequeue request from "hit buffer" and send to (1) and
-//          enqueue retry request into "retry buffer"
-//        * otherwise, send retry request to (1)
-//   c. if no retry request from (3) then dequeue request from "hit
-//      buffer" or "retry buffer" (with that priority) and send to (1)
-//
-//   NOTE: a request is only put into the retry buffer when another is
-//   taken from the hit buffer.  This hit request will create a pipeline
-//   bubble that will eventually be filled by dequeueing an element from
-//   the retry buffer.  Thus the retry buffer cannot be full when the
-//   pipeline is full of retries.
+//        * send request to (1), which will definitely hit this time
 //
 // 5. miss unit:
-//    a. if miss unit ready: accept a new miss from the data lookup
-//       stage, if one is available, and move to busy state
-//    b. if miss unit busy:
-//         * if old line is dirty: write each beat to memory
-//         * request new line data from memory
-//         * move to ready state
+//   a. if old line is dirty: write each beat to memory
+//   b. request new line data from memory
+//
+// Note the feedback loop in the pipeline due to the link from the
+// memory response stage to the tag lookup stage.  On a miss, after the
+// new line data has been fetched, the original request is fed back to
+// the first pipeline stage, and is now guaranteed to hit.
+//
+// We support a per-thread cache flush mechanism that exploits the
+// feedback loop.  A flush request loops round the pipeline,
+// invalidating evicting a line on each iteration.  After the final
+// line is evicted, we issue a dummy load request, the response of
+// which is used to guarantee that all writes have reached DRAM.
+// Finally, a flush response is issued to the client.
 
 // ============================================================================
 // Imports
@@ -112,6 +102,7 @@ import DReg      :: *;
 import Assert    :: *;
 import ConfigReg :: *;
 import Interface :: *;
+import DRAM      :: *;
 
 // ============================================================================
 // Types  
@@ -129,8 +120,10 @@ typedef Bit#(`DCacheLogNumWays) Way;
 
 // Client request command (one hot encoding)
 typedef struct {
-  Bool isLoad;
-  Bool isStore;
+  Bool isLoad;      // Load
+  Bool isStore;     // Store
+  Bool isFlush;     // Perform cache flush
+  Bool isFlushResp; // Send cache flush response
 } DCacheReqCmd deriving (Bits);
 
 // Client request structure
@@ -142,6 +135,11 @@ typedef struct {
   Bit#(4) byteEn;
 } DCacheReq deriving (Bits);
 
+// Details of flush request:
+//   * 'addr' field contains the set index to evict
+//   * 'data' field contains the way to evict
+//   * client should ensure that these are both 0 initially
+
 // Client response structure
 typedef struct {
   DCacheClientId id;
@@ -150,8 +148,9 @@ typedef struct {
 
 // Fill request
 typedef struct {
-  DCacheReq req; // The request leading to the fill
-  Way way;       // The way to fill
+  DCacheReq req;  // The request leading to the fill
+  Way way;        // The way to fill
+  Bool flushDone; // Goes high when the final line is being flushed
 } Fill deriving (Bits);
 
 // Index for a set in the tag array and the meta-data array
@@ -174,7 +173,7 @@ typedef struct {
 } Tag deriving (Bits);
 
 // A key holds the upper bits of an address
-typedef TSub#(30, TAdd#(`DCacheLogSetsPerThread, `LogWordsPerLine)) KeyNumBits;
+typedef TSub#(`LogLinesPerDRAM, `DCacheLogSetsPerThread) KeyNumBits;
 typedef Bit#(KeyNumBits) Key;
 
 // Meta data per set
@@ -191,23 +190,32 @@ typedef struct {
   Way evictWay;
   Tag evictTag;
   Bool evictDirty;
-  Bool retry;
   SetMetaData metaData;
 } DCacheToken deriving (Bits);
 
-// State of the miss unit
-typedef enum {
-  MissUnitReady, MissUnitBusy
-} MissUnitState deriving (Bits, Eq);
+// Miss request (input to miss unit)
+typedef struct {
+  DCacheReq req;
+  Way evictWay;
+  Tag evictTag;
+  Bool evictDirty;
+  Bool flushDone;
+} MissReq deriving (Bits);
 
 // Beat
 typedef Bit#(`LogBeatsPerLine) Beat;
 
-// Memory request from miss unit
-typedef struct {
-  Bool isStore;
-  MemLineAddr addr;
-} MissMemReq deriving (Bits);
+// Max number of in-flight cache requests
+`define DCacheLogMaxInflight 5
+
+// For flushing
+typedef Bit#(`DCacheLogSetsPerThread) SetNum;
+function SetNum addrToSetNum(Bit#(32) addr) =
+  truncate(addr[31:`LogBytesPerLine]);
+function Bit#(32) setNumToAddr(SetNum set);
+  Bit#(`LogBytesPerLine) bottom = 0;
+  return {0, set, bottom};
+endfunction
 
 // ============================================================================
 // Functions
@@ -227,13 +235,14 @@ function WordIndex wordIndex(DCacheClientId id, Bit#(32) addr, Way way) =
   {way, id, truncate(addr[31:2])};
 
 // Determine the bits that make up a tag
-function Key getKey(Bit#(32) addr) = truncateLSB(addr);
-
-// Reconstruct a 32-bit address from an aliasing address and a tag
-function Bit#(32) reconstructAddr(Key key, Bit#(32) addr);
-  Bit#(`LogBytesPerLine) low = 0;
-  return {key, truncate(addr[31:`LogBytesPerLine]), low};
+function Key getKey(Bit#(32) addr);
+  Bit#(`LogBytesPerDRAM) byteAddr = truncate(addr);
+  return truncateLSB(byteAddr);
 endfunction
+
+// Reconstruct line address from an aliasing address and a tag
+function Bit#(`LogLinesPerDRAM) reconstructLineAddr(Key key, Bit#(32) addr) =
+  {key, truncate(addr[31:`LogBytesPerLine])};
 
 // ============================================================================
 // Interface
@@ -241,10 +250,9 @@ endfunction
 
 interface DCache;
   interface In#(DCacheReq)    reqIn;
-  interface Out#(DCacheResp)  respOut;
-  interface In#(MemLoadResp)  loadRespIn;
-  interface In#(MemStoreResp) storeRespIn;
-  interface Out#(MemReq)      reqOut;
+  interface BOut#(DCacheResp) respOut;
+  interface In#(DRAMResp)     respIn;
+  interface BOut#(DRAMReq)    reqOut;
 endinterface
 
 // ============================================================================
@@ -266,18 +274,23 @@ module mkDCache#(DCacheId myId) (DCache);
   BlockRam#(SetIndex, SetMetaData) metaData <- mkBlockRam;
   
   // Request & response ports
-  InPort#(DCacheReq)    reqPort       <- mkInPort;
-  OutPort#(DCacheResp)  respPort      <- mkOutPort;
-  InPort#(MemLoadResp)  loadRespPort  <- mkInPort;
-  InPort#(MemStoreResp) storeRespPort <- mkInPort;
-  OutPort#(MemReq)      memReqPort    <- mkOutPort;
+  InPort#(DCacheReq) reqPort  <- mkInPort;
+  InPort#(DRAMResp)  respPort <- mkInPort;
 
   // The fill queue (16 elements) stores requests that have missed
   // while waiting for external memory to fetch the data.
   SizedQueue#(4, Fill) fillQueue <- mkUGSizedQueue;
 
-  // State of the miss unit
-  Reg#(MissUnitState) missUnitState <- mkConfigReg(MissUnitReady);
+  // The response queue buffers responses to the client
+  SizedQueue#(`DCacheLogMaxInflight, DCacheResp) respQueue <-
+    mkUGSizedQueuePrefetch;
+
+  // The miss queue buffers requests to the miss unit
+  SizedQueue#(`DCacheLogMaxInflight, MissReq) missQueue <- mkUGSizedQueue;
+
+  // Track the number of in-flight requests
+  Count#(TAdd#(`DCacheLogMaxInflight, 1)) inflightCount <-
+    mkCount(2 ** `DCacheLogMaxInflight);
 
   // Pipeline state and control
   Reg#(DCacheToken) tagLookup2Input    <- mkVReg;
@@ -286,8 +299,6 @@ module mkDCache#(DCacheId myId) (DCache);
   Reg#(Bool)        dataLookup2Trigger <- mkDReg(False);
   Reg#(DCacheToken) dataLookup3Input   <- mkVReg;
   Reg#(DCacheToken) hitUnitInput       <- mkVReg;
-  Reg#(DCacheReq)   memResponseInput   <- mkConfigRegU;
-  Reg#(Bool)        memResponseTrigger <- mkDReg(False);
   Reg#(DCacheReq)   feedbackReq        <- mkConfigRegU;
   Reg#(Bool)        feedbackTrigger    <- mkDReg(False);
 
@@ -302,35 +313,30 @@ module mkDCache#(DCacheId myId) (DCache);
   // asserted when the write wire is low.
 
   // Control wires for modifying lines in dataMem
-  Wire#(Bool) lineReadReqWire <- mkDWire(False);
-  Wire#(BeatIndex) lineReadIndexWire <- mkDWire(0);
+  Wire#(BeatIndex) lineReadIndexWire <- mkBypassWire;
   Wire#(Bool) lineWriteReqWire <- mkDWire(False);
-  Reg#(Bool) lineWriteReqReg <- mkReg(False);
-  Wire#(BeatIndex) lineWriteIndexWire <- mkDWire(0);
-  Reg#(Bit#(`BeatWidth)) lineWriteDataReg <- mkConfigRegU;
-  Reg#(BeatIndex) lineIndexReg <- mkRegU;
+  Wire#(BeatIndex) lineWriteIndexWire <- mkBypassWire;
+  Wire#(Bit#(`BeatWidth)) lineWriteDataWire <- mkBypassWire;
 
   // Use wires to issue line access in dataMem
-  // (This is a potential timing bottleneck for large beat widths:
-  // the wider the beat, the more block RAMs needed to implement data
-  // memory and the higher the fan-out of the address/write-enable lines.)
   rule lineAccessUnit;
-    lineWriteReqReg <= lineWriteReqWire;
-    lineIndexReg <= lineReadIndexWire | lineWriteIndexWire;
     dataMem.putA(
-      lineWriteReqReg,
-      lineIndexReg,
-      lineWriteDataReg);
+      lineWriteReqWire,
+      lineWriteReqWire ? lineWriteIndexWire : lineReadIndexWire,
+      lineWriteDataWire);
   endrule
 
   // Tag lookup stage
   // ----------------
 
-  rule tagLookup1 (feedbackTrigger || reqPort.canGet);
+  rule tagLookup1 (feedbackTrigger || reqPort.canGet && inflightCount.notFull);
     // Select fresh client request or feedback request
     DCacheReq req = feedbackTrigger ? feedbackReq : reqPort.value;
     // Dequeue request
-    if (! feedbackTrigger) reqPort.get;
+    if (! feedbackTrigger) begin
+      inflightCount.inc;
+      reqPort.get;
+    end
     // Send read request for tags
     for (Integer i = 0; i < valueOf(DCacheNumWays); i=i+1)
       tagMem[i].read(setIndex(req.id, req.addr));
@@ -361,9 +367,14 @@ module mkDCache#(DCacheId myId) (DCache);
       matching[i] = tags[i].valid && tags[i].key == getKey(token.req.addr);
     end
     token.matching = matching;
-    token.isHit = any(id, matching);
+    // Force a miss in the case of flush request
+    // Force a hit if were sending a flush response
+    token.isHit = any(id, matching) && !token.req.cmd.isFlush ||
+                    token.req.cmd.isFlushResp;
     // In case of a miss, choose a way to evict and remember the old tag
-    token.evictWay   = metaData.dataOut.oldestWay;
+    // On a flush, the way is specified in the data field of the request
+    token.evictWay   = token.req.cmd.isFlush ?
+                         truncate(token.req.data) : metaData.dataOut.oldestWay;
     token.evictTag   = tags[token.evictWay];
     token.evictDirty = metaData.dataOut.dirty[token.evictWay];
     // Remember meta data for later stages
@@ -375,8 +386,6 @@ module mkDCache#(DCacheId myId) (DCache);
 
   rule dataLookup2 (dataLookup2Trigger);
     DCacheToken token = dataLookup2Input;
-    // At the moment, request does not need to be retried
-    token.retry = False;
     // Convert index of match from one-hot to binary
     Way matchingWay = encode(token.matching);
     // Handle hit or miss
@@ -387,9 +396,19 @@ module mkDCache#(DCacheId myId) (DCache);
                    wordIndex(token.req.id, token.req.addr, matchingWay),
                    token.req.data, token.req.byteEn);
     end else begin
-      if (missUnitState != MissUnitReady)
-        // Need to retry this request as miss unit is busy
-        token.retry = True;
+      // Put miss requests into miss queue
+      myAssert(missQueue.notFull, "DCache: miss queue full");
+      MissReq miss;
+      miss.req = token.req;
+      miss.evictWay = token.evictWay;
+      miss.evictTag = token.evictTag;
+      miss.evictDirty = token.evictDirty;
+      // Extract current set index and way of flush
+      SetNum set = addrToSetNum(token.req.addr);
+      Way way = truncate(token.req.data);
+      // Determine if we're flushing the final line
+      miss.flushDone = allHigh(set) && allHigh(way);
+      missQueue.enq(miss);
     end
     // Trigger next stage
     dataLookup3Input <= token;
@@ -411,25 +430,21 @@ module mkDCache#(DCacheId myId) (DCache);
     Vector#(DCacheNumWays, Bool) newDirtyBits = token.metaData.dirty;
     // Will a line been evicted?
     Bool willEvict = False;
-    // Does current request need to be retried?
-    Bool retry = True;
     if (token.isHit) begin
-      // On hit: enqueue response queue, if ready
+      // On hit: enqueue response queue
+      myAssert(respQueue.notFull, "DCache: response queue full");
       DCacheResp resp;
       resp.id = token.req.id;
       resp.data = dataMem.dataOutB;
-      if (respPort.canPut) begin
-        setDirtyBit = token.req.cmd.isStore;
-        for (Integer i = 0; i < valueOf(DCacheNumWays); i=i+1)
-          if (token.matching[i]) newDirtyBits[i] = True;
-        retry = False;
-        respPort.put(resp);
-      end
-    end else if (!token.retry) begin
-      retry = False;
+      setDirtyBit = token.req.cmd.isStore;
+      for (Integer i = 0; i < valueOf(DCacheNumWays); i=i+1)
+        if (token.matching[i]) newDirtyBits[i] = True;
+      respQueue.enq(resp);
+    end else begin
       // On miss: update tag
       Tag newTag;
-      newTag.valid = True;
+      // On a flush: invalidate the line
+      newTag.valid = !token.req.cmd.isFlush;
       newTag.key = getKey(token.req.addr);
       for (Integer i = 0; i < valueOf(DCacheNumWays); i=i+1)
         if (token.evictWay == fromInteger(i)) begin
@@ -445,211 +460,162 @@ module mkDCache#(DCacheId myId) (DCache);
     newMetaData.dirty = newDirtyBits;
     if (setDirtyBit || willEvict)
       metaData.write(setIndex(token.req.id, token.req.addr), newMetaData);
-    // Retry request, if necessary
-    memResponseInput <= token.req;
-    if (retry) memResponseTrigger <= True;
   endrule
 
   // Memory response stage
   // ---------------------
 
-  // 1-element buffer for requests that will hit
-  Queue1#(DCacheReq) hitBuffer <- mkUGShiftQueue(QueueOptFmax);
-
-  // 1-element buffer for requests to be retried
-  Queue1#(DCacheReq) retryBuffer <- mkUGShiftQueue(QueueOptFmax);
-
   // Beat counter for responses
   Reg#(Beat) respBeat <- mkReg(0);
 
   rule memResponse;
-    // If new line data available from external memory, then:
-    if (loadRespPort.canGet && fillQueue.canDeq
-          && fillQueue.canPeek && hitBuffer.notFull) begin
-      // Remove item from fill queue and put associated request (which
-      // will definitely hit if it starts again from the beginning of
-      // the pipeline) into the hit buffer
-      let fill = fillQueue.dataOut;
-      if (allHigh(respBeat)) begin
-        fillQueue.deq;
-        hitBuffer.enq(fill.req);
+    let fill = fillQueue.dataOut;
+    // This rule may write new line data to dataMem
+    // If so, here are the parameters for the write
+    lineWriteDataWire <= respPort.value.data;
+    lineWriteIndexWire <= beatIndex(respBeat, fill.req.id,
+                            fill.req.addr, fill.way);
+    // Ready to consume fill queue?
+    if (fillQueue.canDeq && fillQueue.canPeek) begin
+      // Is it a flush request?
+      if (fill.req.cmd.isFlush) begin
+        // Extract current set index and way of flush
+        SetNum set = addrToSetNum(fill.req.addr);
+        Way way = truncate(fill.req.data);
+        // Increment set index
+        if (allHigh(way)) fill.req.addr = setNumToAddr(set+1);
+        // Increment way
+        fill.req.data = {?, way+1};
+        // Is flush complete?
+        if (fill.flushDone) begin
+          // Flush command morphs into flush-response command
+          fill.req.cmd.isFlush = False;
+          fill.req.cmd.isFlushResp = True;
+        end
+        // We need to wait for a response only on the final line of
+        // the flush (this response signifies that all evictions due
+        // to the flush have reached DRAM)
+        Bool step = fill.flushDone ? respPort.canGet : True;
+        if (step) begin
+          // Feed request back to beginning of pipeline
+          fillQueue.deq;
+          feedbackTrigger <= True;
+          if (fill.flushDone) respPort.get;
+        end
+      // Otherwise, is new line data available from external memory?
+      end else if (respPort.canGet) begin
+        // Remove item from fill queue and feed associated request (which
+        // will definitely hit if it starts again from the beginning of
+        // the pipeline) back to beginning of the pipeline
+        if (allHigh(respBeat)) begin
+          fillQueue.deq;
+          feedbackTrigger <= True;
+        end
+        // Write new line data to dataMem
+        // (The write parameters are set outside condition for better timing)
+        lineWriteReqWire <= True;
+        respPort.get;
+        respBeat <= respBeat+1;
       end
-      // Write new line data to dataMem
-      MemLoadResp resp = loadRespPort.value;
-      loadRespPort.get;
-      lineWriteReqWire   <= True;
-      lineWriteIndexWire <= beatIndex(respBeat, fill.req.id,
-                              fill.req.addr, fill.way);
-      lineWriteDataReg <= resp.data;
-      respBeat <= respBeat+1;
     end
-    // Receive retry request from external request stage
-    if (memResponseTrigger) begin
-      // If retry buffer not full and hit buffer can be dequeued
-      if (retryBuffer.notFull && hitBuffer.canDeq) begin
-        // Dequeue request from hit buffer and feedback to tag lookup stage
-        hitBuffer.deq;
-        feedbackTrigger <= True;
-        feedbackReq <= hitBuffer.dataOut;
-        // Put retry request into buffer
-        retryBuffer.enq(memResponseInput);
-      end else begin
-        // Otherwise, feedback retry request to tag lookup stage
-        feedbackTrigger <= True;
-        feedbackReq <= memResponseInput;
-      end
-    end else begin
-      // If there's no retry from the external request stage then
-      // dequeue a request from hit buffer or retry buffer
-      // (with that priority) and feedback to tag lookup stage
-      if (hitBuffer.canDeq) begin
-        hitBuffer.deq;
-        feedbackTrigger <= True;
-        feedbackReq <= hitBuffer.dataOut;
-      end else if (retryBuffer.canDeq) begin
-        retryBuffer.deq;
-        feedbackTrigger <= True;
-        feedbackReq <= retryBuffer.dataOut;
-      end
-    end
+    // Set feedback request
+    feedbackReq <= fill.req;
   endrule
 
   // Miss unit
   // ---------
 
-  // Token currently being processed by miss unit
-  Reg#(DCacheToken) missUnitToken <- mkConfigRegU;
+  // Memory request queue
+  Queue#(DRAMReq) memReqQueue <- mkUGShiftQueue(QueueOptFmax);
 
-  // Request beat delayed by one, two, and three cycles
+  // Index of next beat to read
   Reg#(Beat) reqBeat <- mkReg(0);
-  Reg#(Bool) reqBeat1 <- mkDReg(False);
-  Reg#(Bool) reqBeat2 <- mkDReg(False);
-  Reg#(Bool) reqBeat3 <- mkDReg(False);
 
-  // Control signals for miss unit
-  Reg#(Bool) requestedAllBeats <- mkReg(False);
-  Reg#(Bool) storeReqEnqueued <- mkReg(False);
-  Reg#(Bool) loadReqEnqueued <- mkReg(False);
+  // Has the writeback been completed?
+  Reg#(Bool) writebackDone <- mkReg(False);
 
-  // Address buffer (addresses for lines being written out or read in)
-  Queue#(MissMemReq) missMemReqs <- mkUGShiftQueue(QueueOptFmax);
+  // Is a beat ready on the output of dataMem?
+  Reg#(Bit#(2)) missUnitState <- mkReg(0);
 
-  // Data buffer (data values for beats being written out)
-  SizedQueue#(`LogDCacheWriteBufferSize, Bit#(`BeatWidth)) beatBuffer <-
-    mkUGShiftQueue(QueueOptFmax);
-
-  // Used to allocate space in the beat buffer
-  Count#(TAdd#(`LogDCacheWriteBufferSize, 1)) beatBufferCount <-
-    mkCount(2 ** `LogDCacheWriteBufferSize);
-
-  // Next beat to write to memory
-  Reg#(Beat) writebackBeat <- mkReg(0);
-
-  rule missUnit1;
-    DCacheToken token = missUnitToken;
-    case (missUnitState)
-      MissUnitReady: begin
-        if (dataLookup2Trigger && !dataLookup2Input.isHit) begin
-          // A new miss to handle
-          missUnitState <= MissUnitBusy;
-          missUnitToken <= dataLookup2Input;
-          requestedAllBeats <= !dataLookup2Input.evictDirty;
-          storeReqEnqueued <= !dataLookup2Input.evictDirty;
-          loadReqEnqueued <= False;
-        end
-      end
-      MissUnitBusy: begin
-        // If the memResponse stage is not writing line data, then:
-        if (!lineWriteReqWire && !requestedAllBeats &&
-               beatBufferCount.notFull) begin
-          // Read old line data from dataMem
-          lineReadReqWire <= True;
-          lineReadIndexWire <= beatIndex(reqBeat, token.req.id,
-                                 token.req.addr, token.evictWay);
-          reqBeat <= reqBeat+1;
-          reqBeat1 <= True;
-          beatBufferCount.inc;
-          if (allHigh(reqBeat)) requestedAllBeats <= True;
-        end
-        // Put read or write request into address buffer
-        Bool loadReqEnqueuedWire = False;
-        if (missMemReqs.notFull) begin
-          if (!storeReqEnqueued) begin
-            // Enqueue store request (for old line data)
-            MissMemReq req;
-            req.isStore = True;
-            req.addr = truncateLSB(reconstructAddr(
-                             token.evictTag.key, token.req.addr));
-            missMemReqs.enq(req);
-            storeReqEnqueued <= True;
-          end else if (fillQueue.notFull && !loadReqEnqueued) begin
-            // Enqueue load request (for new line data)
-            MissMemReq req;
-            req.isStore = False;
-            req.addr = truncateLSB(token.req.addr);
-            missMemReqs.enq(req);
+  rule missUnit;
+    MissReq miss = missQueue.dataOut;
+    // Send a load request?
+    Bool isLoad = !miss.evictDirty || writebackDone;
+    // Determine line address
+    Bit#(`LogLinesPerDRAM) writeLineAddr =
+      reconstructLineAddr(miss.evictTag.key, miss.req.addr);
+    Bit#(`LogLinesPerDRAM) readLineAddr = 
+      miss.req.addr[`LogBytesPerDRAM-1:`LogBytesPerLine];
+    // Create memory request
+    DRAMReq memReq;
+    memReq.isStore = !isLoad;
+    memReq.id = myId;
+    memReq.addr = {isLoad ? readLineAddr : writeLineAddr, reqBeat};
+    memReq.data = dataMem.dataOutA;
+    memReq.burst = isLoad ? (miss.req.cmd.isFlush ? 1 : `BeatsPerLine) : 1;
+    // Are we going to send a memory request to the next stage?
+    Bool sendMemReq = False;
+    if (missQueue.canPeek && missQueue.canDeq && memReqQueue.notFull) begin
+      if (missUnitState == 0) begin
+        // Are we ready to request the new line?
+        if (isLoad) begin
+          if (fillQueue.notFull) begin
+            missQueue.deq;
+            writebackDone <= False;
+            // When flushing, only send a mem request after eviction of
+            // final line, the response of which will indicate that
+            // all evictions due to the flush have reached DRAM
+            sendMemReq = miss.req.cmd.isFlush ? miss.flushDone : True;
             // Put request in fill queue
             Fill fill;
-            fill.req = token.req;
-            fill.way = token.evictWay;
+            fill.req = miss.req;
+            fill.way = miss.evictWay;
+            fill.flushDone = miss.flushDone;
             fillQueue.enq(fill);
-            loadReqEnqueued <= True;
-            loadReqEnqueuedWire = True;
           end
+        // Or are we still writing back old data?
+        end else if (!lineWriteReqWire) begin
+          // Assignment to lineReadIndexWire is performed below
+          // (outside complex condition) to improve timing
+          missUnitState <= 1;
         end
-        if (requestedAllBeats && (loadReqEnqueued || loadReqEnqueuedWire))
-          missUnitState <= MissUnitReady;
-      end
-    endcase
-    reqBeat2 <= reqBeat1;
-    reqBeat3 <= reqBeat2;
-    if (reqBeat3) beatBuffer.enq(dataMem.dataOutA);
-  endrule
-
-  rule missUnit2;
-    if (missMemReqs.canDeq && memReqPort.canPut) begin
-      MissMemReq miss = missMemReqs.dataOut;
-      MemReq memReq;
-      memReq.isStore = miss.isStore;
-      memReq.id = myId;
-      memReq.addr = {miss.addr, writebackBeat};
-      memReq.data = beatBuffer.dataOut;
-      memReq.burst = miss.isStore ? 1 : `BeatsPerLine;
-      // If a store, dequeue the beat buffer 
-      if (miss.isStore && beatBuffer.canDeq) begin
-        beatBuffer.deq;
-        beatBufferCount.dec;
-        writebackBeat <= writebackBeat+1;
-      end
-      // Send request to memory
-      if (!miss.isStore || beatBuffer.canDeq)
-        memReqPort.put(memReq);
-      // Deqeue the request buffer
-      if (!miss.isStore || (beatBuffer.canDeq && allHigh(writebackBeat))) begin
-        missMemReqs.deq;
-      end
+      end else if (missUnitState == 2) begin
+        sendMemReq = True;
+        reqBeat <= reqBeat+1;
+        if (allHigh(reqBeat)) writebackDone <= True;
+        missUnitState <= 0;
+      end else
+        missUnitState <= missUnitState+1;
     end
-  endrule
-
-  // Discard store responses
-  // -----------------------
-
-  // Until the cache supports explicit flushing,
-  // ignore all store responses from external memory
-  rule discardStoreResps;
-    if (storeRespPort.canGet) begin
-      storeRespPort.get;
-    end
+    // If reading old line data then where from?
+    lineReadIndexWire <= beatIndex(reqBeat, miss.req.id,
+                           miss.req.addr, miss.evictWay);
+    // Send memory request to next stage
+    if (sendMemReq) memReqQueue.enq(memReq);
   endrule
 
   // Interface
   // ---------
 
-  interface In  reqIn       = reqPort.in;
-  interface Out respOut     = respPort.out;
-  interface In  loadRespIn  = loadRespPort.in;
-  interface In  storeRespIn = storeRespPort.in;
-  interface Out reqOut      = memReqPort.out;
+  interface In reqIn  = reqPort.in;
+  interface In respIn = respPort.in;
+
+  interface BOut reqOut;
+    method Action get;
+      memReqQueue.deq;
+    endmethod
+    method Bool valid = memReqQueue.canDeq;
+    method DRAMReq value = memReqQueue.dataOut;
+  endinterface
+
+  interface BOut respOut;
+    method Action get;
+      respQueue.deq;
+      inflightCount.dec;
+    endmethod
+    method Bool valid = respQueue.canDeq;
+    method DCacheResp value = respQueue.dataOut;
+  endinterface
 endmodule
 
 // ============================================================================
@@ -684,7 +650,28 @@ module connectCoresToDCache#(
                       getDCacheRespKey,
                       mkUGShiftQueue1(QueueOptFmax),
                       map(getDCacheRespIn, clients));
-  connectUsing(mkUGQueue, dcache.respOut, dcacheResps);
+  connectDirect(dcache.respOut, dcacheResps);
+
+endmodule
+
+module connectDCachesToDRAM#(
+         Vector#(`DCachesPerDRAM, DCache) caches, DRAM dram) ();
+
+  // Connect requests
+  function getReqOut(cache) = cache.reqOut;
+  let reqs <- mkMergeTreeB(Fair,
+                mkUGShiftQueue1(QueueOptFmax),
+                map(getReqOut, caches));
+  connectUsing(mkUGQueue, reqs, dram.reqIn);
+
+  // Connect load responses
+  function DCacheId getRespKey(DRAMResp resp) = resp.id;
+  function getRespIn(cache) = cache.respIn;
+  let dramResps <- mkResponseDistributor(
+                    getRespKey,
+                    mkUGShiftQueue1(QueueOptFmax),
+                    map(getRespIn, caches));
+  connectDirect(dram.respOut, dramResps);
 
 endmodule
 
@@ -696,18 +683,16 @@ endmodule
 module mkDummyDCache (DCache);
 
   // Ports
-  Out#(DCacheResp)  respNull      <- mkNullOut;
-  In#(MemLoadResp)  loadRespNull  <- mkNullIn;
-  In#(MemStoreResp) storeRespNull <- mkNullIn;
-  Out#(MemReq)      memReqNull    <- mkNullOut;
+  BOut#(DCacheResp) respOutNull <- mkNullBOut;
+  In#(DRAMResp)     respInNull  <- mkNullIn;
+  BOut#(DRAMReq)    memReqNull  <- mkNullBOut;
 
   interface In reqIn =
     error("Request input to dummy cache must be unconnected");
 
-  interface Out respOut     = respNull;
-  interface In  loadRespIn  = loadRespNull;
-  interface In  storeRespIn = storeRespNull;
-  interface Out reqOut      = memReqNull;
+  interface BOut respOut = respOutNull;
+  interface In   respIn  = respInNull;
+  interface BOut reqOut  = memReqNull;
 
 endmodule
 

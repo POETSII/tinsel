@@ -9,6 +9,9 @@ int main()
 
   int host = get_host_id();
 
+  int nums[16];
+  for (int i = 0; i < 16; i++) nums[i] = i+100;
+
   // Pointers into scratchpad for incoming and outgoing msgs
   volatile uint8_t* out = mailbox(0);
   volatile uint8_t* in  = mailbox(1);
@@ -25,7 +28,8 @@ int main()
     // Send message
     //while (! mb_can_send());
     mb_wait_until(CAN_SEND);
-    out[0] = msg[0]+1;
+    //out[0] = msg[0]+1;
+    out[0] = nums[msg[0]];
     mb_send(host, out);
 
     // Reallocate space for incoming message
