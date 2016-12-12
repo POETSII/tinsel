@@ -12,8 +12,8 @@ int main()
   // Create flit
   uint8_t out[21];
   for (int i = 0; i < sizeof(out); i++) out[i] = 0;
-  out[0] = 0;  // Length of flit minus 1
-  out[4] = 0;  // Destination
+  out[0] = 0; // Num flits minus 1
+  out[1] = 0; // Destination
 
   for (int i = 0; i < N; i++) {
     // Send flit

@@ -473,7 +473,7 @@ module mkCore#(CoreId myId) (Core);
 
   rule schedule1 (runQueue.canDeq || resumeQueue.canDeq);
     // Take next thread from runQueue or resumeQueue using fair merge
-    if (prevFromRunQueue && resumeQueue.canDeq) begin
+    if (resumeQueue.canDeq && (prevFromRunQueue || !runQueue.canDeq)) begin
       resumeQueue.deq;
       prevFromRunQueue <= False;
       fetch1Fire <= True;

@@ -4,9 +4,6 @@
 // Main
 int main()
 {
-  int id = me();
-  while (id != 0);
-
   int host = get_host_id();
 
   int nums[16];

@@ -29,7 +29,7 @@ inline int me()
 inline int get_host_id()
 {
   int threadsPerBoard = 1 << (LogThreadsPerMailbox + LogMailboxesPerBoard);
-  return threadsPerBoard+1;
+  return threadsPerBoard;
 }
 
 // Cache flush
