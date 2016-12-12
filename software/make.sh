@@ -1,25 +1,14 @@
 #!/bin/bash
 
 # Dertmine files to compile based on make target
-case "$1" in
-  tri)
-    CFILES="tri"
-  ;;
-  ping)
-    CFILES="ping"
-  ;;
-  echo)
-    CFILES="echo"
-  ;;
+CFILES="echo"
 
-  *)
-    echo 'Build targets: '
-    echo '  tri'
-    echo '  ping'
-    echo '  echo'
-    exit 0
-  ;;
-esac
+# Include dir
+INC=../include
+pushd . > /dev/null
+cd $INC
+./make.sh
+popd > /dev/null
 
 # Parameters
 ARCH="RV32I"
@@ -27,15 +16,12 @@ CC="riscv64-unknown-elf-gcc"
 AS="riscv64-unknown-elf-as"
 LD="riscv64-unknown-elf-ld"
 OBJCOPY="riscv64-unknown-elf-objcopy"
-CFLAGS="-march=$ARCH -msoft-float -O2"
+CFLAGS="-march=$ARCH -msoft-float -O2 -I $INC"
 
 # Load config parameters
 while read -r EXPORT; do
   eval $EXPORT
 done <<< `python ../config.py envs`
-
-# Generate config.h
-python ../config.py cpp > config.h
 
 # Determine location of quartus project
 QPDIR=../de5
@@ -60,7 +46,7 @@ $OBJCOPY --only-section=.text -O ihex out.elf InstrMem.ihex
 #         ihex out.elf DataMem.ihex
 
 # Put scripts into path
-export PATH=../scripts:$PATH
+export PATH=../bin:$PATH
 
 # Convert Intel Hex files to Altera mif files
 # (used to initialise BRAM contents in Quartus)
