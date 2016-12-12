@@ -1,5 +1,5 @@
 #include <stdint.h>
-#include "tinsel.h"
+#include <tinsel.h>
 
 // Main
 int main()
