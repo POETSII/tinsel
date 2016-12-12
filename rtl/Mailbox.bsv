@@ -671,7 +671,7 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
   // Track whether each thread can send a new message
   // (We allow each thread to have at most one in-flight send
   // at a time, to implement the can-send instruction)
-  Vector#(`LogThreadsPerCore, SetReset) canThreadSend <-
+  Vector#(TExp#(`LogThreadsPerCore), SetReset) canThreadSend <-
     replicateM(mkSetReset(True));
 
   rule transmit;
