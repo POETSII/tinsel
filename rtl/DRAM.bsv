@@ -180,6 +180,7 @@ import Globals   :: *;
 import Vector    :: *;
 import Queue     :: *;
 import Interface :: *;
+import Assert    :: *;
 
 // Types
 // -----
@@ -246,8 +247,11 @@ module mkDRAM#(t id) (DRAM);
     end
   endrule
 
+  // TODO: inFlight.notFull is insufficient condition for burst loads
+  // in the consumeRequest rule
+  staticAssert(`BeatBurstWidth == 1, "Bursts on FPGA not yet supported");
+
   rule consumeRequest;
-    // TODO: inFlight.notFull insufficient for burst reads
     if (reqPort.canGet && !waitRequest && inFlight.notFull) begin
       DRAMReq req = reqPort.value;
       reqPort.get;
