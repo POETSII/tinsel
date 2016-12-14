@@ -623,6 +623,14 @@ assign LED[3:0] = 12;
 wire reset_n;
 assign reset_n = 1;
 
+wire ddr3_local_init_done;
+wire ddr3_local_cal_success;
+wire ddr3_2_local_init_done;
+wire ddr3_2_local_cal_success;
+
+assign LED[3:0] = {ddr3_local_init_done, ddr3_local_cal_success,
+                   ddr3_2_local_init_done, ddr3_2_local_cal_success};
+
 S5_DDR3_QSYS u0 (
         .clk_clk                                   (OSC_50_B7A),          
         .reset_reset_n                             (reset_n),                            

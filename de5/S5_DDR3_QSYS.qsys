@@ -873,11 +873,6 @@
  <connection
    kind="reset"
    version="16.0"
-   start="mem_if_ddr3_emif.afi_reset"
-   end="DE5Top_0.reset_sink" />
- <connection
-   kind="reset"
-   version="16.0"
    start="clk_50.clk_reset"
    end="mem_if_ddr3_emif.global_reset" />
  <connection
@@ -890,6 +885,11 @@
    version="16.0"
    start="clk_50.clk_reset"
    end="jtag_uart_0.reset" />
+ <connection
+   kind="reset"
+   version="16.0"
+   start="clk_50.clk_reset"
+   end="DE5Top_0.reset_sink" />
  <connection
    kind="reset"
    version="16.0"
