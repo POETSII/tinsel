@@ -230,7 +230,6 @@ module mkDRAM#(t id) (DRAM);
   // Wires
   Wire#(Bool) waitRequest <- mkBypassWire;
   PulseWire putLoad <- mkPulseWire;
-  Wire#(Bit#(`BeatBurstWidth)) burstWire <- mkDWire(0);
   PulseWire putStore <- mkPulseWire;
 
   // Rules
@@ -238,27 +237,25 @@ module mkDRAM#(t id) (DRAM);
     if (putLoad) begin
       doRead <= True;
       doWrite <= False;
-      burstReg <= burstWire;
     end else if (putStore) begin
       doRead <= False;
       doWrite <= True;
-      burstReg <= burstWire;
     end else if (!waitRequest) begin
       doRead <= False;
       doWrite <= False;
-      burstReg <= 0;
     end
   endrule
 
   rule consumeRequest;
+    // TODO: inFlight.notFull insufficient for burst reads
     if (reqPort.canGet && !waitRequest && inFlight.notFull) begin
       DRAMReq req = reqPort.value;
       reqPort.get;
       address   <= req.addr;
       writeData <= req.data;
+      burstReg  <= req.burst;
       //byteEn    <= req.byteEn;
       if (req.isStore) putStore.send; else putLoad.send;
-      burstWire <= req.burst;
       DRAMInFlightReq inflightReq;
       inflightReq.id = req.id;
       inflightReq.isStore = req.isStore;
