@@ -82,7 +82,7 @@ the [Tinsel API](#tinsel-api).
 inline void write_instr(uint32_t addr, uint32_t word);
 
 // Return a globally unique id for the calling thread
-inline uint32_t me();
+inline uint32_t get_my_id();
 ```
 
 A summary of synthesis-time parameters introduced in this section:
@@ -272,7 +272,7 @@ inline void mb_alloc(volatile void* addr);
 inline uint32_t mb_can_recv();
 
 // Receive message
-inline void* mb_recv();
+inline volatile void* mb_recv();
 ```
 
 Sometimes, a thread may wish to wait until it can send or receive.  To
@@ -361,7 +361,10 @@ A summary of synthesis-time parameters introduced in this section:
 
 ```c
 // Return a globally unique id for the calling thread
-inline uint32_t me();
+inline uint32_t get_my_id();
+
+// Get id of host PC
+inline uint32_t get_host_id();
 
 // Write 32-bit word to instruction memory
 inline void write_instr(uint32_t addr, uint32_t word);
@@ -390,7 +393,7 @@ inline void mb_alloc(volatile void* addr);
 inline uint32_t mb_can_recv();
 
 // Receive message
-inline void* mb_recv();
+inline volatile void* mb_recv();
 
 // Thread can be woken by a logical-OR of these events
 typedef enum {CAN_SEND = 1, CAN_RECV = 2} WakeupCond;
