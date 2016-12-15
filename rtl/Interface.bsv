@@ -217,14 +217,6 @@ module mkNullBOut (BOut#(t));
   method t value = ?;
 endmodule
 
-// Convert BOut interface to Out interface
-module mkBOutToOut#(BOut#(t) a) (Out#(t))
-         provisos (Bits#(t, twidth));
-  method Action tryGet; if (a.valid) a.get; endmethod
-  method Bool valid = a.valid;
-  method t value = a.value;
-endmodule
-
 // =============================================================================
 // Merge unit
 // =============================================================================
@@ -368,7 +360,7 @@ module mkMergeTreeB#(MergeMethod m, module#(SizedQueue#(d, t)) mkQ,
   // Reduce first level of tree using mkMergeTwoB
   List#(Out#(t)) xs = Nil;
   for (Integer i = 0; i < valueOf(n); i=i+2) begin
-    let x <- i+1 == valueOf(n) ? mkBOutToOut(vec[i]) :
+    let x <- i+1 == valueOf(n) ? convertBOutToOut(vec[i]) :
                                  mkMergeTwoB(m, vec[i], vec[i+1]);
     xs = List::cons(x, xs);
   end
@@ -430,22 +422,13 @@ module connectDirect#(BOut#(t) out, In#(t) in) ()
   endrule
 endmodule
 
-// Convert a queue to a buffered output interface
-module convertQueuetoBOut#(SizedQueue#(n, t) q) (BOut#(t));
-  method Action get;
-    q.deq;
-  endmethod
-  method Bool valid = q.canDeq;
-  method t value = q.dataOut;
-endmodule
-
 // Convert a buffered output interface to an unbuffered one
-module convertBOutToOut#(BOut#(t) out) (Out#(t));
-  method Action tryGet;
-    if (out.valid) out.get;
-  endmethod
-  method Bool valid = out.valid;
-  method t value = out.value;
+module convertBOutToOut#(BOut#(t) a) (Out#(t))
+         provisos (Bits#(t, twidth));
+  PulseWire doTryGet <- mkPulseWire;
+  method Action tryGet; doTryGet.send; if (a.valid) a.get; endmethod
+  method Bool valid = doTryGet && a.valid;
+  method t value = a.value;
 endmodule
 
 endpackage
