@@ -167,6 +167,15 @@ p["MailboxesPerBoard"] = 2 ** p["LogMailboxesPerBoard"]
 p["LogLinesPerDRAM"] = p["LogBeatsPerDRAM"] - p["LogBeatsPerLine"]
 p["LogBytesPerDRAM"] = p["LogBeatsPerDRAM"] + p["LogBytesPerBeat"]
 
+# Number of threads per DRAM
+p["ThreadsPerDRAM"] = 2 ** (p["LogThreadsPerCore"] +
+                              p["LogCoresPerDCache"] +
+                                p["LogDCachesPerDRAM"])
+
+
+# Number of threads per board
+p["ThreadsPerBoard"] = p["ThreadsPerDRAM"] * p["DRAMsPerBoard"]
+
 #==============================================================================
 # Main 
 #==============================================================================

@@ -36,6 +36,7 @@ import Globals   :: *;
 // Send       | 0x808  | W   | Send message to supplied destination
 // Recv       | 0x809  | R   | Return pointer to message received
 // WaitUntil  | 0x80a  | W   | Sleep until can-send or can-recv
+// Emit       | 0x80f  | W   | Emit char to console (simulation only)
 
 // ============================================================================
 // Types
@@ -80,6 +81,9 @@ typedef struct {
   Bool isSendLen;     Bool isSendPtr;
   Bool isSend;        Bool isRecv;
   Bool isWaitUntil;
+  `ifdef SIMULATE
+  Bool isEmit;
+  `endif
 } CSR deriving (Bits);
 
 // Decoded operation
@@ -262,6 +266,9 @@ function Op decodeOp(Bit#(32) instr);
   ret.csr.isSend      = ret.isCSR && csrIndex == 'h8;
   ret.csr.isRecv      = ret.isCSR && csrIndex == 'h9;
   ret.csr.isWaitUntil = ret.isCSR && csrIndex == 'ha;
+  `ifdef SIMULATE
+  ret.csr.isEmit      = ret.isCSR && csrIndex == 'hf;
+  `endif
   return ret;
 endfunction
 
@@ -572,6 +579,10 @@ module mkCore#(CoreId myId) (Core);
     // Address for write-port of instrMem
     if (token.op.csr.isInstrAddr)
       token.thread.instrWriteIndex = truncate(token.valA);
+    // Emit char to console (simulation only)
+    `ifdef SIMULATE
+    if (token.op.csr.isEmit) $fwrite(stdout, "%c", token.valA);
+    `endif
     // Triger next stage
     execute2Input <= token;
   endrule

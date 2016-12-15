@@ -2,7 +2,7 @@
 #define _TINSEL_H_
 
 #include <stdint.h>
-#include "config.h"
+#include <config.h>
 
 // Control/status registers
 #define CSR_INSTR_ADDR "0x800"
@@ -18,7 +18,7 @@
 #define CSR_WAIT_UNTIL "0x80a"
 
 // Get globally unique thread id of caller
-inline int me()
+inline int get_my_id()
 {
   int id;
   asm ("csrr %0, " CSR_HART_ID : "=r"(id));
@@ -33,7 +33,7 @@ inline int get_host_id()
 }
 
 // Cache flush
-inline int flush()
+inline void flush()
 {
   asm volatile("fence\n");
 }
@@ -91,9 +91,9 @@ inline void mb_send(int dest, volatile void* addr)
 }
 
 // Receive message
-inline void* mb_recv()
+inline volatile void* mb_recv()
 {
-  void* ok;
+  volatile void* ok;
   asm volatile("csrr %0, " CSR_RECV : "=r"(ok));
   return ok;
 }
