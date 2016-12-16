@@ -618,8 +618,6 @@ input															TEMP_INT_n;
 input															TEMP_OVERT_n;
 
 
-assign LED[3:0] = 12;
-
 wire reset_n;
 assign reset_n = 1;
 
