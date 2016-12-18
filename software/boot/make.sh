@@ -51,13 +51,3 @@ ihex-to-img.py InstrMem.ihex mif 0 4 $InstrBytes > $QP_DIR/InstrMem.mif
 # Convert Intel Hex files to Bluesim hex files
 # (used to initialise BRAM contents in Bluesim)
 ihex-to-img.py InstrMem.ihex hex 0 4 $InstrBytes > $RTL_DIR/InstrMem.hex
-
-# Generate RunQueue.hex
-MaxThreadId=$((2 ** $LogThreadsPerCore - 1))
-for T in $(seq 0 $MaxThreadId); do
-  printf "%x\n" $T
-done > $RTL_DIR/RunQueue.hex
-
-# Generate RunQueue.mif
-Width=$LogThreadsPerCore
-hex-to-mif.py $RTL_DIR/RunQueue.hex $Width > $QP_DIR/RunQueue.mif
