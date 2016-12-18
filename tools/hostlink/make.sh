@@ -24,4 +24,4 @@ case "$1" in
   ;;
 esac
 
-g++ echo.cpp -o echotest $CPPFLAGS
+g++ Echo.cpp -o Echo $CPPFLAGS

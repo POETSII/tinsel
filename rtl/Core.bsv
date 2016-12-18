@@ -18,6 +18,7 @@ import ConfigReg :: *;
 import Interface :: *;
 import Mailbox   :: *;
 import Globals   :: *;
+import HostLink  :: *;
 
 // ============================================================================
 // Control/status register (CSRs) supported
@@ -36,6 +37,8 @@ import Globals   :: *;
 // Send       | 0x808  | W   | Send message to supplied destination
 // Recv       | 0x809  | R   | Return pointer to message received
 // WaitUntil  | 0x80a  | W   | Sleep until can-send or can-recv
+// FromHost   | 0x80b  | R   | Read word from host-link
+// ToHost     | 0x80c  | W   | Write word to host-link
 // Emit       | 0x80f  | W   | Emit char to console (simulation only)
 
 // ============================================================================
@@ -80,7 +83,8 @@ typedef struct {
   Bool isHartId;      Bool isCanRecv;
   Bool isSendLen;     Bool isSendPtr;
   Bool isSend;        Bool isRecv;
-  Bool isWaitUntil;
+  Bool isWaitUntil;   Bool isFromHost;
+  Bool isToHost;
   `ifdef SIMULATE
   Bool isEmit;
   `endif
@@ -135,6 +139,7 @@ typedef struct {
   InstrAddr nextPC;        // Next PC if branch not taken
   Bool canSend;            // Mailbox can send
   Bool canRecv;            // Mailbox can receive
+  Bool retry;              // Instruction needs retried later
 } PipelineToken deriving (Bits);
 
 // For each suspended thread, we have the following info
@@ -266,6 +271,8 @@ function Op decodeOp(Bit#(32) instr);
   ret.csr.isSend      = ret.isCSR && csrIndex == 'h8;
   ret.csr.isRecv      = ret.isCSR && csrIndex == 'h9;
   ret.csr.isWaitUntil = ret.isCSR && csrIndex == 'ha;
+  ret.csr.isFromHost  = ret.isCSR && csrIndex == 'hb;
+  ret.csr.isToHost    = ret.isCSR && csrIndex == 'hc;
   `ifdef SIMULATE
   ret.csr.isEmit      = ret.isCSR && csrIndex == 'hf;
   `endif
@@ -354,6 +361,7 @@ endfunction
 interface Core;
   interface DCacheClient    dcacheClient;
   interface MailboxClient   mailboxClient;
+  interface HostLinkCore    hostLinkCore;
 endinterface
 
 // ============================================================================
@@ -423,8 +431,10 @@ module mkCore#(CoreId myId) (Core);
   // ------------
 
   // Ports
-  OutPort#(DCacheReq) dcacheReq  <- mkOutPort;
-  InPort#(DCacheResp) dcacheResp <- mkInPort;
+  OutPort#(DCacheReq)    dcacheReq    <- mkOutPort;
+  InPort#(DCacheResp)    dcacheResp   <- mkInPort;
+  OutPort#(HostLinkFlit) toHostPort   <- mkOutPort;
+  InPort#(HostLinkFlit)  fromHostPort <- mkInPort;
 
   // Queue of runnable threads
   QueueInit runQueueInit;
@@ -581,7 +591,9 @@ module mkCore#(CoreId myId) (Core);
       token.thread.instrWriteIndex = truncate(token.valA);
     // Emit char to console (simulation only)
     `ifdef SIMULATE
-    if (token.op.csr.isEmit) $fwrite(stdout, "%c", token.valA);
+    if (token.op.csr.isEmit) begin
+      $display("0x%x", token.valA);
+    end
     `endif
     // Triger next stage
     execute2Input <= token;
@@ -663,10 +675,29 @@ module mkCore#(CoreId myId) (Core);
       end else
         retry = True;
     end
-    // Handle access to WaitUntil CSR
+    // WaitUntil CSR
     if (token.op.csr.isWaitUntil) begin
       mailbox.sleep(token.thread.id, truncate(token.valA));
       suspend = True;
+    end
+    // ToHost CSR
+    if (token.op.csr.isToHost) begin
+      if (toHostPort.canPut) begin
+        HostLinkFlit flit;
+        flit.coreId = truncate(myId);
+        flit.isBroadcast = False;
+        flit.cmd = cmdStdOut;
+        flit.arg = token.valA;
+        toHostPort.put(flit);
+      end else
+        retry = True;
+    end
+    // FromHost CSR
+    if (token.op.csr.isFromHost) begin
+      if (fromHostPort.canGet && fromHostPort.value.cmd == cmdStdIn)
+        fromHostPort.get;
+      else
+        retry = True;
     end
     // Record state of suspended thread
     if (suspend) begin
@@ -687,11 +718,13 @@ module mkCore#(CoreId myId) (Core);
     token.targetPC = truncate(zeroExtend(token.thread.pc) + token.imm);
     // CSR read
     res.csr =
-        when(token.op.csr.isCanSend, zeroExtend(pack(token.canSend)))
-      | when(token.op.csr.isCanRecv, zeroExtend(pack(token.canRecv)))
-      | when(token.op.csr.isHartId,  zeroExtend({myId, token.thread.id}))
-      | when(token.op.csr.isRecv,    mailbox.recvAddr);
+        when(token.op.csr.isCanSend,  zeroExtend(pack(token.canSend)))
+      | when(token.op.csr.isCanRecv,  zeroExtend(pack(token.canRecv)))
+      | when(token.op.csr.isHartId,   zeroExtend({myId, token.thread.id}))
+      | when(token.op.csr.isRecv,     mailbox.recvAddr)
+      | when(token.op.csr.isFromHost, fromHostPort.value.arg);
     // Trigger next stage
+    token.retry = retry;
     token.instrResult = res;
     if (! suspend) execute3Input <= token;
   endrule
@@ -723,7 +756,7 @@ module mkCore#(CoreId myId) (Core);
     token.thread.pc = takeBranch ? token.targetPC : token.nextPC;
     // Write to register file?
     token.writeRegFile =
-      isRegFileWrite(token.op) && rd(token.instr) != 0;
+      isRegFileWrite(token.op) && rd(token.instr) != 0 && !token.retry;
     // Trigger next stage
     writebackFire <= True;
     writebackInput <= token;
@@ -845,6 +878,11 @@ module mkCore#(CoreId myId) (Core);
   endinterface
 
   interface MailboxClient mailboxClient = mailbox.client;
+
+  interface HostLinkCore hostLinkCore;
+    interface In fromHost = fromHostPort.in;
+    interface Out toHost  = toHostPort.out;
+  endinterface
 
 endmodule
 
