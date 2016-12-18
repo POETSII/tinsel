@@ -39,6 +39,7 @@ import HostLink  :: *;
 // WaitUntil  | 0x80a  | W   | Sleep until can-send or can-recv
 // FromHost   | 0x80b  | R   | Read word from host-link
 // ToHost     | 0x80c  | W   | Write word to host-link
+// NewThread  | 0x80d  | W   | Create new thread with given id and PC
 // Emit       | 0x80f  | W   | Emit char to console (simulation only)
 
 // ============================================================================
@@ -84,7 +85,7 @@ typedef struct {
   Bool isSendLen;     Bool isSendPtr;
   Bool isSend;        Bool isRecv;
   Bool isWaitUntil;   Bool isFromHost;
-  Bool isToHost;
+  Bool isToHost;      Bool isNewThread;
   `ifdef SIMULATE
   Bool isEmit;
   `endif
@@ -273,6 +274,7 @@ function Op decodeOp(Bit#(32) instr);
   ret.csr.isWaitUntil = ret.isCSR && csrIndex == 'ha;
   ret.csr.isFromHost  = ret.isCSR && csrIndex == 'hb;
   ret.csr.isToHost    = ret.isCSR && csrIndex == 'hc;
+  ret.csr.isNewThread = ret.isCSR && csrIndex == 'hd;
   `ifdef SIMULATE
   ret.csr.isEmit      = ret.isCSR && csrIndex == 'hf;
   `endif
@@ -438,13 +440,19 @@ module mkCore#(CoreId myId) (Core);
 
   // Queue of runnable threads
   QueueInit runQueueInit;
-  runQueueInit.size = numThreads;
-  runQueueInit.file = Valid("RunQueue");
+  runQueueInit.size = 1;
+  runQueueInit.file = Invalid;
   SizedQueue#(`LogThreadsPerCore, ThreadState) runQueue <-
     mkUGSizedQueueInit(runQueueInit);
 
   // Queue of suspended threads pending resumption
   SizedQueue#(`LogThreadsPerCore, ThreadState) resumeQueue <- mkUGSizedQueue;
+
+  // The resumeQueue can be enqueued both in the writeback stage (to
+  // resume a suspended thread) and in the execute stage (to handle
+  // the NewThread CSR).  The resume wire indicates that the former
+  // should be performed.
+  PulseWire resumeWire <- mkPulseWire;
 
   // Queue of writeback requests from threads pending resumption
   Queue#(Writeback) writebackQueue <- mkUGShiftQueue(QueueOptFmax);
@@ -699,6 +707,18 @@ module mkCore#(CoreId myId) (Core);
       else
         retry = True;
     end
+    // NewThread CSR
+    if (token.op.csr.isNewThread || resumeWire) begin
+      ThreadState newThread;
+      newThread.pc = truncate(token.valA[23:0]);
+      newThread.id = truncate(token.valA[31:24]);
+      newThread.msgLen = 0;
+      newThread.msgPtr = ?;
+      newThread.instrWriteIndex = ?;
+      resumeQueue.enq(token.op.csr.isNewThread ?
+        newThread : writebackQueue.dataOut.thread);
+      if (resumeWire) retry = True;
+    end
     // Record state of suspended thread
     if (suspend) begin
       SuspendedThreadState susp;
@@ -801,7 +821,7 @@ module mkCore#(CoreId myId) (Core);
         resume = True;
       end
       // Put thread in the resume queue
-      if (resume) resumeQueue.enq(wb.thread);
+      if (resume) resumeWire.send;
     end
     // Register file write
     if (writeToRegFile) begin

@@ -18,6 +18,7 @@
 #define CSR_WAIT_UNTIL "0x80a"
 #define CSR_FROM_HOST  "0x80b"
 #define CSR_TO_HOST    "0x80c"
+#define CSR_NEW_THREAD "0x80d"
 #define CSR_EMIT       "0x80f"
 
 // Get globally unique thread id of caller
@@ -60,6 +61,14 @@ inline uint32_t from_host()
   uint32_t x;
   asm volatile("csrr %0, " CSR_FROM_HOST "\n" : "=r"(x));
   return x;
+}
+
+// Insert new thread into run queue
+// (Core-local thread id must fit in 8 bits and PC must fit in 24 bits)
+inline void new_thread(uint8_t id, uint32_t pc)
+{
+  uint32_t arg = (id << 24) | pc;
+  asm volatile("csrw " CSR_NEW_THREAD ", %0\n" : : "r"(arg));
 }
 
 // Get pointer to message-aligned slot in mailbox scratchpad

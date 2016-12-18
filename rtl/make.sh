@@ -12,7 +12,7 @@ done <<< `python ../config.py envs`
 BSC="bsc"
 BSCFLAGS="-wait-for-license -suppress-warnings S0015 \
           -steps-warn-interval 400000 -check-assert \
-          +RTS -K16M -RTS $DEFS "
+          +RTS -K32M -RTS $DEFS "
 
 # Determine top-level module
 TOPFILE=DE5Top.bsv
