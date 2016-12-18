@@ -16,6 +16,9 @@
 #define CSR_SEND       "0x808"
 #define CSR_RECV       "0x809"
 #define CSR_WAIT_UNTIL "0x80a"
+#define CSR_FROM_HOST  "0x80b"
+#define CSR_TO_HOST    "0x80c"
+#define CSR_EMIT       "0x80f"
 
 // Get globally unique thread id of caller
 inline int get_my_id()
@@ -23,13 +26,6 @@ inline int get_my_id()
   int id;
   asm ("csrr %0, " CSR_HART_ID : "=r"(id));
   return id;
-}
-
-// Get id for communicating with host
-inline int get_host_id()
-{
-  int threadsPerBoard = 1 << (LogThreadsPerMailbox + LogMailboxesPerBoard);
-  return threadsPerBoard;
 }
 
 // Cache flush
@@ -44,6 +40,26 @@ inline void write_instr(uint32_t index, uint32_t word)
   asm volatile("csrw " CSR_INSTR_ADDR ", %0\n"
                "csrw " CSR_INSTR ", %1\n"
                : : "r"(index), "r"(word));
+}
+
+// Emit char to console (simulation only)
+inline void sim_emit(uint32_t x)
+{
+  asm volatile("csrw " CSR_EMIT ", %0\n" : : "r"(x));
+}
+
+// Send word to host (over host-link)
+inline void to_host(uint32_t x)
+{
+  asm volatile("csrw " CSR_TO_HOST ", %0\n" : : "r"(x));
+}
+
+// Receive word from host (over host-link)
+inline uint32_t from_host()
+{
+  uint32_t x;
+  asm volatile("csrr %0, " CSR_FROM_HOST "\n" : "=r"(x));
+  return x;
 }
 
 // Get pointer to message-aligned slot in mailbox scratchpad
