@@ -81,6 +81,7 @@ interface HostLinkRouter;
   interface Out#(HostLinkFlit) toCore;
 endinterface
 
+(* synthesize *)
 module mkHostLinkRouter#(Bit#(`LogCoresPerBoard) myId) (HostLinkRouter);
 
   // Ports
