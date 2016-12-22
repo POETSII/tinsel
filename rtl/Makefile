@@ -16,29 +16,37 @@ BSCFLAGS = -wait-for-license -suppress-warnings S0015 \
 TOPFILE = DE5Top.bsv
 TOPMOD = de5Top
 
-.PHONY: sim
-sim:
+$(TOPMOD): *.bsv *.c
 	make -C $(TINSEL_ROOT)/apps/boot
 	$(BSC) $(BSCFLAGS) $(DEFS) -D SIMULATE -sim -g $(TOPMOD) -u $(TOPFILE)
 	$(BSC) $(BSCFLAGS) -sim -o $(TOPMOD) -e $(TOPMOD) *.c
 
-.PHONY: verilog
-verilog:
+$(TOPMOD).v: *.bsv
 	make -C $(TINSEL_ROOT)/apps/boot
 	$(BSC) $(BSCFLAGS) -opt-undetermined-vals -unspecified-to X \
          $(DEFS) -u -verilog -g $(TOPMOD) $(TOPFILE)
 
-.PHONY: test-mem
-test-mem:
+testMem: *.bsv *.c
 	$(BSC) $(BSCFLAGS) $(DEFS) -D SIMULATE -suppress-warnings G0023 \
          -sim -g testMem -u TestMem.bsv
 	$(BSC) $(BSCFLAGS) -sim -o testMem -e testMem *.c
 
-.PHONY: test-mailbox
-test-mailbox:
+testMailbox: *.bsv *.c
 	$(BSC) $(BSCFLAGS) $(DEFS) -D SIMULATE -suppress-warnings G0023 \
          -sim -g testMailbox -u TestMailbox.bsv
 	$(BSC) $(BSCFLAGS) -sim -o testMailbox -e testMailbox *.c
+
+.PHONY: sim
+sim: $(TOPMOD)
+
+.PHONY: verilog
+verilog: $(TOPMOD).v
+
+.PHONY: test-mem
+test-mem: testMem
+
+.PHONY: test-mailbox
+test-mailbox: testMailbox
 
 .PHONY: clean
 clean:
