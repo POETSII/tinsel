@@ -9,3 +9,4 @@ clean:
 	make -C include clean
 	make -C apps/hello clean
 	make -C apps/boot clean
+	make -C bin clean
