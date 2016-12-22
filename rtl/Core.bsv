@@ -39,7 +39,7 @@ import HostLink  :: *;
 // WaitUntil  | 0x80a  | W   | Sleep until can-send or can-recv
 // FromHost   | 0x80b  | R   | Read word from host-link
 // ToHost     | 0x80c  | W   | Write word to host-link
-// NewThread  | 0x80d  | W   | Create new thread with given id and PC
+// NewThread  | 0x80d  | W   | Create new thread with the given id
 // Emit       | 0x80f  | W   | Emit char to console (simulation only)
 
 // ============================================================================
@@ -499,11 +499,15 @@ module mkCore#(CoreId myId) (Core);
   PulseWire resumeWire <- mkPulseWire;
 
   // These wires are from the execute stage
-  PulseWire newThreadTrigger <- mkPulseWire;
-  Wire#(ThreadState) newThreadWire <- mkDWire(?);
+  PulseWire newThreadEnqWire <- mkPulseWire;
+  Wire#(ThreadId) newThreadIdWire <- mkDWire(?);
 
-  rule resumeQueueEnq (resumeWire || newThreadTrigger);
-    resumeQueue.enq(resumeWire ? writebackQueue.dataOut.thread : newThreadWire);
+  rule resumeQueueEnq (resumeWire || newThreadEnqWire);
+    ThreadState newThread = ?;
+    newThread.pc = 0;
+    newThread.id = newThreadIdWire;
+    newThread.msgLen = 0;
+    resumeQueue.enq(resumeWire ? writebackQueue.dataOut.thread : newThread);
   endrule
 
   // Schedule stage
@@ -729,14 +733,8 @@ module mkCore#(CoreId myId) (Core);
     end
     // NewThread CSR
     if (token.op.csr.isNewThread) begin
-      ThreadState newThread;
-      newThread.pc = truncate(token.valA[23:0]);
-      newThread.id = truncate(token.valA[31:24]);
-      newThread.msgLen = 0;
-      newThread.msgPtr = ?;
-      newThread.instrWriteIndex = ?;
-      newThreadTrigger.send;
-      newThreadWire <= newThread;
+      newThreadIdWire <= truncate(token.valA);
+      newThreadEnqWire.send;
       // Only succeed if the resumeQueue has not been claimed
       // by the writeback stage
       if (resumeWire) retry = True;

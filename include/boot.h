@@ -29,7 +29,6 @@ typedef enum {
   CacheFlushCmd,
 
   // StartCmd ends the boot loader and starts all threads executing.
-  // Argument: the PC to start executing at.
   StartCmd,
 
 } BootCmd;
