@@ -79,10 +79,10 @@ the [Tinsel API](#tinsel-api).
 
 ```c
 // Write 32-bit word to instruction memory
-inline void write_instr(uint32_t addr, uint32_t word);
+inline void writeInstr(uint32_t addr, uint32_t word);
 
 // Return a globally unique id for the calling thread
-inline uint32_t get_my_id();
+inline uint32_t myId();
 ```
 
 A summary of synthesis-time parameters introduced in this section:
@@ -217,18 +217,18 @@ these CSRs.
 
 ```c
 // Determine if calling thread can send a message
-inline uint32_t mb_can_send();
+inline uint32_t mboxCanSend();
 
 // Set message length for send operation
 // (A message of length n is comprised of n+1 flits)
-inline void mb_set_len(uint32_t n);
+inline void mboxSetLen(uint32_t n);
 
 // Send message at address to destination
 // (Address must be aligned on message boundary)
-inline void mb_send(uint32_t dest, volatile void* addr);
+inline void mboxSend(uint32_t dest, volatile void* addr);
 
 // Get pointer to nth message-aligned slot in mailbox scratchpad
-inline volatile void* mailbox(uint32_t n);
+inline volatile void* mbox_slot(uint32_t n);
 ```
 
 Several things to note:
@@ -242,7 +242,7 @@ send operations wish to use the same length and address then the CSRs
 need only be written once.
 
 * The scratchpad pointer must be aligned on a message boundary, which
-we refer to as a message **slot**. The `mailbox` function yields a 
+we refer to as a message **slot**. The `mboxSlot` function yields a 
 pointer to the nth slot in the calling thread's mailbox.
 
 To *receive* a message, a thread must first *allocate* a slot in the
@@ -266,13 +266,13 @@ Again, the [Tinsel API](#tinsel-api) hides these low-level CSRs.
 
 ```c
 // Give mailbox permission to use given address to store an incoming message
-inline void mb_alloc(volatile void* addr);
+inline void mboxAlloc(volatile void* addr);
 
 // Determine if calling thread can receive a message
-inline uint32_t mb_can_recv();
+inline uint32_t mboxCanRecv();
 
 // Receive message
-inline volatile void* mb_recv();
+inline volatile void* mboxRecv();
 ```
 
 Sometimes, a thread may wish to wait until it can send or receive.  To
@@ -294,7 +294,7 @@ abstracts this CSR as follows.
 typedef enum {CAN_SEND = 1, CAN_RECV = 2} WakeupCond;
 
 // Suspend thread until wakeup condition satisfied
-inline void mb_wait_until(WakeupCond cond);
+inline void mboxWaitUntil(WakeupCond cond);
 ```
 
 Finally, a quick note on the design.  One of the main goals of the
@@ -361,43 +361,40 @@ A summary of synthesis-time parameters introduced in this section:
 
 ```c
 // Return a globally unique id for the calling thread
-inline uint32_t get_my_id();
-
-// Get id of host PC
-inline uint32_t get_host_id();
+inline uint32_t myId();
 
 // Write 32-bit word to instruction memory
-inline void write_instr(uint32_t addr, uint32_t word);
+inline void writeInstr(uint32_t addr, uint32_t word);
 
 // Cache flush
 inline void flush();
 
 // Get pointer to nth message-aligned slot in mailbox scratchpad
-inline volatile void* mailbox(uint32_t n);
+inline volatile void* mboxSlot(uint32_t n);
 
 // Determine if calling thread can send a message
-inline uint32_t mb_can_send();
+inline uint32_t mboxCanSend();
 
 // Set message length for send operation
 // (A message of length n is comprised of n+1 flits)
-inline void mb_set_len(uint32_t n);
+inline void mboxSetLen(uint32_t n);
 
 // Send message at address to destination
 // (Address must be aligned on message boundary)
-inline void mb_send(uint32_t dest, volatile void* addr);
+inline void mboxSend(uint32_t dest, volatile void* addr);
 
 // Give mailbox permission to use given address to store an incoming message
-inline void mb_alloc(volatile void* addr);
+inline void mboxAlloc(volatile void* addr);
 
 // Determine if calling thread can receive a message
-inline uint32_t mb_can_recv();
+inline uint32_t mboxCanRecv();
 
 // Receive message
-inline volatile void* mb_recv();
+inline volatile void* mboxRecv();
 
 // Thread can be woken by a logical-OR of these events
 typedef enum {CAN_SEND = 1, CAN_RECV = 2} WakeupCond;
 
 // Suspend thread until wakeup condition satisfied
-inline void mb_wait_until(WakeupCond cond);
+inline void mboxWaitUntil(WakeupCond cond);
 ```
