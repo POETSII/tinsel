@@ -42,9 +42,7 @@ interface RingRouter;
 endinterface
 
 // Router id
-// (The +1 is because the ring will contain an extra node to
-// forwards flits to a from a host machine)
-typedef Bit#(TAdd#(`LogMailboxesPerBoard, 1)) RouterId;
+typedef Bit#(`LogMailboxesPerBoard) RouterId;
 
 // Extract destination router id from flit
 function RouterId destRouter(Flit flit);

@@ -16,20 +16,17 @@
 #define CSR_SEND       "0x808"
 #define CSR_RECV       "0x809"
 #define CSR_WAIT_UNTIL "0x80a"
+#define CSR_FROM_HOST  "0x80b"
+#define CSR_TO_HOST    "0x80c"
+#define CSR_NEW_THREAD "0x80d"
+#define CSR_EMIT       "0x80f"
 
 // Get globally unique thread id of caller
-inline int get_my_id()
+inline int myId()
 {
   int id;
   asm ("csrr %0, " CSR_HART_ID : "=r"(id));
   return id;
-}
-
-// Get id for communicating with host
-inline int get_host_id()
-{
-  int threadsPerBoard = 1 << (LogThreadsPerMailbox + LogMailboxesPerBoard);
-  return threadsPerBoard;
 }
 
 // Cache flush
@@ -39,15 +36,43 @@ inline void flush()
 }
 
 // Write a word to instruction memory
-inline void write_instr(uint32_t index, uint32_t word)
+inline void writeInstr(uint32_t addr, uint32_t word)
 {
   asm volatile("csrw " CSR_INSTR_ADDR ", %0\n"
                "csrw " CSR_INSTR ", %1\n"
-               : : "r"(index), "r"(word));
+               : : "r"(addr >> 2), "r"(word));
+}
+
+// Emit word to console (simulation only)
+inline void simEmit(uint32_t x)
+{
+  asm volatile("csrw " CSR_EMIT ", %0\n" : : "r"(x));
+}
+
+// Send word to host (over host-link)
+inline void hostPut(uint32_t x)
+{
+  asm volatile("csrw " CSR_TO_HOST ", %0\n" : : "r"(x));
+}
+
+// Receive word from host (over host-link)
+inline uint32_t hostGet()
+{
+  uint32_t x;
+  asm volatile("csrr %0, " CSR_FROM_HOST "\n" : "=r"(x));
+  return x;
+}
+
+// Insert new thread into run queue
+// (Core-local thread id must fit in 8 bits and PC must fit in 24 bits)
+inline void threadCreate(uint8_t id, uint32_t pc)
+{
+  uint32_t arg = (id << 24) | pc;
+  asm volatile("csrw " CSR_NEW_THREAD ", %0\n" : : "r"(arg));
 }
 
 // Get pointer to message-aligned slot in mailbox scratchpad
-inline volatile void* mailbox(int n)
+inline volatile void* mboxSlot(int n)
 {
   const volatile char* mb_scratchpad_base =
     (char*) (1 << (LogBytesPerMsg + LogMsgsPerThread));
@@ -55,13 +80,13 @@ inline volatile void* mailbox(int n)
 }
 
 // Give mailbox permission to use given address to store an message
-inline void mb_alloc(volatile void* addr)
+inline void mboxAlloc(volatile void* addr)
 {
   asm volatile("csrw " CSR_ALLOC ", %0" : : "r"(addr));
 }
 
 // Determine if calling thread can send a message
-inline int mb_can_send()
+inline int mboxCanSend()
 {
   int ok;
   asm volatile("csrr %0, " CSR_CAN_SEND : "=r"(ok));
@@ -69,7 +94,7 @@ inline int mb_can_send()
 }
 
 // Determine if calling thread can receive a message
-inline int mb_can_recv()
+inline int mboxCanRecv()
 {
   int ok;
   asm volatile("csrr %0, " CSR_CAN_RECV : "=r"(ok));
@@ -78,20 +103,20 @@ inline int mb_can_recv()
 
 // Set message length for send operation
 // (A message of length N is comprised of N+1 flits)
-inline void mb_set_len(int n)
+inline void mboxSetLen(int n)
 {
   asm volatile("csrw " CSR_SEND_LEN ", %0" : : "r"(n));
 }
 
 // Send message at addr to dest
-inline void mb_send(int dest, volatile void* addr)
+inline void mboxSend(int dest, volatile void* addr)
 {
   asm volatile("csrw " CSR_SEND_PTR ", %0" : : "r"(addr));
   asm volatile("csrw " CSR_SEND ", %0" : : "r"(dest));
 }
 
 // Receive message
-inline volatile void* mb_recv()
+inline volatile void* mboxRecv()
 {
   volatile void* ok;
   asm volatile("csrr %0, " CSR_RECV : "=r"(ok));
@@ -102,7 +127,7 @@ inline volatile void* mb_recv()
 typedef enum {CAN_SEND = 1, CAN_RECV = 2} WakeupCond;
 
 // Suspend thread until wakeup condition satisfied
-inline void mb_wait_until(WakeupCond cond)
+inline void mboxWaitUntil(WakeupCond cond)
 {
   asm volatile("csrw " CSR_WAIT_UNTIL ", %0" : : "r"(cond));
 }

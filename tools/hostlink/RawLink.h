@@ -1,5 +1,5 @@
-#ifndef _LINK_H_
-#define _LINK_H_
+#ifndef _RAWLINK_H_
+#define _RAWLINK_H_
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -21,11 +21,11 @@
 #define FIFO_IN  "/tmp/tinsel.in"
 #define FIFO_OUT "/tmp/tinsel.out"
 
-class Link {
+class RawLink {
   int fifoIn;
   int fifoOut;
  public:
-  Link() {
+  RawLink() {
     fifoIn = fifoOut = -1;
   }
 
@@ -83,7 +83,7 @@ class Link {
     if (fifoOut >= 0) fsync(fifoOut);
   }
 
-  ~Link() {
+  ~RawLink() {
     if (fifoIn >= 0) close(fifoIn);
     if (fifoOut >= 0) close(fifoOut);
   }
@@ -95,9 +95,9 @@ class Link {
 // Communicate with tinsel on FPGA
 // =============================================================================
 
-#include "jtagatlantic.h"
+#include "JtagAtlantic.h"
 
-class Link {
+class RawLink {
   JTAGATLANTIC* jtag;
 
   void open() {
@@ -111,7 +111,7 @@ class Link {
   }
 
  public:
-  Link() {
+  RawLink() {
     jtag = NULL;
   }
 
@@ -151,7 +151,7 @@ class Link {
     if (jtag != NULL) jtagatlantic_flush(jtag);
   }
 
-  ~Link() {
+  ~RawLink() {
     if (jtag != NULL) jtagatlantic_close(jtag);
   }
 };

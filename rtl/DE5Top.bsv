@@ -13,7 +13,7 @@ import Queue     :: *;
 import Vector    :: *;
 import Mailbox   :: *;
 import Ring      :: *;
-import Host      :: *;
+import HostLink  :: *;
 import JtagUart  :: *;
 
 // ============================================================================
@@ -88,17 +88,18 @@ module de5Top (DE5Top);
     connectCoresToMailbox(map(mailboxClient, cs), mailboxes[i]);
   end
 
-  // Create host interface
-  Host host <- mkHost;
-
   // Create ring of mailboxes
   function MailboxNet mailboxNet(Mailbox mbox) = mbox.net;
-  mkRing(append(map(mailboxNet, mailboxes), cons(host.net, nil)));
+  mkRing(map(mailboxNet, mailboxes));
+
+  // Create host-link interface
+  function HostLinkCore getHostLink(Core core) = core.hostLinkCore;
+  HostLink hostLink <- mkHostLink(map(getHostLink, vecOfCores));
 
   `ifndef SIMULATE
   function DRAMExtIfc getDRAMExtIfc(DRAM dram) = dram.external;
   interface dramIfcs = map(getDRAMExtIfc, drams);
-  interface jtagIfc = host.jtagAvalon;
+  interface jtagIfc = hostLink.jtagAvalon;
   `endif
 endmodule
 
