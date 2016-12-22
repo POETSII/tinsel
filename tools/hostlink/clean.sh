@@ -1,3 +1,3 @@
 #!/bin/bash
 
-rm -f *.o echotest
+rm -f *.o boot
