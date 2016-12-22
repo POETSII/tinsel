@@ -12,7 +12,7 @@ def quoted(s): return "'\"" + s + "\"'"
 p = {}
 
 #==============================================================================
-# DE5 config
+# Default config
 #==============================================================================
 
 # The Altera device family being targetted
@@ -78,6 +78,9 @@ p["LogMailboxesPerBoard"] = 4
 
 # Size of each DRAM
 p["LogBeatsPerDRAM"] = 25
+
+# Maximum size of boot loader (in bytes)
+p["MaxBootImageBytes"] = 512
 
 #==============================================================================
 # Derived Parameters

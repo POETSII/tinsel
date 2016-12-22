@@ -98,6 +98,7 @@ typedef struct {
   Bool isShiftRight;     Bool isAnd;
   Bool isOr;             Bool isXor;
   Bool isOpUI;           Bool isJump;
+  Bool isJumpReg;
   Bool isBranchEq;       Bool isBranchNotEq;
   Bool isBranchLessThan; Bool isBranchGreaterOrEqualTo;
   Bool isLoad;           Bool isStore;
@@ -136,6 +137,7 @@ typedef struct {
   Bool isScratchpadAccess; // Does memory address map to scratchpad?
   Op op;                   // Decoded operation
   InstrResult instrResult; // Instruction result
+  InstrAddr jumpBase;      // Base of jump relative (PC or register)
   InstrAddr targetPC;      // Next PC if branch taken
   InstrAddr nextPC;        // Next PC if branch not taken
   Bool canSend;            // Mailbox can send
@@ -242,6 +244,7 @@ function Op decodeOp(Bit#(32) instr);
   ret.isOpUI = op == 'b01101 || op == 'b00101;
   // Jump operations
   ret.isJump = op == 'b11011 || op == 'b11001;
+  ret.isJumpReg = op == 'b11001;
   // Branch operations
   Bool isBranch = op == 'b11000;
   ret.isBranchEq = isBranch && minorOp == 'b000;
@@ -448,12 +451,6 @@ module mkCore#(CoreId myId) (Core);
   // Queue of suspended threads pending resumption
   SizedQueue#(`LogThreadsPerCore, ThreadState) resumeQueue <- mkUGSizedQueue;
 
-  // The resumeQueue can be enqueued both in the writeback stage (to
-  // resume a suspended thread) and in the execute stage (to handle
-  // the NewThread CSR).  The resume wire indicates that the former
-  // should be performed.
-  PulseWire resumeWire <- mkPulseWire;
-
   // Queue of writeback requests from threads pending resumption
   Queue#(Writeback) writebackQueue <- mkUGShiftQueue(QueueOptFmax);
 
@@ -489,6 +486,26 @@ module mkCore#(CoreId myId) (Core);
   Reg#(Bool)          writebackFire      <- mkDReg(False);
   Reg#(PipelineToken) writebackInput     <- mkRegU;
  
+  // Resume queue arbiter
+  // --------------------
+
+  // There is a conflict on the resume queue: both the execute stage
+  // (hanlding the NewThread CSR) and the writeback stage (handling
+  // thread resumptions) are trying to make a thread runnable.  This
+  // arbiter resolves the conflict, giving priority to the writeback
+  // stage.
+
+  // This wire is from the writeback stage
+  PulseWire resumeWire <- mkPulseWire;
+
+  // These wires are from the execute stage
+  PulseWire newThreadTrigger <- mkPulseWire;
+  Wire#(ThreadState) newThreadWire <- mkDWire(?);
+
+  rule resumeQueueEnq (resumeWire || newThreadTrigger);
+    resumeQueue.enq(resumeWire ? writebackQueue.dataOut.thread : newThreadWire);
+  endrule
+
   // Schedule stage
   // --------------
 
@@ -576,6 +593,9 @@ module mkCore#(CoreId myId) (Core);
     token.aluB = isALUImm(token.instr) ? token.imm : token.valB;
     // Determine memory address for load or store
     token.memAddr = token.valA + token.imm;
+    // Base of jump (could be PC or register)
+    token.jumpBase = token.op.isJumpReg ?
+                       truncate(token.valA) : token.thread.pc;
     // Mailbox send
     if (mailbox.canSend && token.op.csr.isSend)
       mailbox.send(token.thread.id, token.thread.msgLen,
@@ -708,15 +728,17 @@ module mkCore#(CoreId myId) (Core);
         retry = True;
     end
     // NewThread CSR
-    if (token.op.csr.isNewThread || resumeWire) begin
+    if (token.op.csr.isNewThread) begin
       ThreadState newThread;
       newThread.pc = truncate(token.valA[23:0]);
       newThread.id = truncate(token.valA[31:24]);
       newThread.msgLen = 0;
       newThread.msgPtr = ?;
       newThread.instrWriteIndex = ?;
-      resumeQueue.enq(token.op.csr.isNewThread ?
-        newThread : writebackQueue.dataOut.thread);
+      newThreadTrigger.send;
+      newThreadWire <= newThread;
+      // Only succeed if the resumeQueue has not been claimed
+      // by the writeback stage
       if (resumeWire) retry = True;
     end
     // Record state of suspended thread
@@ -735,7 +757,8 @@ module mkCore#(CoreId myId) (Core);
     // Compute next PC
     token.nextPC = token.thread.pc + (retry ? 0 : 4);
     // Compute jump/branch target
-    token.targetPC = truncate(zeroExtend(token.thread.pc) + token.imm);
+    token.targetPC = token.jumpBase + truncate(token.imm);
+    token.targetPC[0] = token.op.isJumpReg ? 0 : token.targetPC[0];
     // CSR read
     res.csr =
         when(token.op.csr.isCanSend,  zeroExtend(pack(token.canSend)))
