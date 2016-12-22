@@ -95,7 +95,7 @@ class RawLink {
 // Communicate with tinsel on FPGA
 // =============================================================================
 
-#include "jtagatlantic.h"
+#include "JtagAtlantic.h"
 
 class RawLink {
   JTAGATLANTIC* jtag;

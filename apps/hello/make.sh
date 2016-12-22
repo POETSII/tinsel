@@ -33,21 +33,16 @@ cd $INC
 ./make.sh
 popd > /dev/null
 
+# Generate linker script
+./genld.sh > link.ld
+
 # Build object files
-$CC $CFLAGS -Wall -c -o boot.o boot.c
-$CC $CFLAGS -Wall -c -o entry.o entry.S
+$CC $CFLAGS -Wall -c -o hello.o hello.c
 
 # Link
-$LD -melf32lriscv -G 0 -T link.ld -o boot.elf entry.o boot.o
+$LD -melf32lriscv -G 0 -T link.ld -o hello.elf hello.o
 
-# Emit Intel Hex
-InstrBytes=$((2**$LogInstrsPerCore * 4))
-$OBJCOPY --only-section=.text -O ihex boot.elf InstrMem.ihex
-
-# Convert Intel Hex file to Altera MIF
-# (used to initialise BRAM contents in Quartus)
-ihex-to-img.py InstrMem.ihex mif 0 4 $InstrBytes > $QP_DIR/InstrMem.mif
-
-# Convert Intel Hex files to Bluesim hex files
-# (used to initialise BRAM contents in Bluesim)
-ihex-to-img.py InstrMem.ihex hex 0 4 $InstrBytes > $RTL_DIR/InstrMem.hex
+# Emit verilog hex files
+$OBJCOPY -O verilog --only-section=.text hello.elf code.v
+$OBJCOPY -O verilog --remove-section=.text \
+  --set-section-flags .bss=alloc,load,contents hello.elf data.v

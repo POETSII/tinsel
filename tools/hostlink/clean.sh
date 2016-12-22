@@ -1,3 +1,3 @@
 #!/bin/bash
 
-rm -f *.o Echo
+rm -f *.o boot
