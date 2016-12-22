@@ -115,8 +115,7 @@ int main(int argc, char* argv[])
 
   // Send start command with initial program counter
   link.put(StartCmd);
-  link.put(instrBase);
-  checksum += StartCmd + instrBase;
+  checksum += StartCmd;
  
   return 0;
 }

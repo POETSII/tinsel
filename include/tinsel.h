@@ -64,11 +64,9 @@ inline uint32_t hostGet()
 }
 
 // Insert new thread into run queue
-// (Core-local thread id must fit in 8 bits and PC must fit in 24 bits)
-inline void threadCreate(uint8_t id, uint32_t pc)
+inline void threadCreate(uint32_t id)
 {
-  uint32_t arg = (id << 24) | pc;
-  asm volatile("csrw " CSR_NEW_THREAD ", %0\n" : : "r"(arg));
+  asm volatile("csrw " CSR_NEW_THREAD ", %0\n" : : "r"(id));
 }
 
 // Get pointer to message-aligned slot in mailbox scratchpad
