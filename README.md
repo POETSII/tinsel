@@ -234,7 +234,7 @@ inline volatile void* mboxSlot(uint32_t n);
 Several things to note:
 
 * When sending a message, a thread must not modify the
-contents of that message while `can_send()` returns false, otherwise
+contents of that message while `canSend()` returns false, otherwise
 the in-flight message could be corrupted.
 
 * The `SendLen` and `SendPtr` CSRs are persistent: if two consecutive
@@ -276,7 +276,7 @@ inline volatile void* mboxRecv();
 ```
 
 Sometimes, a thread may wish to wait until it can send or receive.  To
-avoid busy waiting on the `can_send()` and `can_recv()` functions, a
+avoid busy waiting on the `canSend()` and `canRecv()` functions, a
 thread can be suspended by writing to the `WaitUntil` CSR.
 
   CSR Name    | CSR    | R/W | Function
@@ -337,9 +337,10 @@ A summary of synthesis-time parameters introduced in this section:
 
   Region                  | Description
   ----------------------- | -----------
-  `0x00000000-0x000003ff` | Unmapped
+  `0x00000000-0x000003ff` | Reserved
   `0x00000400-0x000007ff` | Thread-local mailbox scratchpad
-  `0x00000800-0x7fffffff` | Off-chip DRAM
+  `0x00000800-0x000fffff` | Reserved
+  `0x00100000-0x3fffffff` | Off-chip DRAM
 
 ### Tinsel CSRs
 
