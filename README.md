@@ -228,7 +228,7 @@ inline void mboxSetLen(uint32_t n);
 inline void mboxSend(uint32_t dest, volatile void* addr);
 
 // Get pointer to nth message-aligned slot in mailbox scratchpad
-inline volatile void* mbox_slot(uint32_t n);
+inline volatile void* mboxSlot(uint32_t n);
 ```
 
 Several things to note:
@@ -310,7 +310,7 @@ A summary of synthesis-time parameters introduced in this section:
   ------------------------ | ------- | -----------
   `LogCoresPerMailbox`     |       2 | Number of cores sharing a mailbox
   `LogWordsPerFlit`        |       2 | Number of 32-bit words in a flit
-  `LogMaxFlitsPerMsg`      |       1 | Max number of flits in a message
+  `LogMaxFlitsPerMsg`      |       2 | Max number of flits in a message
   `LogMsgsPerThread`       |       4 | Number of slots per thread in scratchpad
 
 ## Reference
@@ -330,7 +330,7 @@ A summary of synthesis-time parameters introduced in this section:
   `LogBeatsPerDRAM`        |      25 | Size of DRAM
   `LogCoresPerMailbox`     |       2 | Number of cores sharing a mailbox
   `LogWordsPerFlit`        |       2 | Number of 32-bit words in a flit
-  `LogMaxFlitsPerMsg`      |       1 | Max number of flits in a message
+  `LogMaxFlitsPerMsg`      |       2 | Max number of flits in a message
   `LogMsgsPerThread`       |       4 | Number of slots per thread in scratchpad
 
 ### Tinsel Memory Map
