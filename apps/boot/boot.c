@@ -64,9 +64,13 @@ int main()
         hostPut(checksum);
       }
       else if (cmd == StartCmd) {
-        // Start all threads running
-        for (int i = 1; i < (1 << LogThreadsPerCore); i++)
+        uint32_t maxThreads = get(&checksum) - 1;
+        // Start threads running
+        for (int i = 1; i < (1 << LogThreadsPerCore); i++) {
+          if (maxThreads == 0) break;
+          maxThreads--;
           threadCreate(i);
+        }
         break;
       }
     }

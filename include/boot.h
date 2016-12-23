@@ -28,7 +28,8 @@ typedef enum {
   // of all the data the boot loader has received.
   CacheFlushCmd,
 
-  // StartCmd ends the boot loader and starts all threads executing.
+  // StartCmd ends the boot loader and starts threads executing.
+  // Argument: the number of threads per core to start.
   StartCmd,
 
 } BootCmd;
