@@ -637,14 +637,15 @@ module mkCore#(CoreId myId) (Core);
     // 33-bit addition/subtraction (result used for comparisons too)
     Bool ucmp = isUnsignedCmp(token.instr);
     let addA = {ucmp ? 1'b0 : token.valA[31], token.valA};
-    let addB = {ucmp ? 1'b0 : token.valB[31], token.aluB};
+    let addB = {ucmp ? 1'b0 : token.aluB[31], token.aluB};
     res.add = (addA + (token.op.isAdd ? addB : ~addB)) +
                 (token.op.isAdd ? 0 : 1);
     // Shift left
     res.shiftLeft = token.valA << token.aluB[4:0];
     // Shift right (both logical and arithmetic cases)
     Bit#(1) shiftExt = isArithShift(token.instr) ? token.valA[31] : 1'b0;
-    res.shiftRight = truncate({shiftExt, token.valA} >> token.aluB[4:0]);
+    Int#(33) shiftRes = unpack({shiftExt, token.valA}) >> token.aluB[4:0];
+    res.shiftRight = truncate(pack(shiftRes));
     // Bitwise operations
     res.bitwise = when (token.op.isAnd, token.valA & token.aluB)
                 | when (token.op.isOr,  token.valA | token.aluB)

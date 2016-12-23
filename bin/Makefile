@@ -3,4 +3,4 @@ nothing:
 
 .PHONY: clean
 clean:
-	rm -f simboot boot simterm term
+	rm -f hostlink hostlink-sim
