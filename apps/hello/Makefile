@@ -14,7 +14,7 @@ code.v: hello.elf
 	$(RV_OBJCOPY) -O verilog --only-section=.text hello.elf code.v
 
 data.v: hello.elf
-	$(RV_OBJCOPY) -O verilog -O verilog --remove-section=.text \
+	$(RV_OBJCOPY) -O verilog --remove-section=.text \
                 --set-section-flags .bss=alloc,load,contents hello.elf data.v
 
 hello.elf: hello.c link.ld $(INC)/config.h $(INC)/tinsel.h
