@@ -2,13 +2,24 @@
 
 export PATH=$PATH:$(realpath ../bin)
 
-HOSTLINK=hostlink
-if [ "$1" == "sim" ]; then
-  HOSTLINK=hostlink-sim
-fi
+case "$1" in
+  jtag)
+    HOSTLINK=hostlink
+    ;;
+  sim)
+    HOSTLINK=hostlink-sim
+    ;;
+  *)
+    echo "Usage: "
+    echo "  run.sh sim       Connect to tinsel machine in simulation"
+    echo "  run.sh jtag      Connect to tinsel machine over JTAG"
+    exit -1
+    ;;
+esac
 
 if [ -z "`which $HOSTLINK`" ]; then
   echo "Can't find $HOSTLINK executable"
+  echo "(Did you forget to build hostlink?)"
   exit -1
 fi
 

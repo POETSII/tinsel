@@ -14,7 +14,7 @@ all: $(patsubst %.S,%.code.v,$(wildcard *.S)) \
 	$(RV_OBJCOPY) -O verilog --only-section=.text $< $@
 
 %.data.v: %.elf
-	$(RV_OBJCOPY) -O verilog -O verilog --remove-section=.text \
+	$(RV_OBJCOPY) -O verilog --remove-section=.text \
                 --set-section-flags .bss=alloc,load,contents $< $@
 
 %.elf: %.o link.ld
