@@ -1,7 +1,7 @@
 #include <tinsel.h>
 
 // Simulate Newton's law of cooling on a 2D square grid of threads.
-// Each thread simulates a subgrid of NxN cells.
+// Each thread simulates a subgrid of LxL cells.
 
 // Direction: north, south, east, and west
 typedef enum {N=0, S=1, E=2, W=3} Dir;
