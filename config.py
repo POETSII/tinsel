@@ -50,7 +50,7 @@ p["DCacheLogSetsPerThread"] = 3
 p["DCacheLogNumWays"] = 2
 
 # Number of DRAMs per FPGA board
-p["DRAMsPerBoard"] = 2
+p["LogDRAMsPerBoard"] = 1
 
 # Max number of outstanding DRAM requests permitted
 p["DRAMLogMaxInFlight"] = 4
@@ -166,18 +166,22 @@ p["LogTransmitBufferLen"] = (p["LogMaxFlitsPerMsg"]
 # Number of mailboxes per board
 p["MailboxesPerBoard"] = 2 ** p["LogMailboxesPerBoard"]
 
+# Number of DRAMs per FPGA board
+p["DRAMsPerBoard"] = 2 ** p["LogDRAMsPerBoard"]
+
 # Size of each DRAM
 p["LogLinesPerDRAM"] = p["LogBeatsPerDRAM"] - p["LogBeatsPerLine"]
 p["LogBytesPerDRAM"] = p["LogBeatsPerDRAM"] + p["LogBytesPerBeat"]
 
 # Number of threads per DRAM
-p["ThreadsPerDRAM"] = 2 ** (p["LogThreadsPerCore"] +
-                              p["LogCoresPerDCache"] +
-                                p["LogDCachesPerDRAM"])
-
+p["LogThreadsPerDRAM"] = (p["LogThreadsPerCore"] +
+                            p["LogCoresPerDCache"] +
+                              p["LogDCachesPerDRAM"])
+p["ThreadsPerDRAM"] = 2 ** p["LogThreadsPerDRAM"]
 
 # Number of threads per board
-p["ThreadsPerBoard"] = p["ThreadsPerDRAM"] * p["DRAMsPerBoard"]
+p["LogThreadsPerBoard"] = p["LogThreadsPerDRAM"] + p["LogDRAMsPerBoard"]
+p["ThreadsPerBoard"] = 2 ** p["LogThreadsPerBoard"]
 
 # Cores per board
 p["LogCoresPerBoard"] = p["LogCoresPerMailbox"] + p["LogMailboxesPerBoard"]

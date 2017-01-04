@@ -1,5 +1,4 @@
 #include <tinsel.h>
-#include <boot.h>
 
 int main()
 {
