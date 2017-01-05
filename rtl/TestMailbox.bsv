@@ -105,6 +105,10 @@ module testMailbox ();
 
   // Initialisation
   // --------------
+  //
+  // Initialise slot 0 per thread with write-data: first word with 0
+  // and final word with 100.  And allocate slots 1 and 2 per thread
+  // for receiving.
 
   Reg#(Bool) init <- mkReg(True);
   Reg#(Bool) initPhase1Done <- mkReg(False);
