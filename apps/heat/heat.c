@@ -7,7 +7,7 @@
 typedef enum {N=0, S=1, E=2, W=3} Dir;
 
 // Given a direction, return opposite direction
-Dir opposite(Dir d)
+inline Dir opposite(Dir d)
 {
   if (d == N) return S;
   if (d == S) return N;
@@ -109,6 +109,9 @@ int main()
     for (int i = 1; i <= L; i++)
       edgeIn[W][i] = 255;
 
+  // Messages will be comprised for 4 flits
+  mboxSetLen(3);
+
   // Simulation
   // ----------
 
@@ -176,8 +179,7 @@ int main()
       mboxWaitUntil(waitCond);
 
       // Send handler
-      if (mboxCanSend()) {
-        mboxSetLen(3);
+      if (needToSend && mboxCanSend()) {
         Dir d = neighbourList[edgesSent];
         // Send both the source direction and the LSB of the time step
         // in the first word of the message
@@ -210,7 +212,7 @@ int main()
   // Finally, emit the state of the local subgrid
   for (int y = 0; y < L; y++)
     for (int x = 0; x < L; x++) {
-      hostPut(newSubgrid[y][x]);
+      hostPut(subgrid[y][x]);
     }
 
   return 0;
