@@ -9,6 +9,7 @@ DEFS = $(shell python ../config.py defs)
 # BSV compiler flags
 BSC = bsc
 BSCFLAGS = -wait-for-license -suppress-warnings S0015 \
+           -suppress-warnings G0023 \
            -steps-warn-interval 400000 -check-assert \
            +RTS -K32M -RTS
 
@@ -27,12 +28,12 @@ $(TOPMOD).v: *.bsv
          $(DEFS) -u -verilog -g $(TOPMOD) $(TOPFILE)
 
 testMem: *.bsv *.c
-	$(BSC) $(BSCFLAGS) $(DEFS) -D SIMULATE -suppress-warnings G0023 \
+	$(BSC) $(BSCFLAGS) $(DEFS) -D SIMULATE \
          -sim -g testMem -u TestMem.bsv
 	$(BSC) $(BSCFLAGS) -sim -o testMem -e testMem *.c
 
 testMailbox: *.bsv *.c
-	$(BSC) $(BSCFLAGS) $(DEFS) -D SIMULATE -suppress-warnings G0023 \
+	$(BSC) $(BSCFLAGS) $(DEFS) -D SIMULATE \
          -sim -g testMailbox -u TestMailbox.bsv
 	$(BSC) $(BSCFLAGS) -sim -o testMailbox -e testMailbox *.c
 

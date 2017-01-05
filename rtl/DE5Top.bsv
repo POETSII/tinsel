@@ -4,17 +4,17 @@ package DE5Top;
 // Imports
 // ============================================================================
 
-import Core      :: *;
-import DCache    :: *;
-import Globals   :: *;
-import DRAM      :: *;
-import Interface :: *;
-import Queue     :: *;
-import Vector    :: *;
-import Mailbox   :: *;
-import Ring      :: *;
-import HostLink  :: *;
-import JtagUart  :: *;
+import Core           :: *;
+import DCache         :: *;
+import Globals        :: *;
+import DRAM           :: *;
+import Interface      :: *;
+import Queue          :: *;
+import Vector         :: *;
+import Mailbox        :: *;
+import MailboxNetwork :: *;
+import HostLink       :: *;
+import JtagUart       :: *;
 
 // ============================================================================
 // Interface
@@ -88,9 +88,9 @@ module de5Top (DE5Top);
     connectCoresToMailbox(map(mailboxClient, cs), mailboxes[i]);
   end
 
-  // Create ring of mailboxes
+  // Create bus of mailboxes
   function MailboxNet mailboxNet(Mailbox mbox) = mbox.net;
-  mkRing(map(mailboxNet, mailboxes));
+  mkBus(map(mailboxNet, mailboxes));
 
   // Create host-link interface
   function HostLinkCore getHostLink(Core core) = core.hostLinkCore;
