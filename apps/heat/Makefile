@@ -24,9 +24,22 @@ heat.elf: heat.c link.ld $(INC)/config.h $(INC)/tinsel.h
 link.ld: genld.sh
 	./genld.sh > link.ld
 
+sim.ppm: code.v data.v vis
+	hostlink-sim boot code.v data.v
+	hostlink-sim dump -n 57600 > dump.txt
+	./vis dump.txt > out.ppm
+
+fpga.ppm: code.v data.v vis
+	hostlink boot code.v data.v
+	hostlink dump -n 57600 > dump.txt
+	./vis dump.txt > out.ppm
+
+vis: vis.cpp
+	g++ -O2 vis.cpp -o vis
+
 $(INC)/config.h: $(TINSEL_ROOT)/config.py
 	make -C $(INC)
 
 .PHONY: clean
 clean:
-	rm -f *.o *.elf link.ld *.v
+	rm -f *.o *.elf link.ld *.v vis dump.txt *.ppm

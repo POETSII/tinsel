@@ -15,6 +15,9 @@ inline Dir opposite(Dir d)
   return E;
 }
 
+// 32-bit fixed-point number in 16.16 format
+#define FixedPoint(x, y) (((x) << 16) | (y))
+
 int main()
 {
   // Id for this thread
@@ -102,12 +105,22 @@ int main()
   // Apply heat at north edge
   if (yPos == 0)
     for (int i = 1; i <= L; i++)
-      edgeIn[N][i] = 255;
+      edgeIn[N][i] = FixedPoint(255, 0);
 
   // Apply heat at west edge
   if (xPos == 0)
     for (int i = 1; i <= L; i++)
-      edgeIn[W][i] = 255;
+      edgeIn[W][i] = FixedPoint(255, 0);
+
+  // Apply cool at south edge
+  if (yPos == (len-1))
+    for (int i = 1; i <= L; i++)
+      edgeIn[S][i] = FixedPoint(40, 0);
+
+  // Apply cool at east edge
+  if (xPos == (len-1))
+    for (int i = 1; i <= L; i++)
+      edgeIn[E][i] = FixedPoint(40, 0);
 
   // Messages will be comprised for 4 flits
   mboxSetLen(3);
@@ -138,14 +151,14 @@ int main()
         // Compute new temperature for this cell
         // (Assuming dissapation constant of 0.25)
         int newTemp =
-          subgrid[y][x] - ((subgrid[y][x] - surroundings) >> 2);
+          subgrid[y][x] - (subgrid[y][x] - surroundings);
         // Update subgrid
         newSubgrid[y][x] = newTemp;
         // Update edges
         if (y == 0)   edgeOut[N][x+1] = newTemp;
-        if (y == N-1) edgeOut[S][x+1] = newTemp;
+        if (y == L-1) edgeOut[S][x+1] = newTemp;
         if (x == 0)   edgeOut[W][y+1] = newTemp;
-        if (x == N-1) edgeOut[E][y+1] = newTemp;
+        if (x == L-1) edgeOut[E][y+1] = newTemp;
       }
     }
 
@@ -210,9 +223,14 @@ int main()
   }
 
   // Finally, emit the state of the local subgrid
-  for (int y = 0; y < L; y++)
-    for (int x = 0; x < L; x++) {
-      hostPut(subgrid[y][x]);
+  int x = (xPos << LogWordsPerMsg) - xPos;
+  int y = (yPos << LogWordsPerMsg) - yPos;
+  for (int i = 0; i < L; i++)
+    for (int j = 0; j < L; j++) {
+      // Transfer Y coord (12 bits), X coord (12 buts) and temp (8 bits)
+      uint32_t coords = ((y+i) << 12) | (x+j);
+      uint32_t temp = (subgrid[i][j] >> 16) & 0xff;
+      hostPut((coords << 8) | temp);
     }
 
   return 0;
