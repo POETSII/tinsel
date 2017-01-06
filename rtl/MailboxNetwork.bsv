@@ -223,7 +223,7 @@ module mkBus#(Vector#(n, MailboxNet) mailboxes) ();
 
   // Terminate bus
   connectDirect(leftNullOut, routers[0].leftIn);
-  connectDirect(rightNullOut, routers[vakueOf(n)-1].rightIn);
+  connectDirect(rightNullOut, routers[valueOf(n)-1].rightIn);
 
 endmodule
 
