@@ -27,8 +27,7 @@ make --quiet
 for FILE in *.S; do
   TEST=$(basename $FILE .S)
   echo -ne "$TEST\t"
-  $HOSTLINK boot $TEST.code.v $TEST.data.v -o
-  $HOSTLINK dump -n 1 > $TEST.out
+  $HOSTLINK $TEST.code.v $TEST.data.v -o -n 1 > $TEST.out
   RESULT=$(cut -d ' ' -f 3 $TEST.out)
   if [ "$RESULT" == "1" ]; then
     echo "PASSED"

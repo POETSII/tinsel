@@ -7,10 +7,6 @@
 #include <string.h>
 #include "HostLink.h"
 
-// =============================================================================
-// Host Link Boot
-// =============================================================================
-
 // Send file contents over host-link
 uint32_t sendFile(BootCmd cmd, HostLink* link, FILE* fp, uint32_t* checksum)
 {
@@ -53,31 +49,34 @@ uint32_t sendFile(BootCmd cmd, HostLink* link, FILE* fp, uint32_t* checksum)
   return addr;
 }
 
-int bootUsage()
+int usage()
 {
   printf("Usage:\n"
-         "  hostlink boot [CODE].v [DATA].v\n"
+         "  hostlink [CODE] [DATA]\n"
          "    -o          start only one thread\n"
+         "    -n          num messages to dump after boot\n"
          "    -h          help\n");
   return -1;
 }
 
-int bootMain(int argc, char* argv[])
+int main(int argc, char* argv[])
 {
   int startOnlyOneThread = 0;
+  int numMessages = -1;
 
   // Option processing
-  optind = 2;
+  optind = 1;
   for (;;) {
-    int c = getopt(argc, argv, "ho");
+    int c = getopt(argc, argv, "hon:");
     if (c == -1) break;
     switch (c) {
-      case 'h': return bootUsage();
+      case 'h': return usage();
       case 'o': startOnlyOneThread = 1; break;
-      default: printf("Here %c\n", c); return bootUsage();
+      case 'n': numMessages = atoi(optarg); break;
+      default: return usage();
     }
   }
-  if (optind+2 != argc) return bootUsage();
+  if (optind+2 != argc) return usage();
 
   // Open code file
   FILE* code = fopen(argv[optind], "r");
@@ -156,42 +155,10 @@ int bootMain(int argc, char* argv[])
   link.put(numThreads);
   checksum += StartCmd + numThreads;
  
-  return 0;
-}
-
-// =============================================================================
-// Host Link Dump
-// =============================================================================
-
-int dumpUsage()
-{
-  printf("Usage:\n"
-         "  hostlink dump\n"
-         "    -n NUM            exit after NUM messages received\n"
-         "    -h                help\n");
-  return -1;
-}
-
-int dumpMain(int argc, char* argv[])
-{
-  // Number of messages to dump before exiting
-  int numMessages = -1;
-
-  // Option processing
-  optind = 2;
-  for (;;) {
-    int c = getopt(argc, argv, "hn:");
-    if (c == -1) break;
-    switch (c) {
-      case 'h': return dumpUsage();
-      case 'n': numMessages = atoi(optarg); break;
-      default: return dumpUsage();
-    }
-  }
-  if (optind != argc) return dumpUsage();
+  // Step 4: dump
+  // ------------
 
   // Dump messages to terminal
-  HostLink link;
   int count = 0;
   for (;;) {
     if (numMessages >= 0 && count == numMessages) break;
@@ -200,30 +167,6 @@ int dumpMain(int argc, char* argv[])
     printf("%d %x %x\n", src, cmd, val);
     count++;
   }
- 
+
   return 0;
-}
-
-// =============================================================================
-// Main
-// =============================================================================
-
-int usage()
-{
-  printf("Usage:\n"
-         "  hostlink boot      load application onto tinsel machine\n"
-         "  hostlink dump      dump all messages received from tinsel\n");
-  return -1;
-}
-
-int main(int argc, char* argv[])
-{
-  if (argc < 2)
-    return usage();
-  else if (strcmp(argv[1], "boot") == 0)
-    return bootMain(argc, argv);
-  else if (strcmp(argv[1], "dump") == 0)
-    return dumpMain(argc, argv);
-  else
-    return usage();
 }

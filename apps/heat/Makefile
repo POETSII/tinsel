@@ -25,14 +25,12 @@ link.ld: genld.sh
 	./genld.sh > link.ld
 
 sim.ppm: code.v data.v vis
-	hostlink-sim boot code.v data.v
-	hostlink-sim dump -n 57600 > dump.txt
-	./vis dump.txt > out.ppm
+	hostlink-sim code.v data.v -n 230400 > dump.txt
+	./vis dump.txt > sim.ppm
 
 fpga.ppm: code.v data.v vis
-	hostlink boot code.v data.v
-	hostlink dump -n 57600 > dump.txt
-	./vis dump.txt > out.ppm
+	hostlink code.v data.v -n 230400 > dump.txt
+	./vis dump.txt > fpga.ppm
 
 vis: vis.cpp
 	g++ -O2 vis.cpp -o vis
