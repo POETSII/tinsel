@@ -6,7 +6,7 @@
 #include <stdint.h>
 
 // Dimensions of square PPM image
-const int N = 240;
+const int N = 480;
 
 // 256 x RGB colours representing heat intensities
 int heat[] = {

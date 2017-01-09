@@ -129,7 +129,7 @@ int main()
   // ----------
 
   // Number of time steps to simulate
-  const int nsteps = 10;
+  const int nsteps = 1000;
 
   // Simulation loop
   for (int t = 0; t < nsteps; t++) {
