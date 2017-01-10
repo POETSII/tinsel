@@ -5,7 +5,7 @@ RTL = $(realpath $(TINSEL_ROOT)/rtl)
 BIN = $(realpath $(TINSEL_ROOT)/bin)
 
 # RISC-V tools
-RV_ARCH    = RV32I
+RV_ARCH    = RV32IM
 RV_CC      = riscv64-unknown-elf-gcc
 RV_LD      = riscv64-unknown-elf-ld
 RV_OBJCOPY = riscv64-unknown-elf-objcopy
