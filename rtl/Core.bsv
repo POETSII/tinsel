@@ -19,6 +19,7 @@ import Interface :: *;
 import Mailbox   :: *;
 import Globals   :: *;
 import HostLink  :: *;
+import Mult      :: *;
 
 // ============================================================================
 // Control/status register (CSRs) supported
@@ -104,7 +105,9 @@ typedef struct {
   Bool isLoad;           Bool isStore;
   Bool isCSR;            CSR csr;
   Bool isAddOrSub;       Bool isBitwise;
-  Bool isFence;
+  Bool isFence;          Bool isMult;
+  Bool isMultH;          Bool isMultASigned;
+  Bool isMultBSigned;
 } Op deriving (Bits);
 
 // Instruction result
@@ -112,6 +115,7 @@ typedef struct {
   Bit#(33) add;       Bit#(32) csr;
   Bit#(32) shiftLeft; Bit#(32) shiftRight;
   Bit#(32) bitwise;   Bit#(32) opui;
+  Bit#(66) mult;
 } InstrResult deriving (Bits);
 
 // Width of load or store access
@@ -227,7 +231,7 @@ function Op decodeOp(Bit#(32) instr);
   Bit#(5) op = instr[6:2];
   Bit#(3) minorOp = funct3(instr);
   // Arithmetic operations
-  Bool isArithReg = op == 'b01100; // Second arg a register
+  Bool isArithReg = instr[25] == 0 && op == 'b01100; // Second arg a register
   Bool isArithImm = op == 'b00100; // Second arg an immediate
   Bool isArith = isArithReg || isArithImm;
   ret.isAdd = minorOp == 'b000 && (isArithImm || isArithReg && instr[30] == 0);
@@ -240,6 +244,12 @@ function Op decodeOp(Bit#(32) instr);
   ret.isOr = minorOp == 'b110 && isArith;
   ret.isXor = minorOp == 'b100 && isArith;
   ret.isBitwise = ret.isAnd || ret.isOr || ret.isXor;
+  // Multiplication
+  Bool isMultOrMultH = instr[25] == 1 && op == 'b01100;
+  ret.isMult = isMultOrMultH && minorOp[1:0] == 0;
+  ret.isMultH = isMultOrMultH && minorOp[1:0] != 0;
+  ret.isMultASigned = minorOp[1:0] != 3;
+  ret.isMultBSigned = minorOp[1:0] == 1;
   // Load or add-to upper immediate
   ret.isOpUI = op == 'b01101 || op == 'b00101;
   // Jump operations
@@ -321,7 +331,8 @@ function Bool isRegFileWrite(Op op) =
   || op.isShiftRight     || op.isAnd
   || op.isOr             || op.isXor
   || op.isOpUI           || op.isJump
-  || op.isCSR;
+  || op.isCSR            || op.isMult
+  || op.isMultH;
 
 // ==============
 // Loads & Stores
@@ -474,6 +485,9 @@ module mkCore#(CoreId myId) (Core);
   InPort#(ThreadEventPair) wakeupPort <- mkInPort;
   connectUsing(mkUGShiftQueue1(QueueOptFmax),
                  mailbox.wakeup, wakeupPort.in);
+
+  // Multiplier
+  Mult#(33) mult <- mkSignedMult;
 
   // Pipeline stages
   Reg#(Bool)          fetch1Fire         <- mkDReg(False);
@@ -640,6 +654,10 @@ module mkCore#(CoreId myId) (Core);
     let addB = {ucmp ? 1'b0 : token.aluB[31], token.aluB};
     res.add = (addA + (token.op.isAdd ? addB : ~addB)) +
                 (token.op.isAdd ? 0 : 1);
+    // Mulitiplication
+    Bit#(33) mulA = {token.op.isMultASigned ? token.valA[31] : 0, token.valA};
+    Bit#(33) mulB = {token.op.isMultBSigned ? token.valB[31] : 0, token.valB};
+    res.mult = mult.mult(mulA, mulB);
     // Shift left
     res.shiftLeft = token.valA << token.aluB[4:0];
     // Shift right (both logical and arithmetic cases)
@@ -787,7 +805,9 @@ module mkCore#(CoreId myId) (Core);
       | when(op.isBitwise,        res.bitwise)
       | when(op.isOpUI,           res.opui)
       | when(op.isJump,           zeroExtend(token.nextPC))
-      | when(op.isCSR,            res.csr);
+      | when(op.isCSR,            res.csr)
+      | when(op.isMult,           res.mult[31:0])
+      | when(op.isMultH,          res.mult[63:32]);
     // Setup new PC
     Bool takeBranch =
          op.isJump
