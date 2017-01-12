@@ -1,11 +1,9 @@
 # Tinsel Architecture Guide
 
-**Tinsel** is a **many-core message-passing** machine designed for
-massively parallel computing on an **FPGA cluster**.  It is not
-specific to any particular FPGA board, but the description below uses
-Terasic's [DE5-NET](http://de5-net.terasic.com) for illustration
-purposes.  (This is a Stratix V board from circa 2012 that the
-[CL](http://www.cl.cam.ac.uk/) has in plentiful supply.)
+Tinsel is not specific to any particular FPGA board, but the
+description below uses Terasic's [DE5-NET](http://de5-net.terasic.com)
+for illustration purposes.  This is a Stratix V board from circa 2012
+that the [CL](http://www.cl.cam.ac.uk/) has in plentiful supply.
 
 ## Contents
 
