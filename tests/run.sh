@@ -23,7 +23,6 @@ if [ -z "`which $HOSTLINK`" ]; then
   exit -1
 fi
 
-make --quiet
 for FILE in *.S; do
   TEST=$(basename $FILE .S)
   echo -ne "$TEST\t"

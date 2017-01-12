@@ -641,23 +641,23 @@ module mkCore#(CoreId myId) (Core);
       $display("0x%x", token.valA);
     end
     `endif
+    // Mulitiplication
+    Bit#(33) mulA = {token.op.isMultASigned ? token.valA[31] : 0, token.valA};
+    Bit#(33) mulB = {token.op.isMultBSigned ? token.valB[31] : 0, token.valB};
+    token.instrResult.mult = mult.mult(mulA, mulB);
     // Triger next stage
     execute2Input <= token;
   endrule
 
   rule execute2;
     PipelineToken token = execute2Input;
-    InstrResult res = ?;
+    InstrResult res = token.instrResult;
     // 33-bit addition/subtraction (result used for comparisons too)
     Bool ucmp = isUnsignedCmp(token.instr);
     let addA = {ucmp ? 1'b0 : token.valA[31], token.valA};
     let addB = {ucmp ? 1'b0 : token.aluB[31], token.aluB};
     res.add = (addA + (token.op.isAdd ? addB : ~addB)) +
                 (token.op.isAdd ? 0 : 1);
-    // Mulitiplication
-    Bit#(33) mulA = {token.op.isMultASigned ? token.valA[31] : 0, token.valA};
-    Bit#(33) mulB = {token.op.isMultBSigned ? token.valB[31] : 0, token.valB};
-    res.mult = mult.mult(mulA, mulB);
     // Shift left
     res.shiftLeft = token.valA << token.aluB[4:0];
     // Shift right (both logical and arithmetic cases)
