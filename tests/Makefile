@@ -26,6 +26,16 @@ all: $(patsubst %.S,%.code.v,$(wildcard *.S)) \
 link.ld: genld.sh
 	./genld.sh > link.ld
 
+.PHONY: run-sim
+run-sim: all
+	make -C $(TINSEL_ROOT)/hostlink
+	./run.sh sim
+
+.PHONY: run-jtag
+run-jtag: all
+	make -C $(TINSEL_ROOT)/hostlink
+	./run.sh jtag
+
 .PHONY: clean
 clean:
 	rm -f *.o *.elf link.ld *.v *.out
