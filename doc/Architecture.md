@@ -372,7 +372,7 @@ boards.
 
 ## 5. Tinsel HostLink
 
-HostLink is the mechanism by tinsel cores running on FPGA
+HostLink is the mechanism by which tinsel cores running on FPGA
 communicate with a host PC.  Using HostLink, programs compiled on the
 PC can be written into the instruction memories of the tinsel cores,
 memory can be initialised, and program outputs can be sent to the PC
@@ -394,7 +394,7 @@ tag and a 4-byte argument.  At present, there are two such commands:
   `SetDest`        | Core Id           
   `StdIn`          | Payload           
 
-The `SetDest` command Sets the destination core id for all subsequent
+The `SetDest` command sets the destination core id for all subsequent
 commands (until the next `SetDest` command).  This is a meta-command
 in that it is not actually sent to any core.  The MSB of core id is
 the broadcast bit.  The `StdIn` command causes the payload to be
