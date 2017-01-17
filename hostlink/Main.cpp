@@ -113,8 +113,9 @@ int main(int argc, char* argv[])
   // -----------------------------------------
 
   // Iterate over each DRAM
-  uint32_t coresPerDRAM = 1 << (LogCoresPerDCache + LogDCachesPerDRAM);
-  for (int i = 0; i < DRAMsPerBoard; i++) {
+  uint32_t coresPerDRAM =
+             1 << (TinselLogCoresPerDCache + TinselLogDCachesPerDRAM);
+  for (int i = 0; i < TinselDRAMsPerBoard; i++) {
     // Use one core to initialise each DRAM
     link.setDest(coresPerDRAM * i);
 
@@ -150,7 +151,7 @@ int main(int argc, char* argv[])
     link.setDest(0x80000000);
 
   // Send start command with initial program counter
-  uint32_t numThreads = startOnlyOneThread ? 1 : (1 << LogThreadsPerCore);
+  uint32_t numThreads = startOnlyOneThread ? 1 : (1 << TinselLogThreadsPerCore);
   link.put(StartCmd);
   link.put(numThreads);
   checksum += StartCmd + numThreads;
