@@ -4,7 +4,7 @@ TINSEL_ROOT=../..
 include $(TINSEL_ROOT)/globals.mk
 
 # Local compiler flags
-CFLAGS = -mabi=ilp32 -march=$(RV_ARCH) -O2 -I $(INC)
+CFLAGS = $(RV_CFLAGS) -O2 -I $(INC)
 LDFLAGS = -melf32lriscv -G 0 
 
 .PHONY: all
@@ -26,6 +26,14 @@ link.ld: genld.sh
 
 $(INC)/config.h: $(TINSEL_ROOT)/config.py
 	make -C $(INC)
+
+.PHONY: run-jtag
+run-jtag: code.v data.v
+	LD_LIBRARY_PATH=$(QUARTUS_ROOTDIR)/linux64 hostlink code.v data.v -n 1024
+
+.PHONY: run-sim
+run-sim: code.v data.v
+	hostlink-sim code.v data.v -n 1024
 
 .PHONY: clean
 clean:
