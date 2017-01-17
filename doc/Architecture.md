@@ -42,18 +42,13 @@ configuration without caches and custom features.
 
 The pipeline is **hazard-free**: at most one instruction per thread is
 present in the pipeline at any time.  To achieve **full throughput**
--- execution of an instruction on every clock cycle -- the number of
-hardware threads must be greater than the pipeline depth.  The first
-power of two that satisfies this requirement is 16.
-
-In fact, the requirement is slightly stronger than this: for full
-throughput, there must exist at least 8 **runnable** threads at any time.
-When a thread executes a multi-cycle instruction (such as a DRAM
-load/store or a blocking send/receive), it becomes **suspended** and is
-only made runnable again when the instruction completes.  While
-suspended, a thread is not present in the queue of runnable threads
-from which the scheduler will select the next thread, so does
-not burn CPU cycles.
+-- execution of an instruction on every clock cycle -- there must
+exist at least 8 **runnable** threads at any time.  When a thread
+executes a multi-cycle instruction (such as a DRAM load/store or a
+blocking send/receive), it becomes **suspended** and is only made
+runnable again when the instruction completes.  While suspended, a
+thread is not present in the queue of runnable threads from which the
+scheduler will select the next thread, so does not burn CPU cycles.
 
 The core fetches instructions from an **instruction memory**
 implemented using on-chip block RAM.  The size of this memory is
