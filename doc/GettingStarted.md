@@ -34,9 +34,10 @@ variable `QUARTUS_ROOTDIR` set.  From the `tinsel` root directory:
 Rather than building a tinsel FPGA bitfile from scratch, it is
 recommanded that you download a pre-built bitfile from:
 
-  [https://github.com/poetsii/bitfiles](https://github.com/poetsii/bitfiles)
+  [https://www.cl.cam.ac.uk/~mn416/bitfiles/](https://www.cl.cam.ac.uk/~mn416/bitfiles/)
 
-Place your downloaded `.sof` file into the `de5` subdirectory.
+Place your downloaded `.sof` file into the `de5` subdirectory and
+rename it to `Golden_top.sof`.
 
 If you want to build your own bitfile, then from the `tinsel` root
 directory:

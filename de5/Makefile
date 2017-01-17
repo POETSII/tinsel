@@ -22,6 +22,16 @@ report:
 	quartus_dse Golden_top.qpf --report utilization
 	quartus_dse Golden_top.qpf --report fmax_summary
 
+.PHONY: update-mif
+update-mif:
+	make -C $(TINSEL_ROOT)/apps/boot
+	quartus_cdb --update_mif Golden_top.qpf
+	quartus_asm Golden_top.qpf
+
+.PHONY: download-sof
+download-sof:
+	quartus_pgm Golden_top.cdf
+
 .PHONY: clean
 clean:
 	rm -f *.mif *.rpt *.msg *.summary *.sld *.sopcinfo *.jdi

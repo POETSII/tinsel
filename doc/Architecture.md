@@ -25,7 +25,7 @@ For reference:
 
 ## 1. Tinsel Core
 
-**Tinsel Core** is a customised 32-bit **multi-threaded** processor
+Tinsel core is a **customised** 32-bit **multi-threaded** processor
 implementing a subset of the RV32IM profile of the
 [RISC-V](https://riscv.org/specifications/) ISA.  At present, this
 excludes integer division and system instructions.  Custom features
@@ -35,7 +35,7 @@ are provided through a range of control/status registers
 The number of hardware threads must be a power of two and is
 controlled by a sythesis-time parameter `LogThreadsPerCore`.
 
-Tinsel employs a generous **9-stage pipeline** to achieve an Fmax of
+Tinsel employs a generous **8-stage pipeline** to achieve an Fmax of
 450MHz on the [DE5-NET](http://de5-net.terasic.com), while consuming
 less than 450 ALMs (0.2%).  These figures are for a standalone
 configuration without caches and custom features.
@@ -47,7 +47,7 @@ hardware threads must be greater than the pipeline depth.  The first
 power of two that satisfies this requirement is 16.
 
 In fact, the requirement is slightly stronger than this: for full
-throughput, there must exist at least 9 **runnable** threads at any time.
+throughput, there must exist at least 8 **runnable** threads at any time.
 When a thread executes a multi-cycle instruction (such as a DRAM
 load/store or a blocking send/receive), it becomes **suspended** and is
 only made runnable again when the instruction completes.  While
@@ -444,7 +444,7 @@ The default tinsel configuration on a single DE5-NET board contains:
   * two DDR3 DRAM controllers
   * a JTAG UART
 
-The clock frequency is 300MHz and the resource utilisation is 94K
+The clock frequency is 275MHz and the resource utilisation is 94K
 ALMs, 40% of the DE5-NET, leaving plenty of space for interboard comms
 to be added in the near future.
 
