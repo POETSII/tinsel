@@ -17,9 +17,12 @@ data.v: hello.elf
 	$(RV_OBJCOPY) -O verilog --remove-section=.text \
                 --set-section-flags .bss=alloc,load,contents hello.elf data.v
 
-hello.elf: hello.c link.ld $(INC)/config.h $(INC)/tinsel.h
+hello.elf: hello.c link.ld $(INC)/config.h $(INC)/tinsel.h entry.o
 	$(RV_CC) $(CFLAGS) -Wall -c -o hello.o hello.c
-	$(RV_LD) $(LDFLAGS) -T link.ld -o hello.elf hello.o
+	$(RV_LD) $(LDFLAGS) -T link.ld -o hello.elf entry.o hello.o
+
+entry.o:
+	$(RV_CC) $(CFLAGS) -Wall -c -o entry.o entry.S
 
 link.ld: genld.sh
 	./genld.sh > link.ld
