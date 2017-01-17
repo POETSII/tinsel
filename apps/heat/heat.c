@@ -21,16 +21,17 @@ inline Dir opposite(Dir d)
 int main()
 {
   // Id for this thread
-  const uint32_t me = myId();
+  const uint32_t me = tinselId();
 
   // Neighbours
   // ----------
   //
   // Logically, there is a square grid of threads.  (We assume
-  // LogThreadsPerBoard is even, otherwise grid may not be square.)
+  // TinselLogThreadsPerBoard is even, otherwise grid may not
+  // be square.)
 
   // Square length
-  const uint32_t logLen = LogThreadsPerBoard >> 1;
+  const uint32_t logLen = TinselLogThreadsPerBoard >> 1;
   const uint32_t len    = 1 << logLen;
 
   // X and Y position of thread in grid
@@ -60,7 +61,7 @@ int main()
   // We pick a subgrid length small enough for a whole subgrid edge to
   // be sent in a single message, with 1 word leftover to specify the
   // direction from which the message came.
-  const uint32_t L = (1 << LogWordsPerMsg) - 1;
+  const uint32_t L = (1 << TinselLogWordsPerMsg) - 1;
 
   // We allocate space for two subgrids (the current state and the
   // next state) on the stack.
@@ -77,11 +78,11 @@ int main()
 
   // Edge temperatures to be sent to neighbours
   volatile int* edgeOut[4];
-  for (int i = 0; i < 4; i++) edgeOut[i] = mboxSlot(i);
+  for (int i = 0; i < 4; i++) edgeOut[i] = tinselSlot(i);
 
   // Edge temperatures received from neighbours
   volatile int* edgeIn[4];
-  for (int i = 4; i < 8; i++) edgeIn[i-4] = mboxSlot(i);
+  for (int i = 4; i < 8; i++) edgeIn[i-4] = tinselSlot(i);
 
   // Buffer for edge temperatures received from neighbours
   // (At most two edges from the same neighbour can await processing
@@ -89,7 +90,7 @@ int main()
   volatile int* edgeInBuffer[4];
   for (int i = 0; i < 4; i++) {
     edgeInBuffer[i] = 0;
-    mboxAlloc(mboxSlot(i+8));
+    tinselAlloc(tinselSlot(i+8));
   }
 
   // Zero initial subgrid
@@ -123,7 +124,7 @@ int main()
       edgeIn[E][i] = FixedPoint(40, 0);
 
   // Messages will be comprised for 4 flits
-  mboxSetLen(3);
+  tinselSetLen(3);
 
   // Simulation
   // ----------
@@ -136,7 +137,7 @@ int main()
 
     // Ensure no incomplete sends before continuing
     // (Don't want to modify edgeOut until all edges have been sent)
-    mboxWaitUntil(CAN_SEND);
+    tinselWaitUntil(TINSEL_CAN_SEND);
 
     // Update state
     for (int y = 0; y < L; y++) {
@@ -165,7 +166,7 @@ int main()
     // Allocate space to receive edges
     for (int i = 0; i < numNeighbours; i++) {
       Dir d = neighbourList[i];
-      mboxAlloc(edgeIn[d]);
+      tinselAlloc(edgeIn[d]);
     }
 
     // Counts of edges received and sent
@@ -185,25 +186,25 @@ int main()
       uint32_t needToSend = edgesSent < numNeighbours;
       uint32_t needToRecv = edgesReceived < numNeighbours;
       if (!needToSend && !needToRecv) break;
-      uint32_t waitCond = (needToSend ? CAN_SEND : 0)
-                        | (needToRecv ? CAN_RECV : 0);
+      uint32_t waitCond = (needToSend ? TINSEL_CAN_SEND : 0)
+                        | (needToRecv ? TINSEL_CAN_RECV : 0);
 
       // Suspend thread
-      mboxWaitUntil(waitCond);
+      tinselWaitUntil(waitCond);
 
       // Send handler
-      if (needToSend && mboxCanSend()) {
+      if (needToSend && tinselCanSend()) {
         Dir d = neighbourList[edgesSent];
         // Send both the source direction and the LSB of the time step
         // in the first word of the message
         edgeOut[d][0] = (opposite(d) << 1) | (t & 1);
-        mboxSend(neighbour[d], edgeOut[d]);
+        tinselSend(neighbour[d], edgeOut[d]);
         edgesSent++;
       }
 
       // Receive handler
-      if (mboxCanRecv()) {
-        volatile int* msg = mboxRecv();
+      if (tinselCanRecv()) {
+        volatile int* msg = tinselRecv();
         Dir d = msg[0] >> 1;
         // Is the received edge for the current or next time step?
         if ((msg[0]&1) == (t&1)) {
@@ -223,14 +224,14 @@ int main()
   }
 
   // Finally, emit the state of the local subgrid
-  int x = (xPos << LogWordsPerMsg) - xPos;
-  int y = (yPos << LogWordsPerMsg) - yPos;
+  int x = (xPos << TinselLogWordsPerMsg) - xPos;
+  int y = (yPos << TinselLogWordsPerMsg) - yPos;
   for (int i = 0; i < L; i++)
     for (int j = 0; j < L; j++) {
       // Transfer Y coord (12 bits), X coord (12 buts) and temp (8 bits)
       uint32_t coords = ((y+i) << 12) | (x+j);
       uint32_t temp = (subgrid[i][j] >> 16) & 0xff;
-      hostPut((coords << 8) | temp);
+      tinselHostPut((coords << 8) | temp);
     }
 
   return 0;

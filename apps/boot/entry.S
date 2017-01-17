@@ -6,7 +6,7 @@ entry:
 csrr a0, 0xf14
 
 # Take bottom log(ThreadsPerDRAM) bits
-li a1, ThreadsPerDRAM-1
+li a1, TinselThreadsPerDRAM-1
 and a0, a0, a1
 
 # Set stack pointer to DRAM_TOP - (id * 1M) - 32
