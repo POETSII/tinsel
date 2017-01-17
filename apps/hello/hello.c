@@ -3,10 +3,10 @@
 int main()
 {
   // Id for this thread
-  uint32_t me = myId();
+  uint32_t me = tinselId();
 
   // Send id to host over host-link
-  hostPut(me);
+  tinselHostPut(me);
 
   return 0;
 }

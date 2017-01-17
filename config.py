@@ -207,4 +207,4 @@ elif mode == "envs":
     print("export " + var + "=" + str(p[var]))
 elif mode == "cpp":
   for var in p:
-    print("#define " + var + " " + str(p[var]))
+    print("#define Tinsel" + var + " " + str(p[var]))

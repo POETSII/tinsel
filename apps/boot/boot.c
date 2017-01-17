@@ -7,7 +7,7 @@
 
 // Get a 32-bit word from the host and update the checksum
 inline uint32_t get(uint32_t *checksum) {
-  uint32_t cmd = hostGet();
+  uint32_t cmd = tinselHostGet();
   *checksum += cmd;
   return cmd;
 }
@@ -16,10 +16,10 @@ inline uint32_t get(uint32_t *checksum) {
 int main()
 {
   // Global id of this thread
-  uint32_t me = myId();
+  uint32_t me = tinselId();
 
   // Core-local thread id
-  uint32_t threadId = me & ((1 << LogThreadsPerCore) - 1);
+  uint32_t threadId = me & ((1 << TinselLogThreadsPerCore) - 1);
 
   if (threadId == 0) {
     // State
@@ -37,7 +37,7 @@ int main()
       if (cmd == WriteInstrCmd) {
         // Write instruction to instruction memory
         uint32_t instr = get(&checksum);
-        writeInstr(addrReg, instr);
+        tinselWriteInstr(addrReg, instr);
         addrReg += 4;
       }
       else if (cmd == StoreCmd) {
@@ -51,7 +51,7 @@ int main()
         // Load word from memory
         uint32_t* ptr = (uint32_t*) addrReg;
         uint32_t data = *ptr;
-        hostPut(data);
+        tinselHostPut(data);
         addrReg += 4;
       }
       else if (cmd == SetAddrCmd) {
@@ -60,16 +60,16 @@ int main()
       }
       else if (cmd == CacheFlushCmd) {
         // Cache flush and checksum send
-        flush();
-        hostPut(checksum);
+        tinselCacheFlush();
+        tinselHostPut(checksum);
       }
       else if (cmd == StartCmd) {
         uint32_t maxThreads = get(&checksum) - 1;
         // Start threads running
-        for (int i = 1; i < (1 << LogThreadsPerCore); i++) {
+        for (int i = 1; i < (1 << TinselLogThreadsPerCore); i++) {
           if (maxThreads == 0) break;
           maxThreads--;
-          threadCreate(i);
+          tinselCreateThread(i);
         }
         break;
       }
@@ -77,7 +77,7 @@ int main()
   }
 
   // Call the application's main function
-  int (*appMain)() = (int (*)()) (MaxBootImageBytes);
+  int (*appMain)() = (int (*)()) (TinselMaxBootImageBytes);
   appMain();
   for (;;);
 
