@@ -12,7 +12,16 @@
 
 ## 1. Install the RISC-V tools
 
-Download, build, and install the RISC-V compiler tools from:
+If you have access to a Cambridge CL machine then simply add the
+following to your `.bashrc`:
+
+```
+  export RISCV=/local/ecad/riscv-tools
+  export PATH=$PATH:/local/ecad/riscv-tools/bin
+  source /local/ecad/setup.bash
+```
+
+Otherwise download, build, and install the RISC-V compiler tools from:
 
   [https://github.com/riscv/riscv-tools](https://github.com/riscv/riscv-tools)
 
