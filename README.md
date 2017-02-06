@@ -10,5 +10,6 @@ Guide](doc/GettingStarted.md).
 
   Document                      | Links
   ----------------------------- | -------
+  Tinsel Background             | [md](doc/Background.md)
   Tinsel Architecture Guide     | [md](doc/Architecture.md)
   Tinsel Getting Started Guide  | [md](doc/GettingStarted.md)
