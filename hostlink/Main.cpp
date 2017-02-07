@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <unistd.h>
 #include <boot.h>
 #include <config.h>
 #include <getopt.h>
@@ -53,9 +54,10 @@ int usage()
 {
   printf("Usage:\n"
          "  hostlink [CODE] [DATA]\n"
-         "    -o          start only one thread\n"
-         "    -n          num messages to dump after boot\n"
-         "    -h          help\n");
+         "    -o            start only one thread\n"
+         "    -n [NUMBER]   num messages to dump after boot\n"
+         "    -t [SECONDS]  timeout on message dump\n"
+         "    -h            help\n");
   return -1;
 }
 
@@ -63,16 +65,18 @@ int main(int argc, char* argv[])
 {
   int startOnlyOneThread = 0;
   int numMessages = -1;
+  int numSeconds = -1;
 
   // Option processing
   optind = 1;
   for (;;) {
-    int c = getopt(argc, argv, "hon:");
+    int c = getopt(argc, argv, "hon:t:");
     if (c == -1) break;
     switch (c) {
       case 'h': return usage();
       case 'o': startOnlyOneThread = 1; break;
       case 'n': numMessages = atoi(optarg); break;
+      case 't': numSeconds = atoi(optarg); break;
       default: return usage();
     }
   }
@@ -159,10 +163,22 @@ int main(int argc, char* argv[])
   // Step 4: dump
   // ------------
 
+  // The number of tenths of a second that link has been idle
+  int idle = 0;
+
   // Dump messages to terminal
   int count = 0;
   for (;;) {
     if (numMessages >= 0 && count == numMessages) break;
+    if (! link.canGet()) {
+      usleep(100000);
+      idle++;
+      if (idle == 10*numSeconds) break;
+      continue;
+    }
+    else {
+      idle = 0;
+    }
     uint32_t src, val;
     uint8_t cmd = link.get(&src, &val);
     printf("%d %x %x\n", src, cmd, val);
