@@ -17,6 +17,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <poll.h>
 
 #define FIFO_IN  "/tmp/tinsel.in"
 #define FIFO_OUT "/tmp/tinsel.out"
@@ -54,6 +55,13 @@ class RawLink {
       ptr += n;
       count -= n;
     }
+  }
+
+  bool canGet() {
+    pollfd pfd;
+    pfd.fd = fifoIn;
+    pfd.events = POLLIN;
+    return poll(&pfd, 1, 0);
   }
 
   void put(void* buffer, int count) {
@@ -129,6 +137,10 @@ class RawLink {
       ptr += n;
       count -= n;
     }
+  }
+
+  bool canGet() {
+    return jtagatlantic_bytes_available(jtag) > 0;
   }
 
   void put(void* buffer, int count) {

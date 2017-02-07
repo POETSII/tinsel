@@ -33,6 +33,10 @@ class HostLink {
     raw.get(word, 4);
     return cmd;
   }
+
+  inline bool canGet() {
+    return raw.canGet();
+  }
 };
 
 #endif
