@@ -33,7 +33,7 @@ def receive(sock, n):
 def autoResubmit(jobId, time, count):
   dots = "." * (3*count)
   print ("<p><b>Please wait" + dots + "</b></p>")
-  print "<p>(Its takes 20s to program the FPGA)</p>"
+  print "<p>(Its takes 60s to program the FPGA)</p>"
   print ('<input type="hidden" name="resubmitCount" value="' +
             str(count+1) + '">')
   print ('<input type="hidden" name="inprogress" value="' + str(jobId) + '">')
@@ -84,7 +84,7 @@ if "submitjob" in form:
       print "<p>Error: failed to create new job"
     elif resp == 'O':
       jobId = int(receive(s, 6))
-      autoResubmit(jobId, 2500, 1)
+      autoResubmit(jobId, 4000, 1)
     
     # Close socket
     s.close()
@@ -113,7 +113,7 @@ elif "inprogress" in form:
     # Get response
     resp = receive(s, 1)
     if resp == 'U':
-      autoResubmit(jobId, 2500, int(resubmitCount))
+      autoResubmit(jobId, 4000, int(resubmitCount))
       disableWidgets = True
     if resp == 'E':
       print "<p>Job failed:</p>"
@@ -154,11 +154,7 @@ print """
 
 <p><textarea id="program" name="program" rows=30 cols=80>"""
 
-print program,
-
-print """
-</textarea></p>
-"""
+print (program + "</textarea></p>")
 
 if disableWidgets: print "<button disabled ",
 else: print "<button ",
