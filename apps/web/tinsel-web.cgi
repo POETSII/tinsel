@@ -47,7 +47,7 @@ form = cgi.FieldStorage()
 # Override example from form
 example = "simple"
 if "example" in form:
-  validExamples = ["simple", "border", "stripes", "heat"]
+  validExamples = ["simple", "border", "stripes", "mandelbrot", "heat"]
   if form.getvalue("example") in validExamples:
     example = form.getvalue("example")
 
@@ -144,10 +144,11 @@ def exampleOption(val, text):
   else:
     print ('<option value="' + val + '">' + text + "</option>")
 
-exampleOption("simple" , "Simple")
-exampleOption("border" , "Border")
-exampleOption("stripes", "Stripes")
-exampleOption("heat"   , "Heat Diffusion")
+exampleOption("simple"     , "Simple")
+exampleOption("border"     , "Border")
+exampleOption("stripes"    , "Stripes")
+exampleOption("mandelbrot" , "Mandelbrot")
+exampleOption("heat"       , "Heat Diffusion")
 
 print """
 </select></p>
