@@ -17,8 +17,11 @@ LDFLAGS = -melf32lriscv -G 0
 %.o: %.c $(INC)/config.h $(INC)/tinsel.h grid.h
 	$(RV_CC) $(CFLAGS) -Wall -c -o $@ $< 2> compiler.err
 
-%.elf: %.o grid.o link.ld
-	$(RV_LD) $(LDFLAGS) -T link.ld -o $@ $< grid.o
+%.elf: %.o grid.o link.ld entry.o
+	$(RV_LD) $(LDFLAGS) -T link.ld -o $@ entry.o $< grid.o
+
+entry.o: entry.S
+	$(RV_CC) $(CFLAGS) -Wall -c -o entry.o entry.S
 
 link.ld: genld.sh
 	./genld.sh > link.ld
