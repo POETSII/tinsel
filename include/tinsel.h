@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <config.h>
+#include <io.h>
 
 // Control/status registers
 #define CSR_INSTR_ADDR "0x800"

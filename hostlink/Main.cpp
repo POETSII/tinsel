@@ -6,6 +6,7 @@
 #include <config.h>
 #include <getopt.h>
 #include <string.h>
+#include <assert.h>
 #include "HostLink.h"
 
 // Send file contents over host-link
@@ -50,6 +51,38 @@ uint32_t sendFile(BootCmd cmd, HostLink* link, FILE* fp, uint32_t* checksum)
   return addr;
 }
 
+// Display printf output on console
+void console(HostLink* link)
+{
+  // One line buffer per thread
+  const int maxLineLen = 1024;
+  char lineBuffer[TinselThreadsPerBoard][maxLineLen];
+  int lineBufferLen[TinselThreadsPerBoard];
+
+  // Initialise
+  for (int i = 0; i < TinselThreadsPerBoard; i++)
+    lineBufferLen[i] = 0;
+
+  for (;;) {  
+    uint32_t src;
+    uint32_t val;
+
+    uint8_t cmd = link->get(&src, &val);
+    uint32_t id = val >> 8;
+    char ch = val & 0xff;
+    assert(id < TinselThreadsPerBoard);
+    int len = lineBufferLen[id];
+    if (ch == '\n' || len >= maxLineLen-1) {
+      lineBuffer[id][len] = '\0';
+      printf("%d: %s\n", id, lineBuffer[id]);
+      lineBufferLen[id] = 0;
+    } else {
+      lineBuffer[id][len] = ch;
+      lineBufferLen[id]++;
+    }
+  }
+}
+
 int usage()
 {
   printf("Usage:\n"
@@ -57,6 +90,7 @@ int usage()
          "    -o            start only one thread\n"
          "    -n [NUMBER]   num messages to dump after boot\n"
          "    -t [SECONDS]  timeout on message dump\n"
+         "    -c            load console after boot\n"
          "    -h            help\n");
   return -1;
 }
@@ -66,17 +100,19 @@ int main(int argc, char* argv[])
   int startOnlyOneThread = 0;
   int numMessages = -1;
   int numSeconds = -1;
+  int useConsole = 0;
 
   // Option processing
   optind = 1;
   for (;;) {
-    int c = getopt(argc, argv, "hon:t:");
+    int c = getopt(argc, argv, "hon:t:c");
     if (c == -1) break;
     switch (c) {
       case 'h': return usage();
       case 'o': startOnlyOneThread = 1; break;
       case 'n': numMessages = atoi(optarg); break;
       case 't': numSeconds = atoi(optarg); break;
+      case 'c': useConsole = 1; break;
       default: return usage();
     }
   }
@@ -125,6 +161,7 @@ int main(int argc, char* argv[])
 
     // Write data file to memory
     uint32_t ignore;
+    rewind(data);
     sendFile(StoreCmd, &link, data, i == 0 ? &checksum : &ignore);
 
     // Send cache flush
@@ -135,8 +172,9 @@ int main(int argc, char* argv[])
     uint32_t src;
     uint32_t sum;
     link.get(&src, &sum);
+
     if (sum != checksum) {
-      printf("Error: checksum failure from core %d ", src);
+      printf("Error: data checksum failure from core %d ", src);
       printf("(0x%x v. 0x%x)\n", checksum, sum);
       exit(EXIT_FAILURE);
     }
@@ -163,26 +201,29 @@ int main(int argc, char* argv[])
   // Step 4: dump
   // ------------
 
-  // The number of tenths of a second that link has been idle
-  int idle = 0;
+  if (useConsole) console(&link);
+  else {
+    // The number of tenths of a second that link has been idle
+    int idle = 0;
 
-  // Dump messages to terminal
-  int count = 0;
-  for (;;) {
-    if (numMessages >= 0 && count == numMessages) break;
-    if (! link.canGet()) {
-      usleep(100000);
-      idle++;
-      if (idle == 10*numSeconds) break;
-      continue;
+    // Dump messages to terminal
+    int count = 0;
+    for (;;) {
+      if (numMessages >= 0 && count == numMessages) break;
+      if (! link.canGet()) {
+        usleep(100000);
+        idle++;
+        if (idle == 10*numSeconds) break;
+        continue;
+      }
+      else {
+        idle = 0;
+      }
+      uint32_t src, val;
+      uint8_t cmd = link.get(&src, &val);
+      printf("%d %x %x\n", src, cmd, val);
+      count++;
     }
-    else {
-      idle = 0;
-    }
-    uint32_t src, val;
-    uint8_t cmd = link.get(&src, &val);
-    printf("%d %x %x\n", src, cmd, val);
-    count++;
   }
 
   return 0;

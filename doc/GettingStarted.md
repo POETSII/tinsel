@@ -138,12 +138,8 @@ Now, the "hello world" application is as follows:
 
 int main()
 {
-  // Get id for this thread
-  uint32_t me = tinselId();
-
-  // Send id to host over HostLink
-  tinselHostPut(me);
-
+  unsigned int me = tinselId();
+  printf("Hello from thread 0x%x\n", me);
   return 0;
 }
 ```
@@ -154,13 +150,10 @@ To run it from the `tinsel` root directory:
   make -C apps/hello run-jtag
 ```
 
-You should obtain a list of triples, one per line.  Each triple
-consists of a HostLink command (1 byte), a source core id (4 bytes),
-and a payload (4 bytes).  You should see one triple for each thread.
-The payload in each triple should be different and lie in the range
-0x0 to 0x3ff inclusive.  The order in which the triples appear in the
-list depends on a race between the threads.
-
+You should see a line of text from each thread.  The text stream from
+each thread is line-buffered, which is why we don't see text from
+different threads intermingled.  The order in which the lines appear
+depends on a race between the threads.
 
 ## 7. Run the heat diffusion app
 
