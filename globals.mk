@@ -1,5 +1,6 @@
 # Common directories
 INC = $(realpath $(TINSEL_ROOT)/include)
+LIB = $(realpath $(TINSEL_ROOT)/lib)
 QP  = $(realpath $(TINSEL_ROOT)/de5)
 RTL = $(realpath $(TINSEL_ROOT)/rtl)
 BIN = $(realpath $(TINSEL_ROOT)/bin)
