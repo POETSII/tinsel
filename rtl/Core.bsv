@@ -469,7 +469,10 @@ module mkCore#(CoreId myId) (Core);
   Queue#(Writeback) writebackQueue <- mkUGShiftQueue(QueueOptFmax);
 
   // Information about suspended threads
-  BlockRam#(ThreadId, SuspendedThreadState) suspended <- mkBlockRam;
+  BlockRamOpts suspMemOpts = defaultBlockRamOpts;
+  suspMemOpts.registerDataOut = False;
+  BlockRam#(ThreadId, SuspendedThreadState) suspended <-
+    mkBlockRamOpts(suspMemOpts);
 
   // Instruction memory
   BlockRamOpts instrMemOpts = defaultBlockRamOpts;
@@ -876,7 +879,6 @@ module mkCore#(CoreId myId) (Core);
   Reg#(Bool)          resumeThread1Fire  <- mkDReg(False);
   Reg#(ResumeToken)   resumeThread1Input <- mkConfigRegU;
   Reg#(ResumeToken)   resumeThread2Input <- mkVReg;
-  Reg#(ResumeToken)   resumeThread3Input <- mkVReg;
  
   rule resumeThread1 (resumeThread1Fire
                        || dcacheResp.canGet
@@ -904,13 +906,8 @@ module mkCore#(CoreId myId) (Core);
   endrule
 
   rule resumeThread2;
-    // Trigger next sub-stage
-    resumeThread3Input <= resumeThread2Input;
-  endrule
-
-  rule resumeThread3;
     let susp = suspended.dataOut;
-    let token = resumeThread3Input;
+    let token = resumeThread2Input;
     // Prepare request for writeback stage
     Writeback wb;
     wb.write = susp.isLoad && susp.destReg != 0;
