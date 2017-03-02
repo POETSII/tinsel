@@ -26,13 +26,13 @@ interface ArrayOfSet#(type logNumSets, type logSetSize);
   // Try to remove any item from the set at the given array index
   method Action tryGet(Bit#(logNumSets) index);
   // Can an item be successfully removed? (Is the set non-empty?)
-  // (Valid on 2nd cycle after call to "tryGet")
+  // (Valid on the cycle after call to "tryGet")
   method Bool canGet;
   // Remove item
-  // (Must only be called on 2nd cycle after call to "tryGet")
+  // (Must only be called on the cycle after call to "tryGet")
   method Action get;
   // The item removed
-  // (Valid on 3rd cycle after call to "tryGet")
+  // (Valid on 2nd cycle after call to "tryGet")
   method Bit#(logSetSize) itemOut;
 endinterface
 
@@ -51,6 +51,7 @@ module mkArrayOfSet (ArrayOfSet#(logNumSets, logSetSize))
   // a 1-bit write-port and a (2**logSetSize)-bit read-port.
   BlockRamOpts arrayMemOpts = defaultBlockRamOpts;
   arrayMemOpts.readDuringWrite = OldData;
+  arrayMemOpts.registerDataOut = False;
   BlockRamTrueMixed#(
     // Read port
     Bit#(logNumSets), Bit#(TExp#(logSetSize)),
@@ -60,7 +61,6 @@ module mkArrayOfSet (ArrayOfSet#(logNumSets, logSetSize))
 
   // Read pipeline state
   Reg#(Bit#(logNumSets)) readStage1Input <- mkVReg;
-  Reg#(Bit#(logNumSets)) readStage2Input <- mkVReg;
 
   // Update stage state
   Reg#(Bool) doClearBit  <- mkDReg(False);
@@ -77,12 +77,7 @@ module mkArrayOfSet (ArrayOfSet#(logNumSets, logSetSize))
   // =====
 
   rule readStage1;
-    // Trigger next stage
-    readStage2Input <= readStage1Input;
-  endrule
-
-  rule readStage2;
-    let index = readStage2Input;
+    let index = readStage1Input;
     // Output of arrayMem available
     let set = arrayMem.dataOutA;
     let item = countZerosLSB(set);
