@@ -225,9 +225,6 @@ function Bit#(32) decodeImm(Bit#(32) instr, InstrType t);
        | when(t.isUJType, immJ(instr));
 endfunction
 
-// Is it a CSR instruction?
-function Bool isCSROp(Bit#(32) instr) = instr[6:2] == 'b11100;
-
 // Decode operation
 function Op decodeOp(Bit#(32) instr);
   Op ret = ?;
@@ -272,7 +269,7 @@ function Op decodeOp(Bit#(32) instr);
   // Fence operation
   ret.isFence = op == 'b00011;
   // CSR read/write operation
-  ret.isCSR = isCSROp(instr);
+  ret.isCSR = op == 'b11100;
   Bit#(4) csrIndex = instr[23:20];
   // Hardware thread id CSR
   ret.csr.isHartId = ret.isCSR && csrIndex == 'h4;
@@ -573,9 +570,6 @@ module mkCore#(CoreId myId) (Core);
     // Fetch operands from register files
     regFileA.read({token.thread.id, rs1(token.instr)});
     regFileB.read({token.thread.id, rs2(token.instr)});
-    // Prepare mailbox operation
-    if (isCSROp(token.instr))
-      mailbox.prepare(token.thread.id);
     // Trigger next stage
     decode1Input <= token;
   endrule
@@ -592,6 +586,9 @@ module mkCore#(CoreId myId) (Core);
     token.accessWidth = decodeAccessWidth(token.instr);
     // Compute instruction's immediate
     token.imm = decodeImm(token.instr, token.instrType);
+    // Prepare mailbox operation
+    if (token.op.isCSR)
+      mailbox.prepare(token.thread.id);
     // CSR-immediate instructions not yet supported
     if (token.op.isCSR)
       myAssert(token.instr[14] == 0, "CSR-immediate instrs not supported");
