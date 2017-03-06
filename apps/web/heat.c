@@ -52,16 +52,12 @@ int main()
   }
 
   // Initally NW border is hot
-  if (neighbour[N] < 0 || neighbour[W] < 0) {
-    msgIn[N]->temp = FixedPoint(255, 0);
-    msgIn[W]->temp = FixedPoint(255, 0);
-  }
+  if (neighbour[N] < 0) msgIn[N]->temp = FixedPoint(255, 0);
+  if (neighbour[W] < 0) msgIn[W]->temp = FixedPoint(255, 0);
 
   // Initially SE border is cool
-  if ( neighbour[S] < 0 || neighbour[E] < 0) {
-    msgIn[S]->temp = FixedPoint(40, 0);
-    msgIn[E]->temp = FixedPoint(40, 0);
-  }
+  if (neighbour[S] < 0) msgIn[S]->temp = FixedPoint(40, 0);
+  if (neighbour[E] < 0) msgIn[E]->temp = FixedPoint(40, 0);
 
   // Buffer for temperatures received from neighbours
   volatile Msg* msgBuffer[4];
