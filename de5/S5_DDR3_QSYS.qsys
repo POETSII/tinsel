@@ -13,8 +13,16 @@
    {
       datum _sortIndex
       {
-         value = "2";
+         value = "1";
          type = "int";
+      }
+   }
+   element S5_DDR3_QSYS
+   {
+      datum _originalDeviceFamily
+      {
+         value = "Stratix V";
+         type = "String";
       }
    }
    element clk_50
@@ -33,11 +41,27 @@
          type = "int";
       }
    }
+   element mac_0
+   {
+      datum _sortIndex
+      {
+         value = "5";
+         type = "int";
+      }
+   }
+   element mac_mm_clk
+   {
+      datum _sortIndex
+      {
+         value = "7";
+         type = "int";
+      }
+   }
    element mem_if_ddr3_emif
    {
       datum _sortIndex
       {
-         value = "1";
+         value = "2";
          type = "int";
       }
    }
@@ -59,6 +83,14 @@
       datum _sortIndex
       {
          value = "3";
+         type = "int";
+      }
+   }
+   element xcvr_reconfig_0
+   {
+      datum _sortIndex
+      {
+         value = "6";
          type = "int";
       }
    }
@@ -84,7 +116,49 @@
  <parameter name="useTestBenchNamingPattern" value="false" />
  <instanceScript></instanceScript>
  <interface name="clk" internal="clk_50.clk_in" type="clock" dir="end" />
+ <interface
+   name="ddr3_reset"
+   internal="mem_if_ddr3_emif.afi_reset_export"
+   type="reset"
+   dir="start" />
  <interface name="de5top_0_out" internal="DE5Top_0.out" />
+ <interface name="mac_0_ref_clk" internal="mac_0.ref_clk" type="clock" dir="end" />
+ <interface
+   name="mac_0_ref_rst"
+   internal="mac_0.ref_reset"
+   type="reset"
+   dir="end" />
+ <interface
+   name="mac_0_rx_ready"
+   internal="mac_0.rx_ready"
+   type="conduit"
+   dir="end" />
+ <interface
+   name="mac_0_rx_serial_data"
+   internal="mac_0.rx_serial_data"
+   type="conduit"
+   dir="end" />
+ <interface
+   name="mac_0_tx_ready"
+   internal="mac_0.tx_ready"
+   type="conduit"
+   dir="end" />
+ <interface
+   name="mac_0_tx_reset"
+   internal="mac_0.tx_reset"
+   type="reset"
+   dir="end" />
+ <interface
+   name="mac_0_tx_serial_data"
+   internal="mac_0.tx_serial_data"
+   type="conduit"
+   dir="end" />
+ <interface name="mac_mm_clk" internal="mac_mm_clk.clk_in" type="clock" dir="end" />
+ <interface
+   name="mac_mm_rst"
+   internal="mac_mm_clk.clk_in_reset"
+   type="reset"
+   dir="end" />
  <interface
    name="mem_if_ddr3_emif_2_status"
    internal="mem_if_ddr3_emif_2.status"
@@ -133,6 +207,117 @@
   <parameter name="useRelativePathForSimFile" value="false" />
   <parameter name="writeBufferDepth" value="64" />
   <parameter name="writeIRQThreshold" value="8" />
+ </module>
+ <module
+   name="mac_0"
+   kind="altera_eth_10g_design_example"
+   version="16.0"
+   enabled="1">
+  <parameter name="ASYNC_RX_FIFO_BITS_PER_SYMBOL" value="8" />
+  <parameter name="ASYNC_RX_FIFO_DEPTH" value="16" />
+  <parameter name="ASYNC_RX_FIFO_ERROR_WIDTH" value="6" />
+  <parameter name="ASYNC_RX_FIFO_SYMBOLS_PER_BEAT" value="8" />
+  <parameter name="ASYNC_RX_USE_PKT" value="1" />
+  <parameter name="ASYNC_RX_USE_SINK_FILL" value="0" />
+  <parameter name="ASYNC_RX_USE_SRC_FILL" value="0" />
+  <parameter name="ASYNC_TX_FIFO_BITS_PER_SYMBOL" value="8" />
+  <parameter name="ASYNC_TX_FIFO_DEPTH" value="16" />
+  <parameter name="ASYNC_TX_FIFO_ERROR_WIDTH" value="1" />
+  <parameter name="ASYNC_TX_FIFO_SYMBOLS_PER_BEAT" value="8" />
+  <parameter name="ASYNC_TX_USE_PKT" value="1" />
+  <parameter name="ASYNC_TX_USE_SINK_FILL" value="0" />
+  <parameter name="ASYNC_TX_USE_SRC_FILL" value="0" />
+  <parameter name="AUTO_DEVICE" value="5SGXEA7N2F45C2" />
+  <parameter name="AUTO_DEVICE_SPEEDGRADE" value="2_H2" />
+  <parameter name="BASER_ENA_ADD_CONTROL_STAT" value="0" />
+  <parameter name="BASER_EXT_PMA_CONTROL_CONF" value="0" />
+  <parameter name="BASER_INTERFACE" value="0" />
+  <parameter name="BASER_PLL_TYPE" value="CMU" />
+  <parameter name="BASER_PRE_EMPHASIS_FIRST_POST_TAP" value="5" />
+  <parameter name="BASER_PRE_EMPHASIS_PRE_TAP" value="0" />
+  <parameter name="BASER_PRE_EMPHASIS_PRE_TAP_POLARITY" value="0" />
+  <parameter name="BASER_PRE_EMPHASIS_SECOND_POST_TAP" value="0" />
+  <parameter name="BASER_PRE_EMPHASIS_SECOND_POST_TAP_POLARITY" value="0" />
+  <parameter name="BASER_RECEIVER_DC_GAIN" value="0" />
+  <parameter name="BASER_RECEIVER_STATIC_EQUALIZER" value="14" />
+  <parameter name="BASER_RECEIVER_TERMINATION" value="OCT_100_OHMS" />
+  <parameter name="BASER_RECOVERED_CLK_OUT" value="0" />
+  <parameter name="BASER_REF_CLK_FREQ" value="644.53125 MHz" />
+  <parameter name="BASER_STARTING_CHANNEL_NUMBER" value="0" />
+  <parameter name="BASER_TRANSMITTER_TERMINATION" value="OCT_100_OHMS" />
+  <parameter name="BASER_TRANSMITTER_VOD" value="1" />
+  <parameter name="CHOOSE_FIFO" value="1" />
+  <parameter name="CHOOSE_MDIO_2_WIRE_SERIAL_INT" value="0" />
+  <parameter name="DATAPATH_OPTION" value="3" />
+  <parameter name="DEVICE_FAMILY_TOP" value="Stratix V" />
+  <parameter name="ENABLE_1G10G_MAC" value="0" />
+  <parameter name="ENABLE_MAC_LOOPBACK">10Gbps Ethernet MAC with LoopBack Enabled</parameter>
+  <parameter name="ENABLE_PFC" value="0" />
+  <parameter name="ENABLE_PTP_1STEP" value="0" />
+  <parameter name="ENABLE_SUPP_ADDR" value="1" />
+  <parameter name="ENABLE_TIMESTAMPING" value="0" />
+  <parameter name="ENABLE_UNIDIRECTIONAL" value="0" />
+  <parameter name="GUI_BASE_DATA_RATE" value="" />
+  <parameter name="INSTANTIATE_STATISTICS" value="0" />
+  <parameter name="INSTANTIATE_TX_CRC" value="1" />
+  <parameter name="MDIO_MDC_DIVISOR" value="32" />
+  <parameter name="PFC_PRIORITY_NUM" value="8" />
+  <parameter name="PHY_IP" value="1" />
+  <parameter name="PREAMBLE_PASSTHROUGH" value="0" />
+  <parameter name="REGISTER_BASED_STATISTICS" value="0" />
+  <parameter name="SYNC_RX_FIFO_BITS_PER_SYMBOL" value="8" />
+  <parameter name="SYNC_RX_FIFO_DEPTH" value="512" />
+  <parameter name="SYNC_RX_FIFO_ERROR_WIDTH" value="6" />
+  <parameter name="SYNC_RX_FIFO_SYMBOLS_PER_BEAT" value="8" />
+  <parameter name="SYNC_RX_USE_ALMOST_EMPTY" value="1" />
+  <parameter name="SYNC_RX_USE_ALMOST_FULL" value="1" />
+  <parameter name="SYNC_RX_USE_FILL" value="1" />
+  <parameter name="SYNC_RX_USE_PACKETS" value="1" />
+  <parameter name="SYNC_RX_USE_STORE_AND_FORWARD" value="1" />
+  <parameter name="SYNC_TX_FIFO_BITS_PER_SYMBOL" value="8" />
+  <parameter name="SYNC_TX_FIFO_DEPTH" value="512" />
+  <parameter name="SYNC_TX_FIFO_ERROR_WIDTH" value="1" />
+  <parameter name="SYNC_TX_FIFO_SYMBOLS_PER_BEAT" value="8" />
+  <parameter name="SYNC_TX_USE_ALMOST_EMPTY" value="0" />
+  <parameter name="SYNC_TX_USE_ALMOST_FULL" value="0" />
+  <parameter name="SYNC_TX_USE_FILL" value="1" />
+  <parameter name="SYNC_TX_USE_PACKETS" value="1" />
+  <parameter name="SYNC_TX_USE_STORE_AND_FORWARD" value="1" />
+  <parameter name="TSTAMP_FP_WIDTH" value="4" />
+  <parameter name="XAUI_STARTING_CHANNEL_NUMBER" value="0" />
+  <parameter name="disable_embedded_sdc" value="1" />
+  <parameter name="dyn_reconf" value="0" />
+  <parameter name="en_dual_fifo" value="0" />
+  <parameter name="en_synce_support" value="0" />
+  <parameter name="enable_rx_coreclkin" value="0" />
+  <parameter name="external_pma_ctrl_reconf" value="0" />
+  <parameter name="gui_pll_type" value="CMU" />
+  <parameter name="hard_xaui_cfg">Only Hard XAUI is supported for this device.</parameter>
+  <parameter name="interface_type" value="Soft XAUI" />
+  <parameter name="number_of_interfaces" value="1" />
+  <parameter name="pll_external_enable" value="0" />
+  <parameter name="recovered_clk_out" value="0" />
+  <parameter name="rx_common_mode" value="0.82v" />
+  <parameter name="rx_eq_ctrl" value="0" />
+  <parameter name="rx_eq_dc_gain" value="0" />
+  <parameter name="rx_termination" value="OCT_100_OHMS" />
+  <parameter name="soft_xaui_cfg">Only Soft XAUI is supported for this device.</parameter>
+  <parameter name="starting_channel_number" value="0" />
+  <parameter name="tx_preemp_pretap" value="0" />
+  <parameter name="tx_preemp_pretap_inv" value="false" />
+  <parameter name="tx_preemp_tap_1" value="0" />
+  <parameter name="tx_preemp_tap_2" value="0" />
+  <parameter name="tx_preemp_tap_2_inv" value="false" />
+  <parameter name="tx_termination" value="OCT_100_OHMS" />
+  <parameter name="tx_vod_selection" value="4" />
+  <parameter name="use_control_and_status_ports" value="0" />
+  <parameter name="use_rx_rate_match" value="0" />
+ </module>
+ <module name="mac_mm_clk" kind="clock_source" version="16.0" enabled="1">
+  <parameter name="clockFrequency" value="50000000" />
+  <parameter name="clockFrequencyKnown" value="true" />
+  <parameter name="inputClockFrequency" value="0" />
+  <parameter name="resetSynchronousEdges" value="NONE" />
  </module>
  <module
    name="mem_if_ddr3_emif"
@@ -780,6 +965,26 @@
   <parameter name="WEIGHT_PORT" value="0,0,0,0,0,0" />
   <parameter name="WRBUFFER_ADDR_WIDTH" value="6" />
  </module>
+ <module
+   name="xcvr_reconfig_0"
+   kind="alt_xcvr_reconfig"
+   version="16.0"
+   enabled="1">
+  <parameter name="ber_en" value="0" />
+  <parameter name="device_family" value="Stratix V" />
+  <parameter name="enable_adce" value="0" />
+  <parameter name="enable_analog" value="1" />
+  <parameter name="enable_dcd" value="0" />
+  <parameter name="enable_dcd_power_up" value="1" />
+  <parameter name="enable_dfe" value="0" />
+  <parameter name="enable_eyemon" value="0" />
+  <parameter name="enable_mif" value="0" />
+  <parameter name="enable_offset" value="1" />
+  <parameter name="gui_cal_status_port" value="false" />
+  <parameter name="gui_enable_pll" value="0" />
+  <parameter name="gui_split_sizes" value="" />
+  <parameter name="number_of_reconfig_interfaces" value="2" />
+ </module>
  <connection
    kind="avalon"
    version="16.0"
@@ -808,6 +1013,16 @@
   <parameter name="defaultConnection" value="false" />
  </connection>
  <connection
+   kind="avalon_streaming"
+   version="16.0"
+   start="mac_0.rx_dc_fifo_out"
+   end="DE5Top_0.avalon_streaming_sink" />
+ <connection
+   kind="avalon_streaming"
+   version="16.0"
+   start="DE5Top_0.transmitifc_source"
+   end="mac_0.tx_dc_fifo_in" />
+ <connection
    kind="clock"
    version="16.0"
    start="mem_if_ddr3_emif.afi_clk"
@@ -825,13 +1040,34 @@
  <connection
    kind="clock"
    version="16.0"
+   start="mem_if_ddr3_emif.afi_clk"
+   end="mac_0.dc_rx_clk" />
+ <connection
+   kind="clock"
+   version="16.0"
+   start="mem_if_ddr3_emif.afi_clk"
+   end="mac_0.dc_tx_clk" />
+ <connection
+   kind="clock"
+   version="16.0"
    start="mem_if_ddr3_emif.afi_half_clk"
    end="mem_if_ddr3_emif_2.afi_half_clk_in" />
  <connection
    kind="clock"
    version="16.0"
+   start="mac_mm_clk.clk"
+   end="xcvr_reconfig_0.mgmt_clk_clk" />
+ <connection kind="clock" version="16.0" start="mac_mm_clk.clk" end="mac_0.mm_clk" />
+ <connection
+   kind="clock"
+   version="16.0"
    start="clk_50.clk"
    end="mem_if_ddr3_emif.pll_ref_clk" />
+ <connection
+   kind="clock"
+   version="16.0"
+   start="mac_0.xgmii_rx_clk"
+   end="mac_0.tx_clk" />
  <connection
    kind="conduit"
    version="16.0"
@@ -866,10 +1102,42 @@
   <parameter name="width" value="0" />
  </connection>
  <connection
+   kind="conduit"
+   version="16.0"
+   start="xcvr_reconfig_0.reconfig_from_xcvr"
+   end="mac_0.reconfig_from_xcvr">
+  <parameter name="endPort" value="" />
+  <parameter name="endPortLSB" value="0" />
+  <parameter name="startPort" value="" />
+  <parameter name="startPortLSB" value="0" />
+  <parameter name="width" value="0" />
+ </connection>
+ <connection
+   kind="conduit"
+   version="16.0"
+   start="xcvr_reconfig_0.reconfig_to_xcvr"
+   end="mac_0.reconfig_to_xcvr">
+  <parameter name="endPort" value="" />
+  <parameter name="endPortLSB" value="0" />
+  <parameter name="startPort" value="" />
+  <parameter name="startPortLSB" value="0" />
+  <parameter name="width" value="0" />
+ </connection>
+ <connection
    kind="reset"
    version="16.0"
    start="mem_if_ddr3_emif.afi_reset"
    end="mem_if_ddr3_emif_2.afi_reset_in" />
+ <connection
+   kind="reset"
+   version="16.0"
+   start="mem_if_ddr3_emif.afi_reset"
+   end="mac_0.dc_rx_reset" />
+ <connection
+   kind="reset"
+   version="16.0"
+   start="mem_if_ddr3_emif.afi_reset"
+   end="mac_0.dc_tx_reset" />
  <connection
    kind="reset"
    version="16.0"
@@ -884,12 +1152,32 @@
    kind="reset"
    version="16.0"
    start="clk_50.clk_reset"
+   end="mac_0.dc_rx_reset" />
+ <connection
+   kind="reset"
+   version="16.0"
+   start="clk_50.clk_reset"
+   end="mac_0.dc_tx_reset" />
+ <connection
+   kind="reset"
+   version="16.0"
+   start="clk_50.clk_reset"
    end="mem_if_ddr3_emif.global_reset" />
  <connection
    kind="reset"
    version="16.0"
    start="clk_50.clk_reset"
    end="mem_if_ddr3_emif_2.global_reset" />
+ <connection
+   kind="reset"
+   version="16.0"
+   start="mac_mm_clk.clk_reset"
+   end="xcvr_reconfig_0.mgmt_rst_reset" />
+ <connection
+   kind="reset"
+   version="16.0"
+   start="mac_mm_clk.clk_reset"
+   end="mac_0.mm_reset" />
  <connection
    kind="reset"
    version="16.0"
