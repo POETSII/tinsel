@@ -630,6 +630,7 @@ wire ddr3_2_local_cal_success;
 assign LED[3:0] = {ddr3_local_init_done, ddr3_local_cal_success,
                    ddr3_2_local_init_done, ddr3_2_local_cal_success};
 
+/*
 reg si570_trigger = 1;
 wire si570_done;					 
 always @(posedge clk_50mhz) si570_trigger <= 0;
@@ -643,8 +644,95 @@ si570_controller si570_setter (
 .I2C_DATA(CLOCK_SDA),
 .oController_Ready(si570_done), // Done signal used to reset MACs
 );						 
-					 			
-				 
+*/
+
+wire si570_scl_i;
+wire si570_scl_o;
+wire si570_scl_t;
+wire si570_sda_i;
+wire si570_sda_o;
+wire si570_sda_t;
+
+assign si570_sda_i = CLOCK_SDA;
+assign CLOCK_SDA = si570_sda_t ? 1'bz : si570_sda_o;
+assign si570_scl_i = CLOCK_SCL;
+assign CLOCK_SCL = si570_scl_t ? 1'bz : si570_scl_o;
+
+wire [6:0] si570_i2c_cmd_address;
+wire si570_i2c_cmd_start;
+wire si570_i2c_cmd_read;
+wire si570_i2c_cmd_write;
+wire si570_i2c_cmd_write_multiple;
+wire si570_i2c_cmd_stop;
+wire si570_i2c_cmd_valid;
+wire si570_i2c_cmd_ready;
+
+wire [7:0] si570_i2c_data;
+wire si570_i2c_data_valid;
+wire si570_i2c_data_ready;
+wire si570_i2c_data_last;
+
+si570_i2c_init
+si570_i2c_init_inst (
+    .clk(clk_50mhz),
+    .rst(rst_50mhz),
+    .cmd_address(si570_i2c_cmd_address),
+    .cmd_start(si570_i2c_cmd_start),
+    .cmd_read(si570_i2c_cmd_read),
+    .cmd_write(si570_i2c_cmd_write),
+    .cmd_write_multiple(si570_i2c_cmd_write_multiple),
+    .cmd_stop(si570_i2c_cmd_stop),
+    .cmd_valid(si570_i2c_cmd_valid),
+    .cmd_ready(si570_i2c_cmd_ready),
+    .data_out(si570_i2c_data),
+    .data_out_valid(si570_i2c_data_valid),
+    .data_out_ready(si570_i2c_data_ready),
+    .data_out_last(si570_i2c_data_last),
+    .busy(),
+    .start(1)
+);
+
+i2c_master
+si570_i2c_master_inst (
+    .clk(clk_50mhz),
+    .rst(rst_50mhz),
+    .cmd_address(si570_i2c_cmd_address),
+    .cmd_start(si570_i2c_cmd_start),
+    .cmd_read(si570_i2c_cmd_read),
+    .cmd_write(si570_i2c_cmd_write),
+    .cmd_write_multiple(si570_i2c_cmd_write_multiple),
+    .cmd_stop(si570_i2c_cmd_stop),
+    .cmd_valid(si570_i2c_cmd_valid),
+    .cmd_ready(si570_i2c_cmd_ready),
+    .data_in(si570_i2c_data),
+    .data_in_valid(si570_i2c_data_valid),
+    .data_in_ready(si570_i2c_data_ready),
+    .data_in_last(si570_i2c_data_last),
+    .data_out(),
+    .data_out_valid(),
+    .data_out_ready(1),
+    .data_out_last(),
+    .scl_i(si570_scl_i),
+    .scl_o(si570_scl_o),
+    .scl_t(si570_scl_t),
+    .sda_i(si570_sda_i),
+    .sda_o(si570_sda_o),
+    .sda_t(si570_sda_t),
+    .busy(),
+    .bus_control(),
+    .bus_active(),
+    .missed_ack(),
+    .prescale(312),
+    .stop_on_idle(1)
+);
+
+reg mac_rst_n = 0;
+reg [3:0] mac_rst_count = 0;
+always @(posedge clk_50mhz) begin
+  if (mac_rst_count == 10) mac_rst_n <= 1;
+  else mac_rst_count <= mac_rst_count+1;
+end
+
 S5_DDR3_QSYS u0 (
         .clk_clk                                   (clk_50mhz),
         .reset_reset_n                             (rst_50mhz_n),                            
@@ -687,8 +775,8 @@ S5_DDR3_QSYS u0 (
         .mem_if_ddr3_emif_2_status_local_cal_success (ddr3_2_local_cal_success), 
         .mem_if_ddr3_emif_2_status_local_cal_fail    (ddr3_2_local_cal_fail),
 
-		  .mac_mm_clk_clk(clk_50mhz),
-        .mac_mm_rst_reset_n(si570_done),
+        .mac_mm_clk_clk(clk_50mhz),
+        .mac_mm_rst_reset_n(mac_rst_n),
 		  
         .mac_0_rx_ready_export(),
         .mac_0_rx_serial_data_export(SFPA_RX_p),
