@@ -36,4 +36,4 @@ download-sof:
 clean:
 	rm -f *.mif *.rpt *.msg *.summary *.sld *.sopcinfo *.jdi
 	rm -f *.pin *.done *.qws *.sof *.csv *.qws *.smsg
-	rm -rf db incremental_db S5_DDR3_QSYS .qsys_edit
+	rm -rf db incremental_db S5_DDR3_QSYS .qsys_edit reconfig_mif
