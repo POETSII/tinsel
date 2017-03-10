@@ -32,13 +32,56 @@ On the BIMPA project we found that in the limit (that was often
 achievable) the performance was limited by external memory bandwidth
 and chip-to-chip comms, both of which FPGAs do very well.
 
-We've deliberately kept Tinsel fast (high clock frequency) and
+In the massively-parallel event-triggered model it is perhaps
+inevitable that processors will spend a lot of time waiting for
+events, e.g. for a message to arrive from other processor.  This
+observation led to us to use multi-threaded processors in tinsel: when
+a thread is blocked on an event, the processor can get on with
+executing another thread, maintaining full throughput.  Of course,
+this non-blocking behaviour can also be achieved in a single-threaded
+processor using a software event loop, but then the costs of
+interpretive overhead and context-switching must be paid.  And as a
+bonus, multi-threaded processors open up many oppertunities for
+efficient hardware design.
+
+As in Spinnaker, POETS applications may require access to large
+amounts of memory.  For example, if we are to deal with large
+irregular graphs, we'll need somewhere to store the graph structure.
+Consequently, we decided that every tinsel thread should have access
+to off-chip DRAM.  And to provide efficient access to such DRAM, we
+need data caches.  This starts to become expensive in terms of FPGA
+area but multi-threading is very helpful here: by hiding latency, it
+allows us to share a single L1 cache between many cores -- something
+rarely seen in conventional architectures.
+
+While Spinnaker provides dedicated hardware routers for efficient
+multicasting, we decided that the CAMs neccessary to implement
+something similar on FPGA would be too expensive.  Our aim, therefore,
+is to support efficient multicasting in software where possible.
+
+Our partners on the POETS project requested a large message size (a
+512-bit payload at the least) compared to Spinnaker (32-bit payload).
+This brings a challenge for software multicasting: it is inefficient
+to serialise a large message through a 32-bit core and then
+deserialise it again off to several other cores.  Our solution is a
+scratchpad-based buffer (called a mailbox) with a 32-bit port on the
+core side and a much wider port on the network side.  Large messages
+can therefore be efficiently forwarded (received and sent) by a core
+without the core having to process every byte.
+
+A key feature of the tinsel architecture is that it will spread
+transparently across a large cluster of FPGAs connected by high-speed
+links.  At the time of writing (March 2017), this work is well
+underway.
+
+We've deliberately kept tinsel fast (high clock frequency) and
 simple.  At present there is no integer division in hardware but this
 is common for a RISC design (e.g. all of the earlier 32-bit ARM cores,
 the DEC Alpha cores, etc.) since it messes up the pipeline.
 
 There is no floating-point yet but we intend to add this particularly
 when we get to new FPGAs like the Stratix 10 that have much better
-floating-point support.
-
-Instead we've focused more on efficient messaging and event handling.
+floating-point support.  Multi-threading is again a great help here:
+not only can it hide the long latency of floating-point operations,
+but it also permits large floating-point units to be efficiently
+shared by multiple cores.
