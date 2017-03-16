@@ -12,6 +12,7 @@ package JtagUart;
 import Interface :: *;
 import ConfigReg :: *;
 import Util      :: *;
+import Pipe      :: *;
 
 // =============================================================================
 // Interfaces
@@ -127,8 +128,6 @@ endmodule
 // filesystem, instead of via the JTAG UART.
 
 `ifdef SIMULATE
-import "BDPI" function ActionValue#(Bit#(32)) uartGetByte();
-import "BDPI" function ActionValue#(Bool) uartPutByte(Bit#(8) b);
 
 module mkJtagUart (JtagUart);
 
@@ -137,11 +136,11 @@ module mkJtagUart (JtagUart);
 
   rule connect;
     if (inPort.canGet) begin
-      Bool ok <- uartPutByte(inPort.value);
+      Bool ok <- pipePut8(uartPipe, inPort.value);
       if (ok) inPort.get;
     end
     if (outPort.canPut) begin
-      Bit#(32) b <- uartGetByte();
+      Bit#(32) b <- pipeGet8(uartPipe);
       if (b[31] == 0) outPort.put(b[7:0]);
     end
   endrule

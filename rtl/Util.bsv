@@ -146,4 +146,8 @@ module mkVReg (Reg#(t)) provisos (Bits#(t, twidth));
   method t _read if (valid) = register;
 endmodule
 
+// Convert 4-bit nibble to hex digit
+function Bit#(8) hexDigit(Bit#(4) nibble) =
+  nibble >= 10 ? 55 + zeroExtend(nibble) : 48 + zeroExtend(nibble);
+
 endpackage

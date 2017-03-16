@@ -17,6 +17,13 @@ all:
 	quartus_dse Golden_top.qpf --report utilization
 	quartus_dse Golden_top.qpf --report fmax_summary
 
+
+.PHONY: one
+one:
+	make -C $(TINSEL_ROOT)/rtl verilog
+	qsys-generate -syn S5_DDR3_QSYS.qsys
+	quartus_sh --flow compile Golden_top.qpf
+
 .PHONY: report
 report:
 	quartus_dse Golden_top.qpf --report utilization

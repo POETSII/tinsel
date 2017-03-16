@@ -19,8 +19,8 @@
 #include <errno.h>
 #include <poll.h>
 
-#define FIFO_IN  "/tmp/tinsel.in"
-#define FIFO_OUT "/tmp/tinsel.out"
+#define FIFO_IN  "/tmp/tinsel.in.0"
+#define FIFO_OUT "/tmp/tinsel.out.0"
 
 class RawLink {
   int fifoIn;
