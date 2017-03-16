@@ -111,6 +111,9 @@ module mkReceiveBuffer (ReceiveBuffer);
   Reg#(ReceiveBufferPtr) nearBackPtr <- mkConfigReg(0);
   Reg#(ReceiveBufferPtr) farBackPtr <- mkConfigReg(0);
 
+  // Drop packet when this register is high
+  Reg#(Bool) drop <- mkConfigReg(False);
+
   // Output port
   rule writeToOutputPort;
     ReceiveBufferPtr ptr = frontPtr;
@@ -128,14 +131,19 @@ module mkReceiveBuffer (ReceiveBuffer);
     // Increment pointer
     ReceiveBufferPtr ptr = farBackPtr+1;
     // Look for CRC or overflow errors
-    if (beat.stop && (err[1] == 1 || err[5] == 1)) begin
+    if (beat.stop && (err[1] == 1 || err[5] == 1 || err[0] == 1 || drop)) begin
       // Drop packet
       farBackPtr <= nearBackPtr;
+      drop <= False;
     end else begin
       if (beat.stop) nearBackPtr <= ptr;
-      farBackPtr <= ptr;
+      if (nearBackPtr == farBackPtr+2) begin
+        // Drop part of oversized packet
+        farBackPtr <= nearBackPtr;
+        drop <= True;
+      end else
+        farBackPtr <= ptr;
     end
-
   endmethod
 
   method Bool canEnq = (farBackPtr+1) != frontPtr;
