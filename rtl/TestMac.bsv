@@ -1,4 +1,4 @@
-package TestBoardLink;
+package TestMac;
 
 // =============================================================================
 // Imports
@@ -6,15 +6,15 @@ package TestBoardLink;
 
 import DRAM         :: *;
 import JtagUart     :: *;
-import AvalonStream :: *;
 import Vector       :: *;
 import Interface    :: *;
 import Queue        :: *;
+import ReliableLink :: *;
+import Mac          :: *;
 
 // =============================================================================
 // Interface
 // =============================================================================
-
 
 `ifdef SIMULATE
 
@@ -23,8 +23,7 @@ typedef Empty DE5Top;
 `else
 
 interface DE5Top;
-  interface AvalonSource#(Bit#(64)) transmitIfc;
-  interface AvalonSink#(Bit#(64)) receiveIfc;
+  interface AvalonMac macIfc;
   interface Vector#(`DRAMsPerBoard, DRAMExtIfc) dramIfcs;
   interface JtagUartAvalon jtagIfc;
 endinterface
@@ -36,32 +35,31 @@ endinterface
 // =============================================================================
 
 module de5Top (DE5Top);
-  
+ 
+  // Create JTAG UART
+  JtagUart uart <- mkJtagUart;
+
+  // Create 10G link
+  Mac link <- mkMac;
+ 
   // Ports
   InPort#(Bit#(8)) fromJtag <- mkInPort;
   OutPort#(Bit#(8)) toJtag <- mkOutPort;
-  InPort#(AvalonBeat#(Bit#(64))) rxPort <- mkInPort;
-  OutPort#(AvalonBeat#(Bit#(64))) txPort <- mkOutPort;
-
-  // Create JTAG UART instance
-  JtagUart uart <- mkJtagUart;
+  InPort#(MacBeat) rxPort <- mkInPort;
+  OutPort#(MacBeat) txPort <- mkOutPort;
 
   // Create DRAMs
   Vector#(`DRAMsPerBoard, DRAM) drams;
   for (Integer i = 0; i < `DRAMsPerBoard; i=i+1)
     drams[i] <- mkDRAM(fromInteger(i));
 
-  // Create links
-  Source#(Bit#(64)) source <- mkSource;
-  Sink#(Bit#(64)) sink <- mkSink;
-
   // Conect ports to UART
   connectUsing(mkUGShiftQueue1(QueueOptFmax), toJtag.out, uart.jtagIn);
   connectUsing(mkUGShiftQueue1(QueueOptFmax), uart.jtagOut, fromJtag.in);
 
   // Connect ports to links
-  connectUsing(mkUGShiftQueue1(QueueOptFmax), txPort.out, source.in);
-  connectUsing(mkUGShiftQueue1(QueueOptFmax), sink.out, rxPort.in);
+  connectUsing(mkUGShiftQueue1(QueueOptFmax), txPort.out, link.fromUser);
+  connectUsing(mkUGShiftQueue1(QueueOptFmax), link.toUser, rxPort.in);
 
   Reg#(Bit#(2)) state <- mkReg(0);
   Reg#(Bit#(16)) timer <- mkReg(0);
@@ -71,12 +69,12 @@ module de5Top (DE5Top);
     if (state == 0) begin
       if (fromJtag.canGet && txPort.canPut) begin
         fromJtag.get;
-        txPort.put(avalonBeat(True, False, 0));
+        txPort.put(macBeat(True, False, 0));
         state <= 1;
       end
     end else if (state == 1) begin
       if (txPort.canPut) begin
-        txPort.put(avalonBeat(False, True, 0));
+        txPort.put(macBeat(False, True, 0));
         state <= 2;
       end
     end
@@ -99,11 +97,12 @@ module de5Top (DE5Top);
     if (displayCount == 3) state <= 0;
   endrule
 
+  `ifndef SIMULATE
   function DRAMExtIfc getDRAMExtIfc(DRAM dram) = dram.external;
   interface dramIfcs = map(getDRAMExtIfc, drams);
   interface jtagIfc = uart.jtagAvalon;
-  interface transmitIfc = source.avalonSource;
-  interface receiveIfc = sink.avalonSink;
+  interface macIfc = link.avalonMac;
+  `endif
 
 endmodule
 

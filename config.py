@@ -82,6 +82,21 @@ p["LogBeatsPerDRAM"] = 25
 # Maximum size of boot loader (in bytes)
 p["MaxBootImageBytes"] = 512
 
+# Size of transmit buffer in a reliable link
+p["LogTransmitBufferSize"] = 10
+
+# Size of receive buffer in a reliable link
+p["LogReceiveBufferSize"] = 5
+
+# Max number of 64-bit items to put in an ethernet packet
+p["TransmitBound"] = 20
+
+# Timeout in reliable link (for detecting dropped packets)
+p["LinkTimeout"] = 800
+
+# Latency of 10G MAC in cycles (simulation only)
+p["MacLatency"] = 100
+
 #==============================================================================
 # Derived Parameters
 #==============================================================================

@@ -25,6 +25,14 @@
          type = "String";
       }
    }
+   element S5_DDR3_QSYS
+   {
+      datum _originalDeviceFamily
+      {
+         value = "Stratix V";
+         type = "String";
+      }
+   }
    element clk_50
    {
       datum _sortIndex
@@ -214,14 +222,14 @@
    version="16.0"
    enabled="1">
   <parameter name="ASYNC_RX_FIFO_BITS_PER_SYMBOL" value="8" />
-  <parameter name="ASYNC_RX_FIFO_DEPTH" value="16" />
+  <parameter name="ASYNC_RX_FIFO_DEPTH" value="256" />
   <parameter name="ASYNC_RX_FIFO_ERROR_WIDTH" value="6" />
   <parameter name="ASYNC_RX_FIFO_SYMBOLS_PER_BEAT" value="8" />
   <parameter name="ASYNC_RX_USE_PKT" value="1" />
   <parameter name="ASYNC_RX_USE_SINK_FILL" value="0" />
   <parameter name="ASYNC_RX_USE_SRC_FILL" value="0" />
   <parameter name="ASYNC_TX_FIFO_BITS_PER_SYMBOL" value="8" />
-  <parameter name="ASYNC_TX_FIFO_DEPTH" value="16" />
+  <parameter name="ASYNC_TX_FIFO_DEPTH" value="256" />
   <parameter name="ASYNC_TX_FIFO_ERROR_WIDTH" value="1" />
   <parameter name="ASYNC_TX_FIFO_SYMBOLS_PER_BEAT" value="8" />
   <parameter name="ASYNC_TX_USE_PKT" value="1" />
@@ -988,7 +996,7 @@
  <connection
    kind="avalon"
    version="16.0"
-   start="DE5Top_0.avalon_master_1"
+   start="DE5Top_0.dram_1"
    end="mem_if_ddr3_emif.avl">
   <parameter name="arbitrationPriority" value="1" />
   <parameter name="baseAddress" value="0x0000" />
@@ -997,7 +1005,7 @@
  <connection
    kind="avalon"
    version="16.0"
-   start="DE5Top_0.avalon_master_2"
+   start="DE5Top_0.dram_2"
    end="mem_if_ddr3_emif_2.avl">
   <parameter name="arbitrationPriority" value="1" />
   <parameter name="baseAddress" value="0x0000" />
@@ -1015,13 +1023,13 @@
  <connection
    kind="avalon_streaming"
    version="16.0"
-   start="mac_0.rx_dc_fifo_out"
-   end="DE5Top_0.avalon_streaming_sink" />
+   start="DE5Top_0.mac_0_source"
+   end="mac_0.tx_dc_fifo_in" />
  <connection
    kind="avalon_streaming"
    version="16.0"
-   start="DE5Top_0.transmitifc_source"
-   end="mac_0.tx_dc_fifo_in" />
+   start="mac_0.rx_dc_fifo_out"
+   end="DE5Top_0.mac_0_sink" />
  <connection
    kind="clock"
    version="16.0"
