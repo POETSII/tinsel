@@ -92,7 +92,7 @@ p["LogReceiveBufferSize"] = 5
 p["TransmitBound"] = 20
 
 # Timeout in reliable link (for detecting dropped packets)
-p["LinkTimeout"] = 800
+p["LinkTimeout"] = 1024
 
 # Latency of 10G MAC in cycles (simulation only)
 p["MacLatency"] = 100
