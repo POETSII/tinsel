@@ -114,7 +114,7 @@ module mkTransmitBuffer (TransmitBuffer);
   Reg#(TransmitBufferPtr) unsentReg <- mkConfigReg(0);
 
   // This register goes high when a timeout occurs
-  Reg#(Bool) timedOut <- mkConfigReg(False);
+  Reg#(Bool) timeoutFlag <- mkConfigReg(False);
 
   // The timeout action can only occur when this signal is high
   PulseWire timeoutEn <- mkPulseWire;
@@ -122,11 +122,11 @@ module mkTransmitBuffer (TransmitBuffer);
   // The timer
   Reg#(Bit#(16)) timer <- mkConfigReg(0);
 
+  // Signal to reset the timer
+  PulseWire resetTimer <- mkPulseWire;
+
   // Signals that an element has is taken from the buffer
   PulseWire doTake <- mkPulseWire;
-
-  // Signals that an ack has been received
-  PulseWire gotAck <- mkPulseWire;
 
   // Performance monitor
   Reg#(Bit#(32)) numTimeoutsReg <- mkConfigReg(0);
@@ -134,8 +134,10 @@ module mkTransmitBuffer (TransmitBuffer);
   rule readNext;
     TransmitBufferPtr ptr = nextPtr;
     // Reset next pointer on a timeout
-    if (timedOut && timeoutEn) ptr = ackPtr;
-    else if (doTake) ptr = ptr + 1;
+    if (timeoutFlag && timeoutEn) begin
+      ptr = ackPtr;
+      numTimeoutsReg <= numTimeoutsReg+1;
+    end else if (doTake) ptr = ptr + 1;
     // Dereference nextPtr
     contents.read(ptr);
     unsentReg <= backPtr - ptr;
@@ -144,22 +146,13 @@ module mkTransmitBuffer (TransmitBuffer);
   endrule
 
   rule updateTimer;
-    if (timedOut) begin
-      if (timeoutEn) timedOut <= False;
-    end else begin
-      // Reset timer when no outstanding items or a new ack is received
-      if (ackPtr == nextPtr || gotAck)
-        timer <= 0;
-      else begin
-        // Increment the timer, maybe reaching a timeout
-        if (timer == `LinkTimeout) begin
-          timedOut <= True;
-          timer <= 0;
-          if (! allHigh(numTimeoutsReg)) numTimeoutsReg <= numTimeoutsReg+1;
-        end else
-          timer <= timer+1;
-      end
-    end
+    if (ackPtr == nextPtr || resetTimer) begin
+      timer <= 0;
+      timeoutFlag <= False;
+    end else if (timer == `LinkTimeout)
+      timeoutFlag <= True;
+    else
+      timer <= timer+1;
   endrule
 
   method Bool canEnq;
@@ -180,7 +173,7 @@ module mkTransmitBuffer (TransmitBuffer);
 
   method Action ack(TransmitBufferPtr nextExpected);
     ackPtr <= nextExpected;
-    if (ackPtr != nextExpected) gotAck.send;
+    if (ackPtr != nextExpected) resetTimer.send;
   endmethod
 
   method TransmitBufferPtr unsent = unsentReg;
