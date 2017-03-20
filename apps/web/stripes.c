@@ -14,35 +14,33 @@ int main()
   int me = tinselId();
 
   // Get pointer to a mailbox message slot
-  volatile int* out = tinselSlot(0);
+  volatile int* msg = tinselSlot(0);
 
   if (me == 0) {
     // Emit colour 0
     emit(0);
     // Create message containing colour 255
-    out[0] = 255;
+    msg[0] = 255;
     // Wait until message-send is possible
     tinselWaitUntil(TINSEL_CAN_SEND);
     // Send message to thread 1
-    tinselSend(1, out);
+    tinselSend(1, msg);
   }
   else {
-    // Get pointer to another mailbox message slot
-    volatile int* in = tinselSlot(0);
-    // Allocate space to receive message
-    tinselAlloc(in);
+    // Allocate space for incoming message
+    tinselAlloc(msg);
     // Wait until message is available
     tinselWaitUntil(TINSEL_CAN_RECV);
     // Receive colour
     tinselRecv();
     // Emit colour
-    emit(in[0]);
+    emit(msg[0]);
     // Create message containing inverted colour
-    out[0] = in[0] == 0 ? 255 : 0;
+    msg[0] = msg[0] == 0 ? 255 : 0;
     // Wait until message-send is possible
     tinselWaitUntil(TINSEL_CAN_SEND);
     // Send message to next thread
-    tinselSend(me+1, out);
+    tinselSend(me+1, msg);
   }
 
   return 0;
