@@ -51,6 +51,10 @@ void initPipeOut(int id)
   // Create filename
   char filename[256];
   snprintf(filename, sizeof(filename), "%s.%i", PIPE_OUT, id);
+  // Create pipe if it doesn't exist
+  struct stat st;
+  if (stat(filename, &st) != 0)
+    mkfifo(filename, 0666);
   // Open pipe
   pipeOut[id] = open(filename, O_WRONLY);
 }
