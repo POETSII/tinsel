@@ -1,9 +1,11 @@
 # Tinsel Architecture Guide
 
-Tinsel is not specific to any particular FPGA board, but the
-description below uses Terasic's [DE5-NET](http://de5-net.terasic.com)
-for illustration purposes.  This is a Stratix V board from circa 2012
-that the [CL](http://www.cl.cam.ac.uk/) has in plentiful supply.
+Most of the tinsel architecture is not specific to any particular FPGA
+board, but the description below uses Terasic's
+[DE5-NET](http://de5-net.terasic.com) for illustration purposes.  This
+is a Stratix V board from circa 2012 that the
+[CL](http://www.cl.cam.ac.uk/) has in plentiful supply, and will
+provide the platform for our initial prototypes.
 
 ## Contents
 
@@ -440,8 +442,8 @@ The default tinsel configuration on a single DE5-NET board contains:
   * a JTAG UART
 
 The clock frequency is 275MHz and the resource utilisation is 94K
-ALMs, 40% of the DE5-NET, leaving plenty of space for interboard comms
-to be added in the near future.
+ALMs, **40%** of the DE5-NET, leaving plenty of space for interboard
+comms and more cores to be added in the near future.
 
 ### Tinsel Parameters
 
