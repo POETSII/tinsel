@@ -34,22 +34,16 @@ function MacBeat macBeat(Bool start, Bool stop, Bit#(64) data) =
 // Interfaces
 // =============================================================================
 
+(* always_ready, always_enabled *)
 interface AvalonMac;
   // TX connection to 10G MAC
-  (* always_ready *)
   method Bit#(64) source_data;
-  (* always_ready *)
   method Bool source_valid;
-  (* always_ready *)
   method Bool source_startofpacket;
-  (* always_ready *)
   method Bool source_endofpacket;
-  (* always_enabled *)
   method Action source(Bool source_ready);
   // RX connection to 10G MAC
-  (* always_ready *)
   method Bool sink_ready;
-  (* always_enabled *)
   method Action sink(Bit#(64) sink_data, Bool sink_valid,
                        Bool sink_startofpacket, Bool sink_endofpacket,
                          Bit#(6) sink_error);

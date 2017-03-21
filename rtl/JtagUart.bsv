@@ -19,16 +19,12 @@ import Pipe      :: *;
 // =============================================================================
 
 // Avalon memory-mapped interface to Altera's JTAG UART.
+(* always_ready, always_enabled *)
 interface JtagUartAvalon;
-  (* always_ready *)
   method Bit#(3)  uart_address;
-  (* always_ready *)
   method Bit#(32) uart_writedata;
-  (* always_ready *)
   method Bool     uart_write;
-  (* always_ready *)
   method Bool     uart_read;
-  (* always_enabled *)
   method Action   uart(Bool uart_waitrequest,
                        Bit#(32) uart_readdata);
 endinterface
