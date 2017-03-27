@@ -44,12 +44,6 @@ link.ld: genld.sh
 vis: vis.cpp
 	g++ -O2 vis.cpp -o vis
 
-.PHONY: run-jtag
-run-jtag: fpga.ppm
-
-.PHONY: run-sim
-run-sim: sim.ppm
-
 $(INC)/config.h: $(TINSEL_ROOT)/config.py
 	make -C $(INC)
 
