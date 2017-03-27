@@ -8,8 +8,6 @@
 
 // Message format
 typedef struct {
-  // Which direction (N, S, E, or W) did the message come from?
-  Dir from;
   // The time step that the sender is on
   int time;
   // The temperature of the sender
@@ -30,41 +28,43 @@ int main()
 
   // List containing each neighbour
   // (Only the first numNeighbours elements are valid)
-  Dir neighbourList[4];
+  int neighbourList[4];
   int numNeighbours = 0;
   for (int i = 0; i < 4; i++)
-    if (neighbour[i] >= 0) neighbourList[numNeighbours++] = i;
+    if (neighbour[i] >= 0) neighbourList[numNeighbours++] = neighbour[i];
 
   // Initial state
   // -------------
 
-  // Initial temperature
+  // Border temperature (only non-zero for threads on border)
+  int borderTemp = 0;
+
+  // NW border is hot
+  if (neighbour[N] < 0) borderTemp += FixedPoint(255, 0);
+  if (neighbour[W] < 0) borderTemp += FixedPoint(255, 0);
+
+  // SE border is cool
+  if (neighbour[S] < 0) borderTemp += FixedPoint(40, 0);
+  if (neighbour[E] < 0) borderTemp += FixedPoint(40, 0);
+
+  // Temperature
   int temp = 0;
+  int acc = 0;
+  int accNext = 0;
 
   // Message to be sent to neighbours
   volatile Msg* msgOut = tinselSlot(0);
 
-  // Messages received from neighbours
-  volatile Msg* msgIn[4];
-  for (int i = 0; i < 4; i++) {
-    msgIn[i] = tinselSlot(i+1);
-    msgIn[i]->temp = 0;
-  }
+  // Allocate receive buffer
+  const int ReceiveBufferSize = 4;
+  for (int i = 0; i < ReceiveBufferSize; i++) tinselAlloc(tinselSlot(1+i));
 
-  // Initally NW border is hot
-  if (neighbour[N] < 0) msgIn[N]->temp = FixedPoint(255, 0);
-  if (neighbour[W] < 0) msgIn[W]->temp = FixedPoint(255, 0);
+  // Track number of messages received and sent for current time step
+  int received = 0;
+  int sent = 0;
 
-  // Initially SE border is cool
-  if (neighbour[S] < 0) msgIn[S]->temp = FixedPoint(40, 0);
-  if (neighbour[E] < 0) msgIn[E]->temp = FixedPoint(40, 0);
-
-  // Buffer for temperatures received from neighbours
-  volatile Msg* msgBuffer[4];
-  for (int i = 0; i < 4; i++) {
-    msgBuffer[i] = 0;
-    tinselAlloc(tinselSlot(i+5));
-  }
+  // Track number of messages received for next time step
+  int receivedNext = 0;
 
   // Simulation
   // ----------
@@ -74,72 +74,53 @@ int main()
 
   // Simulation loop
   for (int t = 0; t < nsteps; t++) {
+    // Send/receive loop
+    while (received < numNeighbours || sent < numNeighbours) {
+      // Compute wait condition
+      TinselWakeupCond cond =
+         TINSEL_CAN_RECV | (sent < numNeighbours ? TINSEL_CAN_SEND : 0);
 
-    // Ensure all outstanding messages have been sent
-    tinselWaitUntil(TINSEL_CAN_SEND);
+      // Wait to send or receive message
+      tinselWaitUntil(cond);
+
+      // Send temperature
+      if (sent < numNeighbours && tinselCanSend()) {
+        int neighbour = neighbourList[sent++];
+        msgOut->time = t;
+        msgOut->temp = temp;
+        tinselSend(neighbour, msgOut);
+      }
+
+      // Receive neighbouring temperature
+      if (tinselCanRecv()) {
+        volatile Msg* msg = tinselRecv();
+        if (msg->time == t) {
+          // Temperature for current time step
+          acc += msg->temp;
+          received++;
+        }
+        else {
+          // Temperature for next time step
+          accNext += msg->temp;
+          receivedNext++;
+        }
+        // Reallocate message slot for new incoming messages
+        tinselAlloc(msg);
+      }
+    }
 
     // Average of surrounding temperatures
-    int surroundings = ( msgIn[N]->temp + msgIn[S]->temp +
-                         msgIn[E]->temp + msgIn[W]->temp ) >> 2;
-
-    // Compute new temperature for this cell
-    int newTemp = temp - (temp - surroundings);
-
-    // Allocate space to receive messages
-    for (int i = 0; i < numNeighbours; i++) {
-      Dir d = neighbourList[i];
-      tinselAlloc(msgIn[d]);
-    }
-
-    // Counts of messages sent and received
-    int numSent = 0;
-    int numReceived = 0;
-
-    // Recognise any buffered temperatures
-    for (int i = 0; i < 4; i++)
-      if (msgBuffer[i] != 0) {
-        msgIn[i] = msgBuffer[i];
-        msgBuffer[i] = 0;
-        numReceived++;
-      }
-
-    // Send & receive new temperatures
-    for (;;) {
-      uint32_t needToSend = numSent < numNeighbours;
-      uint32_t needToRecv = numReceived < numNeighbours;
-      if (!needToSend && !needToRecv) break;
-      uint32_t waitCond = (needToSend ? TINSEL_CAN_SEND : 0)
-                        | (needToRecv ? TINSEL_CAN_RECV : 0);
-
-      // Suspend thread
-      tinselWaitUntil(waitCond);
-
-      // Send handler
-      if (needToSend && tinselCanSend()) {
-        // Get direction of next neighbour
-        Dir d = neighbourList[numSent++];
-        // Send message to neigbour
-        msgOut->from = opposite(d);
-        msgOut->time = t;
-        msgOut->temp = newTemp;
-        tinselSend(neighbour[d], msgOut);
-      }
-
-      // Receive handler
-      if (tinselCanRecv()) {
-        // Receive message from neighbour
-        volatile Msg* msg = tinselRecv();
-        // Is the received message for the current time step?
-        if (msg->time == t) {
-          msgIn[msg->from] = msg;
-          numReceived++; 
-        }
-        else msgBuffer[msg->from] = msg;
-      }
-    }
+    acc = (borderTemp + acc) >> 2;
 
     // Update temperature
-    temp = newTemp;
+    temp = temp - (temp - acc);
+
+    // Prepare for next iteration
+    acc = accNext;
+    accNext = 0;
+    received = receivedNext;
+    receivedNext = 0;
+    sent = 0;
   }
 
   // Emit the final temperature
