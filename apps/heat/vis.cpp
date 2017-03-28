@@ -5,9 +5,6 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-// Dimensions of square PPM image
-const int N = 480;
-
 // 256 x RGB colours representing heat intensities
 int heat[] = {
   0x00, 0x00, 0x76, 0x00, 0x00, 0x7a, 0x00, 0x00, 0x7f, 0x00, 0x00, 0x83,
@@ -79,12 +76,14 @@ int heat[] = {
 
 int main(int argc, char* argv[])
 {
-  if (argc != 2) {
-    fprintf(stderr, "Usage: visualise dump.txt\n");
+  if (argc != 3) {
+    fprintf(stderr, "Usage: visualise N DUMP\n");
     return -1;
   }
 
-  FILE* fp = fopen(argv[1], "rt");
+  int N = atoi(argv[1]);
+
+  FILE* fp = fopen(argv[2], "rt");
   if (fp == NULL) {
     fprintf(stderr, "Can't open file '%s'\n", argv[1]);
     return -1;
