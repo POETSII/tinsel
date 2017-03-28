@@ -88,12 +88,16 @@ int main()
 
   // Allocate space for subgrid edges
   int edgeSpace[4][L];
-  int edgeSpaceNext[4][L];
+  int edgeNextSpace[4][L];
+  int edgeOutSpace[4][L];
 
-  // Pointers to edges
+  // Pointers to edges being received
   int (*edge)[L] = edgeSpace;
-  int (*edgeNext)[L] = edgeSpaceNext;
+  int (*edgeNext)[L] = edgeNextSpace;
   int (*edgePtr)[L];
+
+  // Pointers to edges being sent
+  int (*edgeOut)[L] = edgeOutSpace;
 
   // Initial state
   // -------------
@@ -102,6 +106,11 @@ int main()
   for (int y = 0; y < L; y++)
     for (int x = 0; x < L; x++)
       subgrid[y][x] = 0;
+
+  // Output edges
+  for (int d = 0; d < 4; d++)
+    for (int i = 0; i < L; i++)
+      edgeOut[d][i] = 0;
 
   // Border temperatures
   for (int i = 0; i < L; i++) {
@@ -165,14 +174,8 @@ int main()
         msgOut->offset = offset;
         // Temperatures to send
         int base = offset*8;
-        if (dir == N) for (int i = 0; i < 8; i++)
-          msgOut->temp[i] = subgrid[0][base+i];
-        else if (dir == S) for (int i = 0; i < 8; i++)
-          msgOut->temp[i] = subgrid[L-1][base+i];
-        else if (dir == E) for (int i = 0; i < 8; i++)
-          msgOut->temp[i] = subgrid[base+i][L-1];
-        else for (int i = 0; i < 8; i++)
-          msgOut->temp[i] = subgrid[base+i][0];
+        for (int i = 0; i < 8; i++)
+          msgOut->temp[i] = edgeOut[dir][base+i];
         // Send message
         tinselSend(neighbour[dir], msgOut);
         offset++; sent++;
@@ -213,6 +216,11 @@ int main()
         int w = x == 0     ? edge[W][y] : subgrid[y][x-1];
         // New temperature
         subgridNext[y][x] = subgrid[y][x] - (subgrid[y][x] - ((n+s+e+w) >> 2));
+        // Update output edges (to be sent to neighbours)
+        if (y == 0)     edgeOut[N][x] = subgridNext[y][x];
+        if (y == (L-1)) edgeOut[S][x] = subgridNext[y][x];
+        if (x == (L-1)) edgeOut[E][y] = subgridNext[y][x];
+        if (x == 0)     edgeOut[W][y] = subgridNext[y][x];
       }
     }
 
