@@ -89,15 +89,14 @@ int main()
   // Allocate space for subgrid edges
   int edgeSpace[4][L];
   int edgeNextSpace[4][L];
-  int edgeOutSpace[4][L];
 
   // Pointers to edges being received
   int (*edge)[L] = edgeSpace;
   int (*edgeNext)[L] = edgeNextSpace;
   int (*edgePtr)[L];
 
-  // Pointers to edges being sent
-  int (*edgeOut)[L] = edgeOutSpace;
+  // Buffers for edges being sent
+  int edgeOut[4][L];
 
   // Initial state
   // -------------
