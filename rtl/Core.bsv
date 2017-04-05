@@ -635,10 +635,11 @@ module mkCore#(CoreId myId) (Core);
     // Emit char to console (simulation only)
     `ifdef SIMULATE
     if (token.op.csr.isEmit) begin
-      $display("0x%x", token.valA);
+      $display("Thread %d: 0x%x @ %d", {myId, token.thread.id},
+                  token.valA, $time);
     end
     `endif
-    // Mulitiplication
+    // Multiplication
     Bit#(33) mulA = {token.op.isMultASigned ? token.valA[31] : 0, token.valA};
     Bit#(33) mulB = {token.op.isMultBSigned ? token.valB[31] : 0, token.valB};
     token.instrResult.mult = mult.mult(mulA, mulB);
