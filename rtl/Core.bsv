@@ -466,7 +466,7 @@ module mkCore#(CoreId myId) (Core);
   SizedQueue#(`LogThreadsPerCore, ThreadState) resumeQueue <- mkUGSizedQueue;
 
   // Queue of writeback requests from threads pending resumption
-  Queue#(Writeback) writebackQueue <- mkUGShiftQueue(QueueOptFmax);
+  SizedQueue#(`LogThreadsPerCore, Writeback) writebackQueue <- mkUGSizedQueue;
 
   // Information about suspended threads
   BlockRam#(ThreadId, SuspendedThreadState) suspended <- mkBlockRam;
@@ -874,29 +874,24 @@ module mkCore#(CoreId myId) (Core);
   // -----------------------
 
   // Pipeline sub-stages for thread resumption
-  Reg#(Bool)          resumeThread1Fire  <- mkDReg(False);
-  Reg#(ResumeToken)   resumeThread1Input <- mkConfigRegU;
   Reg#(ResumeToken)   resumeThread2Input <- mkVReg;
   Reg#(ResumeToken)   resumeThread3Input <- mkVReg;
  
-  rule resumeThread1 (resumeThread1Fire
-                       || dcacheResp.canGet
+  rule resumeThread1 (dcacheResp.canGet
                        || mailbox.scratchpadResp.canGet
                        || wakeupPort.canGet);
-    ResumeToken token = resumeThread1Input;
-    if (!resumeThread1Fire) begin
-      if (dcacheResp.canGet) begin
-        dcacheResp.get;
-        token.id   = truncate(dcacheResp.value.id);
-        token.data = dcacheResp.value.data;
-      end else if (mailbox.scratchpadResp.canGet) begin
-        mailbox.scratchpadResp.get;
-        token.id   = truncate(mailbox.scratchpadResp.value.id);
-        token.data = mailbox.scratchpadResp.value.data;
-      end else if (wakeupPort.canGet) begin
-        wakeupPort.get;
-        token.id = truncate(wakeupPort.value.id);
-      end
+    ResumeToken token = ?;
+    if (dcacheResp.canGet) begin
+      dcacheResp.get;
+      token.id   = truncate(dcacheResp.value.id);
+      token.data = dcacheResp.value.data;
+    end else if (mailbox.scratchpadResp.canGet) begin
+      mailbox.scratchpadResp.get;
+      token.id   = truncate(mailbox.scratchpadResp.value.id);
+      token.data = mailbox.scratchpadResp.value.data;
+    end else if (wakeupPort.canGet) begin
+      wakeupPort.get;
+      token.id = truncate(wakeupPort.value.id);
     end
     // Fetch info about suspended thread
     suspended.read(token.id);
@@ -920,13 +915,8 @@ module mkCore#(CoreId myId) (Core);
     wb.destReg = susp.destReg;
     wb.writeVal = loadMux(token.data, susp.accessWidth,
                     susp.loadSelector, susp.isUnsignedLoad);
-    if (writebackQueue.notFull) begin
-      writebackQueue.enq(wb);
-    end else begin
-      // Retry if queue full
-      resumeThread1Fire <= True;
-      resumeThread1Input <= token;
-    end
+    myAssert(writebackQueue.notFull, "Writeback queue overflow");
+    writebackQueue.enq(wb);
   endrule
 
   // Interface
