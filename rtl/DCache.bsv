@@ -623,7 +623,7 @@ endmodule
 // ============================================================================
 
 interface DCacheClient;
-  interface Out#(DCacheReq) dcacheReqOut;
+  interface BOut#(DCacheReq) dcacheReqOut;
   interface In#(DCacheResp) dcacheRespIn;
 endinterface
 
@@ -637,7 +637,7 @@ module connectCoresToDCache#(
 
   // Connect requests
   function getDCacheReqOut(client) = client.dcacheReqOut;
-  let dcacheReqs <- mkMergeTree(Fair,
+  let dcacheReqs <- mkMergeTreeB(Fair,
                       mkUGShiftQueue1(QueueOptFmax),
                       map(getDCacheReqOut, clients));
   connectUsing(mkUGQueue, dcacheReqs, dcache.reqIn);

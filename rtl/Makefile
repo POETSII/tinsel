@@ -8,8 +8,8 @@ DEFS = $(shell python ../config.py defs)
 
 # BSV compiler flags
 BSC = bsc
-BSCFLAGS = -wait-for-license -suppress-warnings S0015 \
-           -suppress-warnings G0023 \
+BSCFLAGS = -wait-for-license \
+           -suppress-warnings S0015:G0023:G0020 \
            -steps-warn-interval 400000 -check-assert \
            +RTS -K32M -RTS
 
