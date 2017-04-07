@@ -450,7 +450,6 @@ module mkCore#(CoreId myId) (Core);
   // ------------
 
   // Ports
-  OutPort#(DCacheReq)    dcacheReq    <- mkOutPort;
   InPort#(DCacheResp)    dcacheResp   <- mkInPort;
   OutPort#(HostLinkFlit) toHostPort   <- mkOutPort;
   InPort#(HostLinkFlit)  fromHostPort <- mkInPort;
@@ -470,6 +469,9 @@ module mkCore#(CoreId myId) (Core);
 
   // Information about suspended threads
   BlockRam#(ThreadId, SuspendedThreadState) suspended <- mkBlockRam;
+
+  // D-cache request queue
+  SizedQueue#(`LogThreadsPerCore, DCacheReq) dcacheReq <- mkUGSizedQueue;
 
   // Instruction memory
   BlockRamOpts instrMemOpts = defaultBlockRamOpts;
@@ -694,22 +696,20 @@ module mkCore#(CoreId myId) (Core);
         end else
           retry = True;
       end else begin
-        if (dcacheReq.canPut) begin
-          // Prepare data cache request
-          DCacheReq req;
-          req.id = {truncate(myId), token.thread.id};
-          req.cmd.isLoad = token.op.isLoad;
-          req.cmd.isStore = token.op.isStore;
-          req.cmd.isFlush = token.op.isFence;
-          req.cmd.isFlushResp = False;
-          req.addr = token.op.isFence ? 0 : token.memAddr;
-          req.data = token.op.isFence ? 0 : writeData;
-          req.byteEn = byteEn;
-          // Issue data cache request
-          dcacheReq.put(req);
-          suspend = True;
-        end else
-          retry = True;
+        // Prepare data cache request
+        DCacheReq req;
+        req.id = {truncate(myId), token.thread.id};
+        req.cmd.isLoad = token.op.isLoad;
+        req.cmd.isStore = token.op.isStore;
+        req.cmd.isFlush = token.op.isFence;
+        req.cmd.isFlushResp = False;
+        req.addr = token.op.isFence ? 0 : token.memAddr;
+        req.data = token.op.isFence ? 0 : writeData;
+        req.byteEn = byteEn;
+        // Issue data cache request
+        myAssert(dcacheReq.notFull, "D-Cache request queue overflow");
+        dcacheReq.enq(req);
+        suspend = True;
       end
     end
     // Allocate space for an incoming message in mailbox scratchpad
@@ -923,8 +923,8 @@ module mkCore#(CoreId myId) (Core);
   // ---------
 
   interface DCacheClient dcacheClient;
-    interface Out dcacheReqOut = dcacheReq.out;
-    interface In  dcacheRespIn = dcacheResp.in;
+    interface BOut dcacheReqOut = convertQueueToBOut(dcacheReq);
+    interface In   dcacheRespIn = dcacheResp.in;
   endinterface
 
   interface MailboxClient mailboxClient = mailbox.client;

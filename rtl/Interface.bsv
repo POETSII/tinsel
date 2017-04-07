@@ -431,4 +431,13 @@ module convertBOutToOut#(BOut#(t) a) (Out#(t))
   method t value = a.value;
 endmodule
 
+// Convert a queue to a buffered output interface
+function BOut#(t) convertQueueToBOut(SizedQueue#(n, t) queue)
+         provisos (Bits#(t, twidth)) =
+  interface BOut
+    method Action get = queue.deq;
+    method Bool valid = queue.canPeek && queue.canDeq;
+    method t value = queue.dataOut;
+  endinterface;
+
 endpackage
