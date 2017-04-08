@@ -590,8 +590,8 @@ endmodule
 // The interface implemented by a mailbox client (e.g. a Tinsel core)
 interface MailboxClient;
   // Scratchpad
-  interface Out#(ScratchpadReq) spadReqOut;
-  interface In#(ScratchpadResp) spadRespIn;
+  interface BOut#(ScratchpadReq) spadReqOut;
+  interface In#(ScratchpadResp)  spadRespIn;
   // Transmit unit
   interface Out#(TransmitReq)   txReqOut;
   interface In#(TransmitResp)   txRespIn;
@@ -618,7 +618,7 @@ typedef struct {
 // avoiding clutter in Tinsel core
 interface MailboxClientUnit;
   // Scratchpad request & response
-  interface OutPort#(ScratchpadReq) scratchpadReq;
+  method Action putScratchpadReq(ScratchpadReq req);
   interface InPort#(ScratchpadResp) scratchpadResp;
 
   // Allocate request
@@ -650,7 +650,6 @@ endinterface
 
 module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
   // Ports
-  OutPort#(ScratchpadReq)   scratchpadReqPort  <- mkOutPort;
   InPort#(ScratchpadResp)   scratchpadRespPort <- mkInPort;
   OutPort#(AllocReq)        allocReqPort       <- mkOutPort;
   OutPort#(TransmitReq)     transmitPort       <- mkOutPort;
@@ -660,6 +659,10 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
 
   // Sleep queue (threads sit in here while waiting for events)
   SizedQueue#(`LogThreadsPerCore, ThreadEventPair) sleepQueue <- mkUGSizedQueue;
+
+  // Scratchpad request queue
+  SizedQueue#(`LogThreadsPerCore, ScratchpadReq) scratchpadReqQueue <-
+    mkUGSizedQueue;
 
   // Transmit logic
   // ==============
@@ -852,16 +855,20 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
     sleepThread <= ThreadEventPair { id: id, wakeEvent: e };
   endmethod
 
+  method Action putScratchpadReq(ScratchpadReq req);
+    myAssert(scratchpadReqQueue.notFull, "Scratchpad request overflow");
+    scratchpadReqQueue.enq(req);
+  endmethod
+
   // Interfaces
   // ==========
 
-  interface scratchpadReq  = scratchpadReqPort;
   interface scratchpadResp = scratchpadRespPort;
   interface allocateReq    = allocReqPort;
 
   interface MailboxClient client;
     // Scratchpad
-    interface spadReqOut  = scratchpadReqPort.out;
+    interface spadReqOut  = convertQueueToBOut(scratchpadReqQueue);
     interface spadRespIn  = scratchpadRespPort.in;
     // Transmit unit
     interface txReqOut    = transmitPort.out;
@@ -885,7 +892,7 @@ module connectCoresToMailbox#(
 
   // Connect scratchpad requests
   function spadReqOut(client) = client.spadReqOut;
-  let spadReqs <- mkMergeTree(Fair,
+  let spadReqs <- mkMergeTreeB(Fair,
                      mkUGShiftQueue1(QueueOptFmax),
                      map(spadReqOut, clients));
   connectUsing(mkUGQueue, spadReqs, server.spadReqIn);
