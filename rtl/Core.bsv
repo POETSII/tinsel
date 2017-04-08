@@ -682,19 +682,16 @@ module mkCore#(CoreId myId) (Core);
       Bit#(32) writeData = writeAlign(token.accessWidth, token.valB);
       Bit#(4)  byteEn    = genByteEnable(token.accessWidth, token.memAddr[1:0]);
       if (token.isScratchpadAccess && !token.op.isFence) begin
-        if (mailbox.scratchpadReq.canPut) begin
-          // Prepare scratchpad request
-          ScratchpadReq req;
-          req.id = {truncate(myId), token.thread.id};
-          req.isStore  = token.op.isStore;
-          req.wordAddr = truncate(token.memAddr[31:2]);
-          req.data     = writeData;
-          req.byteEn   = byteEn;
-          // Issue scratchpad request
-          mailbox.scratchpadReq.put(req);
-          suspend = True;
-        end else
-          retry = True;
+        // Prepare scratchpad request
+        ScratchpadReq req;
+        req.id = {truncate(myId), token.thread.id};
+        req.isStore  = token.op.isStore;
+        req.wordAddr = truncate(token.memAddr[31:2]);
+        req.data     = writeData;
+        req.byteEn   = byteEn;
+        // Issue scratchpad request
+        mailbox.putScratchpadReq(req);
+        suspend = True;
       end else begin
         // Prepare data cache request
         DCacheReq req;
