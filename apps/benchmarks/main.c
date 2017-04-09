@@ -15,7 +15,8 @@ int loadLoop()
   int region[SIZE];
   volatile int* p = region;
   int sum = 0;
-  for (int i = 0; i < SIZE; i++) sum += p[i];
+  for (int i = 0; i < SIZE; i++)
+    sum += p[i];
   return sum;
 }
 
@@ -59,6 +60,14 @@ int cacheLoop()
   return sum;
 }
 
+// One load every 4 instructions from scratchpad
+void scratchpadLoop()
+{
+  volatile int* p = tinselSlot(0);
+  for (int i = 0; i < SIZE; i++)
+    asm volatile("lw a0, 0(%0)\nnop\n" :  : "r"(p) : "a0");
+}
+
 // Each pair of threads send messages to each other
 void messageLoop()
 {
@@ -77,10 +86,7 @@ void messageLoop()
 
   // Determine partner
   int partner;
-  if (me & 1)
-    partner = me & ~1;
-  else
-    partner = me | 1;
+  partner = (me & 1) ? me - 1 : me + 1;
 
   // Send & receive loop
   while (sent < NUM_MSGS || received < NUM_MSGS) {
@@ -106,9 +112,9 @@ int main()
   int mask = (1 << T) - 1;
   while ((me & mask) != 0);
 
-  if (me == 0) tinselEmit(0);
-  messageLoop();
-  if (me == TinselThreadsPerBoard-1) tinselEmit(1);
+  tinselEmit(0);
+  loadLoop();
+  tinselEmit(1);
 
   return 0;
 }
