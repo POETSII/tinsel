@@ -19,7 +19,7 @@ import Interface :: *;
 import Mailbox   :: *;
 import Globals   :: *;
 import HostLink  :: *;
-import Mult      :: *;
+import SFU       :: *;
 
 // ============================================================================
 // Control/status register (CSRs) supported
@@ -124,6 +124,9 @@ typedef struct {
   Bool b; Bool h; Bool w;
 } AccessWidth deriving (Bits);
 
+// Word access
+AccessWidth wordAccess = AccessWidth { b: False, h: False, w: True };
+
 // The type for data passed between each pipeline stage
 typedef struct {
   ThreadState thread;      // Current thread state
@@ -154,6 +157,7 @@ typedef struct {
   ThreadState thread;      // Thread state
   Bool isLoad;             // Is it waiting for a load?
   Bool isStore;            // Or a store?
+  Bool isMult;             // Or a multiplication?
   Bit#(5) destReg;         // Destination register for the load result
   Bit#(2) loadSelector;    // Bottom two bits of load address
   AccessWidth accessWidth; // Access width of load (byte, half, word)
@@ -331,8 +335,7 @@ function Bool isRegFileWrite(Op op) =
   || op.isShiftRight     || op.isAnd
   || op.isOr             || op.isXor
   || op.isOpUI           || op.isJump
-  || op.isCSR            || op.isMult
-  || op.isMultH;
+  || op.isCSR;
 
 // ==============
 // Loads & Stores
@@ -378,6 +381,7 @@ interface Core;
   interface DCacheClient    dcacheClient;
   interface MailboxClient   mailboxClient;
   interface HostLinkCore    hostLinkCore;
+  interface SFUClient       sfuClient;
 endinterface
 
 // ============================================================================
@@ -451,6 +455,8 @@ module mkCore#(CoreId myId) (Core);
   InPort#(DCacheResp)    dcacheResp   <- mkInPort;
   OutPort#(HostLinkFlit) toHostPort   <- mkOutPort;
   InPort#(HostLinkFlit)  fromHostPort <- mkInPort;
+  OutPort#(SFUReq)       toSFUPort    <- mkOutPort;
+  InPort#(SFUResp)       fromSFUPort  <- mkInPort;
 
   // Queue of runnable threads
   QueueInit runQueueInit;
@@ -490,9 +496,6 @@ module mkCore#(CoreId myId) (Core);
   InPort#(ThreadEventPair) wakeupPort <- mkInPort;
   connectUsing(mkUGShiftQueue1(QueueOptFmax),
                  mailbox.wakeup, wakeupPort.in);
-
-  // Multiplier
-  Mult#(33) mult <- mkSignedMult;
 
   // Pipeline stages
   Reg#(PipelineToken) fetch1Input        <- mkVReg;
@@ -636,10 +639,6 @@ module mkCore#(CoreId myId) (Core);
       $display("0x%x", token.valA);
     end
     `endif
-    // Mulitiplication
-    Bit#(33) mulA = {token.op.isMultASigned ? token.valA[31] : 0, token.valA};
-    Bit#(33) mulB = {token.op.isMultBSigned ? token.valB[31] : 0, token.valB};
-    token.instrResult.mult = mult.mult(mulA, mulB);
     // Triger next stage
     execute2Input <= token;
   endrule
@@ -753,6 +752,19 @@ module mkCore#(CoreId myId) (Core);
       // by the writeback stage
       if (resumeWire) retry = True;
     end
+    // Mulitiplication using SFU
+    if (token.op.isMult || token.op.isMultH) begin
+      SFUReq req;
+      req.id = {truncate(myId), token.thread.id};
+      req.op = token.op.isMult ? MulLower : MulUpper;
+      req.argA = {token.op.isMultASigned ? token.valA[31] : 0, token.valA};
+      req.argB = {token.op.isMultBSigned ? token.valB[31] : 0, token.valB};
+      if (toSFUPort.canPut) begin
+        toSFUPort.put(req);
+        suspend = True;
+      end else
+        retry = True;
+    end
     // Record state of suspended thread
     if (suspend) begin
       SuspendedThreadState susp;
@@ -760,9 +772,10 @@ module mkCore#(CoreId myId) (Core);
       susp.thread.pc = token.thread.pc + 4;
       susp.isLoad = token.op.isLoad;
       susp.isStore = token.op.isStore;
+      susp.isMult = token.op.isMult || token.op.isMultH;
       susp.destReg = rd(token.instr);
       susp.loadSelector = token.memAddr[1:0];
-      susp.accessWidth = token.accessWidth;
+      susp.accessWidth = susp.isMult ? wordAccess : token.accessWidth;
       susp.isUnsignedLoad = isUnsignedLoad(token.instr);
       suspended.write(token.thread.id, susp);
     end 
@@ -800,9 +813,7 @@ module mkCore#(CoreId myId) (Core);
       | when(op.isBitwise,        res.bitwise)
       | when(op.isOpUI,           res.opui)
       | when(op.isJump,           zeroExtend(token.nextPC))
-      | when(op.isCSR,            res.csr)
-      | when(op.isMult,           res.mult[31:0])
-      | when(op.isMultH,          res.mult[63:32]);
+      | when(op.isCSR,            res.csr);
     // Setup new PC
     Bool takeBranch =
          op.isJump
@@ -878,7 +889,8 @@ module mkCore#(CoreId myId) (Core);
   rule resumeThread1 (resumeThread1Fire
                        || dcacheResp.canGet
                        || mailbox.scratchpadResp.canGet
-                       || wakeupPort.canGet);
+                       || wakeupPort.canGet
+                       || fromSFUPort.canGet);
     ResumeToken token = resumeThread1Input;
     if (!resumeThread1Fire) begin
       if (dcacheResp.canGet) begin
@@ -892,6 +904,10 @@ module mkCore#(CoreId myId) (Core);
       end else if (wakeupPort.canGet) begin
         wakeupPort.get;
         token.id = truncate(wakeupPort.value.id);
+      end else if (fromSFUPort.canGet) begin
+        fromSFUPort.get;
+        token.id = truncate(fromSFUPort.value.id);
+        token.data = fromSFUPort.value.data;
       end
     end
     // Fetch info about suspended thread
@@ -905,7 +921,7 @@ module mkCore#(CoreId myId) (Core);
     let token = resumeThread2Input;
     // Prepare request for writeback stage
     Writeback wb;
-    wb.write = susp.isLoad && susp.destReg != 0;
+    wb.write = (susp.isLoad || susp.isMult) && susp.destReg != 0;
     wb.thread = susp.thread;
     wb.thread.id = token.id;
     wb.destReg = susp.destReg;
@@ -933,6 +949,11 @@ module mkCore#(CoreId myId) (Core);
   interface HostLinkCore hostLinkCore;
     interface In fromHost = fromHostPort.in;
     interface Out toHost  = toHostPort.out;
+  endinterface
+
+  interface SFUClient sfuClient;
+    interface Out sfuReqOut = toSFUPort.out;
+    interface In  sfuRespIn = fromSFUPort.in;
   endinterface
 
 endmodule
