@@ -391,16 +391,11 @@ endinterface
 // Diagram
 // =======
 //                                         +-----------+
-//                         +==========+  +-| Run Queue |<--------+
-//                         | Schedule |<-+ +-----------+         |
-//                         |          |<-+ +--------------+      |
+//     +-----------+       +==========+  +-| Run Queue |<--------+
+//     | Instr Mem |<----->| Schedule |<-+ +-----------+         |
+//     +-----------+       |          |<-+ +--------------+      |
 //                         +==========+  +-| Resume Queue |<-+   |
 //                             ||          +--------------+  |   |
-//                             \/                            |   |
-//     +-----------+       +=======+                         |   |
-//     | Instr Mem |<----->| Fetch |                         |   | 
-//     +-----------+       +=======+                         |   |
-//                             ||                            |   |
 //                             \/                            |   |
 //     +-----------+       +========+                        |   |
 //  +->| Reg File  |<----->| Decode |                        |   |
@@ -486,6 +481,7 @@ module mkCore#(CoreId myId) (Core);
 
   // Register file (duplicated to allow two reads per cycle)
   BlockRamOpts regFileOpts = defaultBlockRamOpts;
+  regFileOpts.registerDataOut = False;
   BlockRam#(RegFileIndex, Bit#(32)) regFileA <- mkBlockRamOpts(regFileOpts);
   BlockRam#(RegFileIndex, Bit#(32)) regFileB <- mkBlockRamOpts(regFileOpts);
 
@@ -558,28 +554,19 @@ module mkCore#(CoreId myId) (Core);
     // Trigger next stage
     PipelineToken token = ?;
     token.thread = thread;
-    fetch1Input <= token;
+    decode1Input <= token;
   endrule
 
-  // Operand fetch stage
-  // -------------------
+  // Decode and operand fetch stage
+  // ------------------------------
 
-  rule fetch1;
-    PipelineToken token = fetch1Input;
+  rule decode1;
+    PipelineToken token = decode1Input;
     // Register instruction memory outputs
     token.instr = instrMem.dataOut;
     // Fetch operands from register files
     regFileA.read({token.thread.id, rs1(token.instr)});
     regFileB.read({token.thread.id, rs2(token.instr)});
-    // Trigger next stage
-    decode1Input <= token;
-  endrule
-
-  // Decode stage
-  // ------------
-
-  rule decode1;
-    PipelineToken token = decode1Input;
     // Compute instruction's operation and type
     token.op = decodeOp(token.instr);
     token.instrType = decodeInstrType(token.instr);
