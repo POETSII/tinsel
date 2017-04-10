@@ -169,6 +169,7 @@ typedef Bit#(WordIndexNumBits) WordIndex;
 // Cache line tag
 typedef struct {
   Bool valid;
+  Bool dirty;
   Key key;
 } Tag deriving (Bits);
 
@@ -176,21 +177,14 @@ typedef struct {
 typedef TSub#(`LogLinesPerDRAM, `DCacheLogSetsPerThread) KeyNumBits;
 typedef Bit#(KeyNumBits) Key;
 
-// Meta data per set
-typedef struct {
-  Way oldestWay;
-  Vector#(DCacheNumWays, Bool) dirty;
-} SetMetaData deriving (Bits);
-
 // Data cache pipeline token
 typedef struct {
   DCacheReq req;
   Vector#(DCacheNumWays, Bool) matching;
   Bool isHit;
-  Way evictWay;
+  Way way;
   Tag evictTag;
-  Bool evictDirty;
-  SetMetaData metaData;
+  Tag matchTag;
 } DCacheToken deriving (Bits);
 
 // Miss request (input to miss unit)
@@ -198,7 +192,6 @@ typedef struct {
   DCacheReq req;
   Way evictWay;
   Tag evictTag;
-  Bool evictDirty;
   Bool flushDone;
 } MissReq deriving (Bits);
 
@@ -270,8 +263,8 @@ module mkDCache#(DCacheId myId) (DCache);
   BlockRamTrueMixedBE#(BeatIndex, Bit#(`BeatWidth), WordIndex, Bit#(32))
     dataMem <- mkBlockRamTrueMixedBE;
 
-  // Meta data for each set
-  BlockRam#(SetIndex, SetMetaData) metaData <- mkBlockRam;
+  // Track the oldest way in each set
+  BlockRam#(SetIndex, Way) oldestWay <- mkBlockRam;
   
   // Request & response ports
   InPort#(DCacheReq) reqPort  <- mkInPort;
@@ -340,8 +333,8 @@ module mkDCache#(DCacheId myId) (DCache);
     // Send read request for tags
     for (Integer i = 0; i < valueOf(DCacheNumWays); i=i+1)
       tagMem[i].read(setIndex(req.id, req.addr));
-    // Send read request for meta data
-    metaData.read(setIndex(req.id, req.addr));
+    // Send read request needed for eviction policy
+    oldestWay.read(setIndex(req.id, req.addr));
     // Trigger next stage
     DCacheToken token = ?;
     token.req = req;
@@ -373,12 +366,11 @@ module mkDCache#(DCacheId myId) (DCache);
                     token.req.cmd.isFlushResp;
     // In case of a miss, choose a way to evict and remember the old tag
     // On a flush, the way is specified in the data field of the request
-    token.evictWay   = token.req.cmd.isFlush ?
-                         truncate(token.req.data) : metaData.dataOut.oldestWay;
-    token.evictTag   = tags[token.evictWay];
-    token.evictDirty = metaData.dataOut.dirty[token.evictWay];
-    // Remember meta data for later stages
-    token.metaData = metaData.dataOut;
+    token.way       = token.req.cmd.isFlush ?
+                         truncate(token.req.data) : oldestWay.dataOut;
+    token.evictTag  = tags[token.way];
+    // In case of a hit, remember the tag
+    token.matchTag  = oneHotSelect(matching, tags);
     // Trigger next stage
     dataLookup2Trigger <= True;
     dataLookup2Input <= token;
@@ -392,6 +384,7 @@ module mkDCache#(DCacheId myId) (DCache);
     if (token.isHit) begin
       // On read hit: read word data from dataMem
       // On write hit: write word data to dataMem
+      token.way = matchingWay;
       dataMem.putB(token.req.cmd.isStore,
                    wordIndex(token.req.id, token.req.addr, matchingWay),
                    token.req.data, token.req.byteEn);
@@ -400,9 +393,8 @@ module mkDCache#(DCacheId myId) (DCache);
       myAssert(missQueue.notFull, "DCache: miss queue full");
       MissReq miss;
       miss.req = token.req;
-      miss.evictWay = token.evictWay;
+      miss.evictWay = token.way;
       miss.evictTag = token.evictTag;
-      miss.evictDirty = token.evictDirty;
       // Extract current set index and way of flush
       SetNum set = addrToSetNum(token.req.addr);
       Way way = truncate(token.req.data);
@@ -424,42 +416,31 @@ module mkDCache#(DCacheId myId) (DCache);
 
   rule hitUnit1;
     DCacheToken token = hitUnitInput;
-    // Has a new dirty bit been set?
-    Bool setDirtyBit = False;
-    // New dirty bits
-    Vector#(DCacheNumWays, Bool) newDirtyBits = token.metaData.dirty;
-    // Will a line been evicted?
-    Bool willEvict = False;
+    // New tag
+    Tag newTag;
+    newTag.key = getKey(token.req.addr);
+    // Hit or miss?
     if (token.isHit) begin
-      // On hit: enqueue response queue
+      // On hit: enqueue response queue and update tag
       myAssert(respQueue.notFull, "DCache: response queue full");
       DCacheResp resp;
       resp.id = token.req.id;
       resp.data = dataMem.dataOutB;
-      setDirtyBit = token.req.cmd.isStore;
-      for (Integer i = 0; i < valueOf(DCacheNumWays); i=i+1)
-        if (token.matching[i]) newDirtyBits[i] = True;
+      newTag.valid = True;
+      newTag.dirty = token.matchTag.dirty || token.req.cmd.isStore;
       respQueue.enq(resp);
     end else begin
       // On miss: update tag
-      Tag newTag;
       // On a flush: invalidate the line
       newTag.valid = !token.req.cmd.isFlush;
-      newTag.key = getKey(token.req.addr);
-      for (Integer i = 0; i < valueOf(DCacheNumWays); i=i+1)
-        if (token.evictWay == fromInteger(i)) begin
-          newDirtyBits[i] = False;
-          tagMem[i].write(setIndex(token.req.id, token.req.addr), newTag);
-        end
-      // A line will be evicted
-      willEvict = True;
+      newTag.dirty = False;
+      // Update oldest way
+      oldestWay.write(setIndex(token.req.id, token.req.addr), token.way+1);
     end
-    // Update meta data
-    SetMetaData newMetaData;
-    newMetaData.oldestWay = token.metaData.oldestWay + (willEvict ? 1 : 0);
-    newMetaData.dirty = newDirtyBits;
-    if (setDirtyBit || willEvict)
-      metaData.write(setIndex(token.req.id, token.req.addr), newMetaData);
+    // Update tag
+    for (Integer i = 0; i < valueOf(DCacheNumWays); i=i+1)
+      if (token.way == fromInteger(i))
+        tagMem[i].write(setIndex(token.req.id, token.req.addr), newTag);
   endrule
 
   // Memory response stage
@@ -540,7 +521,7 @@ module mkDCache#(DCacheId myId) (DCache);
   rule missUnit;
     MissReq miss = missQueue.dataOut;
     // Send a load request?
-    Bool isLoad = !miss.evictDirty || writebackDone;
+    Bool isLoad = !miss.evictTag.dirty || writebackDone;
     // Determine line address
     Bit#(`LogLinesPerDRAM) writeLineAddr =
       reconstructLineAddr(miss.evictTag.key, miss.req.addr);
@@ -553,6 +534,7 @@ module mkDCache#(DCacheId myId) (DCache);
     memReq.addr = {isLoad ? readLineAddr : writeLineAddr, reqBeat};
     memReq.data = dataMem.dataOutA;
     memReq.burst = isLoad ? (miss.req.cmd.isFlush ? 1 : `BeatsPerLine) : 1;
+    memReq.byteEn = -1;
     // Are we going to send a memory request to the next stage?
     Bool sendMemReq = False;
     if (missQueue.canPeek && missQueue.canDeq && memReqQueue.notFull) begin

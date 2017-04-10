@@ -14,7 +14,7 @@ typedef struct {
   Bit#(`LogBeatsPerDRAM) addr;
   Bit#(`BeatWidth) data;
   Bit#(`BeatBurstWidth) burst;
-  //Bit#(`BytesPerBeat) byteEn;
+  Bit#(`BytesPerBeat) byteEn;
 } DRAMReq deriving (Bits);
 
 // DRAM load response
@@ -125,8 +125,7 @@ module mkDRAM#(DRAMId id) (DRAM);
         myAssert(req.burst == 1, "DRAM: burst writes not yet supported");
         Vector#(`WordsPerBeat, Bit#(32)) elems = unpack(req.data);
         Vector#(`WordsPerBeat, Bit#(4)) byteEns =
-          //unpack(req.byteEn);
-          replicate(-1);
+          unpack(req.byteEn);
         Bit#(`LogBytesPerBeat) low = 0;
         Bit#(32) addr = {0, req.addr, low};
         for (Integer i = 0; i < `WordsPerBeat; i=i+1)
@@ -258,7 +257,7 @@ module mkDRAM#(t id) (DRAM);
       address   <= req.addr;
       writeData <= req.data;
       burstReg  <= req.burst;
-      //byteEn    <= req.byteEn;
+      byteEn    <= req.byteEn;
       if (req.isStore) putStore.send; else putLoad.send;
       DRAMInFlightReq inflightReq;
       inflightReq.id = req.id;
@@ -296,7 +295,7 @@ module mkDRAM#(t id) (DRAM);
     method m_read       = doRead;
     method m_write      = doWrite;
     method m_burstcount = burstReg;
-    //method m_byteenable = byteEn;
+    method m_byteenable = byteEn;
   endinterface
 endmodule
 
