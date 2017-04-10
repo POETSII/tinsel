@@ -61,27 +61,14 @@ random.seed(seed)
 # Initialise number of operations to generate
 numOps = initDepth
 
-# There are two modes of test:
-#  1. LineGrain: arbitrary addresses but with a
-#     1->1 mapping between addresses and lines
-#  2. Exclusive: arbitrary addresses but threads
-#     access exclusive lines
-LineGrain = 1
-Exclusive = 2
-mode = random.choice([LineGrain, Exclusive])
-
-# Generate addresses for LineGrain mode
+# Generate address set
 addrSet = []
 for i in range(0, numAddrs):
-  offset = random.randint(0, 200)
+  a = random.randint(0, 200)
   for j in range(0, assoc+1):
-    addrSet.append(4*offset + j*1024)
-
-# Generate addresses for Exclusive mode
-addrMap = []
-for t in range(0, numThreads):
-  offset = 4 * random.randint(0, 7)
-  addrMap.append([a+(1024*(assoc+1)*(t+1))+offset for a in addrSet])
+    addrSet.append(4*a + j*1024)
+    offset = random.randint(0, 16)
+    addrSet.append(4*(a+offset))
 
 # =============================================================================
 # Functions
@@ -95,10 +82,7 @@ def genReqs():
     flushes = ['F'] if random.randint(1,20) <= insertFlushes else []
     op = random.choice(['S']*7 + ['L']*5 + ['D'] + ['B'] + flushes)
     thread = random.randint(0, numThreads-1)
-    if mode == LineGrain:
-      addr = random.choice(addrSet)
-    else:
-      addr = random.choice(addrMap[thread])
+    addr = random.choice(addrSet)
     if op == 'D':
       delay = random.randint(1, maxDelay)
       reqs = reqs + "D " + str(delay) + "\n"

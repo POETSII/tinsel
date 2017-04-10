@@ -11,7 +11,6 @@ all:
 	qsys-generate -syn S5_DDR3_QSYS.qsys
 	quartus_dse Golden_top.qpf    \
     --num-seeds 11              \
-    --explore timing_aggressive \
     --launcher local            \
     --num-concurrent 4
 	quartus_dse Golden_top.qpf --report utilization

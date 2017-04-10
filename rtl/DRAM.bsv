@@ -197,7 +197,7 @@ interface DRAMExtIfc;
   method Bool m_read;
   method Bool m_write;
   method Bit#(`BeatBurstWidth) m_burstcount;
-  //method Bit#(`BytesPerBeat) m_byteenable;
+  method Bit#(`BytesPerBeat) m_byteenable;
 endinterface
 
 // In-flight request
