@@ -26,6 +26,10 @@ package DCache;
 //
 // Cache lines are read and written in bus-sized chunks called beats.
 //
+// Byte-enables are maintained to avoid fetch-on-write.
+//
+// A per-thread cache flush operation is supported.
+//
 // Pipeline structure
 // ------------------
 //
@@ -170,6 +174,7 @@ typedef Bit#(WordIndexNumBits) WordIndex;
 typedef struct {
   Bool valid;
   Bool dirty;
+  Bool writeOnly;
   Key key;
 } Tag deriving (Bits);
 
@@ -183,8 +188,7 @@ typedef struct {
   Vector#(DCacheNumWays, Bool) matching;
   Bool isHit;
   Way way;
-  Tag evictTag;
-  Tag matchTag;
+  Tag tag;
 } DCacheToken deriving (Bits);
 
 // Miss request (input to miss unit)
@@ -263,6 +267,10 @@ module mkDCache#(DCacheId myId) (DCache);
   BlockRamTrueMixedBE#(BeatIndex, Bit#(`BeatWidth), WordIndex, Bit#(32))
     dataMem <- mkBlockRamTrueMixedBE;
 
+  // Byte enables for beats in dataMem
+  BlockRamTrueMixed#(BeatIndex, Bit#(`BytesPerBeat), WordIndex, Bit#(4))
+    dataMemBE <- mkBlockRamTrueMixed;
+
   // Track the oldest way in each set
   BlockRam#(SetIndex, Way) oldestWay <- mkBlockRam;
   
@@ -317,6 +325,10 @@ module mkDCache#(DCacheId myId) (DCache);
       lineWriteReqWire,
       lineWriteReqWire ? lineWriteIndexWire : lineReadIndexWire,
       lineWriteDataWire);
+    dataMemBE.putA(
+      lineWriteReqWire,
+      lineWriteReqWire ? lineWriteIndexWire : lineReadIndexWire,
+      0);
   endrule
 
   // Tag lookup stage
@@ -355,22 +367,30 @@ module mkDCache#(DCacheId myId) (DCache);
     // Compute matching way (associative lookup)
     Vector#(DCacheNumWays, Tag) tags;
     Vector#(DCacheNumWays, Bool) matching;
+    Vector#(DCacheNumWays, Bool) writeOnly;
     for (Integer i = 0; i < valueOf(DCacheNumWays); i=i+1) begin
       tags[i]     = tagMem[i].dataOut;
       matching[i] = tags[i].valid && tags[i].key == getKey(token.req.addr);
+      writeOnly[i] = tags[i].writeOnly;
     end
     token.matching = matching;
+    // Was there a match?
+    Bool existsMatch = any(id, matching);
+    token.isHit = existsMatch;
     // Force a miss in the case of flush request
-    // Force a hit if were sending a flush response
-    token.isHit = any(id, matching) && !token.req.cmd.isFlush ||
-                    token.req.cmd.isFlushResp;
+    if (token.req.cmd.isFlush) token.isHit = False;
+    // Force a hit if sending a flush response
+    if (token.req.cmd.isFlushResp) token.isHit = True;
+    // Force a miss if reading from a write-only line
+    if (token.req.cmd.isLoad && oneHotSelect(matching, writeOnly))
+      token.isHit = False;
+    // Convert matching way from one-hot to binary
+    Way matchingWay = encode(token.matching);
     // In case of a miss, choose a way to evict and remember the old tag
     // On a flush, the way is specified in the data field of the request
-    token.way       = token.req.cmd.isFlush ?
-                         truncate(token.req.data) : oldestWay.dataOut;
-    token.evictTag  = tags[token.way];
-    // In case of a hit, remember the tag
-    token.matchTag  = oneHotSelect(matching, tags);
+    token.way = token.req.cmd.isFlush ? truncate(token.req.data) :
+                  (existsMatch ? matchingWay : oldestWay.dataOut);
+    token.tag = tags[token.way];
     // Trigger next stage
     dataLookup2Trigger <= True;
     dataLookup2Input <= token;
@@ -378,23 +398,23 @@ module mkDCache#(DCacheId myId) (DCache);
 
   rule dataLookup2 (dataLookup2Trigger);
     DCacheToken token = dataLookup2Input;
-    // Convert index of match from one-hot to binary
-    Way matchingWay = encode(token.matching);
     // Handle hit or miss
     if (token.isHit) begin
       // On read hit: read word data from dataMem
       // On write hit: write word data to dataMem
-      token.way = matchingWay;
       dataMem.putB(token.req.cmd.isStore,
-                   wordIndex(token.req.id, token.req.addr, matchingWay),
+                   wordIndex(token.req.id, token.req.addr, token.way),
                    token.req.data, token.req.byteEn);
+      dataMemBE.putB(token.req.cmd.isStore,
+                     wordIndex(token.req.id, token.req.addr, token.way),
+                     token.req.byteEn);
     end else begin
       // Put miss requests into miss queue
       myAssert(missQueue.notFull, "DCache: miss queue full");
       MissReq miss;
       miss.req = token.req;
       miss.evictWay = token.way;
-      miss.evictTag = token.evictTag;
+      miss.evictTag = token.tag;
       // Extract current set index and way of flush
       SetNum set = addrToSetNum(token.req.addr);
       Way way = truncate(token.req.data);
@@ -427,15 +447,18 @@ module mkDCache#(DCacheId myId) (DCache);
       resp.id = token.req.id;
       resp.data = dataMem.dataOutB;
       newTag.valid = True;
-      newTag.dirty = token.matchTag.dirty || token.req.cmd.isStore;
+      newTag.dirty = token.tag.dirty || token.req.cmd.isStore;
+      newTag.writeOnly = token.tag.writeOnly;
       respQueue.enq(resp);
     end else begin
       // On miss: update tag
       // On a flush: invalidate the line
       newTag.valid = !token.req.cmd.isFlush;
       newTag.dirty = False;
+      newTag.writeOnly = token.req.cmd.isStore;
       // Update oldest way
-      oldestWay.write(setIndex(token.req.id, token.req.addr), token.way+1);
+      if (any(id, token.matching))
+        oldestWay.write(setIndex(token.req.id, token.req.addr), token.way+1);
     end
     // Update tag
     for (Integer i = 0; i < valueOf(DCacheNumWays); i=i+1)
@@ -534,7 +557,7 @@ module mkDCache#(DCacheId myId) (DCache);
     memReq.addr = {isLoad ? readLineAddr : writeLineAddr, reqBeat};
     memReq.data = dataMem.dataOutA;
     memReq.burst = isLoad ? (miss.req.cmd.isFlush ? 1 : `BeatsPerLine) : 1;
-    memReq.byteEn = -1;
+    memReq.byteEn = dataMemBE.dataOutA;
     // Are we going to send a memory request to the next stage?
     Bool sendMemReq = False;
     if (missQueue.canPeek && missQueue.canDeq && memReqQueue.notFull) begin

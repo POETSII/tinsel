@@ -255,6 +255,16 @@ import "BVI" AlteraBlockRam =
 // True dual-port mixed-width block RAM
 // ====================================
 
+module mkBlockRamTrueMixed
+         (BlockRamTrueMixed#(addrA, dataA, addrB, dataB))
+         provisos(Bits#(addrA, addrWidthA), Bits#(dataA, dataWidthA),
+                  Bits#(addrB, addrWidthB), Bits#(dataB, dataWidthB),
+                  Bounded#(addrA), Bounded#(addrB),
+                  Add#(addrWidthA, aExtra, addrWidthB),
+                  Mul#(TExp#(aExtra), dataWidthB, dataWidthA));
+  let ram <- mkBlockRamTrueMixedOpts(defaultBlockRamOpts); return ram;
+endmodule
+
 `ifdef SIMULATE
 
 // BSV implementation using BlockRam.c routines.
