@@ -15,6 +15,7 @@ import Mailbox        :: *;
 import MailboxNetwork :: *;
 import HostLink       :: *;
 import JtagUart       :: *;
+import SFU            :: *;
 
 // ============================================================================
 // Interface
@@ -72,13 +73,28 @@ module de5Top (DE5Top);
   for (Integer i = 0; i < `DRAMsPerBoard; i=i+1)
     connectDCachesToDRAM(dcaches[i], drams[i]);
 
+  // Create SFUs
+  Vector#(`SFUsPerBoard, SFU) sfus;
+  for (Integer i = 0; i < `SFUsPerBoard; i=i+1)
+    sfus[i] <- mkSFU;
+
+  // Connect cores to SFUs
+  let vecOfCores = concat(concat(cores));
+  for (Integer i = 0; i < `SFUsPerBoard; i=i+1) begin
+    // Get sub-vector of cores to be connected to SFU i
+    Vector#(`CoresPerSFU, Core) cs =
+      takeAt(`CoresPerSFU*i, vecOfCores);
+    function sfuClient(core) = core.sfuClient;
+    // Connect sub-vector of cores to SFU
+    connectCoresToSFU(map(sfuClient, cs), sfus[i]);
+  end
+
   // Create mailboxes
   Vector#(`MailboxesPerBoard, Mailbox) mailboxes;
   for (Integer i = 0; i < `MailboxesPerBoard; i=i+1)
     mailboxes[i] <- mkMailbox;
 
   // Connect cores to mailboxes
-  let vecOfCores = concat(concat(cores));
   for (Integer i = 0; i < `MailboxesPerBoard; i=i+1) begin
     // Get sub-vector of cores to be connected to mailbox i
     Vector#(`CoresPerMailbox, Core) cs =

@@ -73,14 +73,14 @@ p["LogMsgsPerThread"] = 4
 # Number of cores sharing a mailbox
 p["LogCoresPerMailbox"] = 2
 
-# Number of mailboxes per board
-p["LogMailboxesPerBoard"] = 4
-
 # Size of each DRAM
 p["LogBeatsPerDRAM"] = 25
 
 # Maximum size of boot loader (in bytes)
 p["MaxBootImageBytes"] = 512
+
+# Number of cores per SFU (shared function unit)
+p["LogCoresPerSFU"] = 2
 
 #==============================================================================
 # Derived Parameters
@@ -163,9 +163,6 @@ p["LogScratchpadBytes"] = (1+p["LogWordsPerFlit"]+2+
 p["LogTransmitBufferLen"] = (p["LogMaxFlitsPerMsg"]
                                if p["LogMaxFlitsPerMsg"] > 1 else 1)
 
-# Number of mailboxes per board
-p["MailboxesPerBoard"] = 2 ** p["LogMailboxesPerBoard"]
-
 # Number of DRAMs per FPGA board
 p["DRAMsPerBoard"] = 2 ** p["LogDRAMsPerBoard"]
 
@@ -184,7 +181,22 @@ p["LogThreadsPerBoard"] = p["LogThreadsPerDRAM"] + p["LogDRAMsPerBoard"]
 p["ThreadsPerBoard"] = 2 ** p["LogThreadsPerBoard"]
 
 # Cores per board
-p["LogCoresPerBoard"] = p["LogCoresPerMailbox"] + p["LogMailboxesPerBoard"]
+p["LogCoresPerBoard"] = (p["LogCoresPerDCache"] + p["LogDCachesPerDRAM"] +
+                           p["LogDRAMsPerBoard"])
+
+# Number of mailboxes per board
+p["LogMailboxesPerBoard"] = p["LogCoresPerBoard"] - p["LogCoresPerMailbox"]
+p["MailboxesPerBoard"] = 2 ** p["LogMailboxesPerBoard"]
+
+# Cores per SFU
+p["CoresPerSFU"] = 2 ** p["LogCoresPerSFU"]
+
+# Threads per SFU
+p["LogThreadsPerSFU"] = p["LogThreadsPerCore"] + p["LogCoresPerSFU"]
+
+# SFUs per board
+p["LogSFUsPerBoard"] = p["LogCoresPerBoard"] - p["LogCoresPerSFU"] 
+p["SFUsPerBoard"] = 2 ** p["LogSFUsPerBoard"]
 
 #==============================================================================
 # Main 
