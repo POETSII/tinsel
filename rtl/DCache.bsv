@@ -506,6 +506,12 @@ module mkDCache#(DCacheId myId) (DCache);
           feedbackTrigger <= True;
           if (fill.flushDone) respPort.get;
         end
+      // Is it a store request?
+      end else if (fill.req.cmd.isStore) begin
+        // Feed request back to beginning of pipeline
+        fillQueue.deq;
+        feedbackTrigger <= True;
+        lineWriteReqWire <= True;
       // Otherwise, is new line data available from external memory?
       end else if (respPort.canGet) begin
         // Remove item from fill queue and feed associated request (which
@@ -543,8 +549,8 @@ module mkDCache#(DCacheId myId) (DCache);
 
   rule missUnit;
     MissReq miss = missQueue.dataOut;
-    // Send a load request?
-    Bool isLoad = !miss.evictTag.dirty || writebackDone;
+    // Ready to fetch new line?
+    Bool fetch = !miss.evictTag.dirty || writebackDone;
     // Determine line address
     Bit#(`LogLinesPerDRAM) writeLineAddr =
       reconstructLineAddr(miss.evictTag.key, miss.req.addr);
@@ -552,25 +558,28 @@ module mkDCache#(DCacheId myId) (DCache);
       miss.req.addr[`LogBytesPerDRAM-1:`LogBytesPerLine];
     // Create memory request
     DRAMReq memReq;
-    memReq.isStore = !isLoad;
+    memReq.isStore = !fetch;
     memReq.id = myId;
-    memReq.addr = {isLoad ? readLineAddr : writeLineAddr, reqBeat};
+    memReq.addr = {fetch ? readLineAddr : writeLineAddr, reqBeat};
     memReq.data = dataMem.dataOutA;
-    memReq.burst = isLoad ? (miss.req.cmd.isFlush ? 1 : `BeatsPerLine) : 1;
+    memReq.burst = fetch ? (miss.req.cmd.isFlush ? 1 : `BeatsPerLine) : 1;
     memReq.byteEn = dataMemBE.dataOutA;
     // Are we going to send a memory request to the next stage?
     Bool sendMemReq = False;
     if (missQueue.canPeek && missQueue.canDeq && memReqQueue.notFull) begin
       if (missUnitState == 0) begin
         // Are we ready to request the new line?
-        if (isLoad) begin
+        if (fetch) begin
           if (fillQueue.notFull) begin
             missQueue.deq;
             writebackDone <= False;
             // When flushing, only send a mem request after eviction of
             // final line, the response of which will indicate that
-            // all evictions due to the flush have reached DRAM
-            sendMemReq = miss.req.cmd.isFlush ? miss.flushDone : True;
+            // all evictions due to the flush have reached DRAM.
+            // When storing, don't fetch new line: avoid fetch-on-write
+            // using byte enables.
+            sendMemReq = (miss.req.cmd.isFlush ? miss.flushDone : True) &&
+                           !miss.req.cmd.isStore;
             // Put request in fill queue
             Fill fill;
             fill.req = miss.req;
