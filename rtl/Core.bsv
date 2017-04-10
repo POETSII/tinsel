@@ -457,10 +457,11 @@ module mkCore#(CoreId myId) (Core);
   runQueueInit.size = 1;
   runQueueInit.file = Invalid;
   SizedQueue#(`LogThreadsPerCore, ThreadState) runQueue <-
-    mkUGSizedQueueInit(runQueueInit);
+    mkUGSizedQueuePrefetch;
 
   // Queue of suspended threads pending resumption
-  SizedQueue#(`LogThreadsPerCore, ThreadState) resumeQueue <- mkUGSizedQueue;
+  SizedQueue#(`LogThreadsPerCore, ThreadState) resumeQueue <-
+    mkUGSizedQueuePrefetch;
 
   // Queue of writeback requests from threads pending resumption
   Queue#(Writeback) writebackQueue <- mkUGShiftQueue(QueueOptFmax);
@@ -494,8 +495,7 @@ module mkCore#(CoreId myId) (Core);
   Mult#(33) mult <- mkSignedMult;
 
   // Pipeline stages
-  Reg#(Bool)          fetch1Fire         <- mkDReg(False);
-  Reg#(PipelineToken) fetch2Input        <- mkVReg;
+  Reg#(PipelineToken) fetch1Input        <- mkVReg;
   Reg#(PipelineToken) decode1Input       <- mkVReg;
   Reg#(PipelineToken) execute1Input      <- mkVReg;
   Reg#(PipelineToken) execute2Input      <- mkVReg;
@@ -517,9 +517,13 @@ module mkCore#(CoreId myId) (Core);
 
   // These wires are from the execute stage
   PulseWire newThreadEnqWire <- mkPulseWire;
-  Wire#(ThreadId) newThreadIdWire <- mkDWire(?);
+  Wire#(ThreadId) newThreadIdWire <- mkDWire(0);
 
-  rule resumeQueueEnq (resumeWire || newThreadEnqWire);
+  // On initialisation, thread 0 is inserted into the queue
+  Reg#(Bool) init <- mkReg(True);
+
+  rule resumeQueueEnq (init || resumeWire || newThreadEnqWire);
+    init <= False;
     ThreadState newThread = ?;
     newThread.pc = 0;
     newThread.id = newThreadIdWire;
@@ -527,44 +531,38 @@ module mkCore#(CoreId myId) (Core);
     resumeQueue.enq(resumeWire ? writebackQueue.dataOut.thread : newThread);
   endrule
 
-  // Schedule stage
-  // --------------
+  // Schedule and instruction fetch stage
+  // ------------------------------------
 
   // True if previous thread was taken from runQueue;
   // False if taken from resumeQueue
   Reg#(Bool) prevFromRunQueue <- mkReg(False);
 
   rule schedule1 (runQueue.canDeq || resumeQueue.canDeq);
+    ThreadState thread = ?;
     // Take next thread from runQueue or resumeQueue using fair merge
     if (resumeQueue.canDeq && (prevFromRunQueue || !runQueue.canDeq)) begin
       resumeQueue.deq;
+      thread = resumeQueue.dataOut;
       prevFromRunQueue <= False;
-      fetch1Fire <= True;
-    end else if (runQueue.canDeq) begin
+    end else begin
       runQueue.deq;
+      thread = runQueue.dataOut;
       prevFromRunQueue <= True;
-      fetch1Fire <= True;
     end
-  endrule
-
-  // Fetch stage
-  // -----------
-
-  rule fetch1 (fetch1Fire);
-    // Obtain scheduled thread
-    ThreadState next = prevFromRunQueue ? runQueue.dataOut
-                                        : resumeQueue.dataOut;
-    // Create a pipeline token to hold new instruction
-    PipelineToken token = ?;
-    token.thread = next;
     // Use thread's PC to fetch instruction
-    instrMem.read(truncateLSB(next.pc));
-    // Trigger second fetch sub-stage
-    fetch2Input  <= token;
+    instrMem.read(truncateLSB(thread.pc));
+    // Trigger next stage
+    PipelineToken token = ?;
+    token.thread = thread;
+    fetch1Input <= token;
   endrule
 
-  rule fetch2;
-    PipelineToken token = fetch2Input;
+  // Operand fetch stage
+  // -------------------
+
+  rule fetch1;
+    PipelineToken token = fetch1Input;
     // Register instruction memory outputs
     token.instr = instrMem.dataOut;
     // Fetch operands from register files
