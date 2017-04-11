@@ -17,21 +17,24 @@ data-%.v: heat-%.elf
 	$(RV_OBJCOPY) -O verilog --remove-section=.text \
                 --set-section-flags .bss=alloc,load,contents $< $@
 
-heat-%.elf: heat-%.c link.ld $(INC)/config.h $(INC)/tinsel.h
+heat-%.elf: heat-%.c link.ld $(INC)/config.h $(INC)/tinsel.h entry.o
 	$(RV_CC) $(CFLAGS) -Wall -c -o heat.o $<
-	$(RV_LD) $(LDFLAGS) -T link.ld -o $@ heat.o
+	$(RV_LD) $(LDFLAGS) -T link.ld -o $@ entry.o heat.o
+
+entry.o:
+	$(RV_CC) $(CFLAGS) -Wall -c -o entry.o entry.S
 
 link.ld: genld.sh
 	./genld.sh > link.ld
 
 sim-v1.ppm: code-v1.v data-v1.v vis
-	hostlink-sim code-v1.v data-v1.v -n 230400 > dump-v1.txt
-	./vis 480 dump-v1.txt > sim-v1.ppm
+	hostlink-sim code-v1.v data-v1.v -n 65536 > dump-v1.txt
+	./vis 256 dump-v1.txt > sim-v1.ppm
 
 fpga-v1.ppm: code-v1.v data-v1.v vis
 	LD_LIBRARY_PATH=$(QUARTUS_ROOTDIR)/linux64 hostlink \
-    code-v1.v data-v1.v -n 230400 > dump-v1.txt
-	./vis 480 dump-v1.txt > fpga-v1.ppm
+    code-v1.v data-v1.v -n 65536 > dump-v1.txt
+	./vis 256 dump-v1.txt > fpga-v1.ppm
 
 sim-v2.ppm: code-v2.v data-v2.v vis
 	hostlink-sim code-v2.v data-v2.v -n 262144 > dump-v2.txt
