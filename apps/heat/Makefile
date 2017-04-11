@@ -29,21 +29,21 @@ link.ld: genld.sh
 
 sim-v1.ppm: code-v1.v data-v1.v vis
 	hostlink-sim code-v1.v data-v1.v -n 65536 > dump-v1.txt
-	./vis 256 dump-v1.txt > sim-v1.ppm
+	./vis 256 8 dump-v1.txt > sim-v1.ppm
 
 fpga-v1.ppm: code-v1.v data-v1.v vis
 	LD_LIBRARY_PATH=$(QUARTUS_ROOTDIR)/linux64 hostlink \
     code-v1.v data-v1.v -n 65536 > dump-v1.txt
-	./vis 256 dump-v1.txt > fpga-v1.ppm
+	./vis 256 8 dump-v1.txt > fpga-v1.ppm
 
 sim-v2.ppm: code-v2.v data-v2.v vis
 	hostlink-sim code-v2.v data-v2.v -n 262144 > dump-v2.txt
-	./vis 512 dump-v2.txt > sim-v2.ppm
+	./vis 512 16 dump-v2.txt > sim-v2.ppm
 
 fpga-v2.ppm: code-v2.v data-v2.v vis
 	LD_LIBRARY_PATH=$(QUARTUS_ROOTDIR)/linux64 hostlink \
     code-v2.v data-v2.v -n 262144 > dump-v2.txt
-	./vis 512 dump-v2.txt > fpga-v2.ppm
+	./vis 512 16 dump-v2.txt > fpga-v2.ppm
 
 vis: vis.cpp
 	g++ -O2 vis.cpp -o vis
