@@ -5,6 +5,9 @@
 #include <stdlib.h>
 #include <stdint.h>
 
+// Magnification factor
+const int MAG = 2;
+
 // 256 x RGB colours representing heat intensities
 int heat[] = {
   0x00, 0x00, 0x76, 0x00, 0x00, 0x7a, 0x00, 0x00, 0x7f, 0x00, 0x00, 0x83,
@@ -76,16 +79,17 @@ int heat[] = {
 
 int main(int argc, char* argv[])
 {
-  if (argc != 3) {
-    fprintf(stderr, "Usage: visualise N DUMP\n");
+  if (argc != 4) {
+    fprintf(stderr, "Usage: vis N L DUMP\n");
     return -1;
   }
 
   int N = atoi(argv[1]);
+  int L = atoi(argv[2]) * MAG;
 
-  FILE* fp = fopen(argv[2], "rt");
+  FILE* fp = fopen(argv[3], "rt");
   if (fp == NULL) {
-    fprintf(stderr, "Can't open file '%s'\n", argv[1]);
+    fprintf(stderr, "Can't open file '%s'\n", argv[3]);
     return -1;
   }
 
@@ -107,11 +111,14 @@ int main(int argc, char* argv[])
   }
 
   // Emit PPM
-  printf("P3\n%i %i\n255\n", N, N);
-  for (int y = 0; y < N; y++)
-    for (int x = 0; x < N; x++) {
-      int t = grid[y][x];
-      printf("%d %d %d\n", heat[t*3], heat[t*3+1], heat[t*3+2]);
+  printf("P3\n%i %i\n255\n", MAG*N, MAG*N);
+  for (int y = 0; y < MAG*N; y++)
+    for (int x = 0; x < MAG*N; x++) {
+      int t = grid[y/MAG][x/MAG];
+      if (((x%L) == 0 && (y&1)) || ((y%L) == 0 && (x&1)))
+        printf("0 0 0\n");
+      else
+        printf("%d %d %d\n", heat[t*3], heat[t*3+1], heat[t*3+2]);
     }
 
   return 0;
