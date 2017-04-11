@@ -28,28 +28,35 @@ link.ld: genld.sh
 	./genld.sh > link.ld
 
 sim-v1.ppm: code-v1.v data-v1.v vis
-	hostlink-sim code-v1.v data-v1.v -n 65536 > dump-v1.txt
-	./vis 256 8 dump-v1.txt > sim-v1.ppm
+	LD_LIBRARY_PATH=$(QUARTUS_ROOTDIR)/linux64 hostlink \
+    code-v1.v data-v1.v -n 65536 | \
+    ./vis 256 8 sim-v1.ppm
 
 fpga-v1.ppm: code-v1.v data-v1.v vis
 	LD_LIBRARY_PATH=$(QUARTUS_ROOTDIR)/linux64 hostlink \
-    code-v1.v data-v1.v -n 65536 > dump-v1.txt
-	./vis 256 8 dump-v1.txt > fpga-v1.ppm
+    code-v1.v data-v1.v -n 65536 | \
+    ./vis 256 8 fpga-v1.ppm
 
 sim-v2.ppm: code-v2.v data-v2.v vis
-	hostlink-sim code-v2.v data-v2.v -n 262144 > dump-v2.txt
-	./vis 512 16 dump-v2.txt > sim-v2.ppm
+	LD_LIBRARY_PATH=$(QUARTUS_ROOTDIR)/linux64 hostlink \
+    code-v2.v data-v2.v -n 262144 | \
+    ./vis 512 16 sim-v2.ppm
 
 fpga-v2.ppm: code-v2.v data-v2.v vis
 	LD_LIBRARY_PATH=$(QUARTUS_ROOTDIR)/linux64 hostlink \
-    code-v2.v data-v2.v -n 262144 > dump-v2.txt
-	./vis 512 16 dump-v2.txt > fpga-v2.ppm
+    code-v2.v data-v2.v -n 262144 | \
+    ./vis 512 16 fpga-v2.ppm
 
 vis: vis.cpp
 	g++ -O2 vis.cpp -o vis
 
 .PHONY: run-jtag
-run-jtag: fpga.ppm
+run-jtag: code-v1.v data-v1.v vis
+	echo P3 512 512 255 0 > fpga-v1.ppm
+	eog fpga-v1.ppm &
+	LD_LIBRARY_PATH=$(QUARTUS_ROOTDIR)/linux64 hostlink \
+    code-v1.v data-v1.v | \
+    ./vis 256 8 fpga-v1.ppm
 
 .PHONY: run-sim
 run-sim: sim.ppm

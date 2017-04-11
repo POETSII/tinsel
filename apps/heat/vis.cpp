@@ -80,46 +80,48 @@ int heat[] = {
 int main(int argc, char* argv[])
 {
   if (argc != 4) {
-    fprintf(stderr, "Usage: vis N L DUMP\n");
+    fprintf(stderr, "Usage: vis N L OUT\n");
     return -1;
   }
 
   int N = atoi(argv[1]);
   int L = atoi(argv[2]) * MAG;
 
-  FILE* fp = fopen(argv[3], "rt");
-  if (fp == NULL) {
-    fprintf(stderr, "Can't open file '%s'\n", argv[3]);
-    return -1;
-  }
-
   // 2D grid
   int grid[N][N];
 
-  // Fill 2D grid
-  for (int i = 0; i < N*N; i++) {
-    uint32_t src, cmd, val;
-    if (fscanf(fp, "%d %x %x", &src, &cmd, &val) != 3) {
-      fprintf(stderr, "Parse error\n");
-      return -1;
+  for (;;) {
+    // Fill 2D grid
+    for (int i = 0; i < N*N; i++) {
+      uint32_t src, cmd, val;
+      if (scanf("%d %x %x", &src, &cmd, &val) != 3) {
+        return 0;
+      }
+
+      uint32_t y = (val >> 20) & 0xfff;
+      uint32_t x = (val >> 8)  & 0xfff;
+      uint32_t temp = val & 0xff;
+      grid[y][x] = temp;
     }
 
-    uint32_t y = (val >> 20) & 0xfff;
-    uint32_t x = (val >> 8)  & 0xfff;
-    uint32_t temp = val & 0xff;
-    grid[y][x] = temp;
+    FILE* fp = fopen(argv[3], "w");
+    if (fp == NULL) {
+      fprintf(stderr, "Failed to open file %s\n", argv[3]);
+    }
+
+    // Emit PPM
+    fprintf(fp, "P3\n%i %i\n255\n", MAG*N, MAG*N);
+    for (int y = 0; y < MAG*N; y++)
+      for (int x = 0; x < MAG*N; x++) {
+        int t = grid[y/MAG][x/MAG];
+        if (((x%L) == 0 && (y&1)) || ((y%L) == 0 && (x&1)))
+          fprintf(fp, "0 0 0\n");
+        else
+          fprintf(fp, "%d %d %d\n", heat[t*3], heat[t*3+1], heat[t*3+2]);
+      }
+
+    fclose(fp);
   }
-
-  // Emit PPM
-  printf("P3\n%i %i\n255\n", MAG*N, MAG*N);
-  for (int y = 0; y < MAG*N; y++)
-    for (int x = 0; x < MAG*N; x++) {
-      int t = grid[y/MAG][x/MAG];
-      if (((x%L) == 0 && (y&1)) || ((y%L) == 0 && (x&1)))
-        printf("0 0 0\n");
-      else
-        printf("%d %d %d\n", heat[t*3], heat[t*3+1], heat[t*3+2]);
-    }
 
   return 0;
 }
