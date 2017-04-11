@@ -2,6 +2,9 @@
 // Each thread handles an 8x8 subgrid of cells.
 #define LEN 32
 
+// Emit grid once every T time steps (-1 means never)
+#define T 2000
+
 #include <tinsel.h>
 
 // 32-bit fixed-point number in 16.16 format
@@ -89,8 +92,27 @@ typedef struct {
   int temp[8];
 } Msg;
 
+// Output
+// ------
+
+void emitGrid(int (*subgrid)[8])
+{
+  // Emit the state of the local subgrid
+  int xPos, yPos;
+  myXY(&xPos, &yPos);
+  int x = xPos * 8;
+  int y = yPos * 8;
+  for (int i = 0; i < 8; i++)
+    for (int j = 0; j < 8; j++) {
+      // Transfer Y coord (12 bits), X coord (12 bits) and temp (8 bits)
+      uint32_t coords = ((y+i) << 12) | (x+j);
+      uint32_t temp = (subgrid[i][j] >> 16) & 0xff;
+      tinselHostPut((coords << 8) | temp);
+    }
+}
+
 // Top-level
-// =========
+// ---------
 
 int main()
 {
@@ -195,6 +217,9 @@ int main()
   // Number of time steps to simulate
   const int nsteps = 100000;
 
+  // Timer determining when to output the grid
+  int timer = 0;
+
   // Simulation loop
   for (int t = 0; t < nsteps; t++) {
    // Send/receive loop
@@ -268,18 +293,16 @@ int main()
     // Prepare for next iteration
     subgridPtr = subgrid; subgrid = newSubgrid; newSubgrid = subgridPtr;
     sent = 0;
+
+    // Emit grid
+    if (timer++ == T) {
+      emitGrid(subgrid);
+      timer = 0;
+    }
   }
 
-  // Finally, emit the state of the local subgrid
-  int x = xPos * 8;
-  int y = yPos * 8;
-  for (int i = 0; i < 8; i++)
-    for (int j = 0; j < 8; j++) {
-      // Transfer Y coord (12 bits), X coord (12 buts) and temp (8 bits)
-      uint32_t coords = ((y+i) << 12) | (x+j);
-      uint32_t temp = (subgrid[i][j] >> 16) & 0xff;
-      tinselHostPut((coords << 8) | temp);
-    }
+  // Emit grid
+  emitGrid(subgrid);
 
   return 0;
 }
