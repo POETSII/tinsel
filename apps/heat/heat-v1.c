@@ -134,6 +134,9 @@ int main()
   int xPos, yPos;
   myXY(&xPos, &yPos);
 
+  // Suspend threads that are not being used
+  if (xPos >= LEN || yPos >= LEN) tinselWaitUntil(TINSEL_CAN_RECV);
+
   // Neighbours
   // ----------
 
@@ -215,7 +218,7 @@ int main()
   int sent = 0;
 
   // Number of time steps to simulate
-  const int nsteps = 100000;
+  const int nsteps = 50000;
 
   // Timer determining when to output the grid
   int timer = 0;
