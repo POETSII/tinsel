@@ -18,11 +18,11 @@ Extreme-Scale Real-Time Neural Network Simulation](http://www.cl.cam.ac.uk/~swm1
 
 * [Interconnect for commodity FPGA clusters: standardized or customized?](http://www.cl.cam.ac.uk/~swm11/research/papers/FPL2014-Network.pdf)
 
-## High-level Overview of Tinsel
-
 The motivation behind the POETS project is that many scientific
 algorithms that do not run efficiently on commodity PC-based clusters
 can be described in a massively-parallel event-triggered form.
+
+## High-level Overview of Tinsel
 
 **Highly parameterised**. In practise, it is difficult to predict the
 optimal allocation of FPGA resources across the compute, memory, and
