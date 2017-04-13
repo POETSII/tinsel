@@ -6,12 +6,11 @@ package DCache;
 // Design overview
 // ============================================================================
 //
-// This is an N-way set-associative write-back cache.  It will serve
-// one or more highly-threaded cores, thus high throughput and high
-// Fmax are much more important than low latency, allowing deep
-// pipelining.  It employs a hash function that appends the thread id
-// and some number of address bits, thus lines are not shared between
-// threads.
+// This is an N-way set-associative write-back cache.  It serves one
+// or more highly-threaded cores, thus high throughput and high Fmax
+// are more important than low latency, allowing deep pipelining.  It
+// employs a hash function that appends the thread id and some number
+// of address bits, thus lines are not shared between threads.
 //
 // We assume there is a max of one request per thread in the cache
 // pipeline at any time.  Together with the no-sharing property
@@ -20,11 +19,11 @@ package DCache;
 // in-flight requests.  To allow clients to meet this assumption, we
 // issue store responses as well as load responses.
 //
-// The block RAM used to cache data is a true dual-port mixed-width
-// block RAM with a bus-sized port and a word-sized port; each port
-// allows either a read or a write on each cycle.
-//
 // Cache lines are read and written in bus-sized chunks called beats.
+//
+// The block RAM used to cache data is a true dual-port mixed-width
+// block RAM with a beat-sized port and a word-sized port; each port
+// allows either a read or a write on each cycle.
 //
 // Byte-enables are maintained to avoid fetch-on-write.
 //
@@ -33,24 +32,25 @@ package DCache;
 // Pipeline structure
 // ------------------
 //
-//            +-------------+      +----------------------+
-// req  ----->| tag lookup  |<-----| memory response unit |
-//            +-------------+      +----------------------+
-//                 ||                               
-//                 \/                               
-//            +-------------+      +-----------+    
-//            | data lookup |----->| miss unit |    
-//            +-------------+      +-----------+    
-//                 ||
-//                 \/
-//            +----------+
-// resp <-----| hit unit |
-//            +----------+
+//                                                           
+//            +-------------+      +----------------------+  
+// req  ----->| tag lookup  |<-----| memory response unit |<-+
+//            +-------------+      +----------------------+  |
+//                 ||                                        |
+//                 \/                                        |
+//            +-------------+      +-----------+             |
+//            | data lookup |----->| miss unit |-------------+
+//            +-------------+      +-----------+            
+//                 ||                                       
+//                 \/                                       
+//            +----------+                                  
+// resp <-----| hit unit |                                  
+//            +----------+                                  
 //
 //
-// NOTE: each pipeline stage may be composed of several pipelined
-// sub-stages, e.g. tag and data lookup each have at least two
-// sub-stages due to 2-cycle latent BRAMs
+//
+// NOTE: each stage may be composed of several pipelined sub-stages,
+// e.g. tag lookup has two sub-stages due to 2-cycle latent BRAMs.
 //
 // Pipeline stages
 // ---------------
@@ -67,9 +67,8 @@ package DCache;
 //   d. on miss: send request to miss unit
 // 
 // 3. hit unit:
-//   a. on hit: enqueue response FIFO
+//   a. on hit: enqueue response FIFO and update tag
 //   b. on miss: update tag
-//   c. update meta data
 //
 // 4. memory response:
 //   a. if response available:
@@ -456,8 +455,10 @@ module mkDCache#(DCacheId myId) (DCache);
       newTag.valid = !token.req.cmd.isFlush;
       newTag.dirty = False;
       newTag.writeOnly = token.req.cmd.isStore;
+      // Is the miss due to reading from a write-only line?
+      Bool readFromWriteOnlyLine = any(id, token.matching);
       // Update oldest way
-      if (any(id, token.matching))
+      if (! readFromWriteOnlyLine)
         oldestWay.write(setIndex(token.req.id, token.req.addr), token.way+1);
     end
     // Update tag
