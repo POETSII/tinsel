@@ -1,5 +1,10 @@
 package TestMac;
 
+// This simple test: (1) waits for a character on the JTAG UART; (2)
+// sends a packet over the 10G link; (3) waits for a response on the
+// 10G link; (4) emits a hex value over the JTAG UART denoting the
+// time between the send and the response.
+
 // =============================================================================
 // Imports
 // =============================================================================
