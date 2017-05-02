@@ -19,35 +19,35 @@ uint32_t sendFile(BootCmd cmd, HostLink* link, FILE* fp, uint32_t* checksum)
   uint32_t byte = 0;
   for (;;) {
     // Send write address
-    if (fscanf(fp, "@%x", &addr) > 0) {
+    if (fscanf(fp, " @%x", &addr) > 0) {
       link->put(SetAddrCmd);
       link->put(addr);
       *checksum += SetAddrCmd + addr;
-      continue;
     }
-    // Send write value
-    if (fscanf(fp, "%x", &byte) <= 0) break;
-    value = (byte << 24) | (value >> 8);
-    byteCount++;
-    if (byteCount == 4) {
+    else break;
+    // Send write values
+    while (fscanf(fp, " %x", &byte) > 0) {
+      value = (byte << 24) | (value >> 8);
+      byteCount++;
+      if (byteCount == 4) {
+        link->put(cmd);
+        link->put(value);
+        *checksum += cmd + value;
+        value = 0;
+        byteCount = 0;
+      }
+    }
+    // Pad & send final word, if necessary
+    if (byteCount > 0) {
+      while (byteCount < 4) {
+        value = value >> 8;
+        byteCount++;
+      }
       link->put(cmd);
       link->put(value);
       *checksum += cmd + value;
-      value = 0;
-      byteCount = 0;
     }
   }
-  // Pad & send final word, if necessary
-  if (byteCount > 0) {
-    while (byteCount < 4) {
-      value = value >> 8;
-      byteCount++;
-    }
-    link->put(cmd);
-    link->put(value);
-    *checksum += cmd + value;
-  }
-
   return addr;
 }
 
