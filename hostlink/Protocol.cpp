@@ -56,7 +56,7 @@ public:
 	switch(byte)
 	  {
 	  case TagStdOut:{
-	    fprintf(stderr, "%08x : Begin stdout\n", m_threadId);
+	    //fprintf(stderr, "%08x : Begin stdout\n", m_threadId);
 	    m_chars.clear();
 	    m_state=StateStdOut;
 	    break;
@@ -86,20 +86,28 @@ public:
 	  }
 	  }
       case StateStdOut:
-	fprintf(stderr, "%08x : add stdout '%c'\n", m_threadId, (char)byte);
+	//fprintf(stderr, "%08x : add stdout '%c'\n", m_threadId, (char)byte);
 	m_chars.push_back((char)byte);
 	if(byte==0){
+	fprintf(stdout, "%08x : StdOut : ", m_threadId);
 	  fputs(&m_chars[0],stdout);
+	  if(m_chars.size()<=1 || m_chars[m_chars.size()-2]!='\n'){
+		fputs("\n",stdout);
+	  }
 	  fflush(stdout);
-	  fprintf(stderr, "%08x : End stdout\n", m_threadId);	  
+	  //fprintf(stderr, "%08x : End stdout\n", m_threadId);	  
 	  m_state=StateIdle;
 	}
 	break;
       case StateStdErr:
 	m_chars.push_back((char)byte);
 	if(byte==0){
-	  fputs(&m_chars[0],stderr
-		);
+	fprintf(stdout, "%08x : StdErr : ", m_threadId);
+	  fputs(&m_chars[0],stderr);
+	  if(m_chars.size()<=1 || m_chars[m_chars.size()-2]!='\n'){
+		fputs("\n",stderr);
+	  }
+
 	  m_state=StateIdle;
 	}
 	break;
