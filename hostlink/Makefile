@@ -9,20 +9,20 @@ endif
 CPPFLAGS = -I $(INC) -O
 
 # Top-level dependencies
-DEPS = Main.cpp $(INC)/config.h $(INC)/boot.h \
+DEPS = Main.cpp Protocol.cpp $(INC)/config.h $(INC)/boot.h \
        HostLink.h JtagAtlantic.h RawLink.h
 
 .PHONY: all
 all: $(BIN)/hostlink $(BIN)/hostlink-sim
 
 $(BIN)/hostlink: $(DEPS)
-	g++ Main.cpp -o $(BIN)/hostlink \
+	g++ Main.cpp Protocol.cpp -o $(BIN)/hostlink \
     $(CPPFLAGS) \
     -ljtag_atlantic -ljtag_client \
     -L $(QUARTUS_ROOTDIR)/linux64/
 
 $(BIN)/hostlink-sim: $(DEPS)
-	g++ -DSIMULATE Main.cpp -o $(BIN)/hostlink-sim\
+	g++ -DSIMULATE Main.cpp Protocol.cpp -o $(BIN)/hostlink-sim\
     $(CPPFLAGS)
 
 $(INC)/config.h: $(TINSEL_ROOT)/config.py
