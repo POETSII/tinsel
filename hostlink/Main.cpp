@@ -83,6 +83,8 @@ void console(HostLink* link)
   }
 }
 
+extern void protocol(HostLink *link);
+
 int usage()
 {
   printf("Usage:\n"
@@ -91,6 +93,7 @@ int usage()
          "    -n [NUMBER]   num messages to dump after boot\n"
          "    -t [SECONDS]  timeout on message dump\n"
          "    -c            load console after boot\n"
+	 "    -p            load protocol after boot\n"
          "    -h            help\n");
   return -1;
 }
@@ -101,11 +104,12 @@ int main(int argc, char* argv[])
   int numMessages = -1;
   int numSeconds = -1;
   int useConsole = 0;
+  int useProtocol = 0;
 
   // Option processing
   optind = 1;
   for (;;) {
-    int c = getopt(argc, argv, "hon:t:c");
+    int c = getopt(argc, argv, "hon:t:cp");
     if (c == -1) break;
     switch (c) {
       case 'h': return usage();
@@ -113,6 +117,7 @@ int main(int argc, char* argv[])
       case 'n': numMessages = atoi(optarg); break;
       case 't': numSeconds = atoi(optarg); break;
       case 'c': useConsole = 1; break;
+      case 'p': useProtocol = 1; break;
       default: return usage();
     }
   }
@@ -202,6 +207,7 @@ int main(int argc, char* argv[])
   // ------------
 
   if (useConsole) console(&link);
+  else if(useProtocol) protocol(&link);
   else {
     // The number of tenths of a second that link has been idle
     int idle = 0;
