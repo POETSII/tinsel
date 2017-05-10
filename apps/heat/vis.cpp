@@ -90,6 +90,11 @@ int main(int argc, char* argv[])
   // 2D grid
   int grid[N][N];
 
+  // Initialise 2D grid
+  for (int y = 0; y < N; y++)
+    for (int x = 0; x < N; x++)
+      grid[y][x] = 0;
+
   for (;;) {
     // Fill 2D grid
     for (int i = 0; i < N*N; i++) {
