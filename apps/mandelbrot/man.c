@@ -1,6 +1,7 @@
 // Mandelbrot set on a LENxLEN grid of threads.
 // Each thread handles an 8x8 subgrid of cells.
-#define LEN 32
+#define LOG_LEN 5
+#define LEN (1 << LOG_LEN)
 
 #include <tinsel.h>
 
@@ -30,52 +31,12 @@ int mandelbrot_point(int x_0, int y_0, int max_iter) {
  return iter;
 }
 
-// Return bits at even-numbered indexes
-uint32_t evens(uint32_t in)
-{
-  uint32_t out = 0;
-  for (int i = 0; i < 16; i++) {
-    out = out | ((in&1) << i);
-    in >>= 2;
-  }
-  return out;
-}
-
-// Return bits at odd-numbered indexes
-uint32_t odds(uint32_t in)
-{
-  return evens(in >> 1);
-}
-
 // Determine X and Y coords of thread's subgrid
 void myXY(int* x, int* y)
 {
   int me = tinselId();
-  *x = evens(me);
-  *y = odds(me);
-}
-
-// Partial inverse of evens
-uint32_t unevens(uint32_t in)
-{
-  uint32_t out = 0;
-  for (int i = 0; i < 16; i++) {
-    out = out | ((in&1) << (2*i));
-    in >>= 1;
-  }
-  return out;
-}
-
-// Partial inverse of odds
-uint32_t unodds(uint32_t in)
-{
-  return unevens(in) << 1;
-}
-
-// Determine thread id from X and Y coords of subgrid
-int fromXY(int x, int y)
-{
-  return unevens(x) | unodds(y);
+  *x = me & (LEN-1);
+  *y = me >> LOG_LEN;
 }
 
 // Output
@@ -105,7 +66,6 @@ int main()
   // Subgrid memory
   // --------------
 
-  // Space for two subgrids (the current state and the next state)
   int subgrid[8][8];
 
   // Subgrid location
@@ -117,7 +77,6 @@ int main()
   // Suspend threads that are not being used
   if (xPos >= LEN || yPos >= LEN) tinselWaitUntil(TINSEL_CAN_RECV);
 
-  /*
   // Compute Mandelbrot subgrid
   for (int y = 0; y < 8; y++)
     for (int x = 0; x < 8; x++) {
@@ -126,18 +85,7 @@ int main()
       int xx=xPos*8+x;
       subgrid[x][y]=255-mandelbrot_point(xx<<21,(yy<<21) + (1<<20),255);
     }
-  */
 
-  // quick colour test
-  for(int col=255; col>0; col--) {
-    for (int y = 0; y < 8; y++) {
-      for (int x = 0; x < 8; x++) {
-	subgrid[x][y] = col;
-      }
-    }
-    emitGrid(subgrid);
-  }
-  
   emitGrid(subgrid);
 
   return 0;
