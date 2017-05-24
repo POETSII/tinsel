@@ -21,10 +21,6 @@ p["DeviceFamily"] = quoted("Stratix V")
 # FPGA board being targetted
 p["TargetBoard"] = quoted("DE5")
 
-# Log of max number of cores
-# (used to determine width of globally unique core id)
-p["LogMaxCores"] = 8
-
 # The number of hardware threads per core
 p["LogThreadsPerCore"] = 4
 
@@ -97,14 +93,17 @@ p["LinkTimeout"] = 1024
 # Latency of 10G MAC in cycles (simulation only)
 p["MacLatency"] = 100
 
+# Mesh X dimension width
+p["LogMeshXLen"] = 2
+
+# Mesh Y dimension width
+p["LogMeshYLen"] = 2
+
 #==============================================================================
 # Derived Parameters
 #==============================================================================
 
 # (These should not be modified.)
-
-# Max number of threads
-p["LogMaxThreads"] = p["LogMaxCores"]+p["LogThreadsPerCore"]
 
 # Log of number of 32-bit words per data cache line
 p["LogWordsPerLine"] = p["LogWordsPerBeat"]+p["LogBeatsPerLine"]

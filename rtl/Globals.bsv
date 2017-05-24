@@ -1,23 +1,27 @@
 package Globals;
 
-// Global types and interfaces defined here.
-
-// ============================================================================
-// Cores
-// ============================================================================
-
-// Global core id
-typedef Bit#(`LogMaxCores) CoreId;
-
 // Core-local thread id
 typedef Bit#(`LogThreadsPerCore) ThreadId;
 
-// ============================================================================
-// Caches
-// ============================================================================
+// Board-local core id
+typedef Bit#(`LogCoresPerBoard) CoreId;
 
-// Unique identifier per data cache
-typedef Bit#(`LogDCachesPerDRAM) DCacheId;
+// Board id
+typedef struct {
+  Bit#(`LogMeshXLen) x;
+  Bit#(`LogMeshYLen) y;
+} BoardId deriving (Eq, Bits);
+
+// Network address
+typedef struct {
+  // MSB denotes one of two address spaces:
+  //   (0) thread address space
+  //   (1) management address space
+  Bit#(1) space;
+  BoardId board;
+  CoreId core;
+  ThreadId thread;
+} NetAddr deriving (Bits, Eq);
 
 // ============================================================================
 // Messages
@@ -30,17 +34,30 @@ typedef Bit#(`LogMaxFlitsPerMsg) MsgLen;
 // Flit payload
 typedef Bit#(TMul#(`WordsPerFlit, 32)) FlitPayload;
 
-// Desination address of a message
-typedef Bit#(`LogMaxThreads) FlitDest;
-
 // Flit type
 typedef struct {
   // Destination address
-  FlitDest dest;
+  NetAddr dest;
   // Payload
   FlitPayload payload;
-  // Is this the final flit in the message? (Active-low)
+  // Is this the final flit in the message?
   Bool notFinalFlit;
 } Flit deriving (Bits);
+
+// A padded flit is a multiple of 64 bits
+// (i.e. the data width of the 10G MAC interface)
+typedef TMul#(TDiv#(SizeOf#(Flit), 64), 64) PaddedFlitNumBits;
+typedef Bit#(PaddedFlitNumBits) PaddedFlit;
+
+// Padding functions
+function PaddedFlit padFlit(Flit flit) = {?, pack(flit)};
+function Flit unpadFlit(PaddedFlit flit) = unpack(truncate(pack(flit)));
+
+// ============================================================================
+// Caches
+// ============================================================================
+
+// Unique identifier per data cache
+typedef Bit#(`LogDCachesPerDRAM) DCacheId;
 
 endpackage

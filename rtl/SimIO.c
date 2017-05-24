@@ -27,3 +27,15 @@ uint8_t getChar()
     if (! isspace(i)) return (uint8_t) i;
   }
 }
+
+// Get board identifier from environment
+uint32_t getBoardId()
+{
+  char* s = getenv("BOARDID");
+  if (s == NULL) {
+    fprintf(stderr, "ERROR: Environment variable BOARDID not defined\n");
+    exit(EXIT_FAILURE);
+  }
+  return (uint32_t) atoi(s);
+}
+
