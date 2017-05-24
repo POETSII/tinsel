@@ -439,7 +439,7 @@ endinterface
 // resumption requests for the Write Back stage.
 
 (* synthesize *)
-module mkCore#(CoreId myId) (Core);
+module mkCore#(BoardId boardId, CoreId myId) (Core);
 
   staticAssert(`LogThreadsPerCore >= 4, "Number of threads must be >= 16");
 
@@ -614,7 +614,7 @@ module mkCore#(CoreId myId) (Core);
     // Mailbox send
     if (mailbox.canSend && token.op.csr.isSend)
       mailbox.send(token.thread.id, token.thread.msgLen,
-                     truncate(token.valA), token.thread.msgPtr);
+                     unpack(truncate(token.valA)), token.thread.msgPtr);
     // Mailbox receive
     if (mailbox.canRecv && token.op.csr.isRecv)
       mailbox.recv;
@@ -732,7 +732,7 @@ module mkCore#(CoreId myId) (Core);
     if (token.op.csr.isToHost) begin
       if (toHostPort.canPut) begin
         HostLinkFlit flit;
-        flit.coreId = truncate(myId);
+        flit.coreId = myId;
         flit.isBroadcast = False;
         flit.cmd = cmdStdOut;
         flit.arg = token.valA;
@@ -777,7 +777,8 @@ module mkCore#(CoreId myId) (Core);
     res.csr =
         when(token.op.csr.isCanSend,  zeroExtend(pack(token.canSend)))
       | when(token.op.csr.isCanRecv,  zeroExtend(pack(token.canRecv)))
-      | when(token.op.csr.isHartId,   zeroExtend({myId, token.thread.id}))
+      | when(token.op.csr.isHartId,
+               zeroExtend({pack(boardId), myId, token.thread.id}))
       | when(token.op.csr.isRecv,     mailbox.recvAddr)
       | when(token.op.csr.isFromHost, fromHostPort.value.arg);
     // Trigger next stage

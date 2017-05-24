@@ -53,15 +53,21 @@ module de5Top (DE5Top);
   // Ports
   InPort#(Bit#(8)) fromJtag <- mkInPort;
   OutPort#(Bit#(8)) toJtag <- mkOutPort;
+  InPort#(Bit#(64)) fromLink <- mkInPort;
+  OutPort#(Bit#(64)) toLink <- mkOutPort;
 
   // Create DRAMs
   Vector#(`DRAMsPerBoard, DRAM) drams;
   for (Integer i = 0; i < `DRAMsPerBoard; i=i+1)
     drams[i] <- mkDRAM(fromInteger(i));
 
-  // Conect ports to UART
+  // Connect ports to UART
   connectUsing(mkUGShiftQueue1(QueueOptFmax), toJtag.out, uart.jtagIn);
   connectUsing(mkUGShiftQueue1(QueueOptFmax), uart.jtagOut, fromJtag.in);
+
+  // Connect ports to reliable link
+  connectUsing(mkUGQueue, toLink.out, link.streamIn);
+  connectDirect(link.streamOut, fromLink.in);
 
   Reg#(Bit#(3))  state <- mkReg(0);
   Reg#(Bit#(64)) recvCount <- mkReg(0);
@@ -79,17 +85,17 @@ module de5Top (DE5Top);
   endrule
 
   rule transmit (state == 1 && sendCount <= numVals);
-    if (link.canPut) begin
-      link.put(sendCount);
+    if (toLink.canPut) begin
+      toLink.put(sendCount);
       sendCount <= sendCount+1;
     end
   endrule
 
   rule receive (state == 1);
-    if (link.canGet && toJtag.canPut) begin
-      link.get;
-      lastReceived <= link.dataOut;
-      if (recvCount == link.dataOut) begin
+    if (fromLink.canGet && toJtag.canPut) begin
+      fromLink.get;
+      lastReceived <= fromLink.value;
+      if (recvCount == fromLink.value) begin
         if (recvCount == numVals)
           state <= 2;
         else

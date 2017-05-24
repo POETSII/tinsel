@@ -527,9 +527,9 @@ module mkDeserialiser (Deserialiser#(typeIn, typeOut))
   rule consume (inPort.canGet);
     if (space != 0 || (space == 0 && outPort.canPut)) begin
       inPort.get;
-      shiftReg[0] <= inPort.value;
+      shiftReg[valueOf(n)-1] <= inPort.value;
       for (Integer i = 0; i < valueOf(n)-1; i=i+1)
-        shiftReg[i+1] <= shiftReg[i];
+        shiftReg[i] <= shiftReg[i+1];
       decSpace.send;
     end
   endrule

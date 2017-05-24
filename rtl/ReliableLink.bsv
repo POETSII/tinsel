@@ -213,12 +213,9 @@ interface ReliableLink;
   // Avalon interface to 10G MAC
   interface AvalonMac avalonMac;
 `endif
-  // User interface
-  method Bool canPut;
-  method Action put(Bit#(64) data);
-  method Bool canGet;
-  method Action get;
-  method Bit#(64) dataOut;
+  // Internal interface
+  interface In#(Bit#(64)) streamIn;
+  interface BOut#(Bit#(64)) streamOut;
   // Performance monitor
   method Bit#(32) numTimeouts;
 endinterface
@@ -234,6 +231,7 @@ module mkReliableLink (ReliableLink);
   // Ports
   OutPort#(MacBeat) toMACPort   <- mkOutPort;
   InPort#(MacBeat)  fromMACPort <- mkInPort;
+  InPort#(Bit#(64)) inPort      <- mkInPort;
 
   // Connections
   connectUsing(mkUGShiftQueue1(QueueOptFmax), toMACPort.out, mac.fromUser);
@@ -365,17 +363,23 @@ module mkReliableLink (ReliableLink);
     end
   endrule
 
+  // Fill transmit buffer
+  rule fillTransmitBuffer (inPort.canGet && transmitBuffer.canEnq);
+    transmitBuffer.enq(inPort.value);
+  endrule
+
   // 10G MAC interfaces
   `ifndef SIMULATE
   interface avalonMac = mac.avalonMac;
   `endif
 
-  // User interface
-  method Bool canPut = transmitBuffer.canEnq;
-  method Action put(Bit#(64) data) = transmitBuffer.enq(data);
-  method Bool canGet = receiveBuffer.canDeq;
-  method Action get = receiveBuffer.deq;
-  method Bit#(64) dataOut = receiveBuffer.dataOut;
+  interface In streamIn = inPort.in;
+
+  interface BOut streamOut;
+    method Action get = receiveBuffer.deq;
+    method Bool valid = receiveBuffer.canDeq;
+    method Bit#(64) value = receiveBuffer.dataOut;
+  endinterface
 
   // Performance counter
   method Bit#(32) numTimeouts = transmitBuffer.numTimeouts;

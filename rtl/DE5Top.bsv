@@ -4,17 +4,18 @@ package DE5Top;
 // Imports
 // ============================================================================
 
-import Core           :: *;
-import DCache         :: *;
-import Globals        :: *;
-import DRAM           :: *;
-import Interface      :: *;
-import Queue          :: *;
-import Vector         :: *;
-import Mailbox        :: *;
-import MailboxNetwork :: *;
-import HostLink       :: *;
-import JtagUart       :: *;
+import Core       :: *;
+import DCache     :: *;
+import Globals    :: *;
+import DRAM       :: *;
+import Interface  :: *;
+import Queue      :: *;
+import Vector     :: *;
+import Mailbox    :: *;
+import Network    :: *;
+import HostLink   :: *;
+import JtagUart   :: *;
+import Mac        :: *;
 
 // ============================================================================
 // Interface
@@ -24,10 +25,16 @@ import JtagUart       :: *;
 
 typedef Empty DE5Top;
 
+import "BDPI" function Bit#(32) getBoardId();
+
 `else
 
 interface DE5Top;
   interface Vector#(`DRAMsPerBoard, DRAMExtIfc) dramIfcs;
+  interface AvalonMac northMac;
+  interface AvalonMac southMac;
+  interface AvalonMac eastMac;
+  interface AvalonMac westMac;
   interface JtagUartAvalon jtagIfc;
 endinterface
 
@@ -37,7 +44,7 @@ endinterface
 // Implementation
 // ============================================================================
 
-module de5Top (DE5Top);
+module de5Top#(BoardId boardId) (DE5Top);
   // Create DRAMs
   Vector#(`DRAMsPerBoard, DRAM) drams;
   for (Integer i = 0; i < `DRAMsPerBoard; i=i+1)
@@ -58,7 +65,7 @@ module de5Top (DE5Top);
   for (Integer i = 0; i < `DRAMsPerBoard; i=i+1)
     for (Integer j = 0; j < `DCachesPerDRAM; j=j+1)
       for (Integer k = 0; k < `CoresPerDCache; k=k+1) begin
-        cores[i][j][k] <- mkCore(fromInteger(coreCount));
+        cores[i][j][k] <- mkCore(boardId, fromInteger(coreCount));
         coreCount = coreCount+1;
       end
 
@@ -90,7 +97,7 @@ module de5Top (DE5Top);
 
   // Create bus of mailboxes
   function MailboxNet mailboxNet(Mailbox mbox) = mbox.net;
-  mkBus(map(mailboxNet, mailboxes));
+  ExtNetwork net <- mkBus(boardId, map(mailboxNet, mailboxes));
 
   // Create host-link interface
   function HostLinkCore getHostLink(Core core) = core.hostLinkCore;
@@ -99,7 +106,11 @@ module de5Top (DE5Top);
   `ifndef SIMULATE
   function DRAMExtIfc getDRAMExtIfc(DRAM dram) = dram.external;
   interface dramIfcs = map(getDRAMExtIfc, drams);
-  interface jtagIfc = hostLink.jtagAvalon;
+  interface jtagIfc  = hostLink.jtagAvalon;
+  interface northMac = net.north;
+  interface southMac = net.south;
+  interface eastMac  = net.east;
+  interface westMac  = net.west;
   `endif
 endmodule
 
