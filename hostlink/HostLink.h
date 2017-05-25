@@ -14,6 +14,10 @@ class HostLink {
   RawLink raw;
  public:
 
+  HostLink(int id) {
+    raw.setId(id);
+  }
+
   inline void setDest(uint32_t dest) {
     uint8_t cmd = HOSTLINK_SET_DEST;
     raw.put(&cmd, 1);

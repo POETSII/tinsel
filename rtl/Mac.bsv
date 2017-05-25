@@ -16,6 +16,7 @@ import ConfigReg    :: *;
 import Util         :: *;
 import Queue        :: *;
 import BlockRam     :: *;
+import Pipe         :: *;
 
 // =============================================================================
 // Types
@@ -151,6 +152,7 @@ endmodule
 // =============================================================================
 
 `ifndef SIMULATE
+
 module mkMac (Mac);
 
   // Ports
@@ -188,6 +190,7 @@ module mkMac (Mac);
   interface toUser = buffer.out;
 
 endmodule
+
 `endif
 
 // =============================================================================
@@ -195,9 +198,102 @@ endmodule
 // =============================================================================
 
 `ifdef SIMULATE
-module mkMac (Mac);
-  // For now, just implement a loopback.
-  // (This includes padding, packet dropping, and latency insertion)
+
+// A simulation MAC using named pipes
+// (Inserts padding and drops random packets)
+module mkMac#(PipeId id) (Mac);
+
+  // Ports
+  OutPort#(MacBeat) outPort <- mkOutPort;
+  InPort#(MacBeat) inPort <- mkInPort;
+ 
+  // Count of number of beats received
+  Reg#(Bit#(10)) count <- mkReg(0);
+
+  // In this state, emit padding to comply with min ethernet frame size
+  Reg#(Bool) emitPadding <- mkReg(False);
+
+  // Random number, used to drop packets
+  Reg#(Bit#(32)) random <- mkReg(0);
+
+  // Drop packet while in this state
+  Reg#(Bool) drop <- mkReg(False);
+
+  // Generate a random number
+  // (For random dropping of packets)
+  rule genRandom;
+    random <= random*1103515245 + 12345;
+  endrule
+
+  // Consume input stream
+  // (Insert padding and drop random packets)
+  rule consume;
+    MacBeat beat = inPort.value;
+    if (count == 0) begin
+      if (drop && inPort.canGet) begin
+        // Drop packet
+        inPort.get;
+        if (beat.stop) drop <= False;
+      end else if (random[31:28] == 0 && inPort.canGet) begin
+        // Move to drop-packet state
+        drop <= True;
+        inPort.get;
+      end else if (inPort.canGet) begin
+        Bool ok <- pipePut72(id, zeroExtend(pack(beat)));
+        if (ok) begin
+          // Receive first beat (start of packet)
+          inPort.get;
+          myAssert(beat.start, "MAC: missing start-of-packet");
+          count <= 1;
+        end
+      end
+    end else if (count > 0) begin
+      if (emitPadding) begin
+        // Insert padding
+        MacBeat outBeat = macBeat(False, count == 7, 0);
+        Bool ok <- pipePut72(id, zeroExtend(pack(outBeat)));
+        if (ok) begin
+          if (count == 7) begin
+            emitPadding <= False;
+            count <= 0;
+          end else
+            count <= count+1;
+        end
+      end else if (inPort.canGet) begin
+        // Receive remaining beats
+        MacBeat outBeat = beat;
+        if (beat.stop && count < 7) outBeat.stop = False;
+        Bool ok <- pipePut72(id, zeroExtend(pack(outBeat)));
+        if (ok) begin
+          inPort.get;
+          if (beat.stop && count < 7) begin
+            count <= count+1;
+            emitPadding <= True;
+          end else if (beat.stop) begin
+            count <= 0;
+          end else begin
+            count <= count+1;
+          end
+        end
+      end
+    end
+  endrule
+
+  // Produce output stream
+  rule produce (outPort.canPut);
+    Bit#(80) data <- pipeGet72(id);
+    if (data[79] == 0) outPort.put(unpack(truncate(data)));
+  endrule
+
+  // Interfaces
+  interface fromUser = inPort.in;
+  interface toUser = outPort.out;
+endmodule
+
+
+// A simple loopback MAC
+// (Inserts padding, drops random packets, and inserts latency)
+module mkMacLoopback (Mac);
 
   // Ports
   OutPort#(MacBeat) outPort <- mkOutPort;
@@ -226,6 +322,7 @@ module mkMac (Mac);
   endrule
 
   // Generate a random number
+  // (For random dropping of packets)
   rule genRandom;
     random <= random*1103515245 + 12345;
   endrule
@@ -279,8 +376,8 @@ module mkMac (Mac);
   // Interfaces
   interface fromUser = inPort.in;
   interface toUser = outPort.out;
-
 endmodule
+
 `endif
 
 endpackage

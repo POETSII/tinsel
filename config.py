@@ -200,6 +200,11 @@ p["ThreadsPerBoard"] = 2 ** p["LogThreadsPerBoard"]
 # Cores per board
 p["LogCoresPerBoard"] = p["LogCoresPerMailbox"] + p["LogMailboxesPerBoard"]
 
+# Number of threads in cluster
+p["NumThreads"] = (2**p["LogMeshXLen"] *
+                     2**p["LogMeshYLen"] *
+                       p["ThreadsPerBoard"])
+
 #==============================================================================
 # Main 
 #==============================================================================

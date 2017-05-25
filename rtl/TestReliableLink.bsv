@@ -1,5 +1,10 @@
 package TestReliableLink;
 
+// This simple loopback test: (1) waits for a character on the JTAG
+// UART; (2) sends a stream of items over the reliable link; (3) waits
+// for all the responses; (4) emits a hex value over the JTAG UART
+// denoting the time between the first send and the final response.
+
 // =============================================================================
 // Imports
 // =============================================================================
@@ -48,7 +53,11 @@ module de5Top (DE5Top);
   JtagUart uart <- mkJtagUart;
 
   // Create 10G link
+  `ifdef SIMULATE
+  ReliableLink link <- mkReliableLinkLoopback;
+  `else
   ReliableLink link <- mkReliableLink;
+  `endif
  
   // Ports
   InPort#(Bit#(8)) fromJtag <- mkInPort;

@@ -14,7 +14,7 @@
 #include <assert.h>
 
 // Filename prefix of named pipes
-// (to be appended with a pipe id)
+// (to be suffixed with a board id and a pipe id)
 #define PIPE_IN  "/tmp/tinsel.in"
 #define PIPE_OUT "/tmp/tinsel.out"
 
@@ -25,13 +25,24 @@
 int pipeIn[MAX_PIPES] = {-1,-1,-1,-1,-1,-1,-1,-1};
 int pipeOut[MAX_PIPES] = {-1,-1,-1,-1,-1,-1,-1,-1};
 
+// Get board identifier from environment
+uint32_t getBoardId()
+{
+  char* s = getenv("BOARD_ID");
+  if (s == NULL) {
+    fprintf(stderr, "ERROR: Environment variable BOARD_ID not defined\n");
+    exit(EXIT_FAILURE);
+  }
+  return (uint32_t) atoi(s);
+}
+
 void initPipeIn(int id)
 {
   assert(id < MAX_PIPES);
   if (pipeIn[id] != -1) return;
   // Create filename
   char filename[256];
-  snprintf(filename, sizeof(filename), "%s.%i", PIPE_IN, id);
+  snprintf(filename, sizeof(filename), "%s.b%i.%i", PIPE_IN, getBoardId(), id);
   // Create pipe if it doesn't exist
   struct stat st;
   if (stat(filename, &st) != 0)
@@ -50,13 +61,13 @@ void initPipeOut(int id)
   if (pipeOut[id] != -1) return;
   // Create filename
   char filename[256];
-  snprintf(filename, sizeof(filename), "%s.%i", PIPE_OUT, id);
+  snprintf(filename, sizeof(filename), "%s.b%i.%i", PIPE_OUT, getBoardId(), id);
   // Create pipe if it doesn't exist
   struct stat st;
   if (stat(filename, &st) != 0)
     mkfifo(filename, 0666);
   // Open pipe
-  pipeOut[id] = open(filename, O_WRONLY);
+  pipeOut[id] = open(filename, O_WRONLY | O_NONBLOCK);
 }
 
 // Non-blocking read of 8 bits
@@ -83,17 +94,17 @@ uint8_t pipePut8(int id, uint8_t byte)
   return 0;
 }
 
-// Try to read 64 bits from pipe, giving 96-bit result. Bottom 64 bits
+// Try to read 72 bits from pipe, giving 80-bit result. Bottom 72 bits
 // contain data and MSB is 0 if data is valid or 1 if no data is
-// available.  Non-blocking on 64-bit boundaries.
-void pipeGet64(unsigned int* result96, int id)
+// available.  Non-blocking on 72-bit boundaries.
+void pipeGet72(unsigned int* result80, int id)
 {
   assert(id < MAX_PIPES);
   if (pipeIn[id] == -1) initPipeIn(id);
-  uint8_t* bytes = (uint8_t*) result96;
-  int count = read(pipeIn[id], bytes, 8);
-  if (count == 8) {
-    bytes[11] = 0;
+  uint8_t* bytes = (uint8_t*) result80;
+  int count = read(pipeIn[id], bytes, 9);
+  if (count == 9) {
+    bytes[9] = 0;
     return;
   }
   else if (count > 0) {
@@ -101,44 +112,44 @@ void pipeGet64(unsigned int* result96, int id)
     fd_set fds;
     FD_ZERO(&fds);
     FD_SET(pipeIn[id], &fds);
-    while (count < 8) {
+    while (count < 9) {
       int res = select(1, &fds, NULL, NULL, NULL);
       assert(res >= 0);
-      res = read(pipeIn[id], &bytes[count], 8-count);
+      res = read(pipeIn[id], &bytes[count], 9-count);
       assert(res >= 0);
       count += res;
     }
-    bytes[11] = 0;
+    bytes[9] = 0;
     return;
   }
   else {
-    bytes[11] = 0x80;
+    bytes[9] = 0x80;
     return;
   }
 }
 
 // Try to write 64 bits to pipe.  Non-blocking on 64-bit boundaries,
 // returning 0 when no write performed.
-uint8_t pipePut64(int id, unsigned int* data64)
+uint8_t pipePut72(int id, unsigned int* data72)
 {
   assert(id < MAX_PIPES);
   if (pipeOut[id] == -1) {
     initPipeOut(id);
     if (pipeOut[id] == -1) return 0;
   }
-  uint8_t* bytes = (uint8_t*) data64;
-  int count = write(pipeOut[id], bytes, 8);
-  if (count == 8)
+  uint8_t* bytes = (uint8_t*) data72;
+  int count = write(pipeOut[id], bytes, 9);
+  if (count == 9)
     return 1;
   else if (count > 0) {
     // Use blocking writes to put remaining data
     fd_set fds;
     FD_ZERO(&fds);
     FD_SET(pipeOut[id], &fds);
-    while (count < 8) {
+    while (count < 9) {
       int res = select(1, &fds, NULL, NULL, NULL);
       assert(res >= 0);
-      res = write(pipeOut[id], &bytes[count], 8-count);
+      res = write(pipeOut[id], &bytes[count], 9-count);
       assert(res >= 0);
       count += res;
     }
