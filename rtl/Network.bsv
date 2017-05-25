@@ -18,6 +18,7 @@ import Queue        :: *;
 import ConfigReg    :: *;
 import ReliableLink :: *;
 import Mac          :: *;
+import Pipe         :: *;
 
 // =============================================================================
 // Bus Router
@@ -267,7 +268,7 @@ function Route routeMan(BoardId b, NetAddr addr) =
 // Flit-sized reliable links
 // =============================================================================
 
-interface ReliableFlitLink;
+interface BoardLink;
 `ifndef SIMULATE
   // Avalon interface to 10G MAC
   interface AvalonMac avalonMac;
@@ -279,9 +280,14 @@ interface ReliableFlitLink;
   method Bit#(32) numTimeouts;
 endinterface
 
-module mkReliableFlitLink (ReliableFlitLink);
+module mkBoardLink#(PipeId id) (BoardLink);
+  
   // 64-bit link
+  `ifdef SIMULATE
+  ReliableLink link <- mkReliableLink(id);
+  `else
   ReliableLink link <- mkReliableLink;
+  `endif
 
   // Serialiser
   Serialiser#(PaddedFlit, Bit#(64)) ser <- mkSerialiser;
@@ -311,21 +317,23 @@ endmodule
 
 // Interface to external (off-board) network
 interface ExtNetwork;
+`ifndef SIMULATE
   // Avalon interfaces to 10G MACs
   interface AvalonMac north;
   interface AvalonMac south;
   interface AvalonMac east;
   interface AvalonMac west;
+`endif
 endinterface
 
 module mkBus#(BoardId boardId, Vector#(n, MailboxNet) mailboxes) (ExtNetwork)
   provisos (Add#(n, 4, m));
 
   // Create off-board links
-  ReliableFlitLink northLink <- mkReliableFlitLink;
-  ReliableFlitLink southLink <- mkReliableFlitLink;
-  ReliableFlitLink eastLink  <- mkReliableFlitLink;
-  ReliableFlitLink westLink  <- mkReliableFlitLink;
+  BoardLink northLink <- mkBoardLink(northPipe);
+  BoardLink southLink <- mkBoardLink(southPipe);
+  BoardLink eastLink  <- mkBoardLink(eastPipe);
+  BoardLink westLink  <- mkBoardLink(westPipe);
 
   // Create mailbox routers
   Vector#(m, BusRouter) routers;
@@ -391,10 +399,12 @@ module mkBus#(BoardId boardId, Vector#(n, MailboxNet) mailboxes) (ExtNetwork)
   connectDirect(leftNullOut, routers[0].leftIn);
   connectDirect(rightNullOut, routers[valueOf(m)-1].rightIn);
 
+`ifndef SIMULATE
   interface AvalonMac north = northLink.avalonMac;
   interface AvalonMac south = southLink.avalonMac;
   interface AvalonMac east  = eastLink.avalonMac;
   interface AvalonMac west  = westLink.avalonMac;
+`endif
 
 endmodule
 

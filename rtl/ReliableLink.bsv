@@ -32,6 +32,7 @@ import Queue        :: *;
 import Mac          :: *;
 import ConfigReg    :: *;
 import Util         :: *;
+import Pipe         :: *;
 
 // =============================================================================
 // Transmit Buffer
@@ -223,10 +224,7 @@ endinterface
 // Implementation
 // --------------
 
-module mkReliableLink (ReliableLink);
-
-  // 10G MAC
-  Mac mac <- mkMac;
+module mkReliableLinkCore#(Mac mac) (ReliableLink);
 
   // Ports
   OutPort#(MacBeat) toMACPort   <- mkOutPort;
@@ -365,6 +363,7 @@ module mkReliableLink (ReliableLink);
 
   // Fill transmit buffer
   rule fillTransmitBuffer (inPort.canGet && transmitBuffer.canEnq);
+    inPort.get;
     transmitBuffer.enq(inPort.value);
   endrule
 
@@ -385,5 +384,32 @@ module mkReliableLink (ReliableLink);
   method Bit#(32) numTimeouts = transmitBuffer.numTimeouts;
 
 endmodule
+
+`ifndef SIMULATE
+
+// FPGA version
+module mkReliableLink (ReliableLink);
+  Mac mac <- mkMac;
+  ReliableLink link <- mkReliableLinkCore(mac);
+  return link;
+endmodule
+
+`else
+
+// Simulation version
+module mkReliableLink#(PipeId id) (ReliableLink);
+  Mac mac <- mkMac(id);
+  ReliableLink link <- mkReliableLinkCore(mac);
+  return link;
+endmodule
+
+// Simulation loopback verison
+module mkReliableLinkLoopback (ReliableLink);
+  Mac mac <- mkMacLoopback;
+  ReliableLink link <- mkReliableLinkCore(mac);
+  return link;
+endmodule
+
+`endif
 
 endpackage

@@ -19,28 +19,36 @@
 #include <errno.h>
 #include <poll.h>
 
-#define FIFO_IN  "/tmp/tinsel.in.0"
-#define FIFO_OUT "/tmp/tinsel.out.0"
+#define FIFO_IN  "/tmp/tinsel.in"
+#define FIFO_OUT "/tmp/tinsel.out"
 
 class RawLink {
   int fifoIn;
   int fifoOut;
+  int boardId;
  public:
   RawLink() {
     fifoIn = fifoOut = -1;
+    boardId = 0;
+  }
+
+  void setId(int id) {
+    boardId = id;
   }
 
   void get(void* buffer, int count) {
     // Open fifo if not already opened
     if (fifoIn < 0) {
+      char filename[256];
+      snprintf(filename, sizeof(filename), "%s.b%i.0", FIFO_OUT, boardId);
       // Create tinsel output fifo if it doesn't exist
       struct stat st;
-      if (stat(FIFO_OUT, &st) != 0)
-        mkfifo(FIFO_OUT, 0666);
+      if (stat(filename, &st) != 0)
+        mkfifo(filename, 0666);
       // Open tinsel output fifo for reading
-      fifoIn = open(FIFO_OUT, O_RDONLY);
+      fifoIn = open(filename, O_RDONLY);
       if (fifoIn < 0) {
-        fprintf(stderr, "Error opening " FIFO_OUT "\n");
+        fprintf(stderr, "Error opening %s\n", filename);
         exit(EXIT_FAILURE);
       }
     }
@@ -49,7 +57,7 @@ class RawLink {
     while (count > 0) {
       int n = read(fifoIn, (void*) ptr, count);
       if (n < 0) {
-        fprintf(stderr, "Error reading " FIFO_OUT "\n");
+        fprintf(stderr, "Error reading %s.b%i.0\n", FIFO_OUT, boardId);
         exit(EXIT_FAILURE);
       }
       ptr += n;
@@ -67,10 +75,12 @@ class RawLink {
   void put(void* buffer, int count) {
     // Open fifo if not already opened
     if (fifoOut < 0) {
+      char filename[256];
+      snprintf(filename, sizeof(filename), "%s.b%i.0", FIFO_IN, boardId);
       // Open tinsel input fifo for writing
-      fifoOut = open(FIFO_IN, O_WRONLY);
+      fifoOut = open(filename, O_WRONLY);
       if (fifoOut < 0) {
-        fprintf(stderr, "Error opening " FIFO_IN "\n");
+        fprintf(stderr, "Error opening %s\n", filename);
         exit(EXIT_FAILURE);
       }
     }
@@ -79,7 +89,7 @@ class RawLink {
     while (count > 0) {
       int n = write(fifoOut, (void*) ptr, count);
       if (n < 0) {
-        fprintf(stderr, "Error writing to " FIFO_IN "\n");
+        fprintf(stderr, "Error writing to %s.b%i.0\n", FIFO_IN, boardId);
         exit(EXIT_FAILURE);
       }
       ptr += n;
@@ -107,10 +117,11 @@ class RawLink {
 
 class RawLink {
   JTAGATLANTIC* jtag;
+  int deviceId;
 
   void open() {
     if (jtag == NULL) {
-      jtag = jtagatlantic_open(getenv("CABLE"), 0, 0, "hostlink");
+      jtag = jtagatlantic_open(getenv("CABLE"), deviceId, 0, "hostlink");
       if (jtag == NULL) {
         fprintf(stderr, "Error opening JTAG UART\n");
         exit(EXIT_FAILURE);
@@ -121,6 +132,11 @@ class RawLink {
  public:
   RawLink() {
     jtag = NULL;
+    deviceId = 0;
+  }
+
+  void setId(int id) {
+    deviceId = id;
   }
 
   void get(void* buffer, int count) {

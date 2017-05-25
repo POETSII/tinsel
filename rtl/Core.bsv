@@ -378,9 +378,11 @@ endfunction
 // ============================================================================
 
 interface Core;
-  interface DCacheClient    dcacheClient;
-  interface MailboxClient   mailboxClient;
-  interface HostLinkCore    hostLinkCore;
+  interface DCacheClient  dcacheClient;
+  interface MailboxClient mailboxClient;
+  interface HostLinkCore  hostLinkCore;
+  (* always_ready, always_enabled *)
+  method Action setBoardId(BoardId id);
 endinterface
 
 // ============================================================================
@@ -439,12 +441,15 @@ endinterface
 // resumption requests for the Write Back stage.
 
 (* synthesize *)
-module mkCore#(BoardId boardId, CoreId myId) (Core);
+module mkCore#(CoreId myId) (Core);
 
   staticAssert(`LogThreadsPerCore >= 4, "Number of threads must be >= 16");
 
   // Number of threads
   Integer numThreads = 2 ** `LogThreadsPerCore;
+
+  // Board id
+  Wire#(BoardId) boardId <- mkDWire(?);
 
   // Global state
   // ------------
@@ -943,6 +948,10 @@ module mkCore#(BoardId boardId, CoreId myId) (Core);
     interface In fromHost = fromHostPort.in;
     interface Out toHost  = toHostPort.out;
   endinterface
+
+  method Action setBoardId(BoardId id);
+    boardId <= id;
+  endmethod
 
 endmodule
 

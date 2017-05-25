@@ -36,6 +36,8 @@ interface DE5Top;
   interface AvalonMac eastMac;
   interface AvalonMac westMac;
   interface JtagUartAvalon jtagIfc;
+  (* always_ready, always_enabled *)
+  method Action setBoardId(BoardId id);
 endinterface
 
 `endif
@@ -44,7 +46,14 @@ endinterface
 // Implementation
 // ============================================================================
 
-module de5Top#(BoardId boardId) (DE5Top);
+module de5Top (DE5Top);
+  // Board Id
+  `ifdef SIMULATE
+  BoardId boardId = unpack(truncate(getBoardId()));
+  `else
+  Wire#(BoardId) boardId <- mkDWire(?);
+  `endif
+
   // Create DRAMs
   Vector#(`DRAMsPerBoard, DRAM) drams;
   for (Integer i = 0; i < `DRAMsPerBoard; i=i+1)
@@ -65,9 +74,17 @@ module de5Top#(BoardId boardId) (DE5Top);
   for (Integer i = 0; i < `DRAMsPerBoard; i=i+1)
     for (Integer j = 0; j < `DCachesPerDRAM; j=j+1)
       for (Integer k = 0; k < `CoresPerDCache; k=k+1) begin
-        cores[i][j][k] <- mkCore(boardId, fromInteger(coreCount));
+        cores[i][j][k] <- mkCore(fromInteger(coreCount));
         coreCount = coreCount+1;
       end
+
+  // Set board ids
+  rule setBoardIds;
+    for (Integer i = 0; i < `DRAMsPerBoard; i=i+1)
+      for (Integer j = 0; j < `DCachesPerDRAM; j=j+1)
+        for (Integer k = 0; k < `CoresPerDCache; k=k+1)
+          cores[i][j][k].setBoardId(boardId);
+  endrule
 
   // Connect cores to data caches
   function dcacheClient(core) = core.dcacheClient;
@@ -111,6 +128,9 @@ module de5Top#(BoardId boardId) (DE5Top);
   interface southMac = net.south;
   interface eastMac  = net.east;
   interface westMac  = net.west;
+  method Action setBoardId(BoardId id);
+    boardId <= id;
+  endmethod
   `endif
 endmodule
 
