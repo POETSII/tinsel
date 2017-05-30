@@ -121,7 +121,10 @@ class RawLink {
 
   void open() {
     if (jtag == NULL) {
-      jtag = jtagatlantic_open(getenv("CABLE"), deviceId, 0, "hostlink");
+      char chain[256];
+      snprintf(chain, sizeof(chain), "%i", deviceId+1);
+      jtag = jtagatlantic_open(chain, 0, 0, "hostlink");
+      //jtag = jtagatlantic_open(getenv("CABLE"), deviceId, 0, "hostlink");
       if (jtag == NULL) {
         fprintf(stderr, "Error opening JTAG UART\n");
         exit(EXIT_FAILURE);
