@@ -56,12 +56,12 @@ uint32_t sendFile(BootCmd cmd, HostLink* link, FILE* fp, uint32_t* checksum)
 void console(HostLink* link)
 {
   // One line buffer per thread
-  const int maxLineLen = 1024;
-  char lineBuffer[TinselThreadsPerBoard][maxLineLen];
-  int lineBufferLen[TinselThreadsPerBoard];
+  const int maxLineLen = 256;
+  char lineBuffer[TinselNumThreads][maxLineLen];
+  int lineBufferLen[TinselNumThreads];
 
   // Initialise
-  for (int i = 0; i < TinselThreadsPerBoard; i++)
+  for (int i = 0; i < TinselNumThreads; i++)
     lineBufferLen[i] = 0;
 
   for (;;) {  
@@ -71,7 +71,7 @@ void console(HostLink* link)
     uint8_t cmd = link->get(&src, &val);
     uint32_t id = val >> 8;
     char ch = val & 0xff;
-    assert(id < TinselThreadsPerBoard);
+    assert(id < TinselNumThreads);
     int len = lineBufferLen[id];
     if (ch == '\n' || len >= maxLineLen-1) {
       lineBuffer[id][len] = '\0';
@@ -91,6 +91,7 @@ int usage()
          "    -o            start only one thread\n"
          "    -n [NUMBER]   num messages to dump after boot\n"
          "    -t [SECONDS]  timeout on message dump\n"
+         "    -i [NUMBER]   JTAG Id / Board Id\n"
          "    -c            load console after boot\n"
          "    -h            help\n");
   return -1;
@@ -102,17 +103,19 @@ int main(int argc, char* argv[])
   int numMessages = -1;
   int numSeconds = -1;
   int useConsole = 0;
+  int boardId = 0;
 
   // Option processing
   optind = 1;
   for (;;) {
-    int c = getopt(argc, argv, "hon:t:c");
+    int c = getopt(argc, argv, "hon:t:i:c");
     if (c == -1) break;
     switch (c) {
       case 'h': return usage();
       case 'o': startOnlyOneThread = 1; break;
       case 'n': numMessages = atoi(optarg); break;
       case 't': numSeconds = atoi(optarg); break;
+      case 'i': boardId = atoi(optarg); break;
       case 'c': useConsole = 1; break;
       default: return usage();
     }
@@ -122,19 +125,19 @@ int main(int argc, char* argv[])
   // Open code file
   FILE* code = fopen(argv[optind], "r");
   if (code == NULL) {
-    printf("Error: can't open file '%s'\n", argv[1]);
+    printf("Error: can't open file '%s'\n", argv[optind]);
     return -1;
   }
 
   // Open data file
   FILE* data = fopen(argv[optind+1], "r");
   if (data == NULL) {
-    printf("Error: can't open file '%s'\n", argv[2]);
+    printf("Error: can't open file '%s'\n", argv[optind+1]);
     exit(EXIT_FAILURE);
   }
 
   // State
-  HostLink link;
+  HostLink link(boardId);
   uint32_t checksum = 0;
 
   // Step 1: load code into instruction memory

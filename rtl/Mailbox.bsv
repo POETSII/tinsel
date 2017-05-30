@@ -171,7 +171,7 @@ typedef struct {
   // Message length
   MsgLen len;
   // Destination thread
-  FlitDest dest;
+  NetAddr dest;
 } TransmitReq deriving (Bits);
 
 // Transmit unit response
@@ -200,7 +200,7 @@ typedef struct {
 
 // Transmit pipeline token
 typedef struct {
-  FlitDest dest;
+  NetAddr dest;
   Bool notFinalFlit;
 } TransmitToken deriving (Bits);
 
@@ -334,14 +334,14 @@ module mkMailbox (Mailbox);
     // The stall condition ensures that "statusMem.get" and
     // "statusMem.tryGet" are not called with the same argument
     // within two consecutive cycles (see ArrayOfSet.bsv)
-    Bool stall = prevGet == Valid(truncate(flit.dest));
+    Bool stall = prevGet == Valid(truncate(pack(flit.dest)));
     // Try to consume an incoming flit
     if (flitInPort.canGet && inFlightRecvs.notFull) begin
       if (firstFlit) begin
         if (!stall) begin
           flitInPort.get;
           inFlightRecvs.inc;
-          statusMem.tryGet(truncate(flit.dest));
+          statusMem.tryGet(truncate(pack(flit.dest)));
           recvState <= 1;
         end
       end else begin
@@ -361,11 +361,11 @@ module mkMailbox (Mailbox);
       // Do we have somewhere to put the incoming message?
       if (statusMem.canGet) begin
         statusMem.get;
-        prevGet <= Valid(truncate(flitBuffer.dest));
+        prevGet <= Valid(truncate(pack(flitBuffer.dest)));
         recvState <= 0;
       end else begin
         // If not, retry the lookup
-        statusMem.tryGet(truncate(flitBuffer.dest));
+        statusMem.tryGet(truncate(pack(flitBuffer.dest)));
         recvState <= 1;
         retry = True;
       end
@@ -387,14 +387,14 @@ module mkMailbox (Mailbox);
     if (receive3FirstFlit) destIndex <= statusMem.itemOut;
     // Update scratchpad
     flitWriteWire      <= True;
-    flitWriteIndexWire <= { truncate(flit.dest), index, recvFlitCount };
+    flitWriteIndexWire <= { truncate(pack(flit.dest)), index, recvFlitCount };
     flitWriteDataReg   <= flit.payload;
     // Update flit count
     if (!flit.notFinalFlit) begin
       recvFlitCount <= 0;
       // Trigger next stage
       ReceiveAlert alert;
-      alert.id = truncate(flit.dest);
+      alert.id = truncate(pack(flit.dest));
       alert.index = index;
       receive4Input <= alert;
     end else
@@ -634,7 +634,7 @@ interface MailboxClientUnit;
   // (Must only be called on 2nd cycle after call to "prepare")
   method Action recv;
   method Action send(ThreadId id, MsgLen len,
-                       FlitDest dest, MailboxThreadMsgAddr addr);
+                       NetAddr dest, MailboxThreadMsgAddr addr);
   // Scratchpad address of message received
   // (Valid on 2nd cycle after call to "recv")
   method Bit#(32) recvAddr;
@@ -830,7 +830,7 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
   method Bool canSend = canSendReg2;
 
   method Action send(ThreadId id, MsgLen len,
-                       FlitDest dest, MailboxThreadMsgAddr addr);
+                       NetAddr dest, MailboxThreadMsgAddr addr);
     myAssert(canSendReg2, "MailboxClientUnit: send violation");
     // Construct transmit request
     TransmitReq req;

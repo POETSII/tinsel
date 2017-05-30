@@ -378,9 +378,11 @@ endfunction
 // ============================================================================
 
 interface Core;
-  interface DCacheClient    dcacheClient;
-  interface MailboxClient   mailboxClient;
-  interface HostLinkCore    hostLinkCore;
+  interface DCacheClient  dcacheClient;
+  interface MailboxClient mailboxClient;
+  interface HostLinkCore  hostLinkCore;
+  (* always_ready, always_enabled *)
+  method Action setBoardId(BoardId id);
 endinterface
 
 // ============================================================================
@@ -445,6 +447,9 @@ module mkCore#(CoreId myId) (Core);
 
   // Number of threads
   Integer numThreads = 2 ** `LogThreadsPerCore;
+
+  // Board id
+  Wire#(BoardId) boardId <- mkDWire(?);
 
   // Global state
   // ------------
@@ -614,7 +619,7 @@ module mkCore#(CoreId myId) (Core);
     // Mailbox send
     if (mailbox.canSend && token.op.csr.isSend)
       mailbox.send(token.thread.id, token.thread.msgLen,
-                     truncate(token.valA), token.thread.msgPtr);
+                     unpack(truncate(token.valA)), token.thread.msgPtr);
     // Mailbox receive
     if (mailbox.canRecv && token.op.csr.isRecv)
       mailbox.recv;
@@ -733,7 +738,7 @@ module mkCore#(CoreId myId) (Core);
     if (token.op.csr.isToHost) begin
       if (toHostPort.canPut) begin
         HostLinkFlit flit;
-        flit.coreId = truncate(myId);
+        flit.coreId = myId;
         flit.isBroadcast = False;
         flit.cmd = cmdStdOut;
         flit.arg = token.valA;
@@ -778,7 +783,8 @@ module mkCore#(CoreId myId) (Core);
     res.csr =
         when(token.op.csr.isCanSend,  zeroExtend(pack(token.canSend)))
       | when(token.op.csr.isCanRecv,  zeroExtend(pack(token.canRecv)))
-      | when(token.op.csr.isHartId,   zeroExtend({myId, token.thread.id}))
+      | when(token.op.csr.isHartId,
+               zeroExtend({pack(boardId), myId, token.thread.id}))
       | when(token.op.csr.isRecv,     mailbox.recvAddr)
       | when(token.op.csr.isFromHost, fromHostPort.value.arg);
     // Trigger next stage
@@ -943,6 +949,10 @@ module mkCore#(CoreId myId) (Core);
     interface In fromHost = fromHostPort.in;
     interface Out toHost  = toHostPort.out;
   endinterface
+
+  method Action setBoardId(BoardId id);
+    boardId <= id;
+  endmethod
 
 endmodule
 

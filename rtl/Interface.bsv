@@ -30,6 +30,7 @@ import Queue     :: *;
 import Assert    :: *;
 import List      :: *;
 import Vector    :: *;
+import ConfigReg :: *;
 
 // =============================================================================
 // In & Out interfaces
@@ -429,6 +430,121 @@ module convertBOutToOut#(BOut#(t) a) (Out#(t))
   method Action tryGet; doTryGet.send; if (a.valid) a.get; endmethod
   method Bool valid = doTryGet && a.valid;
   method t value = a.value;
+endmodule
+
+// =============================================================================
+// Serialiser
+// =============================================================================
+
+interface Serialiser#(type typeIn, type typeOut);
+  interface In#(typeIn) parallelIn;
+  interface Out#(typeOut) serialOut;
+endinterface
+
+// Parallel to serial conversion
+module mkSerialiser (Serialiser#(typeIn, typeOut))
+  provisos (Bits#(typeIn, widthIn),
+            Bits#(typeOut, widthOut),
+            Mul#(widthOut, n, widthIn));
+
+  // Ports
+  InPort#(typeIn) inPort <- mkInPort;
+  OutPort#(typeOut) outPort <- mkOutPort;
+
+  // Shift register
+  Vector#(n, Reg#(typeOut)) shiftReg <- replicateM(mkConfigRegU);
+
+  // Unary encoding of number of elements in shift register
+  Reg#(Bit#(n)) count <- mkConfigReg(0);
+
+  rule step;
+    // Load new items?
+    Bool load = inPort.canGet &&
+                  (count == 0 || (count == 1 && outPort.canPut));
+    // Shift item out?
+    Bool shift = outPort.canPut && count != 0;
+    // Emit item
+    if (shift) outPort.put(shiftReg[0]);
+    // Only shift the register when not loading it
+    if (shift && !load) begin
+      for (Integer i = 0; i < valueOf(n)-1; i=i+1)
+        shiftReg[i] <= shiftReg[i+1];
+      count <= count >> 1;
+    end else if (load) begin
+      inPort.get;
+      Vector#(n, typeOut) vec = unpack(pack(inPort.value));
+      for (Integer i = 0; i < valueOf(n); i=i+1)
+        shiftReg[i] <= vec[i];
+      count <= ~0;
+    end
+  endrule
+
+  // Interfaces
+  interface In parallelIn = inPort.in;
+  interface Out serialOut = outPort.out;
+endmodule
+
+// =============================================================================
+// Deserialiser
+// =============================================================================
+
+interface Deserialiser#(type typeIn, type typeOut);
+  interface In#(typeIn) serialIn;
+  interface Out#(typeOut) parallelOut;
+endinterface
+
+// Serial to parallel conversion
+module mkDeserialiser (Deserialiser#(typeIn, typeOut))
+  provisos (Bits#(typeIn, widthIn),
+            Bits#(typeOut, widthOut),
+            Mul#(widthIn, n, widthOut));
+ 
+  // Ports
+  InPort#(typeIn) inPort <- mkInPort;
+  OutPort#(typeOut) outPort <- mkOutPort;
+
+  // Shift register
+  Vector#(n, Reg#(typeIn)) shiftReg <- replicateM(mkConfigRegU);
+
+  // Unary encoding of number of unused elements in shift register
+  Reg#(Bit#(n)) space <- mkConfigReg(~0);
+
+  // Wires controlling update of space count
+  PulseWire resetSpace <- mkPulseWire;
+  PulseWire decSpace <- mkPulseWire;
+
+  // Update space
+  rule updateSpace;
+    if (decSpace && resetSpace)
+      space <= ~0 >> 1;
+    else if (resetSpace)
+      space <= ~0;
+    else if (decSpace)
+      space <= space >> 1;
+  endrule
+
+  // Consume input
+  rule consume (inPort.canGet);
+    if (space != 0 || (space == 0 && outPort.canPut)) begin
+      inPort.get;
+      shiftReg[valueOf(n)-1] <= inPort.value;
+      for (Integer i = 0; i < valueOf(n)-1; i=i+1)
+        shiftReg[i] <= shiftReg[i+1];
+      decSpace.send;
+    end
+  endrule
+
+  // Produce output
+  rule produce (outPort.canPut);
+    if (space == 0) begin
+      outPort.put(unpack(pack(readVReg(shiftReg))));
+      resetSpace.send;
+    end
+  endrule
+
+  // Interfaces
+  interface In serialIn = inPort.in;
+  interface Out parallelOut = outPort.out;
 endmodule
 
 endpackage

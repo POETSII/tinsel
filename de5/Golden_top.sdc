@@ -14,7 +14,7 @@ create_clock -period 20 [get_ports OSC_50_B8A]
 create_clock -period 20 [get_ports OSC_50_B8D]
 
 
-
+create_clock -period 1.5515 [get_ports SFP_REFCLK_p]
 
 
 #**************************************************************

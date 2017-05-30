@@ -159,7 +159,7 @@ module testMailbox ();
     MailboxReq mbReq = mbReqs.first;
     TransmitReq req;
     req.id = truncate(mbReq.src);
-    req.dest = truncate(mbReq.dst);
+    req.dest = unpack(truncate(mbReq.dst));
     req.msgIndex = 0;
     req.len = -1;
     txReq.put(req);
