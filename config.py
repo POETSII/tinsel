@@ -31,7 +31,7 @@ p["LogInstrsPerCore"] = 11
 p["LogCoresPerDCache"] = 2
 
 # Log of number of caches per DRAM port
-p["LogDCachesPerDRAM"] = 3
+p["LogDCachesPerDRAM"] = 0
 
 # Log of number of 32-bit words in a single memory transfer
 p["LogWordsPerBeat"] = 3
@@ -70,7 +70,7 @@ p["LogMsgsPerThread"] = 4
 p["LogCoresPerMailbox"] = 2
 
 # Number of mailboxes per board
-p["LogMailboxesPerBoard"] = 4
+p["LogMailboxesPerBoard"] = 1
 
 # Size of each DRAM
 p["LogBeatsPerDRAM"] = 25
