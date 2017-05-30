@@ -3,11 +3,11 @@
 The latest stable release is version 0.2, which is maintained in the
 [tinsel-0.2 branch](https://github.com/POETSII/tinsel/tree/tinsel-0.2).
 
-This master branch is work-in-progress towards tinsel 1.0.
+This master branch is work-in-progress towards Tinsel 1.0.
 
-## What is tinsel?
+## What is Tinsel?
 
-It is a **manythread** machine designed for **event-triggered
+Tinsel is a **manythread** machine designed for **event-triggered
 computing** on an **FPGA cluster**, and is being developed as part of
 the [POETS project](https://poets-project.org).
 
