@@ -1922,17 +1922,6 @@ set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION
 set_global_assignment -name SEED 6
 set_global_assignment -name OPTIMIZATION_MODE BALANCED
 
-set_global_assignment -name MIF_FILE InstrMem.mif
-set_global_assignment -name VERILOG_FILE ../rtl/AlteraMult.v
-set_global_assignment -name VERILOG_FILE ../rtl/mkMailbox.v
-set_global_assignment -name VERILOG_FILE ../rtl/mkHostLinkRouter.v
-set_global_assignment -name VERILOG_FILE ../rtl/de5Top.v
-set_global_assignment -name VERILOG_FILE ../rtl/mkCore.v
-set_global_assignment -name VERILOG_FILE ../rtl/mkDCache.v
-set_global_assignment -name VERILOG_FILE ../rtl/AlteraBlockRam.v
-set_global_assignment -name QIP_FILE S5_DDR3_QSYS/synthesis/S5_DDR3_QSYS.qip
-set_global_assignment -name SDC_FILE Golden_top.sdc
-set_global_assignment -name VERILOG_FILE Golden_top.v
 set_instance_assignment -name IO_STANDARD "SSTL-15 CLASS I" -to DDR3B_DQ[0] -tag __S5_DDR3_QSYS_mem_if_ddr3_emif_2_p0
 set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to DDR3B_DQ[0] -tag __S5_DDR3_QSYS_mem_if_ddr3_emif_2_p0
 set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to DDR3B_DQ[0] -tag __S5_DDR3_QSYS_mem_if_ddr3_emif_2_p0
@@ -2254,4 +2243,17 @@ set_instance_assignment -name GLOBAL_SIGNAL OFF -to u0|mem_if_ddr3_emif_2|p0|ume
 set_instance_assignment -name ENABLE_BENEFICIAL_SKEW_OPTIMIZATION_FOR_NON_GLOBAL_CLOCKS ON -to u0|mem_if_ddr3_emif_2 -tag __S5_DDR3_QSYS_mem_if_ddr3_emif_2_p0
 set_instance_assignment -name PLL_COMPENSATION_MODE DIRECT -to u0|mem_if_ddr3_emif_2|pll0|fbout -tag __S5_DDR3_QSYS_mem_if_ddr3_emif_2_p0
 set_global_assignment -name USE_DLL_FREQUENCY_FOR_DQS_DELAY_CHAIN ON
+set_global_assignment -name VERILOG_FILE si570/si570_i2c_init.v
+set_global_assignment -name VERILOG_FILE si570/i2c_master.v
+set_global_assignment -name MIF_FILE InstrMem.mif
+set_global_assignment -name VERILOG_FILE ../rtl/AlteraMult.v
+set_global_assignment -name VERILOG_FILE ../rtl/mkMailbox.v
+set_global_assignment -name VERILOG_FILE ../rtl/mkHostLinkRouter.v
+set_global_assignment -name VERILOG_FILE ../rtl/de5Top.v
+set_global_assignment -name VERILOG_FILE ../rtl/mkCore.v
+set_global_assignment -name VERILOG_FILE ../rtl/mkDCache.v
+set_global_assignment -name VERILOG_FILE ../rtl/AlteraBlockRam.v
+set_global_assignment -name QIP_FILE S5_DDR3_QSYS/synthesis/S5_DDR3_QSYS.qip
+set_global_assignment -name SDC_FILE Golden_top.sdc
+set_global_assignment -name VERILOG_FILE Golden_top.v
 set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top

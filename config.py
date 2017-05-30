@@ -21,10 +21,6 @@ p["DeviceFamily"] = quoted("Stratix V")
 # FPGA board being targetted
 p["TargetBoard"] = quoted("DE5")
 
-# Log of max number of cores
-# (used to determine width of globally unique core id)
-p["LogMaxCores"] = 8
-
 # The number of hardware threads per core
 p["LogThreadsPerCore"] = 4
 
@@ -35,7 +31,7 @@ p["LogInstrsPerCore"] = 11
 p["LogCoresPerDCache"] = 2
 
 # Log of number of caches per DRAM port
-p["LogDCachesPerDRAM"] = 3
+p["LogDCachesPerDRAM"] = 0
 
 # Log of number of 32-bit words in a single memory transfer
 p["LogWordsPerBeat"] = 3
@@ -74,7 +70,7 @@ p["LogMsgsPerThread"] = 4
 p["LogCoresPerMailbox"] = 2
 
 # Number of mailboxes per board
-p["LogMailboxesPerBoard"] = 4
+p["LogMailboxesPerBoard"] = 1
 
 # Size of each DRAM
 p["LogBeatsPerDRAM"] = 25
@@ -82,14 +78,32 @@ p["LogBeatsPerDRAM"] = 25
 # Maximum size of boot loader (in bytes)
 p["MaxBootImageBytes"] = 512
 
+# Size of transmit buffer in a reliable link
+p["LogTransmitBufferSize"] = 10
+
+# Size of receive buffer in a reliable link
+p["LogReceiveBufferSize"] = 5
+
+# Max number of 64-bit items to put in an ethernet packet
+p["TransmitBound"] = 20
+
+# Timeout in reliable link (for detecting dropped packets)
+p["LinkTimeout"] = 1024
+
+# Latency of 10G MAC in cycles (simulation only)
+p["MacLatency"] = 100
+
+# Mesh X dimension width
+p["LogMeshXLen"] = 2
+
+# Mesh Y dimension width
+p["LogMeshYLen"] = 2
+
 #==============================================================================
 # Derived Parameters
 #==============================================================================
 
 # (These should not be modified.)
-
-# Max number of threads
-p["LogMaxThreads"] = p["LogMaxCores"]+p["LogThreadsPerCore"]
 
 # Log of number of 32-bit words per data cache line
 p["LogWordsPerLine"] = p["LogWordsPerBeat"]+p["LogBeatsPerLine"]
@@ -185,6 +199,11 @@ p["ThreadsPerBoard"] = 2 ** p["LogThreadsPerBoard"]
 
 # Cores per board
 p["LogCoresPerBoard"] = p["LogCoresPerMailbox"] + p["LogMailboxesPerBoard"]
+
+# Number of threads in cluster
+p["NumThreads"] = (2**p["LogMeshXLen"] *
+                     2**p["LogMeshYLen"] *
+                       p["ThreadsPerBoard"])
 
 #==============================================================================
 # Main 
