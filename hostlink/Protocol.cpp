@@ -9,6 +9,8 @@
 #include <assert.h>
 #include "HostLink.h"
 
+#include <map>
+#include <string>
 #include <vector>
 
 
@@ -29,6 +31,7 @@ private:
       StateStdOut,
       StateStdErr,
       StateAssert,
+      StateKeyVal_Device,
       StateKeyVal_Key,
       StateKeyVal_Val
     }m_state;
@@ -36,15 +39,21 @@ private:
   uint32_t m_threadId;
 
   std::vector<char> m_chars;
+  std::vector<char> m_device;
   uint32_t m_key, m_val;
   unsigned m_todo;
+
+  std::map<std::vector<char>,uint32_t> m_deviceKeyValSeq;
+
+  FILE *m_keyValDst;
 public:
-  Protocol(uint32_t threadId)
+  Protocol(uint32_t threadId, FILE *keyValDst)
     : m_state(StateIdle)
     , m_threadId(threadId)
     , m_key(0)
     , m_val(0)
     , m_todo(0)
+    , m_keyValDst(keyValDst)
   {
   }
   
@@ -73,10 +82,10 @@ public:
 	    break;
 	  }
 	  case TagKeyVal:{
-	    m_state=StateKeyVal_Key;
+	    m_state=StateKeyVal_Device;
 	    m_key=0;
 	    m_val=0;
-	    m_todo=4;
+	    m_todo=0;
 	    break;
 	  }
 	  default:{
@@ -85,14 +94,15 @@ public:
 	    break;
 	  }
 	  }
+	break;
       case StateStdOut:
 	//fprintf(stderr, "%08x : add stdout '%c'\n", m_threadId, (char)byte);
 	m_chars.push_back((char)byte);
 	if(byte==0){
-	fprintf(stdout, "%08x : StdOut : ", m_threadId);
+	  fprintf(stdout, "%08x : StdOut : ", m_threadId);
 	  fputs(&m_chars[0],stdout);
 	  if(m_chars.size()<=1 || m_chars[m_chars.size()-2]!='\n'){
-		fputs("\n",stdout);
+	    	fputs("\n",stdout);
 	  }
 	  fflush(stdout);
 	  //fprintf(stderr, "%08x : End stdout\n", m_threadId);	  
@@ -111,18 +121,31 @@ public:
 	  m_state=StateIdle;
 	}
 	break;
+      case StateKeyVal_Device:
+	m_device.push_back(byte);
+	if(!byte){
+	  m_state=StateKeyVal_Key;
+	  m_todo=4;
+	}
+	break;
       case StateKeyVal_Key:
 	m_key = (m_key>>8) | (uint32_t(byte)<<24);
 	m_todo--;
 	if(m_todo==0){
 	  m_state=StateKeyVal_Val;
+	  m_todo=4;
 	}
 	break;
       case StateKeyVal_Val:
 	m_val = (m_val>>8) | (uint32_t(byte)<<24);
 	m_todo--;
 	if(m_todo==0){
-	  fprintf(stdout, "KeyVal : %x %x\n", m_key, m_val);
+	  unsigned seq=m_deviceKeyValSeq[m_device];
+	  fprintf(stdout, "KeyVal : %s, %u, %u, %u\n", &m_device[0], seq, m_key, m_val);
+	  if(m_keyValDst){
+	    fprintf(m_keyValDst, "%s, %u, %u, %u\n", &m_device[0], seq, m_key, m_val);
+	  }
+	  m_deviceKeyValSeq[m_device]=seq+1;
 	  m_state=StateIdle;
 	}
 	break;
@@ -134,12 +157,12 @@ public:
   }
 };
 
-void protocol(HostLink *link)
+void protocol(HostLink *link, FILE *keyValDst)
 {
   std::vector<Protocol> states;
 
   for(unsigned i=0;i<TinselThreadsPerBoard;i++){
-    states.push_back(Protocol(i));
+    states.push_back(Protocol(i, keyValDst));
   }
 
   while(1){
@@ -151,7 +174,9 @@ void protocol(HostLink *link)
     //    fprintf(stderr, "  cmd=%u, id=%u, ch=%u\n", cmd, id, ch);
     assert(id < TinselThreadsPerBoard);
 
+    fprintf(stderr, "ch = %u = %c\n", ch, (char)ch);
     states[id].add(ch);
+    fflush(stdout);
   }
 }
 
