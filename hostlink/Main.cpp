@@ -83,7 +83,7 @@ void console(HostLink* link)
   }
 }
 
-extern void protocol(HostLink *link);
+extern void protocol(HostLink *link, FILE *keyValDst);
 
 int usage()
 {
@@ -94,6 +94,7 @@ int usage()
          "    -t [SECONDS]  timeout on message dump\n"
          "    -c            load console after boot\n"
 	 "    -p            load protocol after boot\n"
+	 "    -k            (protocol) set destination file for key value output\n"
          "    -h            help\n");
   return -1;
 }
@@ -105,6 +106,8 @@ int main(int argc, char* argv[])
   int numSeconds = -1;
   int useConsole = 0;
   int useProtocol = 0;
+
+  FILE *keyValDst = 0;
 
   // Option processing
   optind = 1;
@@ -118,6 +121,14 @@ int main(int argc, char* argv[])
       case 't': numSeconds = atoi(optarg); break;
       case 'c': useConsole = 1; break;
       case 'p': useProtocol = 1; break;
+      case 'k':{
+        keyValDst=fopen(optarg,"wt");
+	if(keyValDst==0){
+	  fprintf(stderr, "Error : couldn't open key value file '%s'\n", optarg);
+	  exit(1);
+	}
+	break;
+      }
       default: return usage();
     }
   }
@@ -207,7 +218,7 @@ int main(int argc, char* argv[])
   // ------------
 
   if (useConsole) console(&link);
-  else if(useProtocol) protocol(&link);
+  else if(useProtocol) protocol(&link, keyValDst);
   else {
     // The number of tenths of a second that link has been idle
     int idle = 0;
