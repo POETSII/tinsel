@@ -23,15 +23,35 @@ MESH_X=$1
 MESH_Y=$2
 echo "Using mesh dimensions: $MESH_X x $MESH_Y"
 
+HOST_X=0
+HOST_Y=$(($MESH_Y))
+echo "Putting host board at location ($HOST_X, $HOST_Y)"
+
 # Check dimensions
 if [ $MESH_X -gt $MESH_MAX_X ] || [ $MESH_Y -gt $MESH_MAX_Y ] ; then
-  echo "ERROR: specified dimensions exceed the maximum"
+  echo "ERROR: max mesh dimensions exceeded"
   exit
 fi
 
 # Convert coords to board id
 function fromCoords {
   echo $(($1 * $MESH_MAX_Y + $2))
+}
+
+# Create fifo, if it doesn't exists
+function createFifo {
+  if [ ! -e $1 ]; then
+    echo "Creating fifo $1"
+    mkfifo $1
+  fi
+}
+
+# Connect two fifos
+function connect {
+  trap '' INT
+  while [ 1 == 1 ]; do
+    cat $1 > $2
+  done
 }
 
 LAST_X=$(($MESH_X - 1))
@@ -44,17 +64,23 @@ for X in $(seq 0 $LAST_X); do
     for P in $(seq 1 4); do
       PIPE_IN="/tmp/tinsel.in.b$ID.$P"
       PIPE_OUT="/tmp/tinsel.out.b$ID.$P"
-      if [ ! -e $PIPE_IN ]; then
-        echo "Creating $PIPE_IN"
-        mkfifo $PIPE_IN
-      fi
-      if [ ! -e $PIPE_OUT ]; then
-        echo "Creating $PIPE_OUT"
-        mkfifo $PIPE_OUT
-      fi
+      createFifo "$PIPE_IN"
+      createFifo "$PIPE_OUT"
     done
   done
 done
+
+# Create host pipes
+HOST_ID=$(($MESH_MAX_X*$MESH_MAX_Y))
+HOST_IN="/tmp/tinsel.in.b$HOST_ID"
+HOST_OUT="/tmp/tinsel.out.b$HOST_ID"
+for P in 0 1; do
+  createFifo "$HOST_IN.$P"
+  createFifo "$HOST_OUT.$P"
+done
+createFifo "/tmp/pciestream-in"
+createFifo "/tmp/pciestream-out"
+createFifo "/tmp/pciestream-ctrl"
 
 # Connect the named pipes
 PIDS=""
@@ -67,8 +93,10 @@ for X in $(seq 0 $LAST_X); do
       cat /tmp/tinsel.out.b$ID.1 > /tmp/tinsel.in.b$N.2 &
       PIDS="$PIDS $!"
     else
-      cat /tmp/tinsel.out.b$ID.1 > /dev/null &
-      PIDS="$PIDS $!"
+      if [ $X -ne $HOST_X -o $(($Y+1)) -ne $HOST_Y ]; then
+        cat /tmp/tinsel.out.b$ID.1 > /dev/null &
+        PIDS="$PIDS $!"
+      fi
     fi
     # South
     if [ $(($Y-1)) -ge 0 ]; then
@@ -100,6 +128,19 @@ for X in $(seq 0 $LAST_X); do
   done
 done
 
+# Connect host board to mesh
+ID=$(fromCoords 0 $(($MESH_Y-1)))
+cat /tmp/tinsel.out.b$ID.1 > $HOST_IN.1 &
+PIDS="$PIDS $!"
+cat $HOST_OUT.1 > /tmp/tinsel.in.b$ID.1 &
+PIDS="$PIDS $!"
+
+# Connect host board to PCIe stream
+connect "/tmp/tinsel.out.b$HOST_ID.0" "/tmp/pciestream-out" &
+PIDS="$PIDS $!"
+connect "/tmp/pciestream-in" "/tmp/tinsel.in.b$HOST_ID.0" &
+PIDS="$PIDS $!"
+
 # Run one simulator per board
 for X in $(seq 0 $LAST_X); do
   for Y in $(seq 0 $LAST_Y); do
@@ -110,12 +151,18 @@ for X in $(seq 0 $LAST_X); do
   done
 done
 
+# Run host board
+echo "Lauching host board simulator at position ($HOST_X, $HOST_Y)" \
+     "with board id $HOST_ID"
+BOARD_ID=$HOST_ID ./de5HostTop | grep -v Warning &
+PIDS="$PIDS $!"
+
 # On CTRL-C, call quit()
 trap quit INT
 function quit() {
   echo
   echo "Caught CTRL-C. Exiting."
-  echo "Kill list: $PIDS"
+  #echo "Kill list: $PIDS"
   for PID in "$PIDS"; do
     kill $PID
   done

@@ -87,6 +87,8 @@ endmodule
 interface Count#(numeric type n);
   method Action inc;
   method Action dec;
+  method Action incBy(Bit#(n) amount);
+  method Action decBy(Bit#(n) amount);
   method Bool notFull;
   method Bit#(n) value;
 endinterface
@@ -97,29 +99,31 @@ module mkCount#(Integer maxVal) (Count#(n));
   Reg#(Bool) full <- mkReg(False);
 
   // Wires
-  PulseWire incWire <- mkPulseWire;
-  PulseWire decWire <- mkPulseWire;
+  Wire#(Bit#(n)) incWire <- mkDWire(0);
+  Wire#(Bit#(n)) decWire <- mkDWire(0);
 
   // Rules
   rule update;
-    Bit#(n) incAmount = 0;
-    if (incWire && !decWire) begin
-      incAmount = 1;
-      full <= count == fromInteger(maxVal-1);
-    end else if (!incWire && decWire) begin
-      incAmount = -1;
-      full <= False;
-    end
-    count <= count + incAmount;
+    Bit#(n) newCount = (count + incWire) - decWire;
+    count <= newCount;
+    full <= newCount == fromInteger(maxVal);
   endrule
 
   // Methods
   method Action inc;
-    incWire.send;
+    incWire <= 1;
+  endmethod
+
+  method Action incBy(Bit#(n) amount);
+    incWire <= amount;
   endmethod
 
   method Action dec;
-    decWire.send;
+    decWire <= 1;
+  endmethod
+
+  method Action decBy(Bit#(n) amount);
+    decWire <= amount;
   endmethod
 
   method Bool notFull = !full;

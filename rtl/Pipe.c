@@ -12,6 +12,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <assert.h>
+#include <signal.h>
 
 // Filename prefix of named pipes
 // (to be suffixed with a board id and a pipe id)
@@ -40,6 +41,8 @@ void initPipeIn(int id)
 {
   assert(id < MAX_PIPES);
   if (pipeIn[id] != -1) return;
+  // Ignore SIGPIPE
+  signal(SIGPIPE, SIG_IGN);
   // Create filename
   char filename[256];
   snprintf(filename, sizeof(filename), "%s.b%i.%i", PIPE_IN, getBoardId(), id);
@@ -59,6 +62,8 @@ void initPipeOut(int id)
 {
   assert(id < MAX_PIPES);
   if (pipeOut[id] != -1) return;
+  // Ignore SIGPIPE
+  signal(SIGPIPE, SIG_IGN);
   // Create filename
   char filename[256];
   snprintf(filename, sizeof(filename), "%s.b%i.%i", PIPE_OUT, getBoardId(), id);
@@ -76,8 +81,13 @@ uint32_t pipeGet8(int id)
   assert(id < MAX_PIPES);
   uint8_t byte;
   if (pipeIn[id] == -1) initPipeIn(id);
-  if (read(pipeIn[id], &byte, 1) == 1)
+  int n = read(pipeIn[id], &byte, 1);
+  if (n == 1)
     return (uint32_t) byte;
+  else if (n == 0 || (n == -1 && errno != EAGAIN)) {
+    close(pipeIn[id]);
+    pipeIn[id] = -1;
+  }
   return -1;
 }
 
@@ -89,22 +99,27 @@ uint8_t pipePut8(int id, uint8_t byte)
     initPipeOut(id);
     if (pipeOut[id] == -1) return 0;
   }
-  if (write(pipeOut[id], &byte, 1) == 1)
+  int n = write(pipeOut[id], &byte, 1);
+  if (n == 1)
     return 1;
+  else if (n == 0 || (n == -1 && errno != EAGAIN)) {
+    close(pipeOut[id]);
+    pipeOut[id] = -1;
+  }
   return 0;
 }
 
-// Try to read 72 bits from pipe, giving 80-bit result. Bottom 72 bits
-// contain data and MSB is 0 if data is valid or 1 if no data is
-// available.  Non-blocking on 72-bit boundaries.
-void pipeGet72(unsigned int* result80, int id)
+// Try to read N bytes from pipe, giving N+1 byte result. Bottom N
+// bytes contain data and MSB is 0 if data is valid or non-zero if no
+// data is available.  Non-blocking on N-byte boundaries.
+void pipeGetN(unsigned int* result, int id, int nbytes)
 {
   assert(id < MAX_PIPES);
   if (pipeIn[id] == -1) initPipeIn(id);
-  uint8_t* bytes = (uint8_t*) result80;
-  int count = read(pipeIn[id], bytes, 9);
-  if (count == 9) {
-    bytes[9] = 0;
+  uint8_t* bytes = (uint8_t*) result;
+  int count = read(pipeIn[id], bytes, nbytes);
+  if (count == nbytes) {
+    bytes[nbytes] = 0;
     return;
   }
   else if (count > 0) {
@@ -112,49 +127,58 @@ void pipeGet72(unsigned int* result80, int id)
     fd_set fds;
     FD_ZERO(&fds);
     FD_SET(pipeIn[id], &fds);
-    while (count < 9) {
+    while (count < nbytes) {
       int res = select(1, &fds, NULL, NULL, NULL);
       assert(res >= 0);
-      res = read(pipeIn[id], &bytes[count], 9-count);
+      res = read(pipeIn[id], &bytes[count], nbytes-count);
       assert(res >= 0);
       count += res;
     }
-    bytes[9] = 0;
+    bytes[nbytes] = 0;
     return;
   }
   else {
-    bytes[9] = 0x80;
+    bytes[nbytes] = 0xff;
+    if (count == 0 || (count == -1 && errno != EAGAIN)) {
+      close(pipeIn[id]);
+      pipeIn[id] = -1;
+    }
     return;
   }
 }
 
-// Try to write 64 bits to pipe.  Non-blocking on 64-bit boundaries,
+// Try to write N bytes to pipe.  Non-blocking on N-bytes boundaries,
 // returning 0 when no write performed.
-uint8_t pipePut72(int id, unsigned int* data72)
+uint8_t pipePutN(int id, int nbytes, unsigned int* data)
 {
   assert(id < MAX_PIPES);
   if (pipeOut[id] == -1) {
     initPipeOut(id);
     if (pipeOut[id] == -1) return 0;
   }
-  uint8_t* bytes = (uint8_t*) data72;
-  int count = write(pipeOut[id], bytes, 9);
-  if (count == 9)
+  uint8_t* bytes = (uint8_t*) data;
+  int count = write(pipeOut[id], bytes, nbytes);
+  if (count == nbytes)
     return 1;
   else if (count > 0) {
     // Use blocking writes to put remaining data
     fd_set fds;
     FD_ZERO(&fds);
     FD_SET(pipeOut[id], &fds);
-    while (count < 9) {
+    while (count < nbytes) {
       int res = select(1, &fds, NULL, NULL, NULL);
       assert(res >= 0);
-      res = write(pipeOut[id], &bytes[count], 9-count);
+      res = write(pipeOut[id], &bytes[count], nbytes-count);
       assert(res >= 0);
       count += res;
     }
     return 1;
   }
-  else
+  else {
+    if (count == 0 && (count == -1 && errno != EAGAIN)) {
+      close(pipeOut[id]);
+      pipeOut[id] = -1;
+    }
     return 0;
+  }
 }

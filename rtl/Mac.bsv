@@ -17,6 +17,7 @@ import Util         :: *;
 import Queue        :: *;
 import BlockRam     :: *;
 import Pipe         :: *;
+import Vector       :: *;
 
 // =============================================================================
 // Types
@@ -239,7 +240,8 @@ module mkMac#(PipeId id) (Mac);
         drop <= True;
         inPort.get;
       end else if (inPort.canGet) begin
-        Bool ok <- pipePut72(id, zeroExtend(pack(beat)));
+        Bit#(72) tmp = zeroExtend(pack(beat));
+        Bool ok <- pipePut(id, unpack(tmp));
         if (ok) begin
           // Receive first beat (start of packet)
           inPort.get;
@@ -251,7 +253,8 @@ module mkMac#(PipeId id) (Mac);
       if (emitPadding) begin
         // Insert padding
         MacBeat outBeat = macBeat(False, count == 7, 0);
-        Bool ok <- pipePut72(id, zeroExtend(pack(outBeat)));
+        Bit#(72) tmp = zeroExtend(pack(outBeat));
+        Bool ok <- pipePut(id, unpack(tmp));
         if (ok) begin
           if (count == 7) begin
             emitPadding <= False;
@@ -263,7 +266,8 @@ module mkMac#(PipeId id) (Mac);
         // Receive remaining beats
         MacBeat outBeat = beat;
         if (beat.stop && count < 7) outBeat.stop = False;
-        Bool ok <- pipePut72(id, zeroExtend(pack(outBeat)));
+        Bit#(72) tmp = zeroExtend(pack(outBeat));
+        Bool ok <- pipePut(id, unpack(tmp));
         if (ok) begin
           inPort.get;
           if (beat.stop && count < 7) begin
@@ -281,8 +285,11 @@ module mkMac#(PipeId id) (Mac);
 
   // Produce output stream
   rule produce (outPort.canPut);
-    Bit#(80) data <- pipeGet72(id);
-    if (data[79] == 0) outPort.put(unpack(truncate(data)));
+    Maybe#(Vector#(9, Bit#(8))) m <- pipeGet(id);
+    if (isValid(m)) begin
+      Bit#(72) tmp = pack(fromMaybe(?, m));
+      outPort.put(unpack(truncate(tmp)));
+    end
   endrule
 
   // Interfaces
