@@ -17,6 +17,10 @@ BSCFLAGS = -wait-for-license -suppress-warnings S0015 \
 TOPFILE = DE5Top.bsv
 TOPMOD = de5Top
 
+# Top level module for host board
+HOSTTOPFILE = DE5HostTop.bsv
+HOSTTOPMOD = de5HostTop
+
 $(TOPMOD): *.bsv *.c
 	make -C $(TINSEL_ROOT)/apps/boot
 	$(BSC) $(BSCFLAGS) $(DEFS) -D SIMULATE -sim -g $(TOPMOD) -u $(TOPFILE)
@@ -26,6 +30,14 @@ $(TOPMOD).v: *.bsv
 	make -C $(TINSEL_ROOT)/apps/boot
 	$(BSC) $(BSCFLAGS) -opt-undetermined-vals -unspecified-to X \
          $(DEFS) -u -verilog -g $(TOPMOD) $(TOPFILE)
+
+$(HOSTTOPMOD): *.bsv *.c
+	$(BSC) $(BSCFLAGS) $(DEFS) -D SIMULATE -sim -g $(HOSTTOPMOD) -u $(HOSTTOPFILE)
+	$(BSC) $(BSCFLAGS) -sim -o $(HOSTTOPMOD) -e $(HOSTTOPMOD) *.c
+
+$(HOSTTOPMOD).v: *.bsv
+	$(BSC) $(BSCFLAGS) -opt-undetermined-vals -unspecified-to X \
+         $(DEFS) -u -verilog -g $(HOSTTOPMOD) $(HOSTTOPFILE)
 
 testMem: *.bsv *.c
 	$(BSC) $(BSCFLAGS) $(DEFS) -D SIMULATE \
@@ -38,10 +50,10 @@ testMailbox: *.bsv *.c
 	$(BSC) $(BSCFLAGS) -sim -o testMailbox -e testMailbox *.c
 
 .PHONY: sim
-sim: $(TOPMOD)
+sim: $(TOPMOD) $(HOSTTOPMOD)
 
 .PHONY: verilog
-verilog: $(TOPMOD).v
+verilog: $(TOPMOD).v $(HOSTTOPMOD).v
 
 .PHONY: test-mem
 test-mem: testMem
@@ -53,8 +65,9 @@ test-mailbox: testMailbox
 clean:
 	rm -f *.cxx *.o *.h *.ba *.bo *.so *.ipinfo
 	rm -f InstrMem.hex DataMem.hex RunQueue.hex
-	rm -f testMem de5Top testMailbox
+	rm -f testMem de5Top testMailbox de5HostTop
 	rm -f de5Top.v mkCore.v mkDCache.v mkMailbox.v mkHostLinkRouter.v
+	rm -f de5HostTop.v
 	rm -rf test-mem-log
 	rm -rf test-mailbox-log
 	rm -rf test-array-of-queue-log
