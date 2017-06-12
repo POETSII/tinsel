@@ -11,7 +11,6 @@ all:
 	qsys-generate -syn S5_DDR3_QSYS.qsys
 	quartus_dse Golden_top.qpf    \
     --num-seeds 11              \
-    --explore timing_aggressive \
     --launcher local            \
     --num-concurrent 4
 	quartus_dse Golden_top.qpf --report utilization
@@ -43,4 +42,4 @@ download-sof:
 clean:
 	rm -f *.mif *.rpt *.msg *.summary *.sld *.sopcinfo *.jdi
 	rm -f *.pin *.done *.qws *.sof *.csv *.qws *.smsg
-	rm -rf db incremental_db S5_DDR3_QSYS .qsys_edit reconfig_mif
+	rm -rf dse* db incremental_db S5_DDR3_QSYS .qsys_edit reconfig_mif
