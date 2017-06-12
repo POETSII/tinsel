@@ -22,6 +22,7 @@ private:
       TagStdOut = 0x01,
       TagStdErr = 0x02,
       TagAssert = 0xFE,
+      TagExit   = 0xFF,
       TagKeyVal = 0x10
     };
   
@@ -30,7 +31,7 @@ private:
       StateIdle,
       StateStdOut,
       StateStdErr,
-      StateAssert,
+      StateExit,
       StateKeyVal_Device,
       StateKeyVal_Key,
       StateKeyVal_Val
@@ -57,7 +58,7 @@ public:
   {
   }
   
-  void add(uint8_t byte)
+  bool add(uint8_t byte, int &exitCode)
   {
     switch(m_state)
       {
@@ -81,6 +82,12 @@ public:
 	    exit(1);
 	    break;
 	  }
+ 	  case TagExit:{
+	    m_state=StateExit;
+	    m_value=0;
+	    m_todo=4;
+	    break;
+	  }
 	  case TagKeyVal:{
 	    m_state=StateKeyVal_Device;
 	    m_key=0;
@@ -94,6 +101,14 @@ public:
 	    break;
 	  }
 	  }
+	break;
+      case StateExit:
+	m_value=(m_value>>8) | uint32_t(byte);
+	m_todo--;
+	if(m_todo==0){
+	  exitCode=(int)m_value;
+	  return false;
+	}
 	break;
       case StateStdOut:
 	//fprintf(stderr, "%08x : add stdout '%c'\n", m_threadId, (char)byte);
@@ -154,6 +169,7 @@ public:
 	exit(1);
  
       }
+    return true;
   }
 };
 
@@ -165,6 +181,8 @@ void protocol(HostLink *link, FILE *keyValDst)
     states.push_back(Protocol(i, keyValDst));
   }
 
+  int exitCode=0;
+
   while(1){
     uint32_t src, val;
     
@@ -175,8 +193,13 @@ void protocol(HostLink *link, FILE *keyValDst)
     assert(id < TinselThreadsPerBoard);
 
     fprintf(stderr, "ch = %u = %c\n", ch, (char)ch);
-    states[id].add(ch);
+    if(!states[id].add(ch, exitCode)){
+      break;
+    }
     fflush(stdout);
   }
+
+  fprintf(stderr, "Application exited : code = %d\n");
+  exit(exitCode);
 }
 
