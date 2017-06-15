@@ -77,14 +77,13 @@ public:
 	    break;
 	  }
 	  case TagAssert:{
-	    m_state=StateAssert;
 	    fprintf(stderr, "ERROR : received assert from thread 0x%x\n", m_threadId);
 	    exit(1);
 	    break;
 	  }
  	  case TagExit:{
 	    m_state=StateExit;
-	    m_value=0;
+	    m_val=0;
 	    m_todo=4;
 	    break;
 	  }
@@ -103,10 +102,10 @@ public:
 	  }
 	break;
       case StateExit:
-	m_value=(m_value>>8) | uint32_t(byte);
+	m_val=(m_val>>8) | uint32_t(byte);
 	m_todo--;
 	if(m_todo==0){
-	  exitCode=(int)m_value;
+	  exitCode=(int)m_val;
 	  return false;
 	}
 	break;
@@ -156,7 +155,7 @@ public:
 	m_todo--;
 	if(m_todo==0){
 	  unsigned seq=m_deviceKeyValSeq[m_device];
-	  fprintf(stdout, "KeyVal : %s, %u, %u, %u\n", &m_device[0], seq, m_key, m_val);
+	  //fprintf(stdout, "KeyVal : %s, %u, %u, %u\n", &m_device[0], seq, m_key, m_val);
 	  if(m_keyValDst){
 	    fprintf(m_keyValDst, "%s, %u, %u, %u\n", &m_device[0], seq, m_key, m_val);
 	  }
@@ -192,14 +191,13 @@ void protocol(HostLink *link, FILE *keyValDst)
     //    fprintf(stderr, "  cmd=%u, id=%u, ch=%u\n", cmd, id, ch);
     assert(id < TinselThreadsPerBoard);
 
-    fprintf(stderr, "ch = %u = %c\n", ch, (char)ch);
     if(!states[id].add(ch, exitCode)){
       break;
     }
     fflush(stdout);
   }
 
-  fprintf(stderr, "Application exited : code = %d\n");
+  fprintf(stderr, "Application exited : code = %d\n", exitCode);
   exit(exitCode);
 }
 
