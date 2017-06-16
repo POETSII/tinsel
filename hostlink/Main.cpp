@@ -46,6 +46,7 @@ uint32_t sendFile(BootCmd cmd, HostLink* link, FILE* fp, uint32_t* checksum)
       link->put(cmd);
       link->put(value);
       *checksum += cmd + value;
+      byteCount = 0;
     }
   }
   return addr;
@@ -230,7 +231,7 @@ int main(int argc, char* argv[])
       if (! link.canGet()) {
         usleep(100000);
         idle++;
-        if (idle == 10*numSeconds) break;
+        if (numSeconds > 0 && idle == 10*numSeconds) break;
         continue;
       }
       else {
