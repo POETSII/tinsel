@@ -50,7 +50,7 @@ HostLink::HostLink()
   // Get responses
   for (int i = 0; i < numBoards; i++) {
     uint32_t boardId;
-    bool isHostBoard = debugLinks[i].getQuery(&boardId);
+    bool isHostBoard = !debugLinks[i].getQuery(&boardId);
     if (isHostBoard) {
       if (hostBoard != NULL) {
         fprintf(stderr, "Too many host boards detected\n");
