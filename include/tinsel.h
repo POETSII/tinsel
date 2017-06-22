@@ -17,8 +17,8 @@
 #define CSR_SEND       "0x808"
 #define CSR_RECV       "0x809"
 #define CSR_WAIT_UNTIL "0x80a"
-#define CSR_FROM_HOST  "0x80b"
-#define CSR_TO_HOST    "0x80c"
+#define CSR_FROM_UART  "0x80b"
+#define CSR_TO_UART    "0x80c"
 #define CSR_NEW_THREAD "0x80d"
 #define CSR_EMIT       "0x80f"
 
@@ -50,17 +50,17 @@ inline void tinselEmit(uint32_t x)
   asm volatile("csrw " CSR_EMIT ", %0\n" : : "r"(x));
 }
 
-// Send word to host (over host-link)
-inline void tinselHostPut(uint32_t x)
+// Send byte to host (over CoreLink UART)
+inline void tinselUartPut(uint8_t x)
 {
-  asm volatile("csrw " CSR_TO_HOST ", %0\n" : : "r"(x));
+  asm volatile("csrw " CSR_TO_UART ", %0\n" : : "r"(x));
 }
 
-// Receive word from host (over host-link)
-inline uint32_t tinselHostGet()
+// Receive byte from host (over CoreLink UART)
+inline uint8_t tinselUartGet()
 {
   uint32_t x;
-  asm volatile("csrr %0, " CSR_FROM_HOST "\n" : "=r"(x));
+  asm volatile("csrr %0, " CSR_FROM_UART "\n" : "=r"(x));
   return x;
 }
 
@@ -129,6 +129,15 @@ typedef enum {TINSEL_CAN_SEND = 1, TINSEL_CAN_RECV = 2} TinselWakeupCond;
 inline void tinselWaitUntil(TinselWakeupCond cond)
 {
   asm volatile("csrw " CSR_WAIT_UNTIL ", %0" : : "r"(cond));
+}
+
+// Get globally unique thread id of host
+// (Host board has X coordinate of 0 and Y coordinate on mesh rim)
+inline int tinselHostId()
+{
+  return TinselMeshYLen << (TinselMeshXBits +
+                              TinselLogCoresPerBoard +
+                                TinselLogThreadsPerCore);
 }
 
 #endif

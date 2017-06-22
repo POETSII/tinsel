@@ -13,7 +13,7 @@ import Queue      :: *;
 import Vector     :: *;
 import Mailbox    :: *;
 import Network    :: *;
-import HostLink   :: *;
+import DebugLink   :: *;
 import JtagUart   :: *;
 import Mac        :: *;
 
@@ -116,14 +116,15 @@ module de5Top (DE5Top);
   function MailboxNet mailboxNet(Mailbox mbox) = mbox.net;
   ExtNetwork net <- mkBus(boardId, map(mailboxNet, mailboxes));
 
-  // Create host-link interface
-  function HostLinkCore getHostLink(Core core) = core.hostLinkCore;
-  HostLink hostLink <- mkHostLink(map(getHostLink, vecOfCores));
+  // Create DebugLink interface
+  function DebugLinkClient getDebugLinkClient(Core core) = core.debugLinkClient;
+  DebugLink debugLink <-
+    mkDebugLink(boardId, map(getDebugLinkClient, vecOfCores));
 
   `ifndef SIMULATE
   function DRAMExtIfc getDRAMExtIfc(DRAM dram) = dram.external;
   interface dramIfcs = map(getDRAMExtIfc, drams);
-  interface jtagIfc  = hostLink.jtagAvalon;
+  interface jtagIfc  = debugLink.jtagAvalon;
   interface northMac = net.north;
   interface southMac = net.south;
   interface eastMac  = net.east;

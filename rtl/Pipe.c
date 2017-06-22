@@ -27,14 +27,14 @@ int pipeIn[MAX_PIPES] = {-1,-1,-1,-1,-1,-1,-1,-1};
 int pipeOut[MAX_PIPES] = {-1,-1,-1,-1,-1,-1,-1,-1};
 
 // Get board identifier from environment
-uint32_t getBoardId()
+int getBoardId()
 {
   char* s = getenv("BOARD_ID");
   if (s == NULL) {
     fprintf(stderr, "ERROR: Environment variable BOARD_ID not defined\n");
     exit(EXIT_FAILURE);
   }
-  return (uint32_t) atoi(s);
+  return atoi(s);
 }
 
 void initPipeIn(int id)
@@ -46,10 +46,6 @@ void initPipeIn(int id)
   // Create filename
   char filename[256];
   snprintf(filename, sizeof(filename), "%s.b%i.%i", PIPE_IN, getBoardId(), id);
-  // Create pipe if it doesn't exist
-  struct stat st;
-  if (stat(filename, &st) != 0)
-    mkfifo(filename, 0666);
   // Open pipe
   pipeIn[id] = open(filename, O_RDONLY | O_NONBLOCK);
   if (pipeIn[id] == -1) {
@@ -67,10 +63,6 @@ void initPipeOut(int id)
   // Create filename
   char filename[256];
   snprintf(filename, sizeof(filename), "%s.b%i.%i", PIPE_OUT, getBoardId(), id);
-  // Create pipe if it doesn't exist
-  struct stat st;
-  if (stat(filename, &st) != 0)
-    mkfifo(filename, 0666);
   // Open pipe
   pipeOut[id] = open(filename, O_WRONLY | O_NONBLOCK);
 }
@@ -84,7 +76,7 @@ uint32_t pipeGet8(int id)
   int n = read(pipeIn[id], &byte, 1);
   if (n == 1)
     return (uint32_t) byte;
-  else if (n == 0 || (n == -1 && errno != EAGAIN)) {
+  else if (n == -1 && errno != EAGAIN) {
     close(pipeIn[id]);
     pipeIn[id] = -1;
   }
@@ -102,7 +94,7 @@ uint8_t pipePut8(int id, uint8_t byte)
   int n = write(pipeOut[id], &byte, 1);
   if (n == 1)
     return 1;
-  else if (n == 0 || (n == -1 && errno != EAGAIN)) {
+  else if (n == -1 && errno != EAGAIN) {
     close(pipeOut[id]);
     pipeOut[id] = -1;
   }
@@ -139,7 +131,7 @@ void pipeGetN(unsigned int* result, int id, int nbytes)
   }
   else {
     bytes[nbytes] = 0xff;
-    if (count == 0 || (count == -1 && errno != EAGAIN)) {
+    if (count == -1 && errno != EAGAIN) {
       close(pipeIn[id]);
       pipeIn[id] = -1;
     }
@@ -175,7 +167,7 @@ uint8_t pipePutN(int id, int nbytes, unsigned int* data)
     return 1;
   }
   else {
-    if (count == 0 && (count == -1 && errno != EAGAIN)) {
+    if (count == -1 && errno != EAGAIN) {
       close(pipeOut[id]);
       pipeOut[id] = -1;
     }

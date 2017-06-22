@@ -18,30 +18,30 @@ import ConfigReg :: *;
 import Interface :: *;
 import Mailbox   :: *;
 import Globals   :: *;
-import HostLink  :: *;
+import DebugLink  :: *;
 import Mult      :: *;
 
 // ============================================================================
 // Control/status register (CSRs) supported
 // ============================================================================
 
-// Name       | CSR    | R/W | Function
-// ---------- | ------ | --- | --------
-// InstrAddr  | 0x800  | W   | Set address for instruction write
-// Instr      | 0x801  | W   | Write to instruction memory
-// Alloc      | 0x802  | W   | Alloc space for new message in scratchpad
-// CanSend    | 0x803  | R   | 1 if can send, 0 otherwise
-// HartId     | 0xf14  | R   | Globally unique hardware thread id
-// CanRecv    | 0x805  | R   | 1 if can receive, 0 otherwise
-// SendLen    | 0x806  | W   | Set message length for send
-// SendPtr    | 0x807  | W   | Set message pointer for send
-// Send       | 0x808  | W   | Send message to supplied destination
-// Recv       | 0x809  | R   | Return pointer to message received
-// WaitUntil  | 0x80a  | W   | Sleep until can-send or can-recv
-// FromHost   | 0x80b  | R   | Read word from host-link
-// ToHost     | 0x80c  | W   | Write word to host-link
-// NewThread  | 0x80d  | W   | Create new thread with the given id
-// Emit       | 0x80f  | W   | Emit char to console (simulation only)
+// Name        | CSR    | R/W | Function
+// ----------- | ------ | --- | --------
+// InstrAddr   | 0x800  | W   | Set address for instruction write
+// Instr       | 0x801  | W   | Write to instruction memory
+// Alloc       | 0x802  | W   | Alloc space for new message in scratchpad
+// CanSend     | 0x803  | R   | 1 if can send, 0 otherwise
+// HartId      | 0xf14  | R   | Globally unique hardware thread id
+// CanRecv     | 0x805  | R   | 1 if can receive, 0 otherwise
+// SendLen     | 0x806  | W   | Set message length for send
+// SendPtr     | 0x807  | W   | Set message pointer for send
+// Send        | 0x808  | W   | Send message to supplied destination
+// Recv        | 0x809  | R   | Return pointer to message received
+// WaitUntil   | 0x80a  | W   | Sleep until can-send or can-recv
+// FromUart    | 0x80b  | R   | Read byte from DebugLink
+// ToUart      | 0x80c  | W   | Write byte to DebugLink
+// NewThread   | 0x80d  | W   | Create new thread with the given id
+// Emit        | 0x80f  | W   | Emit char to console (simulation only)
 
 // ============================================================================
 // Types
@@ -85,8 +85,8 @@ typedef struct {
   Bool isHartId;      Bool isCanRecv;
   Bool isSendLen;     Bool isSendPtr;
   Bool isSend;        Bool isRecv;
-  Bool isWaitUntil;   Bool isFromHost;
-  Bool isToHost;      Bool isNewThread;
+  Bool isWaitUntil;   Bool isFromUart;
+  Bool isToUart;      Bool isNewThread;
   `ifdef SIMULATE
   Bool isEmit;
   `endif
@@ -280,19 +280,19 @@ function Op decodeOp(Bit#(32) instr);
   ret.csr.isInstrAddr = ret.isCSR && csrIndex == 'h0;
   ret.csr.isInstr = ret.isCSR && csrIndex == 'h1;
   // Mailbox CSR
-  ret.csr.isAlloc     = ret.isCSR && csrIndex == 'h2;
-  ret.csr.isCanSend   = ret.isCSR && csrIndex == 'h3;
-  ret.csr.isCanRecv   = ret.isCSR && csrIndex == 'h5;
-  ret.csr.isSendLen   = ret.isCSR && csrIndex == 'h6;
-  ret.csr.isSendPtr   = ret.isCSR && csrIndex == 'h7;
-  ret.csr.isSend      = ret.isCSR && csrIndex == 'h8;
-  ret.csr.isRecv      = ret.isCSR && csrIndex == 'h9;
-  ret.csr.isWaitUntil = ret.isCSR && csrIndex == 'ha;
-  ret.csr.isFromHost  = ret.isCSR && csrIndex == 'hb;
-  ret.csr.isToHost    = ret.isCSR && csrIndex == 'hc;
-  ret.csr.isNewThread = ret.isCSR && csrIndex == 'hd;
+  ret.csr.isAlloc        = ret.isCSR && csrIndex == 'h2;
+  ret.csr.isCanSend      = ret.isCSR && csrIndex == 'h3;
+  ret.csr.isCanRecv      = ret.isCSR && csrIndex == 'h5;
+  ret.csr.isSendLen      = ret.isCSR && csrIndex == 'h6;
+  ret.csr.isSendPtr      = ret.isCSR && csrIndex == 'h7;
+  ret.csr.isSend         = ret.isCSR && csrIndex == 'h8;
+  ret.csr.isRecv         = ret.isCSR && csrIndex == 'h9;
+  ret.csr.isWaitUntil    = ret.isCSR && csrIndex == 'ha;
+  ret.csr.isFromUart     = ret.isCSR && csrIndex == 'hb;
+  ret.csr.isToUart       = ret.isCSR && csrIndex == 'hc;
+  ret.csr.isNewThread    = ret.isCSR && csrIndex == 'hd;
   `ifdef SIMULATE
-  ret.csr.isEmit      = ret.isCSR && csrIndex == 'hf;
+  ret.csr.isEmit         = ret.isCSR && csrIndex == 'hf;
   `endif
   return ret;
 endfunction
@@ -378,9 +378,9 @@ endfunction
 // ============================================================================
 
 interface Core;
-  interface DCacheClient  dcacheClient;
-  interface MailboxClient mailboxClient;
-  interface HostLinkCore  hostLinkCore;
+  interface DCacheClient   dcacheClient;
+  interface MailboxClient  mailboxClient;
+  interface DebugLinkClient debugLinkClient;
   (* always_ready, always_enabled *)
   method Action setBoardId(BoardId id);
 endinterface
@@ -455,10 +455,10 @@ module mkCore#(CoreId myId) (Core);
   // ------------
 
   // Ports
-  OutPort#(DCacheReq)    dcacheReq    <- mkOutPort;
-  InPort#(DCacheResp)    dcacheResp   <- mkInPort;
-  OutPort#(HostLinkFlit) toHostPort   <- mkOutPort;
-  InPort#(HostLinkFlit)  fromHostPort <- mkInPort;
+  OutPort#(DCacheReq)    dcacheReq        <- mkOutPort;
+  InPort#(DCacheResp)    dcacheResp       <- mkInPort;
+  OutPort#(DebugLinkFlit) toDebugLinkPort   <- mkOutPort;
+  InPort#(DebugLinkFlit)  fromDebugLinkPort <- mkInPort;
 
   // Queue of runnable threads
   QueueInit runQueueInit;
@@ -735,21 +735,24 @@ module mkCore#(CoreId myId) (Core);
       suspend = True;
     end
     // ToHost CSR
-    if (token.op.csr.isToHost) begin
-      if (toHostPort.canPut) begin
-        HostLinkFlit flit;
+    if (token.op.csr.isToUart) begin
+      if (toDebugLinkPort.canPut) begin
+        DebugLinkFlit flit;
         flit.coreId = myId;
         flit.isBroadcast = False;
+        flit.threadId = token.thread.id;
         flit.cmd = cmdStdOut;
-        flit.arg = token.valA;
-        toHostPort.put(flit);
+        flit.payload = truncate(token.valA);
+        toDebugLinkPort.put(flit);
       end else
         retry = True;
     end
-    // FromHost CSR
-    if (token.op.csr.isFromHost) begin
-      if (fromHostPort.canGet && fromHostPort.value.cmd == cmdStdIn)
-        fromHostPort.get;
+    // FromUart CSR
+    if (token.op.csr.isFromUart) begin
+      if (fromDebugLinkPort.canGet &&
+            fromDebugLinkPort.value.cmd == cmdStdIn &&
+              fromDebugLinkPort.value.threadId == token.thread.id)
+        fromDebugLinkPort.get;
       else
         retry = True;
     end
@@ -786,7 +789,8 @@ module mkCore#(CoreId myId) (Core);
       | when(token.op.csr.isHartId,
                zeroExtend({pack(boardId), myId, token.thread.id}))
       | when(token.op.csr.isRecv,     mailbox.recvAddr)
-      | when(token.op.csr.isFromHost, fromHostPort.value.arg);
+      | when(token.op.csr.isFromUart,
+               zeroExtend(fromDebugLinkPort.value.payload));
     // Trigger next stage
     token.retry = retry;
     token.instrResult = res;
@@ -945,9 +949,9 @@ module mkCore#(CoreId myId) (Core);
 
   interface MailboxClient mailboxClient = mailbox.client;
 
-  interface HostLinkCore hostLinkCore;
-    interface In fromHost = fromHostPort.in;
-    interface Out toHost  = toHostPort.out;
+  interface DebugLinkClient debugLinkClient;
+    interface In fromDebugLink = fromDebugLinkPort.in;
+    interface Out toDebugLink  = toDebugLinkPort.out;
   endinterface
 
   method Action setBoardId(BoardId id);

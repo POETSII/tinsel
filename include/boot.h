@@ -3,6 +3,14 @@
 
 #include <stdint.h>
 
+// 16-byte boot request
+typedef struct {
+  uint8_t cmd;
+  uint8_t numArgs;
+  uint16_t unused;
+  uint32_t args[3];
+} BootReq;
+
 // Various commands supported by the boot loader
 typedef enum {
 
@@ -11,26 +19,30 @@ typedef enum {
   SetAddrCmd,
 
   // Write to instruction memory and increment address register.
-  // Argument: the 32-bit instruction to write.
+  // Argument: up to 3 x 32-bit instructions to write.
   // The address is taken from the address register.
   WriteInstrCmd,
  
   // Perform a store instruction and increment address register.
-  // Argument: the 32-bit word to store.
+  // Argument: up to 3 x 32-bit words to store.
   // The address is taken from the address register.
   StoreCmd,
 
   // Perform a load instruction and increment address register.
+  // Argument: the number of 32-bit words to load.
   // The address is taken from the address register.
   LoadCmd,
 
-  // Perform a cache flush and also request a checksum
-  // of all the data the boot loader has received.
+  // Perform a cache flush.
+  // Once complete, an acknowledgement is sent to the host.
   CacheFlushCmd,
 
-  // StartCmd ends the boot loader and starts threads executing.
-  // Argument: the number of threads per core to start.
+  // StartCmd waits for the UART trigger, starts all threads,
+  // and jumps to the application code.
   StartCmd,
+
+  // Simple ping.
+  PingCmd,
 
 } BootCmd;
 

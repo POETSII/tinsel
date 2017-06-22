@@ -8,16 +8,12 @@ typedef Bit#(`LogCoresPerBoard) CoreId;
 
 // Board id
 typedef struct {
-  Bit#(`LogMeshXLen) x;
-  Bit#(`LogMeshYLen) y;
+  Bit#(`MeshYBits) y;
+  Bit#(`MeshXBits) x;
 } BoardId deriving (Eq, Bits);
 
 // Network address
 typedef struct {
-  // MSB denotes one of two address spaces:
-  //   (0) thread address space
-  //   (1) management address space
-  Bit#(1) space;
   BoardId board;
   CoreId core;
   ThreadId thread;

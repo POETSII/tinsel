@@ -4,43 +4,57 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
-#include "RawLink.h"
-
-#define HOSTLINK_SET_DEST 0
-#define HOSTLINK_STD_IN   1
-#define HOSTLINK_STD_OUT  2
+#include <config.h>
+#include "DebugLink.h"
 
 class HostLink {
-  RawLink raw;
+  // JTAG UART connections
+  DebugLink* debugLinks;
+
+  // PCIeStream file descriptors
+  int toPCIe, fromPCIe, pcieCtrl;
+
  public:
 
-  HostLink(int id) {
-    raw.setId(id);
-  }
+  // DebugLink to the host board
+  DebugLink* hostBoard;
 
-  inline void setDest(uint32_t dest) {
-    uint8_t cmd = HOSTLINK_SET_DEST;
-    raw.put(&cmd, 1);
-    raw.put(&dest, 4);
-  }
+  // DebugLinks to the cluster boards
+  DebugLink* mesh[TinselMeshXLen][TinselMeshYLen];
 
-  inline void put(uint32_t word) {
-    uint8_t cmd = HOSTLINK_STD_IN;
-    raw.put(&cmd, 1);
-    raw.put(&word, 4);
-  }
+  // Constructor
+  HostLink();
 
-  inline uint8_t get(uint32_t *src, uint32_t* word) {
-    uint8_t cmd;
-    raw.get(&cmd, 1);
-    raw.get(src, 4);
-    raw.get(word, 4);
-    return cmd;
-  }
+  // Destructor
+  ~HostLink();
+ 
+  // Address construction
+  uint32_t toAddr(uint32_t meshX, uint32_t meshY,
+             uint32_t coreId, uint32_t threadId);
 
-  inline bool canGet() {
-    return raw.canGet();
-  }
+  // Send and receive messages over PCIe
+  // -----------------------------------
+
+  // Send a message (blocking)
+  void send(uint32_t dest, uint32_t numFlits, void* msg);
+
+  // Can send a message without blocking?
+  bool canSend();
+
+  // Receive a flit (blocking)
+  void recv(void* flit);
+
+  // Can receive a flit without blocking?
+  bool canRecv();
+
+  // Interface to boot loader
+  // ------------------------
+
+  // Load application code and data onto the mesh
+  void boot(const char* codeFilename, const char* dataFilename);
+
+  // Trigger to start application execution
+  void go();
 };
 
 #endif
