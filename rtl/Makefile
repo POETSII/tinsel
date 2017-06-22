@@ -21,6 +21,12 @@ TOPMOD = de5Top
 HOSTTOPFILE = DE5HostTop.bsv
 HOSTTOPMOD = de5HostTop
 
+.PHONY: sim
+sim: $(TOPMOD) $(HOSTTOPMOD)
+
+.PHONY: verilog
+verilog: $(TOPMOD).v $(HOSTTOPMOD).v
+
 $(TOPMOD): *.bsv *.c
 	make -C $(TINSEL_ROOT)/apps/boot
 	$(BSC) $(BSCFLAGS) $(DEFS) -D SIMULATE -sim -g $(TOPMOD) -u $(TOPFILE)
@@ -49,12 +55,6 @@ testMailbox: *.bsv *.c
          -sim -g testMailbox -u TestMailbox.bsv
 	$(BSC) $(BSCFLAGS) -sim -o testMailbox -e testMailbox *.c
 
-.PHONY: sim
-sim: $(TOPMOD) $(HOSTTOPMOD)
-
-.PHONY: verilog
-verilog: $(TOPMOD).v $(HOSTTOPMOD).v
-
 .PHONY: test-mem
 test-mem: testMem
 
@@ -66,7 +66,7 @@ clean:
 	rm -f *.cxx *.o *.h *.ba *.bo *.so *.ipinfo
 	rm -f InstrMem.hex DataMem.hex RunQueue.hex
 	rm -f testMem de5Top testMailbox de5HostTop
-	rm -f de5Top.v mkCore.v mkDCache.v mkMailbox.v mkHostLinkRouter.v
+	rm -f de5Top.v mkCore.v mkDCache.v mkMailbox.v mkDebugLinkRouter.v
 	rm -f de5HostTop.v
 	rm -rf test-mem-log
 	rm -rf test-mailbox-log

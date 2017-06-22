@@ -4,6 +4,7 @@ LIB = $(realpath $(TINSEL_ROOT)/lib)
 QP  = $(realpath $(TINSEL_ROOT)/de5)
 RTL = $(realpath $(TINSEL_ROOT)/rtl)
 BIN = $(realpath $(TINSEL_ROOT)/bin)
+HL  = $(realpath $(TINSEL_ROOT)/hostlink)
 
 # RISC-V tools
 RV_ARCH     = rv32im

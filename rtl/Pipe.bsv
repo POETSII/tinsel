@@ -11,11 +11,11 @@ typedef Bit#(32) PipeId;
 
 // Pipe ids used in tinsel
 PipeId uartPipe  = 0;
-PipeId pciePipe  = 0;
 PipeId northPipe = 1;
 PipeId southPipe = 2;
 PipeId eastPipe  = 3;
 PipeId westPipe  = 4;
+PipeId pciePipe  = 5;
 
 `ifdef SIMULATE
 
