@@ -4,23 +4,19 @@ int main()
 {
   HostLink hostLink;
 
-//uint32_t flit[4];
-//hostLink.recv(flit);
-
   printf("Booting\n");
-
   hostLink.boot("code.v", "data.v");
 
   printf("Starting\n");
   hostLink.go();
 
+  printf("Sending ping\n");
+  uint32_t ping[4];
+  hostLink.send(0, 1, ping);
 
-/*
   printf("Waiting for response\n");
-  uint32_t flit[4];
-  hostLink.recv(flit);
-  printf("Got response %x\n", flit[0]);
-*/
+  hostLink.recv(ping);
+  printf("Got response %x\n", ping[0]);
 
   while(1);
 
