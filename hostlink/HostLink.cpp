@@ -151,10 +151,6 @@ void HostLink::send(uint32_t dest, uint32_t numFlits, void* payload)
   // Bytes in payload
   int payloadBytes = numFlits*16;
 
-uint32_t* pay = (uint32_t*) payload;
-printf("hdr %x %x %x %x\n", buffer[0], buffer[1], buffer[2], buffer[3]);
-printf("pay %x %x %x %x\n", pay[0], pay[1], pay[2], pay[3]);
-
   // Fill in message payload
   memcpy(&buffer[4], payload, payloadBytes);
 
@@ -187,7 +183,6 @@ void HostLink::recv(void* flit)
   uint8_t* ptr = (uint8_t*) flit;
   while (numBytes > 0) {
     int n = read(fromPCIe, (char*) ptr, numBytes);
-printf("Recv %d bytes\n", n);
     if (n <= 0) {
       fprintf(stderr, "Error reading from PCIeStream\n");
       exit(EXIT_FAILURE);
@@ -209,7 +204,6 @@ bool HostLink::canRecv()
 // Load application code and data onto the mesh
 void HostLink::boot(const char* codeFilename, const char* dataFilename)
 {
-printf("Starting boot\n");
   MemFileReader code(codeFilename);
   MemFileReader data(dataFilename);
 
@@ -226,7 +220,6 @@ printf("Starting boot\n");
   uint32_t addrReg = 0;
   uint32_t addr, word;
   while (code.getWord(&addr, &word)) {
-//printf("Read instr %x %x\n", addr, word);
     // Send instruction to each core
     for (int x = 0; x < TinselMeshXLen; x++) {
       for (int y = 0; y < TinselMeshYLen; y++) {
@@ -241,7 +234,6 @@ printf("Starting boot\n");
           req.cmd = WriteInstrCmd;
           req.numArgs = 1;
           req.args[0] = word;
-//printf("Sending instr to %d\n", dest);
           send(dest, 1, &req);
         }
       }
@@ -255,10 +247,6 @@ printf("Starting boot\n");
   // Compute number of cores per DRAM
   const uint32_t coresPerDRAM = 1 <<
     (TinselLogCoresPerDCache + TinselLogDCachesPerDRAM);
-
-  // Total number of DRAMS
-  const uint32_t numDRAMs =
-    TinselMeshXLen * TinselMeshYLen * TinselDRAMsPerBoard;
 
   // Write data to DRAMs
   addrReg = 0;
@@ -284,45 +272,32 @@ printf("Starting boot\n");
     addrReg = addr + 4;
   }
 
-  // Flush caches
-  uint32_t flushed = 0;
+  // Step 3: start cores
+  // -------------------
+
+  // Send start command
+  uint32_t started = 0;
   uint8_t flit[4 << TinselLogWordsPerFlit];
   for (int x = 0; x < TinselMeshXLen; x++) {
     for (int y = 0; y < TinselMeshYLen; y++) {
-      for (int i = 0; i < TinselDRAMsPerBoard; i++) {
+      for (int i = 0; i < (1 << TinselLogCoresPerBoard); i++) {
         while (!canSend()) {
           if (canRecv()) {
             recv(flit);
-uint32_t* ptr = (uint32_t*) flit;
-printf("RECV %x %x %x %x\n", ptr[0], ptr[1], ptr[2], ptr[3]);
-            flushed++; 
+            started++;
           }
         }
-        uint32_t dest = toAddr(x, y, coresPerDRAM * i, 0);
-        req.cmd = CacheFlushCmd;
-        send(dest, 1, &req);
-      }
-    }
-  }
-
-  // Wait for all cache flush responses
-  while (flushed < numDRAMs) {
-    recv(flit);
-uint32_t* ptr = (uint32_t*) flit;
-printf("RECV %x %x %x %x\n", ptr[0], ptr[1], ptr[2], ptr[3]);
-    flushed++;
-  }
-
-  // Send start command
-  for (int x = 0; x < TinselMeshXLen; x++) {
-    for (int y = 0; y < TinselMeshYLen; y++) {
-      for (int i = 0; i < (1 << TinselLogCoresPerBoard); i++) {
         uint32_t dest = toAddr(x, y, i, 0);
         req.cmd = StartCmd;
-        req.numArgs = 0;
         send(dest, 1, &req);
       }
     }
+  }
+
+  // Wait for all start responses
+  while (started < numCores) {
+    recv(flit);
+    started++;
   }
 }
 
@@ -331,9 +306,7 @@ void HostLink::go()
 {
   for (int x = 0; x < TinselMeshXLen; x++) {
     for (int y = 0; y < TinselMeshYLen; y++) {
-printf("Sending SetDest to %d %d\n", x, y);
       mesh[x][y]->setBroadcastDest(0);
-printf("Sending trigger %d %d\n", x, y);
       mesh[x][y]->put(0);
     }
   }

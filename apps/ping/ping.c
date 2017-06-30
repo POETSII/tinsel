@@ -11,8 +11,6 @@ int main()
   // Get pointer to a mailbox message slot
   volatile int* msg = tinselSlot(0);
 
-  tinselEmit(me);
-
   while (me == 0) {
     tinselAlloc(msg);
     tinselWaitUntil(TINSEL_CAN_RECV);

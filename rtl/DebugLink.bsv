@@ -239,7 +239,6 @@ module mkDebugLink#(
 
   rule uartRecv (fromJtag.canGet && toBusPort.canPut && !respondQuery);
     fromJtag.get;
-$display("uartRecv!!!");
     if (recvState == 0) begin
       DebugLinkCmd cmd = truncate(fromJtag.value);
       recvCmd <= cmd;
@@ -250,7 +249,6 @@ $display("uartRecv!!!");
       end
     end else if (recvState == 1) begin
       if (recvCmd == cmdSetDest) begin
-$display("Got setDest, tid=%x", fromJtag.value);
         recvDestThread <= fromJtag.value;
         recvState <= 2;
       end else if (recvCmd == cmdStdIn) begin
@@ -265,7 +263,6 @@ $display("Got setDest, tid=%x", fromJtag.value);
       end
     end else if (recvState == 2) begin
       recvDestCore <= fromJtag.value;
-$display("Got setDest, coreid=%x", fromJtag.value);
       recvState <= 0;
     end
   endrule
@@ -290,7 +287,6 @@ $display("Got setDest, coreid=%x", fromJtag.value);
       toJtag.put(1 + zeroExtend(pack(boardId)));
       sendState <= 0;
       respondQuery <= False;
-$display("Sent query out");
     end
   endrule
 

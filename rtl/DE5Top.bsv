@@ -121,6 +121,16 @@ module de5Top (DE5Top);
   DebugLink debugLink <-
     mkDebugLink(boardId, map(getDebugLinkClient, vecOfCores));
 
+  // In simulation, display start-up message
+  `ifdef SIMULATE
+  rule displayStartup;
+    let t <- $time;
+    if (t == 0) begin
+      $display("\nSimulator for board %d started", boardId);
+    end
+  endrule
+  `endif
+
   `ifndef SIMULATE
   function DRAMExtIfc getDRAMExtIfc(DRAM dram) = dram.external;
   interface dramIfcs = map(getDRAMExtIfc, drams);

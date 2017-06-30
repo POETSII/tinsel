@@ -18,7 +18,5 @@ int main()
   hostLink.recv(ping);
   printf("Got response %x\n", ping[0]);
 
-  while(1);
-
   return 0;
 }

@@ -20,7 +20,6 @@ static int openFifoIn(int instId)
   char filename[256];
   // Open tinsel output fifo for reading
   snprintf(filename, sizeof(filename), "/tmp/tinsel.out.b%i.0", instId);
-printf("Opening %s for input\n", filename);
   int fifoIn = ::open(filename, O_RDONLY);
   if (fifoIn < 0) {
     fprintf(stderr, "Error opening %s\n", filename);
@@ -35,7 +34,6 @@ static int openFifoOut(int instId)
   char filename[256];
   // Open tinsel input fifo for writing
   snprintf(filename, sizeof(filename), "/tmp/tinsel.in.b%i.0", instId);
-printf("Opening %s for output\n", filename);
   int fifoOut = ::open(filename, O_WRONLY);
   if (fifoOut < 0) {
     fprintf(stderr, "Error opening %s\n", filename);

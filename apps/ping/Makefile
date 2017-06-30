@@ -12,7 +12,7 @@ HL_OBJ = $(HL)/DebugLink.o $(HL)/HostLink.o \
          $(HL)/MemFileReader.o $(HL)/UART.o
 
 .PHONY: all
-all: code.v data.v
+all: code.v data.v run
 
 code.v: ping.elf
 	$(RV_OBJCOPY) -O verilog --only-section=.text ping.elf code.v
@@ -42,4 +42,4 @@ run: run.cpp $(HL_OBJ)
 
 .PHONY: clean
 clean:
-	rm -f *.o *.elf link.ld *.v
+	rm -f *.o *.elf link.ld *.v run

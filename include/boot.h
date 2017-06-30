@@ -33,15 +33,12 @@ typedef enum {
   // The address is taken from the address register.
   LoadCmd,
 
-  // Perform a cache flush.
-  // Once complete, an acknowledgement is sent to the host.
-  CacheFlushCmd,
-
-  // StartCmd waits for the UART trigger, starts all threads,
-  // and jumps to the application code.
+  // StartCmd performs a cache flush, sends ack to the host, waits for
+  // the UART trigger, starts all threads, and jumps to the
+  // application code.
   StartCmd,
 
-  // Simple ping.
+  // PingCmd simply sends increments arg 0 and responds to the host.
   PingCmd,
 
 } BootCmd;

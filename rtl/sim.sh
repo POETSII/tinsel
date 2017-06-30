@@ -143,7 +143,7 @@ for X in $(seq 0 $LAST_X); do
   for Y in $(seq 0 $LAST_Y); do
     ID=$(fromCoords $X $Y)
     echo "Lauching simulator at position ($X, $Y) with board id $ID"
-    BOARD_ID=$ID ./de5Top &
+    BOARD_ID=$ID ./de5Top | grep -v Warning &
     PIDS="$PIDS $!"
   done
 done
@@ -161,7 +161,7 @@ function quit() {
   echo "Caught CTRL-C. Exiting."
   #echo "Kill list: $PIDS"
   for PID in "$PIDS"; do
-    kill $PID
+    kill $PID 2> /dev/null
   done
 }
 
