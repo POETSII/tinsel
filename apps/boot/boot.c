@@ -41,7 +41,6 @@ int main()
         int n = msgIn->numArgs;
         for (int i = 0; i < n; i++) {
           tinselWriteInstr(addrReg, msgIn->args[i]);
-tinselEmit(addrReg);
           addrReg += 4;
         }
       }
@@ -73,14 +72,13 @@ tinselEmit(addrReg);
         // Set address register
         addrReg = msgIn->args[0];
       }
-      else if (cmd == CacheFlushCmd) {
+      else if (cmd == StartCmd) {
         // Cache flush
         tinselCacheFlush();
+        // Send response
         tinselWaitUntil(TINSEL_CAN_SEND);
         msgOut[0] = me;
         tinselSend(hostId, msgOut);
-      }
-      else if (cmd == StartCmd) {
         // Wait for trigger
         tinselUartGet();
         // Start remaining threads

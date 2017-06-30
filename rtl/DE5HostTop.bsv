@@ -117,7 +117,6 @@ module de5HostTop (DE5HostTop);
       fromPCIeDA <= data[31:0];
       fromPCIeNM <= data[63:32];
       fromPCIeFM <= data[71:64];
-$display("PCIe: %x", fromPCIe.value);
       fromPCIeState <= 1;
       fromPCIe.get;
     end
@@ -147,8 +146,17 @@ $display("PCIe: %x", fromPCIe.value);
   rule linkToPCIe (fromLink.canGet && toPCIe.canPut);
     toPCIe.put(fromLink.value.payload);
     fromLink.get;
-$display("to PCIe: %x", fromLink.value.payload);
   endrule
+
+  // In simulation, display start-up message
+  `ifdef SIMULATE
+  rule displayStartup;
+    let t <- $time;
+    if (t == 0) begin
+      $display("\nSimulator for host board started");
+    end
+  endrule
+  `endif
 
   // JTAG UART Handler
   // -----------------
