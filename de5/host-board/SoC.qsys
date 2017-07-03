@@ -49,6 +49,14 @@
          type = "int";
       }
    }
+   element jtag_uart_0
+   {
+      datum _sortIndex
+      {
+         value = "11";
+         type = "int";
+      }
+   }
    element mac_0
    {
       datum _sortIndex
@@ -248,6 +256,25 @@
   <parameter name="clockFrequencyKnown" value="true" />
   <parameter name="inputClockFrequency" value="0" />
   <parameter name="resetSynchronousEdges" value="NONE" />
+ </module>
+ <module
+   name="jtag_uart_0"
+   kind="altera_avalon_jtag_uart"
+   version="16.0"
+   enabled="1">
+  <parameter name="allowMultipleConnections" value="false" />
+  <parameter name="avalonSpec" value="2.0" />
+  <parameter name="clkFreq" value="250000000" />
+  <parameter name="hubInstanceID" value="0" />
+  <parameter name="readBufferDepth" value="64" />
+  <parameter name="readIRQThreshold" value="8" />
+  <parameter name="simInputCharacterStream" value="" />
+  <parameter name="simInteractiveOptions">NO_INTERACTIVE_WINDOWS</parameter>
+  <parameter name="useRegistersForReadBuffer" value="false" />
+  <parameter name="useRegistersForWriteBuffer" value="false" />
+  <parameter name="useRelativePathForSimFile" value="false" />
+  <parameter name="writeBufferDepth" value="64" />
+  <parameter name="writeIRQThreshold" value="8" />
  </module>
  <module
    name="mac_0"
@@ -1312,6 +1339,15 @@
  <connection
    kind="avalon"
    version="16.0"
+   start="DE5HostTop_0.jtag"
+   end="jtag_uart_0.avalon_jtag_slave">
+  <parameter name="arbitrationPriority" value="1" />
+  <parameter name="baseAddress" value="0x0000" />
+  <parameter name="defaultConnection" value="false" />
+ </connection>
+ <connection
+   kind="avalon"
+   version="16.0"
    start="DE5HostTop_0.pcie_host_bus"
    end="pcie_mm.Txs">
   <parameter name="arbitrationPriority" value="1" />
@@ -1378,6 +1414,11 @@
    version="16.0"
    start="pcie_xcvr_clk.clk"
    end="pcie_reconfig_driver_0.reconfig_xcvr_clk" />
+ <connection
+   kind="clock"
+   version="16.0"
+   start="pcie_mm.coreclkout"
+   end="jtag_uart_0.clk" />
  <connection
    kind="clock"
    version="16.0"
@@ -1572,6 +1613,11 @@
    kind="reset"
    version="16.0"
    start="clk_50.clk_reset"
+   end="jtag_uart_0.reset" />
+ <connection
+   kind="reset"
+   version="16.0"
+   start="clk_50.clk_reset"
    end="DE5HostTop_0.reset_sink" />
  <connection
    kind="reset"
@@ -1593,6 +1639,11 @@
    version="16.0"
    start="pcie_mm.nreset_status"
    end="mac_0.dc_tx_reset" />
+ <connection
+   kind="reset"
+   version="16.0"
+   start="pcie_mm.nreset_status"
+   end="jtag_uart_0.reset" />
  <connection
    kind="reset"
    version="16.0"

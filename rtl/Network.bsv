@@ -197,24 +197,24 @@ endmodule
 
 // The bidriectional bus of mailbox network interfaces looks like this:
 //
-//     +--+ ... --+--+--+--+--+--+--+
-//     |  |       |  |  |  |  |  |  |
-//     |  |       |  |  B  E  W  N  S
+//     +--+ ... --+--+--+--+--+--+
+//     |  |       |  |  |  |  |  |
+//     |  |       |  |  E  W  N  S
 //     |  |       |  |
 //    \_______________/
 //        Mailboxes
 //
 // Each "+" denotes a BusRouter component.  The "E", "W", "N", and "S"
 // represent the off-board links in the east, west, north and south
-// directions respectively. And "B" represents the board manager
-// component.  The mailboxes are those connected to the tinsel cores.
+// directions respectively.  The mailboxes are those connected to the
+// tinsel cores.
 
 // Mailbox id
 typedef Bit#(`LogMailboxesPerBoard) MailboxId;
 
 // Routing rule for mailbox m on board b
 function Route routeInternal(BoardId b, MailboxId m, NetAddr addr);
-  if (addr.board == b && addr.space == 0) begin
+  if (addr.board == b) begin
     if (truncateLSB(addr.core) == m)
       return Me;
     else if (truncateLSB(addr.core) < m)
@@ -255,14 +255,6 @@ function Route routeNorth(BoardId b, NetAddr addr) =
 // Otherwise, route left
 function Route routeSouth(BoardId b, NetAddr addr) =
   addr.board.y < b.y ? Me : Left;
-
-// Routing rule for board manager component
-// If it's not for this board, route right
-// Otherwise, if it's a management packet, consume it
-// Otherwise, route left
-function Route routeMan(BoardId b, NetAddr addr) =
-  addr.board != b ? Right :
-    addr.space == 1 ? Me : Left;
 
 // =============================================================================
 // Flit-sized reliable links

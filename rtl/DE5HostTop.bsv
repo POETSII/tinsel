@@ -1,5 +1,5 @@
 // This module implements a "host board", i.e. an FPGA board that acts
-// as an interface between a host PC (connected over PCIe) and an FPGA
+// as a proxy between a host PC (connected over PCIe) and an FPGA
 // cluster (connected via a 10G link).
 //
 // The basic idea is that messages received from the host PC over PCIe
@@ -12,7 +12,7 @@
 //   2. NM: Number of messages that follow minus one (4 bytes)
 //   3. FM: Number of flit payloads per message minus one (1 byte)
 //   4. Padding (7 bytes)
-//   5. NM*FM flit payloads (NM*FM*BytesPerFlit bytes)
+//   5. NM*FM flit payloads ((NM+1)*(FM+1)*BytesPerFlit bytes)
 //   6. Goto step 1
 //
 // The format of the data stream in the FPGA->PC direction is simply
@@ -38,6 +38,8 @@ import Mac        :: *;
 import PCIeStream :: *;
 import Pipe       :: *;
 import ConfigReg  :: *;
+import JtagUart   :: *;
+import DebugLink   :: *;
 
 // ============================================================================
 // Interface
@@ -55,6 +57,8 @@ interface DE5HostTop;
   // Interface to host PCIe bus
   // (Use for DMA to/from host memory)
   interface PCIeHostBus pcieHostBus;
+  // Interface to host over a JTAG UART
+  interface JtagUartAvalon jtagAvalon;
   // Connection to FPGA cluster
   interface AvalonMac mac;
 endinterface
@@ -72,6 +76,15 @@ module de5HostTop (DE5HostTop);
   InPort#(Bit#(128)) fromPCIe <- mkInPort;
   OutPort#(Flit) toLink <- mkOutPort;
   InPort#(Flit) fromLink <- mkInPort;
+  OutPort#(Bit#(8)) toJtag <- mkOutPort;
+  InPort#(Bit#(8)) fromJtag <- mkInPort;
+
+  // Create JTAG UART instance
+  JtagUart uart <- mkJtagUart;
+
+  // Conect ports to UART
+  connectUsing(mkUGShiftQueue1(QueueOptFmax), toJtag.out, uart.jtagIn);
+  connectUsing(mkUGShiftQueue1(QueueOptFmax), uart.jtagOut, fromJtag.in);
 
   // Create off-board link
   BoardLink link <- mkBoardLink(northPipe);
@@ -87,8 +100,8 @@ module de5HostTop (DE5HostTop);
   connectUsing(mkUGQueue, toPCIe.out, pcie.streamIn);
   connectDirect(pcie.streamOut, fromPCIe.in);
 
-  // Connect PCIe stream to 10G link
-  // -------------------------------
+  // Connect PCIe stream and 10G link
+  // --------------------------------
 
   Reg#(Bit#(32)) fromPCIeDA    <- mkConfigRegU;
   Reg#(Bit#(32)) fromPCIeNM    <- mkConfigRegU;
@@ -135,10 +148,40 @@ module de5HostTop (DE5HostTop);
     fromLink.get;
   endrule
 
+  // In simulation, display start-up message
+  `ifdef SIMULATE
+  rule displayStartup;
+    let t <- $time;
+    if (t == 0) begin
+      $display("\nSimulator for host board started");
+    end
+  endrule
+  `endif
+
+  // JTAG UART Handler
+  // -----------------
+
+  // Respond to the Query command with a zero byte.  The host uses the
+  // query command to distinguish this host board from a worker board,
+  // which returns non-zero.
+
+  Reg#(Bit#(2)) uartState <- mkConfigReg(0);
+
+  rule uartReceive (fromJtag.canGet && uartState == 0);
+    fromJtag.get;
+    uartState <= 1;
+  endrule
+
+  rule uartRespond (toJtag.canPut && uartState != 0);
+    toJtag.put(0);
+    uartState <= uartState == 1 ? 2 : 0;
+  endrule
+
   `ifndef SIMULATE
   interface controlBAR = pcie.external.controlBAR;
   interface pcieHostBus = pcie.external.hostBus;
   interface mac = link.avalonMac;
+  interface jtagAvalon = uart.jtagAvalon;
   `endif
 
 endmodule
