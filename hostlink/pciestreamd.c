@@ -243,23 +243,25 @@ void control(pid_t pidTransmitter, pid_t pidReceiver)
       exit(EXIT_FAILURE);
     }
 
-    char cmd;
-    int n = read(pipe, &cmd, 1);
-    if (n <= 0) {
-      close(pipe);
-      break;
-    }
-    else {
-      // Kill threads on reset and exit commands
-      if (cmd == 'r' || cmd == 'e') {
-        kill(pidTransmitter, SIGTERM);
-        kill(pidReceiver, SIGTERM);
-        int status;
-        waitpid(pidTransmitter, &status, 0);
-        waitpid(pidReceiver, &status, 0);
+    for (;;) {
+      char cmd;
+      int n = read(pipe, &cmd, 1);
+      if (n <= 0) {
+        close(pipe);
+        break;
       }
-      if (cmd == 'r') return;
-      else if (cmd == 'e') exit(EXIT_SUCCESS);
+      else {
+        // Kill threads on reset and exit commands
+        if (cmd == 'r' || cmd == 'e') {
+          kill(pidTransmitter, SIGTERM);
+          kill(pidReceiver, SIGTERM);
+          int status;
+          waitpid(pidTransmitter, &status, 0);
+          waitpid(pidReceiver, &status, 0);
+        }
+        if (cmd == 'r') return;
+        else if (cmd == 'e') exit(EXIT_SUCCESS);
+      }
     }
   }
 }
