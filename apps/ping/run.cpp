@@ -12,6 +12,7 @@ int main()
 
   printf("Sending ping\n");
   uint32_t ping[4];
+  ping[0] = 100;
   hostLink.send(0, 1, ping);
 
   printf("Waiting for response\n");
