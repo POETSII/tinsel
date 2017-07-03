@@ -8,16 +8,17 @@ int main()
   // Get host id
   int host = tinselHostId();
 
-  // Get pointer to a mailbox message slot
-  volatile int* msg = tinselSlot(0);
+  // Get pointers to mailbox message slots
+  volatile int* msgIn = tinselSlot(0);
+  volatile int* msgOut = tinselSlot(1);
 
   while (me == 0) {
-    tinselAlloc(msg);
+    tinselAlloc(msgIn);
     tinselWaitUntil(TINSEL_CAN_RECV);
     tinselRecv();
     tinselWaitUntil(TINSEL_CAN_SEND);
-    msg[0] = 0x41424344;
-    tinselSend(host, msg);
+    msgOut[0] = msgIn[0]+1;
+    tinselSend(host, msgOut);
   }
 
   return 0;

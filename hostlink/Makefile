@@ -20,6 +20,7 @@ pciestreamd: pciestreamd.c
 	gcc -O2 pciestreamd.c -o pciestreamd
 
 sim/%.o: %.cpp $(DEPS)
+	mkdir -p sim
 	g++ -DSIMULATE -o $@ $(CPPFLAGS) -c $<
 
 %.o: %.cpp $(DEPS)
@@ -30,4 +31,5 @@ $(INC)/config.h: $(TINSEL_ROOT)/config.py
 
 .PHONY: clean
 clean:
-	rm -f *.o pciestreamd sim/*
+	rm -f *.o pciestreamd
+	rm -rf sim
