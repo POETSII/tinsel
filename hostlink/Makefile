@@ -6,28 +6,28 @@ ifndef QUARTUS_ROOTDIR
 endif
 
 # Local compiler flags
-CPPFLAGS = -I $(INC) -O
+CPPFLAGS = -I$(INC) -O2
 
 # Top-level dependencies
-DEPS = Main.cpp $(INC)/config.h $(INC)/boot.h \
-       HostLink.h JtagAtlantic.h RawLink.h
+DEPS = $(INC)/config.h $(INC)/boot.h \
+       DebugLink.h HostLink.h JtagAtlantic.h MemFileReader.h UART.h
 
 .PHONY: all
-all: $(BIN)/hostlink $(BIN)/hostlink-sim
+all: DebugLink.o HostLink.o MemFileReader.o UART.o pciestreamd \
+     sim/DebugLink.o sim/HostLink.o sim/MemFileReader.o sim/UART.o
 
-$(BIN)/hostlink: $(DEPS)
-	g++ Main.cpp -o $(BIN)/hostlink \
-    $(CPPFLAGS) \
-    -ljtag_atlantic -ljtag_client \
-    -L $(QUARTUS_ROOTDIR)/linux64/
+pciestreamd: pciestreamd.c
+	gcc -O2 pciestreamd.c -o pciestreamd
 
-$(BIN)/hostlink-sim: $(DEPS)
-	g++ -DSIMULATE Main.cpp -o $(BIN)/hostlink-sim\
-    $(CPPFLAGS)
+sim/%.o: %.cpp $(DEPS)
+	g++ -DSIMULATE -o $@ $(CPPFLAGS) -c $<
+
+%.o: %.cpp $(DEPS)
+	g++ -o $@ $(CPPFLAGS) -c $<
 
 $(INC)/config.h: $(TINSEL_ROOT)/config.py
 	make -C $(INC)
 
 .PHONY: clean
 clean:
-	rm -f *.o
+	rm -f *.o pciestreamd sim/*

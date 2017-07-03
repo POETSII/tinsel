@@ -4,7 +4,7 @@
 
 int putchar(int c)
 {
-  tinselHostPut((tinselId() << 8) | (c & 0xff));
+  tinselUartPut(c);
   return c;
 }
 

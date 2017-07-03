@@ -3,7 +3,7 @@
 // using Linux's DMA API and allows these buffers to be mmapped to user space.
 // One device file is created for each buffer.  The physical address of a
 // buffer (to be used by a device) can be obtained using an ioctl on the
-// corresponding deveice file.  The number of buffers, and their sizes, are
+// corresponding device file.  The number of buffers, and their sizes, are
 // compile-time options.
 
 /******************************************************************************

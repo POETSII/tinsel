@@ -93,11 +93,17 @@ p["LinkTimeout"] = 1024
 # Latency of 10G MAC in cycles (simulation only)
 p["MacLatency"] = 100
 
-# Mesh X dimension width
-p["LogMeshXLen"] = 2
+# Number of bits in mesh X coord
+p["MeshXBits"] = 2
 
-# Mesh Y dimension width
-p["LogMeshYLen"] = 2
+# Number of bits in mesh Y coord
+p["MeshYBits"] = 2
+
+# Mesh X length
+p["MeshXLen"] = 1
+
+# Mesh Y length
+p["MeshYLen"] = 1
 
 #==============================================================================
 # Derived Parameters
@@ -200,9 +206,9 @@ p["ThreadsPerBoard"] = 2 ** p["LogThreadsPerBoard"]
 # Cores per board
 p["LogCoresPerBoard"] = p["LogCoresPerMailbox"] + p["LogMailboxesPerBoard"]
 
-# Number of threads in cluster
-p["NumThreads"] = (2**p["LogMeshXLen"] *
-                     2**p["LogMeshYLen"] *
+# Max number of threads in cluster
+p["MaxThreads"] = (2**p["MeshXBits"] *
+                     2**p["MeshYBits"] *
                        p["ThreadsPerBoard"])
 
 #==============================================================================

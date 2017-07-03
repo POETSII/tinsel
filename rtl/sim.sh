@@ -1,10 +1,5 @@
 #!/bin/bash
 
-if [ -z "$1" ] || [ -z "$2" ]; then
-  echo "Usage: sim.sh [MESH_X] [MESH_Y]"
-  exit
-fi
-
 if [ ! -e "./de5Top" ]; then
   echo 'Simulator not find, try "make sim" first'
   exit
@@ -15,17 +10,17 @@ while read -r EXPORT; do
   eval $EXPORT
 done <<< `python ../config.py envs`
 
-MESH_MAX_X=$((2 ** $LogMeshXLen))
-MESH_MAX_Y=$((2 ** $LogMeshYLen))
+MESH_MAX_X=$((2 ** $MeshXBits))
+MESH_MAX_Y=$((2 ** $MeshYBits))
 echo "Max mesh dimensions: $MESH_MAX_X x $MESH_MAX_Y"
 
-MESH_X=$1
-MESH_Y=$2
+MESH_X=$MeshXLen
+MESH_Y=$MeshYLen
 echo "Using mesh dimensions: $MESH_X x $MESH_Y"
 
 HOST_X=0
 HOST_Y=$(($MESH_Y))
-echo "Putting host board at location ($HOST_X, $HOST_Y)"
+echo "Connecting host board at location ($HOST_X, $HOST_Y)"
 
 # Check dimensions
 if [ $MESH_X -gt $MESH_MAX_X ] || [ $MESH_Y -gt $MESH_MAX_Y ] ; then
@@ -35,7 +30,7 @@ fi
 
 # Convert coords to board id
 function fromCoords {
-  echo $(($1 * $MESH_MAX_Y + $2))
+  echo $(($2 * $MESH_MAX_X + $1))
 }
 
 # Create fifo, if it doesn't exists
@@ -49,9 +44,9 @@ function createFifo {
 # Connect two fifos
 function connect {
   trap '' INT
-  while [ 1 == 1 ]; do
+#  while [ 1 == 1 ]; do
     cat $1 > $2
-  done
+#  done
 }
 
 LAST_X=$(($MESH_X - 1))
@@ -61,7 +56,7 @@ LAST_Y=$(($MESH_Y - 1))
 for X in $(seq 0 $LAST_X); do
   for Y in $(seq 0 $LAST_Y); do
     ID=$(fromCoords $X $Y)
-    for P in $(seq 1 4); do
+    for P in $(seq 0 4); do
       PIPE_IN="/tmp/tinsel.in.b$ID.$P"
       PIPE_OUT="/tmp/tinsel.out.b$ID.$P"
       createFifo "$PIPE_IN"
@@ -71,10 +66,10 @@ for X in $(seq 0 $LAST_X); do
 done
 
 # Create host pipes
-HOST_ID=$(($MESH_MAX_X*$MESH_MAX_Y))
+HOST_ID=-1
 HOST_IN="/tmp/tinsel.in.b$HOST_ID"
 HOST_OUT="/tmp/tinsel.out.b$HOST_ID"
-for P in 0 1; do
+for P in 0 1 5; do
   createFifo "$HOST_IN.$P"
   createFifo "$HOST_OUT.$P"
 done
@@ -136,9 +131,11 @@ cat $HOST_OUT.1 > /tmp/tinsel.in.b$ID.1 &
 PIDS="$PIDS $!"
 
 # Connect host board to PCIe stream
-connect "/tmp/tinsel.out.b$HOST_ID.0" "/tmp/pciestream-out" &
+connect "/tmp/tinsel.out.b$HOST_ID.5" "/tmp/pciestream-out" &
 PIDS="$PIDS $!"
-connect "/tmp/pciestream-in" "/tmp/tinsel.in.b$HOST_ID.0" &
+connect "/tmp/pciestream-in" "/tmp/tinsel.in.b$HOST_ID.5" &
+PIDS="$PIDS $!"
+cat /tmp/pciestream-ctrl > /dev/null &
 PIDS="$PIDS $!"
 
 # Run one simulator per board
@@ -154,7 +151,7 @@ done
 # Run host board
 echo "Lauching host board simulator at position ($HOST_X, $HOST_Y)" \
      "with board id $HOST_ID"
-BOARD_ID=$HOST_ID ./de5HostTop | grep -v Warning &
+BOARD_ID=$HOST_ID ./de5HostTop &
 PIDS="$PIDS $!"
 
 # On CTRL-C, call quit()
@@ -164,7 +161,7 @@ function quit() {
   echo "Caught CTRL-C. Exiting."
   #echo "Kill list: $PIDS"
   for PID in "$PIDS"; do
-    kill $PID
+    kill $PID 2> /dev/null
   done
 }
 
