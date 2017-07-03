@@ -13,14 +13,21 @@ DEPS = $(INC)/config.h $(INC)/boot.h \
        DebugLink.h HostLink.h JtagAtlantic.h MemFileReader.h UART.h
 
 .PHONY: all
-all: DebugLink.o HostLink.o MemFileReader.o UART.o
+all: DebugLink.o HostLink.o MemFileReader.o UART.o pciestreamd \
+     sim/DebugLink.o sim/HostLink.o sim/MemFileReader.o sim/UART.o
+
+pciestreamd: pciestreamd.c
+	gcc -O2 pciestreamd.c -o pciestreamd
+
+sim/%.o: %.cpp $(DEPS)
+	g++ -DSIMULATE -o $@ $(CPPFLAGS) -c $<
 
 %.o: %.cpp $(DEPS)
-	g++ -DSIMULATE -o $@ $(CPPFLAGS) -c $< \
+	g++ -o $@ $(CPPFLAGS) -c $<
 
 $(INC)/config.h: $(TINSEL_ROOT)/config.py
 	make -C $(INC)
 
 .PHONY: clean
 clean:
-	rm -f *.o
+	rm -f *.o pciestreamd sim/*

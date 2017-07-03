@@ -1,15 +1,15 @@
 # Tinsel root
 TINSEL_ROOT=../..
 
+ifndef QUARTUS_ROOTDIR
+  $(error Please set QUARTUS_ROOTDIR)
+endif
+
 include $(TINSEL_ROOT)/globals.mk
 
-# Local compiler flags
+# RISC-V compiler flags
 CFLAGS = $(RV_CFLAGS) -O2 -I $(INC)
 LDFLAGS = -melf32lriscv -G 0 
-
-# HostLink object files
-HL_OBJ = $(HL)/DebugLink.o $(HL)/HostLink.o \
-         $(HL)/MemFileReader.o $(HL)/UART.o
 
 .PHONY: all
 all: code.v data.v run
@@ -37,9 +37,14 @@ $(INC)/config.h: $(TINSEL_ROOT)/config.py
 $(HL)/%.o:
 	make -C $(HL)
 
-run: run.cpp $(HL_OBJ)
-	g++ -O2 -I $(INC) -I $(HL) -o run run.cpp $(HL_OBJ)
+run: run.cpp $(HL)/*.o
+	g++ -O2 -I $(INC) -I $(HL) -o run run.cpp $(HL)/*.o \
+	  -ljtag_atlantic -ljtag_client -L $(QUARTUS_ROOTDIR)/linux64/ \
+	  -Wl,-rpath,$(QUARTUS_ROOTDIR)/linux64
+
+sim: run.cpp $(HL)/sim/*.o
+	g++ -O2 -I $(INC) -I $(HL) -o sim run.cpp $(HL)/sim/*.o
 
 .PHONY: clean
 clean:
-	rm -f *.o *.elf link.ld *.v run
+	rm -f *.o *.elf link.ld *.v run sim
