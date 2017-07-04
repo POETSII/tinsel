@@ -22,6 +22,13 @@ HostLink::HostLink()
   // Create a DebugLink (UART) for each board
   debugLinks = new DebugLink [numBoards];
 
+  // Initialise line buffers
+  for (int x = 0; x < TinselMeshXLen; x++)
+    for (int y = 0; y < TinselMeshYLen; y++)
+      for (int c = 0; c < TinselCoresPerBoard; c++)
+        for (int t = 0; t < TinselThreadsPerCore; t++)
+          lineBufferLen[x][y][c][t] = 0;
+
   // Open each UART
   #ifdef SIMULATE
   // Worker boards
@@ -310,4 +317,59 @@ void HostLink::go()
       mesh[x][y]->put(0);
     }
   }
+}
+
+// Redirect UART StdOut to given file
+// Returns false when no data has been emitted
+bool HostLink::pollStdOut(FILE* outFile)
+{
+  bool got = false;
+  for (int x = 0; x < TinselMeshXLen; x++) {
+    for (int y = 0; y < TinselMeshYLen; y++) {
+      if (mesh[x][y]->canGet()) {
+        // Receive byte
+        uint8_t byte;
+        uint32_t c, t;
+        mesh[x][y]->get(&c, &t, &byte);
+        got = true;
+
+        // Update line buffer & display on newline or buffer-full
+        int len = lineBufferLen[x][y][c][t];
+        if (byte == '\n' || len == MaxLineLen-1) {
+          lineBuffer[x][y][c][t][len] = '\0';
+          fprintf(outFile, "%d:%d:%d:%d: %s\n", x, y, c, t,
+            lineBuffer[x][y][c][t]);
+          lineBufferLen[x][y][c][t] = len = 0;
+        }
+        if (byte != '\n') {
+          lineBuffer[x][y][c][t][len] = byte;
+          lineBufferLen[x][y][c][t]++;
+        }
+      }
+    }
+  }
+
+  return got;
+}
+
+// Redirect UART StdOut to stdout
+// Returns false when no data has been emitted
+bool HostLink::pollStdOut()
+{
+  pollStdOut(stdout);
+}
+
+// Redirect UART StdOut to given file (blocking function, never terminates)
+void HostLink::dumpStdOut(FILE* outFile)
+{
+  for (;;) {
+    bool ok = pollStdOut(outFile);
+    if (!ok) usleep(10000);
+  }
+}
+
+// Display UART StdOut (blocking function, never terminates)
+void HostLink::dumpStdOut()
+{
+  dumpStdOut(stdout);
 }

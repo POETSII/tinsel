@@ -36,15 +36,15 @@ bool DebugLink::getQuery(uint32_t* boardId)
 }
 
 // Set destination to thread id
-void DebugLink::setDest(uint32_t dest)
+void DebugLink::setDest(uint32_t coreId, uint32_t threadId)
 {
   uint8_t cmd[3];
   // SetDest command
   cmd[0] = DEBUGLINK_SET_DEST;
   // Core-local thread id
-  cmd[1] = dest % (1 << TinselLogThreadsPerCore);
+  cmd[1] = threadId;
   // Board-local core id
-  cmd[2] = (dest >> TinselLogThreadsPerCore) % (1 << TinselLogCoresPerBoard);
+  cmd[2] = coreId;
   // Send command
   uart.put(cmd, 3);
 }
@@ -73,7 +73,7 @@ void DebugLink::put(uint8_t byte)
 }
 
 // Receive byte (StdOut)
-void DebugLink::get(uint32_t* source, uint8_t* byte)
+void DebugLink::get(uint32_t* coreId, uint32_t* threadId, uint8_t* byte)
 {
   uint8_t cmd[4];
   uart.get(cmd, 4);
@@ -81,7 +81,8 @@ void DebugLink::get(uint32_t* source, uint8_t* byte)
     fprintf(stderr, "Got unexpected response.  Expected StdOut.");
     exit(EXIT_FAILURE);
   }
-  *source = (uint32_t(cmd[2]) << TinselLogThreadsPerCore) | uint32_t(cmd[1]);
+  *coreId = (uint32_t) cmd[2];
+  *threadId = (uint32_t) cmd[1];
   *byte = cmd[3];
 }
 

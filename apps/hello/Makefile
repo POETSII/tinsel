@@ -1,6 +1,10 @@
 # Tinsel root
 TINSEL_ROOT=../..
 
+ifndef QUARTUS_ROOTDIR
+  $(error Please set QUARTUS_ROOTDIR)
+endif
+
 include $(TINSEL_ROOT)/globals.mk
 
 # Local compiler flags
@@ -8,7 +12,7 @@ CFLAGS = $(RV_CFLAGS) -O2 -I $(INC)
 LDFLAGS = -melf32lriscv -G 0 
 
 .PHONY: all
-all: code.v data.v
+all: code.v data.v run
 
 code.v: hello.elf
 	$(RV_OBJCOPY) -O verilog --only-section=.text hello.elf code.v
@@ -33,14 +37,17 @@ link.ld: genld.sh
 $(INC)/config.h: $(TINSEL_ROOT)/config.py
 	make -C $(INC)
 
-.PHONY: run-jtag
-run-jtag: code.v data.v
-	LD_LIBRARY_PATH=$(QUARTUS_ROOTDIR)/linux64 hostlink code.v data.v -c
+$(HL)/%.o:
+	make -C $(HL)
 
-.PHONY: run-sim
-run-sim: code.v data.v
-	hostlink-sim code.v data.v -c
+run: run.cpp $(HL)/*.o
+	g++ -O2 -I $(INC) -I $(HL) -o run run.cpp $(HL)/*.o \
+	  -ljtag_atlantic -ljtag_client -L $(QUARTUS_ROOTDIR)/linux64/ \
+	  -Wl,-rpath,$(QUARTUS_ROOTDIR)/linux64
+
+sim: run.cpp $(HL)/sim/*.o
+	g++ -O2 -I $(INC) -I $(HL) -o sim run.cpp $(HL)/sim/*.o
 
 .PHONY: clean
 clean:
-	rm -f *.o *.elf link.ld *.v
+	rm -f *.o *.elf link.ld *.v run sim

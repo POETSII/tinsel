@@ -205,6 +205,10 @@ p["ThreadsPerBoard"] = 2 ** p["LogThreadsPerBoard"]
 
 # Cores per board
 p["LogCoresPerBoard"] = p["LogCoresPerMailbox"] + p["LogMailboxesPerBoard"]
+p["CoresPerBoard"] = 2**p["LogCoresPerBoard"]
+
+# Threads per core
+p["ThreadsPerCore"] = 2**p["LogThreadsPerCore"]
 
 # Max number of threads in cluster
 p["MaxThreads"] = (2**p["MeshXBits"] *

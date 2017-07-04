@@ -7,6 +7,9 @@
 #include <config.h>
 #include "DebugLink.h"
 
+// Max line length for line-buffered UART StdOut capture
+#define MaxLineLen 128
+
 class HostLink {
   // JTAG UART connections
   DebugLink* debugLinks;
@@ -14,6 +17,12 @@ class HostLink {
   // PCIeStream file descriptors
   int toPCIe, fromPCIe, pcieCtrl;
 
+  // Line buffers for JTAG UART StdOut
+  char lineBuffer[TinselMeshXLen][TinselMeshYLen]
+                 [TinselCoresPerBoard][TinselThreadsPerCore]
+                 [MaxLineLen];
+  int lineBufferLen[TinselMeshXLen][TinselMeshYLen]
+                   [TinselCoresPerBoard][TinselThreadsPerCore];
  public:
 
   // DebugLink to the host board
@@ -55,6 +64,15 @@ class HostLink {
 
   // Trigger to start application execution
   void go();
+
+  // UART console
+  // ------------
+
+  // Display StdOut character stream
+  bool pollStdOut(FILE* outFile);
+  bool pollStdOut();
+  void dumpStdOut(FILE* outFile);
+  void dumpStdOut();
 };
 
 #endif
