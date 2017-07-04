@@ -26,7 +26,7 @@ class DebugLink {
   bool getQuery(uint32_t* boardId);
 
   // Set destination
-  void setDest(uint32_t dest);
+  void setDest(uint32_t coreId, uint32_t threadId);
 
   // Set destinations to given local thread id on every core
   void setBroadcastDest(uint32_t threadId);
@@ -35,7 +35,7 @@ class DebugLink {
   void put(uint8_t byte);
 
   // Receive byte (StdOut)
-  void get(uint32_t* source, uint8_t* byte);
+  void get(uint32_t* coreId, uint32_t* threadId, uint8_t* byte);
 
   // Is a data available for reading?
   bool canGet();

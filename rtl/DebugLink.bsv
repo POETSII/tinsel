@@ -294,11 +294,13 @@ module mkDebugLink#(
   rule uartSendStdOut (toJtag.canPut && !respondQuery);
     if (sendState == 0) begin
       if (fromBusPort.canGet) begin
-        // Send StdOut
         fromBusPort.get;
-        sendFlit <= fromBusPort.value;
-        toJtag.put(zeroExtend(cmdStdOut));
-        sendState <= 1;
+        if (! fromBusPort.value.isBroadcast) begin
+          // Send StdOut
+          sendFlit <= fromBusPort.value;
+          toJtag.put(zeroExtend(cmdStdOut));
+          sendState <= 1;
+        end
       end
     end else if (sendState == 1) begin
       // Send StdOut thread id
