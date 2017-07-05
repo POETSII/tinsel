@@ -131,11 +131,12 @@ module mkReceiveBuffer (ReceiveBuffer);
       // Drop packet
       farBackPtr <= nearBackPtr;
       drop <= False;
+    end else if (beat.stop) begin
+      nearBackPtr <= ptr;
+      farBackPtr <= ptr;
     end else begin
-      if (beat.stop) nearBackPtr <= ptr;
-      if (nearBackPtr == farBackPtr+2) begin
-        // Drop part of oversized packet
-        farBackPtr <= nearBackPtr;
+      if (farBackPtr+2 == nearBackPtr) begin
+        // Drop oversized packet
         drop <= True;
       end else
         farBackPtr <= ptr;
