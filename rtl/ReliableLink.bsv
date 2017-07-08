@@ -147,7 +147,7 @@ module mkTransmitBuffer (TransmitBuffer);
   endrule
 
   rule updateTimer;
-    if (ackPtr == nextPtr || resetTimer) begin
+    if (ackPtr == backPtr || resetTimer) begin
       timer <= 0;
       timeoutFlag <= False;
     end else if (timer == `LinkTimeout)
@@ -232,8 +232,8 @@ module mkReliableLinkCore#(Mac mac) (ReliableLink);
   InPort#(Bit#(64)) inPort      <- mkInPort;
 
   // Connections
-  connectUsing(mkUGShiftQueue1(QueueOptFmax), toMACPort.out, mac.fromUser);
-  connectUsing(mkUGShiftQueue1(QueueOptFmax), mac.toUser, fromMACPort.in);
+  connectUsing(mkUGQueue, toMACPort.out, mac.fromUser);
+  connectUsing(mkUGQueue, mac.toUser, fromMACPort.in);
 
   // Transmit buffer
   TransmitBuffer transmitBuffer <- mkTransmitBuffer;
@@ -245,9 +245,9 @@ module mkReliableLinkCore#(Mac mac) (ReliableLink);
   // -----------
 
   // 3-state machine
-  // State 0: idle
-  // State 1: transmit ACK
-  // State 2: transmit items & ACK
+  // State 0: send header
+  // State 1: send header
+  // State 2: send body
   Reg#(Bit#(2)) txState <- mkConfigReg(0);
 
   // Number of items to send
@@ -289,11 +289,15 @@ module mkReliableLinkCore#(Mac mac) (ReliableLink);
   endrule
 
   rule transmit1 (txState == 1 && toMACPort.canPut);
-    // At least two 64-bit beats must be sent to the 10G MAC.
-    // The 1st beat was the header; send the 2nd beat here.
-    toMACPort.put(macBeat(False, True, 0));
-    txState <= 0;
-    transmitBuffer.enableTimeout;
+    // Send the 2nd beat of the header.  This beat contains the
+    // ethernet type/length field, which we set to 0x600.
+    Bit#(64) data = 64'h0600_0600_0600_0600;
+    // End of packet?
+    Bool eop = numItemsToSend == 0;
+    // Send beat
+    toMACPort.put(macBeat(False, eop, data));
+    txState <= eop ? 0 : 2;
+    if (eop) transmitBuffer.enableTimeout;
   endrule
 
   rule transmit2 (txState == 2 && toMACPort.canPut);
@@ -315,9 +319,10 @@ module mkReliableLinkCore#(Mac mac) (ReliableLink);
   // --------
 
   // 2-state machine
-  // State 0: idle
-  // State 1: receive packet from MAC
-  Reg#(Bit#(1)) rxState <- mkConfigReg(0);
+  // State 0: receive header
+  // State 1: receive header
+  // State 2: receive body
+  Reg#(Bit#(2)) rxState <- mkConfigReg(0);
 
   // Number of items to receive
   Reg#(Bit#(7)) numItemsToRecv <- mkConfigReg(0);
@@ -343,6 +348,13 @@ module mkReliableLinkCore#(Mac mac) (ReliableLink);
   endrule
 
   rule receive1 (rxState == 1 && fromMACPort.canGet);
+    // Ignore second beat of header.
+    fromMACPort.get;
+    MacBeat beat = fromMACPort.value;
+    rxState <= beat.stop ? 0 : 2;
+  endrule
+
+  rule receive2 (rxState == 2 && fromMACPort.canGet);
     // Receive beat
     MacBeat beat = fromMACPort.value;
     // Are there any items to receive?
@@ -352,12 +364,12 @@ module mkReliableLinkCore#(Mac mac) (ReliableLink);
         fromMACPort.get;
         receiveBuffer.enq(beat.data);
         numItemsToRecv <= numItemsToRecv - 1;
-        rxState <= beat.stop ? 0 : 1;
+        rxState <= beat.stop ? 0 : 2;
       end
     end else begin
       // Ignore data
       fromMACPort.get;
-      rxState <= beat.stop ? 0 : 1;
+      rxState <= beat.stop ? 0 : 2;
     end
   endrule
 
