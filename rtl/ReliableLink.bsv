@@ -124,7 +124,7 @@ module mkTransmitBuffer (TransmitBuffer);
   Reg#(Bit#(16)) timer <- mkConfigReg(0);
 
   // Signal to reset the timer
-  PulseWire resetTimer <- mkPulseWire;
+  PulseWire resetTimer <- mkPulseWireOR;
 
   // Signals that an element has is taken from the buffer
   PulseWire doTake <- mkPulseWire;
@@ -138,6 +138,7 @@ module mkTransmitBuffer (TransmitBuffer);
     if (timeoutFlag && timeoutEn) begin
       ptr = ackPtr;
       numTimeoutsReg <= numTimeoutsReg+1;
+      resetTimer.send;
     end else if (doTake) ptr = ptr + 1;
     // Dereference nextPtr
     contents.read(ptr);
