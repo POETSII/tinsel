@@ -282,7 +282,7 @@ module mkReliableLinkCore#(Mac mac) (ReliableLink);
       toMACPort.put(beat);
       idlesSinceACKSent <= 0;
       // Next state
-      txState <= toSend == 0 ? 1 : 2;
+      txState <= 1;
     end else begin
       idlesSinceACKSent <= idlesSinceACKSent + 1;
     end

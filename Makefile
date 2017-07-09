@@ -12,7 +12,6 @@ clean:
 	make -C apps/hello clean
 	make -C apps/boot clean
 	make -C apps/heat clean
-	make -C apps/mandelbrot clean
 	make -C apps/ping clean
 	make -C bin clean
 	make -C tests clean
