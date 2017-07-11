@@ -18,6 +18,14 @@ create_clock -period 1.5515 [get_ports SFP_REFCLK_p]
 
 create_clock -period "100.0 MHz" [get_ports PCIE_REFCLK_p]
 
+#**************************************************************^M
+# JTAG
+#**************************************************************^M
+
+create_clock -period "30.303 ns" -name {altera_reserved_tck} [get_ports {altera_reserved_tck}]
+
+set_clock_groups -asynchronous -group {altera_reserved_tck}
+
 #**************************************************************
 # Create Generated Clock
 #**************************************************************
