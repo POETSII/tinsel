@@ -1,11 +1,11 @@
-// Take the output of heat.c (produced by "hostlink dump") and render
-// it as a PPM image.
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <assert.h>
+#include <HostLink.h>
+#include "heat.h"
 
-// Magnification factor
+// Magnification factor when displaying heat map
 const int MAG = 2;
 
 // 256 x RGB colours representing heat intensities
@@ -77,17 +77,16 @@ int heat[] = {
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 };
 
-int main(int argc, char* argv[])
+int main()
 {
-  if (argc != 4) {
-    fprintf(stderr, "Usage: vis N L OUT\n");
-    return -1;
-  }
+  HostLink hostLink;
 
-  int N = atoi(argv[1]);
-  int L = atoi(argv[2]) * MAG;
+  // Start application
+  hostLink.boot("code.v", "data.v");
+  hostLink.go();
 
   // 2D grid
+  int N = 8 * LEN;
   int grid[N][N];
 
   // Initialise 2D grid
@@ -95,26 +94,22 @@ int main(int argc, char* argv[])
     for (int x = 0; x < N; x++)
       grid[y][x] = 0;
 
-  for (;;) {
+  for (int n = 0; n < 1; n++) {
     // Fill 2D grid
-    for (int i = 0; i < N*N; i++) {
-      uint32_t src, cmd, val;
-      if (scanf("%d %x %x", &src, &cmd, &val) != 3) {
-        return 0;
-      }
-
-      uint32_t y = (val >> 20) & 0xfff;
-      uint32_t x = (val >> 8)  & 0xfff;
-      uint32_t temp = val & 0xff;
-      grid[y][x] = temp;
+    for (int i = 0; i < N*LEN; i++) {
+      HostMsg msg;
+      hostLink.recv(&msg);
+      for (int j = 0; j < 8; j++)
+        grid[msg.y][msg.x+j] = msg.temps[j];
     }
 
-    FILE* fp = fopen(argv[3], "w");
+    FILE* fp = fopen("out.ppm", "w");
     if (fp == NULL) {
-      fprintf(stderr, "Failed to open file %s\n", argv[3]);
+      fprintf(stderr, "Failed to open file 'out.ppm'\n");
     }
 
     // Emit PPM
+    int L = 8 * MAG;
     fprintf(fp, "P3\n%i %i\n255\n", MAG*N, MAG*N);
     for (int y = 0; y < MAG*N; y++)
       for (int x = 0; x < MAG*N; x++) {

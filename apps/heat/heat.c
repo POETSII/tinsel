@@ -1,11 +1,8 @@
 // Simulate heat diffusion on a LENxLEN grid of threads.
 // Each thread handles an 8x8 subgrid of cells.
-#define LEN 32
-
-// Emit grid once every T time steps (-1 means never)
-#define T 2000
 
 #include <tinsel.h>
+#include "heat.h"
 
 // 32-bit fixed-point number in 16.16 format
 #define FixedPoint(x, y) (((x) << 16) | (y))
@@ -17,13 +14,7 @@
 typedef enum {N=0, S=1, E=2, W=3} Dir;
 
 // Given a direction, return opposite direction
-inline Dir opposite(Dir d)
-{
-  if (d == N) return S;
-  if (d == S) return N;
-  if (d == E) return W;
-  return E;
-}
+inline Dir opposite(Dir d) { return d^1; }
 
 // Mapping subgrids to threads and back
 // ------------------------------------
@@ -95,20 +86,32 @@ typedef struct {
 // Output
 // ------
 
+// Emit the state of the thread-local subgrid
 void emitGrid(int (*subgrid)[8])
 {
-  // Emit the state of the local subgrid
+  // Messages will be comprised of 1 flit
+  tinselSetLen(0);
+  // Determine X and Y position of thread
   int xPos, yPos;
   myXY(&xPos, &yPos);
+  // Determine X and Y pixel coordinates
   int x = xPos * 8;
   int y = yPos * 8;
-  for (int i = 0; i < 8; i++)
-    for (int j = 0; j < 8; j++) {
-      // Transfer Y coord (12 bits), X coord (12 bits) and temp (8 bits)
-      uint32_t coords = ((y+i) << 12) | (x+j);
-      uint32_t temp = (subgrid[i][j] >> 16) & 0xff;
-      tinselHostPut((coords << 8) | temp);
-    }
+  // Host id
+  int hostId = tinselHostId();
+  // Message to be sent to the host
+  volatile HostMsg* msg = tinselSlot(15);
+  // Send subgrid to host
+  for (int i = 0; i < 8; i++) {
+    tinselWaitUntil(TINSEL_CAN_SEND);
+    msg->x = x;
+    msg->y = y+i;
+    for (int j = 0; j < 8; j++)
+      msg->temps[j] = (subgrid[i][j] >> 16);
+    tinselSend(hostId, msg);
+  }
+  // Restore message size of 3 flits
+  tinselSetLen(2);
 }
 
 // Top-level
@@ -220,9 +223,6 @@ int main()
   // Number of time steps to simulate
   const int nsteps = 50000;
 
-  // Timer determining when to output the grid
-  int timer = 0;
-
   // Simulation loop
   for (int t = 0; t < nsteps; t++) {
    // Send/receive loop
@@ -296,12 +296,6 @@ int main()
     // Prepare for next iteration
     subgridPtr = subgrid; subgrid = newSubgrid; newSubgrid = subgridPtr;
     sent = 0;
-
-    // Emit grid
-    if (timer++ == T) {
-      emitGrid(subgrid);
-      timer = 0;
-    }
   }
 
   // Emit grid
