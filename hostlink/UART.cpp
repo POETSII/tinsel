@@ -144,7 +144,7 @@ void UART::put(void* buffer, int numBytes)
   uint8_t* ptr = (uint8_t*) buffer;
   while (numBytes > 0) {
     int n = jtagatlantic_write(jtag, (char*) ptr, numBytes);
-    if (n <= 0) {
+    if (n < 0) {
       fprintf(stderr, "Error writing to JTAG UART\n");
       exit(EXIT_FAILURE);
     }
@@ -165,7 +165,7 @@ void UART::get(void* buffer, int numBytes)
   uint8_t* ptr = (uint8_t*) buffer;
   while (numBytes > 0) {
     int n = jtagatlantic_read(jtag, (char*) ptr, numBytes);
-    if (n <= 0) {
+    if (n < 0) {
       fprintf(stderr, "Error reading from JTAG UART\n");
       exit(EXIT_FAILURE);
     }
