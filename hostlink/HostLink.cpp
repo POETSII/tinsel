@@ -296,7 +296,7 @@ void HostLink::boot(const char* codeFilename, const char* dataFilename)
         }
         uint32_t dest = toAddr(x, y, i, 0);
         req.cmd = StartCmd;
-        req.args[0] = TinselLogThreadsPerCore-1;
+        req.args[0] = (1<<TinselLogThreadsPerCore)-1;
         send(dest, 1, &req);
       }
     }
