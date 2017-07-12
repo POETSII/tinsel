@@ -34,8 +34,9 @@ typedef enum {
   LoadCmd,
 
   // StartCmd performs a cache flush, sends ack to the host, waits for
-  // the UART trigger, starts all threads, and jumps to the
-  // application code.
+  // the UART trigger, starts threads, and jumps to the
+  // application code.  The first argument is the number of threads
+  // to start.
   StartCmd,
 
   // PingCmd simply sends increments arg 0 and responds to the host.

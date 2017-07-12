@@ -296,6 +296,7 @@ void HostLink::boot(const char* codeFilename, const char* dataFilename)
         }
         uint32_t dest = toAddr(x, y, i, 0);
         req.cmd = StartCmd;
+        req.args[0] = TinselLogThreadsPerCore-1;
         send(dest, 1, &req);
       }
     }
@@ -317,6 +318,76 @@ void HostLink::go()
       mesh[x][y]->put(0);
     }
   }
+}
+
+// Load application code and data onto a single thread
+void HostLink::bootOne(const char* codeFilename, const char* dataFilename)
+{
+  MemFileReader code(codeFilename);
+  MemFileReader data(dataFilename);
+
+  // Request to boot loader
+  BootReq req;
+
+  // Step 1: load code into instruction memory
+  // -----------------------------------------
+
+  uint32_t addrReg = 0;
+  uint32_t addr, word;
+  uint32_t dest = toAddr(0, 0, 0, 0);
+  while (code.getWord(&addr, &word)) {
+    // Write instruction
+    if (addr != addrReg) {
+      req.cmd = SetAddrCmd;
+      req.numArgs = 1;
+      req.args[0] = addr;
+      send(dest, 1, &req);
+    }
+    req.cmd = WriteInstrCmd;
+    req.numArgs = 1;
+    req.args[0] = word;
+    send(dest, 1, &req);
+    addrReg = addr + 4;
+  }
+
+  // Step 2: initialise data memory
+  // ------------------------------
+
+  // Write data to DRAM
+  addrReg = 0;
+  while (data.getWord(&addr, &word)) {
+    // Write data
+    if (addr != addrReg) {
+      req.cmd = SetAddrCmd;
+      req.numArgs = 1;
+      req.args[0] = addr;
+      send(dest, 1, &req);
+    }
+    req.cmd = StoreCmd;
+    req.numArgs = 1;
+    req.args[0] = word;
+    send(dest, 1, &req);
+    addrReg = addr + 4;
+  }
+
+  // Step 3: start thread
+  // --------------------
+
+  // Send start command
+  req.cmd = StartCmd;
+  req.args[0] = 0;
+  send(dest, 1, &req);
+
+  // Wait for start response
+  uint8_t flit[4 << TinselLogWordsPerFlit];
+  recv(flit);
+}
+
+// Trigger to start application execution on a single thread
+void HostLink::goOne()
+{
+  mesh[0][0]->setDest(0, 0);
+  mesh[0][0]->put(0);
 }
 
 // Redirect UART StdOut to given file

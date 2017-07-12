@@ -65,6 +65,12 @@ class HostLink {
   // Trigger to start application execution
   void go();
 
+  // Load application code and data onto a single thread
+  void bootOne(const char* codeFilename, const char* dataFilename);
+
+  // Trigger to start application execution on a single thread
+  void goOne();
+
   // UART console
   // ------------
 
