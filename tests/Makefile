@@ -1,5 +1,9 @@
 TINSEL_ROOT = ..
 
+ifndef QUARTUS_ROOTDIR
+  $(error Please set QUARTUS_ROOTDIR)
+endif
+
 include $(TINSEL_ROOT)/globals.mk
 
 # Local compiler flags
@@ -8,7 +12,7 @@ LDFLAGS = -melf32lriscv -G 0
 
 .PHONY: all
 all: $(patsubst %.S,%.code.v,$(wildcard *.S)) \
-     $(patsubst %.S,%.data.v,$(wildcard *.S))
+     $(patsubst %.S,%.data.v,$(wildcard *.S)) run
 
 %.code.v: %.elf
 	$(RV_OBJCOPY) -O verilog --only-section=.text $< $@
@@ -26,16 +30,17 @@ all: $(patsubst %.S,%.code.v,$(wildcard *.S)) \
 link.ld: genld.sh
 	./genld.sh > link.ld
 
-.PHONY: run-sim
-run-sim: all
-	make -C $(TINSEL_ROOT)/hostlink
-	./run.sh sim
+$(HL)/%.o:
+	make -C $(HL)
 
-.PHONY: run-jtag
-run-jtag: all
-	make -C $(TINSEL_ROOT)/hostlink
-	./run.sh jtag
+run: run.cpp $(HL)/*.o
+	g++ -O2 -I $(INC) -I $(HL) -o run run.cpp $(HL)/*.o \
+          -ljtag_atlantic -ljtag_client -L $(QUARTUS_ROOTDIR)/linux64/ \
+          -Wl,-rpath,$(QUARTUS_ROOTDIR)/linux64
+
+sim: run.cpp $(HL)/sim/*.o
+	g++ -O2 -I $(INC) -I $(HL) -o sim run.cpp $(HL)/sim/*.o
 
 .PHONY: clean
 clean:
-	rm -f *.o *.elf link.ld *.v *.out
+	rm -f *.o *.elf link.ld *.v *.out run sim

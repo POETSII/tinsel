@@ -82,8 +82,9 @@ int main()
         // Wait for trigger
         tinselUartGet();
         // Start remaining threads
-        for (int i = 1; i < (1 << TinselLogThreadsPerCore); i++)
-          tinselCreateThread(i);
+        int numThreads = msgIn->args[0];
+        for (int i = 0; i < numThreads; i++)
+          tinselCreateThread(i+1);
         break;
       }
       else if (cmd == PingCmd) {
