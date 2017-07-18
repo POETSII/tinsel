@@ -39,9 +39,8 @@ module DE5(
 );
 
 wire clk_50mhz = OSC_50_B7A;
-wire rst_50mhz_n;
-
-assign rst_50mhz_n = 1;
+wire rst_50mhz = 0;
+wire rst_50mhz_n = 1;
 
 /*
 wire ddr3_local_init_done;
