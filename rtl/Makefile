@@ -27,12 +27,12 @@ sim: $(TOPMOD) $(HOSTTOPMOD)
 .PHONY: verilog
 verilog: $(TOPMOD).v $(HOSTTOPMOD).v
 
-$(TOPMOD): *.bsv *.c
+$(TOPMOD): *.bsv *.c InstrMem.hex
 	make -C $(TINSEL_ROOT)/apps/boot
 	$(BSC) $(BSCFLAGS) $(DEFS) -D SIMULATE -sim -g $(TOPMOD) -u $(TOPFILE)
 	$(BSC) $(BSCFLAGS) -sim -o $(TOPMOD) -e $(TOPMOD) *.c
 
-$(TOPMOD).v: *.bsv
+$(TOPMOD).v: *.bsv $(QP)/InstrMem.mif
 	make -C $(TINSEL_ROOT)/apps/boot
 	$(BSC) $(BSCFLAGS) -opt-undetermined-vals -unspecified-to X \
          $(DEFS) -u -verilog -g $(TOPMOD) $(TOPFILE)
@@ -54,6 +54,12 @@ testMailbox: *.bsv *.c
 	$(BSC) $(BSCFLAGS) $(DEFS) -D SIMULATE \
          -sim -g testMailbox -u TestMailbox.bsv
 	$(BSC) $(BSCFLAGS) -sim -o testMailbox -e testMailbox *.c
+
+InstrMem.hex:
+	make -C $(TINSEL_ROOT)/apps/boot
+
+$(QP)/InstrMem.mif:
+	make -C $(TINSEL_ROOT)/apps/boot
 
 .PHONY: test-mem
 test-mem: testMem

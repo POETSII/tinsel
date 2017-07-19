@@ -43,12 +43,14 @@ interface AvalonMac;
   method Bool source_valid;
   method Bool source_startofpacket;
   method Bool source_endofpacket;
+  method Bit#(1) source_error;
+  method Bit#(3) source_empty;
   method Action source(Bool source_ready);
   // RX connection to 10G MAC
   method Bool sink_ready;
   method Action sink(Bit#(64) sink_data, Bool sink_valid,
                        Bool sink_startofpacket, Bool sink_endofpacket,
-                         Bit#(6) sink_error);
+                         Bit#(6) sink_error, Bit#(3) sink_empty);
 endinterface
 
 interface Mac;
@@ -170,6 +172,8 @@ module mkMac (Mac);
     method Bool source_valid = inPort.canGet;
     method Bool source_startofpacket = inPort.value.start;
     method Bool source_endofpacket = inPort.value.stop;
+    method Bit#(1) source_error = 0;
+    method Bit#(3) source_empty = 0;
     method Action source(Bool source_ready);
       if (source_ready && inPort.canGet) inPort.get;
     endmethod
@@ -178,7 +182,7 @@ module mkMac (Mac);
     method Bool sink_ready = buffer.canEnq;
     method Action sink(Bit#(64) sink_data, Bool sink_valid,
                          Bool sink_startofpacket, Bool sink_endofpacket,
-                           Bit#(6) sink_error);
+                           Bit#(6) sink_error, Bit#(3) sink_empty);
       MacBeat beat;
       beat.data = sink_data;
       beat.start = sink_startofpacket;

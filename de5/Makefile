@@ -6,8 +6,9 @@ ifndef QUARTUS_ROOTDIR
 endif
 
 .PHONY: all
-all:
+all: 
 	make -C $(TINSEL_ROOT)/rtl verilog
+	make -C megafuns
 	qsys-generate -syn S5_DDR3_QSYS.qsys
 	quartus_dse Golden_top.qpf    \
     --num-seeds 11              \
@@ -16,10 +17,10 @@ all:
 	quartus_dse Golden_top.qpf --report utilization
 	quartus_dse Golden_top.qpf --report fmax_summary
 
-
 .PHONY: one
-one:
+one: 
 	make -C $(TINSEL_ROOT)/rtl verilog
+	make -C megafuns
 	qsys-generate -syn S5_DDR3_QSYS.qsys
 	quartus_sh --flow compile Golden_top.qpf
 
@@ -40,6 +41,7 @@ download-sof:
 
 .PHONY: clean
 clean:
+	make -C megafuns clean
 	rm -f *.mif *.rpt *.msg *.summary *.sld *.sopcinfo *.jdi
 	rm -f *.pin *.done *.qws *.sof *.csv *.qws *.smsg
 	rm -rf dse* db incremental_db S5_DDR3_QSYS .qsys_edit reconfig_mif
