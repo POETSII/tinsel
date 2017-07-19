@@ -8,6 +8,7 @@ endif
 .PHONY: all
 all:
 	make -C $(TINSEL_ROOT)/rtl verilog
+	make -C megafuns
 	qsys-generate -syn SoC.qsys
 	quartus_sh --flow compile DE5.qpf
 
@@ -17,6 +18,7 @@ download-sof:
 
 .PHONY: clean
 clean:
+	make -C megafuns clean
 	rm -f *.mif *.rpt *.msg *.summary *.sld *.sopcinfo *.jdi
 	rm -f *.pin *.done *.qws *.sof *.csv *.qws *.smsg
 	rm -rf db incremental_db SoC .qsys_edit reconfig_mif SoC .qsys-edit

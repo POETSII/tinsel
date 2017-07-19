@@ -24,13 +24,74 @@
 // We reuse some of the (free) PHY logic for the DE5 from
 //   https://github.com/alexforencich/verilog-ethernet/
 
-module DE5(
+module Golden_top(
   input wire [3:0] BUTTON,
+  input wire CPU_RESET_n,
 
   output wire CLOCK_SCL,
   inout wire CLOCK_SDA,
 
-  input wire CPU_RESET_n,
+  output wire [15:0] DDR3A_A,
+  output wire [2:0] DDR3A_BA,
+  output wire DDR3A_CAS_n,
+  output wire [1:0] DDR3A_CK,
+  output wire [1:0] DDR3A_CKE,
+  output wire [0:0] DDR3A_CK_n,
+  output wire [1:0] DDR3A_CS_n,
+  output wire [7:0] DDR3A_DM,
+  inout wire [63:0] DDR3A_DQ,
+  inout wire [7:0] DDR3A_DQS,
+  inout wire [7:0] DDR3A_DQS_n,
+  input wire DDR3A_EVENT_n,
+  output wire [1:0] DDR3A_ODT,
+  output wire DDR3A_RAS_n,
+  output wire DDR3A_RESET_n,
+  output wire DDR3A_SCL,
+  inout wire DDR3A_SDA,
+  output wire DDR3A_WE_n,
+
+  output wire [15:0] DDR3B_A,
+  output wire [2:0] DDR3B_BA,
+  output wire DDR3B_CAS_n,
+  output wire [1:0] DDR3B_CK,
+  output wire [1:0] DDR3B_CKE,
+  output wire [0:0] DDR3B_CK_n,
+  output wire [1:0] DDR3B_CS_n,
+  output wire [7:0] DDR3B_DM,
+  inout wire [63:0] DDR3B_DQ,
+  inout wire [7:0] DDR3B_DQS,
+  inout wire [7:0] DDR3B_DQS_n,
+  input wire DDR3B_EVENT_n,
+  output wire [1:0] DDR3B_ODT,
+  output wire DDR3B_RAS_n,
+  output wire DDR3B_RESET_n,
+  output wire DDR3B_SCL,
+  inout wire DDR3B_SDA,
+  output wire DDR3B_WE_n,
+
+  inout wire FAN_CTRL,
+
+  output wire FLASH_ADV_n,
+  output wire [1:0] FLASH_CE_n,
+  output wire FLASH_CLK,
+  output wire FLASH_OE_n,
+  input wire [1:0] FLASH_RDY_BSY_n,
+  output wire FLASH_RESET_n,
+  output wire FLASH_WE_n,
+
+  output wire [26:0] FSM_A,
+  inout wire  [31:0] FSM_D,
+
+  output wire [6:0] HEX0_D,
+  output wire HEX0_DP,
+
+  output wire [6:0] HEX1_D,
+  output wire HEX1_DP,
+
+  output wire [3:0] LED,
+  output wire [3:0] LED_BRACKET,
+  output wire LED_RJ45_L,
+  output wire LED_RJ45_R,
 
   input wire OSC_50_B3B,
   input wire OSC_50_B3D,
@@ -41,13 +102,19 @@ module DE5(
   input wire OSC_50_B8A,
   input wire OSC_50_B8D,
 
-  input wire PCIE_PERST_n,
-  input wire PCIE_REFCLK_p,
-  input wire [7:0] PCIE_RX_p,
-  input wire PCIE_SMBCLK,
-  inout wire PCIE_SMBDAT,
-  output wire [7:0] PCIE_TX_p,
-  output wire PCIE_WAKE_n,
+  output wire PLL_SCL,
+  inout wire PLL_SDA,
+
+  output wire RS422_DE,
+  input wire RS422_DIN,
+  output wire RS422_DOUT,
+  output wire RS422_RE_n,
+  output wire RS422_TE,
+
+  input wire RZQ_0,
+  input wire RZQ_1,
+  input wire RZQ_4,
+  input wire RZQ_5,
 
   input wire SFP_REFCLK_p,
 
@@ -91,12 +158,21 @@ module DE5(
   input wire SFPD_TXFAULT,
   output wire SFPD_TX_p,
 
-  output wire [3:0] LED,
-  input wire [3:0] SW
+  input wire SMA_CLKIN,
+  output wire SMA_CLKOUT,
+
+  input wire [3:0] SW,
+
+  output wire TEMP_CLK,
+  inout wire TEMP_DATA,
+  input wire TEMP_INT_n,
+  input wire TEMP_OVERT_n
+
 );
 
 wire clk_50mhz = OSC_50_B7A;
 wire rst_50mhz = 0;
+wire rst_50mhz_n = 1;
 
 wire clk_156mhz;
 wire rst_156mhz;
@@ -110,6 +186,14 @@ sync_reset_156mhz_inst (
   .rst(rst_50mhz | ~phy_pll_locked),
   .sync_reset_out(rst_156mhz)
 );
+
+wire ddr3_local_init_done;
+wire ddr3_local_cal_success;
+wire ddr3_2_local_init_done;
+wire ddr3_2_local_cal_success;
+
+assign LED[3:0] = {ddr3_local_init_done, ddr3_local_cal_success,
+                   ddr3_2_local_init_done, ddr3_2_local_cal_success};
 
 wire si570_scl_i;
 wire si570_scl_o;
@@ -283,33 +367,49 @@ phy_reconfig phy_reconfig_inst (
   .reconfig_from_xcvr(phy_reconfig_from_xcvr)
 );
 
-SoC system (
+S5_DDR3_QSYS u0 (
   .clk_clk                                   (clk_50mhz),
-  .reset_reset_n                             (~rst_50mhz),
+  .reset_reset_n                             (rst_50mhz_n),
+  .board_id_id                               (SW),
 
-  .pcie_mm_hip_ctrl_test_in                    (),
-  .pcie_mm_hip_ctrl_simu_mode_pipe             (1'b0),
-  .pcie_mm_hip_serial_rx_in0                   (PCIE_RX_p[0]),
-  .pcie_mm_hip_serial_rx_in1                   (PCIE_RX_p[1]),
-  .pcie_mm_hip_serial_rx_in2                   (PCIE_RX_p[2]),
-  .pcie_mm_hip_serial_rx_in3                   (PCIE_RX_p[3]),
-  .pcie_mm_hip_serial_rx_in4                   (PCIE_RX_p[4]),
-  .pcie_mm_hip_serial_rx_in5                   (PCIE_RX_p[5]),
-  .pcie_mm_hip_serial_rx_in6                   (PCIE_RX_p[6]),
-  .pcie_mm_hip_serial_rx_in7                   (PCIE_RX_p[7]),
-  .pcie_mm_hip_serial_tx_out0                  (PCIE_TX_p[0]),
-  .pcie_mm_hip_serial_tx_out1                  (PCIE_TX_p[1]),
-  .pcie_mm_hip_serial_tx_out2                  (PCIE_TX_p[2]),
-  .pcie_mm_hip_serial_tx_out3                  (PCIE_TX_p[3]),
-  .pcie_mm_hip_serial_tx_out4                  (PCIE_TX_p[4]),
-  .pcie_mm_hip_serial_tx_out5                  (PCIE_TX_p[5]),
-  .pcie_mm_hip_serial_tx_out6                  (PCIE_TX_p[6]),
-  .pcie_mm_hip_serial_tx_out7                  (PCIE_TX_p[7]),
-  .pcie_mm_npor_npor                           (1'b1),
-  .pcie_mm_npor_pin_perst                      (PCIE_PERST_n),
-  .pcie_mm_refclk_clk                          (PCIE_REFCLK_p),
-  .pcie_xcvr_clk_clk                           (OSC_50_B3B),
-  .pcie_xcvr_reset_reset_n                     (PCIE_PERST_n),
+  .memory_mem_a                              (DDR3A_A),
+  .memory_mem_ba                             (DDR3A_BA),
+  .memory_mem_ck                             (DDR3A_CK),
+  .memory_mem_ck_n                           (DDR3A_CK_n),
+  .memory_mem_cke                            (DDR3A_CKE),
+  .memory_mem_cs_n                           (DDR3A_CS_n),
+  .memory_mem_dm                             (DDR3A_DM),
+  .memory_mem_ras_n                          (DDR3A_RAS_n),
+  .memory_mem_cas_n                          (DDR3A_CAS_n),
+  .memory_mem_we_n                           (DDR3A_WE_n),
+  .memory_mem_reset_n                        (DDR3A_RESET_n),
+  .memory_mem_dq                             (DDR3A_DQ),
+  .memory_mem_dqs                            (DDR3A_DQS),
+  .memory_mem_dqs_n                          (DDR3A_DQS_n),
+  .memory_mem_odt                            (DDR3A_ODT),
+  .oct_rzqin                                 (RZQ_4),
+  .mem_if_ddr3_emif_status_local_init_done   (ddr3_local_init_done),   
+  .mem_if_ddr3_emif_status_local_cal_success (ddr3_local_cal_success), 
+  .mem_if_ddr3_emif_status_local_cal_fail    (ddr3_local_cal_fail),
+      
+  .memory_2_mem_a                              (DDR3B_A),
+  .memory_2_mem_ba                             (DDR3B_BA),
+  .memory_2_mem_ck                             (DDR3B_CK),
+  .memory_2_mem_ck_n                           (DDR3B_CK_n),
+  .memory_2_mem_cke                            (DDR3B_CKE),
+  .memory_2_mem_cs_n                           (DDR3B_CS_n),
+  .memory_2_mem_dm                             (DDR3B_DM),
+  .memory_2_mem_ras_n                          (DDR3B_RAS_n),
+  .memory_2_mem_cas_n                          (DDR3B_CAS_n),
+  .memory_2_mem_we_n                           (DDR3B_WE_n),
+  .memory_2_mem_reset_n                        (DDR3B_RESET_n),
+  .memory_2_mem_dq                             (DDR3B_DQ),
+  .memory_2_mem_dqs                            (DDR3B_DQS),
+  .memory_2_mem_dqs_n                          (DDR3B_DQS_n),
+  .memory_2_mem_odt                            (DDR3B_ODT),
+  .mem_if_ddr3_emif_2_status_local_init_done   (ddr3_2_local_init_done),
+  .mem_if_ddr3_emif_2_status_local_cal_success (ddr3_2_local_cal_success),
+  .mem_if_ddr3_emif_2_status_local_cal_fail    (ddr3_2_local_cal_fail),
 
   .clk_156_clk(clk_156mhz),
   .reset_156_reset_n(~rst_156mhz),
@@ -318,6 +418,18 @@ SoC system (
   .mac_a_xgmii_rx_data(sfp_a_rx_dc),
   .mac_a_xgmii_tx_data(sfp_a_tx_dc),
 
+  .mac_b_pause_data(0),
+  .mac_b_xgmii_rx_data(sfp_b_rx_dc),
+  .mac_b_xgmii_tx_data(sfp_b_tx_dc),
+
+  .mac_c_pause_data(0),
+  .mac_c_xgmii_rx_data(sfp_c_rx_dc),
+  .mac_c_xgmii_tx_data(sfp_c_tx_dc),
+
+  .mac_d_pause_data(0),
+  .mac_d_xgmii_rx_data(sfp_d_rx_dc),
+  .mac_d_xgmii_tx_data(sfp_d_tx_dc),
+
 );
-  
+
 endmodule 
