@@ -61,6 +61,9 @@ interface DE5HostTop;
   interface JtagUartAvalon jtagAvalon;
   // Connection to FPGA cluster
   interface AvalonMac mac;
+  // Reset request
+  (* always_enabled, always_ready *)
+  method Bool resetReq;
 endinterface
 
 `endif
@@ -180,6 +183,7 @@ module de5HostTop (DE5HostTop);
   `ifndef SIMULATE
   interface controlBAR = pcie.external.controlBAR;
   interface pcieHostBus = pcie.external.hostBus;
+  method Bool resetReq = pcie.external.resetReq;
   interface mac = link.avalonMac;
   interface jtagAvalon = uart.jtagAvalon;
   `endif

@@ -18,6 +18,8 @@
 // LenTxB     112       R/W            Num 128-bit words in TxB buffer
 // Enable     128       R/W            Enable/disable the double-buffers
 // Clear      144       W              Reset the double-buffers
+// Inflight   160       R              Are there any inflight requests?
+// Reset      176       W              Trigger board reset
 //
 // Semantics of the Rx double-buffer from host viewpoint:
 //  * When the host wants to read, it waits until LenRxA is non-zero.
@@ -115,6 +117,9 @@ interface PCIeStreamExt;
   // Interface to host PCIe bus
   // (Use for DMA to/from host memory)
   interface PCIeHostBus hostBus;
+  // Reset request
+  (* always_ready, always_enabled *)
+  method Bool resetReq;
 endinterface
 
 // Top-level interface
@@ -179,6 +184,9 @@ module mkPCIeStream (PCIeStream);
   // Addresses of buffers in host memory
   Reg#(Bit#(64)) addrTxA <- mkConfigReg(0);
   Reg#(Bit#(64)) addrTxB <- mkConfigReg(0);
+
+  // Board reset
+  Reg#(Bool) resetReg <- mkConfigReg(False);
 
   // Avalon-MM state & wires
   // -----------------------
@@ -441,6 +449,14 @@ module mkPCIeStream (PCIeStream);
                resetLenTxB.send;
                clearWire.send;
              end
+          10: begin
+                Bool inflight = pendingReads.value != 0 ||
+                                  pendingFlushes.canDeq;
+                ctrlReadData <= zeroExtend(pack(inflight));
+              end
+          11: if (write) begin
+                resetReg <= True;
+              end
         endcase
         ctrlReadDataValid <= read;
       endmethod
@@ -480,6 +496,7 @@ module mkPCIeStream (PCIeStream);
       method Bit#(16) m_byteenable = 16'hffff;
     endinterface
 
+    method Bool resetReq = resetReg;
   endinterface
 
   // Interface to application logic
