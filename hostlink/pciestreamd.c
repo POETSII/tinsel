@@ -355,13 +355,16 @@ int main(int argc, char* argv[])
 
   for (;;) {
     // Reset PCIeStream hardware
-    csrs[2*CSR_EN]        = 0;
-    csrs[2*CSR_CLEAR]     = 1;
+    csrs[2*CSR_EN] = 0;
+    while (csrs[2*CSR_INFLIGHT] != 0);
+    csrs[2*CSR_RESET] = 1;
+    usleep(100000);
+    csrs[2*CSR_CLEAR] = 1;
     csrs[2*CSR_ADDR_RX_A] = addrRxA;
     csrs[2*CSR_ADDR_RX_B] = addrRxB;
     csrs[2*CSR_ADDR_TX_A] = addrTxA;
     csrs[2*CSR_ADDR_TX_B] = addrTxB;
-    csrs[2*CSR_EN]        = 1;
+    csrs[2*CSR_EN] = 1;
 
     // Transmitter thread
     pid_t pidTransmitter = fork();

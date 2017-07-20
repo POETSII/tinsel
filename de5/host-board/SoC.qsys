@@ -250,6 +250,11 @@
    internal="clk_156.clk_in_reset"
    type="reset"
    dir="end" />
+ <interface
+   name="soft_reset"
+   internal="DE5HostTop_0.soft_reset"
+   type="conduit"
+   dir="end" />
  <module name="DE5HostTop_0" kind="DE5HostTop" version="1.0" enabled="1" />
  <module name="clk_156" kind="clock_source" version="16.0" enabled="1">
   <parameter name="clockFrequency" value="156250000" />
