@@ -187,6 +187,7 @@ module mkPCIeStream (PCIeStream);
 
   // Board reset
   Reg#(Bool) resetReg <- mkConfigReg(False);
+  PulseWire resetWire <- mkPulseWire;
 
   // Avalon-MM state & wires
   // -----------------------
@@ -195,6 +196,7 @@ module mkPCIeStream (PCIeStream);
   Reg#(Bit#(64))  ctrlReadData      <- mkConfigReg(0);
   Reg#(Bool)      ctrlReadDataValid <- mkDReg(False);
   Reg#(Bit#(4))   burstCount        <- mkConfigReg(1);
+  Reg#(Bool)      waitRequest       <- mkConfigReg(True);
 
   // Avalon-MM wires
   PulseWire setLenRxA   <- mkPulseWire;
@@ -394,6 +396,26 @@ module mkPCIeStream (PCIeStream);
     end
   endrule
 
+  // Drive the waitrequest signal on the BAR
+  // ---------------------------------------
+
+  // High on first cycle after reset
+  Reg#(Bool) init <- mkConfigReg(True);
+
+  rule onFirstCycle (init);
+    init <= False;
+  endrule
+
+  // Control waitRequest signal on BAR
+  // (We want to keep waitRequest high during reset)
+  rule updateWaitRequest;
+    if (init)
+      waitRequest <= False;
+    else if (resetWire)
+      waitRequest <= True;
+  endrule
+
+
   // Interfaces
   // ----------
 
@@ -407,6 +429,7 @@ module mkPCIeStream (PCIeStream);
           Bool read,
           Bool write,
           Bit#(16) byteenable);
+       if (! waitRequest) begin
         case (address[3:0])
           0: addrRxA <= truncate(writedata);
           1: addrRxB <= truncate(writedata);
@@ -456,13 +479,15 @@ module mkPCIeStream (PCIeStream);
               end
           11: if (write) begin
                 resetReg <= True;
+                resetWire.send;
               end
         endcase
         ctrlReadDataValid <= read;
+       end
       endmethod
       method Bit#(128) s_readdata = {ctrlReadData, ctrlReadData};
       method Bool s_readdatavalid = ctrlReadDataValid;
-      method Bool s_waitrequest   = False;
+      method Bool s_waitrequest   = waitRequest;
     endinterface
 
     // Host bus master
