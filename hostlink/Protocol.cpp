@@ -12,7 +12,9 @@
 #include <map>
 #include <string>
 #include <vector>
+#include <algorithm>
 
+extern double now();
 
 class Protocol
 {
@@ -44,22 +46,65 @@ private:
   uint32_t m_key, m_val;
   unsigned m_todo;
 
-  std::map<std::vector<char>,uint32_t> m_deviceKeyValSeq;
+  // Using vector rather than std::string due to conflicts with Altera's UART libc++
+  typedef   std::vector<std::pair<std::vector<char>,uint32_t> > key_val_map_t;
+  key_val_map_t m_deviceKeyValSeq;
 
   FILE *m_keyValDst;
+  FILE *m_measureDst;
+
+  unsigned m_totalBytes;
+  unsigned m_totalStdoutBytes;
+  unsigned m_totalExportedKeyValues;
+
+  static bool lt(const std::pair<std::vector<char>,uint32_t> &a, const std::pair<std::vector<char>,uint32_t> &b)
+  {
+    return a.first < b.first;
+  };
+
+
+  // This is because maps don't seem to work (no, really!).
+  // I think due to conflicts with the uart libc++. Or I'm dumb.
+  unsigned incSeq(const std::vector<char> &name)
+  {
+    const std::pair<std::vector<char>,uint32_t> val(name,0);
+    key_val_map_t::iterator it=std::upper_bound(m_deviceKeyValSeq.begin(), m_deviceKeyValSeq.end(), val, lt);
+    if(it==m_deviceKeyValSeq.end() || it->first!=name){
+      it=m_deviceKeyValSeq.insert(it,val);
+    }
+    assert(it->first==name);
+    unsigned res=it->second;
+    it->second++;
+    return res;
+  }
 public:
-  Protocol(uint32_t threadId, FILE *keyValDst)
+  Protocol(uint32_t threadId, FILE *keyValDst, FILE *measureDst)
     : m_state(StateIdle)
     , m_threadId(threadId)
     , m_key(0)
     , m_val(0)
     , m_todo(0)
     , m_keyValDst(keyValDst)
+    , m_measureDst(measureDst)
+    , m_totalBytes(0)
+    , m_totalStdoutBytes(0)
+    , m_totalExportedKeyValues(0)
   {
   }
+
+  unsigned getTotalBytes()
+  { return m_totalBytes; }
+
+  unsigned getTotalStdoutBytes()
+  { return m_totalStdoutBytes; }
+
+  unsigned getTotalExportedKeyValues()
+  { return m_totalExportedKeyValues; }
   
   bool add(uint8_t byte, int &exitCode)
   {
+    m_totalBytes++;
+    
     switch(m_state)
       {
       case StateIdle:
@@ -111,6 +156,7 @@ public:
 	break;
       case StateStdOut:
 	//fprintf(stderr, "%08x : add stdout '%c'\n", m_threadId, (char)byte);
+	m_totalStdoutBytes++;
 	m_chars.push_back((char)byte);
 	if(byte==0){
 	  fprintf(stdout, "%08x : StdOut : ", m_threadId);
@@ -154,12 +200,13 @@ public:
 	m_val = (m_val>>8) | (uint32_t(byte)<<24);
 	m_todo--;
 	if(m_todo==0){
-	  unsigned seq=m_deviceKeyValSeq[m_device];
+	  // TODO : Still seems completely broken.
+	  m_totalExportedKeyValues++;
+	  unsigned seq=incSeq(m_device);
 	  //fprintf(stdout, "KeyVal : %s, %u, %u, %u\n", &m_device[0], seq, m_key, m_val);
 	  if(m_keyValDst){
 	    fprintf(m_keyValDst, "%s, %u, %u, %u\n", &m_device[0], seq, m_key, m_val);
 	  }
-	  m_deviceKeyValSeq[m_device]=seq+1;
 	  m_state=StateIdle;
 	}
 	break;
@@ -172,17 +219,22 @@ public:
   }
 };
 
-void protocol(HostLink *link, FILE *keyValDst)
+void protocol(HostLink *link, FILE *keyValDst, FILE *measureDst)
 {
+  double start=now();
+  
   std::vector<Protocol> states;
 
   for(unsigned i=0;i<TinselThreadsPerBoard;i++){
-    states.push_back(Protocol(i, keyValDst));
+    states.push_back(Protocol(i, keyValDst, measureDst));
   }
 
   int exitCode=0;
 
+  unsigned totalBytes=0;
   while(1){
+    totalBytes++;
+    
     uint32_t src, val;
     
     uint8_t cmd = link->get(&src, &val);
@@ -197,7 +249,34 @@ void protocol(HostLink *link, FILE *keyValDst)
     fflush(stdout);
   }
 
-  fprintf(stderr, "Application exited : code = %d\n", exitCode);
+  double finish=now();
+
+  fprintf(stderr, "Application exited : exitCode = %d, execTime=%f\n", exitCode, finish-start);
+
+  if(measureDst){
+    fprintf(measureDst, "appExitCode, -, %d, -\n", exitCode);
+    fprintf(measureDst, "appWallClockTime, -, %f, sec\n", finish-start);
+    unsigned totalExportedKeyValues=0;
+    unsigned totalStdoutBytes=0;
+    for(unsigned i=0; i<TinselThreadsPerBoard; i++){
+      if (states[i].getTotalBytes()!=0){
+	fprintf(measureDst, "deviceHostlinkRecv, %d, %d, bytes\n", i, states[i].getTotalBytes() );
+      }
+      if(states[i].getTotalStdoutBytes()!=0){
+	fprintf(measureDst, "deviceStdoutRecv, %d, %d, bytes\n", i, states[i].getTotalStdoutBytes() );
+      }
+      if(states[i].getTotalExportedKeyValues()!=0){
+	fprintf(measureDst, "deviceExportedCount, %d, %d, key-values\n", i, states[i].getTotalExportedKeyValues() );
+      }
+      totalExportedKeyValues+=states[i].getTotalExportedKeyValues();
+      totalStdoutBytes+=states[i].getTotalExportedKeyValues();
+    }
+    fprintf(measureDst, "appHostlinkRecv, -, %d, bytes\n", totalBytes );
+    fprintf(measureDst, "appStdoutRecv, -, %d, bytes\n", totalStdoutBytes );
+    fprintf(measureDst, "appExportedCount, -, %d, key-values\n", totalExportedKeyValues );
+    fflush(measureDst);
+  }
+  
   exit(exitCode);
 }
 
