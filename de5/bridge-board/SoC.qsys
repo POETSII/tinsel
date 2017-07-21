@@ -9,7 +9,7 @@
    categories="System" />
  <parameter name="bonusData"><![CDATA[bonusData 
 {
-   element DE5HostTop_0
+   element DE5BridgeTop_0
    {
       datum _sortIndex
       {
@@ -252,10 +252,10 @@
    dir="end" />
  <interface
    name="soft_reset"
-   internal="DE5HostTop_0.soft_reset"
+   internal="DE5BridgeTop_0.soft_reset"
    type="conduit"
    dir="end" />
- <module name="DE5HostTop_0" kind="DE5HostTop" version="1.0" enabled="1" />
+ <module name="DE5BridgeTop_0" kind="DE5BridgeTop" version="1.0" enabled="1" />
  <module name="clk_156" kind="clock_source" version="16.0" enabled="1">
   <parameter name="clockFrequency" value="156250000" />
   <parameter name="clockFrequencyKnown" value="true" />
@@ -1265,7 +1265,7 @@
    kind="avalon"
    version="16.0"
    start="pcie_mm.Rxm_BAR0"
-   end="DE5HostTop_0.controlbar_s">
+   end="DE5BridgeTop_0.controlbar_s">
   <parameter name="arbitrationPriority" value="1" />
   <parameter name="baseAddress" value="0x0000" />
   <parameter name="defaultConnection" value="false" />
@@ -1273,7 +1273,7 @@
  <connection
    kind="avalon"
    version="16.0"
-   start="DE5HostTop_0.jtag"
+   start="DE5BridgeTop_0.jtag"
    end="jtag_uart_0.avalon_jtag_slave">
   <parameter name="arbitrationPriority" value="1" />
   <parameter name="baseAddress" value="0x0000" />
@@ -1282,7 +1282,7 @@
  <connection
    kind="avalon"
    version="16.0"
-   start="DE5HostTop_0.pcie_host_bus"
+   start="DE5BridgeTop_0.pcie_host_bus"
    end="pcie_mm.Txs">
   <parameter name="arbitrationPriority" value="1" />
   <parameter name="baseAddress" value="0x0000" />
@@ -1305,7 +1305,7 @@
  <connection
    kind="avalon_streaming"
    version="16.0"
-   start="DE5HostTop_0.mac_source"
+   start="DE5BridgeTop_0.mac_source"
    end="mac_a_tx_fifo.in" />
  <connection
    kind="avalon_streaming"
@@ -1316,7 +1316,7 @@
    kind="avalon_streaming"
    version="16.0"
    start="mac_a_rx_fifo.out"
-   end="DE5HostTop_0.mac_sink" />
+   end="DE5BridgeTop_0.mac_sink" />
  <connection
    kind="clock"
    version="16.0"
@@ -1364,7 +1364,7 @@
    kind="clock"
    version="16.0"
    start="pcie_mm.coreclkout"
-   end="DE5HostTop_0.clock" />
+   end="DE5BridgeTop_0.clock" />
  <connection
    kind="clock"
    version="16.0"
@@ -1527,7 +1527,7 @@
    kind="reset"
    version="16.0"
    start="clk_50.clk_reset"
-   end="DE5HostTop_0.reset_sink" />
+   end="DE5BridgeTop_0.reset_sink" />
  <connection
    kind="reset"
    version="16.0"
@@ -1567,7 +1567,7 @@
    kind="reset"
    version="16.0"
    start="pcie_mm.nreset_status"
-   end="DE5HostTop_0.reset_sink" />
+   end="DE5BridgeTop_0.reset_sink" />
  <interconnectRequirement for="$system" name="qsys_mm.clockCrossingAdapter" value="FIFO" />
  <interconnectRequirement for="$system" name="qsys_mm.maxAdditionalLatency" value="4" />
 </system>

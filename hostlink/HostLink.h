@@ -25,8 +25,8 @@ class HostLink {
                    [TinselCoresPerBoard][TinselThreadsPerCore];
  public:
 
-  // DebugLink to the host board
-  DebugLink* hostBoard;
+  // DebugLink to the bridge board
+  DebugLink* bridgeBoard;
 
   // DebugLinks to the cluster boards
   DebugLink* mesh[TinselMeshXLen][TinselMeshYLen];
