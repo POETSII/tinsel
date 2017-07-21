@@ -30,7 +30,7 @@ update-mif:
 
 .PHONY: download-sof
 download-sof:
-	quartus_pgm Golden_top.cdf
+	quartus_pgm --quiet  Golden_top.cdf
 
 .PHONY: clean
 clean:
