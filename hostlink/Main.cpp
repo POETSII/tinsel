@@ -7,6 +7,7 @@
 #include <getopt.h>
 #include <string.h>
 #include <assert.h>
+#include <time.h>
 #include "HostLink.h"
 
 // Send file contents over host-link
@@ -84,7 +85,14 @@ void console(HostLink* link)
   }
 }
 
-extern void protocol(HostLink *link, FILE *keyValDst);
+extern void protocol(HostLink *link, FILE *keyValDst, FILE *measureDst);
+
+double now()
+{
+  struct timespec tp;
+  clock_gettime(CLOCK_REALTIME, &tp);
+  return tp.tv_sec+1e-9*tp.tv_nsec;
+}
 
 int usage()
 {
@@ -96,7 +104,10 @@ int usage()
          "    -c            load console after boot\n"
 	 "    -p            load protocol after boot\n"
 	 "    -k            (protocol) set destination file for key value output\n"
-         "    -h            help\n");
+	 "    -m [CSVFILE]  File to write timing and execution measurements to\n"
+         "    -h            help\n"
+         "\n"
+	 "     measurement file is a csv file containing key, index, value, unit tuples\n");
   return -1;
 }
 
@@ -109,11 +120,12 @@ int main(int argc, char* argv[])
   int useProtocol = 0;
 
   FILE *keyValDst = 0;
+  FILE *measureDst = 0;
 
   // Option processing
   optind = 1;
   for (;;) {
-    int c = getopt(argc, argv, "hon:t:cp");
+    int c = getopt(argc, argv, "hon:t:cpk:m:");
     if (c == -1) break;
     switch (c) {
       case 'h': return usage();
@@ -126,6 +138,14 @@ int main(int argc, char* argv[])
         keyValDst=fopen(optarg,"wt");
 	if(keyValDst==0){
 	  fprintf(stderr, "Error : couldn't open key value file '%s'\n", optarg);
+	  exit(1);
+	}
+	break;
+      }
+    case 'm':{
+        measureDst=fopen(optarg,"wt");
+	if(keyValDst==0){
+	  fprintf(stderr, "Error : couldn't open measurement file '%s'\n", optarg);
 	  exit(1);
 	}
 	break;
@@ -155,6 +175,7 @@ int main(int argc, char* argv[])
 
   // Step 1: load code into instruction memory
   // -----------------------------------------
+  double start=now();
 
   if (startOnlyOneThread)
     // Write instructions to core 0 only
@@ -165,6 +186,13 @@ int main(int argc, char* argv[])
 
   // Write instructions to instruction memory
   uint32_t instrBase = sendFile(WriteInstrCmd, &link, code, &checksum);
+
+  double finish=now();
+  if(measureDst){
+    fprintf(measureDst, "hostlinkLoadInstructions, -, %f, sec\n", finish-start);
+    fflush(measureDst);
+  }
+  start=now();
 
   // Step 2: initialise memory using data file
   // -----------------------------------------
@@ -199,6 +227,13 @@ int main(int argc, char* argv[])
     if (startOnlyOneThread) break;
   }
 
+  finish=now();
+  if(measureDst){
+    fprintf(measureDst, "hostlinkLoadData, -, %f, sec\n", finish-start);
+    fflush(measureDst);
+  }
+  start=now();
+
   // Step 3: release the cores
   // -------------------------
 
@@ -214,12 +249,19 @@ int main(int argc, char* argv[])
   link.put(StartCmd);
   link.put(numThreads);
   checksum += StartCmd + numThreads;
+
+  finish=now();
+  if(measureDst){
+    fprintf(measureDst, "hostlinkReleaseCores, -, %f, sec\n", finish-start);
+    fflush(measureDst);
+  }
+  start=now();
  
   // Step 4: dump
   // ------------
 
   if (useConsole) console(&link);
-  else if(useProtocol) protocol(&link, keyValDst);
+  else if(useProtocol) protocol(&link, keyValDst, measureDst);
   else {
     // The number of tenths of a second that link has been idle
     int idle = 0;
