@@ -43,6 +43,8 @@
 #define CSR_LEN_TX_B  7
 #define CSR_EN        8
 #define CSR_CLEAR     9
+#define CSR_INFLIGHT  10
+#define CSR_RESET     11
 
 // Helper functions
 // ----------------

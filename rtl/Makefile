@@ -17,9 +17,9 @@ BSCFLAGS = -wait-for-license -suppress-warnings S0015 \
 TOPFILE = DE5Top.bsv
 TOPMOD = de5Top
 
-# Top level module for host board
-HOSTTOPFILE = DE5HostTop.bsv
-HOSTTOPMOD = de5HostTop
+# Top level module for bridge board
+HOSTTOPFILE = DE5BridgeTop.bsv
+HOSTTOPMOD = de5BridgeTop
 
 .PHONY: sim
 sim: $(TOPMOD) $(HOSTTOPMOD)
@@ -71,9 +71,9 @@ test-mailbox: testMailbox
 clean:
 	rm -f *.cxx *.o *.h *.ba *.bo *.so *.ipinfo
 	rm -f InstrMem.hex DataMem.hex RunQueue.hex
-	rm -f testMem de5Top testMailbox de5HostTop
+	rm -f testMem de5Top testMailbox de5BridgeTop
 	rm -f de5Top.v mkCore.v mkDCache.v mkMailbox.v mkDebugLinkRouter.v
-	rm -f de5HostTop.v
+	rm -f de5BridgeTop.v
 	rm -rf test-mem-log
 	rm -rf test-mailbox-log
 	rm -rf test-array-of-queue-log

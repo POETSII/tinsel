@@ -2250,7 +2250,7 @@ set_global_assignment -name QIP_FILE SoC/synthesis/SoC.qip
 set_global_assignment -name VERILOG_FILE ../../rtl/AlteraBlockRam.v
 set_global_assignment -name VERILOG_FILE ../si570/si570_i2c_init.v
 set_global_assignment -name VERILOG_FILE ../si570/i2c_master.v
-set_global_assignment -name VERILOG_FILE ../rtl/de5HostTop.v
+set_global_assignment -name VERILOG_FILE ../rtl/de5BridgeTop.v
 set_global_assignment -name VERILOG_FILE ../sync_reset.v
 set_global_assignment -name SDC_FILE DE5.sdc
 set_global_assignment -name VERILOG_FILE DE5.v
