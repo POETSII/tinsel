@@ -1919,7 +1919,7 @@ set_instance_assignment -name IO_STANDARD "SSTL-15 CLASS I" -to DDR3A_DM[6] -tag
 set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to DDR3A_DM[6] -tag __S5_DDR3_QSYS_mem_if_ddr3_emif_p0
 set_instance_assignment -name IO_STANDARD "SSTL-15 CLASS I" -to DDR3A_DM[7] -tag __S5_DDR3_QSYS_mem_if_ddr3_emif_p0
 set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to DDR3A_DM[7] -tag __S5_DDR3_QSYS_mem_if_ddr3_emif_p0
-set_global_assignment -name SEED 6
+set_global_assignment -name SEED 0
 set_global_assignment -name OPTIMIZATION_MODE BALANCED
 
 set_instance_assignment -name IO_STANDARD "SSTL-15 CLASS I" -to DDR3B_DQ[0] -tag __S5_DDR3_QSYS_mem_if_ddr3_emif_2_p0

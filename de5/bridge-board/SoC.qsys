@@ -53,7 +53,7 @@
    {
       datum _sortIndex
       {
-         value = "9";
+         value = "10";
          type = "int";
       }
    }
@@ -69,7 +69,7 @@
    {
       datum _sortIndex
       {
-         value = "8";
+         value = "9";
          type = "int";
       }
    }
@@ -77,7 +77,7 @@
    {
       datum _sortIndex
       {
-         value = "10";
+         value = "11";
          type = "int";
       }
    }
@@ -85,7 +85,7 @@
    {
       datum _sortIndex
       {
-         value = "12";
+         value = "13";
          type = "int";
       }
    }
@@ -93,7 +93,7 @@
    {
       datum _sortIndex
       {
-         value = "11";
+         value = "12";
          type = "int";
       }
    }
@@ -160,6 +160,14 @@
       datum _sortIndex
       {
          value = "4";
+         type = "int";
+      }
+   }
+   element uart_bridge
+   {
+      datum _sortIndex
+      {
+         value = "8";
          type = "int";
       }
    }
@@ -275,7 +283,7 @@
    enabled="1">
   <parameter name="allowMultipleConnections" value="false" />
   <parameter name="avalonSpec" value="2.0" />
-  <parameter name="clkFreq" value="250000000" />
+  <parameter name="clkFreq" value="50000000" />
   <parameter name="hubInstanceID" value="0" />
   <parameter name="readBufferDepth" value="64" />
   <parameter name="readIRQThreshold" value="8" />
@@ -1261,6 +1269,23 @@
   <parameter name="gui_split_sizes" value="" />
   <parameter name="number_of_reconfig_interfaces" value="10" />
  </module>
+ <module
+   name="uart_bridge"
+   kind="altera_avalon_mm_clock_crossing_bridge"
+   version="16.0"
+   enabled="1">
+  <parameter name="ADDRESS_UNITS" value="SYMBOLS" />
+  <parameter name="ADDRESS_WIDTH" value="10" />
+  <parameter name="COMMAND_FIFO_DEPTH" value="4" />
+  <parameter name="DATA_WIDTH" value="32" />
+  <parameter name="MASTER_SYNC_DEPTH" value="2" />
+  <parameter name="MAX_BURST_SIZE" value="1" />
+  <parameter name="RESPONSE_FIFO_DEPTH" value="4" />
+  <parameter name="SLAVE_SYNC_DEPTH" value="2" />
+  <parameter name="SYMBOL_WIDTH" value="8" />
+  <parameter name="SYSINFO_ADDR_WIDTH" value="3" />
+  <parameter name="USE_AUTO_ADDRESS_WIDTH" value="1" />
+ </module>
  <connection
    kind="avalon"
    version="16.0"
@@ -1274,6 +1299,15 @@
    kind="avalon"
    version="16.0"
    start="DE5BridgeTop_0.jtag"
+   end="uart_bridge.s0">
+  <parameter name="arbitrationPriority" value="1" />
+  <parameter name="baseAddress" value="0x0000" />
+  <parameter name="defaultConnection" value="false" />
+ </connection>
+ <connection
+   kind="avalon"
+   version="16.0"
+   start="uart_bridge.m0"
    end="jtag_uart_0.avalon_jtag_slave">
   <parameter name="arbitrationPriority" value="1" />
   <parameter name="baseAddress" value="0x0000" />
@@ -1327,12 +1361,18 @@
    version="16.0"
    start="mem_if_ddr3_emif.afi_half_clk"
    end="mem_if_ddr3_emif_2.afi_half_clk_in" />
+ <connection kind="clock" version="16.0" start="clk_50.clk" end="jtag_uart_0.clk" />
  <connection kind="clock" version="16.0" start="clk_50.clk" end="mac_a.csr_clk" />
  <connection
    kind="clock"
    version="16.0"
    start="clk_156.clk"
    end="mac_a_rx_fifo.in_clk" />
+ <connection
+   kind="clock"
+   version="16.0"
+   start="clk_50.clk"
+   end="uart_bridge.m0_clk" />
  <connection
    kind="clock"
    version="16.0"
@@ -1359,11 +1399,6 @@
    kind="clock"
    version="16.0"
    start="pcie_mm.coreclkout"
-   end="jtag_uart_0.clk" />
- <connection
-   kind="clock"
-   version="16.0"
-   start="pcie_mm.coreclkout"
    end="DE5BridgeTop_0.clock" />
  <connection
    kind="clock"
@@ -1380,6 +1415,11 @@
    version="16.0"
    start="pcie_mm.coreclkout"
    end="pcie_reconfig_driver_0.pld_clk" />
+ <connection
+   kind="clock"
+   version="16.0"
+   start="pcie_mm.coreclkout"
+   end="uart_bridge.s0_clk" />
  <connection
    kind="conduit"
    version="16.0"
@@ -1501,6 +1541,11 @@
  <connection
    kind="reset"
    version="16.0"
+   start="clk_50.clk_reset"
+   end="uart_bridge.m0_reset" />
+ <connection
+   kind="reset"
+   version="16.0"
    start="pcie_xcvr_clk.clk_reset"
    end="pcie_xcvr_reconfig_0.mgmt_rst_reset" />
  <connection
@@ -1537,6 +1582,11 @@
    kind="reset"
    version="16.0"
    start="clk_50.clk_reset"
+   end="uart_bridge.s0_reset" />
+ <connection
+   kind="reset"
+   version="16.0"
+   start="clk_50.clk_reset"
    end="mem_if_ddr3_emif.soft_reset" />
  <connection
    kind="reset"
@@ -1562,12 +1612,12 @@
    kind="reset"
    version="16.0"
    start="pcie_mm.nreset_status"
-   end="jtag_uart_0.reset" />
+   end="DE5BridgeTop_0.reset_sink" />
  <connection
    kind="reset"
    version="16.0"
    start="pcie_mm.nreset_status"
-   end="DE5BridgeTop_0.reset_sink" />
+   end="uart_bridge.s0_reset" />
  <interconnectRequirement for="$system" name="qsys_mm.clockCrossingAdapter" value="FIFO" />
  <interconnectRequirement for="$system" name="qsys_mm.maxAdditionalLatency" value="4" />
 </system>
