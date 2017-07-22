@@ -20,7 +20,7 @@ echo "Using mesh dimensions: $MESH_X x $MESH_Y"
 
 HOST_X=0
 HOST_Y=$(($MESH_Y))
-echo "Connecting host board at location ($HOST_X, $HOST_Y)"
+echo "Connecting bridge board at location ($HOST_X, $HOST_Y)"
 
 # Check dimensions
 if [ $MESH_X -gt $MESH_MAX_X ] || [ $MESH_Y -gt $MESH_MAX_Y ] ; then
@@ -123,14 +123,14 @@ for X in $(seq 0 $LAST_X); do
   done
 done
 
-# Connect host board to mesh
+# Connect bridge board to mesh
 ID=$(fromCoords 0 $(($MESH_Y-1)))
 cat /tmp/tinsel.out.b$ID.1 > $HOST_IN.1 &
 PIDS="$PIDS $!"
 cat $HOST_OUT.1 > /tmp/tinsel.in.b$ID.1 &
 PIDS="$PIDS $!"
 
-# Connect host board to PCIe stream
+# Connect bridge board to PCIe stream
 connect "/tmp/tinsel.out.b$HOST_ID.5" "/tmp/pciestream-out" &
 PIDS="$PIDS $!"
 connect "/tmp/pciestream-in" "/tmp/tinsel.in.b$HOST_ID.5" &
@@ -148,8 +148,8 @@ for X in $(seq 0 $LAST_X); do
   done
 done
 
-# Run host board
-echo "Lauching host board simulator at position ($HOST_X, $HOST_Y)" \
+# Run bridge board
+echo "Lauching bridge board simulator at position ($HOST_X, $HOST_Y)" \
      "with board id $HOST_ID"
 BOARD_ID=$HOST_ID ./de5HostTop &
 PIDS="$PIDS $!"

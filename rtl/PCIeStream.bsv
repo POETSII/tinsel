@@ -18,6 +18,8 @@
 // LenTxB     112       R/W            Num 128-bit words in TxB buffer
 // Enable     128       R/W            Enable/disable the double-buffers
 // Clear      144       W              Reset the double-buffers
+// Inflight   160       R              Are there any inflight requests?
+// Reset      176       W              Trigger board reset
 //
 // Semantics of the Rx double-buffer from host viewpoint:
 //  * When the host wants to read, it waits until LenRxA is non-zero.
@@ -115,6 +117,9 @@ interface PCIeStreamExt;
   // Interface to host PCIe bus
   // (Use for DMA to/from host memory)
   interface PCIeHostBus hostBus;
+  // Reset request
+  (* always_ready, always_enabled *)
+  method Bool resetReq;
 endinterface
 
 // Top-level interface
@@ -180,6 +185,10 @@ module mkPCIeStream (PCIeStream);
   Reg#(Bit#(64)) addrTxA <- mkConfigReg(0);
   Reg#(Bit#(64)) addrTxB <- mkConfigReg(0);
 
+  // Board reset
+  Reg#(Bool) resetReg <- mkConfigReg(False);
+  PulseWire resetWire <- mkPulseWire;
+
   // Avalon-MM state & wires
   // -----------------------
 
@@ -187,6 +196,7 @@ module mkPCIeStream (PCIeStream);
   Reg#(Bit#(64))  ctrlReadData      <- mkConfigReg(0);
   Reg#(Bool)      ctrlReadDataValid <- mkDReg(False);
   Reg#(Bit#(4))   burstCount        <- mkConfigReg(1);
+  Reg#(Bool)      waitRequest       <- mkConfigReg(True);
 
   // Avalon-MM wires
   PulseWire setLenRxA   <- mkPulseWire;
@@ -386,6 +396,26 @@ module mkPCIeStream (PCIeStream);
     end
   endrule
 
+  // Drive the waitrequest signal on the BAR
+  // ---------------------------------------
+
+  // High on first cycle after reset
+  Reg#(Bool) init <- mkConfigReg(True);
+
+  rule onFirstCycle (init);
+    init <= False;
+  endrule
+
+  // Control waitRequest signal on BAR
+  // (We want to keep waitRequest high during reset)
+  rule updateWaitRequest;
+    if (init)
+      waitRequest <= False;
+    else if (resetWire)
+      waitRequest <= True;
+  endrule
+
+
   // Interfaces
   // ----------
 
@@ -399,6 +429,7 @@ module mkPCIeStream (PCIeStream);
           Bool read,
           Bool write,
           Bit#(16) byteenable);
+       if (! waitRequest) begin
         case (address[3:0])
           0: addrRxA <= truncate(writedata);
           1: addrRxB <= truncate(writedata);
@@ -441,12 +472,22 @@ module mkPCIeStream (PCIeStream);
                resetLenTxB.send;
                clearWire.send;
              end
+          10: begin
+                Bool inflight = pendingReads.value != 0 ||
+                                  pendingFlushes.canDeq;
+                ctrlReadData <= zeroExtend(pack(inflight));
+              end
+          11: if (write) begin
+                resetReg <= True;
+                resetWire.send;
+              end
         endcase
         ctrlReadDataValid <= read;
+       end
       endmethod
       method Bit#(128) s_readdata = {ctrlReadData, ctrlReadData};
       method Bool s_readdatavalid = ctrlReadDataValid;
-      method Bool s_waitrequest   = False;
+      method Bool s_waitrequest   = waitRequest;
     endinterface
 
     // Host bus master
@@ -480,6 +521,7 @@ module mkPCIeStream (PCIeStream);
       method Bit#(16) m_byteenable = 16'hffff;
     endinterface
 
+    method Bool resetReq = resetReg;
   endinterface
 
   // Interface to application logic

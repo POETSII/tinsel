@@ -1,4 +1,4 @@
-// This module implements a "host board", i.e. an FPGA board that acts
+// This module implements a "bridge board", i.e. an FPGA board that acts
 // as a proxy between a host PC (connected over PCIe) and an FPGA
 // cluster (connected via a 10G link).
 //
@@ -21,7 +21,7 @@
 // This module assumes that BytesPerFlit is 16.  This restriction
 // should be removed in future, if necessary.
 
-package DE5HostTop;
+package DE5BridgeTop;
 
 // ============================================================================
 // Imports
@@ -47,11 +47,11 @@ import DebugLink   :: *;
 
 `ifdef SIMULATE
 
-typedef Empty DE5HostTop;
+typedef Empty DE5BridgeTop;
 
 `else
 
-interface DE5HostTop;
+interface DE5BridgeTop;
   // Interface to the PCIe BAR
   interface PCIeBAR controlBAR;
   // Interface to host PCIe bus
@@ -61,6 +61,9 @@ interface DE5HostTop;
   interface JtagUartAvalon jtagAvalon;
   // Connection to FPGA cluster
   interface AvalonMac mac;
+  // Reset request
+  (* always_enabled, always_ready *)
+  method Bool resetReq;
 endinterface
 
 `endif
@@ -69,7 +72,7 @@ endinterface
 // Implementation
 // ============================================================================
 
-module de5HostTop (DE5HostTop);
+module de5BridgeTop (DE5BridgeTop);
 
   // Ports
   OutPort#(Bit#(128)) toPCIe <- mkOutPort;
@@ -153,7 +156,7 @@ module de5HostTop (DE5HostTop);
   rule displayStartup;
     let t <- $time;
     if (t == 0) begin
-      $display("\nSimulator for host board started");
+      $display("\nSimulator for bridge board started");
     end
   endrule
   `endif
@@ -162,7 +165,7 @@ module de5HostTop (DE5HostTop);
   // -----------------
 
   // Respond to the Query command with a zero byte.  The host uses the
-  // query command to distinguish this host board from a worker board,
+  // query command to distinguish this bridge board from a worker board,
   // which returns non-zero.
 
   Reg#(Bit#(2)) uartState <- mkConfigReg(0);
@@ -180,6 +183,7 @@ module de5HostTop (DE5HostTop);
   `ifndef SIMULATE
   interface controlBAR = pcie.external.controlBAR;
   interface pcieHostBus = pcie.external.hostBus;
+  method Bool resetReq = pcie.external.resetReq;
   interface mac = link.avalonMac;
   interface jtagAvalon = uart.jtagAvalon;
   `endif

@@ -5,7 +5,7 @@ nothing:
 clean:
 	make -C rtl clean
 	make -C de5 clean
-	make -C de5/host-board clean
+	make -C de5/bridge-board clean
 	make -C hostlink clean
 	make -C include clean
 	make -C lib clean
