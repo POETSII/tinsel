@@ -45,7 +45,7 @@ HostLink::HostLink()
   #endif
 
   // Initialise debug links
-  hostBoard = NULL;
+  bridgeBoard = NULL;
   for (int x = 0; x < TinselMeshXLen; x++)
     for (int y = 0; y < TinselMeshYLen; y++)
       mesh[x][y] = NULL;
@@ -59,11 +59,11 @@ HostLink::HostLink()
     uint32_t boardId;
     bool isHostBoard = !debugLinks[i].getQuery(&boardId);
     if (isHostBoard) {
-      if (hostBoard != NULL) {
-        fprintf(stderr, "Too many host boards detected\n");
+      if (bridgeBoard != NULL) {
+        fprintf(stderr, "Too many bridge boards detected\n");
         exit(EXIT_FAILURE);
       }
-      hostBoard = &debugLinks[i];
+      bridgeBoard = &debugLinks[i];
     }
     else {
       uint32_t x = boardId % (1 << TinselMeshXBits);
@@ -113,7 +113,7 @@ HostLink::HostLink()
 // Destructor
 HostLink::~HostLink()
 {
-  hostBoard->close();
+  bridgeBoard->close();
   for (int x = 0; x < TinselMeshXLen; x++)
     for (int y = 0; y < TinselMeshYLen; y++)
       mesh[x][y]->close();
