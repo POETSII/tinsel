@@ -99,29 +99,8 @@ wire clk_50mhz = OSC_50_B7A;
 wire rst_50mhz = 0;
 
 wire clk_156mhz;
-wire rst_156mhz;
 wire phy_pll_locked;
 wire soft_reset;
-wire soc_reset;
-
-sync_reset #(
-  .N(4)
-)
-sync_reset_156mhz_inst (
-  .clk(clk_156mhz),
-  .rst(rst_50mhz | soft_reset | ~phy_pll_locked),
-  .sync_reset_out(rst_156mhz)
-);
-
-sync_reset #(
-  .N(4)
-)
-sync_reset_soc_inst (
-  .clk(clk_50mhz),
-  .rst(rst_50mhz | soft_reset),
-  .sync_reset_out(soc_reset)
-);
-
 
 wire si570_scl_i;
 wire si570_scl_o;
@@ -260,7 +239,7 @@ phy phy_inst (
   .xgmii_rx_clk(clk_156mhz),
   .xgmii_tx_clk(clk_156mhz),
 
-  .tx_ready(~rst_156mhz),
+  .tx_ready(),
   .rx_ready(),
 
   .rx_data_ready(),
@@ -297,8 +276,7 @@ phy_reconfig phy_reconfig_inst (
 
 SoC system (
   .clk_clk                                   (clk_50mhz),
-  //.reset_reset_n                             (~rst_50mhz),
-  .reset_reset_n                             (~soc_reset),
+  .reset_reset_n                             (~soft_reset),
 
   .pcie_mm_hip_ctrl_test_in                    (),
   .pcie_mm_hip_ctrl_simu_mode_pipe             (1'b0),
@@ -325,7 +303,7 @@ SoC system (
   .pcie_xcvr_reset_reset_n                     (PCIE_PERST_n),
 
   .clk_156_clk(clk_156mhz),
-  .reset_156_reset_n(~rst_156mhz),
+  .reset_156_reset_n(~(soft_reset | ~phy_pll_locked)),
 
   .mac_a_pause_data(0),
   .mac_a_xgmii_rx_data(sfp_a_rx_dc),
