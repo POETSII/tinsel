@@ -10,12 +10,22 @@
 // Max line length for line-buffered UART StdOut capture
 #define MaxLineLen 128
 
+// Connections to PCIeStream
+#define PCIESTREAM_LOCK     "/tmp/pciestream-lock"
+#define PCIESTREAM_IN       "/tmp/pciestream-in"
+#define PCIESTREAM_OUT      "/tmp/pciestream-out"
+#define PCIESTREAM_CTRL_IN  "/tmp/pciestream-ctrl-in"
+#define PCIESTREAM_CTRL_OUT "/tmp/pciestream-ctrl-out"
+
 class HostLink {
   // JTAG UART connections
   DebugLink* debugLinks;
 
+  // Lock file for acquring exclusive access to PCIeStream
+  int lockFile;
+
   // PCIeStream file descriptors
-  int toPCIe, fromPCIe, pcieCtrl;
+  int toPCIe, fromPCIe, toPCIeCtrl, fromPCIeCtrl;
 
   // Line buffers for JTAG UART StdOut
   char lineBuffer[TinselMeshXLen][TinselMeshYLen]

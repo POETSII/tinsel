@@ -22,9 +22,10 @@
 // ---------
 
 // Default pipe locations
-#define PIPE_IN   "/tmp/pciestream-in"
-#define PIPE_OUT  "/tmp/pciestream-out"
-#define PIPE_CTRL "/tmp/pciestream-ctrl"
+#define PIPE_IN       "/tmp/pciestream-in"
+#define PIPE_OUT      "/tmp/pciestream-out"
+#define PIPE_CTRL_IN  "/tmp/pciestream-ctrl-in"
+#define PIPE_CTRL_OUT "/tmp/pciestream-ctrl-out"
 
 // Size of each DMA buffer in bytes
 #define DMABufferSize 1048576
@@ -233,23 +234,31 @@ void receiver(
 
 void control(pid_t pidTransmitter, pid_t pidReceiver)
 {
-  // Get filename of control pipe
-  char* filename = getenv("PIPE_CTRL");
-  if (filename == NULL) filename = PIPE_CTRL;
+  // Get filenames of control pipes
+  char* inFilename = getenv("PIPE_CTRL_IN");
+  char* outFilename = getenv("PIPE_CTRL_OUT");
+  if (inFilename == NULL) inFilename = PIPE_CTRL_IN;
+  if (outFilename == NULL) outFilename = PIPE_CTRL_OUT;
 
   for (;;) {
-    // Open pipe
-    int pipe = open(filename, O_RDONLY);
-    if (pipe == -1) {
-      fprintf(stderr, "Error opening control pipe %s\n", filename);
+    // Open pipes
+    static int pipeIn = -1;
+    static int pipeOut = -1;
+    if (pipeIn == -1) pipeIn = open(inFilename, O_RDONLY);
+    if (pipeOut == -1) pipeOut = open(outFilename, O_WRONLY);
+    if (pipeIn == -1 || pipeOut == -1) {
+      fprintf(stderr, "Error opening control pipes %s and %s\n",
+                inFilename, outFilename);
       exit(EXIT_FAILURE);
     }
 
     for (;;) {
       char cmd;
-      int n = read(pipe, &cmd, 1);
+      int n = read(pipeIn, &cmd, 1);
       if (n <= 0) {
-        close(pipe);
+        close(pipeIn);
+        close(pipeOut);
+        pipeIn = pipeOut = -1;
         break;
       }
       else {
@@ -263,6 +272,10 @@ void control(pid_t pidTransmitter, pid_t pidReceiver)
         }
         if (cmd == 'r') return;
         else if (cmd == 'e') exit(EXIT_SUCCESS);
+        else if (cmd == 'p') {
+          // Respond to ping command
+          int n = write(pipeOut, &cmd, 1);
+        }
       }
     }
   }
@@ -354,6 +367,9 @@ int main(int argc, char* argv[])
 
   // Main loop
   // ---------
+
+  // Ignore SIGPIPE
+  signal(SIGPIPE, SIG_IGN);
 
   for (;;) {
     // Reset PCIeStream hardware
