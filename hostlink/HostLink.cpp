@@ -5,6 +5,7 @@
 #include <ctype.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/file.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
@@ -12,6 +13,7 @@
 #include <assert.h>
 #include <limits.h>
 #include <string.h>
+#include <signal.h>
 
 // Constructor
 HostLink::HostLink()
@@ -84,28 +86,45 @@ HostLink::HostLink()
     }
   }
 
+  // Lock file to ensure exclusive access to PCIeStream
+  lockFile = open(PCIESTREAM_LOCK, O_RDONLY);
+  if (lockFile < 0) {
+    fprintf(stderr, "Error opening lock file %s\n", PCIESTREAM_LOCK);
+    exit(EXIT_FAILURE);
+  }
+  if (flock(lockFile, LOCK_EX | LOCK_NB) != 0) {
+    fprintf(stderr, "Can't acquire exclusive lock on PCIeStream\n");
+    exit(EXIT_FAILURE);
+  }
+
+  // Ignore SIGPIPE
+  signal(SIGPIPE, SIG_IGN);
+
   // Open PCIeStream for reading
-  char filename[256];
-  snprintf(filename, sizeof(filename), "/tmp/pciestream-out");
-  fromPCIe = open(filename, O_RDONLY);
+  fromPCIe = open(PCIESTREAM_OUT, O_RDONLY);
   if (fromPCIe < 0) {
-    fprintf(stderr, "Error opening %s\n", filename);
+    fprintf(stderr, "Error opening %s\n", PCIESTREAM_OUT);
     exit(EXIT_FAILURE);
   }
 
   // Open PCIeStream for writing
-  snprintf(filename, sizeof(filename), "/tmp/pciestream-in");
-  toPCIe = open(filename, O_WRONLY);
+  toPCIe = open(PCIESTREAM_IN, O_WRONLY);
   if (toPCIe < 0) {
-    fprintf(stderr, "Error opening %s\n", filename);
+    fprintf(stderr, "Error opening %s\n", PCIESTREAM_IN);
     exit(EXIT_FAILURE);
   }
 
-  // Open PCIeStream control
-  snprintf(filename, sizeof(filename), "/tmp/pciestream-ctrl");
-  pcieCtrl = open(filename, O_WRONLY);
-  if (pcieCtrl < 0) {
-    fprintf(stderr, "Error opening %s\n", filename);
+  // Open PCIeStream control for reading
+  fromPCIeCtrl = open(PCIESTREAM_CTRL_OUT, O_WRONLY);
+  if (fromPCIeCtrl < 0) {
+    fprintf(stderr, "Error opening %s\n", PCIESTREAM_CTRL_OUT);
+    exit(EXIT_FAILURE);
+  }
+
+  // Open PCIeStream control for writing
+  toPCIeCtrl = open(PCIESTREAM_CTRL_IN, O_WRONLY);
+  if (toPCIeCtrl < 0) {
+    fprintf(stderr, "Error opening %s\n", PCIESTREAM_CTRL_IN);
     exit(EXIT_FAILURE);
   }
 }
@@ -118,9 +137,12 @@ HostLink::~HostLink()
     for (int y = 0; y < TinselMeshYLen; y++)
       mesh[x][y]->close();
   delete [] debugLinks;
+  flock(lockFile, LOCK_UN);
+  close(lockFile);
   close(fromPCIe);
   close(toPCIe);
-  close(pcieCtrl);
+  close(fromPCIeCtrl);
+  close(toPCIeCtrl);
 }
 
 // Address construction
