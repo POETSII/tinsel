@@ -23,6 +23,7 @@ private:
     {
       TagStdOut = 0x01,
       TagStdErr = 0x02,
+      TagAssertRich = 0xFD,
       TagAssert = 0xFE,
       TagExit   = 0xFF,
       TagKeyVal = 0x10
@@ -36,7 +37,9 @@ private:
       StateExit,
       StateKeyVal_Device,
       StateKeyVal_Key,
-      StateKeyVal_Val
+      StateKeyVal_Val,
+      StateAssertRich_File,
+      StateAssertRich_Line
     }m_state;
   
   uint32_t m_threadId;
@@ -121,6 +124,11 @@ public:
 	    m_state=StateStdErr;
 	    break;
 	  }
+	  case TagAssertRich:{
+	    m_state=StateAssertRich_File;
+	    m_chars.clear();
+	    break;
+	  }
 	  case TagAssert:{
 	    fprintf(stderr, "ERROR : received assert from thread 0x%x\n", m_threadId);
 	    exit(1);
@@ -147,11 +155,27 @@ public:
 	  }
 	break;
       case StateExit:
-	m_val=(m_val>>8) | uint32_t(byte);
+	m_val=(m_val>>8) | (uint32_t(byte)<<24);
 	m_todo--;
 	if(m_todo==0){
 	  exitCode=(int)m_val;
 	  return false;
+	}
+	break;
+      case StateAssertRich_File:
+	m_chars.push_back((char)byte);
+	if(byte==0){
+	  m_state=StateAssertRich_Line;
+	  m_todo=4;
+	  m_val=0;
+	}
+	break;
+      case StateAssertRich_Line:
+	m_val=(m_val>>8) | (uint32_t(byte)<<24);
+	m_todo--;
+	if(m_todo==0){
+	  fprintf(stderr, "ERROR : assert from thread 0x%x at %s:%u\n", m_threadId, &m_chars[0], m_val);
+	  exit(1);
 	}
 	break;
       case StateStdOut:
@@ -240,7 +264,7 @@ void protocol(HostLink *link, FILE *keyValDst, FILE *measureDst)
     uint8_t cmd = link->get(&src, &val);
     uint32_t id = val >> 8;
     uint32_t ch = val & 0xff;
-    //    fprintf(stderr, "  cmd=%u, id=%u, ch=%u\n", cmd, id, ch);
+    //        fprintf(stderr, "  cmd=%u, id=%u, ch=%u\n", cmd, id, ch);
     assert(id < TinselThreadsPerBoard);
 
     if(!states[id].add(ch, exitCode)){
