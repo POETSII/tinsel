@@ -25,7 +25,6 @@
 #define PIPE_IN       "/tmp/pciestream-in"
 #define PIPE_OUT      "/tmp/pciestream-out"
 #define PIPE_CTRL_IN  "/tmp/pciestream-ctrl-in"
-#define PIPE_CTRL_OUT "/tmp/pciestream-ctrl-out"
 
 // Size of each DMA buffer in bytes
 #define DMABufferSize 1048576
@@ -236,19 +235,14 @@ void control(pid_t pidTransmitter, pid_t pidReceiver)
 {
   // Get filenames of control pipes
   char* inFilename = getenv("PIPE_CTRL_IN");
-  char* outFilename = getenv("PIPE_CTRL_OUT");
   if (inFilename == NULL) inFilename = PIPE_CTRL_IN;
-  if (outFilename == NULL) outFilename = PIPE_CTRL_OUT;
 
   for (;;) {
     // Open pipes
     static int pipeIn = -1;
-    static int pipeOut = -1;
     if (pipeIn == -1) pipeIn = open(inFilename, O_RDONLY);
-    if (pipeOut == -1) pipeOut = open(outFilename, O_WRONLY);
-    if (pipeIn == -1 || pipeOut == -1) {
-      fprintf(stderr, "Error opening control pipes %s and %s\n",
-                inFilename, outFilename);
+    if (pipeIn == -1) {
+      fprintf(stderr, "Error opening control pipe %s\n", inFilename);
       exit(EXIT_FAILURE);
     }
 
@@ -257,8 +251,7 @@ void control(pid_t pidTransmitter, pid_t pidReceiver)
       int n = read(pipeIn, &cmd, 1);
       if (n <= 0) {
         close(pipeIn);
-        close(pipeOut);
-        pipeIn = pipeOut = -1;
+        pipeIn = -1;
         break;
       }
       else {
@@ -272,10 +265,6 @@ void control(pid_t pidTransmitter, pid_t pidReceiver)
         }
         if (cmd == 'r') return;
         else if (cmd == 'e') exit(EXIT_SUCCESS);
-        else if (cmd == 'p') {
-          // Respond to ping command
-          int n = write(pipeOut, &cmd, 1);
-        }
       }
     }
   }

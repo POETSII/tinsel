@@ -15,7 +15,6 @@
 #define PCIESTREAM_IN       "/tmp/pciestream-in"
 #define PCIESTREAM_OUT      "/tmp/pciestream-out"
 #define PCIESTREAM_CTRL_IN  "/tmp/pciestream-ctrl-in"
-#define PCIESTREAM_CTRL_OUT "/tmp/pciestream-ctrl-out"
 
 class HostLink {
   // JTAG UART connections
