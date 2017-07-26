@@ -1,8 +1,8 @@
 # Tinsel
 
-Tinsel is a **manythread** machine designed for **event-triggered
-computing** on an **FPGA cluster**, and is being developed as part of
-the [POETS project](https://poets-project.org).
+Tinsel is a scalable manythread message-passing machine, built using
+large numbers of commodity FPGA development boards.  It is being
+developed as part of the [POETS project](https://poets-project.org).
 
 The current stable release is Tinsel 0.2, supporting only a single
 FPGA board, and is maintained in the
@@ -11,10 +11,8 @@ FPGA board, and is maintained in the
 This master branch is work-in-progress towards Tinsel 0.3, the first
 version to support multiple FPGAs.
 
-## Documentation
-
-  Document                      | Links
+  Documentation                 | Links
   ----------------------------- | -------
-  Tinsel Background             | [md](doc/Background.md)
+  Tinsel Overview               | [md](doc/Overview.md)
   Tinsel Architecture Guide     | [md](doc/Architecture.md)
   Tinsel Getting Started Guide  | [md](doc/GettingStarted.md)
