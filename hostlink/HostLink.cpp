@@ -114,17 +114,17 @@ HostLink::HostLink()
     exit(EXIT_FAILURE);
   }
 
-  // Open PCIeStream control for reading
-  fromPCIeCtrl = open(PCIESTREAM_CTRL_OUT, O_WRONLY);
-  if (fromPCIeCtrl < 0) {
-    fprintf(stderr, "Error opening %s\n", PCIESTREAM_CTRL_OUT);
-    exit(EXIT_FAILURE);
-  }
-
   // Open PCIeStream control for writing
   toPCIeCtrl = open(PCIESTREAM_CTRL_IN, O_WRONLY);
   if (toPCIeCtrl < 0) {
     fprintf(stderr, "Error opening %s\n", PCIESTREAM_CTRL_IN);
+    exit(EXIT_FAILURE);
+  }
+
+  // Open PCIeStream control for reading
+  fromPCIeCtrl = open(PCIESTREAM_CTRL_OUT, O_RDONLY);
+  if (fromPCIeCtrl < 0) {
+    fprintf(stderr, "Error opening %s\n", PCIESTREAM_CTRL_OUT);
     exit(EXIT_FAILURE);
   }
 }
