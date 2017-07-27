@@ -308,7 +308,7 @@ module mkPCIeStream (PCIeStream);
         rxCount <= rxCount+1;
         rxIdle <= 0;
       end
-    end else begin
+    end else if (!burstInProgress) begin
       fillRxMode <= False;
       if (rxIdle != ~0) rxIdle <= rxIdle+1;
     end
