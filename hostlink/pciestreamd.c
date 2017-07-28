@@ -42,7 +42,6 @@
 #define CSR_LEN_TX_A  6
 #define CSR_LEN_TX_B  7
 #define CSR_EN        8
-#define CSR_CLEAR     9
 #define CSR_INFLIGHT  10
 #define CSR_RESET     11
 
@@ -366,7 +365,6 @@ int main(int argc, char* argv[])
     while (csrs[2*CSR_INFLIGHT] != 0);
     csrs[2*CSR_RESET] = 1;
     usleep(100000);
-    csrs[2*CSR_CLEAR] = 1;
     csrs[2*CSR_ADDR_RX_A] = addrRxA;
     csrs[2*CSR_ADDR_RX_B] = addrRxB;
     csrs[2*CSR_ADDR_TX_A] = addrTxA;
