@@ -3,7 +3,7 @@
 // PCIeStream Daemon
 // =================
 //
-// Connects named pipes to FPGA over PCIeStream.
+// Connect UNIX domain sockets to FPGA FIFOs via PCIeStream.
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -11,20 +11,22 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <sys/ioctl.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <stdint.h>
 #include <assert.h>
-#include <sys/ioctl.h>
 #include <poll.h>
 
 // Constants
 // ---------
 
-// Default pipe locations
-#define PIPE_IN       "/tmp/pciestream-in"
-#define PIPE_OUT      "/tmp/pciestream-out"
-#define PIPE_CTRL_IN  "/tmp/pciestream-ctrl-in"
+// Default socket locations
+#define SOCKET_IN   "pciestream-in"
+#define SOCKET_OUT  "pciestream-out"
+#define SOCKET_CTRL "pciestream-ctrl"
 
 // Size of each DMA buffer in bytes
 #define DMABufferSize 1048576
@@ -75,15 +77,38 @@ void swap(volatile char** p, volatile char** q)
 // Transmitter thread
 // ------------------
 
-// Read from pipe and write to FPGA
+// Read from socket and write to FPGA
 void transmitter(
        volatile uint64_t* csrs,
          volatile char* txA,
            volatile char* txB)
 {
-  // Get filename of input pipe
-  char* filename = getenv("PIPE_IN");
-  if (filename == NULL) filename = PIPE_IN;
+  // Create socket
+  int sock = socket(AF_UNIX, SOCK_STREAM, 0);
+  if (sock == -1) {
+    perror("Transmitter: socket");
+    exit(EXIT_FAILURE);
+  }
+
+  // Bind socket
+  struct sockaddr_un sockAddr;
+  memset(&sockAddr, 0, sizeof(struct sockaddr_un));
+  sockAddr.sun_family = AF_UNIX;
+  sockAddr.sun_path[0] = '\0';
+  strncpy(&sockAddr.sun_path[1], SOCKET_IN, sizeof(sockAddr.sun_path)-2);
+  int ret = bind(sock, (const struct sockaddr *) &sockAddr,
+                   sizeof(struct sockaddr_un));
+  if (ret == -1) {
+    perror("Transmitter: bind");
+    exit(EXIT_FAILURE);
+  }
+
+  // Listen for connections
+  ret = listen(sock, 0);
+  if (ret == -1) {
+    perror("Transmitter: listen");
+    exit(EXIT_FAILURE);
+  }
 
   // Which buffer in the double buffer is currently being written to?
   int activeBuffer = 0;
@@ -92,18 +117,18 @@ void transmitter(
   int bufferReady = 0;
 
   for (;;) {
-    // Open pipe
-    int pipe = open(filename, O_RDONLY);
-    if (pipe == -1) {
-      fprintf(stderr, "Error opening input pipe %s\n", filename);
+    // Accept connection
+    int conn = accept(sock, NULL, NULL);
+    if (conn == -1) {
+      perror("Transmitter: accept");
       exit(EXIT_FAILURE);
     }
 
     // The number of bytes written to DMA buffer but not yet sent
     int pending = 0;
 
-    int reopen = 0;
-    while (! reopen) {
+    int restart = 0;
+    while (! restart) {
       // This flag indicates that data should now be sent
       int doSend = 0;
 
@@ -111,9 +136,9 @@ void transmitter(
       if (pending == DMABufferSize) doSend = 1;
 
       // Send pending data if: (1) pending is a non-zero multiple of
-      // 16 and (2) there's no data available on the read pipe.
+      // 16 and (2) there's no data available on the socket.
       if (pending != 0 && (pending&0xf) == 0) {
-        struct pollfd fd; fd.fd = pipe; fd.events = POLLIN;
+        struct pollfd fd; fd.fd = conn; fd.events = POLLIN;
         int ret = poll(&fd, 1, 1);
         if (ret <= 0) doSend = 1;
       }
@@ -126,12 +151,12 @@ void transmitter(
           bufferReady = 1;
         }
         // Read data
-        int n = read(pipe, (void*) &txA[pending], DMABufferSize-pending);
+        int n = read(conn, (void*) &txA[pending], DMABufferSize-pending);
         if (n <= 0) {
-          // On EOF/failure, send pending data and reopen pipe
+          // On EOF, send pending data and restart
           if (pending >= 16) doSend = 1;
-          close(pipe);
-          reopen = 1;
+          close(conn);
+          restart = 1;
         }
         else {
           pending += n;
@@ -160,30 +185,51 @@ void transmitter(
 // Receiver thread
 // ---------------
 
-// Read from FPGA and write to pipe
+// Read from FPGA and write to socket
 void receiver(
        volatile uint64_t* csrs,
          volatile char* rxA,
            volatile char* rxB)
 {
-  // Get filename of output pipe
-  char* filename = getenv("PIPE_OUT");
-  if (filename == NULL) filename = PIPE_OUT;
 
-  // Ignore SIGPIPE
-  signal(SIGPIPE, SIG_IGN);
+  // Create socket
+  int sock = socket(AF_UNIX, SOCK_STREAM, 0);
+  if (sock == -1) {
+    perror("Receiver: socket");
+    exit(EXIT_FAILURE);
+  }
+
+  // Bind socket
+  struct sockaddr_un sockAddr;
+  memset(&sockAddr, 0, sizeof(struct sockaddr_un));
+  sockAddr.sun_family = AF_UNIX;
+  sockAddr.sun_path[0] = '\0';
+  strncpy(&sockAddr.sun_path[1], SOCKET_OUT, sizeof(sockAddr.sun_path)-2);
+  int ret = bind(sock, (const struct sockaddr *) &sockAddr,
+                   sizeof(struct sockaddr_un));
+  if (ret == -1) {
+    perror("Receiver: bind");
+    exit(EXIT_FAILURE);
+  }
+
+  // Listen for connections
+  ret = listen(sock, 0);
+  if (ret == -1) {
+    perror("Receiver: listen");
+    exit(EXIT_FAILURE);
+  }
 
   // Which buffer in the double buffer is currently being read from?
   int activeBuffer = 0;
 
-  // Number of bytes written to the pipe
+  // Number of bytes written to the socket
   int written = 0;
 
   for (;;) {
-    // Open pipe
-    int pipe = open(filename, O_WRONLY);
-    if (pipe == -1) {
-      fprintf(stderr, "Error opening output pipe %s\n", filename);
+    // Accept connection
+    int conn = accept(sock, NULL, NULL);
+    if (conn == -1) {
+      perror("Receiver: accept");
       exit(EXIT_FAILURE);
     }
 
@@ -202,10 +248,10 @@ void receiver(
         mfence();
       }
  
-      // Write data to pipe
-      int n = write(pipe, (void*) &rxA[written], available-written);
+      // Write data to socket
+      int n = write(conn, (void*) &rxA[written], available-written);
       if (n <= 0) {
-        close(pipe);
+        close(conn);
         break;
       }
       else {
@@ -232,25 +278,54 @@ void receiver(
 
 void control(pid_t pidTransmitter, pid_t pidReceiver)
 {
-  // Get filenames of control pipes
-  char* inFilename = getenv("PIPE_CTRL_IN");
-  if (inFilename == NULL) inFilename = PIPE_CTRL_IN;
+  // Static variables
+  static int sock = -1;
+  static int conn = -1;
+
+  if (sock == -1) {
+    // Create socket
+    sock = socket(AF_UNIX, SOCK_STREAM, 0);
+    if (sock == -1) {
+      perror("Control: socket");
+      exit(EXIT_FAILURE);
+    }
+
+    // Bind socket
+    struct sockaddr_un sockAddr;
+    memset(&sockAddr, 0, sizeof(struct sockaddr_un));
+    sockAddr.sun_family = AF_UNIX;
+    sockAddr.sun_path[0] = '\0';
+    strncpy(&sockAddr.sun_path[1], SOCKET_CTRL,
+      sizeof(sockAddr.sun_path)-2);
+    int ret = bind(sock, (const struct sockaddr *) &sockAddr,
+                     sizeof(struct sockaddr_un));
+    if (ret == -1) {
+      perror("Control: bind");
+      exit(EXIT_FAILURE);
+    }
+
+    // Listen for connections
+    ret = listen(sock, 0);
+    if (ret == -1) {
+      perror("Control: listen");
+      exit(EXIT_FAILURE);
+    }
+  }
 
   for (;;) {
-    // Open pipes
-    static int pipeIn = -1;
-    if (pipeIn == -1) pipeIn = open(inFilename, O_RDONLY);
-    if (pipeIn == -1) {
-      fprintf(stderr, "Error opening control pipe %s\n", inFilename);
+    // Accept connection
+    int conn = accept(sock, NULL, NULL);
+    if (conn == -1) {
+      perror("Control: accept");
       exit(EXIT_FAILURE);
     }
 
     for (;;) {
       char cmd;
-      int n = read(pipeIn, &cmd, 1);
+      int n = read(conn, &cmd, 1);
       if (n <= 0) {
-        close(pipeIn);
-        pipeIn = -1;
+        close(conn);
+        conn = -1;
         break;
       }
       else {
@@ -318,6 +393,9 @@ int main(int argc, char* argv[])
   uint64_t ctrlBAR;
   if (sscanf(argv[1], "%lx", &ctrlBAR) <= 0) usage();
 
+  // Ignore SIGPIPE
+  signal(SIGPIPE, SIG_IGN);
+
   // Obtain access to control BAR
   // ----------------------------
 
@@ -355,9 +433,6 @@ int main(int argc, char* argv[])
 
   // Main loop
   // ---------
-
-  // Ignore SIGPIPE
-  signal(SIGPIPE, SIG_IGN);
 
   for (;;) {
     // Reset PCIeStream hardware

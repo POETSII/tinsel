@@ -11,10 +11,9 @@
 #define MaxLineLen 128
 
 // Connections to PCIeStream
-#define PCIESTREAM_LOCK     "/tmp/pciestream-lock"
-#define PCIESTREAM_IN       "/tmp/pciestream-in"
-#define PCIESTREAM_OUT      "/tmp/pciestream-out"
-#define PCIESTREAM_CTRL_IN  "/tmp/pciestream-ctrl-in"
+#define PCIESTREAM_IN   "pciestream-in"
+#define PCIESTREAM_OUT  "pciestream-out"
+#define PCIESTREAM_CTRL "pciestream-ctrl"
 
 class HostLink {
   // JTAG UART connections
@@ -24,7 +23,7 @@ class HostLink {
   int lockFile;
 
   // PCIeStream file descriptors
-  int toPCIe, fromPCIe, toPCIeCtrl, fromPCIeCtrl;
+  int toPCIe, fromPCIe, pcieCtrl;
 
   // Line buffers for JTAG UART StdOut
   char lineBuffer[TinselMeshXLen][TinselMeshYLen]
