@@ -17,7 +17,7 @@
 // LenTxA     96        R/W            Num 128-bit words in TxA buffer
 // LenTxB     112       R/W            Num 128-bit words in TxB buffer
 // Enable     128       R/W            Enable/disable the double-buffers
-// Clear      144       W              Reset the double-buffers
+// -          144       -              -
 // Inflight   160       R              Are there any inflight requests?
 // Reset      176       W              Trigger board reset
 //
@@ -205,9 +205,8 @@ module mkPCIeStream (PCIeStream);
   PulseWire resetLenRxB <- mkPulseWire;
   PulseWire setLenTxA   <- mkPulseWire;
   PulseWire setLenTxB   <- mkPulseWire;
-  PulseWire resetLenTxA <- mkPulseWireOR;
-  PulseWire resetLenTxB <- mkPulseWireOR;
-  PulseWire clearWire   <- mkPulseWire;
+  PulseWire resetLenTxA <- mkPulseWire;
+  PulseWire resetLenTxB <- mkPulseWire;
   Wire#(BufferLen) newLenTx <- mkDWire(?);
 
   // Queues
@@ -257,7 +256,7 @@ module mkPCIeStream (PCIeStream);
   // Is there a burst-write in progress?
   Reg#(Bool) burstInProgress <- mkConfigReg(False);
 
-  rule fillRxBuffers (enabled && fillRxMode);
+  rule fillRxBuffers (fillRxMode && (enabled || burstInProgress));
     // Base address for Rx write buffer
     Bit#(64) baseAddr = rxWriteBuffer == 0 ? addrRxA : addrRxB;
     // Time to advance the write buffer?
@@ -383,19 +382,6 @@ module mkPCIeStream (PCIeStream);
       lenTxB <= newLenTx;
   endrule
 
-  // Clear the Rx and Tx buffers
-  // ---------------------------
-
-  rule clearBuffers (!enabled); 
-    if (clearWire) begin
-      rxWriteBuffer <= 0;
-      rxCount <= 0;
-      rxIdle <= 0;
-      txReadBuffer <= 0;
-      txCount <= 0;
-    end
-  endrule
-
   // Drive the waitrequest signal on the BAR
   // ---------------------------------------
 
@@ -464,17 +450,10 @@ module mkPCIeStream (PCIeStream);
                end
              end
           8: if (write) enabled <= unpack(writedata[0]);
-          9: if (write) begin
-               resetLenRxA.send;
-               resetLenRxB.send;
-               rxReadBuffer <= 0;
-               resetLenTxA.send;
-               resetLenTxB.send;
-               clearWire.send;
-             end
           10: begin
                 Bool inflight = pendingReads.value != 0 ||
-                                  pendingFlushes.canDeq;
+                                  pendingFlushes.canDeq ||
+                                    burstInProgress;
                 ctrlReadData <= zeroExtend(pack(inflight));
               end
           11: if (write) begin
