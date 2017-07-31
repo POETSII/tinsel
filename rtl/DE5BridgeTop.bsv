@@ -36,7 +36,7 @@ import Mailbox    :: *;
 import Network    :: *;
 import Mac        :: *;
 import PCIeStream :: *;
-import Pipe       :: *;
+import Socket     :: *;
 import ConfigReg  :: *;
 import JtagUart   :: *;
 import DebugLink   :: *;
@@ -90,7 +90,7 @@ module de5BridgeTop (DE5BridgeTop);
   connectUsing(mkUGShiftQueue1(QueueOptFmax), uart.jtagOut, fromJtag.in);
 
   // Create off-board link
-  BoardLink link <- mkBoardLink(northPipe);
+  BoardLink link <- mkBoardLink(northSocket);
 
   // Connect ports to off-board link
   connectUsing(mkUGQueue, toLink.out, link.flitIn);

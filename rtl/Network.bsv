@@ -18,7 +18,7 @@ import Queue        :: *;
 import ConfigReg    :: *;
 import ReliableLink :: *;
 import Mac          :: *;
-import Pipe         :: *;
+import Socket       :: *;
 
 // =============================================================================
 // Bus Router
@@ -272,7 +272,7 @@ interface BoardLink;
   method Bit#(32) numTimeouts;
 endinterface
 
-module mkBoardLink#(PipeId id) (BoardLink);
+module mkBoardLink#(SocketId id) (BoardLink);
   
   // 64-bit link
   `ifdef SIMULATE
@@ -322,10 +322,10 @@ module mkBus#(BoardId boardId, Vector#(n, MailboxNet) mailboxes) (ExtNetwork)
   provisos (Add#(n, 4, m));
 
   // Create off-board links
-  BoardLink northLink <- mkBoardLink(northPipe);
-  BoardLink southLink <- mkBoardLink(southPipe);
-  BoardLink eastLink  <- mkBoardLink(eastPipe);
-  BoardLink westLink  <- mkBoardLink(westPipe);
+  BoardLink northLink <- mkBoardLink(northSocket);
+  BoardLink southLink <- mkBoardLink(southSocket);
+  BoardLink eastLink  <- mkBoardLink(eastSocket);
+  BoardLink westLink  <- mkBoardLink(westSocket);
 
   // Create mailbox routers
   Vector#(m, BusRouter) routers;

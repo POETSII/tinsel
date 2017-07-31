@@ -48,7 +48,7 @@ import DReg      :: *;
 import ConfigReg :: *;
 import Util      :: *;
 import Vector    :: *;
-import Pipe      :: *;
+import Socket    :: *;
 
 // =============================================================================
 // Constants
@@ -529,13 +529,13 @@ module mkPCIeStream (PCIeStream);
  
   // Input rule
   rule in (inPort.canGet);
-    Bool ok <- pipePut(pciePipe, unpack(inPort.value));
+    Bool ok <- socketPut(pcieSocket, unpack(inPort.value));
     if (ok) inPort.get;
   endrule
  
   // Output rule
   rule out (outQueue.notFull);
-    Maybe#(Vector#(16, Bit#(8))) m <- pipeGet(pciePipe);
+    Maybe#(Vector#(16, Bit#(8))) m <- socketGet(pcieSocket);
     if (isValid(m)) outQueue.enq(pack(fromMaybe(?, m)));
   endrule
 

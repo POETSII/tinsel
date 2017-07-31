@@ -70,17 +70,17 @@ HostLink::HostLink()
 
   // Open each UART
   #ifdef SIMULATE
-  // Worker boards
-  int count = 0;
-  for (int y = 0; y < TinselMeshYLen; y++)
-    for (int x = 0; x < TinselMeshXLen; x++) {
-      int boardId = y<<TinselMeshXBits + x;
-      debugLinks[count++].open(boardId);
-    }
-  // Host board
-  debugLinks[count++].open(-1);
+    // Worker boards
+    int count = 0;
+    for (int y = 0; y < TinselMeshYLen; y++)
+      for (int x = 0; x < TinselMeshXLen; x++) {
+        int boardId = y<<TinselMeshXBits + x;
+        debugLinks[count++].open(boardId);
+      }
+    // Host board
+    debugLinks[count++].open(-1);
   #else
-  for (int i = 0; i < numBoards; i++) debugLinks[i].open(i+1);
+    for (int i = 0; i < numBoards; i++) debugLinks[i].open(i+1);
   #endif
 
   // Initialise debug links
@@ -126,14 +126,20 @@ HostLink::HostLink()
   // Ignore SIGPIPE
   signal(SIGPIPE, SIG_IGN);
 
-  // Open PCIeStream for reading
-  fromPCIe = connectToPCIeStream(PCIESTREAM_OUT);
+  #ifdef SIMULATE
+    // Connect to simulator
+    fromPCIe = toPCIe = connectToPCIeStream(PCIESTREAM_SIM);
+    pcieCtrl = -1;
+  #else
+    // Open PCIeStream for reading
+    fromPCIe = connectToPCIeStream(PCIESTREAM_OUT);
 
-  // Open PCIeStream for writing
-  toPCIe = connectToPCIeStream(PCIESTREAM_IN);
+    // Open PCIeStream for writing
+    toPCIe = connectToPCIeStream(PCIESTREAM_IN);
 
-  // Open PCIeStream control
-  pcieCtrl = connectToPCIeStream(PCIESTREAM_CTRL);
+    // Open PCIeStream control
+    pcieCtrl = connectToPCIeStream(PCIESTREAM_CTRL);
+  #endif
 }
 
 // Destructor
