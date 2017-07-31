@@ -12,7 +12,7 @@ package JtagUart;
 import Interface :: *;
 import ConfigReg :: *;
 import Util      :: *;
-import Pipe      :: *;
+import Socket    :: *;
 
 // =============================================================================
 // Interfaces
@@ -120,8 +120,7 @@ endmodule
 // Simulation
 // =============================================================================
 
-// In simulation, bytes are read and written via named pipes on the
-// filesystem, instead of via the JTAG UART.
+// In simulation, bytes are read and written via UNIX domain sockets.
 
 `ifdef SIMULATE
 
@@ -132,11 +131,11 @@ module mkJtagUart (JtagUart);
 
   rule connect;
     if (inPort.canGet) begin
-      Bool ok <- pipePut8(uartPipe, inPort.value);
+      Bool ok <- socketPut8(uartSocket, inPort.value);
       if (ok) inPort.get;
     end
     if (outPort.canPut) begin
-      Bit#(32) b <- pipeGet8(uartPipe);
+      Bit#(32) b <- socketGet8(uartSocket);
       if (b[31] == 0) outPort.put(b[7:0]);
     end
   endrule

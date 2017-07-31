@@ -14,6 +14,7 @@
 #define PCIESTREAM_IN   "pciestream-in"
 #define PCIESTREAM_OUT  "pciestream-out"
 #define PCIESTREAM_CTRL "pciestream-ctrl"
+#define PCIESTREAM_SIM  "tinsel.b-1.5"
 
 class HostLink {
   // JTAG UART connections

@@ -16,7 +16,7 @@ import ConfigReg    :: *;
 import Util         :: *;
 import Queue        :: *;
 import BlockRam     :: *;
-import Pipe         :: *;
+import Socket       :: *;
 import Vector       :: *;
 
 // =============================================================================
@@ -205,9 +205,9 @@ endmodule
 
 `ifdef SIMULATE
 
-// A simulation MAC using named pipes
+// A simulation MAC using UNIX domain sockets
 // (Inserts padding and drops random packets)
-module mkMac#(PipeId id) (Mac);
+module mkMac#(SocketId id) (Mac);
 
   // Ports
   OutPort#(MacBeat) outPort <- mkOutPort;
@@ -246,7 +246,7 @@ module mkMac#(PipeId id) (Mac);
         inPort.get;
       end else if (inPort.canGet) begin
         Bit#(72) tmp = zeroExtend(pack(beat));
-        Bool ok <- pipePut(id, unpack(tmp));
+        Bool ok <- socketPut(id, unpack(tmp));
         if (ok) begin
           // Receive first beat (start of packet)
           inPort.get;
@@ -259,7 +259,7 @@ module mkMac#(PipeId id) (Mac);
         // Insert padding
         MacBeat outBeat = macBeat(False, count == 7, 0);
         Bit#(72) tmp = zeroExtend(pack(outBeat));
-        Bool ok <- pipePut(id, unpack(tmp));
+        Bool ok <- socketPut(id, unpack(tmp));
         if (ok) begin
           if (count == 7) begin
             emitPadding <= False;
@@ -272,7 +272,7 @@ module mkMac#(PipeId id) (Mac);
         MacBeat outBeat = beat;
         if (beat.stop && count < 7) outBeat.stop = False;
         Bit#(72) tmp = zeroExtend(pack(outBeat));
-        Bool ok <- pipePut(id, unpack(tmp));
+        Bool ok <- socketPut(id, unpack(tmp));
         if (ok) begin
           inPort.get;
           if (beat.stop && count < 7) begin
@@ -290,7 +290,7 @@ module mkMac#(PipeId id) (Mac);
 
   // Produce output stream
   rule produce (outPort.canPut);
-    Maybe#(Vector#(9, Bit#(8))) m <- pipeGet(id);
+    Maybe#(Vector#(9, Bit#(8))) m <- socketGet(id);
     if (isValid(m)) begin
       Bit#(72) tmp = pack(fromMaybe(?, m));
       outPort.put(unpack(truncate(tmp)));
