@@ -85,7 +85,7 @@ void console(HostLink* link)
   }
 }
 
-extern void protocol(HostLink *link, FILE *keyValDst, FILE *measureDst);
+extern void protocol(HostLink *link, FILE *keyValDst, FILE *measureDst, int verbosity);
 
 double now()
 {
@@ -105,6 +105,7 @@ int usage()
 	 "    -p            load protocol after boot\n"
 	 "    -k            (protocol) set destination file for key value output\n"
 	 "    -m [CSVFILE]  File to write timing and execution measurements to\n"
+	 "    -v            increase verbosity\n"
          "    -h            help\n"
          "\n"
 	 "     measurement file is a csv file containing key, index, value, unit tuples\n");
@@ -118,6 +119,7 @@ int main(int argc, char* argv[])
   int numSeconds = -1;
   int useConsole = 0;
   int useProtocol = 0;
+  int verbosity = 0;
 
   FILE *keyValDst = 0;
   FILE *measureDst = 0;
@@ -125,7 +127,7 @@ int main(int argc, char* argv[])
   // Option processing
   optind = 1;
   for (;;) {
-    int c = getopt(argc, argv, "hon:t:cpk:m:");
+    int c = getopt(argc, argv, "hon:t:cpk:m:v");
     if (c == -1) break;
     switch (c) {
       case 'h': return usage();
@@ -134,6 +136,7 @@ int main(int argc, char* argv[])
       case 't': numSeconds = atoi(optarg); break;
       case 'c': useConsole = 1; break;
       case 'p': useProtocol = 1; break;
+      case 'v': verbosity++; break;
       case 'k':{
         keyValDst=fopen(optarg,"wt");
 	if(keyValDst==0){
@@ -155,17 +158,23 @@ int main(int argc, char* argv[])
   }
   if (optind+2 != argc) return usage();
 
+  if(verbosity>0){
+    fprintf(stderr, "Reading code from '%s'\n", argv[optind]);
+  }
   // Open code file
   FILE* code = fopen(argv[optind], "r");
   if (code == NULL) {
-    printf("Error: can't open file '%s'\n", argv[1]);
+    printf("Error: can't open file '%s'\n", argv[optind]);
     return -1;
   }
 
+  if(verbosity>0){
+    fprintf(stderr, "Reading data from '%s'\n", argv[optind+1]);
+  }
   // Open data file
   FILE* data = fopen(argv[optind+1], "r");
   if (data == NULL) {
-    printf("Error: can't open file '%s'\n", argv[2]);
+    printf("Error: can't open file '%s'\n", argv[optind+1]);
     exit(EXIT_FAILURE);
   }
 
@@ -176,6 +185,7 @@ int main(int argc, char* argv[])
   // Step 1: load code into instruction memory
   // -----------------------------------------
   double start=now();
+  if(verbosity>0){  fprintf(stderr, "Loading code into instruction memory\n");  }
 
   if (startOnlyOneThread)
     // Write instructions to core 0 only
@@ -196,24 +206,29 @@ int main(int argc, char* argv[])
 
   // Step 2: initialise memory using data file
   // -----------------------------------------
+  if(verbosity>0){  fprintf(stderr, "Initialise memory using data file\n");  }
 
   // Iterate over each DRAM
   uint32_t coresPerDRAM =
              1 << (TinselLogCoresPerDCache + TinselLogDCachesPerDRAM);
   for (int i = 0; i < TinselDRAMsPerBoard; i++) {
+    if(verbosity>1){  fprintf(stderr, "  Initialising DRAM %u\n", i);  }
     // Use one core to initialise each DRAM
     link.setDest(coresPerDRAM * i);
 
     // Write data file to memory
+    if(verbosity>1){  fprintf(stderr, "    sending file to memory\n");  }
     uint32_t ignore;
     rewind(data);
     sendFile(StoreCmd, &link, data, i == 0 ? &checksum : &ignore);
 
     // Send cache flush
+    if(verbosity>1){  fprintf(stderr, "    sending cache flush\n");  }
     link.put(CacheFlushCmd);
     if (i == 0) checksum += CacheFlushCmd;
 
     // Obtain response and validate checksum
+    if(verbosity>1){  fprintf(stderr, "    obtaining response and validating checksum\n");  }
     uint32_t src;
     uint32_t sum;
     link.get(&src, &sum);
@@ -236,6 +251,7 @@ int main(int argc, char* argv[])
 
   // Step 3: release the cores
   // -------------------------
+ if(verbosity>0){  fprintf(stderr, "Releasing the cores\n");  }
 
   if (startOnlyOneThread)
     // Send start command to core 0 only
@@ -261,7 +277,10 @@ int main(int argc, char* argv[])
   // ------------
 
   if (useConsole) console(&link);
-  else if(useProtocol) protocol(&link, keyValDst, measureDst);
+  else if(useProtocol){
+    if(verbosity>0){  fprintf(stderr, "Starting protocol\n");  }
+    protocol(&link, keyValDst, measureDst, verbosity);
+  }
   else {
     // The number of tenths of a second that link has been idle
     int idle = 0;
