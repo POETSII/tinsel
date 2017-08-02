@@ -11,7 +11,7 @@
 #include "HostLink.h"
 
 // Send file contents over host-link
-uint32_t sendFile(BootCmd cmd, HostLink* link, FILE* fp, uint32_t* checksum)
+uint32_t sendFile(BootCmd cmd, HostLink* link, FILE* fp, uint32_t* checksum, int verbosity)
 {
   // Iterate over data file
   uint32_t addr = 0;
@@ -21,21 +21,35 @@ uint32_t sendFile(BootCmd cmd, HostLink* link, FILE* fp, uint32_t* checksum)
   for (;;) {
     // Send write address
     if (fscanf(fp, " @%x", &addr) > 0) {
+      if(verbosity>1){
+	fprintf(stderr, "    Writing to address 0x%08x\n", addr);
+      }
       link->put(SetAddrCmd);
       link->put(addr);
       *checksum += SetAddrCmd + addr;
     }
     else break;
     // Send write values
+    uint32_t currAddr=addr;
     while (fscanf(fp, " %x", &byte) > 0) {
       value = (byte << 24) | (value >> 8);
       byteCount++;
       if (byteCount == 4) {
+	if(verbosity>2){
+	  fprintf(stderr, "      Write: mem[0x%08x] = 0x%08x\n", currAddr, value);
+	}
         link->put(cmd);
+	if(verbosity>3){
+	  fprintf(stderr, "        wrote command\n");
+	}
         link->put(value);
+	if(verbosity>3){
+	  fprintf(stderr, "        wrote value\n");
+	}
         *checksum += cmd + value;
         value = 0;
         byteCount = 0;
+	currAddr+=4;
       }
     }
     // Pad & send final word, if necessary
@@ -43,6 +57,9 @@ uint32_t sendFile(BootCmd cmd, HostLink* link, FILE* fp, uint32_t* checksum)
       while (byteCount < 4) {
         value = value >> 8;
         byteCount++;
+      }
+      if(verbosity>2){
+	fprintf(stderr, "      Write: mem[0x%08x] = 0x%08x\n", currAddr, value);
       }
       link->put(cmd);
       link->put(value);
@@ -185,7 +202,10 @@ int main(int argc, char* argv[])
   // Step 1: load code into instruction memory
   // -----------------------------------------
   double start=now();
-  if(verbosity>0){  fprintf(stderr, "Loading code into instruction memory\n");  }
+  fseek(code, 0, SEEK_END);
+  unsigned codeSize=ftell(code);
+  rewind(code);
+  if(verbosity>0){  fprintf(stderr, "Loading code into instruction memory, size = %u bytes\n", codeSize);  }
 
   if (startOnlyOneThread)
     // Write instructions to core 0 only
@@ -195,7 +215,7 @@ int main(int argc, char* argv[])
     link.setDest(0x80000000);
 
   // Write instructions to instruction memory
-  uint32_t instrBase = sendFile(WriteInstrCmd, &link, code, &checksum);
+  uint32_t instrBase = sendFile(WriteInstrCmd, &link, code, &checksum, verbosity);
 
   double finish=now();
   if(measureDst){
@@ -206,7 +226,10 @@ int main(int argc, char* argv[])
 
   // Step 2: initialise memory using data file
   // -----------------------------------------
-  if(verbosity>0){  fprintf(stderr, "Initialise memory using data file\n");  }
+  fseek(data, 0, SEEK_END);
+  unsigned dataSize=ftell(data);
+  rewind(data);
+  if(verbosity>0){  fprintf(stderr, "Initialise memory using data file, size = %u bytes\n", dataSize);  }
 
   // Iterate over each DRAM
   uint32_t coresPerDRAM =
@@ -220,7 +243,7 @@ int main(int argc, char* argv[])
     if(verbosity>1){  fprintf(stderr, "    sending file to memory\n");  }
     uint32_t ignore;
     rewind(data);
-    sendFile(StoreCmd, &link, data, i == 0 ? &checksum : &ignore);
+    sendFile(StoreCmd, &link, data, i == 0 ? &checksum : &ignore, verbosity);
 
     // Send cache flush
     if(verbosity>1){  fprintf(stderr, "    sending cache flush\n");  }
