@@ -60,6 +60,8 @@ private:
   unsigned m_totalStdoutBytes;
   unsigned m_totalExportedKeyValues;
 
+  int m_verbosity;
+
   static bool lt(const std::pair<std::vector<char>,uint32_t> &a, const std::pair<std::vector<char>,uint32_t> &b)
   {
     return a.first < b.first;
@@ -81,7 +83,7 @@ private:
     return res;
   }
 public:
-  Protocol(uint32_t threadId, FILE *keyValDst, FILE *measureDst)
+  Protocol(uint32_t threadId, FILE *keyValDst, FILE *measureDst, int verbosity)
     : m_state(StateIdle)
     , m_threadId(threadId)
     , m_key(0)
@@ -92,6 +94,7 @@ public:
     , m_totalBytes(0)
     , m_totalStdoutBytes(0)
     , m_totalExportedKeyValues(0)
+    , m_verbosity(verbosity)
   {
   }
 
@@ -114,7 +117,9 @@ public:
 	switch(byte)
 	  {
 	  case TagStdOut:{
-	    //fprintf(stderr, "%08x : Begin stdout\n", m_threadId);
+	    if(m_verbosity>1){
+	      fprintf(stderr, "%08x : Begin stdout\n", m_threadId);
+	    }
 	    m_chars.clear();
 	    m_state=StateStdOut;
 	    break;
@@ -188,15 +193,19 @@ public:
 	  if(m_chars.size()<=1 || m_chars[m_chars.size()-2]!='\n'){
 	    	fputs("\n",stdout);
 	  }
-	  fflush(stdout);
-	  //fprintf(stderr, "%08x : End stdout\n", m_threadId);	  
+	  if(m_verbosity>0){
+	    fflush(stdout);
+	  }
+	  if(m_verbosity>0){
+	    fprintf(stderr, "%08x : End stdout\n", m_threadId);
+	  }
 	  m_state=StateIdle;
 	}
 	break;
       case StateStdErr:
 	m_chars.push_back((char)byte);
 	if(byte==0){
-	fprintf(stdout, "%08x : StdErr : ", m_threadId);
+	  fprintf(stdout, "%08x : StdErr : ", m_threadId);
 	  fputs(&m_chars[0],stderr);
 	  if(m_chars.size()<=1 || m_chars[m_chars.size()-2]!='\n'){
 		fputs("\n",stderr);
@@ -227,7 +236,9 @@ public:
 	  // TODO : Still seems completely broken.
 	  m_totalExportedKeyValues++;
 	  unsigned seq=incSeq(m_device);
-	  //fprintf(stdout, "KeyVal : %s, %u, %u, %u\n", &m_device[0], seq, m_key, m_val);
+	  if(m_verbosity>1){
+	    fprintf(stdout, "KeyVal : %s, %u, %u, %u\n", &m_device[0], seq, m_key, m_val);
+	  }
 	  if(m_keyValDst){
 	    fprintf(m_keyValDst, "%s, %u, %u, %u\n", &m_device[0], seq, m_key, m_val);
 	  }
@@ -250,7 +261,7 @@ void protocol(HostLink *link, FILE *keyValDst, FILE *measureDst, int verbosity)
   std::vector<Protocol> states;
 
   for(unsigned i=0;i<TinselThreadsPerBoard;i++){
-    states.push_back(Protocol(i, keyValDst, measureDst));
+    states.push_back(Protocol(i, keyValDst, measureDst, verbosity));
   }
 
   int exitCode=0;
@@ -264,7 +275,7 @@ void protocol(HostLink *link, FILE *keyValDst, FILE *measureDst, int verbosity)
     uint8_t cmd = link->get(&src, &val);
     uint32_t id = val >> 8;
     uint32_t ch = val & 0xff;
-    if(verbosity>1){
+    if(verbosity>2){
       fprintf(stderr, "  cmd=%u, id=%u, ch=%u\n", cmd, id, ch);
     }
     assert(id < TinselThreadsPerBoard);

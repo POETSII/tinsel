@@ -7,7 +7,8 @@ endif
 
 # Local compiler flags
 CPPFLAGS = -I $(INC) -O
-CPPFLAGS += -g 
+CPPFLAGS += -g
+CPPFLAGS += -O3
 
 # Top-level dependencies
 DEPS = Main.cpp Protocol.cpp $(INC)/config.h $(INC)/boot.h \
