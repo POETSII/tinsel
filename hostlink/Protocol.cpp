@@ -243,7 +243,7 @@ public:
   }
 };
 
-void protocol(HostLink *link, FILE *keyValDst, FILE *measureDst)
+void protocol(HostLink *link, FILE *keyValDst, FILE *measureDst, int verbosity)
 {
   double start=now();
   
@@ -264,7 +264,9 @@ void protocol(HostLink *link, FILE *keyValDst, FILE *measureDst)
     uint8_t cmd = link->get(&src, &val);
     uint32_t id = val >> 8;
     uint32_t ch = val & 0xff;
-    //        fprintf(stderr, "  cmd=%u, id=%u, ch=%u\n", cmd, id, ch);
+    if(verbosity>1){
+      fprintf(stderr, "  cmd=%u, id=%u, ch=%u\n", cmd, id, ch);
+    }
     assert(id < TinselThreadsPerBoard);
 
     if(!states[id].add(ch, exitCode)){
