@@ -32,7 +32,7 @@ import Queue        :: *;
 import Mac          :: *;
 import ConfigReg    :: *;
 import Util         :: *;
-import Pipe         :: *;
+import Socket       :: *;
 
 // =============================================================================
 // Transmit Buffer
@@ -410,7 +410,7 @@ endmodule
 `else
 
 // Simulation version
-module mkReliableLink#(PipeId id) (ReliableLink);
+module mkReliableLink#(SocketId id) (ReliableLink);
   Mac mac <- mkMac(id);
   ReliableLink link <- mkReliableLinkCore(mac);
   return link;
