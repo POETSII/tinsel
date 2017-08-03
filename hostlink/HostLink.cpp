@@ -6,6 +6,8 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/file.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
@@ -14,6 +16,41 @@
 #include <limits.h>
 #include <string.h>
 #include <signal.h>
+
+// Function to connect to a PCIeStream UNIX domain socket
+static int connectToPCIeStream(const char* socketPath)
+{
+  // Create socket
+  int sock = socket(AF_UNIX, SOCK_STREAM, 0);
+  if (sock == -1) {
+    perror("socket");
+    exit(EXIT_FAILURE);
+  }
+
+  // Make it non-blocking
+  int opts = fcntl(sock, F_GETFL);
+  fcntl(sock, F_SETFL, opts | O_NONBLOCK);
+
+  // Connect socket
+  struct sockaddr_un addr;
+  memset(&addr, 0, sizeof(struct sockaddr_un));
+  addr.sun_family = AF_UNIX;
+  addr.sun_path[0] = '\0';
+  strncpy(&addr.sun_path[1], socketPath, sizeof(addr.sun_path) - 2);
+  int ret = connect(sock, (const struct sockaddr *) &addr,
+                  sizeof(struct sockaddr_un));
+  if (ret == -1) {
+    fprintf(stderr, "Can't connect to PCIeStream daemon.\n"
+                    "Either the daemon is not running or it is "
+                    "being used by another process\n");
+    exit(EXIT_FAILURE);
+  }
+
+  // Make it blocking again
+  fcntl(sock, F_SETFL, opts);
+
+  return sock;
+}
 
 // Constructor
 HostLink::HostLink()
@@ -33,17 +70,17 @@ HostLink::HostLink()
 
   // Open each UART
   #ifdef SIMULATE
-  // Worker boards
-  int count = 0;
-  for (int y = 0; y < TinselMeshYLen; y++)
-    for (int x = 0; x < TinselMeshXLen; x++) {
-      int boardId = y<<TinselMeshXBits + x;
-      debugLinks[count++].open(boardId);
-    }
-  // Host board
-  debugLinks[count++].open(-1);
+    // Worker boards
+    int count = 0;
+    for (int y = 0; y < TinselMeshYLen; y++)
+      for (int x = 0; x < TinselMeshXLen; x++) {
+        int boardId = y<<TinselMeshXBits + x;
+        debugLinks[count++].open(boardId);
+      }
+    // Host board
+    debugLinks[count++].open(-1);
   #else
-  for (int i = 0; i < numBoards; i++) debugLinks[i].open(i+1);
+    for (int i = 0; i < numBoards; i++) debugLinks[i].open(i+1);
   #endif
 
   // Initialise debug links
@@ -86,40 +123,23 @@ HostLink::HostLink()
     }
   }
 
-  // Lock file to ensure exclusive access to PCIeStream
-  lockFile = open(PCIESTREAM_LOCK, O_RDONLY);
-  if (lockFile < 0) {
-    fprintf(stderr, "Error opening lock file %s\n", PCIESTREAM_LOCK);
-    exit(EXIT_FAILURE);
-  }
-  if (flock(lockFile, LOCK_EX | LOCK_NB) != 0) {
-    fprintf(stderr, "Can't acquire exclusive lock on PCIeStream\n");
-    exit(EXIT_FAILURE);
-  }
-
   // Ignore SIGPIPE
   signal(SIGPIPE, SIG_IGN);
 
-  // Open PCIeStream for reading
-  fromPCIe = open(PCIESTREAM_OUT, O_RDONLY);
-  if (fromPCIe < 0) {
-    fprintf(stderr, "Error opening %s\n", PCIESTREAM_OUT);
-    exit(EXIT_FAILURE);
-  }
+  #ifdef SIMULATE
+    // Connect to simulator
+    fromPCIe = toPCIe = connectToPCIeStream(PCIESTREAM_SIM);
+    pcieCtrl = -1;
+  #else
+    // Open PCIeStream for reading
+    fromPCIe = connectToPCIeStream(PCIESTREAM_OUT);
 
-  // Open PCIeStream for writing
-  toPCIe = open(PCIESTREAM_IN, O_WRONLY);
-  if (toPCIe < 0) {
-    fprintf(stderr, "Error opening %s\n", PCIESTREAM_IN);
-    exit(EXIT_FAILURE);
-  }
+    // Open PCIeStream for writing
+    toPCIe = connectToPCIeStream(PCIESTREAM_IN);
 
-  // Open PCIeStream control for writing
-  toPCIeCtrl = open(PCIESTREAM_CTRL_IN, O_WRONLY);
-  if (toPCIeCtrl < 0) {
-    fprintf(stderr, "Error opening %s\n", PCIESTREAM_CTRL_IN);
-    exit(EXIT_FAILURE);
-  }
+    // Open PCIeStream control
+    pcieCtrl = connectToPCIeStream(PCIESTREAM_CTRL);
+  #endif
 }
 
 // Destructor
@@ -130,12 +150,9 @@ HostLink::~HostLink()
     for (int y = 0; y < TinselMeshYLen; y++)
       mesh[x][y]->close();
   delete [] debugLinks;
-  flock(lockFile, LOCK_UN);
-  close(lockFile);
   close(fromPCIe);
   close(toPCIe);
-  close(fromPCIeCtrl);
-  close(toPCIeCtrl);
+  close(pcieCtrl);
 }
 
 // Address construction

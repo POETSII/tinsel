@@ -14,10 +14,14 @@ DEPS = $(INC)/config.h $(INC)/boot.h \
 
 .PHONY: all
 all: DebugLink.o HostLink.o MemFileReader.o UART.o pciestreamd \
-     sim/DebugLink.o sim/HostLink.o sim/MemFileReader.o sim/UART.o
+     sim/DebugLink.o sim/HostLink.o sim/MemFileReader.o sim/UART.o \
+     udsock
 
 pciestreamd: pciestreamd.c
 	gcc -O2 pciestreamd.c -o pciestreamd
+
+udsock: udsock.c
+	gcc -O2 udsock.c -o udsock
 
 sim/%.o: %.cpp $(DEPS)
 	mkdir -p sim
@@ -31,5 +35,5 @@ $(INC)/config.h: $(TINSEL_ROOT)/config.py
 
 .PHONY: clean
 clean:
-	rm -f *.o pciestreamd
+	rm -f *.o pciestreamd udsock
 	rm -rf sim

@@ -29,6 +29,7 @@ verilog: $(TOPMOD).v $(HOSTTOPMOD).v
 
 $(TOPMOD): *.bsv *.c InstrMem.hex
 	make -C $(TINSEL_ROOT)/apps/boot
+	make -C $(TINSEL_ROOT)/hostlink udsock
 	$(BSC) $(BSCFLAGS) $(DEFS) -D SIMULATE -sim -g $(TOPMOD) -u $(TOPFILE)
 	$(BSC) $(BSCFLAGS) -sim -o $(TOPMOD) -e $(TOPMOD) *.c
 

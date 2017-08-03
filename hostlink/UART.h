@@ -8,7 +8,7 @@
 
 class UART {
   #ifdef SIMULATE
-  int fifoIn, fifoOut;
+  int sock;
   #else
   JTAGATLANTIC* jtag;
   #endif
