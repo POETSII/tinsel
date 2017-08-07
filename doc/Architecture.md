@@ -2,7 +2,7 @@
 
 Most of the tinsel architecture is not specific to any particular FPGA
 board, but the description below uses Terasic's
-[DE5-NET](http://de5-net.terasic.com) for illustration purposes.  This
+[DE5-Net](http://de5-net.terasic.com) for illustration purposes.  This
 is a Stratix V board from circa 2012 that the
 [CL](http://www.cl.cam.ac.uk/) has in plentiful supply, and will
 provide the platform for our initial prototypes.
@@ -19,7 +19,7 @@ Like any large system, Tinsel is comprised of several modules:
 
 For reference:
 
-* [DE5-NET Synthesis Report](#de5-net-synthesis-report)
+* [DE5-Net Synthesis Report](#de5-net-synthesis-report)
 * [Tinsel Parameters](#tinsel-parameters)
 * [Tinsel Memory Map](#tinsel-memory-map)
 * [Tinsel CSRs](#tinsel-csrs)
@@ -35,18 +35,16 @@ are provided through a range of control/status registers
 ([CSRs](#tinsel-csrs)).
 
 The number of hardware threads must be a power of two and is
-controlled by a sythesis-time parameter `LogThreadsPerCore`.
+controlled by a sythesis-time parameter `LogThreadsPerCore`.  For
+example, with `LogThreadsPerCore=4`, each core implements 2^4 (16)
+threads.
 
-Tinsel employs a generous **8-stage pipeline** to achieve an Fmax of
-450MHz on the [DE5-NET](http://de5-net.terasic.com), while consuming
-less than 450 ALMs (0.2%).  These figures are for a standalone
-configuration without caches and custom features.
-
+Tinsel employs a generous **8-stage pipeline** to achieve a high Fmax.
 The pipeline is **hazard-free**: at most one instruction per thread is
 present in the pipeline at any time.  To achieve **full throughput**
 -- execution of an instruction on every clock cycle -- there must
 exist at least 8 **runnable** threads at any time.  When a thread
-executes a multi-cycle instruction (such as a DRAM load/store or a
+executes a multi-cycle instruction (such as a off-chip load/store or a
 blocking send/receive), it becomes **suspended** and is only made
 runnable again when the instruction completes.  While suspended, a
 thread is not present in the queue of runnable threads from which the
@@ -68,7 +66,8 @@ provided for writing instructions into the memory: `InstrAddr` and
   `Instr`     | 0x801  | W   | Write to instruction memory
 
 There is a read-only CSR for determining the globally unique id of the
-currently running thread.
+currently running thread (the structure of this id is defined in
+[Tinsel Mailbox Network](#tinsel--mailbox-network) section).
 
   CSR Name    | CSR    | R/W | Function
   ----------- | ------ | --- | --------
@@ -105,7 +104,7 @@ A summary of synthesis-time parameters introduced in this section:
 
 ## 2. Tinsel Cache
 
-The [DE5-NET](http://de5-net.terasic.com) contains two DDR3 DIMMs,
+The [DE5-Net](http://de5-net.terasic.com) contains two DDR3 DIMMs,
 each capable of performing two 64-bit memory operations on every cycle
 of an 800MHz clock (one operation on the rising edge and one on the
 falling edge).  By serial-to-parallel conversion, a single 256-bit
@@ -131,7 +130,7 @@ instruction once in every four instructions.
 
 The number of caches sharing a DRAM is controlled by
 `LogDCachesPerDRAM`.  A sensible value for this parameter on the
-[DE5-NET](http://de5-net.terasic.com) with a 400MHz core clock might
+[DE5-Net](http://de5-net.terasic.com) with a 400MHz core clock might
 be three, which combined with a `LogCoresPerDCache` of two, gives 32
 cores per DRAM: assuming one cache miss in every eight accesses (ratio
 between 32-bit word and 256-bit DRAM bus) and one memory instruction
@@ -144,7 +143,7 @@ per DRAM.  (As a point of comparison,
 [SpiNNaker](http://apt.cs.manchester.ac.uk/projects/SpiNNaker/) shares
 a 1.6GB/s DRAM amongst 16 x 200MHz cores, giving 4 bits per
 core-cycle.  For the same data width per core-cycle, each 12.8GB/s
-DIMM on the [DE5-NET](http://de5-net.terasic.com) could serve 64 x
+DIMM on the [DE5-Net](http://de5-net.terasic.com) could serve 64 x
 400MHz cores.)
 
 The cache is an *N*-way **set-associative write-back** cache.
@@ -242,7 +241,7 @@ inline volatile void* tinselSlot(uint32_t n);
 
 Several things to note:
 
-* When sending a message, a thread must not modify the
+* After sending a message, a thread must not modify the
 contents of that message while `tinselCanSend()` returns false,
 otherwise the in-flight message could be corrupted.
 
@@ -291,6 +290,13 @@ inline uint32_t tinselCanRecv();
 inline volatile void* tinselRecv();
 ```
 
+When more than one slot contains an incoming message, `tinselRecv()`
+will select the one with the lowest address.  This means that the
+order in which messages are received by software is not neccesarily
+equal to the order in which they arrived at the mailbox.  Given the
+*partially-ordered* nature of POETS, we feel that this is an
+acceptable property.
+
 Sometimes, a thread may wish to wait until it can send or receive.  To
 avoid busy waiting on the `tinselCanSend()` and `tinselCanRecv()`
 functions, a thread can be suspended by writing to the `WaitUntil`
@@ -332,7 +338,6 @@ A summary of synthesis-time parameters introduced in this section:
   `LogMaxFlitsPerMsg`      |       2 | Max number of flits in a message
   `LogMsgsPerThread`       |       4 | Number of slots per thread in scratchpad
 
-
 ## 4. Tinsel Mailbox Network
 
 The number of mailboxes on each FPGA board is goverened by the
@@ -346,11 +351,11 @@ The mailboxes are connected together by a **bidirectional serial bus**
 carrying message flits (see section [Tinsel
 Mailbox](#3-tinsel-mailbox)).  The network ensures that flits from
 different messages are not interleaved or, equivalently, flits from
-the same message appear contiguously on the bus.  This avoids complex
-logic for reassembling messages.  It also avoids the deadlock case
-whereby a receiver's buffer is exhausted with partial messages, yet is
-unable to provide a single whole message for the receiver to consume
-in order free space.
+the same message appear **contiguously** on the bus.  This avoids
+complex logic for reassembling messages.  It also avoids the deadlock
+case whereby a receiver's buffer is exhausted with partial messages,
+yet is unable to provide a single whole message for the receiver to
+consume in order free space.
 
 It is more efficient to send messages between threads that share a
 mailbox than between threads on different mailboxes.  This is because,
@@ -364,8 +369,34 @@ neighbouring mailboxes, w.r.t. the bidirectional bus, than between
 threads on distant mailboxes.  This is because, in the former case,
 the message spends less time on the bus, consuming less bandwidth.
 
-In future, the mailbox network will be extended to multiple FPGA
-boards.
+The mailbox network extends across multiple FPGA boards arranged in a
+**2D mesh** with dimensions `MeshXLen` x `MeshYLen`.
+
+  Parameter      | Default | Description
+  -------------- | ------- | -----------
+  `MeshXBits`    |       2 | Number of bits in mesh X coordinate
+  `MeshYBits`    |       2 | Number of bits in mesh Y coordinate
+  `MeshXLen`     |       3 | Length of X dimension
+  `MeshYLen`     |       3 | Length of Y dimension
+
+A **globally unique thread id** -- as returned by `tinselId()` -- has
+the following structure from MSB to LSB.
+
+  Field                 | Width  
+  --------------------- | ------------
+  Board Y id            | `MeshYBits`
+  Board X id            | `MeshXBits`
+  Board-local core id   | `LogCoresPerBoard`
+  Core-local thread id  | `LogThreadsPreCore`
+
+Each board-to-board communication link is implemented on top of a
+**10G Ethernet MAC**, which automatically detects and drops packets
+containing CRC errors.  On top of the MAC sits our own window-based
+reliability layer that retransmits dropped packets.  The use of
+Ethernet allows us to use mostly standard (and free) IP cores for
+inter-board communication.  And since we are using the links
+point-to-point, almost all of the Ethernet packet fields are used for
+our own purposes, resulting in very little overhead on the wire.
 
 ## 5. Tinsel HostLink
 
@@ -429,9 +460,9 @@ inline uint32_t tinselHostGet();
 
 ## Reference
 
-### DE5-NET Synthesis Report
+### DE5-Net Synthesis Report
 
-The default tinsel configuration on a single DE5-NET board contains:
+The default tinsel configuration on a single DE5-Net board contains:
 
   * 64 cores
   * 16 threads per core
@@ -442,7 +473,7 @@ The default tinsel configuration on a single DE5-NET board contains:
   * a JTAG UART
 
 The clock frequency is 275MHz and the resource utilisation is 94K
-ALMs, **40%** of the DE5-NET, leaving plenty of space for interboard
+ALMs, **40%** of the DE5-Net, leaving plenty of space for interboard
 comms and more cores to be added in the near future.
 
 ### Tinsel Parameters

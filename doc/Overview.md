@@ -18,7 +18,7 @@ therefore to provide a *soft-core overlay architecture* on top of the
 FPGA logic that can be programmed quickly and easily using standard
 software languages and tools.  While this overlay is not customised to
 a particular POETS *application*, it is at least customised to the
-POETS *application domain*.  This is a natural first step because
+POETS application *domain*.  This is a natural first step because
 higher levels of customisation, using techniques such as high-level
 synthesis, are somewhat more ambitous and are in any case likely to
 reuse components and ideas from the overlay.
