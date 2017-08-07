@@ -494,6 +494,10 @@ comms and more cores to be added in the near future.
   `LogMaxFlitsPerMsg`      |       2 | Max number of flits in a message
   `LogMsgsPerThread`       |       4 | Number of slots per thread in scratchpad
   `LogMailboxesPerBoard`   |       4 | Number of mailboxes per FPGA board
+  `MeshXBits`              |       2 | Number of bits in mesh X coordinate
+  `MeshYBits`              |       2 | Number of bits in mesh Y coordinate
+  `MeshXLen`               |       3 | Length of X dimension
+  `MeshYLen`               |       3 | Length of Y dimension
 
 ### Tinsel Memory Map
 
