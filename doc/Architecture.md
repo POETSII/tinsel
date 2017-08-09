@@ -23,8 +23,9 @@ For reference:
 * [B. Tinsel Parameters](#b-tinsel-parameters)
 * [C. Tinsel Memory Map](#c-tinsel-memory-map)
 * [D. Tinsel CSRs](#d-tinsel-csrs)
-* [E. Tinsel API](#e-tinsel-api)
-* [F. HostLink API](#f-hostlink-api)
+* [E. Tinsel Address Structure](#e-tinsel-address-structure)
+* [F. Tinsel API](#f-tinsel-api)
+* [G. HostLink API](#g-hostlink-api)
 
 ## 1. Tinsel Core
 
@@ -83,7 +84,7 @@ the `NewThread` CSR (as typically done by the boot loader).
   `NewThread` | 0x80d  | W   | Create new thread with the given id
 
 Access to all of these CSRs is wrapped up by the following C functions
-in the [Tinsel API](#e-tinsel-api).
+in the [Tinsel API](#f-tinsel-api).
 
 ```c
 // Write 32-bit word to instruction memory
@@ -221,7 +222,7 @@ thread id to the `Send` CSR.
   `SendPtr`  | 0x807  | W   | Set message pointer for send
   `Send`     | 0x808  | W   | Send message to supplied destination
 
-The [Tinsel API](#e-tinsel-api) provides wrapper functions for accessing
+The [Tinsel API](#f-tinsel-api) provides wrapper functions for accessing
 these CSRs.
 
 ```c
@@ -278,7 +279,7 @@ slots are owned by software and none by hardware.
  `CanRecv`  | 0x805  | R   | 1 if can receive, 0 otherwise
  `Recv`     | 0x809  | R   | Return pointer to a received message
 
-Again, the [Tinsel API](#e-tinsel-api) hides these low-level CSRs.
+Again, the [Tinsel API](#f-tinsel-api) hides these low-level CSRs.
 
 ```c
 // Give mailbox permission to use given slot to store an incoming message
@@ -312,7 +313,7 @@ thread would like to be woken when a send is possible, and bit 1
 indicates whether the thread would like to be woken when a receive is
 possible.  Both bits may be set, in which case the thread will be
 woken when a send *or* a receive is possible. The [Tinsel
-API](e-tinsel-api) abstracts this CSR as follows.
+API](#f-tinsel-api) abstracts this CSR as follows.
 
 ```c
 // Thread can be woken by a logical-OR of these events
@@ -425,8 +426,8 @@ power consumption and temperature.
 
 A tinsel application typically consists of two programs: one which
 runs on the RISC-V cores, linked against the [Tinsel
-API](#e-tinsel-api), and the other which runs on the host PC, linked
-against the [HostLink API](#f-hostlink-api).  The HostLink API is
+API](#f-tinsel-api), and the other which runs on the host PC, linked
+against the [HostLink API](#g-hostlink-api).  The HostLink API is
 implemented as a C++ class called `HostLink`.  Once an instance of
 this class is created, the first thing to do is typically to initiate
 a reset.
@@ -655,7 +656,19 @@ added in the near future.
   `NewThread` | 0x80d  | W   | Create new thread with the given id
   `Emit`      | 0x80f  | W   | Emit char to console (simulation only)
 
-## E. Tinsel API
+## E. Tinsel Address Structure
+
+A globally unique thread id has the following structure from MSB to
+LSB.
+
+  Field                 | Width  
+  --------------------- | ------------
+  Board Y coord         | `MeshYBits`
+  Board X coord         | `MeshXBits`
+  Board-local core id   | `LogCoresPerBoard`
+  Core-local thread id  | `LogThreadsPerCore`
+
+## F. Tinsel API
 
 ```c
 // Return a globally unique id for the calling thread
@@ -712,7 +725,7 @@ inline void tinselEmit(uint32_t x);
 inline uint32_t tinselHostId()
 ```
 
-## F. HostLink API
+## G. HostLink API
 
 Only the main functionality of HostLink is presented here.  For full
 details see [HostLink.h](/hostlink/HostLink.h) and
