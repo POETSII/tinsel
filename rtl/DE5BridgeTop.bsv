@@ -1,10 +1,10 @@
 // This module implements a "bridge board", i.e. an FPGA board that acts
 // as a proxy between a host PC (connected over PCIe) and an FPGA
-// cluster (connected via a 10G link).
+// mesh (connected via a 10G link).
 //
 // The basic idea is that messages received from the host PC over PCIe
-// are inserted onto the cluster's 10G network.  Likewise, messages
-// from the cluster's network are sent to the host PC over PCIe.
+// are inserted onto the mesh's 10G network.  Likewise, messages
+// from the mesh's network are sent to the host PC over PCIe.
 //
 // The format of the data stream in the PC->FPGA direction is:
 //
@@ -12,7 +12,7 @@
 //   2. NM: Number of messages that follow minus one (4 bytes)
 //   3. FM: Number of flit payloads per message minus one (1 byte)
 //   4. Padding (7 bytes)
-//   5. NM*FM flit payloads ((NM+1)*(FM+1)*BytesPerFlit bytes)
+//   5. (NM+1)*(FM+1) flit payloads ((NM+1)*(FM+1)*BytesPerFlit bytes)
 //   6. Goto step 1
 //
 // The format of the data stream in the FPGA->PC direction is simply

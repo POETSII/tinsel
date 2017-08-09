@@ -33,7 +33,7 @@ implementing a subset of the RV32IM profile of the
 [RISC-V](https://riscv.org/specifications/) ISA.  At present, this
 excludes integer division and system instructions.  Custom features
 are provided through a range of control/status registers
-([CSRs](#tinsel-csrs)).
+([CSRs](#d-tinsel-csrs)).
 
 The number of hardware threads must be a power of two and is
 controlled by a sythesis-time parameter `LogThreadsPerCore`.  For
@@ -83,7 +83,7 @@ the `NewThread` CSR (as typically done by the boot loader).
   `NewThread` | 0x80d  | W   | Create new thread with the given id
 
 Access to all of these CSRs is wrapped up by the following C functions
-in the [Tinsel API](#tinsel-api).
+in the [Tinsel API](#e-tinsel-api).
 
 ```c
 // Write 32-bit word to instruction memory
@@ -221,7 +221,7 @@ thread id to the `Send` CSR.
   `SendPtr`  | 0x807  | W   | Set message pointer for send
   `Send`     | 0x808  | W   | Send message to supplied destination
 
-The [Tinsel API](#tinsel-api) provides wrapper functions for accessing
+The [Tinsel API](#e-tinsel-api) provides wrapper functions for accessing
 these CSRs.
 
 ```c
@@ -278,7 +278,7 @@ slots are owned by software and none by hardware.
  `CanRecv`  | 0x805  | R   | 1 if can receive, 0 otherwise
  `Recv`     | 0x809  | R   | Return pointer to a received message
 
-Again, the [Tinsel API](#tinsel-api) hides these low-level CSRs.
+Again, the [Tinsel API](#e-tinsel-api) hides these low-level CSRs.
 
 ```c
 // Give mailbox permission to use given slot to store an incoming message
@@ -295,8 +295,8 @@ When more than one slot contains an incoming message, `tinselRecv()`
 will select the one with the lowest address.  This means that the
 order in which messages are received by software is not neccesarily
 equal to the order in which they arrived at the mailbox.  Given the
-*partially-ordered* nature of POETS, we feel that this is an
-acceptable property.
+*partially-ordered* nature of POETS, we feel that this is a reasonable
+property.
 
 Sometimes, a thread may wish to wait until it can send or receive.  To
 avoid busy waiting on the `tinselCanSend()` and `tinselCanRecv()`
@@ -312,7 +312,7 @@ thread would like to be woken when a send is possible, and bit 1
 indicates whether the thread would like to be woken when a receive is
 possible.  Both bits may be set, in which case the thread will be
 woken when a send *or* a receive is possible. The [Tinsel
-API](tinsel-api) abstracts this CSR as follows.
+API](e-tinsel-api) abstracts this CSR as follows.
 
 ```c
 // Thread can be woken by a logical-OR of these events
@@ -388,7 +388,7 @@ following structure from MSB to LSB.
   Board Y coord         | `MeshYBits`
   Board X coord         | `MeshXBits`
   Board-local core id   | `LogCoresPerBoard`
-  Core-local thread id  | `LogThreadsPreCore`
+  Core-local thread id  | `LogThreadsPerCore`
 
 Each board-to-board communication port is implemented on top of a
 **10Gbps ethernet MAC**, which automatically detects and drops packets
@@ -406,75 +406,185 @@ purposes, resulting in very little overhead on the wire.
 FPGA boards communicate with a **host PC**.  It comprises three main
 communication channels:
 
-1. An FPGA **bridge board** that connects to the host PC via PCI
+* An FPGA **bridge board** that connects to the host PC via PCI
 Express and to the FPGA mesh via a 10Gbps reliable link.  Using this
 high-bandwidth channel (around 1GB/s), the host PC can efficiently
 send messages to any tinsel thread and vice-versa.
 
-2. A set of **debug links** connecting the host PC to each FPGA via
+* A set of **debug links** connecting the host PC to each FPGA via
 separate USB UART cables.  These low-bandwidth connections (around
 4MB/s each) are virtualised to provide every hardware thread with
-`stdin` and `stdout` byte streams.  They are meant primarily for
+`stdin` and `stdout` byte streams.  They are intended for
 debugging and can be used to implement functions such as `printf` and
 `scanf`.
 
-3. A set of **power links** connecting the host PC to each FPGA's
+* A set of **power links** connecting the host PC to each FPGA's
 **power management module** via separate USB UART cables.  These
 connections can be used to power-on/power-off each FPGA and to monitor
 power consumption and temperature.
 
-**TODO**: getHostId()
+A tinsel application typically consists of two programs: one which
+runs on the RISC-V cores, linked against the [Tinsel
+API](#e-tinsel-api), and the other which runs on the host PC, linked
+against the [HostLink API](#f-hostlink-api).  The HostLink API is
+implemented as a C++ class called `HostLink`.  Once an instance of
+this class is created, the first thing to do is typically to initiate
+a reset.
 
-**TODO**: send/recv/canSend/canRecv, PCIeStream, daemon, protocol?
+```cpp
+// Hard reset the mesh boards and soft reset the bridge board
+void HostLink::reset();
+```
 
-**TODO**: DebugLink, get/put/canGet/canPut, protocol?
+Invoking this method: (1) powers down all of the mesh FPGAs; (2)
+performs a soft-reset of the bridge board; and (3) powers up all of
+the mesh FPGAs.  On power-up each FPGA is automatically programmed
+using the tinsel bit-file residing in flash memory, and is ready to be
+used within a second or so.
 
-**TODO**: PowerLink, reset
+Methods for sending and receiving messages on the host PC are as
+follows.
 
-HostLink commands can be sent from the host to the FPGA and viceversa.
-All commands sent from the host consist of 5 bytes: a 1-byte command
-tag and a 4-byte argument.  At present, there are two such commands:
+```cpp
+// Send a message (blocking)
+void HostLink::send(uint32_t destAddr, uint32_t numFlits, void* msg);
 
-  Command (1 byte) | Argument (4 bytes)
-  ---------------- | ------------------
-  `SetDest`        | Core Id           
-  `StdIn`          | Payload           
+// Can send a message without blocking?
+bool HostLink::canSend();
 
-The `SetDest` command sets the destination core id for all subsequent
-commands (until the next `SetDest` command).  This is a meta-command
-in that it is not actually sent to any core.  The MSB of core id is
-the broadcast bit.  The `StdIn` command causes the payload to be
-written to the `FromHost` CSR on the destination core(s):
+// Receive a flit (blocking)
+void HostLink::recv(void* flit);
 
-  Name        | CSR    | R/W | Function
-  ----------- | ------ | --- | --------
-  `FromHost`  | 0x80b  | R   | Read word from HostLink
+// Can receive a flit without blocking?
+bool HostLink::canRecv();
+```
 
-HostLink commands sent from FPGA to the host consist of 9 bytes: a
-1-byte command tag, a 4-byte source core id, and a 4-byte argument.
-For now, there is one such command:
+Although the `send` method allows a message consisting of multiple
+flits to be sent, the `recv` method only returns a single flit at a
+time and does not indicate the number of flits present the message
+currently being received.  The length of a message, if not statically
+known, must therefore be encoded in the message contents.  Flits
+belonging to the same message will be received contiguously, in order.
 
-  Command (1 byte) | Source (4 bytes) | Argument (4 bytes)
-  ---------------- | ---------------- | ------------------
-  `StdOut`         | Core Id          | Payload
+These methods for sending a receiving messages work by connecting to a
+local [PCIeStream deamon](/hostlink/pciestreamd.c) via a UNIX domain
+socket.  The daemon in turn communicates with the FPGA bridge board
+via PCI Express, initiating DMA transactions for efficient data
+transfer, and requires that the
+[dmabuffer](/hostlink/driver/dmabuffer.c) kernel module is loaded.
+For low-level details, see the comments at
+the top of [PCIeStream.bsv](/rtl/PCIeStream.bsv) and
+[DE5BridgeTop.bsv](/rtl/DE5BridgeTop.bsv).
 
-The `StdOut` command contains a payload for the host, with the source
-core id attached.  Cores can issue this command by writing to the
-`ToHost` CSR.
+The following helper functions are provided for constructing and
+deconstructing addresses (globally unique thread ids).
 
-  Name        | CSR    | R/W | Function
-  ----------- | ------ | --- | --------
-  `ToHost`    | 0x80c  | W   | Write word to HostLink
+```cpp
+// Address construction
+uint32_t HostLink::toAddr(uint32_t meshX, uint32_t meshY,
+                          uint32_t coreId, uint32_t threadId);
 
-The above CSRs are abstracted in the tinsel API:
+// Address deconstruction
+void HostLink::fromAddr(uint32_t addr, uint32_t* meshX, uint32_t* meshY,
+                                       uint32_t* coreId, uint32_t* threadId);
+```
+
+To send a message from a tinsel thread to the host PC, the thread
+needs to know the address of the host PC.  A suitable address depends
+on how the bridge board is connected to the FPGA mesh, and we provide
+the following Tinsel API function to abstract over this detail.
 
 ```c
-// Send word to host (over HostLink)
-inline void tinselHostPut(uint32_t x);
-
-// Receive word from host (over HostLink)
-inline uint32_t tinselHostGet();
+// Get globally unique thread id of the host PC
+inline uint32_t tinselHostId()
 ```
+
+The following `HostLink` member variables are used to access the
+individual debug links to each FPGA and the bridge board.
+
+```cpp
+// Debug link to the bridge board (initialised by HostLink constructor)
+DebugLink* bridgeBoard;
+
+// Debug links to the mesh boards (initialised by HostLink constructor)
+DebugLink* mesh[TinselMeshXLen][TinselMeshYLen];
+```
+
+The `DebugLink` class provides several methods on these links.  One
+such method allows querying of a board to determine its unique
+identifier, i.e.  its X and Y coordinates in the mesh.
+
+```cpp
+// Put query request
+void DebugLink::putQuery();
+
+// Get query response, including board id
+bool DebugLink::getQuery(uint32_t* boardId);
+```
+
+The board id returned by ``getQuery`` is either 0, denoting the bridge
+board, or 1+*b* denoting a mesh board with identifier *b*.  To send
+bytes to a thread's input stream, one first needs to set the
+destination address.
+
+```cpp
+// Set destination core and thread
+void DebugLink::setDest(uint32_t coreId, uint32_t threadId);
+
+// Set destinations to given thread id on every core
+void DebugLink::setBroadcastDest(uint32_t threadId);
+```
+
+After that, bytes can be sent and received using the functions:
+
+```cpp
+// Send byte to destination thread (StdIn)
+void DebugLink::put(uint8_t byte);
+
+// Receive byte (StdOut)
+void DebugLink::get(uint32_t* coreId, uint32_t* threadId, uint8_t* byte);
+
+// Is a data available for reading?
+bool DebugLink::canGet();
+```
+
+For low-level details about the DebugLink protocol, see the comments
+at the top of [DebugLink.bsv](/rtl/DebugLink.bsv).
+
+On the FPGA side, the following CSRs can be used to send and receive
+bytes over the debug link.
+
+  Name        | CSR    | R/W | Function
+  ----------- | ------ | --- | --------
+  `FromUart`  | 0x80b  | R   | Read byte from StdIn
+  `ToUart`    | 0x80c  | W   | Write byte to StdOut
+
+These CSRs are abstracted in the tinsel API:
+
+```c
+// Receive byte from StdIn (over DebugLink)
+inline uint8_t tinselUartGet();
+
+// Send byte to StdOut (over DebugLink)
+inline void tinselUartPut(uint8_t x);
+```
+
+On power-up, each tinsel core is running a [boot
+loader](/apps/boot/boot.c).  When the boot loader is running, the
+HostLink API allows the following methods for booting an application.
+When the boot loader is not running, these methods lead to undefined
+behaviour.
+
+```cpp
+// Load application code and data onto the mesh
+void HostLink::boot(const char* codeFilename, const char* dataFilename);
+
+// Trigger to start application execution
+void HostLink::go();
+```
+
+The format of the code and data files is *verilog hex format*, which
+is easily produced using standard RISC-V compiler tools.
 
 ## A. DE5-Net Synthesis Report
 
@@ -598,15 +708,14 @@ inline void tinselCreateThread(uint32_t id);
 // Emit word to console (simulation only)
 inline void tinselEmit(uint32_t x);
 
-// Get globally unique thread id of host
+// Get the globally unique thread id of the host PC
 inline uint32_t tinselHostId()
 ```
 
 ## F. HostLink API
 
-The following prototypes capture the main functionality of the
-`HostLink` and `DebugLink` classes.  For full details see
-[HostLink.h](/hostlink/HostLink.h) and
+Only the main functionality of HostLink is presented here.  For full
+details see [HostLink.h](/hostlink/HostLink.h) and
 [DebugLink.h](/hostlink/DebugLink.h).
 
 ```cpp
@@ -621,6 +730,12 @@ class HostLink {
 
   // Links to the mesh boards (opened by constructor)
   DebugLink* mesh[TinselMeshXLen][TinselMeshYLen];
+
+  // System reset
+  // ------------
+
+  // Hard reset the mesh boards and soft reset the bridge board
+  void reset();
 
   // Send and receive messages over PCIe
   // -----------------------------------
@@ -656,27 +771,13 @@ class HostLink {
 
   // Trigger to start application execution
   void go();
-
-  // Line-buffered StdOut console
-  // ----------------------------
-
-  // Receive StdOut byte streams and append to file (non-blocking)
-  bool pollStdOut(FILE* outFile);
-
-  // Receive StdOut byte streams and display on stdout (non-blocking)
-  bool pollStdOut();
-
-  // Receive StdOut byte streams and append to file (non-terminating)
-  void dumpStdOut(FILE* outFile);
-
-  // Receive StdOut byte streams and display on stdout (non-terminating)
-  void dumpStdOut();
 };
 ```
 
 ```cpp
 class DebugLink {
  public:
+
   // Open UART with given instance id
   void open(int instId);
 
