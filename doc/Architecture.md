@@ -19,11 +19,12 @@ Like any large system, Tinsel is comprised of several modules:
 
 For reference:
 
-* [DE5-Net Synthesis Report](#de5-net-synthesis-report)
-* [Tinsel Parameters](#tinsel-parameters)
-* [Tinsel Memory Map](#tinsel-memory-map)
-* [Tinsel CSRs](#tinsel-csrs)
-* [Tinsel API](#tinsel-api)
+A. [DE5-Net Synthesis Report](#a-de5-net-synthesis-report)
+B. [Tinsel Parameters](#b-tinsel-parameters)
+C. [Tinsel Memory Map](#c-tinsel-memory-map)
+D. [Tinsel CSRs](#d-tinsel-csrs)
+E. [Tinsel API](#e-tinsel-api)
+F. [HostLink API](#f-hostlink-api)
 
 ## 1. Tinsel Core
 
@@ -67,7 +68,7 @@ provided for writing instructions into the memory: `InstrAddr` and
 
 There is a read-only CSR for determining the globally unique id of the
 currently running thread (the structure of this id is defined in
-[Tinsel Mailbox Network](#tinsel--mailbox-network) section).
+the [Tinsel Mailbox Network](#4-tinsel-mailbox-network) section).
 
   CSR Name    | CSR    | R/W | Function
   ----------- | ------ | --- | --------
@@ -370,7 +371,7 @@ threads on distant mailboxes.  This is because, in the former case,
 the message spends less time on the bus, consuming less bandwidth.
 
 The mailbox network extends across multiple FPGA boards arranged in a
-**2D mesh** with dimensions `MeshXLen` x `MeshYLen`.
+**2D mesh** of size `MeshXLen` x `MeshYLen`.
 
   Parameter      | Default | Description
   -------------- | ------- | -----------
@@ -379,39 +380,56 @@ The mailbox network extends across multiple FPGA boards arranged in a
   `MeshXLen`     |       3 | Length of X dimension
   `MeshYLen`     |       3 | Length of Y dimension
 
-A **globally unique thread id** -- as returned by `tinselId()` -- has
-the following structure from MSB to LSB.
+A **globally unique thread id**, as returned by `tinselId()`, has the
+following structure from MSB to LSB.
 
   Field                 | Width  
   --------------------- | ------------
-  Board Y id            | `MeshYBits`
-  Board X id            | `MeshXBits`
+  Board Y coord         | `MeshYBits`
+  Board X coord         | `MeshXBits`
   Board-local core id   | `LogCoresPerBoard`
   Core-local thread id  | `LogThreadsPreCore`
 
-Each board-to-board communication link is implemented on top of a
-**10G Ethernet MAC**, which automatically detects and drops packets
+Each board-to-board communication port is implemented on top of a
+**10Gbps ethernet MAC**, which automatically detects and drops packets
 containing CRC errors.  On top of the MAC sits our own window-based
-reliability layer that retransmits dropped packets.  The use of
-Ethernet allows us to use mostly standard (and free) IP cores for
-inter-board communication.  And since we are using the links
-point-to-point, almost all of the Ethernet packet fields are used for
-our own purposes, resulting in very little overhead on the wire.
+reliability layer that retransmits dropped packets.  We refer to this
+combination of components as a **reliable link**. The use of ethernet
+allows us to use mostly standard (and free) IP cores for inter-board
+communication.  And since we are using the links point-to-point,
+almost all of the ethernet header fields can be used for our own
+purposes, resulting in very little overhead on the wire.
 
 ## 5. Tinsel HostLink
 
-HostLink is the mechanism by which tinsel cores running on FPGA
-communicate with a host PC.  Using HostLink, programs compiled on the
-PC can be written into the instruction memories of the tinsel cores,
-memory can be initialised, and program outputs can be sent to the PC
-for analysis.  HostLink may also be used for debug and diagnostic
-purposes, such as implementing `printf` and monitoring performance
-counters.
+**HostLink** is the means by which tinsel cores running on a mesh of
+FPGA boards communicate with a **host PC**.  It comprises three main
+communication channels:
 
-At present, HostLink uses a JTAG UART to transfer data between the PC
-and FPGA.  This provides a transfer rate of about 4 MB/s. In future,
-higher bandwidth solutions will be explored.  Therefore HostLink
-should be viewed as an abstraction on top of the host-to-FPGA link.
+1. An FPGA **bridge board** that connects to the host PC via PCI
+Express and to the FPGA mesh via a 10Gbps reliable link.  Using this
+high-bandwidth channel (around 1GB/s), the host PC can efficiently
+send messages to any tinsel thread and vice-versa.
+
+2. A set of **debug links** connecting the host PC to each FPGA via
+separate USB UART cables.  These low-bandwidth connections (around
+4MB/s each) are virtualised to provide every hardware thread with
+`stdin` and `stdout` byte streams.  They are meant primarily for
+debugging and can be used to implement functions such as `printf` and
+`scanf`.
+
+3. A set of **power links** connecting the host PC to each FPGA's
+**power management module** via separate USB UART cables.  These
+connections can be used to power-on/power-off each FPGA and to monitor
+power consumption and temperature.
+
+**TODO**: getHostId()
+
+**TODO**: send/recv/canSend/canRecv, PCIeStream, daemon, protocol?
+
+**TODO**: DebugLink, get/put/canGet/canPut, protocol?
+
+**TODO**: PowerLink, reset
 
 HostLink commands can be sent from the host to the FPGA and viceversa.
 All commands sent from the host consist of 5 bytes: a 1-byte command
@@ -458,9 +476,7 @@ inline void tinselHostPut(uint32_t x);
 inline uint32_t tinselHostGet();
 ```
 
-## Reference
-
-### DE5-Net Synthesis Report
+## A. DE5-Net Synthesis Report
 
 The default tinsel configuration on a single DE5-Net board contains:
 
@@ -470,13 +486,14 @@ The default tinsel configuration on a single DE5-Net board contains:
   * 16 mailboxes
   * 16 caches
   * two DDR3 DRAM controllers
+  * four 10Gbps reliable links
   * a JTAG UART
 
-The clock frequency is 275MHz and the resource utilisation is 94K
-ALMs, **40%** of the DE5-Net, leaving plenty of space for interboard
-comms and more cores to be added in the near future.
+The clock frequency is 270MHz and the resource utilisation is 95K
+ALMs, **40% of the DE5-Net**, leaving plenty of space for FPUs to be
+added in the near future.
 
-### Tinsel Parameters
+## B. Tinsel Parameters
 
   Parameter                | Default | Description
   ------------------------ | ------- | -----------
@@ -499,7 +516,7 @@ comms and more cores to be added in the near future.
   `MeshXLen`               |       3 | Length of X dimension
   `MeshYLen`               |       3 | Length of Y dimension
 
-### Tinsel Memory Map
+## C. Tinsel Memory Map
 
   Region                  | Description
   ----------------------- | -----------
@@ -508,7 +525,7 @@ comms and more cores to be added in the near future.
   `0x00000800-0x000fffff` | Reserved
   `0x00100000-0x3fffffff` | Cached off-chip DRAM
 
-### Tinsel CSRs
+## D. Tinsel CSRs
 
   Name        | CSR    | R/W | Function
   ----------- | ------ | --- | --------
@@ -523,12 +540,12 @@ comms and more cores to be added in the near future.
   `Send`      | 0x808  | W   | Send message to supplied destination
   `Recv`      | 0x809  | R   | Return pointer to message received
   `WaitUntil` | 0x80a  | W   | Sleep until can-send or can-recv
-  `FromHost`  | 0x80b  | R   | Read word from HostLink
-  `ToHost`    | 0x80c  | W   | Write word to HostLink
+  `FromUart`  | 0x80b  | R   | Read byte from StdIn
+  `ToUart`    | 0x80c  | W   | Write byte to StdOut
   `NewThread` | 0x80d  | W   | Create new thread with the given id
   `Emit`      | 0x80f  | W   | Emit char to console (simulation only)
 
-### Tinsel API
+## E. Tinsel API
 
 ```c
 // Return a globally unique id for the calling thread
@@ -569,15 +586,125 @@ typedef enum {TINSEL_CAN_SEND = 1, TINSEL_CAN_RECV = 2} TinselWakeupCond;
 // Suspend thread until wakeup condition satisfied
 inline void tinselWaitUntil(TinselWakeupCond cond);
 
-// Send word to host (over HostLink)
-inline void tinselHostPut(uint32_t x);
+// Send byte to StdOut (over DebugLink)
+inline void tinselUartPut(uint8_t x);
 
-// Receive word from host (over HostLink)
-inline uint32_t tinselHostGet();
+// Receive byte from StdIn (over DebugLink)
+inline uint8_t tinselUartGet();
 
 // Insert new thread into run queue
 inline void tinselCreateThread(uint32_t id);
 
 // Emit word to console (simulation only)
 inline void tinselEmit(uint32_t x);
+
+// Get globally unique thread id of host
+inline uint32_t tinselHostId()
+```
+
+## F. HostLink API
+
+The following prototypes capture the main functionality of the
+`HostLink` and `DebugLink` classes.  For full details see
+[HostLink.h](hostlink/HostLink.h) and
+[DebugLink.h](hostlink/DebugLink.h).
+
+```cpp
+class HostLink {
+ public:
+
+  // Debug links
+  // -----------
+
+  // Link to the bridge board (opened by constructor)
+  DebugLink* bridgeBoard;
+
+  // Links to the mesh boards (opened by constructor)
+  DebugLink* mesh[TinselMeshXLen][TinselMeshYLen];
+
+  // Send and receive messages over PCIe
+  // -----------------------------------
+
+  // Send a message (blocking)
+  void send(uint32_t dest, uint32_t numFlits, void* msg);
+
+  // Can send a message without blocking?
+  bool canSend();
+
+  // Receive a flit (blocking)
+  void recv(void* flit);
+
+  // Can receive a flit without blocking?
+  bool canRecv();
+
+  // Address construction/deconstruction
+  // -----------------------------------
+
+  // Address construction
+  uint32_t toAddr(uint32_t meshX, uint32_t meshY,
+             uint32_t coreId, uint32_t threadId);
+
+  // Address deconstruction
+  void fromAddr(uint32_t addr, uint32_t* meshX, uint32_t* meshY,
+         uint32_t* coreId, uint32_t* threadId);
+
+  // Assuming the boot loader is running on the cores
+  // ------------------------------------------------
+
+  // Load application code and data onto the mesh
+  void boot(const char* codeFilename, const char* dataFilename);
+
+  // Trigger to start application execution
+  void go();
+
+  // Line-buffered StdOut console
+  // ----------------------------
+
+  // Receive StdOut byte streams and append to file (non-blocking)
+  bool pollStdOut(FILE* outFile);
+
+  // Receive StdOut byte streams and display on stdout (non-blocking)
+  bool pollStdOut();
+
+  // Receive StdOut byte streams and append to file (non-terminating)
+  void dumpStdOut(FILE* outFile);
+
+  // Receive StdOut byte streams and display on stdout (non-terminating)
+  void dumpStdOut();
+};
+```
+
+```cpp
+class DebugLink {
+ public:
+  // Open UART with given instance id
+  void open(int instId);
+
+  // Put query request
+  void putQuery();
+
+  // Get query response, including board id
+  bool getQuery(uint32_t* boardId);
+
+  // Set destination core and thread
+  void setDest(uint32_t coreId, uint32_t threadId);
+
+  // Set destinations to core-local thread id on every core
+  void setBroadcastDest(uint32_t threadId);
+
+  // Send byte to destination thread (StdIn)
+  void put(uint8_t byte);
+
+  // Receive byte (StdOut)
+  void get(uint32_t* coreId, uint32_t* threadId, uint8_t* byte);
+
+  // Is a data available for reading?
+  bool canGet();
+  
+  // Flush writes
+  void flush();
+
+  // Close UART
+  void close();
+};
 ```

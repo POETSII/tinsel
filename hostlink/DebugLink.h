@@ -22,13 +22,13 @@ class DebugLink {
   // Put query request
   void putQuery();
 
-  // Get quert response
+  // Get query response, including board id
   bool getQuery(uint32_t* boardId);
 
-  // Set destination
+  // Set destination core and thread
   void setDest(uint32_t coreId, uint32_t threadId);
 
-  // Set destinations to given local thread id on every core
+  // Set destinations to core-local thread id on every core
   void setBroadcastDest(uint32_t threadId);
 
   // Send byte to destination thread (StdIn)
