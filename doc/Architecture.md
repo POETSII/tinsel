@@ -11,20 +11,20 @@ provide the platform for our initial prototypes.
 
 Like any large system, Tinsel is comprised of several modules:
 
-1. [Tinsel Core](#1-tinsel-core)
-2. [Tinsel Cache](#2-tinsel-cache)
-3. [Tinsel Mailbox](#3-tinsel-mailbox)
-4. [Tinsel Mailbox Network](#4-tinsel-mailbox-network)
-5. [Tinsel HostLink](#5-tinsel-hostlink)
+* [1. Tinsel Core](#1-tinsel-core)
+* [2. Tinsel Cache](#2-tinsel-cache)
+* [3. Tinsel Mailbox](#3-tinsel-mailbox)
+* [4. Tinsel Mailbox Network](#4-tinsel-mailbox-network)
+* [5. Tinsel HostLink](#5-tinsel-hostlink)
 
 For reference:
 
-A. [DE5-Net Synthesis Report](#a-de5-net-synthesis-report)
-B. [Tinsel Parameters](#b-tinsel-parameters)
-C. [Tinsel Memory Map](#c-tinsel-memory-map)
-D. [Tinsel CSRs](#d-tinsel-csrs)
-E. [Tinsel API](#e-tinsel-api)
-F. [HostLink API](#f-hostlink-api)
+* [A. DE5-Net Synthesis Report](#a-de5-net-synthesis-report)
+* [B. Tinsel Parameters](#b-tinsel-parameters)
+* [C. Tinsel Memory Map](#c-tinsel-memory-map)
+* [D. Tinsel CSRs](#d-tinsel-csrs)
+* [E. Tinsel API](#e-tinsel-api)
+* [F. HostLink API](#f-hostlink-api)
 
 ## 1. Tinsel Core
 
@@ -606,8 +606,8 @@ inline uint32_t tinselHostId()
 
 The following prototypes capture the main functionality of the
 `HostLink` and `DebugLink` classes.  For full details see
-[HostLink.h](hostlink/HostLink.h) and
-[DebugLink.h](hostlink/DebugLink.h).
+[HostLink.h](/hostlink/HostLink.h) and
+[DebugLink.h](/hostlink/DebugLink.h).
 
 ```cpp
 class HostLink {
