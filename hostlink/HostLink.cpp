@@ -167,6 +167,22 @@ uint32_t HostLink::toAddr(uint32_t meshX, uint32_t meshY,
   return addr;
 }
 
+// Address deconstruction
+void HostLink::fromAddr(uint32_t addr, uint32_t* meshX, uint32_t* meshY,
+         uint32_t* coreId, uint32_t* threadId)
+{
+  *threadId = addr % (1 << TinselLogThreadsPerCore);
+  addr >>= TinselLogThreadsPerCore;
+
+  *coreId = addr % (1 << TinselLogCoresPerBoard);
+  addr >>= TinselLogCoresPerBoard;
+
+  *meshX = addr % (1 << TinselMeshXBits);
+  addr >>= TinselMeshXBits;
+
+  *meshY = addr;
+}
+
 // Inject a message via PCIe (blocking)
 void HostLink::send(uint32_t dest, uint32_t numFlits, void* payload)
 {

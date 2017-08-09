@@ -133,7 +133,7 @@ inline void tinselWaitUntil(TinselWakeupCond cond)
 
 // Get globally unique thread id of host
 // (Host board has X coordinate of 0 and Y coordinate on mesh rim)
-inline int tinselHostId()
+inline uint32_t tinselHostId()
 {
   return TinselMeshYLen << (TinselMeshXBits +
                               TinselLogCoresPerBoard +

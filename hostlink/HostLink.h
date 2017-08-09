@@ -34,21 +34,20 @@ class HostLink {
                    [TinselCoresPerBoard][TinselThreadsPerCore];
  public:
 
-  // DebugLink to the bridge board
-  DebugLink* bridgeBoard;
-
-  // DebugLinks to the cluster boards
-  DebugLink* mesh[TinselMeshXLen][TinselMeshYLen];
-
   // Constructor
   HostLink();
 
   // Destructor
   ~HostLink();
  
-  // Address construction
-  uint32_t toAddr(uint32_t meshX, uint32_t meshY,
-             uint32_t coreId, uint32_t threadId);
+  // Debug links
+  // -----------
+
+  // Link to the bridge board (opened by constructor)
+  DebugLink* bridgeBoard;
+
+  // Links to the mesh boards (opened by constructor)
+  DebugLink* mesh[TinselMeshXLen][TinselMeshYLen];
 
   // Send and receive messages over PCIe
   // -----------------------------------
@@ -65,8 +64,19 @@ class HostLink {
   // Can receive a flit without blocking?
   bool canRecv();
 
-  // Interface to boot loader
-  // ------------------------
+  // Address construction/deconstruction
+  // -----------------------------------
+
+  // Address construction
+  uint32_t toAddr(uint32_t meshX, uint32_t meshY,
+             uint32_t coreId, uint32_t threadId);
+
+  // Address deconstruction
+  void fromAddr(uint32_t addr, uint32_t* meshX, uint32_t* meshY,
+         uint32_t* coreId, uint32_t* threadId);
+
+  // Assuming the boot loader is running on the cores
+  // ------------------------------------------------
 
   // Load application code and data onto the mesh
   void boot(const char* codeFilename, const char* dataFilename);
@@ -80,13 +90,19 @@ class HostLink {
   // Trigger to start application execution on a single thread
   void goOne();
 
-  // UART console
-  // ------------
+  // Line-buffered StdOut console
+  // ----------------------------
 
-  // Display StdOut character stream
+  // Receive StdOut byte streams and append to file (non-blocking)
   bool pollStdOut(FILE* outFile);
+
+  // Receive StdOut byte streams and display on stdout (non-blocking)
   bool pollStdOut();
+
+  // Receive StdOut byte streams and append to file (non-terminating)
   void dumpStdOut(FILE* outFile);
+
+  // Receive StdOut byte streams and display on stdout (non-terminating)
   void dumpStdOut();
 };
 
