@@ -50,14 +50,18 @@ inline void tinselEmit(uint32_t x)
   asm volatile("csrw " CSR_EMIT ", %0\n" : : "r"(x));
 }
 
-// Send byte to host (over CoreLink UART)
-inline void tinselUartPut(uint8_t x)
+// Send byte to host (over DebugLink UART)
+// (Returns non-zero on success)
+inline uint32_t tinselUartTryPut(uint8_t x)
 {
-  asm volatile("csrw " CSR_TO_UART ", %0\n" : : "r"(x));
+  uint32_t ret;
+  asm volatile("csrrw %0, " CSR_TO_UART ", %1\n" : "=r"(ret) : "r"(x));
+  return ret;
 }
 
-// Receive byte from host (over CoreLink UART)
-inline uint8_t tinselUartGet()
+// Receive byte from host (over DebugLink UART)
+// (Byte present in bits [7:0]; bit 8 indicates validity)
+inline uint32_t tinselUartTryGet()
 {
   uint32_t x;
   asm volatile("csrr %0, " CSR_FROM_UART "\n" : "=r"(x));

@@ -557,17 +557,24 @@ bytes over the debug link.
 
   Name        | CSR    | R/W | Function
   ----------- | ------ | --- | --------
-  `FromUart`  | 0x80b  | R   | Read byte from StdIn
-  `ToUart`    | 0x80c  | W   | Write byte to StdOut
+  `FromUart`  | 0x80b  | R   | Try to read byte from StdIn
+  `ToUart`    | 0x80c  | RW  | Try to write byte to StdOut
 
-These CSRs are abstracted in the tinsel API:
+Bits `[7:0]` of `FromUart` contain the byte received and bit 8
+indicates whether or not a byte was received.  The `ToUart` CSR should
+be read and written atomically using the `cssrw` instruction and the
+value read is non-zero on success (the write may fail due to
+back-pressure).  These CSRs are used to implement the following
+non-blocking functions in the tinsel API:
 
 ```c
 // Receive byte from StdIn (over DebugLink)
-inline uint8_t tinselUartGet();
+// (Byte returned in bits [7:0]; bit 8 indicates validity)
+inline uint32_t tinselUartTryGet();
 
 // Send byte to StdOut (over DebugLink)
-inline void tinselUartPut(uint8_t x);
+// (Returns non-zero on success)
+inline void tinselUartTryPut(uint8_t x);
 ```
 
 On power-up, each tinsel core is running a [boot
@@ -651,8 +658,8 @@ added in the near future.
   `Send`      | 0x808  | W   | Send message to supplied destination
   `Recv`      | 0x809  | R   | Return pointer to message received
   `WaitUntil` | 0x80a  | W   | Sleep until can-send or can-recv
-  `FromUart`  | 0x80b  | R   | Read byte from StdIn
-  `ToUart`    | 0x80c  | W   | Write byte to StdOut
+  `FromUart`  | 0x80b  | R   | Try to read byte from StdIn
+  `ToUart`    | 0x80c  | RW  | Try to write byte to StdOut
   `NewThread` | 0x80d  | W   | Create new thread with the given id
   `Emit`      | 0x80f  | W   | Emit char to console (simulation only)
 
@@ -709,11 +716,13 @@ typedef enum {TINSEL_CAN_SEND = 1, TINSEL_CAN_RECV = 2} TinselWakeupCond;
 // Suspend thread until wakeup condition satisfied
 inline void tinselWaitUntil(TinselWakeupCond cond);
 
-// Send byte to StdOut (over DebugLink)
-inline void tinselUartPut(uint8_t x);
+// Send byte to host (over DebugLink UART)
+// (Returns non-zero on success)
+inline uint32_t tinselUartTryPut(uint8_t x);
 
-// Receive byte from StdIn (over DebugLink)
-inline uint8_t tinselUartGet();
+// Receive byte from host (over DebugLink UART)
+// (Byte returned in bits [7:0]; bit 8 indicates validity)
+inline uint32_t tinselUartTryGet();
 
 // Insert new thread into run queue
 inline void tinselCreateThread(uint32_t id);
