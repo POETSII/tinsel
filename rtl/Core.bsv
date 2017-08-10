@@ -38,8 +38,8 @@ import Mult      :: *;
 // Send        | 0x808  | W   | Send message to supplied destination
 // Recv        | 0x809  | R   | Return pointer to message received
 // WaitUntil   | 0x80a  | W   | Sleep until can-send or can-recv
-// FromUart    | 0x80b  | R   | Read byte from DebugLink
-// ToUart      | 0x80c  | W   | Write byte to DebugLink
+// FromUart    | 0x80b  | R   | Try to read byte from DebugLink UART
+// ToUart      | 0x80c  | RW  | Try to write byte to DebugLink UART
 // NewThread   | 0x80d  | W   | Create new thread with the given id
 // Emit        | 0x80f  | W   | Emit char to console (simulation only)
 
@@ -734,7 +734,7 @@ module mkCore#(CoreId myId) (Core);
       mailbox.sleep(token.thread.id, truncate(token.valA));
       suspend = True;
     end
-    // ToHost CSR
+    // ToUart CSR
     if (token.op.csr.isToUart) begin
       if (toDebugLinkPort.canPut) begin
         DebugLinkFlit flit;
@@ -744,18 +744,13 @@ module mkCore#(CoreId myId) (Core);
         flit.cmd = cmdStdOut;
         flit.payload = truncate(token.valA);
         toDebugLinkPort.put(flit);
-      end else
-        retry = True;
+      end
     end
     // FromUart CSR
-    if (token.op.csr.isFromUart) begin
-      if (fromDebugLinkPort.canGet &&
-            fromDebugLinkPort.value.cmd == cmdStdIn &&
-              fromDebugLinkPort.value.threadId == token.thread.id)
-        fromDebugLinkPort.get;
-      else
-        retry = True;
-    end
+    Bool stdinValid = fromDebugLinkPort.canGet &&
+                        fromDebugLinkPort.value.cmd == cmdStdIn &&
+                          fromDebugLinkPort.value.threadId == token.thread.id;
+    if (token.op.csr.isFromUart && stdinValid) fromDebugLinkPort.get;
     // NewThread CSR
     if (token.op.csr.isNewThread) begin
       newThreadIdWire <= truncate(token.valA);
@@ -790,7 +785,9 @@ module mkCore#(CoreId myId) (Core);
                zeroExtend({pack(boardId), myId, token.thread.id}))
       | when(token.op.csr.isRecv,     mailbox.recvAddr)
       | when(token.op.csr.isFromUart,
-               zeroExtend(fromDebugLinkPort.value.payload));
+               zeroExtend({pack(stdinValid), fromDebugLinkPort.value.payload}))
+      | when(token.op.csr.isToUart,
+               zeroExtend(pack(toDebugLinkPort.canPut)));
     // Trigger next stage
     token.retry = retry;
     token.instrResult = res;

@@ -80,7 +80,7 @@ int main()
         msgOut[0] = me;
         tinselSend(hostId, msgOut);
         // Wait for trigger
-        tinselUartGet();
+        while ((tinselUartTryGet() & 0x100) == 0);
         // Start remaining threads
         int numThreads = msgIn->args[0];
         for (int i = 0; i < numThreads; i++)
