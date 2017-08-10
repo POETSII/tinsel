@@ -4,7 +4,7 @@
 
 int putchar(int c)
 {
-  tinselUartPut(c);
+  while (tinselUartTryPut(c) == 0);
   return c;
 }
 
