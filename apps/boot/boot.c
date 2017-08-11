@@ -22,7 +22,7 @@ int main()
     uint32_t addrReg = 0;  // Address register
 
     // Get mailbox message slot for send and receive
-    volatile BootReq* msgIn  = tinselSlot(0);
+    volatile BootReq* msgIn = tinselSlot(0);
     volatile uint32_t* msgOut = tinselSlot(1);
 
     // Command loop
@@ -30,7 +30,7 @@ int main()
       // Receive message
       tinselAlloc(msgIn);
       tinselWaitUntil(TINSEL_CAN_RECV);
-      tinselRecv();
+      msgIn = tinselRecv();
 
       // Command dispatch
       // (We avoid using a switch statement here so that the compiler
