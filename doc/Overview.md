@@ -52,20 +52,23 @@ Threads are automatically suspended when they become blocked on an
 event, e.g. waiting to receive a message, and are automatically
 resumed when the event is triggered.  This results in a simple and
 efficient programming model, avoiding the low-level interrupt handlers
-that are required in similar machines such as SpiNNaker.
+that are required in similar machines such as
+(SpiNNaker)[http://apt.cs.manchester.ac.uk/projects/SpiNNaker/].
 
 ## Memory subsystem
 
-One of our design requirements is that each thread has access to a
-generously-sized private data segment, around 1MB in capacity.
-Assuming a large number of threads per FPGA, this kind of memory
-demand can only be met using off-chip DRAM.
+POETS is heavily inspired by SpiNNaker and, like SpiNNaker, needs to
+offer applications a generous amount of memory to hold, for example,
+graphs representing large physical systems.  Also like SpiNNaker,
+there is no need to give applications the illusion of a single shared
+memory space.  Instead, message-passing is intended to be the primary
+communication mechansim.
 
 FPGA boards typically provide a number of high-bandwidth DRAMs and it
 is essential to exploit spatial locality for efficient access.  One
-way to achieve this, employed by the SpiNNaker system, is to require
-the programmer to use a DMA unit to explicitly transfer regions of
-data between DRAM and a small, core-local SRAM.  In our view, this
+way to achieve this, employed by SpiNNaker, is to require the
+programmer to use a DMA unit to explicitly transfer regions of data
+between DRAM and a small, core-local SRAM.  In our view, this
 complicates the programming model greatly, introducing an obstacle for
 potential users.
 
@@ -77,7 +80,7 @@ pipeline at any time.  Consequently, there is no aliasing between
 threads and all data hazards are eliminated, yielding a simple,
 non-blocking design that can consume a request on every cycle, even if
 it is a miss.  This full-throughput cache can usefully be shared by up
-to four cores, based on the observation that an average RISC workload
+to four cores, based on the observation that an typical RISC workload
 will access data memory once every four instructions.
 
 ## Communication subsystem
