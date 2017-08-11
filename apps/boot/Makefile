@@ -4,7 +4,7 @@ TINSEL_ROOT=../..
 include $(TINSEL_ROOT)/globals.mk
 
 # Local compiler flags
-CFLAGS = $(RV_CFLAGS) -O2 -I $(INC)
+CFLAGS = $(RV_CFLAGS) -Os -I $(INC)
 LDFLAGS = -melf32lriscv -G 0 
 
 .PHONY: all

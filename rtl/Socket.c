@@ -101,7 +101,7 @@ inline void socketAccept(int id)
   assert(id < MAX_SOCKETS);
 
   if (conn[id] != -1) return;
-  socketInit(id);
+  if (sock[id] == -1) socketInit(id);
 
   // Accept connection
   conn[id] = accept(sock[id], NULL, NULL);
@@ -120,7 +120,7 @@ uint32_t socketGet8(int id)
   int n = read(conn[id], &byte, 1);
   if (n == 1)
     return (uint32_t) byte;
-  else if (n == -1 && errno != EAGAIN) {
+  else if (!(n == -1 && errno == EAGAIN)) {
     close(conn[id]);
     conn[id] = -1;
   }
@@ -135,7 +135,7 @@ uint8_t socketPut8(int id, uint8_t byte)
   int n = write(conn[id], &byte, 1);
   if (n == 1)
     return 1;
-  else if (n == -1 && errno != EAGAIN) {
+  else if (!(n == -1 && errno == EAGAIN)) {
     close(conn[id]);
     conn[id] = -1;
   }
@@ -175,7 +175,7 @@ void socketGetN(unsigned int* result, int id, int nbytes)
   }
   else {
     bytes[nbytes] = 0xff;
-    if (count == -1 && errno != EAGAIN) {
+    if (!(count == -1 && errno == EAGAIN)) {
       close(conn[id]);
       conn[id] = -1;
     }
@@ -208,7 +208,7 @@ uint8_t socketPutN(int id, int nbytes, unsigned int* data)
     return 1;
   }
   else {
-    if (count == -1 && errno != EAGAIN) {
+    if (!(count == -1 && errno == EAGAIN)) {
       close(conn[id]);
       conn[id] = -1;
     }
