@@ -313,11 +313,13 @@ void control(pid_t pidTransmitter, pid_t pidReceiver)
   }
 
   for (;;) {
-    // Accept connection
-    int conn = accept(sock, NULL, NULL);
     if (conn == -1) {
-      perror("Control: accept");
-      exit(EXIT_FAILURE);
+      // Accept connection
+      conn = accept(sock, NULL, NULL);
+      if (conn == -1) {
+        perror("Control: accept");
+        exit(EXIT_FAILURE);
+      }
     }
 
     for (;;) {
@@ -339,6 +341,11 @@ void control(pid_t pidTransmitter, pid_t pidReceiver)
         }
         if (cmd == 'r') return;
         else if (cmd == 'e') exit(EXIT_SUCCESS);
+        else if (cmd == 'p') {
+          // Respond to ping command
+          char resp = 'p';
+          int n = write(conn, &resp, 1);
+        }
       }
     }
   }
