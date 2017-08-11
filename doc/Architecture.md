@@ -600,12 +600,15 @@ The format of the code and data files is *verilog hex format*, which
 is easily produced using standard RISC-V compiler tools.
 
 As soon as the `go()` method is invoked, the boot loader activates all
-threads on all cores and invokes the application's `main()` function.
+threads on all cores and calls the application's `main()` function.
 When the application is running (and hence the boot loader is not
 running) HostLink methods that communicate with the boot loader should
 not be called.  When the application returns from `main()`, all but
 one thread on each core are killed, and the remaining threads reenter
-the boot loader.
+the boot loader.  Although it may be tempting to boot a second
+application at this stage, we do not recommend it because leftover
+state from the first application may affect execution of the second.
+
 
 ## A. DE5-Net Synthesis Report
 
