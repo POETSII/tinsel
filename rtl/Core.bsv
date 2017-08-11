@@ -41,6 +41,7 @@ import Mult      :: *;
 // FromUart    | 0x80b  | R   | Try to read byte from DebugLink UART
 // ToUart      | 0x80c  | RW  | Try to write byte to DebugLink UART
 // NewThread   | 0x80d  | W   | Create new thread with the given id
+// KillThread  | 0x80e  | W   | Kill the currently running thread
 // Emit        | 0x80f  | W   | Emit char to console (simulation only)
 
 // ============================================================================
@@ -87,6 +88,7 @@ typedef struct {
   Bool isSend;        Bool isRecv;
   Bool isWaitUntil;   Bool isFromUart;
   Bool isToUart;      Bool isNewThread;
+  Bool isKillThread;
   `ifdef SIMULATE
   Bool isEmit;
   `endif
@@ -291,6 +293,7 @@ function Op decodeOp(Bit#(32) instr);
   ret.csr.isFromUart     = ret.isCSR && csrIndex == 'hb;
   ret.csr.isToUart       = ret.isCSR && csrIndex == 'hc;
   ret.csr.isNewThread    = ret.isCSR && csrIndex == 'hd;
+  ret.csr.isKillThread   = ret.isCSR && csrIndex == 'he;
   `ifdef SIMULATE
   ret.csr.isEmit         = ret.isCSR && csrIndex == 'hf;
   `endif
@@ -759,6 +762,9 @@ module mkCore#(CoreId myId) (Core);
       // by the writeback stage
       if (resumeWire) retry = True;
     end
+    // KillThread CSR
+    Bool killThread = False;
+    if (token.op.csr.isKillThread) killThread = True;
     // Record state of suspended thread
     if (suspend) begin
       SuspendedThreadState susp;
@@ -791,7 +797,7 @@ module mkCore#(CoreId myId) (Core);
     // Trigger next stage
     token.retry = retry;
     token.instrResult = res;
-    if (! suspend) execute3Input <= token;
+    if (!suspend && !killThread) execute3Input <= token;
   endrule
 
   rule execute3;

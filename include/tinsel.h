@@ -6,21 +6,22 @@
 #include <io.h>
 
 // Control/status registers
-#define CSR_INSTR_ADDR "0x800"
-#define CSR_INSTR      "0x801"
-#define CSR_ALLOC      "0x802"
-#define CSR_CAN_SEND   "0x803"
-#define CSR_HART_ID    "0xf14"
-#define CSR_CAN_RECV   "0x805"
-#define CSR_SEND_LEN   "0x806"
-#define CSR_SEND_PTR   "0x807"
-#define CSR_SEND       "0x808"
-#define CSR_RECV       "0x809"
-#define CSR_WAIT_UNTIL "0x80a"
-#define CSR_FROM_UART  "0x80b"
-#define CSR_TO_UART    "0x80c"
-#define CSR_NEW_THREAD "0x80d"
-#define CSR_EMIT       "0x80f"
+#define CSR_INSTR_ADDR  "0x800"
+#define CSR_INSTR       "0x801"
+#define CSR_ALLOC       "0x802"
+#define CSR_CAN_SEND    "0x803"
+#define CSR_HART_ID     "0xf14"
+#define CSR_CAN_RECV    "0x805"
+#define CSR_SEND_LEN    "0x806"
+#define CSR_SEND_PTR    "0x807"
+#define CSR_SEND        "0x808"
+#define CSR_RECV        "0x809"
+#define CSR_WAIT_UNTIL  "0x80a"
+#define CSR_FROM_UART   "0x80b"
+#define CSR_TO_UART     "0x80c"
+#define CSR_NEW_THREAD  "0x80d"
+#define CSR_KILL_THREAD "0x80e"
+#define CSR_EMIT        "0x80f"
 
 // Get globally unique thread id of caller
 inline int tinselId()
@@ -68,10 +69,16 @@ inline uint32_t tinselUartTryGet()
   return x;
 }
 
-// Insert new thread into run queue
+// Insert new thread (with given id) into run queue
 inline void tinselCreateThread(uint32_t id)
 {
   asm volatile("csrw " CSR_NEW_THREAD ", %0\n" : : "r"(id));
+}
+
+// Do not insert currently running thread back in to run queue
+inline void tinselKillThread()
+{
+  asm volatile("csrw " CSR_KILL_THREAD ", zero\n");
 }
 
 // Get pointer to message-aligned slot in mailbox scratchpad

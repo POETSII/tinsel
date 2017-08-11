@@ -98,7 +98,10 @@ int main()
   // Call the application's main function
   int (*appMain)() = (int (*)()) (TinselMaxBootImageBytes);
   appMain();
-  for (;;);
+
+  // Restart boot loader
+  if (threadId != 0) tinselKillThread();
+  asm volatile("jr zero");
 
   // Unreachable
   return 0;

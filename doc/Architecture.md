@@ -76,12 +76,15 @@ the [Tinsel Mailbox Network](#4-tinsel-mailbox-network) section).
   `HartId`    | 0xf14  | R   | Globally unique hardware thread id
 
 On power-up, only a single thread (with id 0) is present in the run
-queue.  Further threads can be added to the run queue by writing to
-the `NewThread` CSR (as typically done by the boot loader).
+queue of each core.  Further threads can be added to the run queue by
+writing to the `NewThread` CSR (as typically done by the boot loader).
+Threads can also be removed from the run-queue using the `KillThread`
+CSR.
 
-  CSR Name    | CSR    | R/W | Function
-  ----------- | ------ | --- | --------
-  `NewThread` | 0x80d  | W   | Create new thread with the given id
+  CSR Name     | CSR    | R/W | Function
+  ------------ | ------ | --- | --------
+  `NewThread`  | 0x80d  | W   | Insert thread with given id into run-queue
+  `KillThread` | 0x80e  | W   | Don't reinsert current thread into run-queue
 
 Access to all of these CSRs is wrapped up by the following C functions
 in the [Tinsel API](#f-tinsel-api).
@@ -94,7 +97,11 @@ inline void tinselWriteInstr(uint32_t addr, uint32_t word);
 inline uint32_t tinselId();
 
 // Insert new thread into run queue
+// (The new thread has a program counter of 0)
 inline void tinselCreateThread(uint32_t id);
+
+// Don't reinsert currently running thread back in to run queue
+inline void tinselKillThread();
 ```
 
 A summary of synthesis-time parameters introduced in this section:
@@ -577,11 +584,9 @@ inline uint32_t tinselUartTryGet();
 inline void tinselUartTryPut(uint8_t x);
 ```
 
-On power-up, each tinsel core is running a [boot
-loader](/apps/boot/boot.c).  When the boot loader is running, the
-HostLink API allows the following methods for booting an application.
-When the boot loader is not running, these methods lead to undefined
-behaviour.
+On power-up, only a single tinsel thread (with id 0) on each core is
+active and running a [boot loader](/apps/boot/boot.c).  When the boot
+loader is running, the HostLink API supports the following methods.
 
 ```cpp
 // Load application code and data onto the mesh
@@ -593,6 +598,14 @@ void HostLink::go();
 
 The format of the code and data files is *verilog hex format*, which
 is easily produced using standard RISC-V compiler tools.
+
+As soon as the `go()` method is invoked, the boot loader activates all
+threads on all cores and invokes the application's `main()` function.
+When the application is running (and hence the boot loader is not
+running) HostLink methods that communicate with the boot loader should
+not be called.  When the application returns from `main()`, all but
+one thread on each core are killed, and the remaining threads reenter
+the boot loader.
 
 ## A. DE5-Net Synthesis Report
 
@@ -645,23 +658,24 @@ added in the near future.
 
 ## D. Tinsel CSRs
 
-  Name        | CSR    | R/W | Function
-  ----------- | ------ | --- | --------
-  `InstrAddr` | 0x800  | W   | Set address for instruction write
-  `Instr`     | 0x801  | W   | Write to instruction memory
-  `Alloc`     | 0x802  | W   | Alloc space for new message in scratchpad
-  `CanSend`   | 0x803  | R   | 1 if can send, 0 otherwise
-  `HartId`    | 0xf14  | R   | Globally unique hardware thread id
-  `CanRecv`   | 0x805  | R   | 1 if can receive, 0 otherwise
-  `SendLen`   | 0x806  | W   | Set message length for send
-  `SendPtr`   | 0x807  | W   | Set message pointer for send
-  `Send`      | 0x808  | W   | Send message to supplied destination
-  `Recv`      | 0x809  | R   | Return pointer to message received
-  `WaitUntil` | 0x80a  | W   | Sleep until can-send or can-recv
-  `FromUart`  | 0x80b  | R   | Try to read byte from StdIn
-  `ToUart`    | 0x80c  | RW  | Try to write byte to StdOut
-  `NewThread` | 0x80d  | W   | Create new thread with the given id
-  `Emit`      | 0x80f  | W   | Emit char to console (simulation only)
+  Name         | CSR    | R/W | Function
+  ------------ | ------ | --- | --------
+  `InstrAddr`  | 0x800  | W   | Set address for instruction write
+  `Instr`      | 0x801  | W   | Write to instruction memory
+  `Alloc`      | 0x802  | W   | Alloc space for new message in scratchpad
+  `CanSend`    | 0x803  | R   | 1 if can send, 0 otherwise
+  `HartId`     | 0xf14  | R   | Globally unique hardware thread id
+  `CanRecv`    | 0x805  | R   | 1 if can receive, 0 otherwise
+  `SendLen`    | 0x806  | W   | Set message length for send
+  `SendPtr`    | 0x807  | W   | Set message pointer for send
+  `Send`       | 0x808  | W   | Send message to supplied destination
+  `Recv`       | 0x809  | R   | Return pointer to message received
+  `WaitUntil`  | 0x80a  | W   | Sleep until can-send or can-recv
+  `FromUart`   | 0x80b  | R   | Try to read byte from StdIn
+  `ToUart`     | 0x80c  | RW  | Try to write byte to StdOut
+  `NewThread`  | 0x80d  | W   | Insert thread with given id into run-queue
+  `KillThread` | 0x80e  | W   | Don't reinsert current thread into run-queue
+  `Emit`       | 0x80f  | W   | Emit char to console (simulation only)
 
 ## E. Tinsel Address Structure
 
@@ -725,7 +739,11 @@ inline uint32_t tinselUartTryPut(uint8_t x);
 inline uint32_t tinselUartTryGet();
 
 // Insert new thread into run queue
+// (The new thread has a program counter of 0)
 inline void tinselCreateThread(uint32_t id);
+
+// Don't reinsert currently running thread back in to run queue
+inline void tinselKillThread();
 
 // Emit word to console (simulation only)
 inline void tinselEmit(uint32_t x);
