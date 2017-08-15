@@ -17,5 +17,6 @@ clean:
 	make -C apps/boot clean
 	make -C apps/heat clean
 	make -C apps/ping clean
+	make -C apps/linktest clean
 	make -C bin clean
 	make -C tests clean

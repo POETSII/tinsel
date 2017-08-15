@@ -101,7 +101,7 @@ int main()
         else {
           // If number of hops is zero
           msgOut[0] = me;
-          tinselSend(msgIn->args[2], msgOut);
+          tinselSend(hostId, msgOut);
         }
       }
     }
