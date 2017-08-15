@@ -23,6 +23,7 @@ int main()
 
     // Get mailbox message slot for send and receive
     volatile BootReq* msgIn = tinselSlot(0);
+    volatile BootReq* reqOut;
     volatile uint32_t* msgOut = tinselSlot(1);
 
     // Command loop
@@ -88,9 +89,20 @@ int main()
         break;
       }
       else if (cmd == PingCmd) {
+        // Respond to ping
         tinselWaitUntil(TINSEL_CAN_SEND);
-        msgOut[0] = msgIn->args[0]+1;
-        tinselSend(hostId, msgOut);
+        reqOut = (volatile BootReq*) msgOut;
+        if (msgIn->args[0] != 0) {
+          // If number of hops is one
+          reqOut->cmd = PingCmd;
+          reqOut->args[0] = 0;
+          tinselSend(msgIn->args[1], reqOut);
+        }
+        else {
+          // If number of hops is zero
+          msgOut[0] = me;
+          tinselSend(msgIn->args[2], msgOut);
+        }
       }
     }
   }

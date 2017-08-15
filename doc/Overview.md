@@ -24,7 +24,7 @@ synthesis, are somewhat more ambitous and are in any case likely to
 reuse components and ideas from the overlay.
 
 In the following sections we give an overview of our soft-core overlay
-architecture for POETS (called *tinsel*) and describe our initial
+architecture for POETS (called *Tinsel*) and describe our initial
 POETS machine built using a network of commodity FPGA development
 boards.
 
@@ -57,11 +57,11 @@ that are required in similar machines such as
 
 ## Memory subsystem
 
-POETS is heavily inspired by SpiNNaker and, like SpiNNaker, needs to
-offer applications a generous amount of memory to hold, for example,
-graphs representing large physical systems.  Also like SpiNNaker,
-there is no need to give applications the illusion of a single shared
-memory space.  Instead, message-passing is intended to be the primary
+It is believed that POETS applications will typically require a
+generous amount of memory to hold, for example, highly-connected
+graphs representing large physical systems.  But there is no
+requirement to give applications the illusion of a single shared
+memory space.  Rather, message-passing is intended to be the primary
 communication mechansim.
 
 FPGA boards typically provide a number of high-bandwidth DRAMs and it
