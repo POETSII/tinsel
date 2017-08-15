@@ -581,7 +581,7 @@ inline uint32_t tinselUartTryGet();
 
 // Send byte to StdOut (over DebugLink)
 // (Returns non-zero on success)
-inline void tinselUartTryPut(uint8_t x);
+inline uint32_t tinselUartTryPut(uint8_t x);
 ```
 
 On power-up, only a single tinsel thread (with id 0) on each core is
