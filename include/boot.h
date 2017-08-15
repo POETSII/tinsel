@@ -42,7 +42,6 @@ typedef enum {
   // Ping a thread with an optional thread->thread hop
   // Argument 0: number of hops (zero or one)
   // Argument 1: next hop address (when number of hops is one)
-  // Argument 2: final hop address (when number of hops is zero)
   PingCmd,
 
 } BootCmd;
