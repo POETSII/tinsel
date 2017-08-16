@@ -1324,7 +1324,7 @@
  <connection
    kind="avalon_streaming"
    version="16.0"
-   start="mac_b_rx_fifo.out"
+   start="mac_c_rx_fifo.out"
    end="DE5Top_0.eastmac_sink" />
  <connection
    kind="avalon_streaming"
@@ -1334,7 +1334,7 @@
  <connection
    kind="avalon_streaming"
    version="16.0"
-   start="mac_c_rx_fifo.out"
+   start="mac_b_rx_fifo.out"
    end="DE5Top_0.southmac_sink" />
  <connection
    kind="avalon_streaming"
