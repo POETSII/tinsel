@@ -74,7 +74,7 @@ HostLink::HostLink()
     int count = 0;
     for (int y = 0; y < TinselMeshYLen; y++)
       for (int x = 0; x < TinselMeshXLen; x++) {
-        int boardId = y<<TinselMeshXBits + x;
+        int boardId = (y<<TinselMeshXBits) + x;
         debugLinks[count++].open(boardId);
       }
     // Host board
