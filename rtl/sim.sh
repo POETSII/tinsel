@@ -66,7 +66,7 @@ for Y in $(seq 0 $LAST_Y); do
     A=$(fromCoords $X $Y)
     B=$(fromCoords $(($X+1)) $Y)
     if [ $(($X+1)) -lt $MESH_X ]; then
-      $UDSOCK join "@tinsel.b$A.2" "@tinsel.b$B.4" &
+      $UDSOCK join "@tinsel.b$A.3" "@tinsel.b$B.4" &
       PIDS="$PIDS $!"
     fi
   done
@@ -78,7 +78,7 @@ for X in $(seq 0 $LAST_X); do
     A=$(fromCoords $X $Y)
     B=$(fromCoords $X $(($Y+1)))
     if [ $(($Y+1)) -lt $MESH_Y ]; then
-      $UDSOCK join "@tinsel.b$A.1" "@tinsel.b$B.3" &
+      $UDSOCK join "@tinsel.b$A.1" "@tinsel.b$B.2" &
       PIDS="$PIDS $!"
     fi
   done
