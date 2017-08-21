@@ -86,17 +86,18 @@ int main()
   hostLink.go();
 
   // 2D grid
-  int N = 8 * LEN;
-  int grid[N][N];
+  int NX = X_LEN*8;
+  int NY = Y_LEN*8;
+  int grid[NY][NX];
 
   // Initialise 2D grid
-  for (int y = 0; y < N; y++)
-    for (int x = 0; x < N; x++)
+  for (int y = 0; y < NY; y++)
+    for (int x = 0; x < NX; x++)
       grid[y][x] = 0;
 
   for (int n = 0; n < 1; n++) {
     // Fill 2D grid
-    for (int i = 0; i < N*LEN; i++) {
+    for (int i = 0; i < 8*X_LEN*Y_LEN; i++) {
       HostMsg msg;
       hostLink.recv(&msg);
       for (int j = 0; j < 8; j++)
@@ -110,9 +111,9 @@ int main()
 
     // Emit PPM
     int L = 8 * MAG;
-    fprintf(fp, "P3\n%i %i\n255\n", MAG*N, MAG*N);
-    for (int y = 0; y < MAG*N; y++)
-      for (int x = 0; x < MAG*N; x++) {
+    fprintf(fp, "P3\n%i %i\n255\n", MAG*NX, MAG*NY);
+    for (int y = 0; y < MAG*NY; y++)
+      for (int x = 0; x < MAG*NX; x++) {
         int t = grid[y/MAG][x/MAG];
         if (((x%L) == 0 && (y&1)) || ((y%L) == 0 && (x&1)))
           fprintf(fp, "0 0 0\n");
