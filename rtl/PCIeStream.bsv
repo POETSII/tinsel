@@ -84,7 +84,7 @@ typedef struct {
 interface PCIeBAR;
   method Action s(
     Bit#(128) writedata,
-    Bit#(15) address,
+    Bit#(4) address,
     Bool read,
     Bool write,
     Bit#(16) byteenable
@@ -411,7 +411,7 @@ module mkPCIeStream (PCIeStream);
     interface PCIeBAR controlBAR;
       method Action s(
           Bit#(128) writedata,
-          Bit#(15) address,
+          Bit#(4) address,
           Bool read,
           Bool write,
           Bit#(16) byteenable);
