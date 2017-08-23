@@ -182,6 +182,11 @@ wire ddr3_local_cal_success;
 wire ddr3_2_local_init_done;
 wire ddr3_2_local_cal_success;
 
+wire [7:0] ts_out;
+wire ts_done;
+wire ts_enable;
+wire ts_clear;
+
 assign LED[3:0] = {ddr3_local_init_done, ddr3_local_cal_success,
                    ddr3_2_local_init_done, ddr3_2_local_cal_success};
 
@@ -420,6 +425,22 @@ S5_DDR3_QSYS u0 (
   .mac_d_xgmii_rx_data(sfp_d_rx_dc),
   .mac_d_xgmii_tx_data(sfp_d_tx_dc),
 
+  .ts_done_tsdcaldone(ts_done),
+  .ts_out_tsdcalo(ts_out),
+  .ts_enable_ce(ts_enable),
+  .ts_clear_reset(ts_clear)
+);
+
+temp_display temp_display_inst (
+  .clk_50mhz(clk_50mhz),
+  .temp_valid(ts_done),
+  .temp_val(ts_out),
+  .temp_en(ts_enable),
+  .temp_clear(ts_clear),
+  .HEX0_D(HEX0_D),
+  .HEX0_DP(HEX0_DP),
+  .HEX1_D(HEX1_D),
+  .HEX1_DP(HEX1_DP)
 );
 
 endmodule 

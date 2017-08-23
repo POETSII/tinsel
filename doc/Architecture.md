@@ -606,9 +606,9 @@ running) HostLink methods that communicate with the boot loader should
 not be called.  When the application returns from `main()`, all but
 one thread on each core are killed, and the remaining threads reenter
 the boot loader.  Although it may be tempting to boot a second
-application at this stage, we do not recommend it because leftover
-state from the first application may affect execution of the second.
-
+application at this stage, without calling `HostLink::reset()`, we do
+not recommend it because leftover state from the first application may
+affect execution of the second.
 
 ## A. DE5-Net Synthesis Report
 

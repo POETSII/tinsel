@@ -2248,6 +2248,7 @@ set_global_assignment -name QIP_FILE megafuns/phy/phy.qip
 set_global_assignment -name VERILOG_FILE si570/si570_i2c_init.v
 set_global_assignment -name VERILOG_FILE si570/i2c_master.v
 set_global_assignment -name VERILOG_FILE sync_reset.v
+set_global_assignment -name VERILOG_FILE temp_display.v
 set_global_assignment -name MIF_FILE InstrMem.mif
 set_global_assignment -name VERILOG_FILE ../rtl/AlteraMult.v
 set_global_assignment -name VERILOG_FILE ../rtl/mkMailbox.v
