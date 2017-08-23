@@ -41,6 +41,12 @@ module DE5(
   input wire OSC_50_B8A,
   input wire OSC_50_B8D,
 
+  output wire [6:0] HEX0_D,
+  output wire HEX0_DP,
+
+  output wire [6:0] HEX1_D,
+  output wire HEX1_DP,
+
   input wire PCIE_PERST_n,
   input wire PCIE_REFCLK_p,
   input wire [7:0] PCIE_RX_p,
@@ -101,6 +107,11 @@ wire rst_50mhz = 0;
 wire clk_156mhz;
 wire phy_pll_locked;
 wire soft_reset;
+
+wire [7:0] ts_out;
+wire ts_done;
+wire ts_enable;
+wire ts_clear;
 
 wire si570_scl_i;
 wire si570_scl_o;
@@ -311,8 +322,25 @@ SoC system (
 
   .soft_reset_val(soft_reset),
 
-  .pcie_clk_reset_reset(soft_reset)
+  .pcie_clk_reset_reset(soft_reset),
+
+  .ts_done_tsdcaldone(ts_done),
+  .ts_out_tsdcalo(ts_out),
+  .ts_enable_ce(ts_enable),
+  .ts_clear_reset(ts_clear)
 
 );
-  
+ 
+temp_display temp_display_inst (
+  .clk_50mhz(clk_50mhz),
+  .temp_valid(ts_done),
+  .temp_val(ts_out),
+  .temp_en(ts_enable),
+  .temp_clear(ts_clear),
+  .HEX0_D(HEX0_D),
+  .HEX0_DP(HEX0_DP),
+  .HEX1_D(HEX1_D),
+  .HEX1_DP(HEX1_DP)
+);
+ 
 endmodule 

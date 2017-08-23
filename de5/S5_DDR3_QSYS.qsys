@@ -198,6 +198,14 @@
          type = "int";
       }
    }
+   element temp_sense
+   {
+      datum _sortIndex
+      {
+         value = "19";
+         type = "int";
+      }
+   }
    element uart_bridge
    {
       datum _sortIndex
@@ -324,6 +332,14 @@
    internal="clk_156.clk_in_reset"
    type="reset"
    dir="end" />
+ <interface name="ts_clear" internal="temp_sense.clr" type="reset" dir="end" />
+ <interface
+   name="ts_done"
+   internal="temp_sense.tsdcaldone"
+   type="conduit"
+   dir="end" />
+ <interface name="ts_enable" internal="temp_sense.ce" type="conduit" dir="end" />
+ <interface name="ts_out" internal="temp_sense.tsdcalo" type="conduit" dir="end" />
  <module name="DE5Top_0" kind="DE5Top" version="1.0" enabled="1" />
  <module name="clk_156" kind="clock_source" version="16.0" enabled="1">
   <parameter name="clockFrequency" value="156250000" />
@@ -1218,6 +1234,19 @@
   <parameter name="WEIGHT_PORT" value="0,0,0,0,0,0" />
   <parameter name="WRBUFFER_ADDR_WIDTH" value="6" />
  </module>
+ <module name="temp_sense" kind="altera_temp_sense" version="16.0" enabled="1">
+  <parameter name="CBX_AUTO_BLACKBOX" value="ALL" />
+  <parameter name="CE_CHECK" value="true" />
+  <parameter name="CLK_FREQUENCY" value="50.0" />
+  <parameter name="CLOCK_DIVIDER_VALUE" value="80" />
+  <parameter name="CLR_CHECK" value="true" />
+  <parameter name="DEVICE_FAMILY" value="Stratix V" />
+  <parameter name="NUMBER_OF_SAMPLES" value="128" />
+  <parameter name="POI_CAL_TEMPERATURE" value="85" />
+  <parameter name="SIM_TSDCALO" value="0" />
+  <parameter name="USER_OFFSET_ENABLE" value="off" />
+  <parameter name="USE_WYS" value="on" />
+ </module>
  <module
    name="uart_bridge"
    kind="altera_avalon_mm_clock_crossing_bridge"
@@ -1412,6 +1441,7 @@
    start="mem_if_ddr3_emif.afi_half_clk"
    end="mem_if_ddr3_emif_2.afi_half_clk_in" />
  <connection kind="clock" version="16.0" start="clk_50.clk" end="jtag_uart_0.clk" />
+ <connection kind="clock" version="16.0" start="clk_50.clk" end="temp_sense.clk" />
  <connection kind="clock" version="16.0" start="clk_50.clk" end="mac_a.csr_clk" />
  <connection kind="clock" version="16.0" start="clk_50.clk" end="mac_b.csr_clk" />
  <connection kind="clock" version="16.0" start="clk_50.clk" end="mac_c.csr_clk" />
