@@ -1107,7 +1107,7 @@
   <parameter name="PCIeAddress63_32">0x00000000\,0x00000000\,0x00000000\,0x00000000\,0x00000000\,0x00000000\,0x00000000\,0x00000000\,0x00000000\,0x00000000\,0x00000000\,0x00000000\,0x00000000\,0x00000000\,0x00000000\,0x00000000</parameter>
   <parameter name="RXM_BEN_WIDTH" value="8" />
   <parameter name="RXM_DATA_WIDTH" value="64" />
-  <parameter name="SLAVE_ADDRESS_MAP_0" value="19" />
+  <parameter name="SLAVE_ADDRESS_MAP_0" value="8" />
   <parameter name="SLAVE_ADDRESS_MAP_1" value="0" />
   <parameter name="SLAVE_ADDRESS_MAP_2" value="0" />
   <parameter name="SLAVE_ADDRESS_MAP_3" value="0" />
@@ -1190,7 +1190,7 @@
   <parameter name="bar4_type_hwtcl" value="0" />
   <parameter name="bar5_type_hwtcl" value="0" />
   <parameter name="bypass_tl" value="false" />
-  <parameter name="class_code_hwtcl" value="0" />
+  <parameter name="class_code_hwtcl" value="229376" />
   <parameter name="completion_timeout_hwtcl" value="ABCD" />
   <parameter name="device_id_hwtcl" value="3557" />
   <parameter name="dll_active_report_support_hwtcl" value="0" />
