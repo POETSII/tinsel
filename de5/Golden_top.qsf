@@ -2245,6 +2245,12 @@ set_instance_assignment -name PLL_COMPENSATION_MODE DIRECT -to u0|mem_if_ddr3_em
 set_global_assignment -name USE_DLL_FREQUENCY_FOR_DQS_DELAY_CHAIN ON
 set_global_assignment -name QIP_FILE megafuns/phy_reconfig/phy_reconfig.qip
 set_global_assignment -name QIP_FILE megafuns/phy/phy.qip
+set_global_assignment -name QIP_FILE megafuns/fp/AlteraFPAddSub.qip
+set_global_assignment -name QIP_FILE megafuns/fp/AlteraFPMult.qip
+set_global_assignment -name QIP_FILE megafuns/fp/AlteraFPDiv.qip
+set_global_assignment -name QIP_FILE megafuns/fp/AlteraFPCompare.qip
+set_global_assignment -name QIP_FILE megafuns/fp/AlteraFPFromInt.qip
+set_global_assignment -name QIP_FILE megafuns/fp/AlteraFPToInt.qip
 set_global_assignment -name VERILOG_FILE si570/si570_i2c_init.v
 set_global_assignment -name VERILOG_FILE si570/i2c_master.v
 set_global_assignment -name VERILOG_FILE sync_reset.v
@@ -2255,6 +2261,7 @@ set_global_assignment -name VERILOG_FILE ../rtl/mkMailbox.v
 set_global_assignment -name VERILOG_FILE ../rtl/mkDebugLinkRouter.v
 set_global_assignment -name VERILOG_FILE ../rtl/de5Top.v
 set_global_assignment -name VERILOG_FILE ../rtl/mkCore.v
+set_global_assignment -name VERILOG_FILE ../rtl/mkFPU.v
 set_global_assignment -name VERILOG_FILE ../rtl/mkDCache.v
 set_global_assignment -name VERILOG_FILE ../rtl/AlteraBlockRam.v
 set_global_assignment -name QIP_FILE S5_DDR3_QSYS/synthesis/S5_DDR3_QSYS.qip
