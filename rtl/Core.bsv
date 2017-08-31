@@ -18,8 +18,9 @@ import ConfigReg :: *;
 import Interface :: *;
 import Mailbox   :: *;
 import Globals   :: *;
-import DebugLink  :: *;
+import DebugLink :: *;
 import Mult      :: *;
+import FPU       :: *;
 
 // ============================================================================
 // Control/status register (CSRs) supported
