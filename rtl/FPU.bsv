@@ -30,14 +30,14 @@ typedef enum {
   FPToInt,
   FPFromInt,
   FPCompare
-} FPUOpcode deriving (Bits, Eq);
+} FPUOpcode deriving (Bits, Eq, FShow);
 
 // FPU request
 typedef struct {
   FPUClientId id;
   FPUOpcode opcode;
   FPUOpInput in;
-} FPUReq deriving (Bits);
+} FPUReq deriving (Bits, FShow);
 
 // FPU response
 typedef struct {
@@ -50,7 +50,7 @@ typedef struct {
   Bool valid;
   FPUOpcode opcode;
   FPUClientId id;
-} FPUToken deriving (Bits);
+} FPUToken deriving (Bits, FShow);
 
 // Invalid token
 FPUToken invalidFPUToken = FPUToken { valid : False, opcode : ?, id : ? };
@@ -156,7 +156,9 @@ module mkFPU (FPU);
         FPToInt:   fpToInt.out;
         FPCompare: fpCompare.out;
       endcase;
-    if (tokens[1].valid) respBuffer.enq(resp);
+    if (tokens[1].valid) begin
+      respBuffer.enq(resp);
+    end
   endrule
 
   interface In reqIn = reqPort.in;

@@ -19,8 +19,8 @@ import Interface :: *;
 import Mailbox   :: *;
 import Globals   :: *;
 import DebugLink :: *;
-import Mult      :: *;
 import FPU       :: *;
+import FPUOps    :: *;
 
 // ============================================================================
 // Control/status register (CSRs) supported
@@ -127,6 +127,9 @@ typedef struct {
   Bool b; Bool h; Bool w;
 } AccessWidth deriving (Bits);
 
+// Word access
+AccessWidth wordAccess = AccessWidth { b: False, h: False, w: True };
+
 // The type for data passed between each pipeline stage
 typedef struct {
   ThreadState thread;      // Current thread state
@@ -157,6 +160,7 @@ typedef struct {
   ThreadState thread;      // Thread state
   Bool isLoad;             // Is it waiting for a load?
   Bool isStore;            // Or a store?
+  Bool isFPUOp;            // Or an FPU operation?
   Bit#(5) destReg;         // Destination register for the load result
   Bit#(2) loadSelector;    // Bottom two bits of load address
   AccessWidth accessWidth; // Access width of load (byte, half, word)
@@ -382,9 +386,10 @@ endfunction
 // ============================================================================
 
 interface Core;
-  interface DCacheClient   dcacheClient;
-  interface MailboxClient  mailboxClient;
+  interface DCacheClient    dcacheClient;
+  interface MailboxClient   mailboxClient;
   interface DebugLinkClient debugLinkClient;
+  interface FPUClient       fpuClient;
   (* always_ready, always_enabled *)
   method Action setBoardId(BoardId id);
 endinterface
@@ -459,10 +464,12 @@ module mkCore#(CoreId myId) (Core);
   // ------------
 
   // Ports
-  OutPort#(DCacheReq)    dcacheReq        <- mkOutPort;
-  InPort#(DCacheResp)    dcacheResp       <- mkInPort;
+  OutPort#(DCacheReq)     dcacheReq         <- mkOutPort;
+  InPort#(DCacheResp)     dcacheResp        <- mkInPort;
   OutPort#(DebugLinkFlit) toDebugLinkPort   <- mkOutPort;
   InPort#(DebugLinkFlit)  fromDebugLinkPort <- mkInPort;
+  OutPort#(FPUReq)        toFPUPort         <- mkOutPort;
+  InPort#(FPUResp)        fromFPUPort       <- mkInPort;
 
   // Queue of runnable threads
   QueueInit runQueueInit;
@@ -498,9 +505,6 @@ module mkCore#(CoreId myId) (Core);
   InPort#(ThreadEventPair) wakeupPort <- mkInPort;
   connectUsing(mkUGShiftQueue1(QueueOptFmax),
                  mailbox.wakeup, wakeupPort.in);
-
-  // Multiplier
-  Mult#(33) mult <- mkSignedMult;
 
   // Pipeline stages
   Reg#(Bool)          fetch1Fire         <- mkDReg(False);
@@ -648,10 +652,6 @@ module mkCore#(CoreId myId) (Core);
                   token.valA, $time);
     end
     `endif
-    // Multiplication
-    Bit#(33) mulA = {token.op.isMultASigned ? token.valA[31] : 0, token.valA};
-    Bit#(33) mulB = {token.op.isMultBSigned ? token.valB[31] : 0, token.valB};
-    token.instrResult.mult = mult.mult(mulA, mulB);
     // Triger next stage
     execute2Input <= token;
   endrule
@@ -766,6 +766,21 @@ module mkCore#(CoreId myId) (Core);
     // KillThread CSR
     Bool killThread = False;
     if (token.op.csr.isKillThread) killThread = True;
+    // Mulitiplication using FPU
+    if (token.op.isMult || token.op.isMultH) begin
+      FPUReq req;
+      req.id = {truncate(myId), token.thread.id};
+      req.opcode = IntMult;
+      req.in.lowerOrUpper = token.op.isMult ? 0 : 1;
+      req.in.addOrSub = ?; // TODO
+      req.in.arg1 = {token.op.isMultASigned ? token.valA[31] : 0, token.valA};
+      req.in.arg2 = {token.op.isMultBSigned ? token.valB[31] : 0, token.valB};
+      if (toFPUPort.canPut) begin
+        toFPUPort.put(req);
+        suspend = True;
+      end else
+        retry = True;
+    end
     // Record state of suspended thread
     if (suspend) begin
       SuspendedThreadState susp;
@@ -773,9 +788,11 @@ module mkCore#(CoreId myId) (Core);
       susp.thread.pc = token.thread.pc + 4;
       susp.isLoad = token.op.isLoad;
       susp.isStore = token.op.isStore;
+      susp.isFPUOp = token.op.isMult || token.op.isMultH;
       susp.destReg = rd(token.instr);
       susp.loadSelector = token.memAddr[1:0];
-      susp.accessWidth = token.accessWidth;
+      // TODO: is this correct for FP load?
+      susp.accessWidth = token.op.isLoad ? token.accessWidth : wordAccess;
       susp.isUnsignedLoad = isUnsignedLoad(token.instr);
       suspended.write(token.thread.id, susp);
     end 
@@ -817,9 +834,7 @@ module mkCore#(CoreId myId) (Core);
       | when(op.isBitwise,        res.bitwise)
       | when(op.isOpUI,           res.opui)
       | when(op.isJump,           zeroExtend(token.nextPC))
-      | when(op.isCSR,            res.csr)
-      | when(op.isMult,           res.mult[31:0])
-      | when(op.isMultH,          res.mult[63:32]);
+      | when(op.isCSR,            res.csr);
     // Setup new PC
     Bool takeBranch =
          op.isJump
@@ -896,7 +911,8 @@ module mkCore#(CoreId myId) (Core);
   rule resumeThread1 (resumeThread1Fire
                        || dcacheResp.canGet
                        || mailbox.scratchpadResp.canGet
-                       || wakeupPort.canGet);
+                       || wakeupPort.canGet
+                       || fromFPUPort.canGet);
     ResumeToken token = resumeThread1Input;
     if (!resumeThread1Fire) begin
       if (dcacheResp.canGet) begin
@@ -910,6 +926,10 @@ module mkCore#(CoreId myId) (Core);
       end else if (wakeupPort.canGet) begin
         wakeupPort.get;
         token.id = truncate(wakeupPort.value.id);
+      end else if (fromFPUPort.canGet) begin
+        fromFPUPort.get;
+        token.id = truncate(fromFPUPort.value.id);
+        token.data = fromFPUPort.value.out.val;
       end
     end
     // Fetch info about suspended thread
@@ -928,7 +948,7 @@ module mkCore#(CoreId myId) (Core);
     let token = resumeThread3Input;
     // Prepare request for writeback stage
     Writeback wb;
-    wb.write = susp.isLoad && susp.destReg != 0;
+    wb.write = (susp.isLoad || susp.isFPUOp) && susp.destReg != 0;
     wb.thread = susp.thread;
     wb.thread.id = token.id;
     wb.destReg = susp.destReg;
@@ -956,6 +976,11 @@ module mkCore#(CoreId myId) (Core);
   interface DebugLinkClient debugLinkClient;
     interface In fromDebugLink = fromDebugLinkPort.in;
     interface Out toDebugLink  = toDebugLinkPort.out;
+  endinterface
+
+  interface FPUClient fpuClient;
+    interface Out fpuReqOut = toFPUPort.out;
+    interface In  fpuRespIn = fromFPUPort.in;
   endinterface
 
   method Action setBoardId(BoardId id);

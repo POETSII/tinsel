@@ -32,7 +32,7 @@ typedef struct {
   // Control signal for the multiplier
   // (Produce lower or upper 32 bits of 64-bit result?)
   Bit#(1) lowerOrUpper;
-} FPUOpInput deriving (Bits);
+} FPUOpInput deriving (Bits, FShow);
 
 // The result of an FPU operation
 typedef struct {
@@ -271,14 +271,17 @@ module mkFPDiv (FPUOp);
   method Action put(FPUOpInput in);
     Float in1 = unpack(in.arg1[31:0]);
     Float in2 = unpack(in.arg2[31:0]);
-    match {.out, .exc} = divFP(in1, in2, Rnd_Nearest_Even);
+    // Need to avoid passing zero to second arg of divFP,
+    // otherwise simulator dies with floating point exception
+    Float in2safe = isZero(in2) ? qnan() : in2;
+    match {.out, .exc} = divFP(in1, in2safe, Rnd_Nearest_Even);
     pipeline[`FPDivLatency-1] <=
       FPUOpOutput {
         val: pack(out),
         nan: pack(isNaN(out)),
         overflow: pack(exc.overflow),
         underflow: pack(exc.underflow),
-        divByZero: pack(exc.divide_0)
+        divByZero: pack(exc.divide_0 || isZero(in2))
       };
   endmethod
 

@@ -13,9 +13,10 @@ import Queue      :: *;
 import Vector     :: *;
 import Mailbox    :: *;
 import Network    :: *;
-import DebugLink   :: *;
+import DebugLink  :: *;
 import JtagUart   :: *;
 import Mac        :: *;
+import FPU        :: *;
 
 // ============================================================================
 // Interface
@@ -96,13 +97,28 @@ module de5Top (DE5Top);
   for (Integer i = 0; i < `DRAMsPerBoard; i=i+1)
     connectDCachesToDRAM(dcaches[i], drams[i]);
 
+  // Create FPUs
+  Vector#(`FPUsPerBoard, FPU) fpus;
+  for (Integer i = 0; i < `FPUsPerBoard; i=i+1)
+    fpus[i] <- mkFPU;
+
+  // Connect cores to FPUs
+  let vecOfCores = concat(concat(cores));
+  for (Integer i = 0; i < `FPUsPerBoard; i=i+1) begin
+    // Get sub-vector of cores to be connected to FPU i
+    Vector#(`CoresPerFPU, Core) cs =
+      takeAt(`CoresPerFPU*i, vecOfCores);
+    function fpuClient(core) = core.fpuClient;
+    // Connect sub-vector of cores to FPU
+    connectCoresToFPU(map(fpuClient, cs), fpus[i]);
+  end
+
   // Create mailboxes
   Vector#(`MailboxesPerBoard, Mailbox) mailboxes;
   for (Integer i = 0; i < `MailboxesPerBoard; i=i+1)
     mailboxes[i] <- mkMailbox;
 
   // Connect cores to mailboxes
-  let vecOfCores = concat(concat(cores));
   for (Integer i = 0; i < `MailboxesPerBoard; i=i+1) begin
     // Get sub-vector of cores to be connected to mailbox i
     Vector#(`CoresPerMailbox, Core) cs =
