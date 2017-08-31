@@ -17,6 +17,9 @@ int main()
   // Host id
   uint32_t hostId = tinselHostId();
 
+  // Use one flit per message
+  tinselSetLen(0);
+
   if (threadId == 0) {
     // State
     uint32_t addrReg = 0;  // Address register
