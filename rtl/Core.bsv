@@ -44,6 +44,11 @@ import FPUOps    :: *;
 // NewThread   | 0x80d  | W   | Create new thread with the given id
 // KillThread  | 0x80e  | W   | Kill the currently running thread
 // Emit        | 0x80f  | W   | Emit char to console (simulation only)
+// FFlag       | 0x001  | RW  | Floating-point exception flags
+// FRM         | 0x002  | RW  | Floating-point dynamic rounding mode
+// FCSR        | 0x003  | RW  | Floating-point CSR
+
+// Currently, only the CSRRW instruction is supported for accessing CSRs.
 
 // ============================================================================
 // Types
@@ -59,6 +64,8 @@ typedef Bit#(TAdd#(`LogInstrsPerCore, 2)) InstrAddr;
 typedef struct {
   // Program counter
   InstrAddr pc;
+  // Floating-point accrued exception flags
+  Bit#(5) fpFlags;
   // Message length for send operation
   MsgLen msgLen;
   // Message pointer for send operation
@@ -70,8 +77,9 @@ typedef struct {
 } ThreadState deriving (Bits);
 
 // Register file index
-// (Register file constains 32 registers per thread)
-typedef Bit#(TAdd#(`LogThreadsPerCore, 5)) RegFileIndex;
+// (Register file contains 32 integer registers 
+// and 32 floating-point registers per thread)
+typedef Bit#(TAdd#(`LogThreadsPerCore, 6)) RegFileIndex;
 
 // RV32I instruction type (one-hot encoding)
 typedef struct {
@@ -89,7 +97,8 @@ typedef struct {
   Bool isSend;        Bool isRecv;
   Bool isWaitUntil;   Bool isFromUart;
   Bool isToUart;      Bool isNewThread;
-  Bool isKillThread;
+  Bool isKillThread;  Bool isFFlag;
+  Bool isFRM;         Bool isFCSR;
   `ifdef SIMULATE
   Bool isEmit;
   `endif
@@ -153,6 +162,7 @@ typedef struct {
   Bool canSend;            // Mailbox can send
   Bool canRecv;            // Mailbox can receive
   Bool retry;              // Instruction needs retried later
+  Bit#(1) destRegFile;     // Write result to int (0) or float (1) reg file?
 } PipelineToken deriving (Bits);
 
 // For each suspended thread, we have the following info
@@ -161,7 +171,7 @@ typedef struct {
   Bool isLoad;             // Is it waiting for a load?
   Bool isStore;            // Or a store?
   Bool isFPUOp;            // Or an FPU operation?
-  Bit#(5) destReg;         // Destination register for the load result
+  Bit#(6) destReg;         // Destination register for the result
   Bit#(2) loadSelector;    // Bottom two bits of load address
   AccessWidth accessWidth; // Access width of load (byte, half, word)
   Bool isUnsignedLoad;     // Sign-extension behaviour for load
@@ -171,7 +181,7 @@ typedef struct {
 typedef struct {
   Bool write;
   ThreadState thread;
-  Bit#(5) destReg;
+  Bit#(6) destReg;
   Bit#(32) writeVal;
 } Writeback deriving (Bits);
 
@@ -280,29 +290,60 @@ function Op decodeOp(Bit#(32) instr);
   ret.isFence = op == 'b00011;
   // CSR read/write operation
   ret.isCSR = isCSROp(instr);
-  Bit#(4) csrIndex = instr[23:20];
+  Bit#(5) csrIndex = {instr[31], instr[23:20]};
   // Hardware thread id CSR
-  ret.csr.isHartId = ret.isCSR && csrIndex == 'h4;
+  ret.csr.isHartId = ret.isCSR && csrIndex == 'h14;
   // Instruction memory CSRs
-  ret.csr.isInstrAddr = ret.isCSR && csrIndex == 'h0;
-  ret.csr.isInstr = ret.isCSR && csrIndex == 'h1;
+  ret.csr.isInstrAddr = ret.isCSR && csrIndex == 'h10;
+  ret.csr.isInstr = ret.isCSR && csrIndex == 'h11;
   // Mailbox CSR
-  ret.csr.isAlloc        = ret.isCSR && csrIndex == 'h2;
-  ret.csr.isCanSend      = ret.isCSR && csrIndex == 'h3;
-  ret.csr.isCanRecv      = ret.isCSR && csrIndex == 'h5;
-  ret.csr.isSendLen      = ret.isCSR && csrIndex == 'h6;
-  ret.csr.isSendPtr      = ret.isCSR && csrIndex == 'h7;
-  ret.csr.isSend         = ret.isCSR && csrIndex == 'h8;
-  ret.csr.isRecv         = ret.isCSR && csrIndex == 'h9;
-  ret.csr.isWaitUntil    = ret.isCSR && csrIndex == 'ha;
-  ret.csr.isFromUart     = ret.isCSR && csrIndex == 'hb;
-  ret.csr.isToUart       = ret.isCSR && csrIndex == 'hc;
-  ret.csr.isNewThread    = ret.isCSR && csrIndex == 'hd;
-  ret.csr.isKillThread   = ret.isCSR && csrIndex == 'he;
+  ret.csr.isAlloc        = ret.isCSR && csrIndex == 'h12;
+  ret.csr.isCanSend      = ret.isCSR && csrIndex == 'h13;
+  ret.csr.isCanRecv      = ret.isCSR && csrIndex == 'h15;
+  ret.csr.isSendLen      = ret.isCSR && csrIndex == 'h16;
+  ret.csr.isSendPtr      = ret.isCSR && csrIndex == 'h17;
+  ret.csr.isSend         = ret.isCSR && csrIndex == 'h18;
+  ret.csr.isRecv         = ret.isCSR && csrIndex == 'h19;
+  ret.csr.isWaitUntil    = ret.isCSR && csrIndex == 'h1a;
+  ret.csr.isFromUart     = ret.isCSR && csrIndex == 'h1b;
+  ret.csr.isToUart       = ret.isCSR && csrIndex == 'h1c;
+  ret.csr.isNewThread    = ret.isCSR && csrIndex == 'h1d;
+  ret.csr.isKillThread   = ret.isCSR && csrIndex == 'h1e;
   `ifdef SIMULATE
-  ret.csr.isEmit         = ret.isCSR && csrIndex == 'hf;
+  ret.csr.isEmit         = ret.isCSR && csrIndex == 'h1f;
   `endif
+  // Floating-point CSR
+  ret.csr.isFFlag       = ret.isCSR && csrIndex == 'h01;
+  ret.csr.isFRM         = ret.isCSR && csrIndex == 'h02;
+  ret.csr.isFCSR        = ret.isCSR && csrIndex == 'h03;
   return ret;
+endfunction
+
+// Read the first operand from the integer reg file (0) or the
+// floating-point reg file (1)?
+function Bit#(1) rs1RegFile(Bit#(32) instr);
+  // Is it a floating-point (FP) operation?
+  Bool fp = instr[6:5] == 2'b10;
+  // Assuming it's an FP operation, is it a fused operation with 3 operands?
+  Bool fused = instr[4] == 0;
+  // Assuming it's an FP operation, does it take its first operand
+  // from the integer reg file?
+  Bool intOperand = instr[31:30] == 2'b11 && instr[28] == 1;
+  return fp && (fused || !intOperand) ? 1 : 0;
+endfunction
+
+// Write result to integer reg file (0) or floating-point reg file (1)?
+function Bit#(1) rdRegFile(Bit#(32) instr);
+  // Is it a floating-point (FP) operation?
+  Bool fp = instr[6:5] == 2'b10;
+  // Assuming it's an FP operation, is it a fused operation with 3 operands?
+  Bool fused = instr[4] == 0;
+  // Assuming it's an FP operation, does it write its result to
+  // the integer reg file?
+  Bool intResult = instr[31:28] == 4'b1100 ||
+                   instr[31:28] == 4'b1110 ||
+                   instr[31:28] == 4'b1010;
+  return fp && (fused || !intResult) ? 1 : 0;
 endfunction
 
 // Is second ALU operand an immediate?
@@ -580,9 +621,13 @@ module mkCore#(CoreId myId) (Core);
     PipelineToken token = fetch2Input;
     // Register instruction memory outputs
     token.instr = instrMem.dataOut;
-    // Fetch operands from register files
-    regFileA.read({token.thread.id, rs1(token.instr)});
-    regFileB.read({token.thread.id, rs2(token.instr)});
+    // Does result go to integer or floating-point register file?
+    token.destRegFile = rdRegFile(token.instr);
+    // Fetch operand A from integer or floating-point register file?
+    Bit#(1) rfA = rs1RegFile(token.instr);
+    // Read register file
+    regFileA.read({token.thread.id, rfA, rs1(token.instr)});
+    regFileB.read({token.thread.id, 1'b0, rs2(token.instr)});
     // Prepare mailbox operation
     if (isCSROp(token.instr))
       mailbox.prepare(token.thread.id);
@@ -602,9 +647,10 @@ module mkCore#(CoreId myId) (Core);
     token.accessWidth = decodeAccessWidth(token.instr);
     // Compute instruction's immediate
     token.imm = decodeImm(token.instr, token.instrType);
-    // CSR-immediate instructions not yet supported
+    // Currently, only CSRRW is supported for accessing CSRs
     if (token.op.isCSR)
-      myAssert(token.instr[14] == 0, "CSR-immediate instrs not supported");
+      myAssert(token.instr[14:12] == 3'b001,
+                 "CSR instruction: only CSRRW supported");
     // Trigger second decode sub-stage
     execute1Input <= token;
   endrule
@@ -789,10 +835,11 @@ module mkCore#(CoreId myId) (Core);
       susp.isLoad = token.op.isLoad;
       susp.isStore = token.op.isStore;
       susp.isFPUOp = token.op.isMult || token.op.isMultH;
-      susp.destReg = rd(token.instr);
+      susp.destReg = {token.destRegFile, rd(token.instr)};
       susp.loadSelector = token.memAddr[1:0];
       // TODO: is this correct for FP load?
       susp.accessWidth = token.op.isLoad ? token.accessWidth : wordAccess;
+      // TODO: is this correct for FP load?
       susp.isUnsignedLoad = isUnsignedLoad(token.instr);
       suspended.write(token.thread.id, susp);
     end 
@@ -811,7 +858,14 @@ module mkCore#(CoreId myId) (Core);
       | when(token.op.csr.isFromUart,
                zeroExtend({pack(stdinValid), fromDebugLinkPort.value.payload}))
       | when(token.op.csr.isToUart,
-               zeroExtend(pack(toDebugLinkPort.canPut)));
+               zeroExtend(pack(toDebugLinkPort.canPut)))
+      | when(token.op.csr.isFFlag || token.op.csr.isFCSR, 
+               zeroExtend(token.thread.fpFlags))
+      | when(token.op.csr.isFRM, 0);
+    // Floating-point CSR write
+    if (token.op.csr.isFFlag || token.op.csr.isFCSR) begin
+      token.thread.fpFlags = truncate(token.valA);
+    end
     // Trigger next stage
     token.retry = retry;
     token.instrResult = res;
@@ -866,7 +920,7 @@ module mkCore#(CoreId myId) (Core);
       if (token.writeRegFile) begin
         writeToRegFile = True;
         writeVal = writebackInput.writeVal;
-        dest = {token.thread.id, rd(token.instr)};
+        dest = {token.thread.id, token.destRegFile, rd(token.instr)};
       end
       // Put thread back in the run queue
       runQueue.enq(token.thread);
