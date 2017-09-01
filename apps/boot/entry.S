@@ -3,7 +3,7 @@
 entry:
 
 # Get hardware thread id
-csrr a0, 0xf14
+csrrw a0, 0xf14, zero
 
 # Take bottom log(ThreadsPerDRAM) bits
 li a1, TinselThreadsPerDRAM-1
