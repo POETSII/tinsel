@@ -41,6 +41,7 @@ typedef struct {
   Bit#(1)  overflow;
   Bit#(1)  underflow;
   Bit#(1)  divByZero;
+  Bit#(1)  inexact;
 } FPUOpOutput deriving (Bits);
 
 // An FPU operation
@@ -87,7 +88,8 @@ module mkIntMult (FPUOp);
       nan: 0,
       overflow: 0,
       underflow: 0,
-      divByZero: 0
+      divByZero: 0,
+      inexact: 0
     };
 endmodule
 
@@ -115,10 +117,11 @@ module mkFPAddSub (FPUOp);
     pipeline[`FPAddSubLatency-1] <=
       FPUOpOutput {
         val: pack(out),
-        nan: pack(isNaN(out)),
+        nan: pack(exc.invalid_op),
         overflow: pack(exc.overflow),
         underflow: pack(exc.underflow),
-        divByZero: 0
+        divByZero: pack(exc.divide_0),
+        inexact: pack(exc.inexact)
       };
   endmethod
 
@@ -166,7 +169,8 @@ module mkFPAddSub (FPUOp);
       nan: op.nan,
       overflow: op.overflow,
       underflow: op.underflow,
-      divByZero: 0
+      divByZero: 0,
+      inexact: 0
     };
 endmodule
      
@@ -195,10 +199,11 @@ module mkFPMult (FPUOp);
     pipeline[`FPMultLatency-1] <=
       FPUOpOutput {
         val: pack(out),
-        nan: pack(isNaN(out)),
+        nan: pack(exc.invalid_op),
         overflow: pack(exc.overflow),
         underflow: pack(exc.underflow),
-        divByZero: 0
+        divByZero: pack(exc.divide_0),
+        inexact: pack(exc.inexact)
       };
   endmethod
 
@@ -246,7 +251,8 @@ module mkFPMult (FPUOp);
       nan: op.nan,
       overflow: op.overflow,
       underflow: op.underflow,
-      divByZero: 0
+      divByZero: 0,
+      inexact: 0
     };
 endmodule
 
@@ -278,10 +284,11 @@ module mkFPDiv (FPUOp);
     pipeline[`FPDivLatency-1] <=
       FPUOpOutput {
         val: pack(out),
-        nan: pack(isNaN(out)),
+        nan: pack(exc.invalid_op),
         overflow: pack(exc.overflow),
         underflow: pack(exc.underflow),
-        divByZero: pack(exc.divide_0 || isZero(in2))
+        divByZero: pack(exc.divide_0 || isZero(in2)),
+        inexact: pack(exc.inexact)
       };
   endmethod
 
@@ -331,7 +338,8 @@ module mkFPDiv (FPUOp);
       nan: op.nan,
       overflow: op.overflow,
       underflow: op.underflow,
-      divByZero: op.divByZero
+      divByZero: op.divByZero,
+      inexact: 0
     };
 endmodule
 
@@ -364,7 +372,8 @@ module mkFPCompare (FPUOp);
         nan: 0,
         overflow: 0,
         underflow: 0,
-        divByZero: 0
+        divByZero: 0,
+        inexact: 0
       };
   endmethod
 
@@ -409,7 +418,8 @@ module mkFPCompare (FPUOp);
       nan: 0,
       overflow: 0,
       underflow: 0,
-      divByZero: 0
+      divByZero: 0,
+      inexact: 0
     };
 endmodule
 
@@ -439,10 +449,11 @@ module mkFPFromInt (FPUOp);
     pipeline[`FPConvertLatency-1] <=
       FPUOpOutput {
         val: pack(out),
-        nan: 0,
-        overflow: 0,
-        underflow: 0,
-        divByZero: 0
+        nan: pack(exc.invalid_op),
+        overflow: pack(exc.overflow),
+        underflow: pack(exc.underflow),
+        divByZero: pack(exc.divide_0),
+        inexact: pack(exc.inexact)
       };
   endmethod
 
@@ -514,10 +525,11 @@ module mkFPToInt (FPUOp);
     pipeline[`FPConvertLatency-1] <=
       FPUOpOutput {
         val: out,
-        nan: 0,
+        nan: pack(exc.invalid_op),
         overflow: pack(exc.overflow),
         underflow: pack(exc.underflow),
-        divByZero: 0
+        divByZero: pack(exc.divide_0),
+        inexact: pack(exc.inexact)
       };
   endmethod
 

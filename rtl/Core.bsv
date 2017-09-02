@@ -120,6 +120,9 @@ typedef struct {
   Bool isFence;          Bool isMult;
   Bool isMultH;          Bool isMultASigned;
   Bool isMultBSigned;
+  Bool isFPUOp;          Bool isFPAdd;
+  Bool isFPSub;          Bool isFPMult;
+  Bool isFPMove;
 } Op deriving (Bits);
 
 // Instruction result
@@ -189,6 +192,7 @@ typedef struct {
 typedef struct {
   ThreadId id;
   Bit#(32) data;
+  Bit#(5) fpFlags;
 } ResumeToken deriving (Bits);
 
 // ============================================================================
@@ -317,6 +321,14 @@ function Op decodeOp(Bit#(32) instr);
   ret.csr.isFFlag       = ret.isCSR && csrIndex == 'h01;
   ret.csr.isFRM         = ret.isCSR && csrIndex == 'h02;
   ret.csr.isFCSR        = ret.isCSR && csrIndex == 'h03;
+  // Floating-point operations
+  ret.isFPAdd  = instr[6:4] == 3'b101 && instr[31:27] == 5'b00000;
+  ret.isFPSub  = instr[6:4] == 3'b101 && instr[31:27] == 5'b00001;
+  ret.isFPMult = instr[6:4] == 3'b101 && instr[31:27] == 5'b00010;
+  ret.isFPMove = instr[6:4] == 3'b101 && instr[31:29] == 3'b111
+                                      && instr[12]    == 0;
+  ret.isFPUOp  = (instr[6:5] == 2'b10 && !ret.isFPMove) ||
+                   ret.isMult || ret.isMultH;
   return ret;
 endfunction
 
@@ -396,8 +408,7 @@ function Bool isRegFileWrite(Op op) =
   || op.isShiftRight     || op.isAnd
   || op.isOr             || op.isXor
   || op.isOpUI           || op.isJump
-  || op.isCSR            || op.isMult
-  || op.isMultH;
+  || op.isCSR            || op.isFPMove;
 
 // ==============
 // Loads & Stores
@@ -826,13 +837,16 @@ module mkCore#(CoreId myId) (Core);
     // KillThread CSR
     Bool killThread = False;
     if (token.op.csr.isKillThread) killThread = True;
-    // Mulitiplication using FPU
-    if (token.op.isMult || token.op.isMultH) begin
+    // FPU operation (including integer multiplication)
+    if (token.op.isFPUOp) begin
       FPUReq req;
       req.id = {truncate(myId), token.thread.id};
-      req.opcode = IntMult;
+      req.opcode = ?;
+      if (token.op.isMult  || token.op.isMultH) req.opcode = IntMult;
+      if (token.op.isFPAdd || token.op.isFPSub) req.opcode = FPAddSub;
+      if (token.op.isFPMult)                    req.opcode = FPMult;
       req.in.lowerOrUpper = token.op.isMult ? 0 : 1;
-      req.in.addOrSub = ?; // TODO
+      req.in.addOrSub = token.op.isFPSub ? 1 : 0;
       req.in.arg1 = {token.op.isMultASigned ? token.valA[31] : 0, token.valA};
       req.in.arg2 = {token.op.isMultBSigned ? token.valB[31] : 0, token.valB};
       if (toFPUPort.canPut) begin
@@ -848,7 +862,7 @@ module mkCore#(CoreId myId) (Core);
       susp.thread.pc = token.thread.pc + 4;
       susp.isLoad = token.op.isLoad;
       susp.isStore = token.op.isStore;
-      susp.isFPUOp = token.op.isMult || token.op.isMultH;
+      susp.isFPUOp = token.op.isFPUOp;
       susp.destReg = {token.destRegFile, rd(token.instr)};
       susp.loadSelector = token.memAddr[1:0];
       susp.accessWidth = susp.isFPUOp ? wordAccess : token.accessWidth;
@@ -900,7 +914,8 @@ module mkCore#(CoreId myId) (Core);
       | when(op.isBitwise,        res.bitwise)
       | when(op.isOpUI,           res.opui)
       | when(op.isJump,           zeroExtend(token.nextPC))
-      | when(op.isCSR,            res.csr);
+      | when(op.isCSR,            res.csr)
+      | when(op.isFPMove,         token.valA);
     // Setup new PC
     Bool takeBranch =
          op.isJump
@@ -980,6 +995,7 @@ module mkCore#(CoreId myId) (Core);
                        || wakeupPort.canGet
                        || fromFPUPort.canGet);
     ResumeToken token = resumeThread1Input;
+    token.fpFlags = 0;
     if (!resumeThread1Fire) begin
       if (dcacheResp.canGet) begin
         dcacheResp.get;
@@ -994,8 +1010,11 @@ module mkCore#(CoreId myId) (Core);
         token.id = truncate(wakeupPort.value.id);
       end else if (fromFPUPort.canGet) begin
         fromFPUPort.get;
+        FPUOpOutput out = fromFPUPort.value.out;
         token.id = truncate(fromFPUPort.value.id);
-        token.data = fromFPUPort.value.out.val;
+        token.data = out.val;
+        token.fpFlags =
+          { out.nan, out.divByZero, out.overflow, out.underflow, out.inexact };
       end
     end
     // Fetch info about suspended thread
@@ -1017,6 +1036,7 @@ module mkCore#(CoreId myId) (Core);
     wb.write = (susp.isLoad || susp.isFPUOp) && susp.destReg != 0;
     wb.thread = susp.thread;
     wb.thread.id = token.id;
+    wb.thread.fpFlags = wb.thread.fpFlags | token.fpFlags;
     wb.destReg = susp.destReg;
     wb.writeVal = loadMux(token.data, susp.accessWidth,
                     susp.loadSelector, susp.isUnsignedLoad);
