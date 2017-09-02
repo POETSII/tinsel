@@ -23,7 +23,7 @@ import FPU       :: *;
 import FPUOps    :: *;
 
 // ============================================================================
-// Control/status register (CSRs) supported
+// Control/status registers (CSRs) supported
 // ============================================================================
 
 // Name        | CSR    | R/W | Function
@@ -44,9 +44,9 @@ import FPUOps    :: *;
 // NewThread   | 0x80d  | W   | Create new thread with the given id
 // KillThread  | 0x80e  | W   | Kill the currently running thread
 // Emit        | 0x80f  | W   | Emit char to console (simulation only)
-// FFlag       | 0x001  | RW  | Floating-point exception flags
+// FFlag       | 0x001  | RW  | Floating-point accrued exception flags
 // FRM         | 0x002  | RW  | Floating-point dynamic rounding mode
-// FCSR        | 0x003  | RW  | Floating-point CSR
+// FCSR        | 0x003  | RW  | Concatenation of FRM and FFlag
 
 // Currently, only the CSRRW instruction is supported for accessing CSRs.
 
@@ -219,13 +219,14 @@ function Bit#(32) immJ(Bit#(32) i) =
 function InstrType decodeInstrType(Bit#(32) instr);
   Bit#(5) op = instr[6:2];
   InstrType t;
-  t.isRType  = op == 'b01100;      /* Arithmetic */
+  t.isRType  = op == 'b01100       /* Arithmetic */
+            || op[4:3] == 2'b10;   /* Floating-point */
   t.isIType  = op == 'b00100       /* Arithmetic-immediate */
-            || op == 'b00000       /* Loads */
+            || op[4:1] == 'b0000   /* Loads */
             || op == 'b11001       /* JALR */
             || op == 'b00011       /* Fences */
             || op == 'b11100;      /* System */
-  t.isSType  = op == 'b01000;      /* Stores */
+  t.isSType  = op[4:1] == 'b0100;  /* Stores */
   t.isSBType = op == 'b11000;      /* Branches */
   t.isUType  = op == 'b01101       /* LUI */
             || op == 'b00101;      /* AUIPC */
@@ -284,8 +285,8 @@ function Op decodeOp(Bit#(32) instr);
   ret.isBranchGreaterOrEqualTo =
     isBranch && (minorOp == 'b101 || minorOp == 'b111);
   // Load & store operations
-  ret.isLoad = op == 'b00000;
-  ret.isStore = op == 'b01000;
+  ret.isLoad = instr[6:3] == 4'b0000;
+  ret.isStore = instr[6:3] == 4'b0100;
   // Fence operation
   ret.isFence = op == 'b00011;
   // CSR read/write operation
@@ -332,10 +333,22 @@ function Bit#(1) rs1RegFile(Bit#(32) instr);
   return fp && (fused || !intOperand) ? 1 : 0;
 endfunction
 
+// Read the second operand from the integer reg file (0) or the
+// floating-point reg file (1)?
+function Bit#(1) rs2RegFile(Bit#(32) instr);
+  // Is it a floating-point (FP) operation?
+  Bool fpOp = instr[6:5] == 2'b10;
+  // Is it a floating-point store instruction?
+  Bool fpStore = instr[6:2] == 5'b01001;
+  return (fpOp || fpStore) ? 1 : 0;
+endfunction
+
 // Write result to integer reg file (0) or floating-point reg file (1)?
 function Bit#(1) rdRegFile(Bit#(32) instr);
   // Is it a floating-point (FP) operation?
-  Bool fp = instr[6:5] == 2'b10;
+  Bool fpOp = instr[6:5] == 2'b10;
+  // Is it a floating-point load instruction?
+  Bool fpLoad = instr[6:2] == 5'b00001;
   // Assuming it's an FP operation, is it a fused operation with 3 operands?
   Bool fused = instr[4] == 0;
   // Assuming it's an FP operation, does it write its result to
@@ -343,7 +356,7 @@ function Bit#(1) rdRegFile(Bit#(32) instr);
   Bool intResult = instr[31:28] == 4'b1100 ||
                    instr[31:28] == 4'b1110 ||
                    instr[31:28] == 4'b1010;
-  return fp && (fused || !intResult) ? 1 : 0;
+  return (fpLoad || (fpOp && (fused || !intResult))) ? 1 : 0;
 endfunction
 
 // Is second ALU operand an immediate?
@@ -623,11 +636,12 @@ module mkCore#(CoreId myId) (Core);
     token.instr = instrMem.dataOut;
     // Does result go to integer or floating-point register file?
     token.destRegFile = rdRegFile(token.instr);
-    // Fetch operand A from integer or floating-point register file?
+    // Fetch operands from integer or floating-point register file?
     Bit#(1) rfA = rs1RegFile(token.instr);
+    Bit#(1) rfB = rs2RegFile(token.instr);
     // Read register file
     regFileA.read({token.thread.id, rfA, rs1(token.instr)});
-    regFileB.read({token.thread.id, 1'b0, rs2(token.instr)});
+    regFileB.read({token.thread.id, rfB, rs2(token.instr)});
     // Prepare mailbox operation
     if (isCSROp(token.instr))
       mailbox.prepare(token.thread.id);
@@ -837,9 +851,7 @@ module mkCore#(CoreId myId) (Core);
       susp.isFPUOp = token.op.isMult || token.op.isMultH;
       susp.destReg = {token.destRegFile, rd(token.instr)};
       susp.loadSelector = token.memAddr[1:0];
-      // TODO: is this correct for FP load?
-      susp.accessWidth = token.op.isLoad ? token.accessWidth : wordAccess;
-      // TODO: is this correct for FP load?
+      susp.accessWidth = susp.isFPUOp ? wordAccess : token.accessWidth;
       susp.isUnsignedLoad = isUnsignedLoad(token.instr);
       suspended.write(token.thread.id, susp);
     end 
