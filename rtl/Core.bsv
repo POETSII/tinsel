@@ -122,7 +122,7 @@ typedef struct {
   Bool isMultBSigned;
   Bool isFPUOp;          Bool isFPAdd;
   Bool isFPSub;          Bool isFPMult;
-  Bool isFPMove;
+  Bool isFPMove;         Bool isFPDiv;
 } Op deriving (Bits);
 
 // Instruction result
@@ -325,6 +325,7 @@ function Op decodeOp(Bit#(32) instr);
   ret.isFPAdd  = instr[6:4] == 3'b101 && instr[31:27] == 5'b00000;
   ret.isFPSub  = instr[6:4] == 3'b101 && instr[31:27] == 5'b00001;
   ret.isFPMult = instr[6:4] == 3'b101 && instr[31:27] == 5'b00010;
+  ret.isFPDiv  = instr[6:4] == 3'b101 && instr[31:27] == 5'b00011;
   ret.isFPMove = instr[6:4] == 3'b101 && instr[31:29] == 3'b111
                                       && instr[12]    == 0;
   ret.isFPUOp  = (instr[6:5] == 2'b10 && !ret.isFPMove) ||
@@ -845,6 +846,7 @@ module mkCore#(CoreId myId) (Core);
       if (token.op.isMult  || token.op.isMultH) req.opcode = IntMult;
       if (token.op.isFPAdd || token.op.isFPSub) req.opcode = FPAddSub;
       if (token.op.isFPMult)                    req.opcode = FPMult;
+      if (token.op.isFPDiv)                     req.opcode = FPDiv;
       req.in.lowerOrUpper = token.op.isMult ? 0 : 1;
       req.in.addOrSub = token.op.isFPSub ? 1 : 0;
       req.in.arg1 = {token.op.isMultASigned ? token.valA[31] : 0, token.valA};
