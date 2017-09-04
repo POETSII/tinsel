@@ -3,7 +3,7 @@
 #include <HostLink.h>
 
 const char* tests[] = {
-  "fldst",    "fadd",   "fdiv",
+  "fldst",    "fadd",   "fdiv",    "fcmp",
   "addi",     "beq",    "bne",     "lh",
   "mulhsu",   "sb",     "slti",    "sra",
   "xori",     "add",    "bge",     "jalr",
