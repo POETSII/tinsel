@@ -432,7 +432,8 @@ module mkFPCompare (FPUOp);
 
   method FPUOpOutput out =
     FPUOpOutput {
-      val: zeroExtend(cmpEQ[0] == 1 ? op.eq : (cmpLT == 1 ? op.lt : op.lte)),
+      val: zeroExtend(cmpEQ[0] == 1 ? op.eq :
+             (cmpLT[0] == 1 ? op.lt : op.lte)),
       nan: 0,
       overflow: 0,
       underflow: 0,
@@ -513,7 +514,8 @@ module mkFPFromInt (FPUOp);
       nan: 0,
       overflow: 0,
       underflow: 0,
-      divByZero: 0
+      divByZero: 0,
+      inexact: 0
     };
 endmodule
 
@@ -599,7 +601,8 @@ module mkFPToInt (FPUOp);
       nan: op.nan,
       overflow: op.overflow,
       underflow: op.underflow,
-      divByZero: 0
+      divByZero: 0,
+      inexact: 0
     };
 endmodule
 
