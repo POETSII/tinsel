@@ -123,7 +123,7 @@ typedef struct {
   Bool isFPUOp;          Bool isFPAdd;
   Bool isFPSub;          Bool isFPMult;
   Bool isFPMove;         Bool isFPDiv;
-  Bool isFPCmp;
+  Bool isFPCmp;          Bool isFPConv;
 } Op deriving (Bits);
 
 // Instruction result
@@ -330,6 +330,7 @@ function Op decodeOp(Bit#(32) instr);
   ret.isFPMove = instr[6:4] == 3'b101 && instr[31:29] == 3'b111
                                       && instr[12]    == 0;
   ret.isFPCmp  = instr[6:4] == 3'b101 && instr[31:27] == 5'b10100;
+  ret.isFPConv = instr[6:4] == 3'b101 && instr[31:29] == 3'b110;
   ret.isFPUOp  = (instr[6:5] == 2'b10 && !ret.isFPMove) ||
                    ret.isMult || ret.isMultH;
   return ret;
@@ -847,9 +848,11 @@ module mkCore#(CoreId myId) (Core);
       req.opcode = ?;
       if (token.op.isMult  || token.op.isMultH) req.opcode = IntMult;
       if (token.op.isFPAdd || token.op.isFPSub) req.opcode = FPAddSub;
-      if (token.op.isFPMult)                    req.opcode = FPMult;
-      if (token.op.isFPDiv)                     req.opcode = FPDiv;
-      if (token.op.isFPCmp)                     req.opcode = FPCompare;
+      if (token.op.isFPMult)  req.opcode = FPMult;
+      if (token.op.isFPDiv)   req.opcode = FPDiv;
+      if (token.op.isFPCmp)   req.opcode = FPCompare;
+      if (token.op.isFPConv)  req.opcode =
+                                token.instr[28] == 0 ? FPToInt : FPFromInt;
       req.in.lowerOrUpper = token.op.isMult ? 0 : 1;
       req.in.addOrSub = token.op.isFPSub ? 1 : 0;
       req.in.cmpEQ = token.instr[13];
