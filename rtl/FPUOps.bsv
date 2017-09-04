@@ -460,13 +460,14 @@ module mkFPFromInt (FPUOp);
   endrule
 
   method Action put(FPUOpInput in);
-    UInt#(32) intIn = unpack(in.arg1[31:0]);
+    Int#(32) intIn = unpack(in.arg1[31:0]);
+    UInt#(32) uintIn = unpack(in.arg1[31:0]);
     Tuple2#(Float, Exception) pair =
-      vFixedToFloat(intIn, 5'd0, Rnd_Nearest_Even);
+      vFixedToFloat(intIn < 0 ? -uintIn : uintIn, 5'd0, Rnd_Nearest_Even);
     match {.out, .exc} = pair;
     pipeline[`FPConvertLatency-1] <=
       FPUOpOutput {
-        val: pack(out),
+        val: pack(intIn < 0 ? negate(out) : out),
         nan: pack(exc.invalid_op),
         overflow: pack(exc.overflow),
         underflow: pack(exc.underflow),
@@ -535,14 +536,17 @@ module mkFPToInt (FPUOp);
   endrule
 
   method Action put(FPUOpInput in);
-    Float val = unpack(in.arg1[31:0]);
+    Float f = unpack(in.arg1[31:0]);
+    Float val = unpack({1'b0, in.arg1[30:0]});
     Tuple2#(UInt#(32), Exception) pair =
       vFloatToFixed(5'd0, val, Rnd_Nearest_Even);
     match {.outUInt, .exc} = pair;
     Bit#(32) out = pack(outUInt);
     pipeline[`FPConvertLatency-1] <=
       FPUOpOutput {
-        val: out,
+        val: out >= 32'h80000000 || isNaN(f) || isInfinity(f) ? 
+          (in.arg1[31] == 0 || isNaN(f) ? 32'h7fffffff : 32'h80000000) :
+          (in.arg1[31] == 0 ? out : -out),
         nan: pack(exc.invalid_op),
         overflow: pack(exc.overflow),
         underflow: pack(exc.underflow),
