@@ -29,9 +29,12 @@ typedef struct {
   // Control signal for the FP adder/subtractor
   // (Is it an add or subtract operation?)
   Bit#(1) addOrSub;
-  // Control signal for the multiplier
+  // Control signal for the integer multiplier
   // (Produce lower or upper 32 bits of 64-bit result?)
   Bit#(1) lowerOrUpper;
+  // Control signals for the comparitor
+  Bit#(1) cmpEQ; // Equality comparison
+  Bit#(1) cmpLT; // Less-than comparison
 } FPUOpInput deriving (Bits, FShow);
 
 // The result of an FPU operation
@@ -367,8 +370,10 @@ module mkFPCompare (FPUOp);
     let order = compareFP(in1, in2);
     pipeline[`FPCompareLatency-1] <=
       FPUOpOutput {
-        val: { ?, pack (order == LT || order == EQ),
-                  pack(order == LT), pack(order == EQ) },
+        val: zeroExtend(
+               pack(in.cmpEQ == 1 ? order == EQ :
+                      (in.cmpLT == 1 ? order == LT :
+                         (order == LT || order == EQ)))),
         nan: 0,
         overflow: 0,
         underflow: 0,
@@ -408,13 +413,26 @@ import "BVI" AlteraFPCompare =
 module mkFPCompare (FPUOp);
   AlteraFPCompareIfc op <- mkAlteraFPCompare;
 
+  Vector#(`FPCompareLatency, Reg#(Bit#(1))) cmpEQ <- replicateM(mkConfigRegU);
+  Vector#(`FPCompareLatency, Reg#(Bit#(1))) cmpLT <- replicateM(mkConfigRegU);
+
+  rule shift;
+    for (Integer i = 0; i < `FPCompareLatency-1; i=i+1) begin
+      cmpEQ[i] <= cmpEQ[i+1];
+      cmpLT[i] <= cmpLT[i+1];
+    end
+  endrule
+
+
   method Action put(FPUOpInput in);
     op.put(in.arg1[31:0], in.arg2[31:0]);
+    cmpEQ[`FPCompareLatency-1] <= in.cmpEQ;
+    cmpLT[`FPCompareLatency-1] <= in.cmpLT;
   endmethod
 
   method FPUOpOutput out =
     FPUOpOutput {
-      val: {?, op.lte, op.lt, op.eq},
+      val: zeroExtend(cmpEQ[0] == 1 ? op.eq : (cmpLT == 1 ? op.lt : op.lte)),
       nan: 0,
       overflow: 0,
       underflow: 0,
