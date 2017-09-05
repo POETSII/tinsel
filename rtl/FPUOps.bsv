@@ -163,7 +163,7 @@ module mkFPAddSub (FPUOp);
   AlteraFPAddSubIfc op <- mkAlteraFPAddSub;
 
   method Action put(FPUOpInput in);
-    op.put(in.addOrSub, in.arg1[31:0], in.arg2[31:0]);
+    op.put(~in.addOrSub, in.arg1[31:0], in.arg2[31:0]);
   endmethod
 
   method FPUOpOutput out =
