@@ -1053,8 +1053,8 @@ module mkCore#(CoreId myId) (Core);
         FPUOpOutput out = fromFPUPort.value.out;
         token.id = truncate(fromFPUPort.value.id);
         token.data = out.val;
-        token.fpFlags =
-          { out.nan, out.divByZero, out.overflow, out.underflow, out.inexact };
+        token.fpFlags = { out.invalid, out.divByZero, out.overflow,
+                            out.underflow, out.inexact };
       end
     end
     // Fetch info about suspended thread
