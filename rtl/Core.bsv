@@ -127,6 +127,7 @@ typedef struct {
   Bool isFPMult;         Bool isFPMove;
   Bool isFPDiv;          Bool isFPCmp;
   Bool isFPConv;         Bool isFPMAdd;
+  Bool isFPSign;
 } Op deriving (Bits);
 
 // Instruction result
@@ -335,7 +336,8 @@ function Op decodeOp(Bit#(32) instr);
                                       && instr[12]    == 0;
   ret.isFPCmp  = instr[6:4] == 3'b101 && instr[31:27] == 5'b10100;
   ret.isFPConv = instr[6:4] == 3'b101 && instr[31:29] == 3'b110;
-  ret.isFPUOp  = (instr[6:5] == 2'b10 && !ret.isFPMove) ||
+  ret.isFPSign = instr[6:4] == 3'b101 && instr[31:27] == 5'b00100;
+  ret.isFPUOp  = (instr[6:5] == 2'b10 && !ret.isFPMove && !ret.isFPSign) ||
                    ret.isMult || ret.isMultH;
   return ret;
 endfunction
@@ -416,7 +418,8 @@ function Bool isRegFileWrite(Op op) =
   || op.isShiftRight     || op.isAnd
   || op.isOr             || op.isXor
   || op.isOpUI           || op.isJump
-  || op.isCSR            || op.isFPMove;
+  || op.isCSR            || op.isFPMove
+  || op.isFPSign;
 
 // ==============
 // Loads & Stores
@@ -934,6 +937,11 @@ module mkCore#(CoreId myId) (Core);
     InstrResult res = token.instrResult;
     Bool eq = res.add == 0;
     Bool lt = res.add[32] == 1;
+    // Floating point sign injection
+    Bit#(1) fpSignBit = token.instr[13:12] == 0 ? token.valB[31] :
+                          (token.instr[13:12] == 1 ? ~token.valB[31] :
+                             (token.valA[31] ^ token.valB[31]));
+    Bit#(32) fpSignResult = { fpSignBit, token.valA[30:0] };
     // Setup write to destination register
     Op op = token.op;
     token.writeVal =
@@ -945,7 +953,8 @@ module mkCore#(CoreId myId) (Core);
       | when(op.isOpUI,           res.opui)
       | when(op.isJump,           zeroExtend(token.nextPC))
       | when(op.isCSR,            res.csr)
-      | when(op.isFPMove,         token.valA);
+      | when(op.isFPMove,         token.valA)
+      | when(op.isFPSign,         fpSignResult);
     // Setup new PC
     Bool takeBranch =
          op.isJump
@@ -956,7 +965,8 @@ module mkCore#(CoreId myId) (Core);
     token.thread.pc = takeBranch ? token.targetPC : token.nextPC;
     // Write to register file?
     token.writeRegFile =
-      isRegFileWrite(token.op) && rd(token.instr) != 0 && !token.retry;
+      isRegFileWrite(token.op) && !token.retry &&
+        {token.destRegFile, rd(token.instr)} != 0;
     // Trigger next stage
     writebackFire <= True;
     writebackInput <= token;
