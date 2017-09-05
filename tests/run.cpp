@@ -4,7 +4,7 @@
 
 const char* tests[] = {
   "fldst",    "fadd",   "fdiv",    "fcmp",
-  "fcvt_w",   "fcvt",
+  "fcvt_w",   "fcvt",   "fmadd",
   "addi",     "beq",    "bne",     "lh",
   "mulhsu",   "sb",     "slti",    "sra",
   "xori",     "add",    "bge",     "jalr",
