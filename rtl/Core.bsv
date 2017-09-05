@@ -66,6 +66,9 @@ typedef struct {
   InstrAddr pc;
   // Floating-point accrued exception flags
   Bit#(5) fpFlags;
+  // Some instructions are executed in two stages
+  // (e.g. multiply-add)
+  Bit#(1) stage;
   // Message length for send operation
   MsgLen msgLen;
   // Message pointer for send operation
@@ -121,9 +124,9 @@ typedef struct {
   Bool isMultH;          Bool isMultASigned;
   Bool isMultBSigned;
   Bool isFPUOp;          Bool isFPAdd;
-  Bool isFPSub;          Bool isFPMult;
-  Bool isFPMove;         Bool isFPDiv;
-  Bool isFPCmp;          Bool isFPConv;
+  Bool isFPMult;         Bool isFPMove;
+  Bool isFPDiv;          Bool isFPCmp;
+  Bool isFPConv;         Bool isFPMAdd;
 } Op deriving (Bits);
 
 // Instruction result
@@ -206,6 +209,7 @@ function Bit#(5) rd(Bit#(32) instr)      = instr[11:7];
 function Bit#(3) funct3(Bit#(32) instr)  = instr[14:12];
 function Bit#(5) rs1(Bit#(32) instr)     = instr[19:15];
 function Bit#(5) rs2(Bit#(32) instr)     = instr[24:20];
+function Bit#(5) rs3(Bit#(32) instr)     = instr[31:27];
 function Bit#(7) funct7(Bit#(32) instr)  = instr[31:25];
 
 // Compute immediate for each type of RV32I instruction
@@ -323,8 +327,8 @@ function Op decodeOp(Bit#(32) instr);
   ret.csr.isFRM         = ret.isCSR && csrIndex == 'h02;
   ret.csr.isFCSR        = ret.isCSR && csrIndex == 'h03;
   // Floating-point operations
-  ret.isFPAdd  = instr[6:4] == 3'b101 && instr[31:27] == 5'b00000;
-  ret.isFPSub  = instr[6:4] == 3'b101 && instr[31:27] == 5'b00001;
+  ret.isFPMAdd = instr[6:4] == 3'b100;
+  ret.isFPAdd  = instr[6:4] == 3'b101 && instr[31:28] == 4'b0000;
   ret.isFPMult = instr[6:4] == 3'b101 && instr[31:27] == 5'b00010;
   ret.isFPDiv  = instr[6:4] == 3'b101 && instr[31:27] == 5'b00011;
   ret.isFPMove = instr[6:4] == 3'b101 && instr[31:29] == 3'b111
@@ -654,9 +658,14 @@ module mkCore#(CoreId myId) (Core);
     // Fetch operands from integer or floating-point register file?
     Bit#(1) rfA = rs1RegFile(token.instr);
     Bit#(1) rfB = rs2RegFile(token.instr);
+    // Determine registers to read
+    Bit#(5) regA = token.thread.stage == 0 ?
+                     rs1(token.instr) : rd(token.instr);
+    Bit#(5) regB = token.thread.stage == 0 ?
+                     rs2(token.instr) : rs3(token.instr);
     // Read register file
-    regFileA.read({token.thread.id, rfA, rs1(token.instr)});
-    regFileB.read({token.thread.id, rfB, rs2(token.instr)});
+    regFileA.read({token.thread.id, rfA, regA});
+    regFileB.read({token.thread.id, rfB, regB});
     // Prepare mailbox operation
     if (isCSROp(token.instr))
       mailbox.prepare(token.thread.id);
@@ -847,17 +856,23 @@ module mkCore#(CoreId myId) (Core);
       req.id = {truncate(myId), token.thread.id};
       req.opcode = ?;
       if (token.op.isMult  || token.op.isMultH) req.opcode = IntMult;
-      if (token.op.isFPAdd || token.op.isFPSub) req.opcode = FPAddSub;
+      if (token.op.isFPAdd)   req.opcode = FPAddSub;
       if (token.op.isFPMult)  req.opcode = FPMult;
       if (token.op.isFPDiv)   req.opcode = FPDiv;
       if (token.op.isFPCmp)   req.opcode = FPCompare;
       if (token.op.isFPConv)  req.opcode =
                                 token.instr[28] == 0 ? FPToInt : FPFromInt;
+      if (token.op.isFPMAdd)  req.opcode =
+                                token.thread.stage == 0 ? FPMult : FPAddSub;
       req.in.lowerOrUpper = token.op.isMult ? 0 : 1;
-      req.in.addOrSub = token.op.isFPSub ? 1 : 0;
+      req.in.addOrSub = token.op.isFPAdd ? token.instr[27] : token.instr[2];
       req.in.cmpEQ = token.instr[13];
       req.in.cmpLT = token.instr[12];
-      req.in.arg1 = {token.op.isMultASigned ? token.valA[31] : 0, token.valA};
+      Bit#(1) signA = // Adjust sign for FNMADD variant
+        token.op.isFPMAdd && token.thread.stage == 1 && token.instr[3] == 1 ?
+          ~token.valA[31] : token.valA[31];
+      req.in.arg1 = {token.op.isMultASigned ? token.valA[31] : 0,
+                     signA, token.valA[30:0]};
       req.in.arg2 = {token.op.isMultBSigned ? token.valB[31] : 0, token.valB};
       if (toFPUPort.canPut) begin
         toFPUPort.put(req);
@@ -869,7 +884,12 @@ module mkCore#(CoreId myId) (Core);
     if (suspend) begin
       SuspendedThreadState susp;
       susp.thread = token.thread;
-      susp.thread.pc = token.thread.pc + 4;
+      if (token.op.isFPMAdd && token.thread.stage == 0)
+        susp.thread.stage = 1;
+      else begin
+        susp.thread.stage = 0;
+        susp.thread.pc = token.thread.pc + 4;
+      end
       susp.isLoad = token.op.isLoad;
       susp.isStore = token.op.isStore;
       susp.isFPUOp = token.op.isFPUOp;
