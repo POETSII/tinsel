@@ -872,7 +872,7 @@ module mkCore#(CoreId myId) (Core);
       req.in.cmpEQ = token.instr[13];
       req.in.cmpLT = token.instr[12];
       Bit#(1) signA = // Adjust sign for FNMADD variant
-        token.op.isFPMAdd && token.thread.stage == 1 && token.instr[3] == 1 ?
+        token.op.isFPMAdd && token.thread.stage == 0 && token.instr[3] == 1 ?
           ~token.valA[31] : token.valA[31];
       req.in.arg1 = {token.op.isMultASigned ? token.valA[31] : 0,
                      signA, token.valA[30:0]};
