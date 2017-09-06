@@ -106,12 +106,12 @@ inline void tinselKillThread();
 ```
 
 Single-precision floating-point operations are implemented by the
-**tinsel FPU**, which may be shared by any number of cores -- as
+**tinsel FPU**, which may be shared by any number of cores, as
 defined by the `LogCoresPerFPU` parameter.  Note that, because the FPU
 is implemented using IP blocks provided by the FPGA vendor, there are
 some inherent [limitations](h-missing-rv32imf-features) with respect
 to the RISC-V spec.  Most FPU operations have a high latency on the
-[DE5-Net](http://de5-net.terasic.com) -- up to 14 clock cycles -- so
+[DE5-Net](http://de5-net.terasic.com) (up to 14 clock cycles) so
 multithreading is essential for efficient implementation.
 
 A summary of synthesis-time parameters introduced in this section:
@@ -868,7 +868,7 @@ class DebugLink {
 };
 ```
 
-## Missing RV32IMF Features
+## H. Missing RV32IMF Features
 
 Tinsel implements all instructions in the RV32IMF subset, except for
 the following:
