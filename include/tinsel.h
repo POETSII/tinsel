@@ -27,7 +27,7 @@
 inline int tinselId()
 {
   int id;
-  asm ("csrr %0, " CSR_HART_ID : "=r"(id));
+  asm ("csrrw %0, " CSR_HART_ID ", zero" : "=r"(id));
   return id;
 }
 
@@ -40,15 +40,15 @@ inline void tinselCacheFlush()
 // Write a word to instruction memory
 inline void tinselWriteInstr(uint32_t addr, uint32_t word)
 {
-  asm volatile("csrw " CSR_INSTR_ADDR ", %0\n"
-               "csrw " CSR_INSTR ", %1\n"
+  asm volatile("csrrw zero, " CSR_INSTR_ADDR ", %0\n"
+               "csrrw zero, " CSR_INSTR ", %1\n"
                : : "r"(addr >> 2), "r"(word));
 }
 
 // Emit word to console (simulation only)
 inline void tinselEmit(uint32_t x)
 {
-  asm volatile("csrw " CSR_EMIT ", %0\n" : : "r"(x));
+  asm volatile("csrrw zero, " CSR_EMIT ", %0\n" : : "r"(x));
 }
 
 // Send byte to host (over DebugLink UART)
@@ -65,20 +65,20 @@ inline uint32_t tinselUartTryPut(uint8_t x)
 inline uint32_t tinselUartTryGet()
 {
   uint32_t x;
-  asm volatile("csrr %0, " CSR_FROM_UART "\n" : "=r"(x));
+  asm volatile("csrrw %0, " CSR_FROM_UART ", zero\n" : "=r"(x));
   return x;
 }
 
 // Insert new thread (with given id) into run queue
 inline void tinselCreateThread(uint32_t id)
 {
-  asm volatile("csrw " CSR_NEW_THREAD ", %0\n" : : "r"(id));
+  asm volatile("csrrw zero, " CSR_NEW_THREAD ", %0\n" : : "r"(id));
 }
 
 // Do not insert currently running thread back in to run queue
 inline void tinselKillThread()
 {
-  asm volatile("csrw " CSR_KILL_THREAD ", zero\n");
+  asm volatile("csrrw zero, " CSR_KILL_THREAD ", zero\n");
 }
 
 // Get pointer to message-aligned slot in mailbox scratchpad
@@ -92,14 +92,14 @@ inline volatile void* tinselSlot(int n)
 // Give mailbox permission to use given address to store an message
 inline void tinselAlloc(volatile void* addr)
 {
-  asm volatile("csrw " CSR_ALLOC ", %0" : : "r"(addr));
+  asm volatile("csrrw zero, " CSR_ALLOC ", %0" : : "r"(addr));
 }
 
 // Determine if calling thread can send a message
 inline int tinselCanSend()
 {
   int ok;
-  asm volatile("csrr %0, " CSR_CAN_SEND : "=r"(ok));
+  asm volatile("csrrw %0, " CSR_CAN_SEND ", zero" : "=r"(ok));
   return ok;
 }
 
@@ -107,7 +107,7 @@ inline int tinselCanSend()
 inline int tinselCanRecv()
 {
   int ok;
-  asm volatile("csrr %0, " CSR_CAN_RECV : "=r"(ok));
+  asm volatile("csrrw %0, " CSR_CAN_RECV ", zero" : "=r"(ok));
   return ok;
 }
 
@@ -115,21 +115,21 @@ inline int tinselCanRecv()
 // (A message of length N is comprised of N+1 flits)
 inline void tinselSetLen(int n)
 {
-  asm volatile("csrw " CSR_SEND_LEN ", %0" : : "r"(n));
+  asm volatile("csrrw zero, " CSR_SEND_LEN ", %0" : : "r"(n));
 }
 
 // Send message at addr to dest
 inline void tinselSend(int dest, volatile void* addr)
 {
-  asm volatile("csrw " CSR_SEND_PTR ", %0" : : "r"(addr));
-  asm volatile("csrw " CSR_SEND ", %0" : : "r"(dest));
+  asm volatile("csrrw zero, " CSR_SEND_PTR ", %0" : : "r"(addr));
+  asm volatile("csrrw zero, " CSR_SEND ", %0" : : "r"(dest));
 }
 
 // Receive message
 inline volatile void* tinselRecv()
 {
   volatile void* ok;
-  asm volatile("csrr %0, " CSR_RECV : "=r"(ok));
+  asm volatile("csrrw %0, " CSR_RECV ", zero" : "=r"(ok));
   return ok;
 }
 
@@ -139,7 +139,7 @@ typedef enum {TINSEL_CAN_SEND = 1, TINSEL_CAN_RECV = 2} TinselWakeupCond;
 // Suspend thread until wakeup condition satisfied
 inline void tinselWaitUntil(TinselWakeupCond cond)
 {
-  asm volatile("csrw " CSR_WAIT_UNTIL ", %0" : : "r"(cond));
+  asm volatile("csrrw zero, " CSR_WAIT_UNTIL ", %0" : : "r"(cond));
 }
 
 // Get globally unique thread id of host
