@@ -105,6 +105,17 @@ p["MeshXLen"] = 1
 # Mesh Y length
 p["MeshYLen"] = 1
 
+# Number of cores per FPU
+p["LogCoresPerFPU"] = 2
+
+# Latencies of arithmetic megafunctions
+p["IntMultLatency"] = 3
+p["FPMultLatency"] = 11
+p["FPAddSubLatency"] = 14
+p["FPDivLatency"] = 14
+p["FPConvertLatency"] = 6
+p["FPCompareLatency"] = 3
+
 #==============================================================================
 # Derived Parameters
 #==============================================================================
@@ -214,6 +225,26 @@ p["ThreadsPerCore"] = 2**p["LogThreadsPerCore"]
 p["MaxThreads"] = (2**p["MeshXBits"] *
                      2**p["MeshYBits"] *
                        p["ThreadsPerBoard"])
+
+# Cores per FPU
+p["CoresPerFPU"] = 2 ** p["LogCoresPerFPU"]
+
+# Threads per FPU
+p["LogThreadsPerFPU"] = p["LogThreadsPerCore"] + p["LogCoresPerFPU"]
+
+# FPUs per board
+p["LogFPUsPerBoard"] = p["LogCoresPerBoard"] - p["LogCoresPerFPU"]
+p["FPUsPerBoard"] = 2 ** p["LogFPUsPerBoard"]
+
+# Max latency of any FPU operation
+p["FPUOpMaxLatency"] = max(
+  [ p["IntMultLatency"]
+  , p["FPMultLatency"]
+  , p["FPAddSubLatency"]
+  , p["FPDivLatency"]
+  , p["FPConvertLatency"]
+  , p["FPCompareLatency"]
+  ])
 
 #==============================================================================
 # Main 

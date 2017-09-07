@@ -15,6 +15,7 @@ LDFLAGS = -melf32lriscv -G 0
 all: code.v data.v run
 
 code.v: hello.elf
+	checkelf.sh hello.elf
 	$(RV_OBJCOPY) -O verilog --only-section=.text hello.elf code.v
 
 data.v: hello.elf
