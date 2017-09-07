@@ -106,11 +106,11 @@ inline void tinselKillThread();
 ```
 
 Single-precision floating-point operations are implemented by the
-**tinsel FPU**, which may be shared by any number of cores, as
-defined by the `LogCoresPerFPU` parameter.  Note that, because the FPU
-is implemented using IP blocks provided by the FPGA vendor, there are
-some inherent [limitations](h-missing-rv32imf-features) with respect
-to the RISC-V spec.  Most FPU operations have a high latency on the
+**tinsel FPU**, which may be shared by any number of cores, as defined
+by the `LogCoresPerFPU` parameter.  Note that, because the FPU is
+implemented using IP blocks provided by the FPGA vendor, there are
+some small [limitations](h-missing-rv32imf-features) with respect to
+the RISC-V spec.  Most FPU operations have a high latency on the
 [DE5-Net](http://de5-net.terasic.com) (up to 14 clock cycles) so
 multithreading is essential for efficient implementation.
 
@@ -630,13 +630,13 @@ The default tinsel configuration on a single DE5-Net board contains:
   * (1024 threads in total)
   * 16 mailboxes
   * 16 caches
+  * 16 floating-point units
   * two DDR3 DRAM controllers
   * four 10Gbps reliable links
   * a JTAG UART
 
-The clock frequency is 270MHz and the resource utilisation is 95K
-ALMs, **40% of the DE5-Net**, leaving plenty of space for FPUs to be
-added in the near future.
+The clock frequency is 250MHz and the resource utilisation is 116K
+ALMs, **50% of the DE5-Net**.
 
 ## B. Tinsel Parameters
 
