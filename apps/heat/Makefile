@@ -11,6 +11,7 @@ LDFLAGS = -melf32lriscv -G 0
 all: code.v data.v run
 
 code.v: heat.elf
+	checkelf.sh heat.elf
 	$(RV_OBJCOPY) -O verilog --only-section=.text $< $@
 
 data.v: heat.elf
