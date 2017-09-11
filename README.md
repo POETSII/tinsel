@@ -1,28 +1,14 @@
-# Tinsel Architecture and API
-
-Tinsel is a manythread architecture designed to run on a cluster of
-commodity FPGA development boards and is being developed as part of
-the [POETS project](https://poets-project.org) ("Partially-Ordered
-Event-Triggered Systems").  The architecture, described in this
-document, targets Terasic's [DE5-Net](http://de5-net.terasic.com)
-board.  This is a Stratix V board from circa 2012 that the
-[CL](http://www.cl.cam.ac.uk/) has in plentiful supply, and provides
-the platform for our initial POETS machines.
-
 ## Release Log
 
 * [v0.2](https://github.com/POETSII/tinsel/releases/tag/v0.2):
-Single-board design, released on 12 Apr 2017 and maintained in the
-[tinsel-0.2
-branch](https://github.com/POETSII/tinsel/tree/tinsel-0.2).
-
-* v0.3: Multi-board design with 
-floating-point arithmetic and PCI Express connectivity. Under
-development in the [master branch](https://github.com/POETSII/tinsel).
+Released on 12 Apr 2017 and maintained in the
+[tinsel-0.2 branch](https://github.com/POETSII/tinsel/tree/tinsel-0.2).
+* v0.3: Under development in the
+[master branch](https://github.com/POETSII/tinsel).
 
 ## Contents
 
-* [1. Tinsel Overview](#1-tinsel-overview)
+* [1. Overview](#1-tinsel-overview)
 * [2. Tinsel Core](#2-tinsel-core)
 * [3. Tinsel Cache](#3-tinsel-cache)
 * [4. Tinsel Mailbox](#4-tinsel-mailbox)
@@ -40,8 +26,7 @@ development in the [master branch](https://github.com/POETSII/tinsel).
 * [G. HostLink API](#g-hostlink-api)
 * [H. Limitations on RV32IMF](#h-limitations-on-rv32imf)
 
-
-## 1. Tinsel Overview
+## 1. Overview
 
 Efficient communication and low power consumption are two key goals in
 the construction of large-scale distributed systems.  Potentially,
@@ -154,13 +139,18 @@ for our own purposes, resulting in very little overhead on the wire.
 ### 1.4 First POETS Box
 
 Our first POETS box, currently under construction, consists of ten
-FPGA boards and a modern PC acting as a "mothercore". The ten FPGAs
-are connected together in a 2D mesh arrangement and also to the
-mothercore via a PCI Express link.  We expect that each FPGA will host
-around a hundred RISC-V cores (tens of thousands of RISC-V threads).
-The box will therefore provide around a thousand cores (hundreds of
-thousands of RISC-V threads) in total.  The intention is then to scale
-the system up to multiple boxes, connected together.
+[DE5-Net](http://de5-net.terasic.com) FPGA boards and a modern PC
+acting as a "mothercore".  (The DE5-Net is a Stratix V board from
+circa 2012 that the [CL](http://www.cl.cam.ac.uk/) has in plentiful
+supply, and provides the platform for our initial POETS machines.) The
+ten FPGAs are connected together via 10Gbps reliable links in a 2D
+mesh arrangement and also to the mothercore via a PCI Express link.
+We expect that each FPGA will host around a hundred RISC-V cores (tens
+of thousands of RISC-V threads).  The box will therefore provide
+around a thousand cores (hundreds of thousands of RISC-V threads) in
+total.  The intention is then to scale the system up to multiple
+boxes, connected together to form a larger core mesh containing
+several mothercores.
 
 ## 2. Tinsel Core
 
