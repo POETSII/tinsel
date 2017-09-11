@@ -1,5 +1,6 @@
-Tinsel is a RISC-V-based manythread message-passing architecture
-designed for FPGA clusters.  It is being as part of the [POETS
+Tinsel is a [RISC-V](https://riscv.org/)-based manythread
+message-passing architecture designed for FPGA clusters.  It is being
+developed as part of the [POETS
 Project](https://poets-project.org/about) (Partially-Ordered Event
 Triggered Systems).
 
@@ -46,7 +47,7 @@ devices such as CPUs and GPUs.
 However, FPGA-based systems face challenges of their own. Low-level
 hardware description languages and long synthesis times are major
 barriers to productivity for application developers.  An attractive
-approach for the [POETS project](https://poets-project.org/about) is
+approach for the [POETS Project](https://poets-project.org/about) is
 therefore to provide a *soft-core overlay architecture* on top of the
 FPGA logic that can be programmed quickly and easily using standard
 software languages and tools.  While this overlay is not customised to
