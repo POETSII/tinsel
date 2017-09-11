@@ -1,8 +1,13 @@
+# Tinsel Manual
+
 Tinsel is a [RISC-V](https://riscv.org/)-based manythread
 message-passing architecture designed for FPGA clusters.  It is being
 developed as part of the [POETS
-Project](https://poets-project.org/about) (Partially-Ordered Event
-Triggered Systems).
+Project](https://poets-project.org/about) (Partially-Ordered
+Event-Triggered Systems).  This manual describes the tinsel architecture and
+associated APIs.  If you are already familiar with these, and would
+like to start using the hardware, please see the [Getting Started
+Guide](/doc/GettingStarted.md).
 
 ## Release Log
 
