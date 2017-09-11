@@ -1,3 +1,8 @@
+Tinsel is a RISC-V-based manythread message-passing architecture
+designed for FPGA clusters.  It is being as part of the [POETS
+Project](https://poets-project.org/about) (Partially-Ordered Event
+Triggered Systems).
+
 ## Release Log
 
 * [v0.2](https://github.com/POETSII/tinsel/releases/tag/v0.2):
@@ -41,7 +46,7 @@ devices such as CPUs and GPUs.
 However, FPGA-based systems face challenges of their own. Low-level
 hardware description languages and long synthesis times are major
 barriers to productivity for application developers.  An attractive
-approach for the [POETS project](https://poets-project.org) is
+approach for the [POETS project](https://poets-project.org/about) is
 therefore to provide a *soft-core overlay architecture* on top of the
 FPGA logic that can be programmed quickly and easily using standard
 software languages and tools.  While this overlay is not customised to
@@ -51,15 +56,15 @@ higher levels of customisation, using techniques such as high-level
 synthesis, are somewhat more ambitous and are in any case likely to
 reuse components and ideas from the overlay.
 
-In this section we give an overview of our soft-core overlay
-architecture for POETS (called *tinsel*).
+In the remainder of this section we give an overview of our soft-core
+overlay architecture for POETS, called *tinsel*.
 
 ### 1.1 Compute Subsystem
 
 We have developed our own 32-bit RISC-V core specially for POETS.
 This core is heavily *multithreaded*, supporting up to 32 threads.
 Crucially, this enables the core to tolerate the inherent latencies of
-deeply-pipelined FPGA floating-point operations Multithreading also
+deeply-pipelined FPGA floating-point operations. Multithreading also
 tolerates the latency of arbitration logic, allowing aggressive
 sharing of large components such as FPUs and caches between cores.
 This kind of sharing can reduce FPGA area significantly, allowing more
@@ -71,13 +76,14 @@ a small, simple, high-frequency design that is able to execute one
 instruction per cycle provided there are sufficient parallel threads
 (which we expect to be the case for POETS).
 
-Custom instructions are provided for sending and receiving messages.
-Threads are automatically suspended when they become blocked on an
-event (e.g. waiting to send/receive a message, or for a
-memory/floating-point operation to complete) and are automatically
-resumed when the event is triggered.  This results in a simple
-programming model, avoiding the low-level interrupt handlers that are
-required in similar machines such as
+Custom instructions are provided for sending and receiving messages
+between threads running on the same core or different cores.  Threads
+are automatically suspended when they become blocked on an event (e.g.
+waiting to send/receive a message, or for a memory/floating-point
+operation to complete) and are automatically resumed when the event is
+triggered.  This results in a simple programming model, avoiding the
+low-level interrupt handlers that are required in similar machines
+such as
 [SpiNNaker](http://apt.cs.manchester.ac.uk/projects/SpiNNaker/).
 
 ### 1.2 Memory Subsystem
@@ -93,9 +99,8 @@ FPGA boards typically provide a number of high-bandwidth DRAMs and it
 is essential to exploit spatial locality for efficient access.  One
 way to achieve this, employed by SpiNNaker, is to require the
 programmer to use a DMA unit to explicitly transfer regions of data
-between DRAM and a small, core-local SRAM.  In our view, this
-complicates the programming model, introducing an obstacle for
-potential users.
+between DRAM and a small, core-local SRAM.  In our view, this leads to
+a complicated programming model.
 
 Instead, we have developed our own data cache specifically to meet the
 requirements of POETS.  This cache is partitioned by thread id (the
