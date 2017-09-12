@@ -1,4 +1,4 @@
-# Tinsel Manual
+# Tinsel v0.3
 
 Tinsel is a [RISC-V](https://riscv.org/)-based manythread
 message-passing architecture designed for FPGA clusters.  It is being
@@ -6,13 +6,13 @@ developed as part of the [POETS
 Project](https://poets-project.org/about) (Partially-Ordered
 Event-Triggered Systems).  This manual describes the tinsel architecture and
 associated APIs.  If you are already familiar with these, and would
-like to start using the hardware, please see the [Getting Started
+like to start using the hardware, please refer to the [Getting Started
 Guide](/doc/GettingStarted.md).
 
 ## Release Log
 
 * [v0.2](https://github.com/POETSII/tinsel/releases/tag/v0.2):
-Released on 12 Apr 2017 and maintained in the
+Released on 12 April 2017 and maintained in the
 [tinsel-0.2 branch](https://github.com/POETSII/tinsel/tree/tinsel-0.2).
 * v0.3: Under development in the
 [master branch](https://github.com/POETSII/tinsel).
@@ -79,18 +79,10 @@ cores per FPGA, without compromising system throughput.
 At most one instruction per thread is allowed in the core's pipeline
 at any time, eliminating all control and data hazards.  This leads to
 a small, simple, high-frequency design that is able to execute one
-instruction per cycle provided there are sufficient parallel threads
-(which we expect to be the case for POETS).
-
-Custom instructions are provided for sending and receiving messages
-between threads running on the same core or different cores.  Threads
-are automatically suspended when they become blocked on an event (e.g.
-waiting to send/receive a message, or for a memory/floating-point
-operation to complete) and are automatically resumed when the event is
-triggered.  This results in a simple programming model, avoiding the
-low-level interrupt handlers that are required in similar machines
-such as
-[SpiNNaker](http://apt.cs.manchester.ac.uk/projects/SpiNNaker/).
+instruction per cycle provided there are sufficient parallel threads,
+which we expect to be the case for POETS.  Custom instructions are
+provided for sending and receiving messages between threads running on
+the same core or different cores.  
 
 ### 1.2 Memory Subsystem
 
@@ -103,10 +95,10 @@ communication mechansim.
 
 FPGA boards typically provide a number of high-bandwidth DRAMs and it
 is essential to exploit spatial locality for efficient access.  One
-way to achieve this, employed by SpiNNaker, is to require the
-programmer to use a DMA unit to explicitly transfer regions of data
-between DRAM and a small, core-local SRAM.  In our view, this leads to
-a complicated programming model.
+way to achieve this is to require the programmer to use a DMA unit to
+explicitly transfer regions of data between DRAM and a small,
+core-local SRAM.  In our view, this leads to a complicated programming
+model.
 
 Instead, we have developed our own data cache specifically to meet the
 requirements of POETS.  This cache is partitioned by thread id (the
