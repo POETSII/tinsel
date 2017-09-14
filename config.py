@@ -54,8 +54,8 @@ p["DRAMLogMaxInFlight"] = 4
 # DRAM latency in cycles (simulation only)
 p["DRAMLatency"] = 20
 
-# Log of beats per DRAM
-p["LogBeatsPerDRAM"] = 25
+# Size of each DRAM
+p["LogBeatsPerDRAM"] = 26
 
 # Size of internal flit payload
 p["LogWordsPerFlit"] = 2
@@ -71,9 +71,6 @@ p["LogCoresPerMailbox"] = 2
 
 # Number of mailboxes per board
 p["LogMailboxesPerBoard"] = 1
-
-# Size of each DRAM
-p["LogBeatsPerDRAM"] = 25
 
 # Maximum size of boot loader (in bytes)
 p["MaxBootImageBytes"] = 512

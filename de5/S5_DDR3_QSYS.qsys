@@ -724,7 +724,7 @@
   <parameter name="MEM_NUMBER_OF_RANKS_PER_DIMM" value="1" />
   <parameter name="MEM_PD" value="DLL off" />
   <parameter name="MEM_RANK_MULTIPLICATION_FACTOR" value="1" />
-  <parameter name="MEM_ROW_ADDR_WIDTH" value="14" />
+  <parameter name="MEM_ROW_ADDR_WIDTH" value="15" />
   <parameter name="MEM_RTT_NOM" value="RZQ/6" />
   <parameter name="MEM_RTT_WR" value="RZQ/4" />
   <parameter name="MEM_SRT" value="Normal" />
@@ -1047,7 +1047,7 @@
   <parameter name="MEM_NUMBER_OF_RANKS_PER_DIMM" value="1" />
   <parameter name="MEM_PD" value="DLL off" />
   <parameter name="MEM_RANK_MULTIPLICATION_FACTOR" value="1" />
-  <parameter name="MEM_ROW_ADDR_WIDTH" value="14" />
+  <parameter name="MEM_ROW_ADDR_WIDTH" value="15" />
   <parameter name="MEM_RTT_NOM" value="RZQ/6" />
   <parameter name="MEM_RTT_WR" value="RZQ/4" />
   <parameter name="MEM_SRT" value="Normal" />

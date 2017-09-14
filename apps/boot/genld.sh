@@ -11,7 +11,7 @@ cat - << EOF
 
 OUTPUT_ARCH( "riscv" )
 
-DRAM_TOP = 0x40000000;
+DRAM_TOP = 0x80000000;
 
 MEMORY
 {
