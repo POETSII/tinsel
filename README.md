@@ -143,21 +143,21 @@ for our own purposes, resulting in very little overhead on the wire.
 
 Our first POETS box, currently under construction, consists of ten
 [DE5-Net](http://de5-net.terasic.com) FPGA boards and a modern PC
-acting as a "mothercore".  (The DE5-Net is a Stratix V board from
+acting as a "mothercore".  The DE5-Net is a Stratix V board from
 circa 2012 that the [CL](http://www.cl.cam.ac.uk/) has in plentiful
-supply, and provides the platform for our initial POETS machines.) The
+supply, and provides the platform for our initial POETS machines. The
 ten FPGAs are connected together via 10Gbps reliable links in a 2D
 mesh arrangement and also to the mothercore via a PCI Express link.
 We expect that each FPGA will host around a hundred RISC-V cores (tens
 of thousands of RISC-V threads).  The box will therefore provide
 around a thousand cores (hundreds of thousands of RISC-V threads) in
 total.  The intention is then to scale the system up to multiple
-boxes, connected together to form a larger core mesh containing
+boxes, connected together to form a larger core mesh with
 several mothercores.
 
 ## 2. Tinsel Core
 
-Tinsel Core is a **customised** 32-bit **multi-threaded** processor
+Tinsel Core is a *customised* 32-bit *multi-threaded* processor
 implementing a [subset](#h-missing-rv32imf-features) of the RV32IMF
 profile of the [RISC-V](https://riscv.org/specifications/) ISA.
 Custom features are provided through a range of control/status
@@ -168,19 +168,19 @@ controlled by a sythesis-time parameter `LogThreadsPerCore`.  For
 example, with `LogThreadsPerCore=4`, each core implements 2^4 (16)
 threads.
 
-Tinsel employs a generous **8-stage pipeline** to achieve a high Fmax.
-The pipeline is **hazard-free**: at most one instruction per thread is
-present in the pipeline at any time.  To achieve **full throughput**
+Tinsel employs a generous *8-stage pipeline* to achieve a high Fmax.
+The pipeline is *hazard-free*: at most one instruction per thread is
+present in the pipeline at any time.  To achieve *full throughput*
 -- execution of an instruction on every clock cycle -- there must
-exist at least 8 **runnable** threads at any time.  When a thread
+exist at least 8 *runnable* threads at any time.  When a thread
 executes a multi-cycle instruction (such as an off-chip load/store, a
 blocking send/receive, or a floating-point operation), it becomes
-**suspended** and is only made runnable again when the instruction
+*suspended* and is only made runnable again when the instruction
 completes.  While suspended, a thread is not present in the queue of
 runnable threads from which the scheduler will select the next thread,
 so does not burn CPU cycles.
 
-The core fetches instructions from an **instruction memory**
+The core fetches instructions from an *instruction memory*
 implemented using on-chip block RAM.  The size of this memory is
 controlled by the synthesis-time parameter `LogInstrsPerCore`.  All
 threads in a core share the same instruction memory.  The initial
@@ -233,7 +233,7 @@ inline void tinselKillThread();
 ```
 
 Single-precision floating-point operations are implemented by the
-**tinsel FPU**, which may be shared by any number of cores, as defined
+*tinsel FPU*, which may be shared by any number of cores, as defined
 by the `LogCoresPerFPU` parameter.  Note that, because the FPU is
 implemented using IP blocks provided by the FPGA vendor, there are
 some small [limitations](h-missing-rv32imf-features) with respect to
@@ -258,13 +258,13 @@ falling edge).  By serial-to-parallel conversion, a single 256-bit
 memory operation can be performed by a single DIMM on every cycle of a
 400MHz core clock.  This means that when a core performs a 32-bit
 load, it potentially throws away 224 of the bits returned by DRAM.  To
-avoid this, we use a **data cache** local to a group of cores, giving
+avoid this, we use a *data cache* local to a group of cores, giving
 the illusion of a 32-bit memory while behind-the-scenes transferring
-256-bit **lines** (or larger, see below) between the cache and DRAM.
+256-bit *lines* (or larger, see below) between the cache and DRAM.
 
 The cache line size must be larger than or equal to the DRAM data bus
 width: lines are read and written by the cache in contiguous chunks
-called **beats**.  The width of a beat is defined by
+called *beats*.  The width of a beat is defined by
 `DCacheLogWordsPerBeat` and the width of a line by
 `DCacheLogBeatsPerLine`.  At present, the width of the DRAM data bus
 must equal the width of a cache beat.
@@ -293,21 +293,21 @@ core-cycle.  For the same data width per core-cycle, each 12.8GB/s
 DIMM on the [DE5-Net](http://de5-net.terasic.com) could serve 64 x
 400MHz cores.)
 
-The cache is an *N*-way **set-associative write-back** cache.
+The cache is an *N*-way *set-associative write-back* cache.
 It is designed to serve one or more highly-threaded cores, where high
 throughput and high Fmax are more important than low latency.  It
 employs a hash function that appends the thread id and some number of
-address bits.  This means that cache lines are **not shared** between
-threads (and consequently, there is no aliasing between threads).
+address bits.  This means that cache lines are *not shared* between
+threads and, consequently, there is no aliasing between threads.
 
-The cache pipeline is **hazard-free**: at most one request per thread
+The cache pipeline is *hazard-free*: at most one request per thread
 is present in the pipeline at any time which, combined with the
 no-sharing property above, implies that in-flight requests always
 operate on different lines, simplifying the implementation.  To allow
 cores to meet this assumption, store responses are issued in addition
 to load responses.
 
-A **cache flush** operation is provided that evicts all cache lines
+A *cache flush* operation is provided that evicts all cache lines
 owned by the calling thread.  This operation is invoked through the
 RISC-V `fence` opcode, or the tinsel API:
 
@@ -331,7 +331,7 @@ structure of each cache.
 
 ## 4. Tinsel Mailbox
 
-The **mailbox** is a component used by threads to send and receive
+The *mailbox* is a component used by threads to send and receive
 messages.  A single mailbox serves multiple threads, defined by
 `LogCoresPerMailbox`.  Mailboxes are connected together to form a
 network on which any thread can send a message to any other thread
@@ -339,15 +339,15 @@ network on which any thread can send a message to any other thread
 communication is more efficient between threads that share the same
 mailbox.
 
-A tinsel **message** is comprised of a bounded number of **flits**.  A
+A tinsel *message* is comprised of a bounded number of *flits*.  A
 thread can send a message containing any number of flits (up to the
 bound defined by `LogMaxFlitsPerMsg`), but conceptually the message is
-treated as an **atomic unit**: at any moment, either the whole message
+treated as an *atomic unit*: at any moment, either the whole message
 has reached the destination or none of it has.  As one would expect,
-it is more efficient to send shorter messages than longer ones.  The
-size of a flit is defined by `LogWordsPerFlit`.
+shorter messages consume less bandwidth than longer ones.  The size of
+a flit is defined by `LogWordsPerFlit`.
 
-At the heart of a mailbox is a memory-mapped **scratchpad** that
+At the heart of a mailbox is a memory-mapped *scratchpad* that
 stores both incoming and outgoing messages.  Each thread has access to
 space for several messages in the scratchpad, defined by
 `LogMsgsPerThread`.  As well as storing messages, the scratchpad may
@@ -397,7 +397,7 @@ send operations wish to use the same length and address then the CSRs
 need only be written once.
 
 * The scratchpad pointer must be aligned on a max-message-size
-boundary, which we refer to as a message **slot**. The `tinselSlot`
+boundary, which we refer to as a message *slot*. The `tinselSlot`
 function yields a pointer to the nth slot in the calling thread's mailbox.
 
 To *receive* a message, a thread must first *allocate* a slot in the
@@ -494,11 +494,11 @@ parameter `LogMailboxesPerBoard`.
   ------------------------ | ------- | -----------
   `LogMailboxesPerBoard`   |       4 | Number of mailboxes per FPGA board
 
-The mailboxes are connected together by a **bidirectional serial bus**
+The mailboxes are connected together by a *bidirectional serial bus*
 carrying message flits (see section [Tinsel
 Mailbox](#4-tinsel-mailbox)).  The network ensures that flits from
 different messages are not interleaved or, equivalently, flits from
-the same message appear **contiguously** on the bus.  This avoids
+the same message appear *contiguously* on the bus.  This avoids
 complex logic for reassembling messages.  It also avoids the deadlock
 case whereby a receiver's buffer is exhausted with partial messages,
 yet is unable to provide a single whole message for the receiver to
@@ -517,7 +517,7 @@ threads on distant mailboxes.  This is because, in the former case,
 the message spends less time on the bus, consuming less bandwidth.
 
 The mailbox network extends across multiple FPGA boards arranged in a
-**2D mesh** of size `MeshXLen` x `MeshYLen`.
+*2D mesh* of size `MeshXLen` x `MeshYLen`.
 
   Parameter      | Default | Description
   -------------- | ------- | -----------
@@ -526,7 +526,7 @@ The mailbox network extends across multiple FPGA boards arranged in a
   `MeshXLen`     |       3 | Length of X dimension
   `MeshYLen`     |       3 | Length of Y dimension
 
-A **globally unique thread id**, as returned by `tinselId()`, has the
+A *globally unique thread id*, as returned by `tinselId()`, has the
 following structure from MSB to LSB.
 
   Field                 | Width  
@@ -537,10 +537,10 @@ following structure from MSB to LSB.
   Core-local thread id  | `LogThreadsPerCore`
 
 Each board-to-board communication port is implemented on top of a
-**10Gbps ethernet MAC**, which automatically detects and drops packets
+*10Gbps ethernet MAC*, which automatically detects and drops packets
 containing CRC errors.  On top of the MAC sits our own window-based
 reliability layer that retransmits dropped packets.  We refer to this
-combination of components as a **reliable link**. The use of ethernet
+combination of components as a *reliable link*. The use of ethernet
 allows us to use mostly standard (and free) IP cores for inter-board
 communication.  And since we are using the links point-to-point,
 almost all of the ethernet header fields can be used for our own
@@ -548,24 +548,24 @@ purposes, resulting in very little overhead on the wire.
 
 ## 6. Tinsel HostLink
 
-**HostLink** is the means by which tinsel cores running on a mesh of
-FPGA boards communicate with a **host PC**.  It comprises three main
+*HostLink* is the means by which tinsel cores running on a mesh of
+FPGA boards communicate with a *host PC*.  It comprises three main
 communication channels:
 
-* An FPGA **bridge board** that connects to the host PC via PCI
+* An FPGA *bridge board* that connects to the host PC via PCI
 Express and to the FPGA mesh via a 10Gbps reliable link.  Using this
 high-bandwidth channel (around 1GB/s), the host PC can efficiently
 send messages to any tinsel thread and vice-versa.
 
-* A set of **debug links** connecting the host PC to each FPGA via
+* A set of *debug links* connecting the host PC to each FPGA via
 separate USB UART cables.  These low-bandwidth connections (around
 4MB/s each) are virtualised to provide every hardware thread with
 `stdin` and `stdout` byte streams.  They are intended for
 debugging and can be used to implement functions such as `printf` and
-`scanf`.
+`getchar`.
 
-* A set of **power links** connecting the host PC to each FPGA's
-**power management module** via separate USB UART cables.  These
+* A set of *power links* connecting the host PC to each FPGA's
+*power management module* via separate USB UART cables.  These
 connections can be used to power-on/power-off each FPGA and to monitor
 power consumption and temperature.
 
@@ -763,7 +763,7 @@ The default tinsel configuration on a single DE5-Net board contains:
   * a JTAG UART
 
 The clock frequency is 250MHz and the resource utilisation is 116K
-ALMs, **50% of the DE5-Net**.
+ALMs, *50% of the DE5-Net*.
 
 ## B. Tinsel Parameters
 
@@ -796,7 +796,7 @@ ALMs, **50% of the DE5-Net**.
   `0x00000000-0x000003ff` | Reserved
   `0x00000400-0x000007ff` | Thread-local mailbox scratchpad
   `0x00000800-0x000fffff` | Reserved
-  `0x00100000-0x3fffffff` | Cached off-chip DRAM
+  `0x00100000-0x7fffffff` | Cached off-chip DRAM
 
 ## D. Tinsel CSRs
 
