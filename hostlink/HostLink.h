@@ -77,6 +77,8 @@ class HostLink {
 
   // Assuming the boot loader is running on the cores
   // ------------------------------------------------
+  //
+  // (Only thread 0 on each core is active when the boot loader is running)
 
   // Load application code and data onto the mesh
   void boot(const char* codeFilename, const char* dataFilename);
@@ -89,6 +91,15 @@ class HostLink {
 
   // Trigger to start application execution on a single thread
   void goOne();
+
+  // Set address for remote memory access to given board via given core
+  // (This address is auto-incremented on loads and stores)
+  void setAddr(uint32_t meshX, uint32_t meshY,
+               uint32_t coreId, uint32_t addr);
+
+  // Store words to remote memory on given board via given core
+  void store(uint32_t meshX, uint32_t meshY,
+             uint32_t coreId, uint32_t numWords, uint32_t* data);
 
   // Line-buffered StdOut console
   // ----------------------------

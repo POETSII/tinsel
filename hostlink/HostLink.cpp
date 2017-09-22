@@ -438,6 +438,34 @@ void HostLink::goOne()
   mesh[0][0]->put(0);
 }
 
+// Set address for remote memory access on given board via given core
+// (This address is auto-incremented on loads and stores)
+void HostLink::setAddr(uint32_t meshX, uint32_t meshY,
+                       uint32_t coreId, uint32_t addr)
+{
+  BootReq req;
+  req.cmd = SetAddrCmd;
+  req.numArgs = 1;
+  req.args[0] = addr;
+  send(toAddr(meshX, meshY, coreId, 0), 1, &req);
+}
+
+// Store words to remote memory on a given board via given core
+void HostLink::store(uint32_t meshX, uint32_t meshY,
+                     uint32_t coreId, uint32_t numWords, uint32_t* data)
+{
+  BootReq req;
+  req.cmd = StoreCmd;
+  while (numWords > 0) {
+    uint32_t sendWords = numWords > 15 ? 15 : numWords;
+    numWords = numWords - sendWords;
+    req.numArgs = sendWords;
+    for (int i = 0; i < sendWords; i++) req.args[i] = data[i];
+    uint32_t numFlits = 1 + (sendWords >> 2);
+    send(toAddr(meshX, meshY, coreId, 0), numFlits, &req);
+  }
+}
+
 // Redirect UART StdOut to given file
 // Returns false when no data has been emitted
 bool HostLink::pollStdOut(FILE* outFile)

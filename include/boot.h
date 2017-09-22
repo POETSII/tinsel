@@ -3,12 +3,13 @@
 
 #include <stdint.h>
 
-// 16-byte boot request
+// Boot request
+// (Number of flits required depends on the number of args used)
 typedef struct {
   uint8_t cmd;
   uint8_t numArgs;
   uint16_t unused;
-  uint32_t args[3];
+  uint32_t args[15];
 } BootReq;
 
 // Various commands supported by the boot loader

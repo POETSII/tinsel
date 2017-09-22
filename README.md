@@ -3,8 +3,8 @@
 Tinsel is a [RISC-V](https://riscv.org/)-based manythread
 message-passing architecture designed for FPGA clusters.  It is being
 developed as part of the [POETS
-Project](https://poets-project.org/about) (Partially-Ordered
-Event-Triggered Systems).  This manual describes the tinsel architecture and
+Project](https://poets-project.org/about) (Partially Ordered
+Event Triggered Systems).  This manual describes the tinsel architecture and
 associated APIs.  If you are already familiar with these, and would
 like to start using the hardware, please refer to the [Getting Started
 Guide](/doc/GettingStarted.md).
@@ -732,17 +732,26 @@ void HostLink::boot(const char* codeFilename, const char* dataFilename);
 
 // Trigger to start application execution
 void HostLink::go();
+
+// Set address for remote memory access to given board via given core
+// (This address is auto-incremented on loads and stores)
+void setAddr(uint32_t meshX, uint32_t meshY,
+             uint32_t coreId, uint32_t addr);
+
+// Store words to remote memory on given board via given core
+void store(uint32_t meshX, uint32_t meshY,
+           uint32_t coreId, uint32_t numWords, uint32_t* data);
 ```
 
 The format of the code and data files is *verilog hex format*, which
 is easily produced using standard RISC-V compiler tools.
 
-As soon as the `go()` method is invoked, the boot loader activates all
+Once the `go()` method is invoked, the boot loader activates all
 threads on all cores and calls the application's `main()` function.
 When the application is running (and hence the boot loader is not
 running) HostLink methods that communicate with the boot loader should
 not be called.  When the application returns from `main()`, all but
-one thread on each core are killed, and the remaining threads reenter
+one thread on each core are killed and the remaining threads reenter
 the boot loader.  Although it may be tempting to boot a second
 application at this stage, without calling `HostLink::reset()`, we do
 not recommend it because leftover state from the first application may
@@ -950,12 +959,23 @@ class HostLink {
 
   // Assuming the boot loader is running on the cores
   // ------------------------------------------------
+  //
+  // (Only thread 0 on each core is active when the boot loader is running)
 
   // Load application code and data onto the mesh
   void boot(const char* codeFilename, const char* dataFilename);
 
   // Trigger to start application execution
   void go();
+
+  // Set address for remote memory access to given board via given core
+  // (This address is auto-incremented on loads and stores)
+  void setAddr(uint32_t meshX, uint32_t meshY,
+               uint32_t coreId, uint32_t addr);
+
+  // Store words to remote memory on given board via given core
+  void store(uint32_t meshX, uint32_t meshY,
+             uint32_t coreId, uint32_t numWords, uint32_t* data);
 };
 ```
 
@@ -1012,8 +1032,8 @@ instruction is provided for accessing CSRs.  There is a
 check a compiled ELF for the presence of these unimplemented
 instructions (it will not detect misaligned loads and stores however).
 
-We use Altera blocks to implement floating-point instructions and, as
-a result, we inerhit a number of limitations:
+We use Altera blocks to implement floating-point instructions and
+inerhit a number of limitations:
 
   * *Invalid* and *inexact* exception flags are not signalled.
   * One rounding mode only: *round-to-nearest with ties-to-even*.
