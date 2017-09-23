@@ -735,12 +735,12 @@ void HostLink::go();
 
 // Set address for remote memory access to given board via given core
 // (This address is auto-incremented on loads and stores)
-void setAddr(uint32_t meshX, uint32_t meshY,
-             uint32_t coreId, uint32_t addr);
+void HostLink::setAddr(uint32_t meshX, uint32_t meshY,
+                       uint32_t coreId, uint32_t addr);
 
 // Store words to remote memory on given board via given core
-void store(uint32_t meshX, uint32_t meshY,
-           uint32_t coreId, uint32_t numWords, uint32_t* data);
+void HostLink::store(uint32_t meshX, uint32_t meshY,
+                     uint32_t coreId, uint32_t numWords, uint32_t* data);
 ```
 
 The format of the code and data files is *verilog hex format*, which
