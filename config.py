@@ -57,7 +57,7 @@ p["DRAMLatency"] = 20
 # Size of each DRAM
 p["LogBeatsPerDRAM"] = 26
 
-# Size of DRAM partition on each core
+# Size of DRAM partition on each thread
 p["LogBytesPerDRAMPartition"] = 21
 
 # Size of internal flit payload
