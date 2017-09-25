@@ -57,6 +57,9 @@ p["DRAMLatency"] = 20
 # Size of each DRAM
 p["LogBeatsPerDRAM"] = 26
 
+# Size of DRAM partition on each thread
+p["LogBytesPerDRAMPartition"] = 21
+
 # Size of internal flit payload
 p["LogWordsPerFlit"] = 2
 
@@ -139,6 +142,9 @@ p["WordsPerBeat"] = 2**p["LogWordsPerBeat"]
 
 # Number of bytes in a memory transfer
 p["BytesPerBeat"] = 4 * p["WordsPerBeat"]
+
+# Number of bytes in a DRAM
+p["BytesPerDRAM"] = 2**p["LogBeatsPerDRAM"] * p["BytesPerBeat"]
 
 # Log of number of bytes in a memory transfer
 p["LogBytesPerBeat"] = p["LogWordsPerBeat"] + 2

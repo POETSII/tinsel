@@ -11,7 +11,7 @@ cat - << EOF
 
 OUTPUT_ARCH( "riscv" )
 
-DRAM_TOP = 0x80000000;
+DRAM_TOP = $BytesPerDRAM;
 
 MEMORY
 {
