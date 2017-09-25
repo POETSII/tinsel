@@ -9,8 +9,8 @@ csrrw a0, 0xf14, zero
 li a1, TinselThreadsPerDRAM-1
 and a0, a0, a1
 
-# Set stack pointer to DRAM_TOP - (id * 2M) - 32
-sll a0, a0, 21
+# Set stack pointer to DRAM_TOP - (id * DRAM partition size) - 32
+sll a0, a0, TinselLogBytesPerDRAMPartition
 la sp, DRAM_TOP
 sub sp, sp, a0
 addi sp, sp, -32
