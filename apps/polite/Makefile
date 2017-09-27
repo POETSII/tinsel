@@ -27,7 +27,7 @@ Heat.elf: Heat.cpp link.ld $(INC)/config.h $(INC)/tinsel.h entry.o $(LIB)/lib.o
 	$(RV_LD) $(LDFLAGS) -T link.ld -o Heat.elf entry.o Heat.o $(LIB)/lib.o
 
 entry.o:
-	$(RV_CC) $(CFLAGS) -Wall -c -o entry.o entry.S
+	$(RV_CPPC) $(CFLAGS) -Wall -c -o entry.o entry.S
 
 $(LIB)/lib.o:
 	make -C $(LIB)
