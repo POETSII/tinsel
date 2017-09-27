@@ -197,7 +197,7 @@ void HostLink::send(uint32_t dest, uint32_t numFlits, void* payload)
   uint32_t buffer[4*(TinselMaxFlitsPerMsg+1)];
 
   // Fill in the message header
-  // (See DE5HostTop.bsv for details)
+  // (See DE5BridgeTop.bsv for details)
   buffer[0] = dest;
   buffer[1] = 0;
   buffer[2] = (numFlits-1) << 24;

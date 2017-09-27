@@ -41,11 +41,11 @@ struct SubRegions2D {
 
     // Compute sub-regions
     uint32_t accX = r.left;
-    uint32_t accY = r.top;
-    for (uint32_t i = 0; i < numX; i++) {
-      uint32_t lenX = width/numX + (i < (width%numX) ? 1 : 0);
-      for (uint32_t j = 0; j < numY; j++) {
-        uint32_t lenY = height/numY + (i < (height%numY) ? 1 : 0);
+    for (uint32_t i = 0; i < nX; i++) {
+      uint32_t lenX = width/nX + (i < (width%nX) ? 1 : 0);
+      uint32_t accY = r.top;
+      for (uint32_t j = 0; j < nY; j++) {
+        uint32_t lenY = height/nY + (i < (height%nY) ? 1 : 0);
         Region2D sub;
         sub.top = accY; sub.left = accX;
         sub.bottom = accY+lenY; sub.right = accX+lenX;
@@ -140,7 +140,6 @@ template <typename DeviceType, typename MessageType> class PMesh2D {
 
     // Split into sub-regions, one per board
     SubRegions2D boards(fullRegion, TinselMeshXLen, TinselMeshYLen);
-
     // For each board
     for (uint32_t boardY = 0; boardY < TinselMeshYLen; boardY++) {
       for (uint32_t boardX = 0; boardX < TinselMeshXLen; boardX++) {
@@ -216,6 +215,7 @@ template <typename DeviceType, typename MessageType> class PMesh2D {
     // (We choose the partition size minus 65536 bytes for the stack.)
     const uint32_t maxHeapSize = (1<<TinselLogBytesPerDRAMPartition) - 65536;
     // Allocate heap sizes and bases
+    heap = (uint8_t**) calloc(TinselMaxThreads, sizeof(uint8_t*));
     heapSize = (uint32_t*) calloc(TinselMaxThreads, sizeof(uint32_t));
     heapBase = (uint32_t*) calloc(TinselMaxThreads, sizeof(uint32_t));
     // Compute heap size for each thread
@@ -393,7 +393,7 @@ template <typename DeviceType, typename MessageType> class PMesh2D {
                   hostLink->setAddr(x, y, c,
                     heapBase[hostLink->toAddr(x, y, c, t+1)]);
               } else {
-                uint32_t send = min((heapSize[threadId] - written)>>2, 7);
+                uint32_t send = min((heapSize[threadId] - written)>>2, 15);
                 hostLink->store(x, y, c, send, (uint32_t*) &heap[written]);
                 writeCount[threadId] = written + send * sizeof(uint32_t);
               }

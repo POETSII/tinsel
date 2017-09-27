@@ -119,7 +119,7 @@ module de5BridgeTop (DE5BridgeTop);
       Bit#(128) data = fromPCIe.value;
       fromPCIeDA <= data[31:0];
       fromPCIeNM <= data[63:32];
-      fromPCIeFM <= data[71:64];
+      fromPCIeFM <= data[95:88];
       fromPCIeState <= 1;
       fromPCIe.get;
     end
@@ -139,7 +139,8 @@ module de5BridgeTop (DE5BridgeTop);
           fromPCIeState <= 0;
         end else
           messageCount <= messageCount+1;
-      end
+      end else
+        flitCount <= flitCount+1;
       toLink.put(flit);
       fromPCIe.get;
     end
