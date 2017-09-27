@@ -904,6 +904,9 @@ inline void tinselEmit(uint32_t x);
 
 // Get the globally unique thread id of the host PC
 inline uint32_t tinselHostId()
+
+// Return pointer to base of thread's DRAM partition
+inline void* tinselHeapBase()
 ```
 
 ## G. HostLink API
