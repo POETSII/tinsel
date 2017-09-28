@@ -121,6 +121,8 @@ template <typename DeviceType, typename MessageType> class PThread {
   // Invoke device handlers
   void run() {
     // Initialisation
+    intTop = intArray;
+    extTop = extArray;
     for (uint32_t i = 0; i < numDevices; i++) {
       DeviceType* dev = &devices[i];
       // Invoke the initialiser for each device
@@ -130,7 +132,7 @@ template <typename DeviceType, typename MessageType> class PThread {
     }
 
     // Set number of flits per message
-    tinselSetLen(sizeof(MessageType) >> TinselLogBytesPerFlit);
+    tinselSetLen((sizeof(MessageType)-1) >> TinselLogBytesPerFlit);
 
     // Allocate some slots for incoming messages
     // (Slot 0 is reserved for outgoing messages)
@@ -158,9 +160,10 @@ template <typename DeviceType, typename MessageType> class PThread {
         // Destination device is on another thread
         MessageType* msg = (MessageType*) tinselSlot(0);
         msg->dest = dev->dest.localId;
+        PThreadId destThread = dev->dest.threadId;
         // Invoke send handler & send resulting message
         sendHandler(dev, msg);
-        tinselSend(dev->dest.threadId, msg);
+        tinselSend(destThread, msg);
         // Reinsert device into a senders array
         if (dev->readyToSend) insert(dev);
       }

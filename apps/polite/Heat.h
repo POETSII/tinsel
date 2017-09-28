@@ -39,12 +39,14 @@ struct HeatDevice : PDevice {
       sent++;
       if (sent == fanOut) {
         sent = 0;
+        dest = t == 1 ? hostDeviceId() : outEdge(0);
         if (received == fanIn)
           step();
         else
           readyToSend = 0;
       }
-      dest = t == 0 ? hostDeviceId() : outEdge(sent);
+      else
+        dest = outEdge(sent);
     }
   }
 

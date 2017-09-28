@@ -227,11 +227,11 @@ template <typename DeviceType, typename MessageType> class PMesh2D {
       uint32_t size = 0;
       // Add space for thread structure
       size = cacheAlign(size + sizeof(PThread<DeviceType, MessageType>));
-      // Loop over each device on thread
+      // Add space for device array
+      size = cacheAlign(size + numDevices[threadId] * sizeof(DeviceType));
+      // Add space for edge lists
       for (uint32_t devNum = 0; devNum < numDevices[threadId]; devNum++) {
         PMesh2DId coords = fromThreadId[threadId][devNum];
-        // Add space for device
-        size = wordAlign(size + sizeof(DeviceType));
         // Compute neighbours of device
         neighbours(coords, &ns);
         // Add space for edge lists
@@ -269,19 +269,26 @@ template <typename DeviceType, typename MessageType> class PMesh2D {
       thread->numDevices = numDevices[threadId];
       // Set tinsel address of devices array
       thread->devices = heapBase[threadId] + hp;
-      // Loop over each device on thread
+      // Add space for each device on thread
       for (uint32_t devNum = 0; devNum < numDevices[threadId]; devNum++) {
         DeviceType* dev = (DeviceType*) &heap[threadId][hp];
         PMesh2DId coords = fromThreadId[threadId][devNum];
         devices[coords.y][coords.x] = dev;
+        // Add space for device
+        hp = hp + sizeof(DeviceType);
+      }
+      // Re-align hp
+      hp = cacheAlign(hp);
+      // Initialise each device and associated edge list
+      for (uint32_t devNum = 0; devNum < numDevices[threadId]; devNum++) {
+        PMesh2DId coords = fromThreadId[threadId][devNum];
+        DeviceType* dev = devices[coords.y][coords.x];
         // Set thread-local device id
         dev->localId = devNum;
         // Compute neighbours
         neighbours(coords, &ns);
         // Set fanIn and fanOut
         dev->fanIn = dev->fanOut = ns.numElems;
-        // Add space for device
-        hp = wordAlign(hp + sizeof(DeviceType));
         // Set tinsel address of edges array
         dev->edges = heapBase[threadId] + hp;
         // Edge array
@@ -394,7 +401,8 @@ template <typename DeviceType, typename MessageType> class PMesh2D {
                     heapBase[hostLink->toAddr(x, y, c, t+1)]);
               } else {
                 uint32_t send = min((heapSize[threadId] - written)>>2, 15);
-                hostLink->store(x, y, c, send, (uint32_t*) &heap[written]);
+                hostLink->store(x, y, c, send,
+                  (uint32_t*) &heap[threadId][written]);
                 writeCount[threadId] = written + send * sizeof(uint32_t);
               }
             }

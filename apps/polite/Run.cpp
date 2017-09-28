@@ -6,8 +6,8 @@
 int main()
 {
   // Parameters
-  const uint32_t width  = 16;
-  const uint32_t height = 8;
+  const uint32_t width  = 64;
+  const uint32_t height = 32;
   const uint32_t time   = 2;
 
   // Connection to tinsel machine
@@ -41,7 +41,7 @@ int main()
 
   // Map mesh down to tinsel machine via HostLink
   mesh.map(&hostLink);
- 
+
   // Load code and trigger execution
   hostLink.boot("code.v", "data.v");
   hostLink.go();
