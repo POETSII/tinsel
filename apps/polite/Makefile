@@ -22,7 +22,8 @@ data.v: Heat.elf
 	$(RV_OBJCOPY) -O verilog --remove-section=.text \
                 --set-section-flags .bss=alloc,load,contents Heat.elf data.v
 
-Heat.elf: Heat.cpp link.ld $(INC)/config.h $(INC)/tinsel.h entry.o $(LIB)/lib.o
+Heat.elf: Heat.cpp Heat.h link.ld $(INC)/config.h \
+          $(INC)/tinsel.h entry.o $(LIB)/lib.o
 	$(RV_CPPC) $(CFLAGS) -Wall -c -DTINSEL -o Heat.o Heat.cpp
 	$(RV_LD) $(LDFLAGS) -T link.ld -o Heat.elf entry.o Heat.o $(LIB)/lib.o
 
