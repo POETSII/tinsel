@@ -142,6 +142,13 @@ inline void tinselWaitUntil(TinselWakeupCond cond)
   asm volatile("csrrw zero, " CSR_WAIT_UNTIL ", %0" : : "r"(cond));
 }
 
+#ifdef __cplusplus
+inline TinselWakeupCond operator|(TinselWakeupCond a, TinselWakeupCond b)
+{
+  return (TinselWakeupCond) (((uint32_t) a) | ((uint32_t) b));
+}
+#endif
+
 // Get globally unique thread id of host
 // (Host board has X coordinate of 0 and Y coordinate on mesh rim)
 inline uint32_t tinselHostId()
@@ -149,6 +156,16 @@ inline uint32_t tinselHostId()
   return TinselMeshYLen << (TinselMeshXBits +
                               TinselLogCoresPerBoard +
                                 TinselLogThreadsPerCore);
+}
+
+// Return pointer to base of thread's DRAM partition
+inline void* tinselHeapBase()
+{
+  uint32_t me = tinselId();
+  uint32_t partId = me & (TinselThreadsPerDRAM-1);
+  uint32_t addr = TinselBytesPerDRAM -
+                    ((partId+1) << TinselLogBytesPerDRAMPartition);
+  return (void*) addr;
 }
 
 #endif
