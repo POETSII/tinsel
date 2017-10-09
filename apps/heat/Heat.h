@@ -1,7 +1,7 @@
 #ifndef _HEAT_H_
 #define _HEAT_H_
 
-#include "Polite.h"
+#include <POLite.h>
 
 struct HeatMessage : PMessage {
   uint32_t t;

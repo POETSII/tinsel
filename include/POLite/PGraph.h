@@ -6,10 +6,10 @@
 #include <math.h>
 #include <HostLink.h>
 #include <config.h>
-#include "Polite.h"
-#include "Graph.h"
-#include "Seq.h"
-#include "Placer.h"
+#include <POLite.h>
+#include <POLite/Seq.h>
+#include <POLite/Graph.h>
+#include <POLite/Placer.h>
 
 // Nodes of a POETS graph are devices
 typedef NodeId PDeviceId;

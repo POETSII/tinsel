@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 #include <assert.h>
-#include "Seq.h"
+#include <POLite/Seq.h>
 
 typedef uint32_t NodeId;
 typedef uint32_t NodeLabel;
