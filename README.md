@@ -5,9 +5,7 @@ message-passing architecture designed for FPGA clusters.  It is being
 developed as part of the [POETS
 Project](https://poets-project.org/about) (Partially Ordered
 Event Triggered Systems).  This manual describes the tinsel architecture and
-associated APIs.  If you are already familiar with these, and would
-like to start using the hardware, please refer to the [Getting Started
-Guide](/doc/GettingStarted.md).
+associated APIs.
 
 ## Release Log
 
@@ -40,14 +38,14 @@ Released on 12 April 2017 and maintained in the
 ## 1. Overview
 
 Efficient communication and low power consumption are two key goals in
-the construction of large-scale distributed systems.  Potentially,
-both of these requirements can be met using existing commodity
-hardware components that are fairly straightforward to put together,
-namely *FPGA development boards*.  These boards combine
-state-of-the-art networking facilities with reconfigurable logic
-which, when customised to a particular application or application
-domain, can offer better performance-per-watt than other commodity
-devices such as CPUs and GPUs.
+the construction of scalable computer systems.  Potentially, both of
+these requirements can be met using existing commodity hardware
+components that are fairly straightforward to put together, namely
+*FPGA development boards*.  These boards combine state-of-the-art
+networking facilities with reconfigurable logic which, when customised
+to a particular application or application domain, can offer better
+performance-per-watt than other commodity devices such as CPUs and
+GPUs.
 
 However, FPGA-based systems face challenges of their own. Low-level
 hardware description languages and long synthesis times are major
@@ -90,7 +88,7 @@ It is believed that POETS applications will typically require a
 generous amount of memory to hold, for example, highly-connected
 graphs representing large physical systems.  But there is no
 requirement to give applications the illusion of a single shared
-memory space.  Rather, message-passing is intended to be the primary
+memory space: message-passing is intended to be the primary
 communication mechansim.
 
 FPGA boards typically provide a number of high-bandwidth DRAMs and it
@@ -120,7 +118,7 @@ memory-mapped *mailbox* with a 32-bit port connected to the core and a
 much wider port connected to the on-chip network.  The mailbox stores
 both incoming and outgoing messages.  A message can be forwarded
 (received and sent) in a single instruction, which is useful to
-implement efficient multcasting in software.  A single mailbox can be
+implement efficient multicasting in software.  A single mailbox can be
 shared between several cores, reducing the size of the on-chip network
 needed connect the mailboxes together.
 
@@ -143,17 +141,16 @@ for our own purposes, resulting in very little overhead on the wire.
 
 Our first POETS box, currently under construction, consists of ten
 [DE5-Net](http://de5-net.terasic.com) FPGA boards and a modern PC
-acting as a "mothercore".  The DE5-Net is a Stratix V board from
-circa 2012 that the [CL](http://www.cl.cam.ac.uk/) has in plentiful
-supply, and provides the platform for our initial POETS machines. The
-ten FPGAs are connected together via 10Gbps reliable links in a 2D
-mesh arrangement and also to the mothercore via a PCI Express link.
-We expect that each FPGA will host around a hundred RISC-V cores (tens
-of thousands of RISC-V threads).  The box will therefore provide
-around a thousand cores (hundreds of thousands of RISC-V threads) in
-total.  The intention is then to scale the system up to multiple
-boxes, connected together to form a larger core mesh with
-several mothercores.
+acting as a "mothercore".  The DE5-Net is a Stratix V board from circa
+2012 that the [CL](http://www.cl.cam.ac.uk/) has in plentiful supply,
+and provides the platform for our initial POETS machines. The ten
+FPGAs are connected together via multiple 10Gbps reliable links and
+also to the mothercore via a PCI Express link.  We expect that each
+FPGA will host around a hundred RISC-V cores (tens of thousands of
+RISC-V threads).  The box will therefore provide around a thousand
+cores (hundreds of thousands of RISC-V threads) in total.  The
+intention is then to scale the system up to multiple boxes connected
+together.
 
 ## 2. Tinsel Core
 
@@ -327,7 +324,7 @@ structure of each cache.
   `DCacheLogBeatsPerLine`  |       0 | Beats per cache line
   `DCacheLogNumWays`       |       2 | Cache lines in each associative set
   `DCacheLogSetsPerThread` |       3 | Associative sets per thread
-  `LogBeatsPerDRAM`        |      25 | Size of DRAM
+  `LogBeatsPerDRAM`        |      26 | Size of DRAM
 
 ## 4. Tinsel Mailbox
 
@@ -787,7 +784,7 @@ ALMs, *50% of the DE5-Net*.
   `DCacheLogBeatsPerLine`  |       0 | Beats per cache line
   `DCacheLogNumWays`       |       2 | Cache lines in each associative set
   `DCacheLogSetsPerThread` |       3 | Associative sets per thread
-  `LogBeatsPerDRAM`        |      25 | Size of DRAM
+  `LogBeatsPerDRAM`        |      26 | Size of DRAM
   `LogCoresPerMailbox`     |       2 | Number of cores sharing a mailbox
   `LogWordsPerFlit`        |       2 | Number of 32-bit words in a flit
   `LogMaxFlitsPerMsg`      |       2 | Max number of flits in a message
@@ -903,10 +900,10 @@ inline void tinselKillThread();
 inline void tinselEmit(uint32_t x);
 
 // Get the globally unique thread id of the host PC
-inline uint32_t tinselHostId()
+inline uint32_t tinselHostId();
 
 // Return pointer to base of thread's DRAM partition
-inline void* tinselHeapBase()
+inline void* tinselHeapBase();
 ```
 
 ## G. HostLink API
