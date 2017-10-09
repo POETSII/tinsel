@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 #include <metis.h>
-#include "Graph.h"
+#include <POLite/Graph.h>
 
 typedef uint32_t PartitionId;
 

@@ -1,5 +1,5 @@
 #include <tinsel.h>
-#include "Polite.h"
+#include <POLite.h>
 #include "Heat.h"
 
 int main()

@@ -1,5 +1,5 @@
-#ifndef _POLITE_H_
-#define _POLITE_H_
+#ifndef _PDEVICE_H_
+#define _PDEVICE_H_
 
 #include <stdint.h>
 
