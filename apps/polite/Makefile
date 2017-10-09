@@ -45,10 +45,11 @@ $(HL)/%.o:
 run: Run.cpp Colours.cpp $(HL)/*.o
 	g++ -O2 -I $(INC) -I $(HL) -o run Run.cpp Colours.cpp $(HL)/*.o \
 	  -ljtag_atlantic -ljtag_client -L $(QUARTUS_ROOTDIR)/linux64/ \
-	  -Wl,-rpath,$(QUARTUS_ROOTDIR)/linux64
+	  -Wl,-rpath,$(QUARTUS_ROOTDIR)/linux64 -lmetis
 
 sim: Run.cpp Colours.cpp $(HL)/sim/*.o
-	g++ -O2 -I $(INC) -I $(HL) -o sim Run.cpp Colours.cpp $(HL)/sim/*.o
+	g++ -O2 -I $(INC) -I $(HL) -o sim Run.cpp Colours.cpp $(HL)/sim/*.o \
+    -lmetis
 
 .PHONY: clean
 clean:

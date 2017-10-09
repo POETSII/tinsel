@@ -23,7 +23,7 @@ template <class T> class Seq
     T* elems;
 
     // Constructors
-    Seq() { init(1024); }
+    Seq() { init(4096); }
     Seq(int initialSize) { init(initialSize); }
 
     // Copy constructor
@@ -110,6 +110,12 @@ template <class T> class Seq
     {
       delete [] elems;
     }
+};
+
+// A small sequence is just a sequence with a small initial size
+template <class T> class SmallSeq : public Seq<T> {
+  public:
+    SmallSeq() : Seq<T>(8) {};
 };
 
 #endif
