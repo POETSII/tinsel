@@ -11,75 +11,76 @@
 #endif
 
 // Physical device identifier
-typedef uint16_t PLocalDeviceId;
+typedef uint16_t PLocalDeviceAddr;
 typedef uint16_t PThreadId;
-struct PDeviceId {
+struct PDeviceAddr {
   PThreadId threadId;
-  PLocalDeviceId localId;
+  PLocalDeviceAddr localAddr;
 };
 
 // Generic device structure
 struct PDevice {
   // Thread local device id
-  PLocalDeviceId localId;
+  PLocalDeviceAddr localAddr;
   // Is the device ready to send?
   uint8_t readyToSend;
   // If ready to send, what is the destination?
-  PDeviceId dest;
+  PDeviceAddr dest;
   // Number of incoming and outgoing edges
   uint16_t fanIn, fanOut;
   // Incoming and outgoing edges
-  PTR(PDeviceId) edges;
+  PTR(PDeviceAddr) edges;
 
   #ifdef TINSEL
     // Obtain pointer to outgoing edges
-    inline PTR(PDeviceId) outEdges() { return edges; }
+    inline PTR(PDeviceAddr) outEdges() { return edges; }
     // Obtain pointer to incoming edges
-    inline PTR(PDeviceId) inEdges() { return edges + fanOut; }
+    inline PTR(PDeviceAddr) inEdges() { return edges + fanOut; }
     // Obtain nth outgoing edge
-    inline PDeviceId outEdge(uint32_t n) { return outEdges()[n]; }
+    inline PDeviceAddr outEdge(uint32_t n) { return outEdges()[n]; }
     // Obtain nth incoming edge
-    inline PDeviceId inEdge(uint32_t n) { return inEdges()[n]; }
+    inline PDeviceAddr inEdge(uint32_t n) { return inEdges()[n]; }
     // Obtain device id
-    inline PDeviceId thisDeviceId() {
-      PDeviceId devId;
+    inline PDeviceAddr thisDeviceId() {
+      PDeviceAddr devId;
       devId.threadId = tinselId();
-      devId.localId = localId;
+      devId.localAddr = localAddr;
       return devId;
     }
     // Obtain device id of host
-    inline PDeviceId hostDeviceId() {
-      PDeviceId devId;
+    inline PDeviceAddr hostDeviceId() {
+      PDeviceAddr devId;
       devId.threadId = tinselHostId();
-      devId.localId = 0;
+      devId.localAddr = 0;
       return devId;
     }
   #else
-    inline PDeviceId undef() { 
-      PDeviceId devId;
+    inline PDeviceAddr undef() { 
+      PDeviceAddr devId;
       devId.threadId = 0xffff;
-      devId.localId = 0xffff;
+      devId.localAddr = 0xffff;
       return devId;
     }
     // Obtain pointer to outgoing edges
-    inline PTR(PDeviceId) outEdges() { return edges; }
+    inline PTR(PDeviceAddr) outEdges() { return edges; }
     // Obtain pointer to incoming edges
-    inline PTR(PDeviceId) inEdges() { return edges+sizeof(PDeviceId)*fanOut; }
+    inline PTR(PDeviceAddr) inEdges()
+      { return edges+sizeof(PDeviceAddr)*fanOut; }
     // Obtain nth outgoing edge
-    inline PDeviceId outEdge(uint32_t n) { return undef(); }
+    inline PDeviceAddr outEdge(uint32_t n) { return undef(); }
     // Obtain nth incoming edge
-    inline PDeviceId inEdge(uint32_t n) { return undef(); }
+    inline PDeviceAddr inEdge(uint32_t n) { return undef(); }
     // Obtain device id
-    inline PDeviceId thisDeviceId() { return undef(); }
+    inline PDeviceAddr thisDeviceId() { return undef(); }
     // Obtain device id of host
-    inline PDeviceId hostDeviceId() { return undef(); }
+    inline PDeviceAddr hostDeviceId() { return undef(); }
   #endif
 };
 
 // Generic message structure
 struct PMessage {
   // Destination device
-  PLocalDeviceId dest;
+  PLocalDeviceAddr dest;
 };
 
 // Generic thread structure
@@ -98,7 +99,7 @@ template <typename DeviceType, typename MessageType> class PThread {
  public:
 
   // Number of devices handled by thread
-  PLocalDeviceId numDevices;
+  PLocalDeviceAddr numDevices;
   // Pointer to array of devices
   PTR(DeviceType) devices;
   // Array of pointers to devices that are ready to send internally
@@ -159,7 +160,7 @@ template <typename DeviceType, typename MessageType> class PThread {
         DeviceType* dev = *(--extTop);
         // Destination device is on another thread
         MessageType* msg = (MessageType*) tinselSlot(0);
-        msg->dest = dev->dest.localId;
+        msg->dest = dev->dest.localAddr;
         PThreadId destThread = dev->dest.threadId;
         // Invoke send handler & send resulting message
         sendHandler(dev, msg);
@@ -172,7 +173,7 @@ template <typename DeviceType, typename MessageType> class PThread {
         // Lookup the next internal sender
         DeviceType* dev = *(--intTop);
         // Lookup destination device
-        DeviceType* destDev = &devices[dev->dest.localId];
+        DeviceType* destDev = &devices[dev->dest.localAddr];
         uint32_t wasReadyToSend = destDev->readyToSend;
         // Invoke both send and recv handlers
         dev->send(&msg);

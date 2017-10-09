@@ -6,7 +6,7 @@
 struct HeatMessage : PMessage {
   uint32_t t;
   uint32_t val;
-  PDeviceId from;
+  PDeviceAddr from;
 };
 
 struct HeatDevice : PDevice {
