@@ -8,9 +8,6 @@ int main()
   PThread<HeatDevice, HeatMessage>* thread =
     (PThread<HeatDevice, HeatMessage>*) tinselHeapBase();
   
-//printf("%x\n", thread->devices[0].t);
-//printf("%x\n", thread->devices[0].val >> 16);
-
   // Invoke interpreter
   thread->run();
 
