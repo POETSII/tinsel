@@ -19,5 +19,6 @@ clean:
 	make -C apps/ping clean
 	make -C apps/linktest clean
 	make -C apps/heat-bare clean
+	make -C apps/asp clean
 	make -C bin clean
 	make -C tests clean

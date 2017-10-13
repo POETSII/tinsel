@@ -4,59 +4,81 @@
 #include <POLite.h>
 
 struct HeatMessage : PMessage {
+  // Time step
   uint32_t t;
+  // Temperature at sender
   uint32_t val;
+  // Sender address
   PDeviceAddr from;
 };
 
 struct HeatDevice : PDevice {
-  uint32_t val, acc, accNext, t;
+  // Current time step of device
+  uint32_t t;
+  // Current temperature of device
+  uint32_t val;
+  // Accumulator for temperatures received at times t and t+1
+  uint32_t acc, accNext;
+  // Count messages sent and received
   uint8_t sent, received, receivedNext;
+  // Is the temperature of this device constant?
   bool isConstant;
 
-  inline void init() {
+  // Called once by POLite at start of execution
+  void init() {
     readyToSend = 1;
     dest = outEdge(0);
   }
 
+  // We call this on every state change
   inline void step() {
-    t--;
-    if (!isConstant) val = acc >> 2;
-    acc = accNext;
-    received = receivedNext;
-    accNext = receivedNext = 0;
-    readyToSend = 1;
+    // Execution complete?
+    if (t == 0) {
+      readyToSend = 0;
+      return;
+    }
+    // Ready to send?
+    if (sent < fanOut) {
+      readyToSend = 1;
+      dest = outEdge(sent);
+    }
+    else {
+      readyToSend = 0;
+      // Proceed to next time step?
+      if (received == fanIn) {
+        t--;
+        if (!isConstant) val = acc >> 2;
+        acc = accNext;
+        received = receivedNext;
+        accNext = receivedNext = 0;
+        sent = 0;
+        readyToSend = 1;
+        dest = outEdge(0);
+      }
+    }
+    // On final time step, send to host
+    if (t == 0) dest = hostDeviceId();
   }
 
+  // Send handler
   inline void send(HeatMessage* msg) {
     msg->t = t;
     msg->val = val;
-    if (t == 0) {
-      msg->from = thisDeviceId();
-      readyToSend = 0;
-    }
-    else {
-      sent++;
-      if (sent == fanOut) {
-        sent = 0;
-        dest = t == 1 ? hostDeviceId() : outEdge(0);
-        if (received == fanIn)
-          step();
-        else
-          readyToSend = 0;
-      }
-      else
-        dest = outEdge(sent);
-    }
+    msg->from = thisDeviceId();
+    sent++;
+    step();
   }
 
+  // Receive handler
   inline void recv(HeatMessage* msg) {
     if (msg->t == t) {
+      // Receive temperature for this time step
       acc += msg->val;
       received++;
-      if (received == fanIn && !readyToSend) step();
+      step();
     }
     else {
+      // Receive temperature for next time step
       accNext += msg->val;
       receivedNext++;
     }

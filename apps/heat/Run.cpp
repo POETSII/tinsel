@@ -68,7 +68,7 @@ int main()
   for (uint32_t i = 0; i < graph.numDevices; i++) {
     // Receive message
     HeatMessage msg;
-    hostLink.recv(&msg);
+    hostLink.recvMsg(&msg, sizeof(HeatMessage));
     // Save final value
     PDeviceId id = graph.fromDeviceAddr[msg.from.threadId][msg.from.localAddr];
     pixels[id] = msg.val;

@@ -231,7 +231,7 @@ bool HostLink::canSend()
   return poll(&pfd, 1, 0) > 0;
 }
 
-// Extract a flit via PCIe (blocking)
+// Receive a flit via PCIe (blocking)
 void HostLink::recv(void* flit)
 {
   int numBytes = 1 << TinselLogBytesPerFlit;
@@ -244,6 +244,39 @@ void HostLink::recv(void* flit)
     }
     ptr += n;
     numBytes -= n;
+  }
+}
+
+// Receive a message (blocking), given size of message in bytes
+void HostLink::recvMsg(void* msg, uint32_t numBytes)
+{
+  // Number of flits needed to hold message of size numBytes
+  int numFlits = 1 + ((numBytes-1) >> TinselLogBytesPerFlit);
+
+  // Number of padding bytes that need to be received but not stored
+  int paddingBytes = (numFlits << TinselLogBytesPerFlit) - numBytes;
+
+  // Fill message
+  uint8_t* ptr = (uint8_t*) msg;
+  while (numBytes > 0) {
+    int n = read(fromPCIe, (char*) ptr, numBytes);
+    if (n <= 0) {
+      fprintf(stderr, "Error reading from PCIeStream\n");
+      exit(EXIT_FAILURE);
+    }
+    ptr += n;
+    numBytes -= n;
+  }
+
+  // Discard padding bytes
+  while (paddingBytes > 0) {
+    uint8_t padding[1 << TinselLogBytesPerFlit];
+    int n = read(fromPCIe, (char*) padding, paddingBytes);
+    if (n <= 0) {
+      fprintf(stderr, "Error reading from PCIeStream\n");
+      exit(EXIT_FAILURE);
+    }
+    paddingBytes -= n;
   }
 }
 

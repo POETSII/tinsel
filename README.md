@@ -600,6 +600,10 @@ void HostLink::recv(void* flit);
 
 // Can receive a flit without blocking?
 bool HostLink::canRecv();
+
+// Receive a message (blocking), given size of message in bytes
+// Any bytes beyond numBytes up to the next flit boundary will be ignored
+void HostLink::recvMsg(void* msg, uint32_t numBytes);
 ```
 
 Although the `send` method allows a message consisting of multiple
@@ -608,6 +612,11 @@ time and does not indicate the number of flits present the message
 currently being received.  The length of a message, if not statically
 known, must therefore be encoded in the message contents.  Flits
 belonging to the same message will be received contiguously, in order.
+If the length of the message is known statically, `recvMsg` can be
+used and any bytes beyond `numBytes` up to the next flit boundary will
+be ignored.  This is useful when a `struct` is being used to hold
+messages, in which case the second argument to `recvMsg` is simply the
+`sizeof` the `struct`.
 
 These methods for sending a receiving messages work by connecting to a
 local [PCIeStream deamon](/hostlink/pciestreamd.c) via a UNIX domain
@@ -945,6 +954,10 @@ class HostLink {
 
   // Can receive a flit without blocking?
   bool canRecv();
+
+  // Receive a message (blocking), given size of message in bytes
+  // Any bytes beyond numBytes up to the next flit boundary will be ignored
+  void recvMsg(void* msg, uint32_t numBytes);
 
   // Address construction/deconstruction
   // -----------------------------------
