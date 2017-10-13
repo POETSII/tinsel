@@ -64,6 +64,9 @@ class HostLink {
   // Can receive a flit without blocking?
   bool canRecv();
 
+  // Receive a message (blocking), given size of message in bytes
+  void recvMsg(void* msg, uint32_t numBytes);
+
   // Address construction/deconstruction
   // -----------------------------------
 
