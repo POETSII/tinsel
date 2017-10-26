@@ -40,6 +40,8 @@ struct PDevice {
     inline PDeviceAddr outEdge(uint32_t n) { return outEdges()[n]; }
     // Obtain nth incoming edge
     inline PDeviceAddr inEdge(uint32_t n) { return inEdges()[n]; }
+    // Obtain nth edge
+    inline PDeviceAddr edge(uint32_t n) { return outEdges()[n]; }
     // Obtain device id
     inline PDeviceAddr thisDeviceId() {
       PDeviceAddr devId;
@@ -70,6 +72,8 @@ struct PDevice {
     inline PDeviceAddr outEdge(uint32_t n) { return undef(); }
     // Obtain nth incoming edge
     inline PDeviceAddr inEdge(uint32_t n) { return undef(); }
+    // Obtain nth edge
+    inline PDeviceAddr edge(uint32_t n) { return undef(); }
     // Obtain device id
     inline PDeviceAddr thisDeviceId() { return undef(); }
     // Obtain device id of host
