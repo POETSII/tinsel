@@ -836,6 +836,7 @@ ALMs, *50% of the DE5-Net*.
   `FFlag`      | 0x001  | RW  | Floating-point accrued exception flags
   `FRM`        | 0x002  | R   | Floating-point dynamic rounding mode
   `FCSR`       | 0x003  | RW  | Concatenation of FRM and FFlag
+  `Cycle`      | 0xc00  | R   | 32-bit cycle counter
 
 ## E. Tinsel Address Structure
 
@@ -854,6 +855,9 @@ LSB.
 ```c
 // Return a globally unique id for the calling thread
 inline uint32_t tinselId();
+
+// Read cycle counter
+inline uint32_t tinselCycleCount();
 
 // Write 32-bit word to instruction memory
 inline void tinselWriteInstr(uint32_t addr, uint32_t word);
