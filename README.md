@@ -21,7 +21,7 @@ Released on 12 April 2017 and maintained in the
 * [2. Tinsel Core](#2-tinsel-core)
 * [3. Tinsel Cache](#3-tinsel-cache)
 * [4. Tinsel Mailbox](#4-tinsel-mailbox)
-* [5. Tinsel Mailbox Network](#5-tinsel-mailbox-network)
+* [5. Tinsel Network](#5-tinsel-network)
 * [6. Tinsel HostLink](#6-tinsel-hostlink)
 
 ## Appendices
@@ -194,7 +194,7 @@ provided for writing instructions into the memory: `InstrAddr` and
 
 There is a read-only CSR for determining the globally unique id of the
 currently running thread (the structure of this id is defined in
-the [Tinsel Mailbox Network](#5-tinsel-mailbox-network) section).
+the [Tinsel Network](#5-tinsel-network) section).
 
   CSR Name    | CSR    | R/W | Function
   ----------- | ------ | --- | --------
@@ -482,7 +482,7 @@ A summary of synthesis-time parameters introduced in this section:
   `LogMaxFlitsPerMsg`      |       2 | Max number of flits in a message
   `LogMsgsPerThread`       |       4 | Number of slots per thread in scratchpad
 
-## 5. Tinsel Mailbox Network
+## 5. Tinsel Network
 
 The number of mailboxes on each FPGA board is goverened by the
 parameter `LogMailboxesPerBoard`.
