@@ -47,6 +47,7 @@ import FPUOps    :: *;
 // FFlag       | 0x001  | RW  | Floating-point accrued exception flags
 // FRM         | 0x002  | RW  | Floating-point dynamic rounding mode
 // FCSR        | 0x003  | RW  | Concatenation of FRM and FFlag
+// Cycle       | 0xc00  | R   | 32-bit cycle counter
 
 // Currently, only the CSRRW instruction is supported for accessing CSRs.
 
@@ -102,6 +103,7 @@ typedef struct {
   Bool isToUart;      Bool isNewThread;
   Bool isKillThread;  Bool isFFlag;
   Bool isFRM;         Bool isFCSR;
+  Bool isCycle;
   `ifdef SIMULATE
   Bool isEmit;
   `endif
@@ -301,32 +303,34 @@ function Op decodeOp(Bit#(32) instr);
   ret.isFence = op == 'b00011;
   // CSR read/write operation
   ret.isCSR = isCSROp(instr);
-  Bit#(5) csrIndex = {instr[31], instr[23:20]};
+  Bit#(6) csrIndex = {instr[31:30], instr[23:20]};
   // Hardware thread id CSR
-  ret.csr.isHartId = ret.isCSR && csrIndex == 'h14;
+  ret.csr.isHartId = ret.isCSR && csrIndex == 'h34;
   // Instruction memory CSRs
-  ret.csr.isInstrAddr = ret.isCSR && csrIndex == 'h10;
-  ret.csr.isInstr = ret.isCSR && csrIndex == 'h11;
+  ret.csr.isInstrAddr = ret.isCSR && csrIndex == 'h20;
+  ret.csr.isInstr = ret.isCSR && csrIndex == 'h21;
   // Mailbox CSR
-  ret.csr.isAlloc        = ret.isCSR && csrIndex == 'h12;
-  ret.csr.isCanSend      = ret.isCSR && csrIndex == 'h13;
-  ret.csr.isCanRecv      = ret.isCSR && csrIndex == 'h15;
-  ret.csr.isSendLen      = ret.isCSR && csrIndex == 'h16;
-  ret.csr.isSendPtr      = ret.isCSR && csrIndex == 'h17;
-  ret.csr.isSend         = ret.isCSR && csrIndex == 'h18;
-  ret.csr.isRecv         = ret.isCSR && csrIndex == 'h19;
-  ret.csr.isWaitUntil    = ret.isCSR && csrIndex == 'h1a;
-  ret.csr.isFromUart     = ret.isCSR && csrIndex == 'h1b;
-  ret.csr.isToUart       = ret.isCSR && csrIndex == 'h1c;
-  ret.csr.isNewThread    = ret.isCSR && csrIndex == 'h1d;
-  ret.csr.isKillThread   = ret.isCSR && csrIndex == 'h1e;
+  ret.csr.isAlloc        = ret.isCSR && csrIndex == 'h22;
+  ret.csr.isCanSend      = ret.isCSR && csrIndex == 'h23;
+  ret.csr.isCanRecv      = ret.isCSR && csrIndex == 'h25;
+  ret.csr.isSendLen      = ret.isCSR && csrIndex == 'h26;
+  ret.csr.isSendPtr      = ret.isCSR && csrIndex == 'h27;
+  ret.csr.isSend         = ret.isCSR && csrIndex == 'h28;
+  ret.csr.isRecv         = ret.isCSR && csrIndex == 'h29;
+  ret.csr.isWaitUntil    = ret.isCSR && csrIndex == 'h2a;
+  ret.csr.isFromUart     = ret.isCSR && csrIndex == 'h2b;
+  ret.csr.isToUart       = ret.isCSR && csrIndex == 'h2c;
+  ret.csr.isNewThread    = ret.isCSR && csrIndex == 'h2d;
+  ret.csr.isKillThread   = ret.isCSR && csrIndex == 'h2e;
   `ifdef SIMULATE
-  ret.csr.isEmit         = ret.isCSR && csrIndex == 'h1f;
+  ret.csr.isEmit         = ret.isCSR && csrIndex == 'h2f;
   `endif
   // Floating-point CSR
-  ret.csr.isFFlag       = ret.isCSR && csrIndex == 'h01;
-  ret.csr.isFRM         = ret.isCSR && csrIndex == 'h02;
-  ret.csr.isFCSR        = ret.isCSR && csrIndex == 'h03;
+  ret.csr.isFFlag        = ret.isCSR && csrIndex == 'h01;
+  ret.csr.isFRM          = ret.isCSR && csrIndex == 'h02;
+  ret.csr.isFCSR         = ret.isCSR && csrIndex == 'h03;
+  // Cycle count CSR 
+  ret.csr.isCycle        = ret.isCSR && csrIndex == 'h30;
   // Floating-point operations
   ret.isFPMAdd = instr[6:4] == 3'b100;
   ret.isFPAdd  = instr[6:4] == 3'b101 && instr[31:28] == 4'b0000;
@@ -592,6 +596,17 @@ module mkCore#(CoreId myId) (Core);
   Reg#(Bool)          writebackFire      <- mkDReg(False);
   Reg#(PipelineToken) writebackInput     <- mkRegU;
  
+  // Cycle counter
+  // -------------
+
+  // Cycle counter
+  Reg#(Bit#(32)) cycleCounter <- mkConfigReg(0);
+
+  // Update cycle counter
+  rule updateCycleCounter;
+    cycleCounter <= cycleCounter + 1;
+  endrule
+
   // Resume queue arbiter
   // --------------------
 
@@ -920,7 +935,8 @@ module mkCore#(CoreId myId) (Core);
                zeroExtend(pack(toDebugLinkPort.canPut)))
       | when(token.op.csr.isFFlag || token.op.csr.isFCSR, 
                zeroExtend(token.thread.fpFlags))
-      | when(token.op.csr.isFRM, 0);
+      | when(token.op.csr.isFRM, 0)
+      | when(token.op.csr.isCycle, cycleCounter);
     // Floating-point CSR write
     if (token.op.csr.isFFlag || token.op.csr.isFCSR) begin
       token.thread.fpFlags = truncate(token.valA);
