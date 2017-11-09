@@ -42,6 +42,7 @@ import Mult      :: *;
 // ToHost     | 0x80c  | W   | Write word to host-link
 // NewThread  | 0x80d  | W   | Create new thread with the given id
 // Emit       | 0x80f  | W   | Emit char to console (simulation only)
+// Cycle      | 0xc00  | R   | 32-bit cycle counter
 
 // ============================================================================
 // Types
@@ -87,6 +88,7 @@ typedef struct {
   Bool isSend;        Bool isRecv;
   Bool isWaitUntil;   Bool isFromHost;
   Bool isToHost;      Bool isNewThread;
+  Bool isCycle;
   `ifdef SIMULATE
   Bool isEmit;
   `endif
@@ -273,9 +275,9 @@ function Op decodeOp(Bit#(32) instr);
   ret.isFence = op == 'b00011;
   // CSR read/write operation
   ret.isCSR = isCSROp(instr);
-  Bit#(4) csrIndex = instr[23:20];
+  Bit#(5) csrIndex = {instr[30], instr[23:20]};
   // Hardware thread id CSR
-  ret.csr.isHartId = ret.isCSR && csrIndex == 'h4;
+  ret.csr.isHartId = ret.isCSR && csrIndex == 'h14;
   // Instruction memory CSRs
   ret.csr.isInstrAddr = ret.isCSR && csrIndex == 'h0;
   ret.csr.isInstr = ret.isCSR && csrIndex == 'h1;
@@ -291,6 +293,8 @@ function Op decodeOp(Bit#(32) instr);
   ret.csr.isFromHost  = ret.isCSR && csrIndex == 'hb;
   ret.csr.isToHost    = ret.isCSR && csrIndex == 'hc;
   ret.csr.isNewThread = ret.isCSR && csrIndex == 'hd;
+  // Cycle count CSR 
+  ret.csr.isCycle     = ret.isCSR && csrIndex == 'h10;
   `ifdef SIMULATE
   ret.csr.isEmit      = ret.isCSR && csrIndex == 'hf;
   `endif
@@ -503,6 +507,17 @@ module mkCore#(CoreId myId) (Core);
   Reg#(Bool)          writebackFire      <- mkDReg(False);
   Reg#(PipelineToken) writebackInput     <- mkRegU;
  
+  // Cycle counter
+  // -------------
+
+  // Cycle counter
+  Reg#(Bit#(32)) cycleCounter <- mkConfigReg(0);
+
+  // Update cycle counter
+  rule updateCycleCounter;
+    cycleCounter <= cycleCounter + 1;
+  endrule
+
   // Resume queue arbiter
   // --------------------
 
@@ -780,7 +795,8 @@ module mkCore#(CoreId myId) (Core);
       | when(token.op.csr.isCanRecv,  zeroExtend(pack(token.canRecv)))
       | when(token.op.csr.isHartId,   zeroExtend({myId, token.thread.id}))
       | when(token.op.csr.isRecv,     mailbox.recvAddr)
-      | when(token.op.csr.isFromHost, fromHostPort.value.arg);
+      | when(token.op.csr.isFromHost, fromHostPort.value.arg)
+      | when(token.op.csr.isCycle,    cycleCounter);
     // Trigger next stage
     token.retry = retry;
     token.instrResult = res;
