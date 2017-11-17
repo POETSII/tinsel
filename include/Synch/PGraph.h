@@ -360,7 +360,13 @@ template <typename DeviceType, typename MessageType> class PGraph {
     releaseAll();
     // Release edge lists
     for (uint32_t d = 0; d < numDevices; d++) {
+      // Release incoming edges
       Seq<Seq<GlobalPinId>*>* pinList = incoming->elems[d];
+      for (uint32_t i = 0; i < pinList->numElems; i++)
+        delete pinList->elems[i];
+      delete pinList;
+      // Release outgoing edges
+      pinList = outgoing->elems[d];
       for (uint32_t i = 0; i < pinList->numElems; i++)
         delete pinList->elems[i];
       delete pinList;
