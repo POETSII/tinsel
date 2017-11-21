@@ -2,6 +2,7 @@
 #define _PDEVICE_H_
 
 #include <stdint.h>
+#include <string.h>
 
 #ifdef TINSEL
   #include <tinsel.h>
@@ -18,7 +19,7 @@ struct PDeviceAddr {
   PinId pin;
   PLocalDeviceAddr localAddr;
   PThreadId threadId;
-}
+};
 
 // Device pin info
 struct PPinInfo {
@@ -32,11 +33,13 @@ typedef uint8_t PDeviceKind;
 // Structure holding information about a device
 template <typename DeviceType> struct PDeviceInfo {
   // Time step
-  uint32_t time;
+  uint16_t time;
   // Number of incoming messages per time step
   uint16_t numIn;
-  // Count of messages received
+  // Count of messages received for current time step
   uint16_t countIn;
+  // Count of messages received for next time step
+  uint16_t countInNext;
   // Have all outgoing messages for current time step been sent?
   uint8_t allSent;
   // Device kind
@@ -59,10 +62,12 @@ template <typename DeviceType> struct PDeviceInfo {
 struct PMessage {
   // Address (source or destination)
   PDeviceAddr addr;
+  // Time step of sender
+  uint16_t time;
 };
 
 // Generic thread structure
-struct PThread <typename DeviceType, typename MessageType> {
+template <typename DeviceType, typename MessageType> struct PThread {
   // Number of devices handled by thread
   PLocalDeviceAddr numDevices;
 
@@ -84,7 +89,9 @@ struct PThread <typename DeviceType, typename MessageType> {
     // Current step becomes previous step
     dev->prev = tmp;
     // Next step is reset
-    dev->next->countIn = dev->next->allSent = 0;
+    dev->countIn = dev->countInNext;
+    dev->countInNext = 0;
+    dev->allSent = 0;
     dev->next->begin(dev->kind);
   }
 
@@ -103,7 +110,7 @@ struct PThread <typename DeviceType, typename MessageType> {
     // Initialise sender queue
     front = 0;
     back = numDevices;
-    sender = queue;
+    sender = queue[front];
     for (uint32_t i = 0; i < numDevices; i++)
       queue[i] = &devices[i];
 
@@ -128,33 +135,32 @@ struct PThread <typename DeviceType, typename MessageType> {
         // Determine if message is for this time step or next
         if (dev->time == msg->time) {
           // Invoke receive handler for current time step
-          if (msg->pin != 0) dev->current->recv(dev->kind, msg);
+          if (msg->addr.pin != 0) dev->current->recv(dev->kind, msg);
           // Update message count
-          dev->current->countIn++;
+          dev->countIn++;
           // End of time step?
           if (dev->countIn == dev->numIn && dev->allSent) {
             // Invoke "end of time step" handler
             dev->current->end(dev->kind, dev->prev);
             // Advance time step
-            advance(info);
+            advance(dev);
             // Add to queue
             queue[back] = dev;
-            if (back == numDevices) back = 0 else back++;
+            if (back == numDevices) back = 0; else back++;
           }
         }
         else {
           // Invoke receive handler for next time step
-          if (msg->pin != 0) dev->next->recv(msg);
+          if (msg->addr.pin != 0) dev->next->recv(dev->kind, msg);
           // Update message count
-          dev->next->countIn++;
+          dev->countInNext++;
         }
       }
       else if (tinselCanSend() && front != back) {
         if (sender->time == 0) {
           volatile MessageType *msg = (MessageType *) tinselSlot(0);
-          sender = &queue[front];
           // Invoke output handler
-          sender->output(sender->kind, msg);
+          sender->prev->output(sender->kind, msg);
           msg->addr.threadId = tinselId();
           msg->addr.localAddr = sender->localAddr;
           // Send chunk to host
@@ -164,42 +170,43 @@ struct PThread <typename DeviceType, typename MessageType> {
         else if (senderPin == sender->numOutPins) {
           // Move on to next sender
           sender->allSent = 1;
-          if (front == numDevices) front = 0 else front++;
-          sender = &queue[front];
+          if (front == numDevices) front = 0; else front++;
+          sender = queue[front];
           senderPin = 0;
           senderBase = 0;
         }
-        else if (senderChunk == pinInfo[senderPin].numMsgs) {
+        else if (senderChunk == sender->pinInfo[senderPin].numMsgs) {
           // Move on to next pin
-          senderBase += pinInfo[senderPin].fanOut;
+          senderBase += sender->pinInfo[senderPin].fanOut;
           senderPin++;
           senderChunk = 0;
         }
-        else if (senderIndex == pinInfo[senderPin].fanOut) {
+        else if (senderIndex == sender->pinInfo[senderPin].fanOut) {
           // Move on to next chunk
           senderChunk++;
           senderIndex = 0;
         }
         else {
           volatile MessageType *msg = (MessageType *) tinselSlot(0);
-          sender = &queue[front];
           if (senderIndex == 0) {
             // Invoke send handler, except on sync-only pin 0
             if (senderPin != 0) {
-              sender->send(sender->kind, senderPin, senderChunk, msg);
+              sender->prev->send(sender->kind, senderPin, senderChunk, msg);
               // Set number of flits per message
               tinselSetLen((sizeof(MessageType)-1) >> TinselLogBytesPerFlit);
             }
             else {
-              msg->sync = 1;
               // Set number of flits per message
               tinselSetLen(0);
             }
           }
           // Prepare message
-          msg->addr = outEdges[senderBase + senderIndex];
+          msg->time = sender->time;
+          PDeviceAddr* addr = &sender->outEdges[senderBase + senderIndex];
+          //msg->addr = addr;
+          *((volatile uint32_t *) &msg->addr) = *((uint32_t *) addr);
           // Send chunk to next destination
-          tinselSend(msg->addr.threadId, msg);
+          tinselSend(addr->threadId, msg);
           senderIndex++;
         }
       }
