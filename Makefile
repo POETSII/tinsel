@@ -18,8 +18,8 @@ clean:
 	make -C apps/heat clean
 	make -C apps/ping clean
 	make -C apps/linktest clean
-	make -C apps/heat-bare clean
-	make -C apps/asp clean
-	make -C apps/sorter clean
+	make -C apps/POLite/heat clean
+	make -C apps/POLite/asp clean
+	make -C apps/POLite/sorter clean
 	make -C bin clean
 	make -C tests clean

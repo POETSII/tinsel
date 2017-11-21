@@ -1,5 +1,5 @@
 # Tinsel root
-TINSEL_ROOT=../..
+TINSEL_ROOT=../../..
 
 ifndef QUARTUS_ROOTDIR
   $(error Please set QUARTUS_ROOTDIR)
@@ -14,18 +14,18 @@ LDFLAGS = -melf32lriscv -G 0
 .PHONY: all
 all: code.v data.v run
 
-code.v: ASP.elf
-	checkelf.sh ASP.elf
-	$(RV_OBJCOPY) -O verilog --only-section=.text ASP.elf code.v
+code.v: Heat.elf
+	checkelf.sh Heat.elf
+	$(RV_OBJCOPY) -O verilog --only-section=.text Heat.elf code.v
 
-data.v: ASP.elf
+data.v: Heat.elf
 	$(RV_OBJCOPY) -O verilog --remove-section=.text \
-                --set-section-flags .bss=alloc,load,contents ASP.elf data.v
+                --set-section-flags .bss=alloc,load,contents Heat.elf data.v
 
-ASP.elf: ASP.cpp ASP.h link.ld $(INC)/config.h \
+Heat.elf: Heat.cpp Heat.h link.ld $(INC)/config.h \
           $(INC)/tinsel.h entry.o $(LIB)/lib.o
-	$(RV_CPPC) $(CFLAGS) -Wall -c -DTINSEL -o ASP.o ASP.cpp
-	$(RV_LD) $(LDFLAGS) -T link.ld -o ASP.elf entry.o ASP.o $(LIB)/lib.o
+	$(RV_CPPC) $(CFLAGS) -Wall -c -DTINSEL -o Heat.o Heat.cpp
+	$(RV_LD) $(LDFLAGS) -T link.ld -o Heat.elf entry.o Heat.o $(LIB)/lib.o
 
 entry.o:
 	$(RV_CPPC) $(CFLAGS) -Wall -c -o entry.o entry.S
@@ -42,13 +42,13 @@ $(INC)/config.h: $(TINSEL_ROOT)/config.py
 $(HL)/%.o:
 	make -C $(HL)
 
-run: Run.cpp $(HL)/*.o
-	g++ -O2 -I $(INC) -I $(HL) -o run Run.cpp $(HL)/*.o \
+run: Run.cpp Colours.cpp $(HL)/*.o
+	g++ -O2 -I $(INC) -I $(HL) -o run Run.cpp Colours.cpp $(HL)/*.o \
 	  -ljtag_atlantic -ljtag_client -L $(QUARTUS_ROOTDIR)/linux64/ \
 	  -Wl,-rpath,$(QUARTUS_ROOTDIR)/linux64 -lmetis
 
-sim: Run.cpp $(HL)/sim/*.o
-	g++ -O2 -I $(INC) -I $(HL) -o sim Run.cpp $(HL)/sim/*.o \
+sim: Run.cpp Colours.cpp $(HL)/sim/*.o
+	g++ -O2 -I $(INC) -I $(HL) -o sim Run.cpp Colours.cpp $(HL)/sim/*.o \
     -lmetis
 
 .PHONY: clean
