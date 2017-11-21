@@ -10,11 +10,11 @@
 #include <Synch.h>
 
 // Unique id for each device in a POETS graph
-typedef uint32_t DeviceId;
+typedef uint32_t PDeviceId;
 
 // A global pin id is a (device id, pin id) pair 
-struct GlobalPinId {
-  DeviceId devId;
+struct PGlobalPinId {
+  PDeviceId devId;
   PinId pinId;
 };
 
@@ -44,8 +44,8 @@ template <typename DeviceType, typename MessageType> class PGraph {
 
   // Pin connections
   // (A list of global pin ids for each device and each device pin)
-  Seq<Seq<Seq<GlobalPinId>*>*> incoming;
-  Seq<Seq<Seq<GlobalPinId>*>*> outgoing;
+  Seq<Seq<Seq<PGlobalPinId>*>*> incoming;
+  Seq<Seq<Seq<PGlobalPinId>*>*> outgoing;
 
   // Width of each pin
   // (A list of pin widths for each device and each outgoing pin)
@@ -76,13 +76,13 @@ template <typename DeviceType, typename MessageType> class PGraph {
 
   // Create new device
   PDeviceId newDevice() {
-    DeviceId d = numDevices;
+    PDeviceId d = numDevices;
     numDevices++;
     const uint32_t initialCapacity = 4;
-    incoming.append(new Seq<Seq<GlobalPinId>*> (initialCapacity));
-    outgoing.append(new Seq<Seq<GlobalPinId>*> (initialCapacity));
-    initialPinWidths = new Seq<uint16_t> (initialCapacity);
-    initialPinWidths.append(1); // Pin 0 has width 1
+    incoming.append(new Seq<Seq<PGlobalPinId>*> (initialCapacity));
+    outgoing.append(new Seq<Seq<PGlobalPinId>*> (initialCapacity));
+    Seq<uint16_t>* initialPinWidths = new Seq<uint16_t> (initialCapacity);
+    initialPinWidths->append(1); // Pin 0 has width 1
     pinWidth.append(initialPinWidths);
     numIn.append(0);
     return d;
@@ -90,12 +90,12 @@ template <typename DeviceType, typename MessageType> class PGraph {
 
   // Set pin width (i.e. number of messages sent over pin per tick)
   // The pin width must be set before adding edges from that pin
-  inline void setPinWidth(GlobalPinId pin, uint16_t numMsgs)
+  inline void setPinWidth(PGlobalPinId pin, uint16_t numMsgs)
   {
     // Pin id 0 is reserved
     assert(pin.pinId != 0);
     // Set pin width
-    Seq<uint16_t>* widths = pinWidth->elems[pin.devId];
+    Seq<uint16_t>* widths = pinWidth.elems[pin.devId];
     for (uint32_t i = widths->numElems; i <= pin.pinId; i++)
       widths->append(0);
     widths->elems[pin.pinId] = numMsgs;
@@ -103,24 +103,24 @@ template <typename DeviceType, typename MessageType> class PGraph {
 
   // Set pin width (i.e. number of messages sent over pin per tick)
   // The pin width must be set before adding edges from that pin
-  void setPinWidth(DeviceId devId, PinId pinId, uint16_t numMsgs)
+  void setPinWidth(PDeviceId devId, PinId pinId, uint16_t numMsgs)
   {
-    GlobalPinId p; p.devId = devId; pc.pinId = pinId;
+    PGlobalPinId p; p.devId = devId; p.pinId = pinId;
     setPinWidth(p, numMsgs);
   }
 
   // Add a connection between device pins
-  inline void addEdgeUnchecked(GlobalPinId from, GlobalPinId to) {
+  inline void addEdgeUnchecked(PGlobalPinId from, PGlobalPinId to) {
     const uint32_t initialCapacity = 4;
     // Add outgoing edge
-    Seq<Seq<GlobalPinId>*>* pinList = outgoing->elems[from.devId];
+    Seq<Seq<PGlobalPinId>*>* pinList = outgoing.elems[from.devId];
     for (uint32_t i = pinList->numElems; i <= from.pinId; i++)
-      pinList->append(new Seq<GlobalPinId> (initialCapacity));
+      pinList->append(new Seq<PGlobalPinId> (initialCapacity));
     pinList->elems[from.pinId]->append(to);
     // Add incoming edge
-    pinList = incoming->elems[to.devId];
+    pinList = incoming.elems[to.devId];
     for (uint32_t i = pinList->numElems; i <= to.pinId; i++)
-      pinList->append(new Seq<GlobalPinId> (initialCapacity));
+      pinList->append(new Seq<PGlobalPinId> (initialCapacity));
     pinList->elems[from.pinId]->append(from);
     // Increment number of incoming messages per tick on target device
     assert(from.pinId < pinWidth.elems[from.devId]->numElems);
@@ -128,7 +128,7 @@ template <typename DeviceType, typename MessageType> class PGraph {
   }
 
   // Add a connection between device pins
-  void addEdge(GlobalPinId from, GlobalPinId to) {
+  void addEdge(PGlobalPinId from, PGlobalPinId to) {
     // Pin id 0 is reserved
     assert(from.pinId != 0 && to.pinId != 0);
     addEdgeUnchecked(from, to);
@@ -137,16 +137,16 @@ template <typename DeviceType, typename MessageType> class PGraph {
   // Add a connection between device pins
   inline void addEdgeUnchecked(PDeviceId from, PinId sourcePin,
                                PDeviceId to, PinId sinkPin) {
-    GlobalPinId src; src.devId = from; src.pinId = sourcePin;
-    GlobalPinId dst; dst.devId = to; dst.pinId = sinkPin;
+    PGlobalPinId src; src.devId = from; src.pinId = sourcePin;
+    PGlobalPinId dst; dst.devId = to; dst.pinId = sinkPin;
     addEdgeUnchecked(src, dst);
   }
 
   // Add a connection between device pins
   void addEdge(PDeviceId from, PinId sourcePin,
                       PDeviceId to, PinId sinkPin) {
-    GlobalPinId src; src.devId = from; src.pinId = sourcePin;
-    GlobalPinId dst; dst.devId = to; dst.pinId = sinkPin;
+    PGlobalPinId src; src.devId = from; src.pinId = sourcePin;
+    PGlobalPinId dst; dst.devId = to; dst.pinId = sinkPin;
     addEdge(src, dst);
   }
 
@@ -155,17 +155,17 @@ template <typename DeviceType, typename MessageType> class PGraph {
   // GALS synchronisation for any graph.
   void addSyncEdges() {
     for (uint32_t q = 0; q < numDevices; q++) {
-      Seq<Seq<GlobalPinId>*>* qPinList = outgoing->elems[q];
+      Seq<Seq<PGlobalPinId>*>* qPinList = outgoing.elems[q];
       for (uint32_t i = 0; i < qPinList->numElems; i++) {
-        Seq<GlobalPinId>* qOutList = qPinList->elems[i];
+        Seq<PGlobalPinId>* qOutList = qPinList->elems[i];
         for (uint32_t j = 0; j < qOutList->numElems; j++) {
           bool found = false;
-          DeviceId p = qOutList->elems[j].devId;
-          Seq<Seq<GlobalPinId>*>* pPinList = outgoing->elems[p];
+          PDeviceId p = qOutList->elems[j].devId;
+          Seq<Seq<PGlobalPinId>*>* pPinList = outgoing.elems[p];
           for (uint32_t x = 0; x < pPinList->numElems; x++) {
-            Seq<GlobalPinId>* pOutList = pPinList->elems[x];
+            Seq<PGlobalPinId>* pOutList = pPinList->elems[x];
             for (uint32_t y = 0; y < pOutList->numElems; y++) {
-              DeviceId d = pOutList->elems[y].devId;
+              PDeviceId d = pOutList->elems[y].devId;
               if (d == q) {
                 found = true;
                 break;
@@ -206,11 +206,11 @@ template <typename DeviceType, typename MessageType> class PGraph {
         // Add space for pin info
         // (number of messages per pin and fanout of each pin)
         uint32_t numPins = outgoing.elems[id]->numElems;
-        size = cacheAlign(size + numPins * sizeof(PinInfo));
+        size = cacheAlign(size + numPins * sizeof(PPinInfo));
         // Add space for outgoing edges
-        Seq<Seq<GlobalPinId>*>* pinList = outgoing->elems[id];
+        Seq<Seq<PGlobalPinId>*>* pinList = outgoing.elems[id];
         uint32_t numEdges = 0;
-        for (uint32_t p = 0; p < pinList->numElems; p++)
+        for (uint32_t i = 0; i < pinList->numElems; i++)
           numEdges += pinList->elems[i]->numElems;
         size = cacheAlign(size + numEdges * sizeof(PDeviceAddr));
         // Add space for device states
@@ -265,23 +265,23 @@ template <typename DeviceType, typename MessageType> class PGraph {
       // Initialise each device and associated info
       for (uint32_t devNum = 0; devNum < numDevs; devNum++) {
         PDeviceId id = fromDeviceAddr[threadId][devNum];
-        PDeciceInfo<DeviceType>* dev = devices[id];
+        PDeviceInfo<DeviceType>* dev = devices[id];
         // Set thread-local device address
         dev->localAddr = devNum;
         // Set number of incoming messages per tick
         dev->numIn = numIn.elems[id];
         // Determine number of pins on device
-        uint16_t numPins = (uint16_t) pinWidths.elems[id]->numElems;
+        uint16_t numPins = (uint16_t) pinWidth.elems[id]->numElems;
         dev->numOutPins = numPins;
         // Set location of pin info array
         dev->pinInfo = heapBase[threadId] + hp;
-        uint16_t* pinInfoArray = (uint16_t*) &heap[threadId][hp];
+        PPinInfo* pinInfoArray = (PPinInfo*) &heap[threadId][hp];
         Seq<Seq<PGlobalPinId>*>* pinList = outgoing.elems[devNum];
         for (uint32_t i = 0; i < pinList->numElems; i++) {
           pinInfoArray[i].fanOut = pinList->elems[i]->numElems;
-          pinInfoArray[i].numMsgs = pinWidths.elems[devNum]->elems[i];
+          pinInfoArray[i].numMsgs = pinWidth.elems[devNum]->elems[i];
         }
-        hp = cacheAlign(hp + numPins * sizeof(PinInfo));
+        hp = cacheAlign(hp + numPins * sizeof(PPinInfo));
         // Set tinsel address of edges array
         dev->outEdges = heapBase[threadId] + hp;
         // Edge array
@@ -321,7 +321,7 @@ template <typename DeviceType, typename MessageType> class PGraph {
   #ifndef TINSEL
   // Get a pointer to the initial state of a given device
   // (Must only be called after the mapper)
-  DeviceType* getDeviceState (DeviceId id) {
+  DeviceType* getState(PDeviceId id) {
     PDeviceAddr addr = toDeviceAddr[id];
     uint32_t offset = devices[id]->prev - heapBase[addr.threadId];
     return (DeviceType*) &heap[addr.threadId][offset];
@@ -364,6 +364,20 @@ template <typename DeviceType, typename MessageType> class PGraph {
 
     // Andd sync-only edges
     addSyncEdges();
+
+    // Create connectivity graph
+    Graph graph;
+    for (uint32_t i = 0; i < numDevices; i++) graph.newNode();
+    for (uint32_t i = 0; i < numDevices; i++) {
+      Seq<Seq<PGlobalPinId>*>* pinList = outgoing.elems[i];
+      for (uint32_t j = 0; j < pinList->numElems; j++) {
+        Seq<PGlobalPinId>* edgeList = pinList->elems[j];
+        for (uint32_t k = 0; k < edgeList->numElems; k++) {
+          PGlobalPinId p = edgeList->elems[k];
+          graph.addBidirectionalEdge(i, p.devId);
+        }
+      }
+    }
 
     // Partition into subgraphs, one per board
     Placer boards(&graph, TinselMeshXLen, TinselMeshYLen);
@@ -441,16 +455,16 @@ template <typename DeviceType, typename MessageType> class PGraph {
     releaseAll();
     // Release pin widths
     for (uint32_t d = 0; d < numDevices; d++)
-      delete pinWidth->elems[d];
+      delete pinWidth.elems[d];
     // Release edge lists
     for (uint32_t d = 0; d < numDevices; d++) {
       // Release incoming edges
-      Seq<Seq<GlobalPinId>*>* pinList = incoming->elems[d];
+      Seq<Seq<PGlobalPinId>*>* pinList = incoming.elems[d];
       for (uint32_t i = 0; i < pinList->numElems; i++)
         delete pinList->elems[i];
       delete pinList;
       // Release outgoing edges
-      pinList = outgoing->elems[d];
+      pinList = outgoing.elems[d];
       for (uint32_t i = 0; i < pinList->numElems; i++)
         delete pinList->elems[i];
       delete pinList;
