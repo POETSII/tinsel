@@ -121,7 +121,7 @@ template <typename DeviceType, typename MessageType> class PGraph {
     pinList = incoming.elems[to.devId];
     for (uint32_t i = pinList->numElems; i <= to.pinId; i++)
       pinList->append(new Seq<PGlobalPinId> (initialCapacity));
-    pinList->elems[from.pinId]->append(from);
+    pinList->elems[to.pinId]->append(from);
     // Increment number of incoming messages per tick on target device
     assert(from.pinId < pinWidth.elems[from.devId]->numElems);
     numIn.elems[to.devId] += pinWidth.elems[from.devId]->elems[from.pinId];
@@ -218,7 +218,7 @@ template <typename DeviceType, typename MessageType> class PGraph {
         size = cacheAlign(size + sizeof(DeviceType));
         size = cacheAlign(size + sizeof(DeviceType));
       }
-      // The total heap size including unintialised portions
+      // The total heap size including uninitialised portions
       uint32_t totalSize = size + 4 * (numDevs+1);
       // Check that total size is reasonable
       if (totalSize > maxHeapSize) {
@@ -276,10 +276,10 @@ template <typename DeviceType, typename MessageType> class PGraph {
         // Set location of pin info array
         dev->pinInfo = heapBase[threadId] + hp;
         PPinInfo* pinInfoArray = (PPinInfo*) &heap[threadId][hp];
-        Seq<Seq<PGlobalPinId>*>* pinList = outgoing.elems[devNum];
+        Seq<Seq<PGlobalPinId>*>* pinList = outgoing.elems[id];
         for (uint32_t i = 0; i < pinList->numElems; i++) {
           pinInfoArray[i].fanOut = pinList->elems[i]->numElems;
-          pinInfoArray[i].numMsgs = pinWidth.elems[devNum]->elems[i];
+          pinInfoArray[i].numMsgs = pinWidth.elems[id]->elems[i];
         }
         hp = cacheAlign(hp + numPins * sizeof(PPinInfo));
         // Set tinsel address of edges array
@@ -365,7 +365,7 @@ template <typename DeviceType, typename MessageType> class PGraph {
     // Andd sync-only edges
     addSyncEdges();
 
-    // Create connectivity graph
+    // Create connectivity graph for placer
     Graph graph;
     for (uint32_t i = 0; i < numDevices; i++) graph.newNode();
     for (uint32_t i = 0; i < numDevices; i++) {

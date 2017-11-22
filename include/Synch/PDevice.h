@@ -81,13 +81,15 @@ template <typename DeviceType, typename MessageType> struct PThread {
 
   // Advance time step of given device
   inline void advance(PDeviceInfo<DeviceType>* dev) {
+    // Invoke "end of time step" handler
+    dev->current->end(dev->kind, dev->prev);
     // Increment time step
-    dev->time++;
-    // Next step becomes current step
-    PTR(DeviceType) tmp = dev->current;
+    dev->time--;
+    // Rotate states
+    PTR(DeviceType) tmp = dev->prev;
+    dev->prev = dev->current;
     dev->current = dev->next;
-    // Current step becomes previous step
-    dev->prev = tmp;
+    dev->next = tmp;
     // Next step is reset
     dev->countIn = dev->countInNext;
     dev->countInNext = 0;
@@ -110,13 +112,13 @@ template <typename DeviceType, typename MessageType> struct PThread {
     // Initialise sender queue
     front = 0;
     back = numDevices;
-    sender = queue[front];
     for (uint32_t i = 0; i < numDevices; i++)
       queue[i] = &devices[i];
+    sender = queue[0];
 
     // Initialise devices
     for (uint32_t i = 0; i < numDevices; i++) {
-      PDeviceInfo<DeviceType>* dev = &dev[i];
+      PDeviceInfo<DeviceType>* dev = &devices[i];
       dev->current->begin(dev->kind);
       dev->next->begin(dev->kind);
     }
@@ -140,11 +142,10 @@ template <typename DeviceType, typename MessageType> struct PThread {
           dev->countIn++;
           // End of time step?
           if (dev->countIn == dev->numIn && dev->allSent) {
-            // Invoke "end of time step" handler
-            dev->current->end(dev->kind, dev->prev);
             // Advance time step
             advance(dev);
             // Add to queue
+            if (front == back) sender = dev;
             queue[back] = dev;
             if (back == numDevices) back = 0; else back++;
           }
@@ -155,6 +156,8 @@ template <typename DeviceType, typename MessageType> struct PThread {
           // Update message count
           dev->countInNext++;
         }
+        // Reallocate slot
+        tinselAlloc(msg);
       }
       else if (tinselCanSend() && front != back) {
         if (sender->time == 0) {
@@ -165,15 +168,24 @@ template <typename DeviceType, typename MessageType> struct PThread {
           msg->addr.localAddr = sender->localAddr;
           // Send chunk to host
           tinselSend(tinselHostId(), msg);
-          front++;
+          if (front == numDevices) front = 0; else front++;
+          sender = queue[front];
         }
         else if (senderPin == sender->numOutPins) {
           // Move on to next sender
           sender->allSent = 1;
           if (front == numDevices) front = 0; else front++;
-          sender = queue[front];
           senderPin = 0;
           senderBase = 0;
+          // End of time step?
+          if (sender->countIn == sender->numIn) {
+            // Advance time step
+            advance(sender);
+            // Add to queue
+            queue[back] = sender;
+            if (back == numDevices) back = 0; else back++;
+          }
+          sender = queue[front];
         }
         else if (senderChunk == sender->pinInfo[senderPin].numMsgs) {
           // Move on to next pin

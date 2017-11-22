@@ -7,7 +7,10 @@ int main()
   // Point thread structure at base of thread's heap
   PThread<HeatDevice, HeatMessage>* thread =
     (PThread<HeatDevice, HeatMessage>*) tinselHeapBase();
-  
+
+//  if (thread->numDevices != 0)
+//    tinselEmit(thread->devices[0].time);
+
   // Invoke interpreter
   thread->run();
 
