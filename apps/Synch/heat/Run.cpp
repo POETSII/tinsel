@@ -11,7 +11,6 @@ int main()
   //const uint32_t time   = 2;
   const uint32_t width  = 8;
   const uint32_t height = 8;
-  const uint32_t time   = 32;
 
   // Connection to tinsel machine
   HostLink hostLink;
@@ -44,10 +43,6 @@ int main()
   // Prepare mapping from graph to hardware
   graph.map();
 
-  // Specify number of time steps to run on each device
-  for (PDeviceId i = 0; i < graph.numDevices; i++)
-    graph.devices[i]->time = time;
- 
   // Apply constant heat at north edge
   // Apply constant cool at south edge
   for (uint32_t x = 0; x < width; x++) {

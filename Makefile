@@ -22,5 +22,6 @@ clean:
 	make -C apps/POLite/asp clean
 	make -C apps/POLite/sorter clean
 	make -C apps/Synch/heat clean
+	make -C apps/Synch/asp clean
 	make -C bin clean
 	make -C tests clean

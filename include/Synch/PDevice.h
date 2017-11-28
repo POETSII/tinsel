@@ -82,9 +82,9 @@ template <typename DeviceType, typename MessageType> struct PThread {
   // Advance time step of given device
   inline void advance(PDeviceInfo<DeviceType>* dev) {
     // Invoke "end of time step" handler
-    dev->current->end(dev->kind, dev->prev);
+    dev->current->end(dev, dev->prev);
     // Increment time step
-    dev->time--;
+    dev->time++;
     // Rotate states
     PTR(DeviceType) tmp = dev->prev;
     dev->prev = dev->current;
@@ -94,7 +94,7 @@ template <typename DeviceType, typename MessageType> struct PThread {
     dev->countIn = dev->countInNext;
     dev->countInNext = 0;
     dev->allSent = 0;
-    dev->next->begin(dev->kind);
+    dev->next->begin(dev);
   }
 
   // Interpreter
@@ -119,8 +119,9 @@ template <typename DeviceType, typename MessageType> struct PThread {
     // Initialise devices
     for (uint32_t i = 0; i < numDevices; i++) {
       PDeviceInfo<DeviceType>* dev = &devices[i];
-      dev->current->begin(dev->kind);
-      dev->next->begin(dev->kind);
+      dev->prev->init(dev);
+      dev->current->begin(dev);
+      dev->next->begin(dev);
     }
 
     // Allocate some slots for incoming messages
@@ -137,7 +138,7 @@ template <typename DeviceType, typename MessageType> struct PThread {
         // Determine if message is for this time step or next
         if (dev->time == msg->time) {
           // Invoke receive handler for current time step
-          if (msg->addr.pin != 0) dev->current->recv(dev->kind, msg);
+          if (msg->addr.pin != 0) dev->current->recv(dev, msg);
           // Update message count
           dev->countIn++;
           // End of time step?
@@ -152,7 +153,7 @@ template <typename DeviceType, typename MessageType> struct PThread {
         }
         else {
           // Invoke receive handler for next time step
-          if (msg->addr.pin != 0) dev->next->recv(dev->kind, msg);
+          if (msg->addr.pin != 0) dev->next->recv(dev, msg);
           // Update message count
           dev->countInNext++;
         }
@@ -160,10 +161,10 @@ template <typename DeviceType, typename MessageType> struct PThread {
         tinselAlloc(msg);
       }
       else if (tinselCanSend() && front != back) {
-        if (sender->time == 0) {
+        if (sender->prev->done(sender)) {
           volatile MessageType *msg = (MessageType *) tinselSlot(0);
           // Invoke output handler
-          sender->prev->output(sender->kind, msg);
+          sender->prev->output(sender, msg);
           msg->addr.threadId = tinselId();
           msg->addr.localAddr = sender->localAddr;
           // Send chunk to host
@@ -203,7 +204,7 @@ template <typename DeviceType, typename MessageType> struct PThread {
           if (senderIndex == 0) {
             // Invoke send handler, except on sync-only pin 0
             if (senderPin != 0) {
-              sender->prev->send(sender->kind, senderPin, senderChunk, msg);
+              sender->prev->send(sender, senderPin, senderChunk, msg);
               // Set number of flits per message
               tinselSetLen((sizeof(MessageType)-1) >> TinselLogBytesPerFlit);
             }
