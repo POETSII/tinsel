@@ -3,9 +3,10 @@
 
 #include <Synch.h>
 
-// For 2D Heat transfer.  There are two kinds of device:
-//   Kind 0: temperature may change on each time step
-//   Kind 1: temperature remains constant
+// 2D Heat transfer, with two kinds of device:
+// Kind 0: temperature may change on each time step
+// Kind 1: temperature remains constant
+#define CONST 1
 
 struct HeatMessage : PMessage {
   // Temperature at sender
@@ -16,33 +17,44 @@ struct HeatDevice {
   // Current temperature of device
   uint32_t val;
 
+  // Called before simulation starts
+  inline void init(PDeviceInfo<ASPDevice>* info) {
+  }
+
   // Called at beginning of each time step
-  inline void begin(PDeviceKind kind) {
-    if (kind == 0) val = 0;
+  inline void begin(PDeviceInfo<HeatDevice>* info) {
+    if (info->kind != CONST) val = 0;
   }
 
   // Called at end of each time step
-  inline void end(PDeviceKind kind, HeatDevice* prev) {
-    if (kind == 0)
-      val = val >> 2;
-    else
+  inline void end(PDeviceInfo<HeatDevice>* info, HeatDevice* prev) {
+    if (info->kind== CONST)
       val = prev->val;
+    else
+      val = val >> 2;
   }
 
   // Called for each message to be sent
-  inline void send(PDeviceKind kind, PinId pin,
+  inline void send(PDeviceInfo<HeatDevice>* info, PinId pin,
                    uint16_t chunk, volatile HeatMessage* msg) {
     msg->val = val;
   }
 
   // Called for each message received
-  inline void recv(PDeviceKind kind, volatile HeatMessage* msg) {
+  inline void recv(PDeviceInfo<HeatDevice>* info,
+                   volatile HeatMessage* msg) {
     val += msg->val;
+  }
+
+  // Signal completion
+  inline bool done(PDeviceInfo<HeatDevice>* info) {
+    return info->time == 32;
   }
 
   // Called on when execution finished
   // (A single message is sent to the host)
-  inline void output(PDeviceKind kind, volatile HeatMessage* msg) {
+  inline void output(PDeviceInfo<HeatDevice>* info,
+                     volatile HeatMessage* msg) {
     msg->val = val;
   }
 };
