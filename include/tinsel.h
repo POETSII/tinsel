@@ -21,6 +21,7 @@
 #define CSR_TO_HOST    "0x80c"
 #define CSR_NEW_THREAD "0x80d"
 #define CSR_EMIT       "0x80f"
+#define CSR_CYCLE      "0xc00"
 
 // Get globally unique thread id of caller
 inline int tinselId()
@@ -28,6 +29,14 @@ inline int tinselId()
   int id;
   asm ("csrr %0, " CSR_HART_ID : "=r"(id));
   return id;
+}
+
+// Read cycle counter
+inline uint32_t tinselCycleCount()
+{
+  uint32_t n;
+  asm ("csrrw %0, " CSR_CYCLE ", zero" : "=r"(n));
+  return n;
 }
 
 // Cache flush

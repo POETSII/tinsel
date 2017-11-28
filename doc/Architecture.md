@@ -101,7 +101,7 @@ A summary of synthesis-time parameters introduced in this section:
   Parameter           | Default | Description
   ------------------- | ------- | -----------
   `LogThreadsPerCore` |       4 | Number of hardware threads per core
-  `LogInstrsPerCore`  |      11 | Size of each instruction memory
+  `LogInstrsPerCore`  |      12 | Size of each instruction memory
 
 ## 2. Tinsel Cache
 
@@ -492,12 +492,16 @@ comms and more cores to be added in the near future.
   `ToHost`    | 0x80c  | W   | Write word to HostLink
   `NewThread` | 0x80d  | W   | Create new thread with the given id
   `Emit`      | 0x80f  | W   | Emit char to console (simulation only)
+  `Cycle`     | 0xc00  | R   | 32-bit cycle counter
 
 ### Tinsel API
 
 ```c
 // Return a globally unique id for the calling thread
 inline uint32_t tinselId();
+
+// Read cycle counter
+inline uint32_t tinselCycleCount();
 
 // Write 32-bit word to instruction memory
 inline void tinselWriteInstr(uint32_t addr, uint32_t word);
