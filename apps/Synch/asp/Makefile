@@ -1,5 +1,5 @@
 # Tinsel root
-TINSEL_ROOT=../..
+TINSEL_ROOT=../../..
 
 ifndef QUARTUS_ROOTDIR
   $(error Please set QUARTUS_ROOTDIR)

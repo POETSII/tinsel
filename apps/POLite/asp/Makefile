@@ -1,5 +1,5 @@
 # Tinsel root
-TINSEL_ROOT=../..
+TINSEL_ROOT=../../..
 
 ifndef QUARTUS_ROOTDIR
   $(error Please set QUARTUS_ROOTDIR)
@@ -14,18 +14,18 @@ LDFLAGS = -melf32lriscv -G 0
 .PHONY: all
 all: code.v data.v run
 
-code.v: Sorter.elf
-	checkelf.sh Sorter.elf
-	$(RV_OBJCOPY) -O verilog --only-section=.text Sorter.elf code.v
+code.v: ASP.elf
+	checkelf.sh ASP.elf
+	$(RV_OBJCOPY) -O verilog --only-section=.text ASP.elf code.v
 
-data.v: Sorter.elf
+data.v: ASP.elf
 	$(RV_OBJCOPY) -O verilog --remove-section=.text \
-                --set-section-flags .bss=alloc,load,contents Sorter.elf data.v
+                --set-section-flags .bss=alloc,load,contents ASP.elf data.v
 
-Sorter.elf: Sorter.cpp Sorter.h link.ld $(INC)/config.h \
+ASP.elf: ASP.cpp ASP.h link.ld $(INC)/config.h \
           $(INC)/tinsel.h entry.o $(LIB)/lib.o
-	$(RV_CPPC) $(CFLAGS) -Wall -c -DTINSEL -o Sorter.o Sorter.cpp
-	$(RV_LD) $(LDFLAGS) -T link.ld -o Sorter.elf entry.o Sorter.o $(LIB)/lib.o
+	$(RV_CPPC) $(CFLAGS) -Wall -c -DTINSEL -o ASP.o ASP.cpp
+	$(RV_LD) $(LDFLAGS) -T link.ld -o ASP.elf entry.o ASP.o $(LIB)/lib.o
 
 entry.o:
 	$(RV_CPPC) $(CFLAGS) -Wall -c -o entry.o entry.S
