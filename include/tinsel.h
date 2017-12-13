@@ -35,7 +35,7 @@ inline int tinselId()
 inline uint32_t tinselCycleCount()
 {
   uint32_t n;
-  asm ("csrrw %0, " CSR_CYCLE ", zero" : "=r"(n));
+  asm volatile ("csrrw %0, " CSR_CYCLE ", zero" : "=r"(n));
   return n;
 }
 
