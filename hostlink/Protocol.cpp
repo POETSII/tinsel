@@ -26,7 +26,8 @@ private:
       TagAssertRich = 0xFD,
       TagAssert = 0xFE,
       TagExit   = 0xFF,
-      TagKeyVal = 0x10
+      TagKeyVal = 0x10,
+      TagPerfmon = 0x20
     };
   
   enum State
@@ -35,6 +36,14 @@ private:
       StateStdOut,
       StateStdErr,
       StateExit,
+      StatePerfmon_thread,
+      StatePerfmon_blocked,
+      StatePerfmon_idle,
+      StatePerfmon_perfmon,
+      StatePerfmon_send,
+      StatePerfmon_send_handler,
+      StatePerfmon_recv,
+      StatePerfmon_recv_handler,
       StateKeyVal_Device,
       StateKeyVal_Key,
       StateKeyVal_Val,
@@ -48,6 +57,15 @@ private:
   std::vector<char> m_device;
   uint32_t m_key, m_val;
   unsigned m_todo;
+
+  uint32_t m_thread_cycles;
+  uint32_t m_blocked_cycles;
+  uint32_t m_idle_cycles;
+  uint32_t m_perfmon_cycles;
+  uint32_t m_send_cycles;
+  uint32_t m_send_handler_cycles;
+  uint32_t m_recv_cycles;
+  uint32_t m_recv_handler_cycles;
 
   // Using vector rather than std::string due to conflicts with Altera's UART libc++
   typedef   std::vector<std::pair<std::vector<char>,uint32_t> > key_val_map_t;
@@ -89,6 +107,14 @@ public:
     , m_key(0)
     , m_val(0)
     , m_todo(0)
+    , m_thread_cycles(0)
+    , m_blocked_cycles(0)
+    , m_idle_cycles(0)
+    , m_perfmon_cycles(0)
+    , m_send_cycles(0)
+    , m_send_handler_cycles(0)
+    , m_recv_cycles(0)
+    , m_recv_handler_cycles(0)
     , m_keyValDst(keyValDst)
     , m_measureDst(measureDst)
     , m_totalBytes(0)
@@ -145,6 +171,12 @@ public:
 	    m_todo=4;
 	    break;
 	  }
+	  case TagPerfmon:{
+	    m_thread_cycles = 0;
+            m_todo = 4;
+	    m_state=StatePerfmon_thread;
+	    break;
+	  }
 	  case TagKeyVal:{
 	    m_state=StateKeyVal_Device;
 	    m_key=0;
@@ -159,6 +191,84 @@ public:
 	  }
 	  }
 	break;
+
+      case StatePerfmon_thread:
+	m_thread_cycles=(m_thread_cycles>>8) | (uint32_t(byte)<<24);
+	m_todo--;
+	if(m_todo==0){
+          m_todo = 4;
+          m_blocked_cycles = 0;
+          m_state = StatePerfmon_blocked;
+        }
+	break;
+      case StatePerfmon_blocked:
+	m_blocked_cycles=(m_blocked_cycles>>8) | (uint32_t(byte)<<24);
+	m_todo--;
+	if(m_todo==0){
+          m_todo = 4;
+          m_idle_cycles = 0;
+          m_state = StatePerfmon_idle;
+        }
+	break;
+      case StatePerfmon_idle:
+	m_idle_cycles=(m_idle_cycles>>8) | (uint32_t(byte)<<24);
+	m_todo--;
+	if(m_todo==0){
+          m_todo = 4;
+          m_perfmon_cycles = 0;
+          m_state = StatePerfmon_perfmon;
+        }
+	break;
+      case StatePerfmon_perfmon:
+	m_perfmon_cycles=(m_perfmon_cycles>>8) | (uint32_t(byte)<<24);
+	m_todo--;
+	if(m_todo==0){
+          m_todo = 4;
+          m_send_cycles = 0;
+          m_state = StatePerfmon_send;
+        }
+	break;
+      case StatePerfmon_send:
+	m_send_cycles=(m_send_cycles>>8) | (uint32_t(byte)<<24);
+	m_todo--;
+	if(m_todo==0){
+          m_todo = 4;
+          m_send_handler_cycles = 0;
+          m_state = StatePerfmon_send_handler;
+        }
+	break;
+      case StatePerfmon_send_handler:
+	m_send_handler_cycles=(m_send_handler_cycles>>8) | (uint32_t(byte)<<24);
+	m_todo--;
+	if(m_todo==0){
+          m_todo = 4;
+          m_recv_cycles = 0;
+          m_state = StatePerfmon_recv;
+        }
+	break;
+      case StatePerfmon_recv:
+	m_recv_cycles=(m_recv_cycles>>8) | (uint32_t(byte)<<24);
+	m_todo--;
+	if(m_todo==0){
+          m_todo = 4;
+          m_recv_handler_cycles = 0;
+          m_state = StatePerfmon_recv_handler;
+        }
+	break;
+      case StatePerfmon_recv_handler:
+	m_recv_handler_cycles=(m_recv_handler_cycles>>8) | (uint32_t(byte)<<24);
+	m_todo--;
+	if(m_todo==0){
+            m_state = StateIdle; 
+            //sanity checks
+            if (m_thread_cycles < m_blocked_cycles || m_thread_cycles < m_idle_cycles || m_thread_cycles < m_perfmon_cycles || m_thread_cycles < m_send_cycles || m_thread_cycles < m_recv_cycles) 
+                 fprintf(stdout, "ERROR - SANITY CHECK FAILED -");
+            if( m_send_handler_cycles > m_send_cycles || m_recv_handler_cycles > m_recv_cycles)
+                 fprintf(stdout, "ERROR - SANITY CHECK FAILED -");
+	    fprintf(stdout, " [%08x] : %u, %u, %u, %u, %u, %u, %u, %u \n", m_threadId, m_thread_cycles, m_blocked_cycles, m_idle_cycles, m_perfmon_cycles, m_send_cycles, m_send_handler_cycles, m_recv_cycles, m_recv_handler_cycles );
+        }
+	break;
+
       case StateExit:
 	m_val=(m_val>>8) | (uint32_t(byte)<<24);
 	m_todo--;
