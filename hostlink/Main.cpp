@@ -102,7 +102,7 @@ void console(HostLink* link)
   }
 }
 
-extern void protocol(HostLink *link, FILE *keyValDst, FILE *measureDst, int verbosity);
+extern void protocol(HostLink *link, FILE *keyValDst, FILE *measureDst, FILE *perfmonDst, int verbosity);
 
 double now()
 {
@@ -122,6 +122,7 @@ int usage()
 	 "    -p            load protocol after boot\n"
 	 "    -k            (protocol) set destination file for key value output\n"
 	 "    -m [CSVFILE]  File to write timing and execution measurements to\n"
+	 "    -i [CSVFILE]  File to write performance counter instrumentation results\n"
 	 "    -v            increase verbosity\n"
          "    -h            help\n"
          "\n"
@@ -140,11 +141,12 @@ int main(int argc, char* argv[])
 
   FILE *keyValDst = 0;
   FILE *measureDst = 0;
+  FILE *perfmonDst = 0;
 
   // Option processing
   optind = 1;
   for (;;) {
-    int c = getopt(argc, argv, "hon:t:cpk:m:v");
+    int c = getopt(argc, argv, "hon:t:cpk:i:m:v");
     if (c == -1) break;
     switch (c) {
       case 'h': return usage();
@@ -158,6 +160,14 @@ int main(int argc, char* argv[])
         keyValDst=fopen(optarg,"wt");
 	if(keyValDst==0){
 	  fprintf(stderr, "Error : couldn't open key value file '%s'\n", optarg);
+	  exit(1);
+	}
+	break;
+      }
+    case 'i':{
+        perfmonDst=fopen(optarg,"wt");
+	if(perfmonDst==0){
+	  fprintf(stderr, "Error : couldn't open performance counter instrumentation file '%s'\n", optarg);
 	  exit(1);
 	}
 	break;
@@ -302,7 +312,7 @@ int main(int argc, char* argv[])
   if (useConsole) console(&link);
   else if(useProtocol){
     if(verbosity>0){  fprintf(stderr, "Starting protocol\n");  }
-    protocol(&link, keyValDst, measureDst, verbosity);
+    protocol(&link, keyValDst, measureDst, perfmonDst, verbosity);
   }
   else {
     // The number of tenths of a second that link has been idle

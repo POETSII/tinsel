@@ -73,6 +73,7 @@ private:
 
   FILE *m_keyValDst;
   FILE *m_measureDst;
+  FILE *m_perfmonDst;
 
   unsigned m_totalBytes;
   unsigned m_totalStdoutBytes;
@@ -101,7 +102,7 @@ private:
     return res;
   }
 public:
-  Protocol(uint32_t threadId, FILE *keyValDst, FILE *measureDst, int verbosity)
+  Protocol(uint32_t threadId, FILE *keyValDst, FILE *measureDst, FILE *perfmonDst, int verbosity)
     : m_state(StateIdle)
     , m_threadId(threadId)
     , m_key(0)
@@ -117,6 +118,7 @@ public:
     , m_recv_handler_cycles(0)
     , m_keyValDst(keyValDst)
     , m_measureDst(measureDst)
+    , m_perfmonDst(perfmonDst)
     , m_totalBytes(0)
     , m_totalStdoutBytes(0)
     , m_totalExportedKeyValues(0)
@@ -265,7 +267,13 @@ public:
                  fprintf(stdout, "ERROR - SANITY CHECK FAILED -");
             if( m_send_handler_cycles > m_send_cycles || m_recv_handler_cycles > m_recv_cycles)
                  fprintf(stdout, "ERROR - SANITY CHECK FAILED -");
-	    fprintf(stdout, " [%08x] : %u, %u, %u, %u, %u, %u, %u, %u \n", m_threadId, m_thread_cycles, m_blocked_cycles, m_idle_cycles, m_perfmon_cycles, m_send_cycles, m_send_handler_cycles, m_recv_cycles, m_recv_handler_cycles );
+            //output
+            if(m_verbosity>1) {
+	        fprintf(stdout, " %08x, %u, %u, %u, %u, %u, %u, %u, %u \n", m_threadId, m_thread_cycles, m_blocked_cycles, m_idle_cycles, m_perfmon_cycles, m_send_cycles, m_send_handler_cycles, m_recv_cycles, m_recv_handler_cycles );
+            }
+            if(m_perfmonDst) {
+	        fprintf(m_perfmonDst, " %08x, %u, %u, %u, %u, %u, %u, %u, %u \n", m_threadId, m_thread_cycles, m_blocked_cycles, m_idle_cycles, m_perfmon_cycles, m_send_cycles, m_send_handler_cycles, m_recv_cycles, m_recv_handler_cycles );
+            }
         }
 	break;
 
@@ -364,14 +372,14 @@ public:
   }
 };
 
-void protocol(HostLink *link, FILE *keyValDst, FILE *measureDst, int verbosity)
+void protocol(HostLink *link, FILE *keyValDst, FILE *measureDst, FILE *perfmonDst, int verbosity)
 {
   double start=now();
   
   std::vector<Protocol> states;
 
   for(unsigned i=0;i<TinselThreadsPerBoard;i++){
-    states.push_back(Protocol(i, keyValDst, measureDst, verbosity));
+    states.push_back(Protocol(i, keyValDst, measureDst, perfmonDst, verbosity));
   }
 
   int exitCode=0;
