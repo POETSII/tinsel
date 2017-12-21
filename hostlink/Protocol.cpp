@@ -263,16 +263,18 @@ public:
 	if(m_todo==0){
             m_state = StateIdle; 
             //sanity checks
-            if (m_thread_cycles < m_blocked_cycles || m_thread_cycles < m_idle_cycles || m_thread_cycles < m_perfmon_cycles || m_thread_cycles < m_send_cycles || m_thread_cycles < m_recv_cycles) 
-                 fprintf(stdout, "ERROR - SANITY CHECK FAILED -");
-            if( m_send_handler_cycles > m_send_cycles || m_recv_handler_cycles > m_recv_cycles)
-                 fprintf(stdout, "ERROR - SANITY CHECK FAILED -");
+            if(m_perfmonDst) {
+                if (m_thread_cycles < m_blocked_cycles || m_thread_cycles < m_idle_cycles || m_thread_cycles < m_perfmon_cycles || m_thread_cycles < m_send_cycles || m_thread_cycles < m_recv_cycles) 
+                     fprintf(m_perfmonDst, "ERROR - SANITY CHECK FAILED -");
+                if( m_send_handler_cycles > m_send_cycles || m_recv_handler_cycles > m_recv_cycles)
+                     fprintf(m_perfmonDst, "ERROR - SANITY CHECK FAILED -");
+            }
             //output
             if(m_verbosity>1) {
 	        fprintf(stdout, " %08x, %u, %u, %u, %u, %u, %u, %u, %u \n", m_threadId, m_thread_cycles, m_blocked_cycles, m_idle_cycles, m_perfmon_cycles, m_send_cycles, m_send_handler_cycles, m_recv_cycles, m_recv_handler_cycles );
             }
             if(m_perfmonDst) {
-	        fprintf(m_perfmonDst, " %08x, %u, %u, %u, %u, %u, %u, %u, %u \n", m_threadId, m_thread_cycles, m_blocked_cycles, m_idle_cycles, m_perfmon_cycles, m_send_cycles, m_send_handler_cycles, m_recv_cycles, m_recv_handler_cycles );
+	        fprintf(m_perfmonDst, " %08x, %u, %u, %u, %u, %u, %u, %u, %u\n", m_threadId, m_thread_cycles, m_blocked_cycles, m_idle_cycles, m_perfmon_cycles, m_send_cycles, m_send_handler_cycles, m_recv_cycles, m_recv_handler_cycles );
             }
         }
 	break;
