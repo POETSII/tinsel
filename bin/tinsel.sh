@@ -18,12 +18,12 @@ function stop {
 }
 
 function start {
+  # Reset the power management boards
+  $TINSEL_ROOT/bin/reset-psocs.sh
+
   stop
   echo "Starting tinsel service"
 
-  # Reset the power management boards
-  $TINSEL_ROOT/bin/reset-psocs.sh
- 
   # Load PCIeStream Daemon kernel module
   insmod $TINSEL_ROOT/hostlink/driver/dmabuffer.ko
 
