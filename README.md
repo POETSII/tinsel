@@ -65,49 +65,34 @@ overlay architecture for POETS, called *tinsel*.
 
 ### 1.1 Compute Subsystem
 
-We have developed our own 32-bit RISC-V core specially for POETS.
-This core is heavily *multithreaded*, supporting up to 32 threads.
-Crucially, this enables the core to tolerate the inherent latencies of
-deeply-pipelined FPGA floating-point operations. Multithreading also
-tolerates the latency of arbitration logic, allowing aggressive
-sharing of large components such as FPUs and caches between cores.
-This kind of sharing can reduce FPGA area significantly, allowing more
-cores per FPGA, without compromising system throughput.
-
-At most one instruction per thread is allowed in the core's pipeline
-at any time, eliminating all control and data hazards.  This leads to
-a small, simple, high-frequency design that is able to execute one
-instruction per cycle provided there are sufficient parallel threads,
-which we expect to be the case for POETS.  Custom instructions are
-provided for sending and receiving messages between threads running on
-the same core or different cores.  
+We have developed our own 32-bit RISC-V core specially for POETS.  This core is
+heavily *multithreaded*, supporting up to 32 threads, enabling it to tolerate
+the inherent latencies of deeply-pipelined FPGA floating-point operations.
+Multithreading also tolerates the latency of arbitration logic, allowing
+aggressive sharing of large components such as FPUs and caches between cores.
+At most one instruction per thread is allowed in the core's pipeline at any
+time, eliminating all control and data hazards.  This leads to a small, simple,
+high-frequency design that is able to execute one instruction per cycle
+provided there are sufficient parallel threads, which we expect to be the case
+for POETS.  Custom instructions are provided for sending and receiving messages
+between threads running on the same core or different cores.  
 
 ### 1.2 Memory Subsystem
 
-It is believed that POETS applications will typically require a
-generous amount of memory to hold, for example, highly-connected
-graphs representing large physical systems.  But there is no
-requirement to give applications the illusion of a single shared
-memory space: message-passing is intended to be the primary
-communication mechansim.
+POETS applications will typically process large graph structures and hence
+require a generous amount of memory.  But there is no requirement to give
+applications the illusion of a single shared memory space: message-passing is
+intended to be the primary communication mechansim.
 
-FPGA boards typically provide a number of high-bandwidth DRAMs and it
-is essential to exploit spatial locality for efficient access.  One
-way to achieve this is to require the programmer to use a DMA unit to
-explicitly transfer regions of data between DRAM and a small,
-core-local SRAM.  In our view, this leads to a complicated programming
-model.
-
-Instead, we have developed our own data cache specifically to meet the
-requirements of POETS.  This cache is partitioned by thread id (the
-hash function combines the thread id with some number of address bits)
-and permits at most one request per thread to be present in the cache
-pipeline at any time.  Consequently, there is no aliasing between
-threads and all data hazards are eliminated, yielding a simple,
-non-blocking design that can consume a request on every cycle, even if
-it is a miss.  This full-throughput cache can usefully be shared by up
-to four cores, based on the observation that an typical RISC workload
-will access data memory once every four instructions.
+To keep the programming model simple, we have opted to use *caches* to optimise
+access to DRAM rather than *DMA*.  The tinsel cache is partitioned by thread id
+(the hash function combines the thread id with some number of address bits) and
+permits at most one request per thread to be present in the cache pipeline at
+any time.  Consequently, there is no aliasing between threads and all data
+hazards are eliminated, yielding a simple, non-blocking design that can consume
+a request on every cycle, even if it is a miss.  This full-throughput cache can
+usefully be shared by up to four cores, based on the observation that an
+typical RISC workload will access data memory once every four instructions.
 
 ### 1.3 Communication Subsystem
 
@@ -137,20 +122,15 @@ inter-board communication.  And since we are using the links
 point-to-point, almost all of the Ethernet packet fields can be used
 for our own purposes, resulting in very little overhead on the wire.
 
-### 1.4 First POETS Box
+### 1.4 POETS Boxes
 
-Our first POETS box, currently under construction, consists of ten
-[DE5-Net](http://de5-net.terasic.com) FPGA boards and a modern PC
-acting as a "mothercore".  The DE5-Net is a Stratix V board from circa
-2012 that the [CL](http://www.cl.cam.ac.uk/) has in plentiful supply,
-and provides the platform for our initial POETS machines. The ten
-FPGAs are connected together via multiple 10Gbps reliable links and
-also to the mothercore via a PCI Express link.  We expect that each
-FPGA will host around a hundred RISC-V cores (tens of thousands of
-RISC-V threads).  The box will therefore provide around a thousand
-cores (hundreds of thousands of RISC-V threads) in total.  The
-intention is then to scale the system up to multiple boxes connected
-together.
+We have completed a prototype POETS multi-FPGA box, called **aesop**,
+consisting of four DE5-Net FPGA boards and a modern PC.  One of the FPGAs is
+connected to the PC via PCI Express and acts as a bridge between the PC and the
+remaining worker FPGAs.  The worker FPGAs run tinsel by default.  In the coming
+months we plan to extend our prototype four-board box to a ten-board box and
+then develop six of these ten-board boxes to yield a 60-board high-speed
+cluster for POETS research.
 
 ## 2. Tinsel Core
 
@@ -579,11 +559,11 @@ a reset.
 void HostLink::reset();
 ```
 
-Invoking this method: (1) powers down all of the mesh FPGAs; (2)
-performs a soft-reset of the bridge board; and (3) powers up all of
-the mesh FPGAs.  On power-up each FPGA is automatically programmed
-using the tinsel bit-file residing in flash memory, and is ready to be
-used within a second or so.
+Invoking this method: (1) powers down all of the mesh FPGAs; (2) performs a
+soft-reset of the bridge board; and (3) powers up all of the mesh FPGAs.  On
+power-up each FPGA is automatically programmed using the tinsel bit-file
+residing in flash memory, and is ready to be used within a second or so.  The
+user may assume that once the call to `reset` returns, the FPGAs are ready.
 
 Methods for sending and receiving messages on the host PC are as
 follows.
