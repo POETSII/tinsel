@@ -49,6 +49,15 @@ class HostLink {
   // Links to the mesh boards (opened by constructor)
   DebugLink* mesh[TinselMeshXLen][TinselMeshYLen];
 
+  // Hard reset
+  // ----------
+
+  // Hard reset the mesh boards and soft reset the bridge board
+  void reset();
+
+  // Power down the mesh boards
+  void powerdown();
+
   // Send and receive messages over PCIe
   // -----------------------------------
 

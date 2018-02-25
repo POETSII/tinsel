@@ -1,6 +1,7 @@
 #include "HostLink.h"
 #include "DebugLink.h"
 #include "MemFileReader.h"
+#include "PowerLink.h"
 #include <boot.h>
 #include <ctype.h>
 #include <sys/types.h>
@@ -145,14 +146,43 @@ HostLink::HostLink()
 // Destructor
 HostLink::~HostLink()
 {
+  // Close debug link to the bridge board
   bridgeBoard->close();
+  // Close debug links to the mesh boards
   for (int x = 0; x < TinselMeshXLen; x++)
     for (int y = 0; y < TinselMeshYLen; y++)
       mesh[x][y]->close();
   delete [] debugLinks;
+  // Close connections to the PCIe stream daemon
   close(fromPCIe);
   close(toPCIe);
   close(pcieCtrl);
+}
+
+// Hard reset the mesh boards and soft reset the bridge board
+void HostLink::reset()
+{
+  #ifndef SIMULATE
+  // Disable power to the mesh boards
+  powerEnable(0);
+  sleep(2);
+  // Soft reset the bridge board
+  if (write(pcieCtrl, "r", 1) != 1) {
+    fprintf(stderr, "Error writing to PCIeStream Control socket\n");
+    exit(EXIT_FAILURE);
+  }
+  sleep(1);
+  // Enable power to the mesh boards
+  powerEnable(1);
+  #endif
+}
+
+void HostLink::powerdown()
+{
+  #ifndef SIMULATE
+  // Disable power to the mesh boards
+  powerEnable(0);
+  #endif
 }
 
 // Address construction
