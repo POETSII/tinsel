@@ -1,31 +1,47 @@
 #!/bin/bash
 
-TINSEL_ROOT=/root/tinsel
+TINSEL_ROOT=/local/tinsel
+QUARTUS_PGM=/local/ecad/altera/17.0/quartus/bin/quartus_pgm
+
+if [ "$UID" != "0" ]; then
+  echo "This script must be run as root"
+  exit 1
+fi
 
 function stop {
   echo "Stopping tinsel service"
 
   # Try to exit PCIeStream Daemon gracefully
-  echo -n e | $TINSEL_ROOT/hostlink/udsock in @pciestream-ctrl
+  RUNNING=$(netstat -anx | grep pciestream)
+  if [ ! -z "$RUNNING" ]; then
+    echo "Sending exit command to pciestreamd"
+    echo -n e | $TINSEL_ROOT/hostlink/udsock in @pciestream-ctrl
+  fi
 
   # Turn off power to the worker boards
+  echo "Turning off worker FPGAs"
   $TINSEL_ROOT/hostlink/tinsel-power off
   sleep 1
   
   # If pciestreamd is still alive, kill it
-  killall -9 pciestreamd
+  echo "Terminating pciestreamd"
+  killall -q -9 pciestreamd
   sleep 1
 }
 
 function start {
   # Reset the power management boards
+  echo "Resetting PSoC power management boards"
   $TINSEL_ROOT/bin/reset-psocs.sh
 
   stop
   echo "Starting tinsel service"
 
   # Load PCIeStream Daemon kernel module
-  insmod $TINSEL_ROOT/hostlink/driver/dmabuffer.ko
+  MOD_LOADED=$(lsmod | grep dmabuffer)
+  if [ -z "$MOD_LOADED" ]; then
+    insmod $TINSEL_ROOT/hostlink/driver/dmabuffer.ko
+  fi
 
   # Determine bridge board's PCIe BAR
   BAR=$(lspci -d 1172:0de5 -v   | \
@@ -37,12 +53,14 @@ function start {
   fi
 
   # Start the PCIeStream Daemon
-  $TINSEL_ROOT/bin/pciestreamd $BAR &
+  echo "Starting pciestreamd (BAR=$BAR)"
+  $TINSEL_ROOT/hostlink/pciestreamd $BAR &
 }
 
 case $1 in
   start)
     start
+    echo "Start done"
   ;;
 
   stop)
@@ -55,6 +73,8 @@ case $1 in
 
   reboot)
     stop
+    echo "Reprogramming bridge board"
+    $QUARTUS_PGM -m jtag -o "p;$TINSEL_ROOT/sof/tinsel-0.3-bridge.sof"
     reboot
   ;;
 
