@@ -13,7 +13,7 @@
 // Open a power link
 int powerInit(char* dev)
 {
-  int fd = open(dev, O_RDWR | O_NOCTTY);
+  int fd = open(dev, O_RDWR | O_NONBLOCK | O_NOCTTY);
   if (fd == -1) {
     perror("open");
     exit(EXIT_FAILURE);
@@ -57,42 +57,104 @@ int powerInit(char* dev)
   return fd;
 }
 
-// Send a command over a power link
-void powerPutCmd(int fd, char* cmd, char* resp, int respSize)
+// Reset the PowerLink PSoCs
+void powerResetPSoCs()
 {
+  char* root = getenv("TINSEL_ROOT");
+  if (root == NULL) {
+    root = (char*) "/local/tinsel";
+    //fprintf(stderr, "Please set TINSEL_ROOT\n");
+    //exit(EXIT_FAILURE);
+  }
+  char cmd[1024];
+  snprintf(cmd, sizeof(cmd), "%s/bin/reset-psocs.sh", root);
+  if (system(cmd) < 0) {
+    fprintf(stderr, "Can't run '%s'\n", cmd);
+    exit(EXIT_FAILURE);
+  }
+}
+
+// Send a command over a power link
+int powerPutCmd(int fd, char* cmd, char* resp, int respSize)
+{
+  // For 'select' call
+  struct timeval tv;
+  fd_set fds;
+
   // Send command
   char* ptr = cmd;
   while (*ptr) {
-    int n = write(fd, ptr, 1);
-    if (n == -1) {
-      perror("write on power tty");
+    // Initialise descriptor set
+    FD_ZERO(&fds);
+    FD_SET(fd, &fds);
+    // Set timeout
+    tv.tv_sec = 1;
+    tv.tv_usec = 0;
+    // Wait until write is possible
+    int ret = select(fd+1, NULL, &fds, NULL, &tv);
+    if (ret < 0) {
+      perror("select() on power link");
       exit(EXIT_FAILURE);
     }
-    if (n == 1) ptr++;
+    else if (ret == 0) {
+      // Timeout elapsed
+      //fprintf(stderr, "timeout on power link write\n");
+      return -1;
+    }
+    else {
+      // Do the write
+      int n = write(fd, ptr, 1);
+      if (n == -1) {
+        perror("write() on power link");
+        exit(EXIT_FAILURE);
+      }
+      if (n == 1) ptr++;
+    }
   }
   // Receive response
   int got = 0;
   while (got < (respSize-1)) {
-    char c;
-    int n = read(fd, &c, 1);
-    if (n == -1) {
-      perror("read on power tty");
+    // Initialise descriptor set
+    FD_ZERO(&fds);
+    FD_SET(fd, &fds);
+    // Set timeout
+    tv.tv_sec = 1;
+    tv.tv_usec = 0;
+    // Wait until read is possible
+    int ret = select(fd+1, &fds, NULL, NULL, &tv);
+    if (ret < 0) {
+      perror("select() on power link");
       exit(EXIT_FAILURE);
     }
-    if (n == 1) {
-      if (c == '!') {
-        resp[got] = '\0';
-        return;
+    else if (ret == 0) {
+      // Timeout elapsed
+      //fprintf(stderr, "timeout on power link read");
+      return -1;
+    }
+    else {
+      char c;
+      int n = read(fd, &c, 1);
+      if (n == -1) {
+        perror("read() on power link");
+        exit(EXIT_FAILURE);
       }
-      resp[got++] = c;
+      if (n == 1) {
+        if (c == '!') {
+          resp[got] = '\0';
+          return 0;
+        }
+        resp[got++] = c;
+      }
     }
   }
   resp[got] = '\0';
+  return 0;
 }
 
 // Enable power to all worker FPGAs
 void powerEnable(int enable)
 {
+  retry:
   // Determine all the power links
   char line[256];
   FILE* fp = popen("ls /dev/serial/by-id/usb-Cypress*", "r");
@@ -111,10 +173,17 @@ void powerEnable(int enable)
     int fd = powerInit(line);
     // Send command
     char resp[256];
+    int ok;
     if (enable)
-      powerPutCmd(fd, (char*) "p=1.", resp, sizeof(resp));
+      ok = powerPutCmd(fd, (char*) "p=1.", resp, sizeof(resp));
     else
-      powerPutCmd(fd, (char*) "p=0.", resp, sizeof(resp));
+      ok = powerPutCmd(fd, (char*) "p=0.", resp, sizeof(resp));
+    // On error, reset PSoCs and retry
+    if (ok < 0) {
+      powerResetPSoCs();
+      //sleep(1);
+      goto retry;
+    }
     // Close link
     close(fd);
   }

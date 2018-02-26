@@ -8,7 +8,7 @@
 int powerInit(char* dev);
 
 // Send a command over a power link
-void powerPutCmd(int fd, char* cmd, char* resp, int respSize);
+int powerPutCmd(int fd, char* cmd, char* resp, int respSize);
 
 // Enable or disable power to all worker FPGAs
 void powerEnable(int enable);
