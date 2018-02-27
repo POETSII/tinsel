@@ -11,10 +11,14 @@
 #define MaxLineLen 128
 
 // Connections to PCIeStream
-#define PCIESTREAM_IN   "pciestream-in"
-#define PCIESTREAM_OUT  "pciestream-out"
-#define PCIESTREAM_CTRL "pciestream-ctrl"
+#define PCIESTREAM      "pciestream"
 #define PCIESTREAM_SIM  "tinsel.b-1.5"
+
+// Power down the mesh boards
+void powerdown();
+
+// Power up the mesh boards
+void powerup();
 
 class HostLink {
   // JTAG UART connections
@@ -23,8 +27,8 @@ class HostLink {
   // Lock file for acquring exclusive access to PCIeStream
   int lockFile;
 
-  // PCIeStream file descriptors
-  int toPCIe, fromPCIe, pcieCtrl;
+  // File descriptor for link to PCIeStream
+  int pcieLink;
 
   // Line buffers for JTAG UART StdOut
   char lineBuffer[TinselMeshXLen][TinselMeshYLen]
@@ -48,15 +52,6 @@ class HostLink {
 
   // Links to the mesh boards (opened by constructor)
   DebugLink* mesh[TinselMeshXLen][TinselMeshYLen];
-
-  // Hard reset
-  // ----------
-
-  // Hard reset the mesh boards and soft reset the bridge board
-  void reset();
-
-  // Power down the mesh boards
-  void powerdown();
 
   // Send and receive messages over PCIe
   // -----------------------------------
