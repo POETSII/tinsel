@@ -546,24 +546,16 @@ debugging and can be used to implement functions such as `printf` and
 connections can be used to power-on/power-off each FPGA and to monitor
 power consumption and temperature.
 
-A tinsel application typically consists of two programs: one which
-runs on the RISC-V cores, linked against the [Tinsel
-API](#f-tinsel-api), and the other which runs on the host PC, linked
-against the [HostLink API](#g-hostlink-api).  The HostLink API is
-implemented as a C++ class called `HostLink`.  Once an instance of
-this class is created, the first thing to do is typically to initiate
-a reset.
-
-```cpp
-// Hard reset the mesh boards and soft reset the bridge board
-void HostLink::reset();
-```
-
-Invoking this method: (1) powers down all of the mesh FPGAs; (2) performs a
-soft-reset of the bridge board; and (3) powers up all of the mesh FPGAs.  On
-power-up each FPGA is automatically programmed using the tinsel bit-file
-residing in flash memory, and is ready to be used within a second or so.  The
-user may assume that once the call to `reset` returns, the FPGAs are ready.
+A tinsel application typically consists of two programs: one which runs on the
+RISC-V cores, linked against the [Tinsel API](#f-tinsel-api), and the other
+which runs on the host PC, linked against the [HostLink API](#g-hostlink-api).
+The HostLink API is implemented as a C++ class called `HostLink`.  The
+constructor for this class first carries out a reset of the hardware: (1) all
+of the mesh FPGAs are powered down; (2) a soft-reset of the bridge board is
+performed; and (3) all of the mesh FPGAs are powered up.  On power-up the FPGAs
+are automatically programmed using the tinsel bit-file residing in flash
+memory, and are ready to be used within a few seconds, as soon as the
+`HostLink` constructor returns.
 
 Methods for sending and receiving messages on the host PC are as
 follows.
@@ -738,10 +730,7 @@ When the application is running (and hence the boot loader is not
 running) HostLink methods that communicate with the boot loader should
 not be called.  When the application returns from `main()`, all but
 one thread on each core are killed and the remaining threads reenter
-the boot loader.  Although it may be tempting to boot a second
-application at this stage, without calling `HostLink::reset()`, we do
-not recommend it because leftover state from the first application may
-affect execution of the second.
+the boot loader.
 
 ## A. DE5-Net Synthesis Report
 
@@ -917,12 +906,6 @@ class HostLink {
 
   // Links to the mesh boards (opened by constructor)
   DebugLink* mesh[TinselMeshXLen][TinselMeshYLen];
-
-  // System reset
-  // ------------
-
-  // Hard reset the mesh boards and soft reset the bridge board
-  void reset();
 
   // Send and receive messages over PCIe
   // -----------------------------------

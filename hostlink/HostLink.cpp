@@ -59,6 +59,26 @@ HostLink::HostLink()
   // Determine number of boards
   int numBoards = TinselMeshXLen * TinselMeshYLen + 1;
 
+  // Power down mesh boards
+  powerdown();
+  sleep(1);
+
+  // Ignore SIGPIPE
+  signal(SIGPIPE, SIG_IGN);
+
+  #ifdef SIMULATE
+    // Connect to simulator
+    pcieLink = connectToPCIeStream(PCIESTREAM_SIM);
+  #else
+    // Connect to pciestreamd
+    pcieLink = connectToPCIeStream(PCIESTREAM);
+  #endif
+
+  // Power up mesh boards
+  sleep(1);
+  powerup();
+  sleep(1);
+
   // Create a DebugLink (UART) for each board
   debugLinks = new DebugLink [numBoards];
 
@@ -123,24 +143,6 @@ HostLink::HostLink()
       mesh[x][y] = &debugLinks[i];
     }
   }
-
-  // Ignore SIGPIPE
-  signal(SIGPIPE, SIG_IGN);
-
-  #ifdef SIMULATE
-    // Connect to simulator
-    fromPCIe = toPCIe = connectToPCIeStream(PCIESTREAM_SIM);
-    pcieCtrl = -1;
-  #else
-    // Open PCIeStream for reading
-    fromPCIe = connectToPCIeStream(PCIESTREAM_OUT);
-
-    // Open PCIeStream for writing
-    toPCIe = connectToPCIeStream(PCIESTREAM_IN);
-
-    // Open PCIeStream control
-    pcieCtrl = connectToPCIeStream(PCIESTREAM_CTRL);
-  #endif
 }
 
 // Destructor
@@ -154,30 +156,22 @@ HostLink::~HostLink()
       mesh[x][y]->close();
   delete [] debugLinks;
   // Close connections to the PCIe stream daemon
-  close(fromPCIe);
-  close(toPCIe);
-  close(pcieCtrl);
+  close(pcieLink);
+  // Power down FPGA boards
+  powerdown();
 }
 
-// Hard reset the mesh boards and soft reset the bridge board
-void HostLink::reset()
+// Power up the mesh boards
+void powerup()
 {
   #ifndef SIMULATE
   // Disable power to the mesh boards
-  powerEnable(0);
-  sleep(2);
-  // Soft reset the bridge board
-  if (write(pcieCtrl, "r", 1) != 1) {
-    fprintf(stderr, "Error writing to PCIeStream Control socket\n");
-    exit(EXIT_FAILURE);
-  }
-  sleep(1);
-  // Enable power to the mesh boards
   powerEnable(1);
   #endif
 }
 
-void HostLink::powerdown()
+// Powerdown the mesh boards
+void powerdown()
 {
   #ifndef SIMULATE
   // Disable power to the mesh boards
@@ -244,7 +238,7 @@ void HostLink::send(uint32_t dest, uint32_t numFlits, void* payload)
 
   // We assume that totalBytes is less than PIPE_BUF bytes,
   // and write() will not send fewer PIPE_BUF bytes.
-  int ret = write(toPCIe, buffer, totalBytes);
+  int ret = write(pcieLink, buffer, totalBytes);
   if (ret != totalBytes) {
     fprintf(stderr, "Error writing to PCIeStream: totalBytes = %d, "
                     "PIPE_BUF=%d, ret=%d.\n", totalBytes, PIPE_BUF, ret);
@@ -256,7 +250,7 @@ void HostLink::send(uint32_t dest, uint32_t numFlits, void* payload)
 bool HostLink::canSend()
 {
   pollfd pfd;
-  pfd.fd = toPCIe;
+  pfd.fd = pcieLink;
   pfd.events = POLLOUT;
   return poll(&pfd, 1, 0) > 0;
 }
@@ -267,7 +261,7 @@ void HostLink::recv(void* flit)
   int numBytes = 1 << TinselLogBytesPerFlit;
   uint8_t* ptr = (uint8_t*) flit;
   while (numBytes > 0) {
-    int n = read(fromPCIe, (char*) ptr, numBytes);
+    int n = read(pcieLink, (char*) ptr, numBytes);
     if (n <= 0) {
       fprintf(stderr, "Error reading from PCIeStream\n");
       exit(EXIT_FAILURE);
@@ -289,7 +283,7 @@ void HostLink::recvMsg(void* msg, uint32_t numBytes)
   // Fill message
   uint8_t* ptr = (uint8_t*) msg;
   while (numBytes > 0) {
-    int n = read(fromPCIe, (char*) ptr, numBytes);
+    int n = read(pcieLink, (char*) ptr, numBytes);
     if (n <= 0) {
       fprintf(stderr, "Error reading from PCIeStream\n");
       exit(EXIT_FAILURE);
@@ -301,7 +295,7 @@ void HostLink::recvMsg(void* msg, uint32_t numBytes)
   // Discard padding bytes
   while (paddingBytes > 0) {
     uint8_t padding[1 << TinselLogBytesPerFlit];
-    int n = read(fromPCIe, (char*) padding, paddingBytes);
+    int n = read(pcieLink, (char*) padding, paddingBytes);
     if (n <= 0) {
       fprintf(stderr, "Error reading from PCIeStream\n");
       exit(EXIT_FAILURE);
@@ -314,7 +308,7 @@ void HostLink::recvMsg(void* msg, uint32_t numBytes)
 bool HostLink::canRecv()
 {
   pollfd pfd;
-  pfd.fd = fromPCIe;
+  pfd.fd = pcieLink;
   pfd.events = POLLIN;
   return poll(&pfd, 1, 0) > 0;
 }
