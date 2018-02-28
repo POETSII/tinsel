@@ -7,7 +7,7 @@ Project](https://poets-project.org/about) (Partially Ordered Event
 Triggered Systems).  This manual describes the tinsel architecture and
 associated APIs.  If you're a POETS Partner, you can access a
 machine running tinsel in the
-[POETS cloud](https://github.com/POETSII/book-a-box).
+[POETS cloud](https://github.com/POETSII/poets-cloud).
 
 ## Release Log
 
