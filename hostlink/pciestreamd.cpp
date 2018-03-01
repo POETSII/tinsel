@@ -20,6 +20,7 @@
 #include <assert.h>
 #include <poll.h>
 #include <errno.h>
+#include "PowerLink.h"
 
 // Constants
 // ---------
@@ -280,7 +281,7 @@ void usage()
 }
 
 // Open a DMA buffer
-volatile char* openDMABuffer(char* deviceFile, int prot, uint64_t* addr)
+volatile char* openDMABuffer(const char* deviceFile, int prot, uint64_t* addr)
 {
   int dev = open(deviceFile, O_RDWR);
   if (dev == -1)
@@ -435,6 +436,9 @@ int main(int argc, char* argv[])
     }
 
     close(conn);
+
+    // Power down FPGAs
+    powerEnable(0);
   }
 
   return 0;
