@@ -17,8 +17,8 @@ all: DebugLink.o HostLink.o MemFileReader.o UART.o pciestreamd \
      sim/DebugLink.o sim/HostLink.o sim/MemFileReader.o sim/UART.o \
      udsock tinsel-power
 
-pciestreamd: pciestreamd.c
-	gcc -O2 pciestreamd.c -o pciestreamd
+pciestreamd: pciestreamd.cpp PowerLink.o
+	g++ -O2 pciestreamd.cpp PowerLink.o -o pciestreamd
 
 udsock: udsock.c
 	gcc -O2 udsock.c -o udsock

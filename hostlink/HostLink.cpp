@@ -157,8 +157,6 @@ HostLink::~HostLink()
   delete [] debugLinks;
   // Close connections to the PCIe stream daemon
   close(pcieLink);
-  // Power down FPGA boards
-  powerdown();
 }
 
 // Power up the mesh boards
