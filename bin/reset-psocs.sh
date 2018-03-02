@@ -9,7 +9,6 @@ if [ ! -z "$1" ]; then
 fi
 
 function openocd_reset {
-  echo "resetting $1"
   while [ 1==1 ]; do
     OUT=$(openocd -f interface/kitprog.cfg -c "kitprog_serial $1" \
             -c kitprog_init_acquire_psoc -f target/psoc5lp.cfg \
