@@ -58,7 +58,8 @@ int powerInit(char* dev)
 }
 
 // Reset the PowerLink PSoCs
-void powerResetPSoCs()
+// (Starting from link with given index)
+void powerResetPSoCs(int index)
 {
   char* root = getenv("TINSEL_ROOT");
   if (root == NULL) {
@@ -67,7 +68,7 @@ void powerResetPSoCs()
     //exit(EXIT_FAILURE);
   }
   char cmd[1024];
-  snprintf(cmd, sizeof(cmd), "%s/bin/reset-psocs.sh", root);
+  snprintf(cmd, sizeof(cmd), "%s/bin/reset-psocs.sh %d", root, index);
   if (system(cmd) < 0) {
     fprintf(stderr, "Can't run '%s'\n", cmd);
     exit(EXIT_FAILURE);
@@ -154,6 +155,9 @@ int powerPutCmd(int fd, char* cmd, char* resp, int respSize)
 // Enable power to all worker FPGAs
 void powerEnable(int enable)
 {
+  // All links up to this index have been sucessfully enabled/disabled
+  int done = 0;
+  // Retry from here, if necessary
   retry:
   // Determine all the power links
   char line[256];
@@ -163,30 +167,37 @@ void powerEnable(int enable)
     exit(EXIT_FAILURE);
   }
   // For each power link
-  while (1) {
-    if (fgets(line, sizeof(line), fp) == NULL) return;
-    if (feof(fp)) return;
-    // Trim the new line
-    char* ptr = line;
-    while (*ptr) { if (*ptr == '\n') *ptr = '\0'; ptr++; }
-    // Open link
-    int fd = powerInit(line);
-    // Send command
-    char resp[256];
-    int ok;
-    if (enable)
-      ok = powerPutCmd(fd, (char*) "p=1.", resp, sizeof(resp));
-    else
-      ok = powerPutCmd(fd, (char*) "p=0.", resp, sizeof(resp));
-    // On error, reset PSoCs and retry
-    if (ok < 0) {
-      powerResetPSoCs();
-      //sleep(1);
-      goto retry;
+  for (int i = 0; ; i++) {
+    if (fgets(line, sizeof(line), fp) == NULL) break;
+    if (feof(fp)) break;
+    if (i >= done) {
+      // Trim the new line
+      char* ptr = line;
+      while (*ptr) { if (*ptr == '\n') *ptr = '\0'; ptr++; }
+      // Open link
+      int fd = powerInit(line);
+      // Send command
+      char resp[256];
+      int ok;
+      if (enable)
+        ok = powerPutCmd(fd, (char*) "p=1.", resp, sizeof(resp));
+      else
+        ok = powerPutCmd(fd, (char*) "p=0.", resp, sizeof(resp));
+      // On error, reset PSoCs and retry
+      if (ok < 0) {
+        powerResetPSoCs(done);
+        //sleep(1);
+        close(fd);
+        fclose(fp);
+        goto retry;
+      }
+      // Another link sucesfully enabled/disabled
+      done++;
+      // Close link
+      close(fd);
     }
-    // Close link
-    close(fd);
   }
+  fclose(fp);
 }
 
 // Disable then enable power to all worker FPGAs
