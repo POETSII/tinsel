@@ -122,6 +122,10 @@ class HostLink {
 
   // Receive StdOut byte streams and display on stdout (non-terminating)
   void dumpStdOut();
+
+  // Receive StdOut byte streams and decode as the binary protocol described in Protocol.h
+  // returns the exit code for the application
+  int dumpStdOutProtocol(FILE* keyValDst, FILE* measureDst, FILE* perfmonDst, uint32_t verbosity);
 };
 
 #endif
