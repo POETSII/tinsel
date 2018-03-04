@@ -2,6 +2,7 @@
 #include "DebugLink.h"
 #include "MemFileReader.h"
 #include "PowerLink.h"
+#include "Protocol.cpp"
 #include <boot.h>
 #include <ctype.h>
 #include <sys/types.h>
@@ -553,6 +554,46 @@ bool HostLink::pollStdOut(FILE* outFile)
 
   return got;
 }
+
+// Redirect UART StdOut to given file
+// Returns false when no data has been emitted
+int HostLink::dumpStdOutProtocol(FILE* keyValDst, FILE* measureDst, FILE* perfmonDst, uint32_t verbosity)
+{
+  std::vector<Protocol> states;
+  for (int x = 0; x < TinselMeshXLen; x++) {
+    for (int y = 0; y < TinselMeshYLen; y++) {
+      for (int c = 0; c < TinselCoresPerBoard; c++) {
+        for (int t = 0; t < TinselThreadsPerCore; t++) {
+           uint32_t id = toAddr(x,y,c,t);
+           states.push_back(Protocol(id, keyValDst, measureDst, perfmonDst, verbosity));
+        }
+      }
+    }
+  }
+  
+  int exitCode=0;
+  while(1) {
+  for (int x = 0; x < TinselMeshXLen; x++) {
+    for (int y = 0; y < TinselMeshYLen; y++) {
+      if (mesh[x][y]->canGet()) {
+        // Receive byte
+        uint8_t byte;
+        uint32_t c, t;
+        mesh[x][y]->get(&c, &t, &byte);
+        assert(c < TinselCoresPerBoard);
+        assert(t < TinselThreadsPerCore);
+        uint32_t id = toAddr(x,y,c,t);
+        if(!states[id].add(byte, exitCode)){
+          fflush(stdout);
+          return exitCode; 
+        }
+       }
+      }
+    }
+  }
+
+}
+
 
 // Redirect UART StdOut to stdout
 // Returns false when no data has been emitted
