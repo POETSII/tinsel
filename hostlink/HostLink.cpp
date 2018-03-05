@@ -57,6 +57,19 @@ static int connectToPCIeStream(const char* socketPath)
 // Constructor
 HostLink::HostLink()
 {
+  // Open lock file
+  lockFile = open("/tmp/HostLink.lock", O_CREAT, 0444);
+  if (lockFile == -1) {
+    perror("Unable to open HostLink lock file");
+    exit(EXIT_FAILURE);
+  }
+
+  // Acquire lock
+  if (flock(lockFile, LOCK_EX | LOCK_NB) != 0) {
+    perror("Failed to acquire HostLink lock");
+    exit(EXIT_FAILURE);
+  }
+
   // Determine number of boards
   int numBoards = TinselMeshXLen * TinselMeshYLen + 1;
 
@@ -158,6 +171,11 @@ HostLink::~HostLink()
   delete [] debugLinks;
   // Close connections to the PCIe stream daemon
   close(pcieLink);
+  // Release HostLink lock
+  if (flock(lockFile, LOCK_UN) != 0) {
+    perror("Failed to release HostLink lock");
+  }
+  close(lockFile);
 }
 
 // Power up the mesh boards
