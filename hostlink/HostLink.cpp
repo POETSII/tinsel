@@ -57,7 +57,7 @@ static int connectToPCIeStream(const char* socketPath)
 HostLink::HostLink()
 {
   // Open lock file
-  lockFile = open("/tmp/HostLink.lock", O_CREAT, 0666);
+  lockFile = open("/tmp/HostLink.lock", O_CREAT, 0444);
   if (lockFile == -1) {
     perror("Unable to open HostLink lock file");
     exit(EXIT_FAILURE);
