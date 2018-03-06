@@ -594,7 +594,7 @@ messages, in which case the second argument to `recvMsg` is simply the
 of the struct is less than or equal to the maximum message size.
 
 These methods for sending a receiving messages work by connecting to a
-local [PCIeStream deamon](/hostlink/pciestreamd.c) via a UNIX domain
+local [PCIeStream deamon](/hostlink/pciestreamd.cpp) via a UNIX domain
 socket.  The daemon in turn communicates with the FPGA bridge board
 via PCI Express, initiating DMA transactions for efficient data
 transfer, and requires that the
