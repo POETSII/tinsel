@@ -582,7 +582,7 @@ void HostLink::recvMsg(void* msg, uint32_t numBytes);
 
 Although the `send` method allows a message consisting of multiple
 flits to be sent, the `recv` method only returns a single flit at a
-time and does not indicate the number of flits present the message
+time and does not indicate the number of flits present in the message
 currently being received.  The length of a message, if not statically
 known, must therefore be encoded in the message contents.  Flits
 belonging to the same message will be received contiguously, in order.
@@ -590,7 +590,8 @@ If the length of the message is known statically, `recvMsg` can be
 used and any bytes beyond `numBytes` up to the next flit boundary will
 be ignored.  This is useful when a `struct` is being used to hold
 messages, in which case the second argument to `recvMsg` is simply the
-`sizeof` the `struct`.
+`sizeof` the `struct`.  The `recvMsg` function assumes that the size
+of the struct is less than or equal to the maximum message size.
 
 These methods for sending a receiving messages work by connecting to a
 local [PCIeStream deamon](/hostlink/pciestreamd.c) via a UNIX domain
