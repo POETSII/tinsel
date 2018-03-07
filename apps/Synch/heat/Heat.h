@@ -18,7 +18,7 @@ struct HeatDevice {
   uint32_t val;
 
   // Called before simulation starts
-  inline void init(PDeviceInfo<ASPDevice>* info) {
+  inline void init(PDeviceInfo<HeatDevice>* info) {
   }
 
   // Called at beginning of each time step
