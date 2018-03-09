@@ -16,4 +16,7 @@ void powerEnable(int enable);
 // Disable then enable power to all worker FPGAs
 void powerReset();
 
+// Wait for FPGAs to be detected after powerup
+void waitForFPGAs(int numFPGAs);
+
 #endif
