@@ -91,6 +91,7 @@ HostLink::HostLink()
   sleep(1);
   powerup();
   sleep(1);
+  waitForFPGAs(numBoards);
 
   // Create a DebugLink (UART) for each board
   debugLinks = new DebugLink [numBoards];
