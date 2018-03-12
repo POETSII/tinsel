@@ -73,8 +73,10 @@ HostLink::HostLink()
   int numBoards = TinselMeshXLen * TinselMeshYLen + 1;
 
   // Power down mesh boards
+  #ifndef SIMULATE
   powerdown();
   sleep(1);
+  #endif
 
   // Ignore SIGPIPE
   signal(SIGPIPE, SIG_IGN);
@@ -88,10 +90,12 @@ HostLink::HostLink()
   #endif
 
   // Power up mesh boards
+  #ifndef SIMULATE
   sleep(1);
   powerup();
   sleep(1);
   waitForFPGAs(numBoards);
+  #endif
 
   // Create a DebugLink (UART) for each board
   debugLinks = new DebugLink [numBoards];
