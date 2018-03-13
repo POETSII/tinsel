@@ -1,4 +1,5 @@
 #include <tinsel.h>
+#include "benchmarks.h"
 
 // Size of region for load/store benchmarks
 #define SIZE 1024
@@ -121,8 +122,8 @@ int main()
   // Get id
   int me = tinselId();
 
-  // Threads not on board 0, return immediately
-  if (me >> TinselLogThreadsPerBoard) return 0;
+  // Threads not being used, return immediately
+  if (me >> LogThreadsUsed) return 0;
 
   // Get host id
   int host = tinselHostId();

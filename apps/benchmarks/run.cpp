@@ -1,4 +1,5 @@
 #include <HostLink.h>
+#include "benchmarks.h"
 
 // Benchmarks to run
 const char* benchmarks[] = {
@@ -28,7 +29,7 @@ int main()
     hostLink.go();
 
     // Wait for response
-    const int numThreads = 1 << TinselLogThreadsPerBoard;
+    const int numThreads = 1 << LogThreadsUsed;
     uint32_t flit[4];
     uint32_t total = 0;
     for (int j = 0; j < numThreads; j++) {
