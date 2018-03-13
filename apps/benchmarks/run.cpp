@@ -16,6 +16,7 @@ int main()
 {
   HostLink hostLink;
 
+  printf("Starting\n");
   for (int i = 0; benchmarks[i] != NULL; i++) {
     // Boot benchmark
     char codeFile[256], dataFile[256];

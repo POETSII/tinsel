@@ -118,6 +118,12 @@ BenchmarkFunction messageLoop()
 
 int main()
 {
+  // Get id
+  int me = tinselId();
+
+  // Threads not on board 0, return immediately
+  if (me >> TinselLogThreadsPerBoard) return 0;
+
   // Get host id
   int host = tinselHostId();
 
