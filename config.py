@@ -49,7 +49,7 @@ p["DCacheLogNumWays"] = 2
 p["LogDRAMsPerBoard"] = 1
 
 # Max number of outstanding DRAM requests permitted
-p["DRAMLogMaxInFlight"] = 4
+p["DRAMLogMaxInFlight"] = 5
 
 # DRAM latency in cycles (simulation only)
 p["DRAMLatency"] = 20

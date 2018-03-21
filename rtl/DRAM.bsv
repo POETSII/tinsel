@@ -24,6 +24,28 @@ typedef struct {
 } DRAMResp deriving (Bits);
 
 // ============================================================================
+// Address mapping
+// ============================================================================
+
+// Map a tinsel memory address to a DRAM address.
+// The first 1GB of tinsel memory maps dirctly to the first 1GB of DRAM
+// The second 1GB contains the lines of each thread's partition interleaved
+function Bit#(`LogBeatsPerDRAM) toDRAMAddr(Bit#(`LogBeatsPerDRAM) addr);
+  // Separate address into MSB and rest
+  Bit#(1) msb = truncateLSB(addr);
+  Bit#(TSub#(`LogBeatsPerDRAM, 1)) rest = truncate(addr);
+  // The bottom bits address beats within a line
+  Bit#(`LogBeatsPerLine) bottom = truncate(rest);
+  Bit#(TSub#(TSub#(`LogBeatsPerDRAM, 1), `LogBeatsPerLine)) middle =
+    truncateLSB(rest);
+  // Separate upper half of address space into partition index and offset
+  Bit#(`LogThreadsPerDRAM) partIndex = truncateLSB(middle);
+  let partOffset = truncate(middle);
+  // Produce DRAM address
+  return msb == 0 ? addr : {msb, partOffset, partIndex, bottom};
+endfunction
+
+// ============================================================================
 // Interface
 // ============================================================================
 
@@ -255,7 +277,7 @@ module mkDRAM#(t id) (DRAM);
     if (reqPort.canGet && !waitRequest && inFlight.notFull) begin
       DRAMReq req = reqPort.value;
       reqPort.get;
-      address   <= req.addr;
+      address   <= toDRAMAddr(req.addr);
       writeData <= req.data;
       burstReg  <= req.burst;
       //byteEn    <= req.byteEn;
