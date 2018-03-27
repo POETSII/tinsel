@@ -40,7 +40,7 @@ function Bit#(`LogBeatsPerDRAM) toDRAMAddr(Bit#(`LogBeatsPerDRAM) addr);
     truncateLSB(rest);
   // Separate upper half of address space into partition index and offset
   Bit#(`LogThreadsPerDRAM) partIndex = truncateLSB(middle);
-  let partOffset = truncate(middle);
+  Bit#(`LogLinesPerDRAMPartition) partOffset = truncate(middle);
   // Produce DRAM address
   return msb == 0 ? addr : {msb, partOffset, partIndex, bottom};
 endfunction
@@ -70,6 +70,7 @@ import Vector    :: *;
 import Util      :: *;
 import Interface :: *;
 import Queue     :: *;
+import Assert    :: *;
 
 // Types
 // -----
@@ -78,12 +79,12 @@ import Queue     :: *;
 typedef Empty DRAMExtIfc;
 
 // DRAM identifier
-typedef Bit#(3) DRAMId;
+typedef Bit#(3) RAMId;
 
 // Interface to C functions
 import "BDPI" function ActionValue#(Bit#(32)) ramRead(
-                DRAMId ramId, Bit#(32) addr);
-import "BDPI" function Action ramWrite(DRAMId ramId,
+                RAMId ramId, Bit#(32) addr);
+import "BDPI" function Action ramWrite(RAMId ramId,
                 Bit#(32) addr, Bit#(32) data, Bit#(32) bitEn);
 
 // Functions
@@ -98,7 +99,7 @@ endfunction
 // Implementation
 // --------------
 
-module mkDRAM#(DRAMId id) (DRAM);
+module mkDRAM#(RAMId id) (DRAM);
   // Ports
   InPort#(DRAMReq) reqPort <- mkInPort;
 
@@ -131,6 +132,7 @@ module mkDRAM#(DRAMId id) (DRAM);
           Vector#(`WordsPerBeat, Bit#(32)) elems;
           Bit#(`LogBytesPerBeat) low = 0;
           Bit#(32) addr = {0, req.addr, low};
+          dynamicAssert(addr < `BytesPerDRAM, "Overflowed DRAM");
           for (Integer i = 0; i < `WordsPerBeat; i=i+1) begin
             let val <- ramRead(id, addr + zeroExtend(burstCount) *
                                         `BytesPerBeat
@@ -151,6 +153,7 @@ module mkDRAM#(DRAMId id) (DRAM);
           replicate(-1);
         Bit#(`LogBytesPerBeat) low = 0;
         Bit#(32) addr = {0, req.addr, low};
+        dynamicAssert(addr < `BytesPerDRAM, "Overflowed DRAM");
         for (Integer i = 0; i < `WordsPerBeat; i=i+1)
           ramWrite(id, addr+fromInteger(4*i), elems[i],
                      byteEnToBitEn(byteEns[i]));
@@ -226,7 +229,6 @@ endinterface
 // In-flight request
 typedef struct {
   DRAMReqId id;
-  Bool isStore;
 } DRAMInFlightReq deriving (Bits);
 
 // Implementation
@@ -284,7 +286,6 @@ module mkDRAM#(t id) (DRAM);
       if (req.isStore) putStore.send; else putLoad.send;
       DRAMInFlightReq inflightReq;
       inflightReq.id = req.id;
-      inflightReq.isStore = req.isStore;
       if (!req.isStore) inFlight.enq(inflightReq);
     end
   endrule

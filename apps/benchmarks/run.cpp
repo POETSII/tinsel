@@ -3,8 +3,8 @@
 
 // Benchmarks to run
 const char* benchmarks[] = {
-    "loadLoop"
-  , "storeLoop"
+    "storeLoop"
+  , "loadLoop"
   , "modifyLoop"
   , "copyLoop"
   , "cacheLoop"

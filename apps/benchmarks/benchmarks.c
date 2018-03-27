@@ -18,7 +18,7 @@
 // One load every 4 instructions
 BenchmarkFunction loadLoop()
 {
-  int region[SIZE];
+  int* region = (int*) tinselHeapBase();
   volatile int* p = region;
   int sum = 0;
   for (int i = 0; i < SIZE; i++)
@@ -29,7 +29,7 @@ BenchmarkFunction loadLoop()
 // One store every 4 instructions
 BenchmarkFunction storeLoop()
 {
-  int region[SIZE];
+  int* region = (int*) tinselHeapBase();
   volatile int* p = region;
   for (int i = 0; i < SIZE; i++) p[i] = i;
   return 0;
@@ -38,7 +38,7 @@ BenchmarkFunction storeLoop()
 // One load&store to same location every 5 instrutions
 BenchmarkFunction modifyLoop()
 {
-  int region[SIZE]; 
+  int* region = (int*) tinselHeapBase();
   volatile int* p = region;
   for (int i = 0; i < SIZE; i++) p[i]++;
   return 0;
@@ -47,8 +47,8 @@ BenchmarkFunction modifyLoop()
 // One load&store to different location every 5 instructions
 BenchmarkFunction copyLoop()
 {
-  int regionA[SIZE]; 
-  int regionB[SIZE]; 
+  int* regionA = (int*) tinselHeapBase();
+  int* regionB = ((int*) tinselHeapBase()) + SIZE;
   volatile int* p = regionA;
   volatile int* q = regionB;
   for (int i = 0; i < SIZE; i++) p[i] = q[i];
@@ -58,7 +58,7 @@ BenchmarkFunction copyLoop()
 // One load from same line every four instructions
 BenchmarkFunction cacheLoop()
 {
-  int region[SIZE];
+  int* region = (int*) tinselHeapBase();
   volatile int* p = region;
   int sum = 0;
   for (int i = 0; i < SIZE; i++) {
@@ -130,6 +130,8 @@ int main()
 
   // Response message
   volatile uint32_t* resp = tinselSlot(0);
+
+storeLoop();
 
   // Benchmark
   uint32_t start = tinselCycleCount();
