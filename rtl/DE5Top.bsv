@@ -17,6 +17,7 @@ import DebugLink  :: *;
 import JtagUart   :: *;
 import Mac        :: *;
 import FPU        :: *;
+import OffChipRAM :: *;
 
 // ============================================================================
 // Interface
@@ -55,10 +56,16 @@ module de5Top (DE5Top);
   Wire#(BoardId) boardId <- mkDWire(?);
   `endif
 
-  // Create DRAMs
+  // Interface to DRAMs
   Vector#(`DRAMsPerBoard, DRAM) drams;
+  `ifdef UseSRAMs
+  OffChipRAM offChipRAM <- mkOffChipRAM;
+  drams[0] = offChipRAM.dram0;
+  drams[1] = offChipRAM.dram1;
+  `else
   for (Integer i = 0; i < `DRAMsPerBoard; i=i+1)
     drams[i] <- mkDRAM(fromInteger(i));
+  `endif
 
   // Create data caches
   Vector#(`DRAMsPerBoard,
@@ -155,6 +162,9 @@ module de5Top (DE5Top);
   interface southMac = net.south;
   interface eastMac  = net.east;
   interface westMac  = net.west;
+  `ifdef UseSRAMs
+  interface sramIfc  = offChipRAM.sramExt;
+  `endif
   method Action setBoardId(BoardId id);
     boardId <= id;
   endmethod

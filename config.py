@@ -31,7 +31,7 @@ p["LogInstrsPerCore"] = 11
 p["LogCoresPerDCache"] = 2
 
 # Log of number of caches per DRAM port
-p["LogDCachesPerDRAM"] = 3
+p["LogDCachesPerDRAM"] = 0
 
 # Log of number of 32-bit words in a single memory transfer
 p["LogWordsPerBeat"] = 3
@@ -52,13 +52,19 @@ p["LogDRAMsPerBoard"] = 1
 p["DRAMLogMaxInFlight"] = 5
 
 # DRAM latency in cycles (simulation only)
-p["DRAMLatency"] = 20
+p["DRAMLatency"] = 25
 
 # Size of each DRAM
 p["LogBeatsPerDRAM"] = 26
 
-# Size of DRAM partition on each thread
-p["LogBytesPerDRAMPartition"] = 21
+# Max number of outstanding SRAM requests permitted
+p["SRAMLogMaxInFlight"] = 4
+
+# SRAM latency in cycles (simulation only)
+p["SRAMLatency"] = 5
+
+# Size of the SRAM
+p["LogBeatsPerSRAM"] = 20
 
 # Size of internal flit payload
 p["LogWordsPerFlit"] = 2
@@ -73,7 +79,7 @@ p["LogMsgsPerThread"] = 4
 p["LogCoresPerMailbox"] = 2
 
 # Number of mailboxes per board
-p["LogMailboxesPerBoard"] = 4
+p["LogMailboxesPerBoard"] = 1
 
 # Maximum size of boot loader (in bytes)
 p["MaxBootImageBytes"] = 512
@@ -103,7 +109,7 @@ p["MeshXBits"] = 2
 p["MeshYBits"] = 2
 
 # Mesh X length
-p["MeshXLen"] = 3
+p["MeshXLen"] = 1
 
 # Mesh Y length
 p["MeshYLen"] = 1
@@ -118,6 +124,10 @@ p["FPAddSubLatency"] = 14
 p["FPDivLatency"] = 14
 p["FPConvertLatency"] = 6
 p["FPCompareLatency"] = 3
+
+# Use SRAMs to optimise off-chip RAM performance for POETS applications
+# (Currently, this setting requires LogDRAMsPerBoard = 1)
+p["UseSRAMs"] = True
 
 #==============================================================================
 # Derived Parameters
@@ -146,11 +156,17 @@ p["WordsPerBeat"] = 2**p["LogWordsPerBeat"]
 # Number of bytes in a memory transfer
 p["BytesPerBeat"] = 4 * p["WordsPerBeat"]
 
+# Log of number of bytes in a memory transfer
+p["LogBytesPerBeat"] = p["LogWordsPerBeat"] + 2
+
+# Number of bytes in a DRAM
+p["LogBytesPerDRAM"] = p["LogBeatsPerDRAM"] + p["LogBytesPerBeat"]
+
 # Number of bytes in a DRAM
 p["BytesPerDRAM"] = 2**p["LogBeatsPerDRAM"] * p["BytesPerBeat"]
 
-# Log of number of bytes in a memory transfer
-p["LogBytesPerBeat"] = p["LogWordsPerBeat"] + 2
+# Number of bytes in SRAM
+p["BytesPerSRAM"] = 2**p["LogBeatsPerSRAM"] * p["BytesPerBeat"]
 
 # Data cache beat width in bits
 p["BeatWidth"] = p["WordsPerBeat"] * 32
@@ -206,6 +222,9 @@ p["MailboxesPerBoard"] = 2 ** p["LogMailboxesPerBoard"]
 # Number of DRAMs per FPGA board
 p["DRAMsPerBoard"] = 2 ** p["LogDRAMsPerBoard"]
 
+# Number of DCaches per board
+p["LogDCachesPerBoard"] = p["LogDRAMsPerBoard"] + p["LogDCachesPerDRAM"]
+
 # Size of each DRAM
 p["LogLinesPerDRAM"] = p["LogBeatsPerDRAM"] - p["LogBeatsPerLine"]
 p["LogBytesPerDRAM"] = p["LogBeatsPerDRAM"] + p["LogBytesPerBeat"]
@@ -231,6 +250,19 @@ p["ThreadsPerCore"] = 2**p["LogThreadsPerCore"]
 p["MaxThreads"] = (2**p["MeshXBits"] *
                      2**p["MeshYBits"] *
                        p["ThreadsPerBoard"])
+
+# Size of SRAM partition on each thread in lines
+p["LogLinesPerSRAMPartition"] = (p["LogBeatsPerSRAM"] -
+                                   p["LogBeatsPerLine"] -
+                                     p["LogThreadsPerBoard"])
+
+# Size of DRAM partition on each thread
+p["LogBytesPerDRAMPartition"] = (p["LogBytesPerDRAM"] -
+                                   p["LogThreadsPerDRAM"] - 1)
+
+# Size of DRAM partition on each thread
+p["LogLinesPerDRAMPartition"] = (p["LogBytesPerDRAMPartition"] -
+                                   p["LogBytesPerLine"])
 
 # Cores per FPU
 p["CoresPerFPU"] = 2 ** p["LogCoresPerFPU"]
