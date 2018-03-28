@@ -32,11 +32,11 @@ package OffChipRAM;
 // In particular, we assume exactly two DRAMs and one SRAM, all with
 // the same data width.
 
-import Interface   :: *;
-import Queue       :: *;
-import Vector      :: *;
-import DRAM        :: *;
-import OffChipSRAM :: *;
+import Interface :: *;
+import Queue     :: *;
+import Vector    :: *;
+import DRAM      :: *;
+import QSRAM     :: *;
 
 // Does the given address map to SRAM?
 function Bool mapsToSRAM(Bit#(1) dramId, Bit#(`LogBeatsPerDRAM) addr);
@@ -130,6 +130,7 @@ module mkOffChipRAM (OffChipRAM);
           sramReq.id = {dramId, req.id};
           sramReq.addr = toSRAMAddr(dramId, req.addr);
           sramReq.burst = req.burst;
+          sramReq.info = unpack(truncate(req.data));
           if (sramLoadReqOut.canPut) begin
             reqIn.get;
             sramLoadReqOut.put(sramReq);
@@ -190,6 +191,7 @@ module mkOffChipRAM (OffChipRAM);
     DRAMResp dramResp;
     dramResp.id = truncate(resp.id);
     dramResp.data = resp.data;
+    dramResp.info = resp.info;
     // Get SRAM response?
     Bool getSRAM = False;
     // Try to enqueue respBufferA

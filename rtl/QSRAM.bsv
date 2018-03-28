@@ -1,4 +1,6 @@
-package OffChipSRAM;
+package QSRAM;
+
+import DCacheTypes :: *;
 
 // ============================================================================
 // Types
@@ -12,6 +14,7 @@ typedef struct {
   SRAMReqId id;
   Bit#(`LogBeatsPerSRAM) addr;
   Bit#(`BeatBurstWidth) burst;
+  InflightDCacheReqInfo info;
 } SRAMLoadReq deriving (Bits);
 
 // SRAM store request
@@ -27,6 +30,7 @@ typedef struct {
 typedef struct {
   SRAMReqId id;
   Bit#(`BeatWidth) data;
+  InflightDCacheReqInfo info;
 } SRAMResp deriving (Bits);
 
 // ============================================================================
@@ -133,6 +137,8 @@ module mkSRAM#(RAMId id) (SRAM);
         SRAMResp resp;
         resp.id = req.id;
         resp.data = pack(elems);
+        resp.info = req.info;
+        resp.info.beat = truncate(loadBurstCount);
         resps.enq(resp);
         decOutstanding.send;
       end
@@ -239,6 +245,7 @@ endinterface
 // In-flight request
 typedef struct {
   SRAMReqId id;
+  InflightDCacheReqInfo info;
 } SRAMInFlightReq deriving (Bits);
 
 // Implementation
@@ -301,6 +308,8 @@ module mkSRAM#(RAMId id) (SRAM);
       putLoad.send;
       SRAMInFlightReq inflightReq;
       inflightReq.id = req.id;
+      inflightReq.info = req.info;
+      inflightReq.info.beat = 0; // TODO
       inFlight.enq(inflightReq);
     end
   endrule
@@ -331,6 +340,7 @@ module mkSRAM#(RAMId id) (SRAM);
       SRAMResp resp;
       resp.id = inFlight.dataOut.id;
       resp.data = respBuffer.dataOut;
+      resp.info = inFlight.dataOut.info;
       return resp;
     endmethod
   endinterface

@@ -21,6 +21,7 @@ typedef struct {
 typedef struct {
   DRAMReqId id;
   Bit#(`BeatWidth) data;
+  InflightDCacheReqInfo info;
 } DRAMResp deriving (Bits);
 
 // ============================================================================
@@ -64,13 +65,14 @@ endinterface
 // Imports
 // -------
 
-import Globals   :: *;
-import FIFOF     :: *;
-import Vector    :: *;
-import Util      :: *;
-import Interface :: *;
-import Queue     :: *;
-import Assert    :: *;
+import Globals     :: *;
+import FIFOF       :: *;
+import Vector      :: *;
+import Util        :: *;
+import Interface   :: *;
+import Queue       :: *;
+import Assert      :: *;
+import DCacheTypes :: *;
 
 // Types
 // -----
@@ -142,6 +144,8 @@ module mkDRAM#(RAMId id) (DRAM);
           DRAMResp resp;
           resp.id = req.id;
           resp.data = pack(elems);
+          resp.info = unpack(truncate(req.data));
+          resp.info.beat = truncate(burstCount);
           resps.enq(resp);
           decOutstanding.send;
         end
@@ -201,11 +205,12 @@ endmodule
 // Imports
 // -------
 
-import Globals   :: *;
-import Vector    :: *;
-import Queue     :: *;
-import Interface :: *;
-import Assert    :: *;
+import Globals     :: *;
+import Vector      :: *;
+import Queue       :: *;
+import Interface   :: *;
+import Assert      :: *;
+import DCacheTypes :: *;
 
 // Types
 // -----
@@ -229,6 +234,7 @@ endinterface
 // In-flight request
 typedef struct {
   DRAMReqId id;
+  InflightDCacheReqInfo info;
 } DRAMInFlightReq deriving (Bits);
 
 // Implementation
@@ -286,6 +292,7 @@ module mkDRAM#(t id) (DRAM);
       if (req.isStore) putStore.send; else putLoad.send;
       DRAMInFlightReq inflightReq;
       inflightReq.id = req.id;
+      inflightReq.info = unpack(truncate(req.data));
       if (!req.isStore) inFlight.enq(inflightReq);
     end
   endrule
@@ -303,7 +310,9 @@ module mkDRAM#(t id) (DRAM);
     method DRAMResp value;
       DRAMResp resp;
       resp.id = inFlight.dataOut.id;
+      resp.info = inFlight.dataOut.info;
       resp.data = respBuffer.dataOut;
+      resp.info.beat = 0; // TODO
       return resp;
     endmethod
   endinterface
