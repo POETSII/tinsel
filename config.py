@@ -82,7 +82,7 @@ p["LogCoresPerMailbox"] = 2
 p["LogMailboxesPerBoard"] = 1
 
 # Maximum size of boot loader (in bytes)
-p["MaxBootImageBytes"] = 512
+p["MaxBootImageBytes"] = 576
 
 # Size of transmit buffer in a reliable link
 p["LogTransmitBufferSize"] = 10
@@ -127,7 +127,7 @@ p["FPCompareLatency"] = 3
 
 # Use SRAMs to optimise off-chip RAM performance for POETS applications
 # (Currently, this setting requires LogDRAMsPerBoard = 1)
-p["UseSRAMs"] = True
+p["UseSRAMs"] = False
 
 #==============================================================================
 # Derived Parameters

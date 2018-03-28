@@ -23,6 +23,7 @@
 #define CSR_KILL_THREAD "0x80e"
 #define CSR_EMIT        "0x80f"
 #define CSR_CYCLE       "0xc00"
+#define CSR_FLUSH       "0xc01"
 
 // Get globally unique thread id of caller
 inline int tinselId()
@@ -40,10 +41,11 @@ inline uint32_t tinselCycleCount()
   return n;
 }
 
-// Cache flush
-inline void tinselCacheFlush()
+// Flush cache line
+inline void tinselFlushLine(uint32_t lineNum, uint32_t way)
 {
-  asm volatile("fence\n");
+  uint32_t arg = (lineNum << TinselDCacheLogNumWays) | way;
+  asm volatile("csrrw zero, " CSR_FLUSH ", %0" : : "r"(arg));
 }
 
 // Write a word to instruction memory
@@ -175,6 +177,18 @@ inline void* tinselHeapBase()
   uint32_t addr = TinselBytesPerDRAM -
                     ((partId+1) << TinselLogBytesPerDRAMPartition);
   return (void*) addr;
+}
+
+// Cache flush
+inline void tinselCacheFlush()
+{
+  for (uint32_t i = 0; i < (1<<TinselDCacheLogSetsPerThread); i++)
+    for (uint32_t j = 0; j < (1<<TinselDCacheLogNumWays); j++)
+      tinselFlushLine(i, j);
+  // Load from each off-chip RAM to ensure that flushes have fully propagated
+  volatile uint8_t* base = tinselHeapBase();
+  base[0];
+  base[1 << TinselLogBytesPerLine];
 }
 
 #endif

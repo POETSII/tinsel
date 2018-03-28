@@ -131,8 +131,6 @@ int main()
   // Response message
   volatile uint32_t* resp = tinselSlot(0);
 
-storeLoop();
-
   // Benchmark
   uint32_t start = tinselCycleCount();
   BENCHMARK();

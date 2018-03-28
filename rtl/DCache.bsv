@@ -82,12 +82,9 @@ package DCache;
 // new line data has been fetched, the original request is fed back to
 // the first pipeline stage, and is now guaranteed to hit.
 //
-// We support a per-thread cache flush mechanism that exploits the
-// feedback loop.  A flush request loops round the pipeline,
-// invalidating evicting a line on each iteration.  After the final
-// line is evicted, we issue a dummy load request, the response of
-// which is used to guarantee that all writes have reached DRAM.
-// Finally, a flush response is issued to the client.
+// We also provide a cache flush operation that allows a client to
+// flush a given line.  A full cache flush can then be programmed in
+// software.
 
 // ============================================================================
 // Imports
@@ -123,7 +120,7 @@ typedef struct {
   Bool isLoad;      // Load
   Bool isStore;     // Store
   Bool isFlush;     // Perform cache flush
-  Bool isFlushResp; // Send cache flush response
+  Bool isFlushResp; // Flush response (only used internally)
 } DCacheReqCmd deriving (Bits);
 
 // Client request structure
@@ -135,10 +132,8 @@ typedef struct {
   Bit#(4) byteEn;
 } DCacheReq deriving (Bits);
 
-// Details of flush request:
-//   * 'addr' field contains the set index to evict
-//   * 'data' field contains the way to evict
-//   * client should ensure that these are both 0 initially
+// Details of a flush request: the 'addr' field specifies the
+// line to evict and the 'data' field specifies the way.
 
 // Client response structure
 typedef struct {
@@ -150,7 +145,6 @@ typedef struct {
 typedef struct {
   DCacheReq req;  // The request leading to the fill
   Way way;        // The way to fill
-  Bool flushDone; // Goes high when the final line is being flushed
 } Fill deriving (Bits);
 
 // Index for a set in the tag array and the meta-data array
@@ -199,7 +193,6 @@ typedef struct {
   Way evictWay;
   Tag evictTag;
   Bool evictDirty;
-  Bool flushDone;
 } MissReq deriving (Bits);
 
 // Beat
@@ -207,15 +200,6 @@ typedef Bit#(`LogBeatsPerLine) Beat;
 
 // Max number of in-flight cache requests
 `define DCacheLogMaxInflight 5
-
-// For flushing
-typedef Bit#(`DCacheLogSetsPerThread) SetNum;
-function SetNum addrToSetNum(Bit#(32) addr) =
-  truncate(addr[31:`LogBytesPerLine]);
-function Bit#(32) setNumToAddr(SetNum set);
-  Bit#(`LogBytesPerLine) bottom = 0;
-  return {0, set, bottom};
-endfunction
 
 // ============================================================================
 // Functions
@@ -403,11 +387,6 @@ module mkDCache#(DCacheId myId) (DCache);
       miss.evictWay = token.evictWay;
       miss.evictTag = token.evictTag;
       miss.evictDirty = token.evictDirty;
-      // Extract current set index and way of flush
-      SetNum set = addrToSetNum(token.req.addr);
-      Way way = truncate(token.req.data);
-      // Determine if we're flushing the final line
-      miss.flushDone = allHigh(set) && allHigh(way);
       missQueue.enq(miss);
     end
     // Trigger next stage
@@ -479,29 +458,10 @@ module mkDCache#(DCacheId myId) (DCache);
     if (fillQueue.canDeq && fillQueue.canPeek) begin
       // Is it a flush request?
       if (fill.req.cmd.isFlush) begin
-        // Extract current set index and way of flush
-        SetNum set = addrToSetNum(fill.req.addr);
-        Way way = truncate(fill.req.data);
-        // Increment set index
-        if (allHigh(way)) fill.req.addr = setNumToAddr(set+1);
-        // Increment way
-        fill.req.data = {?, way+1};
-        // Is flush complete?
-        if (fill.flushDone) begin
-          // Flush command morphs into flush-response command
-          fill.req.cmd.isFlush = False;
-          fill.req.cmd.isFlushResp = True;
-        end
-        // We need to wait for a response only on the final line of
-        // the flush (this response signifies that all evictions due
-        // to the flush have reached DRAM)
-        Bool step = fill.flushDone ? respPort.canGet : True;
-        if (step) begin
-          // Feed request back to beginning of pipeline
-          fillQueue.deq;
-          feedbackTrigger <= True;
-          if (fill.flushDone) respPort.get;
-        end
+        fill.req.cmd.isFlush = False;
+        fill.req.cmd.isFlushResp = True;
+        fillQueue.deq;
+        feedbackTrigger <= True;
       // Otherwise, is new line data available from external memory?
       end else if (respPort.canGet) begin
         // Remove item from fill queue and feed associated request (which
@@ -562,15 +522,11 @@ module mkDCache#(DCacheId myId) (DCache);
           if (fillQueue.notFull) begin
             missQueue.deq;
             writebackDone <= False;
-            // When flushing, only send a mem request after eviction of
-            // final line, the response of which will indicate that
-            // all evictions due to the flush have reached DRAM
-            sendMemReq = miss.req.cmd.isFlush ? miss.flushDone : True;
-            // Put request in fill queue
+            // Don't send a load request on a flush operation
+            sendMemReq = !miss.req.cmd.isFlush;
             Fill fill;
             fill.req = miss.req;
             fill.way = miss.evictWay;
-            fill.flushDone = miss.flushDone;
             fillQueue.enq(fill);
           end
         // Or are we still writing back old data?
