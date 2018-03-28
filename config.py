@@ -127,7 +127,7 @@ p["FPCompareLatency"] = 3
 
 # Use SRAMs to optimise off-chip RAM performance for POETS applications
 # (Currently, this setting requires LogDRAMsPerBoard = 1)
-p["UseSRAMs"] = False
+p["UseSRAMs"] = True
 
 #==============================================================================
 # Derived Parameters

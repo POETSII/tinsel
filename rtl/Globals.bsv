@@ -49,11 +49,4 @@ typedef Bit#(PaddedFlitNumBits) PaddedFlit;
 function PaddedFlit padFlit(Flit flit) = {?, pack(flit)};
 function Flit unpadFlit(PaddedFlit flit) = unpack(truncate(pack(flit)));
 
-// ============================================================================
-// Caches
-// ============================================================================
-
-// Unique identifier per data cache
-typedef Bit#(`LogDCachesPerDRAM) DCacheId;
-
 endpackage

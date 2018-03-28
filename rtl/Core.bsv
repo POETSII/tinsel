@@ -6,21 +6,22 @@ package Core;
 // Imports
 // ============================================================================
 
-import Vector    :: *;
-import FIFO      :: *;
-import BlockRam  :: *;
-import Queue     :: *;
-import Assert    :: *;
-import Util      :: *;
-import DReg      :: *;
-import DCache    :: *;
-import ConfigReg :: *;
-import Interface :: *;
-import Mailbox   :: *;
-import Globals   :: *;
-import DebugLink :: *;
-import FPU       :: *;
-import FPUOps    :: *;
+import Vector      :: *;
+import FIFO        :: *;
+import BlockRam    :: *;
+import Queue       :: *;
+import Assert      :: *;
+import Util        :: *;
+import DReg        :: *;
+import DCache      :: *;
+import ConfigReg   :: *;
+import Interface   :: *;
+import Mailbox     :: *;
+import Globals     :: *;
+import DebugLink   :: *;
+import FPU         :: *;
+import FPUOps      :: *;
+import DCacheTypes :: *;
 
 // ============================================================================
 // Control/status registers (CSRs) supported

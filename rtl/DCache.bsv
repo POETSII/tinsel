@@ -90,47 +90,27 @@ package DCache;
 // Imports
 // ============================================================================
 
-import BlockRam  :: *;
-import Queue     :: *;
-import Globals   :: *;
-import Util      :: *;
-import Vector    :: *;
-import DReg      :: *;
-import Assert    :: *;
-import ConfigReg :: *;
-import Interface :: *;
-import DRAM      :: *;
+import BlockRam    :: *;
+import Queue       :: *;
+import Globals     :: *;
+import Util        :: *;
+import Vector      :: *;
+import DReg        :: *;
+import Assert      :: *;
+import ConfigReg   :: *;
+import Interface   :: *;
+import DRAM        :: *;
+import DCacheTypes :: *;
 
 // ============================================================================
 // Types  
 // ============================================================================
-
-// A single DCache may be shared my several multi-threaded cores
-typedef TAdd#(`LogThreadsPerCore, `LogCoresPerDCache) DCacheClientIdBits;
-typedef Bit#(DCacheClientIdBits) DCacheClientId;
 
 // Number of ways
 typedef TExp#(`DCacheLogNumWays) DCacheNumWays;
 
 // Way
 typedef Bit#(`DCacheLogNumWays) Way;
-
-// Client request command (one hot encoding)
-typedef struct {
-  Bool isLoad;      // Load
-  Bool isStore;     // Store
-  Bool isFlush;     // Perform cache flush
-  Bool isFlushResp; // Flush response (only used internally)
-} DCacheReqCmd deriving (Bits);
-
-// Client request structure
-typedef struct {
-  DCacheClientId id;
-  DCacheReqCmd cmd;
-  Bit#(32) addr;
-  Bit#(32) data;
-  Bit#(4) byteEn;
-} DCacheReq deriving (Bits);
 
 // Details of a flush request: the 'addr' field specifies the
 // line to evict and the 'data' field specifies the way.
@@ -141,11 +121,11 @@ typedef struct {
   Bit#(32) data;
 } DCacheResp deriving (Bits);
 
-// Fill request
+// Flush request
 typedef struct {
-  DCacheReq req;  // The request leading to the fill
-  Way way;        // The way to fill
-} Fill deriving (Bits);
+  DCacheReq req;  // The request leading to the flush
+  Way way;        // The way to flush
+} FlushReq deriving (Bits);
 
 // Index for a set in the tag array and the meta-data array
 typedef TAdd#(`DCacheLogSetsPerThread, DCacheClientIdBits) SetIndexNumBits;
@@ -261,9 +241,8 @@ module mkDCache#(DCacheId myId) (DCache);
   InPort#(DCacheReq) reqPort  <- mkInPort;
   InPort#(DRAMResp)  respPort <- mkInPort;
 
-  // The fill queue (16 elements) stores requests that have missed
-  // while waiting for external memory to fetch the data.
-  SizedQueue#(4, Fill) fillQueue <- mkUGSizedQueue;
+  // The flush queue (flush requests waiting to re-enter the pipeline)
+  Queue#(FlushReq) flushQueue <- mkUGShiftQueue2(QueueOptFmax);
 
   // The response queue buffers responses to the client
   SizedQueue#(`DCacheLogMaxInflight, DCacheResp) respQueue <-
@@ -444,42 +423,37 @@ module mkDCache#(DCacheId myId) (DCache);
   // Memory response stage
   // ---------------------
 
-  // Beat counter for responses
-  Reg#(Beat) respBeat <- mkReg(0);
-
   rule memResponse;
-    let fill = fillQueue.dataOut;
+    // This rule either consumes a flush request or a memory response
+    let flush = flushQueue.dataOut;
+    let resp = respPort.value;
     // This rule may write new line data to dataMem
     // If so, here are the parameters for the write
-    lineWriteDataWire <= respPort.value.data;
-    lineWriteIndexWire <= beatIndex(respBeat, fill.req.id,
-                            fill.req.addr, fill.way);
-    // Ready to consume fill queue?
-    if (fillQueue.canDeq && fillQueue.canPeek) begin
-      // Is it a flush request?
-      if (fill.req.cmd.isFlush) begin
-        fill.req.cmd.isFlush = False;
-        fill.req.cmd.isFlushResp = True;
-        fillQueue.deq;
+    lineWriteDataWire <= resp.data;
+    lineWriteIndexWire <= beatIndex(resp.info.beat, resp.info.req.id,
+                            resp.info.req.addr, resp.info.way);
+    // Ready to consume flush queue?
+    if (flushQueue.canDeq && flushQueue.canPeek) begin
+      flush.req.cmd.isFlush = False;
+      flush.req.cmd.isFlushResp = True;
+      flushQueue.deq;
+      feedbackTrigger <= True;
+      // Set feedback request
+      feedbackReq <= flush.req;
+    // Otherwise, is new line data available from external memory?
+    end else if (respPort.canGet) begin
+      // Remove item from fill queue and feed associated request (which
+      // will definitely hit if it starts again from the beginning of
+      // the pipeline) back to beginning of the pipeline
+      if (allHigh(resp.info.beat))
         feedbackTrigger <= True;
-      // Otherwise, is new line data available from external memory?
-      end else if (respPort.canGet) begin
-        // Remove item from fill queue and feed associated request (which
-        // will definitely hit if it starts again from the beginning of
-        // the pipeline) back to beginning of the pipeline
-        if (allHigh(respBeat)) begin
-          fillQueue.deq;
-          feedbackTrigger <= True;
-        end
-        // Write new line data to dataMem
-        // (The write parameters are set outside condition for better timing)
-        lineWriteReqWire <= True;
-        respPort.get;
-        respBeat <= respBeat+1;
-      end
+      // Write new line data to dataMem
+      // (The write parameters are set outside condition for better timing)
+      lineWriteReqWire <= True;
+      respPort.get;
+      // Set feedback request
+      feedbackReq <= resp.info.req;
     end
-    // Set feedback request
-    feedbackReq <= fill.req;
   endrule
 
   // Miss unit
@@ -506,28 +480,37 @@ module mkDCache#(DCacheId myId) (DCache);
       reconstructLineAddr(miss.evictTag.key, miss.req.addr);
     Bit#(`LogLinesPerDRAM) readLineAddr = 
       miss.req.addr[`LogBytesPerDRAM-1:`LogBytesPerLine];
+    // Create inflight request info
+    InflightDCacheReqInfo info;
+    info.req = miss.req;
+    info.way = miss.evictWay;
+    info.beat = ?;
     // Create memory request
     DRAMReq memReq;
     memReq.isStore = !isLoad;
     memReq.id = myId;
     memReq.addr = {isLoad ? readLineAddr : writeLineAddr, reqBeat};
-    memReq.data = dataMem.dataOutA;
-    memReq.burst = isLoad ? (miss.req.cmd.isFlush ? 1 : `BeatsPerLine) : 1;
+    memReq.data = isLoad ? {?, pack(info)} : dataMem.dataOutA;
+    memReq.burst = isLoad ? `BeatsPerLine : 1;
     // Are we going to send a memory request to the next stage?
     Bool sendMemReq = False;
     if (missQueue.canPeek && missQueue.canDeq && memReqQueue.notFull) begin
       if (missUnitState == 0) begin
         // Are we ready to request the new line?
         if (isLoad) begin
-          if (fillQueue.notFull) begin
+          if (miss.req.cmd.isFlush) begin
+            if (flushQueue.notFull) begin
+              writebackDone <= False;
+              FlushReq flush;
+              flush.req = miss.req;
+              flush.way = miss.evictWay;
+              flushQueue.enq(flush);
+              missQueue.deq;
+            end
+          end else begin
             missQueue.deq;
             writebackDone <= False;
-            // Don't send a load request on a flush operation
-            sendMemReq = !miss.req.cmd.isFlush;
-            Fill fill;
-            fill.req = miss.req;
-            fill.way = miss.evictWay;
-            fillQueue.enq(fill);
+            sendMemReq = True;
           end
         // Or are we still writing back old data?
         end else if (!lineWriteReqWire) begin
