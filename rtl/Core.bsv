@@ -48,6 +48,7 @@ import FPUOps    :: *;
 // FRM         | 0x002  | RW  | Floating-point dynamic rounding mode
 // FCSR        | 0x003  | RW  | Concatenation of FRM and FFlag
 // Cycle       | 0xc00  | R   | 32-bit cycle counter
+// Flush       | 0xc01  | R   | Cache line flush
 
 // Currently, only the CSRRW instruction is supported for accessing CSRs.
 
@@ -103,7 +104,7 @@ typedef struct {
   Bool isToUart;      Bool isNewThread;
   Bool isKillThread;  Bool isFFlag;
   Bool isFRM;         Bool isFCSR;
-  Bool isCycle;
+  Bool isCycle;       Bool isFlush;
   `ifdef SIMULATE
   Bool isEmit;
   `endif
@@ -331,6 +332,8 @@ function Op decodeOp(Bit#(32) instr);
   ret.csr.isFCSR         = ret.isCSR && csrIndex == 'h03;
   // Cycle count CSR 
   ret.csr.isCycle        = ret.isCSR && csrIndex == 'h30;
+  // Cache line flush CSR
+  ret.csr.isFlush        = ret.isCSR && csrIndex == 'h31;
   // Floating-point operations
   ret.isFPMAdd = instr[6:4] == 3'b100;
   ret.isFPAdd  = instr[6:4] == 3'b101 && instr[31:28] == 4'b0000;
@@ -786,11 +789,11 @@ module mkCore#(CoreId myId) (Core);
     // Load or store: send request to data cache or scratchpad
     Bool retry = False;
     Bool suspend = False;
-    if (token.op.isLoad || token.op.isStore || token.op.isFence) begin
+    if (token.op.isLoad || token.op.isStore || token.op.csr.isFlush) begin
       // Determine data to write and assoicated byte-enables
       Bit#(32) writeData = writeAlign(token.accessWidth, token.valB);
       Bit#(4)  byteEn    = genByteEnable(token.accessWidth, token.memAddr[1:0]);
-      if (token.isScratchpadAccess && !token.op.isFence) begin
+      if (token.isScratchpadAccess && !token.op.csr.isFlush) begin
         if (mailbox.scratchpadReq.canPut) begin
           // Prepare scratchpad request
           ScratchpadReq req;
@@ -806,15 +809,19 @@ module mkCore#(CoreId myId) (Core);
           retry = True;
       end else begin
         if (dcacheReq.canPut) begin
+          // Line number and way to flush
+          Bit#(`DCacheLogNumWays) way = truncate(token.valA);
+          Bit#(`LogBytesPerLine) bottom = 0;
+          Bit#(32) line = {truncate(token.valA[31:`DCacheLogNumWays]), bottom};
           // Prepare data cache request
           DCacheReq req;
           req.id = {truncate(myId), token.thread.id};
           req.cmd.isLoad = token.op.isLoad;
           req.cmd.isStore = token.op.isStore;
-          req.cmd.isFlush = token.op.isFence;
+          req.cmd.isFlush = token.op.csr.isFlush;
           req.cmd.isFlushResp = False;
-          req.addr = token.op.isFence ? 0 : token.memAddr;
-          req.data = token.op.isFence ? 0 : writeData;
+          req.addr = token.op.csr.isFlush ? zeroExtend(line) : token.memAddr;
+          req.data = token.op.csr.isFlush ? zeroExtend(way) : writeData;
           req.byteEn = byteEn;
           // Issue data cache request
           dcacheReq.put(req);
