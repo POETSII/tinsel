@@ -251,7 +251,7 @@ typedef struct {
 // Implementation
 // --------------
 
-module mkSRAM#(RAMId id) (SRAM);
+module mkSRAM#(t id) (SRAM);
   // Ports
   InPort#(SRAMLoadReq) loadReqPort <- mkInPort;
   InPort#(SRAMStoreReq) storeReqPort <- mkInPort;
@@ -269,8 +269,8 @@ module mkSRAM#(RAMId id) (SRAM);
   Reg#(Bit#(`BytesPerBeat)) byteEn <- mkRegU;
   Reg#(Bool) doRead <- mkReg(False);
   Reg#(Bool) doWrite <- mkReg(False);
-  Reg#(Bit#(`BeatBurstWidth)) readBurstReg <- mkReg(0);
-  Reg#(Bit#(`BeatBurstWidth)) writeBurstReg <- mkReg(0);
+  Reg#(Bit#(`BeatBurstWidth)) loadBurstReg <- mkReg(0);
+  Reg#(Bit#(`BeatBurstWidth)) storeBurstReg <- mkReg(0);
 
   // Wires
   Wire#(Bool) loadWaitRequest <- mkBypassWire;
@@ -300,7 +300,7 @@ module mkSRAM#(RAMId id) (SRAM);
 
   rule consumeLoadRequest;
     if (loadReqPort.canGet && !loadWaitRequest && inFlight.notFull) begin
-      SRAMReq req = loadReqPort.value;
+      SRAMLoadReq req = loadReqPort.value;
       loadReqPort.get;
       loadAddress <= req.addr;
       loadBurstReg <= req.burst;
@@ -316,7 +316,7 @@ module mkSRAM#(RAMId id) (SRAM);
 
   rule consumeStoreRequest;
     if (storeReqPort.canGet && !storeWaitRequest) begin
-      SRAMReq req = storeReqPort.value;
+      SRAMStoreReq req = storeReqPort.value;
       storeReqPort.get;
       storeAddress <= req.addr;
       writeData <= req.data;
