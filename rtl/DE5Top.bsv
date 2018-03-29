@@ -8,6 +8,7 @@ import Core       :: *;
 import DCache     :: *;
 import Globals    :: *;
 import DRAM       :: *;
+import QSRAM      :: *;
 import Interface  :: *;
 import Queue      :: *;
 import Vector     :: *;
@@ -38,6 +39,9 @@ interface DE5Top;
   interface AvalonMac eastMac;
   interface AvalonMac westMac;
   interface JtagUartAvalon jtagIfc;
+  `ifdef UseSRAMs
+  interface SRAMExtIfc sramIfc;
+  `endif
   (* always_ready, always_enabled *)
   method Action setBoardId(BoardId id);
 endinterface
