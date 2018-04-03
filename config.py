@@ -129,6 +129,13 @@ p["FPCompareLatency"] = 3
 # (Currently, this setting requires LogDRAMsPerBoard = 1)
 p["UseSRAMs"] = True
 
+# The SRAMs have separate read and write ports.  To avoid loads from
+# overtaking inflight stores to the same address, we assume that a
+# store completes within the following number of cycles after being
+# issued to the SRAM subsystem.  (SRAMs do not generate store
+# responses.)
+p["SRAMStoreLatency"] = 4
+
 #==============================================================================
 # Derived Parameters
 #==============================================================================

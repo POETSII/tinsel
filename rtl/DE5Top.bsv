@@ -8,7 +8,7 @@ import Core       :: *;
 import DCache     :: *;
 import Globals    :: *;
 import DRAM       :: *;
-import QSRAM      :: *;
+import SRAMx4     :: *;
 import Interface  :: *;
 import Queue      :: *;
 import Vector     :: *;
