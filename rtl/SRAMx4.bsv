@@ -368,8 +368,6 @@ module mkSRAMUnit (SRAMUnit);
     method Bit#(72) value = respBuffer.dataOut;
   endinterface
 
-  method Option#(SRAMReqId) storeDone = storeDoneWire;
-
   // External interface (two Avalon masters)
   interface SRAMUnitExtIfc ext;
     // Read port
@@ -470,7 +468,7 @@ module mkSRAM#(t id) (SRAM);
         storeOutPort[i].put(req);
       end
       storeReqPort.get;
-      storeSubmittedWire <= option(True, req.id);
+      storeSubmittedWire <= option(True, storeReqPort.value.id);
     end
   endrule
 
