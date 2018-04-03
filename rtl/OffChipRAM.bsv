@@ -36,7 +36,8 @@ import Interface :: *;
 import Queue     :: *;
 import Vector    :: *;
 import DRAM      :: *;
-import QSRAM     :: *;
+import SRAMx4    :: *;
+import Util      :: *;
 
 // Does the given address map to SRAM?
 function Bool mapsToSRAM(Bit#(1) dramId, Bit#(`LogBeatsPerDRAM) addr);
@@ -106,6 +107,17 @@ module mkOffChipRAM (OffChipRAM);
   OutPort#(SRAMStoreReq) sramStoreReqsA <- mkOutPort;
   OutPort#(SRAMStoreReq) sramStoreReqsB <- mkOutPort;
 
+  // Tracking oustanding stores from each DCache
+  // This allows us to prevent loads overtaking stores to the same address
+  Vector#(TExp#(`LogDCachesPerBoard), SetReset) oustandingStores <-
+    replicateM(mkSetReset(False));
+
+  // Observe when stores complete
+  rule observeStoreResponses;
+    if (sram.storeDone.valid)
+      oustandingStores[sram.storeDone.value].clear;
+  endrule
+
   // Pass request to the appropriate RAM
   function Action pass(Bit#(1)                dramId,
                        InPort#(DRAMReq)       reqIn,
@@ -114,6 +126,8 @@ module mkOffChipRAM (OffChipRAM);
                        OutPort#(SRAMLoadReq)  sramLoadReqOut) = action
     if (reqIn.canGet) begin
       DRAMReq req = reqIn.value;
+      SRAMReqId sramReqId = {dramId, req.id};
+      Bool delay = oustandingStores[sramReqId].value;
       if (mapsToSRAM(dramId, req.addr)) begin
         if (req.isStore) begin
           SRAMStoreReq sramReq;
@@ -121,7 +135,8 @@ module mkOffChipRAM (OffChipRAM);
           sramReq.addr  = toSRAMAddr(dramId, req.addr);
           sramReq.data  = req.data;
           sramReq.burst = req.burst;
-          if (sramStoreReqOut.canPut) begin
+          if (!delay && sramStoreReqOut.canPut) begin
+            oustandingStores[sramReq.id].set;
             reqIn.get;
             sramStoreReqOut.put(sramReq);
           end
@@ -131,7 +146,7 @@ module mkOffChipRAM (OffChipRAM);
           sramReq.addr = toSRAMAddr(dramId, req.addr);
           sramReq.burst = req.burst;
           sramReq.info = unpack(truncate(req.data));
-          if (sramLoadReqOut.canPut) begin
+          if (!delay && sramLoadReqOut.canPut) begin
             reqIn.get;
             sramLoadReqOut.put(sramReq);
           end
