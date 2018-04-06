@@ -227,7 +227,7 @@ interface DRAMExtIfc;
   method Bit#(`LogBytesPerDRAM) m_address;
   method Bool m_read;
   method Bool m_write;
-  method Bit#(`BeatBurstWidth) m_burstcount;
+  method Bit#(`RAMBurstWidth) m_burstcount;
   //method Bit#(`BytesPerBeat) m_byteenable;
 endinterface
 
@@ -327,7 +327,7 @@ module mkDRAM#(t id) (DRAM);
     method m_address    = {address, 0};
     method m_read       = doRead;
     method m_write      = doWrite;
-    method m_burstcount = burstReg;
+    method m_burstcount = zeroExtend(burstReg);
     //method m_byteenable = byteEn;
   endinterface
 endmodule
