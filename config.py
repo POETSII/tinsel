@@ -181,6 +181,9 @@ p["BeatWidth"] = p["WordsPerBeat"] * 32
 # Longest possible burst transfer is 2^BeatBurstWidth-1
 p["BeatBurstWidth"] = p["LogBeatsPerLine"]+1
 
+# Width of burstcount signal to off-chip memory
+p["RAMBurstWidth"] = 3
+
 # Cores per DCache
 p["CoresPerDCache"] = 2**p["LogCoresPerDCache"]
 

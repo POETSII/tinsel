@@ -239,7 +239,7 @@ interface SRAMUnitExtIfc;
   );
   method Bit#(20) r_address;
   method Bool r_read;
-  method Bit#(`BeatBurstWidth) r_burstcount;
+  method Bit#(`RAMBurstWidth) r_burstcount;
 
   // Write port
   method Action w(
@@ -248,7 +248,7 @@ interface SRAMUnitExtIfc;
   method Bit#(72) w_writedata;
   method Bit#(20) w_address;
   method Bool w_write;
-  method Bit#(`BeatBurstWidth) w_burstcount;
+  method Bit#(`RAMBurstWidth) w_burstcount;
 endinterface
 
 // There are 4 SRAM units on the DE5
@@ -377,7 +377,7 @@ module mkSRAMUnit (SRAMUnit);
     endmethod
     method r_address = loadAddress;
     method r_read = doRead;
-    method r_burstcount = loadBurstReg;
+    method r_burstcount = zeroExtend(loadBurstReg);
 
     // Write port
     method Action w(waitrequest);
@@ -386,7 +386,7 @@ module mkSRAMUnit (SRAMUnit);
     method w_writedata = writeData;
     method w_address = storeAddress;
     method w_write = doWrite;
-    method w_burstcount = storeBurstReg;
+    method w_burstcount = zeroExtend(storeBurstReg);
   endinterface
 endmodule
 
