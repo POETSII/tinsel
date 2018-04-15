@@ -31,7 +31,7 @@ p["LogInstrsPerCore"] = 11
 p["LogCoresPerDCache"] = 2
 
 # Log of number of caches per DRAM port
-p["LogDCachesPerDRAM"] = 0
+p["LogDCachesPerDRAM"] = 3
 
 # Log of number of 32-bit words in a single memory transfer
 p["LogWordsPerBeat"] = 3
@@ -58,7 +58,7 @@ p["DRAMLatency"] = 25
 p["LogBeatsPerDRAM"] = 26
 
 # Max number of outstanding SRAM requests permitted
-p["SRAMLogMaxInFlight"] = 4
+p["SRAMLogMaxInFlight"] = 5
 
 # SRAM latency in cycles (simulation only)
 p["SRAMLatency"] = 5
@@ -79,7 +79,7 @@ p["LogMsgsPerThread"] = 4
 p["LogCoresPerMailbox"] = 2
 
 # Number of mailboxes per board
-p["LogMailboxesPerBoard"] = 1
+p["LogMailboxesPerBoard"] = 4
 
 # Maximum size of boot loader (in bytes)
 p["MaxBootImageBytes"] = 576
@@ -109,7 +109,7 @@ p["MeshXBits"] = 2
 p["MeshYBits"] = 2
 
 # Mesh X length
-p["MeshXLen"] = 1
+p["MeshXLen"] = 3
 
 # Mesh Y length
 p["MeshYLen"] = 1
