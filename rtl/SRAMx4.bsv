@@ -233,7 +233,7 @@ import Util      :: *;
 interface SRAMUnitExtIfc;
   // Read port
   method Action r(
-    Bit#(72) readdata,
+    Bit#(64) readdata,
     Bool readdatavalid,
     Bool waitrequest
   );
@@ -245,7 +245,7 @@ interface SRAMUnitExtIfc;
   method Action w(
     Bool waitrequest
   );
-  method Bit#(72) w_writedata;
+  method Bit#(64) w_writedata;
   method Bit#(20) w_address;
   method Bool w_write;
   method Bit#(`RAMBurstWidth) w_burstcount;
@@ -275,14 +275,14 @@ typedef struct {
 
 typedef struct {
   Bit#(20) addr;
-  Bit#(72) data;
+  Bit#(64) data;
   Bit#(`BeatBurstWidth) burst;
 } SRAMUnitStoreReq deriving (Bits);
 
 interface SRAMUnit;
   interface In#(SRAMUnitLoadReq) loadIn;
   interface In#(SRAMUnitStoreReq) storeIn;
-  interface BOut#(Bit#(72)) respOut;
+  interface BOut#(Bit#(64)) respOut;
   interface SRAMUnitExtIfc ext;
 endinterface
 
@@ -292,7 +292,7 @@ module mkSRAMUnit (SRAMUnit);
   InPort#(SRAMUnitStoreReq) storeReqPort <- mkInPort;
 
   // Response buffer
-  SizedQueue#(`SRAMLogMaxInFlight, Bit#(72)) respBuffer <-
+  SizedQueue#(`SRAMLogMaxInFlight, Bit#(64)) respBuffer <-
     mkUGSizedQueuePrefetch;
 
   // In-flight counter
@@ -302,7 +302,7 @@ module mkSRAMUnit (SRAMUnit);
   // Registers
   Reg#(Bit#(20)) loadAddress <- mkRegU;
   Reg#(Bit#(20)) storeAddress <- mkRegU;
-  Reg#(Bit#(72)) writeData <- mkRegU;
+  Reg#(Bit#(64)) writeData <- mkRegU;
   Reg#(Bool) doRead <- mkReg(False);
   Reg#(Bool) doWrite <- mkReg(False);
   Reg#(Bit#(`BeatBurstWidth)) loadBurstReg <- mkReg(0);
@@ -365,7 +365,7 @@ module mkSRAMUnit (SRAMUnit);
       respBuffer.deq;
     endmethod
     method Bool valid = respBuffer.canPeek && respBuffer.canDeq;
-    method Bit#(72) value = respBuffer.dataOut;
+    method Bit#(64) value = respBuffer.dataOut;
   endinterface
 
   // External interface (two Avalon masters)
@@ -408,7 +408,7 @@ module mkSRAM#(t id) (SRAM);
   // Ports for connections to SRAM units
   Vector#(4, OutPort#(SRAMUnitLoadReq)) loadOutPort <- replicateM(mkOutPort);
   Vector#(4, OutPort#(SRAMUnitStoreReq)) storeOutPort <- replicateM(mkOutPort);
-  Vector#(4, InPort#(Bit#(72))) respInPort <- replicateM(mkInPort);
+  Vector#(4, InPort#(Bit#(64))) respInPort <- replicateM(mkInPort);
 
   // Create connections
   for (Integer i = 0; i < 4; i = i+1) begin
