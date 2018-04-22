@@ -23,46 +23,21 @@ void usage()
   exit(EXIT_FAILURE);
 }
 
-void join(int sock, int in, int out)
+void join(int out, int in)
 {
   char buffer[65536];
 
   for (;;) {
-    struct pollfd fd[2];
-    fd[0].fd = sock; fd[0].events = POLLIN;
-    fd[1].fd = in; fd[1].events = POLLIN;
-
-    int ret = poll(fd, 2, -1);
-    if (ret <= 0) return;
-
-    // Read from 'sock'
-    if (fd[0].revents) {
-      int n = read(sock, buffer, sizeof(buffer));
-      if (n <= 0) return;
-      // Write to 'out'
-      if (out >= 0) {
-        int i = 0;
-        while (n > 0) {
-          int m = write(out, &buffer[i], n);
-          if (m <= 0) return;
-          n = n-m;
-          i = i+m;
-        }
-      }
-    }
-
     // Read from 'in'
-    if (fd[1].revents) {
-      int n = read(in, buffer, sizeof(buffer));
-      if (n <= 0) return;
-      // Write to 'sock'
-      int i = 0;
-      while (n > 0) {
-        int m = write(sock, &buffer[i], n);
-        if (m <= 0) return;
-        n = n-m;
-        i = i+m;
-      }
+    int n = read(in, buffer, sizeof(buffer));
+    if (n <= 0) return;
+    // Write to 'out'
+    int i = 0;
+    while (n > 0) {
+      int m = write(out, &buffer[i], n);
+      if (m <= 0) return;
+      n = n-m;
+      i = i+m;
     }
   }
 }
@@ -114,15 +89,22 @@ int main(int argc, char* argv[])
     }
     else
       usage();
-    join(sock1, sock2, sock2);
+    if (fork() == 0)
+      join(sock2, sock1);
+    else
+      join(sock1, sock2);
   }
   else if (argc == 3) {
     if (!strcmp(argv[1], "in"))
-      join(sock1, STDIN_FILENO, -1);
+      join(sock1, STDIN_FILENO);
     else if (!strcmp(argv[1], "out"))
-      join(sock1, -1, STDOUT_FILENO);
-    else if (!strcmp(argv[1], "inout"))
-      join(sock1, STDIN_FILENO, STDOUT_FILENO);
+      join(STDOUT_FILENO, sock1);
+    else if (!strcmp(argv[1], "inout")) {
+      if (fork() == 0)
+        join(STDOUT_FILENO, sock1);
+      else
+        join(sock1, STDIN_FILENO);
+    }
     else
       usage();
   }
