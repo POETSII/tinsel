@@ -191,10 +191,10 @@ p["CoresPerMailbox"] = 2 ** p["LogCoresPerMailbox"]
 # Number of threads sharing a mailbox
 p["LogThreadsPerMailbox"] = p["LogCoresPerMailbox"]+p["LogThreadsPerCore"]
 
-# Size of memory-mapped region for mailbox scratchpad in bytes
-p["LogScratchpadBytes"] = (1+p["LogWordsPerFlit"]+2+
-                             p["LogMaxFlitsPerMsg"]+
-                             p["LogMsgsPerThread"])
+# Base of off-chip memory-mapped region in bytes
+p["LogOffChipRAMBaseAddr"] = (1+p["LogWordsPerFlit"]+2+
+                                p["LogMaxFlitsPerMsg"]+
+                                p["LogMsgsPerThread"])
 
 # Size of mailbox transmit buffer
 p["LogTransmitBufferLen"] = (p["LogMaxFlitsPerMsg"]
