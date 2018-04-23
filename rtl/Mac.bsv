@@ -82,7 +82,7 @@ endinterface
 //      pointer" gets reset to the "near back pointer", i.e. the
 //      packet is dropped.
 
-typedef Bit#(`LogReceiveBufferSize) ReceiveBufferPtr;
+typedef Bit#(`LogMacRecvBufferSize) ReceiveBufferPtr;
 
 interface ReceiveBuffer;
   method Bool canEnq;
@@ -289,34 +289,11 @@ module mkMac#(SocketId id) (Mac);
   endrule
 
   // Produce output stream
-  // State 0: idle
-  // State 1: produce packet
-  // State 2: drop packet
-  Reg#(Bit#(2)) producerState <- mkReg(0);
-
-  rule produce0 (producerState == 0);
-    producerState <= outPort.canPut ? 1 : 2;
-  endrule
-
-  // Produce packet on output stream
-  rule produce1 (producerState == 1 && outPort.canPut);
+  rule produce (outPort.canPut);
     Maybe#(Vector#(9, Bit#(8))) m <- socketGet(id);
     if (isValid(m)) begin
       Bit#(72) tmp = pack(fromMaybe(?, m));
       outPort.put(unpack(truncate(tmp)));
-      MacBeat beat = unpack(truncate(tmp));
-      if (beat.stop) producerState <= 0;
-    end
-  endrule
-
-  // Drop packet
-  // (The MAC will drop packets when the receiver can't consume them)
-  rule produce2 (producerState == 2);
-    Maybe#(Vector#(9, Bit#(8))) m <- socketGet(id);
-    if (isValid(m)) begin
-      Bit#(72) tmp = pack(fromMaybe(?, m));
-      MacBeat beat = unpack(truncate(tmp));
-      if (beat.stop) producerState <= 0;
     end
   endrule
 

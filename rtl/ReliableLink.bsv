@@ -240,7 +240,8 @@ module mkReliableLinkCore#(Mac mac) (ReliableLink);
   TransmitBuffer transmitBuffer <- mkTransmitBuffer;
 
   // Receive buffer
-  Queue#(Bit#(64)) receiveBuffer <- mkUGQueue;
+  SizedQueue#(`LogReliableLinkRecvBufferSize, Bit#(64))
+    receiveBuffer <- mkUGSizedQueuePrefetch;
 
   // Transmitter
   // -----------
@@ -262,8 +263,8 @@ module mkReliableLinkCore#(Mac mac) (ReliableLink);
 
   rule transmit0 (txState == 0 && toMACPort.canPut);
     // Bound number of items in packet
-    // (Must be less than the size of the receive buffer)
-    myAssert(`TransmitBound < 2**`LogReceiveBufferSize, 
+    // (Must be less than the size of the MAC receive buffer)
+    myAssert(`TransmitBound < 2**`LogMacRecvBufferSize, 
                "TransmitBound is too large");
     Bit#(7) toSend = transmitBuffer.unsent > `TransmitBound ?
       `TransmitBound : truncate(transmitBuffer.unsent);
@@ -319,6 +320,10 @@ module mkReliableLinkCore#(Mac mac) (ReliableLink);
   // Receiver
   // --------
 
+  // Count of number of elements in the receive buffer
+  Count#(TAdd#(`LogReliableLinkRecvBufferSize, 1)) receiveCount <-
+    mkCount(2 ** `LogReliableLinkRecvBufferSize);
+
   // 2-state machine
   // State 0: receive header
   // State 1: receive header
@@ -336,10 +341,13 @@ module mkReliableLinkCore#(Mac mac) (ReliableLink);
     PacketHeader h = unpack(truncate(beat.data));
     // Inform transmit buffer of acknowledgement
     transmitBuffer.ack(h.ack);
+    // Is there space in the receive buffer?
+    Bool space = receiveCount.available > `TransmitBound;
     // Are the received items in the expected sequence    
-    if (h.numItems != 0 && h.seqNum == nextItemToRecv) begin
+    if (h.numItems != 0 && h.seqNum == nextItemToRecv && space) begin
       numItemsToRecv <= h.numItems;
       nextItemToRecv <= nextItemToRecv + zeroExtend(h.numItems);
+      receiveCount.incBy(zeroExtend(h.numItems));
     end else begin
       // Drop packet
       numItemsToRecv <= 0;
@@ -388,8 +396,11 @@ module mkReliableLinkCore#(Mac mac) (ReliableLink);
   interface In streamIn = inPort.in;
 
   interface BOut streamOut;
-    method Action get = receiveBuffer.deq;
-    method Bool valid = receiveBuffer.canDeq;
+    method Action get;
+      receiveBuffer.deq;
+      receiveCount.dec;
+    endmethod
+    method Bool valid = receiveBuffer.canDeq && receiveBuffer.canPeek;
     method Bit#(64) value = receiveBuffer.dataOut;
   endinterface
 
