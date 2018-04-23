@@ -740,7 +740,7 @@ module mkCore#(CoreId myId) (Core);
     if (token.op.csr.isSendPtr)
       token.thread.msgPtr = byteAddrToMsgIndex(token.valA);
     // Mailbox scratchpad access
-    token.isScratchpadAccess = token.memAddr[31:`LogScratchpadBytes] == 0;
+    token.isScratchpadAccess = token.memAddr[31:`LogOffChipRAMBaseAddr] == 0;
     // Mailbox can-send / can-recv
     token.canSend = mailbox.canSend;
     token.canRecv = mailbox.canRecv;
