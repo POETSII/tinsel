@@ -91,6 +91,7 @@ interface Count#(numeric type n);
   method Action decBy(Bit#(n) amount);
   method Bool notFull;
   method Bit#(n) value;
+  method Bit#(n) available;
 endinterface
 
 module mkCount#(Integer maxVal) (Count#(n));
@@ -129,6 +130,8 @@ module mkCount#(Integer maxVal) (Count#(n));
   method Bool notFull = !full;
 
   method Bit#(n) value = count;
+
+  method Bit#(n) available = fromInteger(maxVal) - count;
 endmodule
 
 // A VReg is a register that can only be read

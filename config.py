@@ -81,8 +81,11 @@ p["MaxBootImageBytes"] = 512
 # Size of transmit buffer in a reliable link
 p["LogTransmitBufferSize"] = 10
 
+# Size of receive buffer in a MAC
+p["LogMacRecvBufferSize"] = 5
+
 # Size of receive buffer in a reliable link
-p["LogReceiveBufferSize"] = 5
+p["LogReliableLinkRecvBufferSize"] = 9
 
 # Max number of 64-bit items to put in an ethernet packet
 p["TransmitBound"] = 20
