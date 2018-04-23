@@ -368,13 +368,12 @@ module mkReliableLinkCore#(Mac mac) (ReliableLink);
     MacBeat beat = fromMACPort.value;
     // Are there any items to receive?
     if (numItemsToRecv != 0) begin
+      myAssert(receiveBuffer.notFull, "Receive buffer overflow!");
       // Receive items
-      if (receiveBuffer.notFull) begin
-        fromMACPort.get;
-        receiveBuffer.enq(beat.data);
-        numItemsToRecv <= numItemsToRecv - 1;
-        rxState <= beat.stop ? 0 : 2;
-      end
+      fromMACPort.get;
+      receiveBuffer.enq(beat.data);
+      numItemsToRecv <= numItemsToRecv - 1;
+      rxState <= beat.stop ? 0 : 2;
     end else begin
       // Ignore data
       fromMACPort.get;
