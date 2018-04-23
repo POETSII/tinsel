@@ -135,7 +135,7 @@ p["LogBytesPerLine"] = 2+p["LogWordsPerLine"]
 p["WordsPerLine"] = 2**p["LogWordsPerLine"]
 
 # Data cache line size in bits
-p["LineSize"] = p["WordsPerLine"] * 32
+p["BitsPerLine"] = p["WordsPerLine"] * 32
 
 # Number of beats per cache line
 p["BeatsPerLine"] = 2**p["LogBeatsPerLine"]
