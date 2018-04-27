@@ -1025,6 +1025,10 @@ inerhit a number of limitations:
   * Floating-point to signed integer conversion only: 
     `fcvt.w.s` and `fcvt.w.su` both convert to *signed*
     integers.
+  * The fixed rounding mode leads to an incompatibility with the C standard
+    when casting from a `float` to an `int`.
+    See [Issue #55](https://github.com/POETSII/tinsel/issues/55) for
+    more details.
   * The conversion instructions to not respect the RISC-V spec in the
     presence of NaNs and infinities.
   * Floating-point division may not be correctly rounded.
