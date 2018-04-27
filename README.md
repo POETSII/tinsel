@@ -1027,4 +1027,6 @@ inerhit a number of limitations:
     integers.
   * The conversion instructions to not respect the RISC-V spec in the
     presence of NaNs and infinities.
-  * Floating-point division may not be correctly rounded (issue #54).
+  * Floating-point division may not be correctly rounded.
+    See [Issue #54](https://github.com/POETSII/tinsel/issues/54)
+    for more details.
