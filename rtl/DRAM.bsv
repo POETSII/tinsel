@@ -203,6 +203,7 @@ import Vector    :: *;
 import Queue     :: *;
 import Interface :: *;
 import Assert    :: *;
+import Util      :: *;
 
 // Types
 // -----
@@ -216,7 +217,7 @@ interface DRAMExtIfc;
     Bool waitrequest
   );
   method Bit#(`BeatWidth) m_writedata;
-  method Bit#(`LogBytesPerDRAM) m_address;
+  method Bit#(`LogBeatsPerDRAM) m_address;
   method Bool m_read;
   method Bool m_write;
   method Bit#(`BeatBurstWidth) m_burstcount;
@@ -226,7 +227,7 @@ endinterface
 // In-flight request
 typedef struct {
   DRAMReqId id;
-  Bool isStore;
+  Bit#(`BeatBurstWidth) burst;
 } DRAMInFlightReq deriving (Bits);
 
 // Implementation
@@ -242,6 +243,13 @@ module mkDRAM#(t id) (DRAM);
   SizedQueue#(`DRAMLogMaxInFlight, Bit#(`BeatWidth)) respBuffer <-
     mkUGSizedQueuePrefetch;
 
+  // Counter
+  Count#(TAdd#(`DRAMLogMaxInFlight, 1)) inFlightCount <-
+    mkCount(2 ** `DRAMLogMaxInFlight);
+
+  // Max burst
+  Integer maxBurst = 2 ** (`BeatBurstWidth-1);
+
   // Registers
   Reg#(Bit#(`LogBeatsPerDRAM)) address <- mkRegU;
   Reg#(Bit#(`BeatWidth)) writeData <- mkRegU;
@@ -249,6 +257,7 @@ module mkDRAM#(t id) (DRAM);
   Reg#(Bool) doRead <- mkReg(False);
   Reg#(Bool) doWrite <- mkReg(False);
   Reg#(Bit#(`BeatBurstWidth)) burstReg <- mkReg(0);
+  Reg#(Bit#(`BeatBurstWidth)) burstCount <- mkReg(1);
 
   // Wires
   Wire#(Bool) waitRequest <- mkBypassWire;
@@ -269,23 +278,24 @@ module mkDRAM#(t id) (DRAM);
     end
   endrule
 
-  // TODO: inFlight.notFull is insufficient condition for burst loads
-  // in the consumeRequest rule
-  staticAssert(`BeatBurstWidth == 1, "Bursts on FPGA not yet supported");
-
   rule consumeRequest;
-    if (reqPort.canGet && !waitRequest && inFlight.notFull) begin
+    if (reqPort.canGet && !waitRequest) begin
       DRAMReq req = reqPort.value;
-      reqPort.get;
-      address   <= toDRAMAddr(req.addr);
-      writeData <= req.data;
-      burstReg  <= req.burst;
-      //byteEn    <= req.byteEn;
-      if (req.isStore) putStore.send; else putLoad.send;
-      DRAMInFlightReq inflightReq;
-      inflightReq.id = req.id;
-      inflightReq.isStore = req.isStore;
-      if (!req.isStore) inFlight.enq(inflightReq);
+      if (inFlightCount.available >= fromInteger(maxBurst)) begin
+        reqPort.get;
+        address   <= toDRAMAddr(req.addr);
+        writeData <= req.data;
+        burstReg  <= req.burst;
+        //byteEn    <= req.byteEn;
+        if (req.isStore) putStore.send; else putLoad.send;
+        if (!req.isStore) begin
+          DRAMInFlightReq inflightReq;
+          inflightReq.id = req.id;
+          inflightReq.burst = req.burst;
+          inFlight.enq(inflightReq);
+          inFlightCount.incBy(zeroExtend(req.burst));
+        end
+      end
     end
   endrule
 
@@ -294,8 +304,13 @@ module mkDRAM#(t id) (DRAM);
 
   interface BOut respOut;
     method Action get;
-      inFlight.deq;
+      if (burstCount == inFlight.dataOut.burst) begin
+        inFlight.deq;
+        burstCount <= 1;
+      end else
+        burstCount <= burstCount+1;
       respBuffer.deq;
+      inFlightCount.dec;
     endmethod
     method Bool valid = inFlight.canPeek && inFlight.canDeq &&
                            respBuffer.canPeek && respBuffer.canDeq;
@@ -314,7 +329,7 @@ module mkDRAM#(t id) (DRAM);
       waitRequest <= waitrequest;
     endmethod
     method m_writedata  = writeData;
-    method m_address    = {address, 0};
+    method m_address    = address;
     method m_read       = doRead;
     method m_write      = doWrite;
     method m_burstcount = burstReg;

@@ -669,7 +669,7 @@ module connectDCachesToDRAM#(
   function getRespIn(cache) = cache.respIn;
   let dramResps <- mkResponseDistributor(
                     getRespKey,
-                    mkUGShiftQueue1(QueueOptFmax),
+                    mkUGQueue,
                     map(getRespIn, caches));
   connectDirect(dram.respOut, dramResps);
 
