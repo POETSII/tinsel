@@ -28,9 +28,11 @@ typedef struct {
 // ============================================================================
 
 // Map a tinsel memory address to a DRAM address.
-// The first 1GB of tinsel memory maps dirctly to the first 1GB of DRAM
-// The second 1GB contains the lines of each thread's partition interleaved
-function Bit#(`LogBeatsPerDRAM) toDRAMAddr(Bit#(`LogBeatsPerDRAM) addr);
+// Apply the interleaving translation to the 4th GB of DRAM.
+// That is, the 4th GB contains the lines of each thread's
+// partition interleaved.
+function Bit#(`LogBeatsPerDRAM) toDRAMAddr(Bit#(32) fullAddr);
+  Bit#(`LogBeatsPerDRAM) addr = truncate(fullAddr[30:0]);
   // Separate address into MSB and rest
   Bit#(1) msb = truncateLSB(addr);
   Bit#(TSub#(`LogBeatsPerDRAM, 1)) rest = truncate(addr);
@@ -42,7 +44,8 @@ function Bit#(`LogBeatsPerDRAM) toDRAMAddr(Bit#(`LogBeatsPerDRAM) addr);
   Bit#(`LogThreadsPerDRAM) partIndex = truncateLSB(middle);
   let partOffset = truncate(middle);
   // Produce DRAM address
-  return msb == 0 ? addr : {msb, partOffset, partIndex, bottom};
+  return fullAddr[31] == 0 ? addr :
+           (msb == 0 ? addr : {msb, partOffset, partIndex, bottom});
 endfunction
 
 // ============================================================================
