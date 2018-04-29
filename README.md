@@ -303,9 +303,9 @@ structure of each cache.
   `LogCoresPerDCache`      |       2 | Cores per cache
   `LogDCachesPerDRAM`      |       3 | Caches per DRAM
   `DCacheLogWordsPerBeat`  |       3 | Number of 32-bit words per beat
-  `DCacheLogBeatsPerLine`  |       0 | Beats per cache line
+  `DCacheLogBeatsPerLine`  |       1 | Beats per cache line
   `DCacheLogNumWays`       |       2 | Cache lines in each associative set
-  `DCacheLogSetsPerThread` |       3 | Associative sets per thread
+  `DCacheLogSetsPerThread` |       2 | Associative sets per thread
   `LogBeatsPerDRAM`        |      26 | Size of DRAM
 
 ## 4. Tinsel Mailbox
@@ -762,9 +762,9 @@ ALMs, *50% of the DE5-Net*.
   `LogCoresPerDCache`      |       2 | Cores per cache
   `LogDCachesPerDRAM`      |       3 | Caches per DRAM
   `DCacheLogWordsPerBeat`  |       3 | Number of 32-bit words per beat
-  `DCacheLogBeatsPerLine`  |       0 | Beats per cache line
+  `DCacheLogBeatsPerLine`  |       1 | Beats per cache line
   `DCacheLogNumWays`       |       2 | Cache lines in each associative set
-  `DCacheLogSetsPerThread` |       3 | Associative sets per thread
+  `DCacheLogSetsPerThread` |       2 | Associative sets per thread
   `LogBeatsPerDRAM`        |      26 | Size of DRAM
   `LogCoresPerMailbox`     |       2 | Number of cores sharing a mailbox
   `LogWordsPerFlit`        |       2 | Number of 32-bit words in a flit
@@ -784,6 +784,18 @@ ALMs, *50% of the DE5-Net*.
   `0x00000400-0x000007ff` | Thread-local mailbox scratchpad
   `0x00000800-0x000fffff` | Reserved
   `0x00100000-0x7fffffff` | Cached off-chip DRAM
+  `0xc0000000-0xffffffff` | Translated cached off-chip DRAM
+
+Note that the regions `0x40000000-0x7fffffff` and
+`0xc0000000-0xffffffff` map *to the same memory* in DRAM.  The only
+difference is that `0xc0000000-0xffffffff` has an implcit translation
+applied.  The idea is that this region can hold a private partition
+for each thread, e.g. its stack and heap.  When all threads access
+their partition at the same time, it can be benificial for DRAM
+performance to interleave the partitions at the cache-line granularity
+-- and this is what the implicit translation achieves.  In the sample
+tinsel applications we provide, this translated region is used for
+each thread's private stack and heap.
 
 ## D. Tinsel CSRs
 
