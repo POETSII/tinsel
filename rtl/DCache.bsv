@@ -241,8 +241,9 @@ function Key getKey(Bit#(32) addr);
 endfunction
 
 // Reconstruct line address from an aliasing address and a tag
-function Bit#(`LogLinesPerDRAM) reconstructLineAddr(Key key, Bit#(32) addr) =
-  {key, truncate(addr[31:`LogBytesPerLine])};
+function Bit#(TAdd#(`LogLinesPerDRAM, 1))
+  reconstructLineAddr(Key key, Bit#(32) addr) =
+    {key, truncate(addr[31:`LogBytesPerLine])};
 
 // ============================================================================
 // Interface
@@ -542,10 +543,10 @@ module mkDCache#(DCacheId myId) (DCache);
     // Send a load request?
     Bool isLoad = !miss.evictDirty || writebackDone;
     // Determine line address
-    Bit#(`LogLinesPerDRAM) writeLineAddr =
+    let writeLineAddr =
       reconstructLineAddr(miss.evictTag.key, miss.req.addr);
-    Bit#(`LogLinesPerDRAM) readLineAddr = 
-      miss.req.addr[`LogBytesPerDRAM-1:`LogBytesPerLine];
+    let readLineAddr = 
+      miss.req.addr[`LogBytesPerDRAM:`LogBytesPerLine];
     // Create memory request
     DRAMReq memReq;
     memReq.isStore = !isLoad;

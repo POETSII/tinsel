@@ -11,7 +11,7 @@ typedef DCacheId DRAMReqId;
 typedef struct {
   Bool isStore;
   DRAMReqId id;
-  Bit#(`LogBeatsPerDRAM) addr;
+  Bit#(TAdd#(`LogBeatsPerDRAM, 1)) addr;
   Bit#(`BeatWidth) data;
   Bit#(`BeatBurstWidth) burst;
   //Bit#(`BytesPerBeat) byteEn;
@@ -28,11 +28,11 @@ typedef struct {
 // ============================================================================
 
 // Map a tinsel memory address to a DRAM address.
-// Apply the interleaving translation to the 4th GB of DRAM.
-// That is, the 4th GB contains the lines of each thread's
-// partition interleaved.
-function Bit#(`LogBeatsPerDRAM) toDRAMAddr(Bit#(32) fullAddr);
-  Bit#(`LogBeatsPerDRAM) addr = truncate(fullAddr[30:0]);
+// The bottom and top halves of memory both map to the same DRAM memory.
+// But the interleaving translation is applied to the upper half of memory.
+function Bit#(`LogBeatsPerDRAM)
+    toDRAMAddr(Bit#(TAdd#(`LogBeatsPerDRAM, 1)) memAddr);
+  Bit#(`LogBeatsPerDRAM) addr = truncate(memAddr);
   // Separate address into MSB and rest
   Bit#(1) msb = truncateLSB(addr);
   Bit#(TSub#(`LogBeatsPerDRAM, 1)) rest = truncate(addr);
@@ -44,7 +44,7 @@ function Bit#(`LogBeatsPerDRAM) toDRAMAddr(Bit#(32) fullAddr);
   Bit#(`LogThreadsPerDRAM) partIndex = truncateLSB(middle);
   let partOffset = truncate(middle);
   // Produce DRAM address
-  return fullAddr[31] == 0 ? addr :
+  return memAddr[`LogBeatsPerDRAM] == 0 ? addr :
            (msb == 0 ? addr : {msb, partOffset, partIndex, bottom});
 endfunction
 
