@@ -784,18 +784,18 @@ ALMs, *50% of the DE5-Net*.
   `0x00000400-0x000007ff` | Thread-local mailbox scratchpad
   `0x00000800-0x000fffff` | Reserved
   `0x00100000-0x7fffffff` | Cached off-chip DRAM
-  `0xc0000000-0xffffffff` | Translated cached off-chip DRAM
+  `0xc0000000-0xffffffff` | Partition-interleaved cached off-chip DRAM
 
 Note that the regions `0x40000000-0x7fffffff` and
 `0xc0000000-0xffffffff` map *to the same memory* in DRAM.  The only
-difference is that `0xc0000000-0xffffffff` has an implcit translation
-applied.  The idea is that this region can hold a private partition
-for each thread, e.g. its stack and heap.  When all threads access
-their partition at the same time, it can be benificial for DRAM
-performance to interleave the partitions at the cache-line granularity
--- and this is what the implicit translation achieves.  In the sample
-tinsel applications we provide, this translated region is used for
-each thread's private stack and heap.
+difference is that `0xc0000000-0xffffffff` is *partition interleaved*.
+The idea is that this region can hold a private partition for each
+thread, e.g. its stack and heap.  When all threads access their
+partitions at the same time, it can be benificial for DRAM performance
+to interleave the partitions at the cache-line granularity -- and
+that's what the `0xc0000000-0xffffffff` region provides.  This
+partition-interleaved region is, by default, used for each thread's
+private stack and heap.
 
 ## D. Tinsel CSRs
 
