@@ -56,4 +56,30 @@ function Flit unpadFlit(PaddedFlit flit) = unpack(truncate(pack(flit)));
 // Unique identifier per data cache
 typedef Bit#(`LogDCachesPerDRAM) DCacheId;
 
+// ============================================================================
+// Address mapping
+// ============================================================================
+
+// Map a tinsel memory address to a DRAM address.
+// The bottom and top halves of memory both map to the same DRAM memory.
+// But the interleaving translation is applied to the upper top
+// quarter of memory.
+function Bit#(32) mapAddress(Bit#(32) memAddr);
+  Bit#(`LogBytesPerDRAM) addr = truncate(memAddr);
+  // Separate DRAM address into MSB and rest
+  Bit#(1) msb = truncateLSB(addr);
+  Bit#(TSub#(`LogBytesPerDRAM, 1)) rest = truncate(addr);
+  // The bottom bits address bytes within a line
+  Bit#(`LogBytesPerLine) bottom = truncate(rest);
+  Bit#(TSub#(TSub#(`LogBytesPerDRAM, 1), `LogBytesPerLine)) middle =
+    truncateLSB(rest);
+  // Separate upper half of address space into partition index and offset
+  Bit#(`LogThreadsPerDRAM) partIndex = truncateLSB(middle);
+  let partOffset = truncate(middle);
+  // Produce DRAM address
+  let res = memAddr[`LogBytesPerDRAM] == 0 ? addr :
+           (msb == 0 ? addr : {msb, partOffset, partIndex, bottom});
+  return {1'b0, res};
+endfunction
+
 endpackage
