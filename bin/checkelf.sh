@@ -11,7 +11,7 @@ DUMP=$(riscv64-unknown-elf-objdump -S $1)
 # Errors
 ES="ecall|ebreak"
 ES="$ES|csrrs|csrrc|csrrwi|csrrsi|csrrci"
-ES="$ES|div|divu|rem|remu"
+ES="$ES|[^f]div|divu|rem|remu"
 ES="$ES|fsqrt|fmin|fmax|fclassify"
 
 if echo "$DUMP" | grep -q -E "$ES"; then
