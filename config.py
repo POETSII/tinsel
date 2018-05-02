@@ -232,14 +232,6 @@ p["MaxThreads"] = (2**p["MeshXBits"] *
                      2**p["MeshYBits"] *
                        p["ThreadsPerBoard"])
 
-# Size of off-chip memory
-# Twice the size of DRAM
-# Top half and bottom half map to the same DRAM memory
-# But the top half has the partition-interlaving translation applied
-p["LogBeatsPerMem"] = p["LogBeatsPerDRAM"] + 1
-p["LogBytesPerMem"] = p["LogBytesPerDRAM"] + 1
-p["LogLinesPerMem"] = p["LogLinesPerDRAM"] + 1
-
 # Cores per FPU
 p["CoresPerFPU"] = 2 ** p["LogCoresPerFPU"]
 

@@ -11,7 +11,7 @@ typedef DCacheId DRAMReqId;
 typedef struct {
   Bool isStore;
   DRAMReqId id;
-  Bit#(`LogBeatsPerMem) addr;
+  Bit#(`LogBeatsPerDRAM) addr;
   Bit#(`BeatWidth) data;
   Bit#(`BeatBurstWidth) burst;
   //Bit#(`BytesPerBeat) byteEn;
@@ -22,31 +22,6 @@ typedef struct {
   DRAMReqId id;
   Bit#(`BeatWidth) data;
 } DRAMResp deriving (Bits);
-
-// ============================================================================
-// Address mapping
-// ============================================================================
-
-// Map a tinsel memory address to a DRAM address.
-// The bottom and top halves of memory both map to the same DRAM memory.
-// But the interleaving translation is applied to the upper half of memory.
-function Bit#(`LogBeatsPerDRAM)
-    toDRAMAddr(Bit#(`LogBeatsPerMem) memAddr);
-  Bit#(`LogBeatsPerDRAM) addr = truncate(memAddr);
-  // Separate address into MSB and rest
-  Bit#(1) msb = truncateLSB(addr);
-  Bit#(TSub#(`LogBeatsPerDRAM, 1)) rest = truncate(addr);
-  // The bottom bits address beats within a line
-  Bit#(`LogBeatsPerLine) bottom = truncate(rest);
-  Bit#(TSub#(TSub#(`LogBeatsPerDRAM, 1), `LogBeatsPerLine)) middle =
-    truncateLSB(rest);
-  // Separate upper half of address space into partition index and offset
-  Bit#(`LogThreadsPerDRAM) partIndex = truncateLSB(middle);
-  let partOffset = truncate(middle);
-  // Produce DRAM address
-  return memAddr[`LogBeatsPerDRAM] == 0 ? addr :
-           (msb == 0 ? addr : {msb, partOffset, partIndex, bottom});
-endfunction
 
 // ============================================================================
 // Interface
@@ -286,7 +261,7 @@ module mkDRAM#(t id) (DRAM);
       DRAMReq req = reqPort.value;
       if (inFlightCount.available >= fromInteger(maxBurst)) begin
         reqPort.get;
-        address   <= toDRAMAddr(req.addr);
+        address   <= req.addr;
         writeData <= req.data;
         burstReg  <= req.burst;
         //byteEn    <= req.byteEn;

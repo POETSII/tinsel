@@ -813,7 +813,7 @@ module mkCore#(CoreId myId) (Core);
           req.cmd.isStore = token.op.isStore;
           req.cmd.isFlush = token.op.isFence;
           req.cmd.isFlushResp = False;
-          req.addr = token.op.isFence ? 0 : token.memAddr;
+          req.addr = token.op.isFence ? 0 : mapAddress(token.memAddr);
           req.data = token.op.isFence ? 0 : writeData;
           req.byteEn = byteEn;
           // Issue data cache request
