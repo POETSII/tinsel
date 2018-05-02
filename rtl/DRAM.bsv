@@ -11,7 +11,7 @@ typedef DCacheId DRAMReqId;
 typedef struct {
   Bool isStore;
   DRAMReqId id;
-  Bit#(TAdd#(`LogBeatsPerDRAM, 1)) addr;
+  Bit#(`LogBeatsPerMem) addr;
   Bit#(`BeatWidth) data;
   Bit#(`BeatBurstWidth) burst;
   //Bit#(`BytesPerBeat) byteEn;
@@ -31,7 +31,7 @@ typedef struct {
 // The bottom and top halves of memory both map to the same DRAM memory.
 // But the interleaving translation is applied to the upper half of memory.
 function Bit#(`LogBeatsPerDRAM)
-    toDRAMAddr(Bit#(TAdd#(`LogBeatsPerDRAM, 1)) memAddr);
+    toDRAMAddr(Bit#(`LogBeatsPerMem) memAddr);
   Bit#(`LogBeatsPerDRAM) addr = truncate(memAddr);
   // Separate address into MSB and rest
   Bit#(1) msb = truncateLSB(addr);
