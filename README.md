@@ -791,11 +791,17 @@ Note that the regions `0x40000000-0x7fffffff` and
 difference is that `0xc0000000-0xffffffff` is *partition interleaved*.
 The idea is that this region can hold a private partition for each
 thread, e.g. its stack and heap.  When all threads access their
-partitions at the same time, it can be benificial for DRAM performance
+partitions at the same time, it can be beneficial for DRAM performance
 to interleave the partitions at the cache-line granularity -- and
 that's what the `0xc0000000-0xffffffff` region provides.  This
 partition-interleaved region is, by default, used for each thread's
 private stack and heap.
+
+Applications should *either* use region `0x40000000-0x7fffffff` *or*
+region `0xc0000000-0xffffffff`, but not both.  This is because the
+address translation to implement interleaving is applied after the
+caches in the memory hierarchy, so the cache considers them as
+separate memory regions (which they are not).
 
 ## D. Tinsel CSRs
 
