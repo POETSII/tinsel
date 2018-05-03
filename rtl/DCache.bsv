@@ -173,7 +173,7 @@ typedef struct {
 } Tag deriving (Bits);
 
 // A key holds the upper bits of an address
-typedef TSub#(`LogLinesPerDRAM, `DCacheLogSetsPerThread) KeyNumBits;
+typedef TSub#(`LogLinesPerMem, `DCacheLogSetsPerThread) KeyNumBits;
 typedef Bit#(KeyNumBits) Key;
 
 // Meta data per set
@@ -236,13 +236,13 @@ function WordIndex wordIndex(DCacheClientId id, Bit#(32) addr, Way way) =
 
 // Determine the bits that make up a tag
 function Key getKey(Bit#(32) addr);
-  Bit#(`LogBytesPerDRAM) byteAddr = truncate(addr);
+  Bit#(`LogBytesPerMem) byteAddr = truncate(addr);
   return truncateLSB(byteAddr);
 endfunction
 
 // Reconstruct line address from an aliasing address and a tag
-function Bit#(`LogLinesPerDRAM) reconstructLineAddr(Key key, Bit#(32) addr) =
-  {key, truncate(addr[31:`LogBytesPerLine])};
+function Bit#(`LogLinesPerMem) reconstructLineAddr(Key key, Bit#(32) addr) =
+    {key, truncate(addr[31:`LogBytesPerLine])};
 
 // ============================================================================
 // Interface
@@ -542,10 +542,10 @@ module mkDCache#(DCacheId myId) (DCache);
     // Send a load request?
     Bool isLoad = !miss.evictDirty || writebackDone;
     // Determine line address
-    Bit#(`LogLinesPerDRAM) writeLineAddr =
+    let writeLineAddr =
       reconstructLineAddr(miss.evictTag.key, miss.req.addr);
-    Bit#(`LogLinesPerDRAM) readLineAddr = 
-      miss.req.addr[`LogBytesPerDRAM-1:`LogBytesPerLine];
+    let readLineAddr = 
+      miss.req.addr[`LogBytesPerDRAM:`LogBytesPerLine];
     // Create memory request
     DRAMReq memReq;
     memReq.isStore = !isLoad;
