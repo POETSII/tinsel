@@ -161,7 +161,8 @@ void powerEnable(int enable)
   retry:
   // Determine all the power links
   char line[256];
-  FILE* fp = popen("ls /dev/serial/by-id/usb-Cypress*", "r");
+  FILE* fp = popen(
+    "ls /dev/serial/by-id/usb-Cypress_Semiconductor_USBUART*", "r");
   if (!fp) {
     fprintf(stderr, "Power-enable failed");
     exit(EXIT_FAILURE);
