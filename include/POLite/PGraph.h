@@ -119,6 +119,8 @@ template <typename DeviceType, typename MessageType> class PGraph {
       uint32_t partId = threadId & (TinselThreadsPerDRAM-1);
       heapBase[threadId] = TinselBytesPerDRAM -
         ((partId+1) << TinselLogBytesPerDRAMPartition);
+      // Use interleaved memory
+      heapBase[threadId] |= 0x80000000;
     }
   }
 
