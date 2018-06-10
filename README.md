@@ -7,7 +7,7 @@ Project](https://poets-project.org/about) (Partially Ordered Event
 Triggered Systems).  This manual describes the tinsel architecture and
 associated APIs.  If you're a POETS Partner, you can access a
 machine running tinsel in the
-[POETS cloud](https://github.com/POETSII/poets-cloud).
+[POETS Cloud](https://github.com/POETSII/poets-cloud).
 
 ## Release Log
 
@@ -124,15 +124,15 @@ inter-board communication.  And since we are using the links
 point-to-point, almost all of the Ethernet packet fields can be used
 for our own purposes, resulting in very little overhead on the wire.
 
-### 1.4 POETS Boxes
+### 1.4 POETS Hardware
 
-We have completed a prototype POETS multi-FPGA box, called **aesop**,
-consisting of four DE5-Net FPGA boards and a modern PC.  One of the FPGAs is
-connected to the PC via PCI Express and acts as a bridge between the PC and the
-remaining worker FPGAs.  The worker FPGAs run tinsel by default.  In the coming
-months we plan to extend our prototype four-board box to a ten-board box and
-then develop six of these ten-board boxes to yield a 60-board high-speed
-cluster for POETS research.
+A prototype POETS hardware system is currently under construction and,
+when complete, will consist of around 50 DE5-NET FPGA boards connected
+by numerous high-speed serial links in a 3D mesh topology.  Each group
+of ten FPGAs will reside in a separate *POETs box*.  One FPGA in each
+box will serve as a *PCI Express bridge board* that connects a modern
+PC to the remaining nine FPGA *worker boards*, with the worker boards
+running tinsel by default.
 
 ## 2. Tinsel Core
 
@@ -303,9 +303,9 @@ structure of each cache.
   `LogCoresPerDCache`      |       2 | Cores per cache
   `LogDCachesPerDRAM`      |       3 | Caches per DRAM
   `DCacheLogWordsPerBeat`  |       3 | Number of 32-bit words per beat
-  `DCacheLogBeatsPerLine`  |       1 | Beats per cache line
+  `DCacheLogBeatsPerLine`  |       0 | Beats per cache line
   `DCacheLogNumWays`       |       2 | Cache lines in each associative set
-  `DCacheLogSetsPerThread` |       2 | Associative sets per thread
+  `DCacheLogSetsPerThread` |       3 | Associative sets per thread
   `LogBeatsPerDRAM`        |      26 | Size of DRAM
 
 ## 4. Tinsel Mailbox
@@ -762,9 +762,9 @@ ALMs, *50% of the DE5-Net*.
   `LogCoresPerDCache`      |       2 | Cores per cache
   `LogDCachesPerDRAM`      |       3 | Caches per DRAM
   `DCacheLogWordsPerBeat`  |       3 | Number of 32-bit words per beat
-  `DCacheLogBeatsPerLine`  |       1 | Beats per cache line
+  `DCacheLogBeatsPerLine`  |       0 | Beats per cache line
   `DCacheLogNumWays`       |       2 | Cache lines in each associative set
-  `DCacheLogSetsPerThread` |       2 | Associative sets per thread
+  `DCacheLogSetsPerThread` |       3 | Associative sets per thread
   `LogBeatsPerDRAM`        |      26 | Size of DRAM
   `LogCoresPerMailbox`     |       2 | Number of cores sharing a mailbox
   `LogWordsPerFlit`        |       2 | Number of 32-bit words in a flit
