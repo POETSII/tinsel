@@ -37,10 +37,10 @@ p["LogDCachesPerDRAM"] = 3
 p["LogWordsPerBeat"] = 3
 
 # Log of number of beats in a cache line
-p["LogBeatsPerLine"] = 1
+p["LogBeatsPerLine"] = 0
 
 # Log of number of sets per thread in set-associative data cache
-p["DCacheLogSetsPerThread"] = 2
+p["DCacheLogSetsPerThread"] = 3
 
 # Log of number of ways per set in set-associative data cache
 p["DCacheLogNumWays"] = 2
