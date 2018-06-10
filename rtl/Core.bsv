@@ -67,9 +67,6 @@ typedef struct {
   InstrAddr pc;
   // Floating-point accrued exception flags
   Bit#(5) fpFlags;
-  // Some instructions are executed in two stages
-  // (e.g. multiply-add)
-  Bit#(1) stage;
   // Message length for send operation
   MsgLen msgLen;
   // Message pointer for send operation
@@ -677,10 +674,8 @@ module mkCore#(CoreId myId) (Core);
     Bit#(1) rfA = rs1RegFile(token.instr);
     Bit#(1) rfB = rs2RegFile(token.instr);
     // Determine registers to read
-    Bit#(5) regA = token.thread.stage == 0 ?
-                     rs1(token.instr) : rd(token.instr);
-    Bit#(5) regB = token.thread.stage == 0 ?
-                     rs2(token.instr) : rs3(token.instr);
+    Bit#(5) regA = rs1(token.instr);
+    Bit#(5) regB = rs2(token.instr);
     // Read register file
     regFileA.read({token.thread.id, rfA, regA});
     regFileB.read({token.thread.id, rfB, regB});
@@ -880,17 +875,11 @@ module mkCore#(CoreId myId) (Core);
       if (token.op.isFPCmp)   req.opcode = FPCompare;
       if (token.op.isFPConv)  req.opcode =
                                 token.instr[28] == 0 ? FPToInt : FPFromInt;
-      if (token.op.isFPMAdd)  req.opcode =
-                                token.thread.stage == 0 ? FPMult : FPAddSub;
       req.in.lowerOrUpper = token.op.isMult ? 0 : 1;
       req.in.addOrSub = token.op.isFPAdd ? token.instr[27] : token.instr[2];
       req.in.cmpEQ = token.instr[13];
       req.in.cmpLT = token.instr[12];
-      Bit#(1) signA = // Adjust sign for FNMADD variant
-        token.op.isFPMAdd && token.thread.stage == 0 && token.instr[3] == 1 ?
-          ~token.valA[31] : token.valA[31];
-      req.in.arg1 = {token.op.isMultASigned ? token.valA[31] : 0,
-                     signA, token.valA[30:0]};
+      req.in.arg1 = {token.op.isMultASigned ? token.valA[31] : 0, token.valA};
       req.in.arg2 = {token.op.isMultBSigned ? token.valB[31] : 0, token.valB};
       if (toFPUPort.canPut) begin
         toFPUPort.put(req);
@@ -902,12 +891,7 @@ module mkCore#(CoreId myId) (Core);
     if (suspend) begin
       SuspendedThreadState susp;
       susp.thread = token.thread;
-      if (token.op.isFPMAdd && token.thread.stage == 0)
-        susp.thread.stage = 1;
-      else begin
-        susp.thread.stage = 0;
-        susp.thread.pc = token.thread.pc + 4;
-      end
+      susp.thread.pc = token.thread.pc + 4;
       susp.isLoad = token.op.isLoad;
       susp.isStore = token.op.isStore;
       susp.isFPUOp = token.op.isFPUOp;

@@ -293,13 +293,13 @@
  <interface name="ts_enable" internal="temp_sense.ce" type="conduit" dir="end" />
  <interface name="ts_out" internal="temp_sense.tsdcalo" type="conduit" dir="end" />
  <module name="DE5BridgeTop_0" kind="DE5BridgeTop" version="1.0" enabled="1" />
- <module name="clk_156" kind="clock_source" version="16.0" enabled="1">
+ <module name="clk_156" kind="clock_source" version="16.1" enabled="1">
   <parameter name="clockFrequency" value="156250000" />
   <parameter name="clockFrequencyKnown" value="true" />
   <parameter name="inputClockFrequency" value="0" />
   <parameter name="resetSynchronousEdges" value="NONE" />
  </module>
- <module name="clk_50" kind="clock_source" version="16.0" enabled="1">
+ <module name="clk_50" kind="clock_source" version="16.1" enabled="1">
   <parameter name="clockFrequency" value="50000000" />
   <parameter name="clockFrequencyKnown" value="true" />
   <parameter name="inputClockFrequency" value="0" />
@@ -308,7 +308,7 @@
  <module
    name="jtag_uart_0"
    kind="altera_avalon_jtag_uart"
-   version="16.0"
+   version="16.1"
    enabled="1">
   <parameter name="allowMultipleConnections" value="false" />
   <parameter name="avalonSpec" value="2.0" />
@@ -324,7 +324,7 @@
   <parameter name="writeBufferDepth" value="64" />
   <parameter name="writeIRQThreshold" value="8" />
  </module>
- <module name="mac_a" kind="altera_eth_10g_mac" version="16.0" enabled="1">
+ <module name="mac_a" kind="altera_eth_10g_mac" version="16.1" enabled="1">
   <parameter name="AUTO_DEVICE" value="5SGXEA7N2F45C2" />
   <parameter name="AUTO_DEVICE_SPEEDGRADE" value="2_H2" />
   <parameter name="DATAPATH_OPTION" value="3" />
@@ -345,7 +345,7 @@
  <module
    name="mac_a_rx_fifo"
    kind="altera_avalon_dc_fifo"
-   version="16.0"
+   version="16.1"
    enabled="1">
   <parameter name="BITS_PER_SYMBOL" value="8" />
   <parameter name="CHANNEL_WIDTH" value="0" />
@@ -363,7 +363,7 @@
  <module
    name="mac_a_tx_fifo"
    kind="altera_avalon_dc_fifo"
-   version="16.0"
+   version="16.1"
    enabled="1">
   <parameter name="BITS_PER_SYMBOL" value="8" />
   <parameter name="CHANNEL_WIDTH" value="0" />
@@ -381,7 +381,7 @@
  <module
    name="mem_if_ddr3_emif"
    kind="altera_mem_if_ddr3_emif"
-   version="16.0"
+   version="16.1"
    enabled="0">
   <parameter name="ABSTRACT_REAL_COMPARE_TEST" value="false" />
   <parameter name="ABS_RAM_MEM_INIT_FILENAME" value="meminit" />
@@ -399,7 +399,7 @@
   <parameter name="AP_MODE" value="false" />
   <parameter name="AP_MODE_EN" value="0" />
   <parameter name="AUTO_DEVICE" value="5SGXEA7N2F45C2" />
-  <parameter name="AUTO_DEVICE_SPEEDGRADE" value="2_H2" />
+  <parameter name="AUTO_DEVICE_SPEEDGRADE" value="" />
   <parameter name="AUTO_PD_CYCLES" value="0" />
   <parameter name="AUTO_POWERDN_EN" value="false" />
   <parameter name="AVL_DATA_WIDTH_PORT" value="32,32,32,32,32,32" />
@@ -704,7 +704,7 @@
  <module
    name="mem_if_ddr3_emif_2"
    kind="altera_mem_if_ddr3_emif"
-   version="16.0"
+   version="16.1"
    enabled="0">
   <parameter name="ABSTRACT_REAL_COMPARE_TEST" value="false" />
   <parameter name="ABS_RAM_MEM_INIT_FILENAME" value="meminit" />
@@ -722,7 +722,7 @@
   <parameter name="AP_MODE" value="false" />
   <parameter name="AP_MODE_EN" value="0" />
   <parameter name="AUTO_DEVICE" value="5SGXEA7N2F45C2" />
-  <parameter name="AUTO_DEVICE_SPEEDGRADE" value="2_H2" />
+  <parameter name="AUTO_DEVICE_SPEEDGRADE" value="" />
   <parameter name="AUTO_PD_CYCLES" value="0" />
   <parameter name="AUTO_POWERDN_EN" value="false" />
   <parameter name="AVL_DATA_WIDTH_PORT" value="32,32,32,32,32,32" />
@@ -1027,7 +1027,7 @@
  <module
    name="pcie_clk_reset"
    kind="altera_reset_bridge"
-   version="16.0"
+   version="16.1"
    enabled="1">
   <parameter name="ACTIVE_LOW_RESET" value="0" />
   <parameter name="AUTO_CLK_CLOCK_RATE" value="250000000" />
@@ -1038,7 +1038,7 @@
  <module
    name="pcie_mm"
    kind="altera_pcie_sv_hip_avmm"
-   version="16.0"
+   version="16.1"
    enabled="1">
   <parameter name="AST_LITE" value="0" />
   <parameter name="AVALON_ADDR_WIDTH" value="64" />
@@ -1190,7 +1190,7 @@
   <parameter name="bar4_type_hwtcl" value="0" />
   <parameter name="bar5_type_hwtcl" value="0" />
   <parameter name="bypass_tl" value="false" />
-  <parameter name="class_code_hwtcl" value="229376" />
+  <parameter name="class_code_hwtcl" value="0" />
   <parameter name="completion_timeout_hwtcl" value="ABCD" />
   <parameter name="device_id_hwtcl" value="3557" />
   <parameter name="dll_active_report_support_hwtcl" value="0" />
@@ -1276,14 +1276,14 @@
  <module
    name="pcie_reconfig_driver_0"
    kind="altera_pcie_reconfig_driver"
-   version="16.0"
+   version="16.1"
    enabled="1">
   <parameter name="INTENDED_DEVICE_FAMILY" value="Stratix V" />
   <parameter name="enable_cal_busy_hwtcl" value="0" />
   <parameter name="gen123_lane_rate_mode_hwtcl" value="Gen2 (5.0 Gbps)" />
   <parameter name="number_of_reconfig_interfaces" value="4" />
  </module>
- <module name="pcie_xcvr_clk" kind="clock_source" version="16.0" enabled="1">
+ <module name="pcie_xcvr_clk" kind="clock_source" version="16.1" enabled="1">
   <parameter name="clockFrequency" value="50000000" />
   <parameter name="clockFrequencyKnown" value="true" />
   <parameter name="inputClockFrequency" value="0" />
@@ -1292,7 +1292,7 @@
  <module
    name="pcie_xcvr_reconfig_0"
    kind="alt_xcvr_reconfig"
-   version="16.0"
+   version="16.1"
    enabled="1">
   <parameter name="ber_en" value="0" />
   <parameter name="device_family" value="Stratix V" />
@@ -1309,7 +1309,7 @@
   <parameter name="gui_split_sizes" value="" />
   <parameter name="number_of_reconfig_interfaces" value="10" />
  </module>
- <module name="temp_sense" kind="altera_temp_sense" version="16.0" enabled="1">
+ <module name="temp_sense" kind="altera_temp_sense" version="16.1" enabled="1">
   <parameter name="CBX_AUTO_BLACKBOX" value="ALL" />
   <parameter name="CE_CHECK" value="true" />
   <parameter name="CLK_FREQUENCY" value="50.0" />
@@ -1325,7 +1325,7 @@
  <module
    name="uart_bridge"
    kind="altera_avalon_mm_clock_crossing_bridge"
-   version="16.0"
+   version="16.1"
    enabled="1">
   <parameter name="ADDRESS_UNITS" value="SYMBOLS" />
   <parameter name="ADDRESS_WIDTH" value="10" />
@@ -1341,7 +1341,7 @@
  </module>
  <connection
    kind="avalon"
-   version="16.0"
+   version="16.1"
    start="pcie_mm.Rxm_BAR0"
    end="DE5BridgeTop_0.controlbar_s">
   <parameter name="arbitrationPriority" value="1" />
@@ -1350,7 +1350,7 @@
  </connection>
  <connection
    kind="avalon"
-   version="16.0"
+   version="16.1"
    start="DE5BridgeTop_0.jtag"
    end="uart_bridge.s0">
   <parameter name="arbitrationPriority" value="1" />
@@ -1359,7 +1359,7 @@
  </connection>
  <connection
    kind="avalon"
-   version="16.0"
+   version="16.1"
    start="uart_bridge.m0"
    end="jtag_uart_0.avalon_jtag_slave">
   <parameter name="arbitrationPriority" value="1" />
@@ -1368,7 +1368,7 @@
  </connection>
  <connection
    kind="avalon"
-   version="16.0"
+   version="16.1"
    start="DE5BridgeTop_0.pcie_host_bus"
    end="pcie_mm.Txs">
   <parameter name="arbitrationPriority" value="1" />
@@ -1377,7 +1377,7 @@
  </connection>
  <connection
    kind="avalon"
-   version="16.0"
+   version="16.1"
    start="pcie_reconfig_driver_0.reconfig_mgmt"
    end="pcie_xcvr_reconfig_0.reconfig_mgmt">
   <parameter name="arbitrationPriority" value="1" />
@@ -1386,102 +1386,102 @@
  </connection>
  <connection
    kind="avalon_streaming"
-   version="16.0"
+   version="16.1"
    start="mac_a.avalon_st_rx"
    end="mac_a_rx_fifo.in" />
  <connection
    kind="avalon_streaming"
-   version="16.0"
+   version="16.1"
    start="DE5BridgeTop_0.mac_source"
    end="mac_a_tx_fifo.in" />
  <connection
    kind="avalon_streaming"
-   version="16.0"
+   version="16.1"
    start="mac_a_tx_fifo.out"
    end="mac_a.avalon_st_tx" />
  <connection
    kind="avalon_streaming"
-   version="16.0"
+   version="16.1"
    start="mac_a_rx_fifo.out"
    end="DE5BridgeTop_0.mac_sink" />
  <connection
    kind="clock"
-   version="16.0"
+   version="16.1"
    start="mem_if_ddr3_emif.afi_clk"
    end="mem_if_ddr3_emif_2.afi_clk_in" />
  <connection
    kind="clock"
-   version="16.0"
+   version="16.1"
    start="mem_if_ddr3_emif.afi_half_clk"
    end="mem_if_ddr3_emif_2.afi_half_clk_in" />
- <connection kind="clock" version="16.0" start="clk_50.clk" end="jtag_uart_0.clk" />
- <connection kind="clock" version="16.0" start="clk_50.clk" end="temp_sense.clk" />
- <connection kind="clock" version="16.0" start="clk_50.clk" end="mac_a.csr_clk" />
+ <connection kind="clock" version="16.1" start="clk_50.clk" end="jtag_uart_0.clk" />
+ <connection kind="clock" version="16.1" start="clk_50.clk" end="temp_sense.clk" />
+ <connection kind="clock" version="16.1" start="clk_50.clk" end="mac_a.csr_clk" />
  <connection
    kind="clock"
-   version="16.0"
+   version="16.1"
    start="clk_156.clk"
    end="mac_a_rx_fifo.in_clk" />
  <connection
    kind="clock"
-   version="16.0"
+   version="16.1"
    start="clk_50.clk"
    end="uart_bridge.m0_clk" />
  <connection
    kind="clock"
-   version="16.0"
+   version="16.1"
    start="pcie_xcvr_clk.clk"
    end="pcie_xcvr_reconfig_0.mgmt_clk_clk" />
  <connection
    kind="clock"
-   version="16.0"
+   version="16.1"
    start="clk_156.clk"
    end="mac_a_tx_fifo.out_clk" />
  <connection
    kind="clock"
-   version="16.0"
+   version="16.1"
    start="clk_50.clk"
    end="mem_if_ddr3_emif.pll_ref_clk" />
  <connection
    kind="clock"
-   version="16.0"
+   version="16.1"
    start="pcie_xcvr_clk.clk"
    end="pcie_reconfig_driver_0.reconfig_xcvr_clk" />
- <connection kind="clock" version="16.0" start="clk_156.clk" end="mac_a.rx_clk" />
- <connection kind="clock" version="16.0" start="clk_156.clk" end="mac_a.tx_clk" />
+ <connection kind="clock" version="16.1" start="clk_156.clk" end="mac_a.rx_clk" />
+ <connection kind="clock" version="16.1" start="clk_156.clk" end="mac_a.tx_clk" />
  <connection
    kind="clock"
-   version="16.0"
+   version="16.1"
    start="pcie_mm.coreclkout"
    end="pcie_clk_reset.clk" />
  <connection
    kind="clock"
-   version="16.0"
+   version="16.1"
    start="pcie_mm.coreclkout"
    end="DE5BridgeTop_0.clock" />
  <connection
    kind="clock"
-   version="16.0"
+   version="16.1"
    start="pcie_mm.coreclkout"
    end="mac_a_tx_fifo.in_clk" />
  <connection
    kind="clock"
-   version="16.0"
+   version="16.1"
    start="pcie_mm.coreclkout"
    end="mac_a_rx_fifo.out_clk" />
  <connection
    kind="clock"
-   version="16.0"
+   version="16.1"
    start="pcie_mm.coreclkout"
    end="pcie_reconfig_driver_0.pld_clk" />
  <connection
    kind="clock"
-   version="16.0"
+   version="16.1"
    start="pcie_mm.coreclkout"
    end="uart_bridge.s0_clk" />
  <connection
    kind="conduit"
-   version="16.0"
+   version="16.1"
    start="mem_if_ddr3_emif.dll_sharing"
    end="mem_if_ddr3_emif_2.dll_sharing">
   <parameter name="endPort" value="" />
@@ -1492,7 +1492,7 @@
  </connection>
  <connection
    kind="conduit"
-   version="16.0"
+   version="16.1"
    start="pcie_reconfig_driver_0.hip_currentspeed"
    end="pcie_mm.hip_currentspeed">
   <parameter name="endPort" value="" />
@@ -1503,7 +1503,7 @@
  </connection>
  <connection
    kind="conduit"
-   version="16.0"
+   version="16.1"
    start="pcie_reconfig_driver_0.hip_status_drv"
    end="pcie_mm.hip_status">
   <parameter name="endPort" value="" />
@@ -1514,7 +1514,7 @@
  </connection>
  <connection
    kind="conduit"
-   version="16.0"
+   version="16.1"
    start="mem_if_ddr3_emif.oct_sharing"
    end="mem_if_ddr3_emif_2.oct_sharing">
   <parameter name="endPort" value="" />
@@ -1525,7 +1525,7 @@
  </connection>
  <connection
    kind="conduit"
-   version="16.0"
+   version="16.1"
    start="mem_if_ddr3_emif.pll_sharing"
    end="mem_if_ddr3_emif_2.pll_sharing">
   <parameter name="endPort" value="" />
@@ -1536,7 +1536,7 @@
  </connection>
  <connection
    kind="conduit"
-   version="16.0"
+   version="16.1"
    start="pcie_reconfig_driver_0.reconfig_busy"
    end="pcie_xcvr_reconfig_0.reconfig_busy">
   <parameter name="endPort" value="" />
@@ -1547,7 +1547,7 @@
  </connection>
  <connection
    kind="conduit"
-   version="16.0"
+   version="16.1"
    start="pcie_xcvr_reconfig_0.reconfig_from_xcvr"
    end="pcie_mm.reconfig_from_xcvr">
   <parameter name="endPort" value="" />
@@ -1558,7 +1558,7 @@
  </connection>
  <connection
    kind="conduit"
-   version="16.0"
+   version="16.1"
    start="pcie_mm.reconfig_to_xcvr"
    end="pcie_xcvr_reconfig_0.reconfig_to_xcvr">
   <parameter name="endPort" value="" />
@@ -1569,112 +1569,112 @@
  </connection>
  <connection
    kind="reset"
-   version="16.0"
+   version="16.1"
    start="mem_if_ddr3_emif.afi_reset"
    end="mem_if_ddr3_emif_2.afi_reset_in" />
  <connection
    kind="reset"
-   version="16.0"
+   version="16.1"
    start="clk_50.clk_reset"
    end="mac_a.csr_reset" />
  <connection
    kind="reset"
-   version="16.0"
+   version="16.1"
    start="clk_50.clk_reset"
    end="mem_if_ddr3_emif.global_reset" />
  <connection
    kind="reset"
-   version="16.0"
+   version="16.1"
    start="clk_50.clk_reset"
    end="mem_if_ddr3_emif_2.global_reset" />
  <connection
    kind="reset"
-   version="16.0"
+   version="16.1"
    start="clk_156.clk_reset"
    end="mac_a_rx_fifo.in_clk_reset" />
  <connection
    kind="reset"
-   version="16.0"
+   version="16.1"
    start="clk_50.clk_reset"
    end="uart_bridge.m0_reset" />
  <connection
    kind="reset"
-   version="16.0"
+   version="16.1"
    start="pcie_xcvr_clk.clk_reset"
    end="pcie_xcvr_reconfig_0.mgmt_rst_reset" />
  <connection
    kind="reset"
-   version="16.0"
+   version="16.1"
    start="clk_156.clk_reset"
    end="mac_a_tx_fifo.out_clk_reset" />
  <connection
    kind="reset"
-   version="16.0"
+   version="16.1"
    start="pcie_xcvr_clk.clk_reset"
    end="pcie_reconfig_driver_0.reconfig_xcvr_rst" />
  <connection
    kind="reset"
-   version="16.0"
+   version="16.1"
    start="clk_50.clk_reset"
    end="jtag_uart_0.reset" />
  <connection
    kind="reset"
-   version="16.0"
+   version="16.1"
    start="clk_156.clk_reset"
    end="mac_a.rx_reset" />
  <connection
    kind="reset"
-   version="16.0"
+   version="16.1"
    start="clk_50.clk_reset"
    end="mem_if_ddr3_emif.soft_reset" />
  <connection
    kind="reset"
-   version="16.0"
+   version="16.1"
    start="clk_50.clk_reset"
    end="mem_if_ddr3_emif_2.soft_reset" />
  <connection
    kind="reset"
-   version="16.0"
+   version="16.1"
    start="clk_156.clk_reset"
    end="mac_a.tx_reset" />
  <connection
    kind="reset"
-   version="16.0"
+   version="16.1"
    start="pcie_mm.nreset_status"
    end="mac_a_tx_fifo.in_clk_reset" />
  <connection
    kind="reset"
-   version="16.0"
+   version="16.1"
    start="pcie_mm.nreset_status"
    end="mac_a_rx_fifo.out_clk_reset" />
  <connection
    kind="reset"
-   version="16.0"
+   version="16.1"
    start="pcie_mm.nreset_status"
    end="DE5BridgeTop_0.reset_sink" />
  <connection
    kind="reset"
-   version="16.0"
+   version="16.1"
    start="pcie_mm.nreset_status"
    end="uart_bridge.s0_reset" />
  <connection
    kind="reset"
-   version="16.0"
+   version="16.1"
    start="pcie_clk_reset.out_reset"
    end="mac_a_tx_fifo.in_clk_reset" />
  <connection
    kind="reset"
-   version="16.0"
+   version="16.1"
    start="pcie_clk_reset.out_reset"
    end="mac_a_rx_fifo.out_clk_reset" />
  <connection
    kind="reset"
-   version="16.0"
+   version="16.1"
    start="pcie_clk_reset.out_reset"
    end="DE5BridgeTop_0.reset_sink" />
  <connection
    kind="reset"
-   version="16.0"
+   version="16.1"
    start="pcie_clk_reset.out_reset"
    end="uart_bridge.s0_reset" />
  <interconnectRequirement for="$system" name="qsys_mm.clockCrossingAdapter" value="FIFO" />

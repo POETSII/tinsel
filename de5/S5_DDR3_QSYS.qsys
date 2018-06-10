@@ -341,13 +341,13 @@
  <interface name="ts_enable" internal="temp_sense.ce" type="conduit" dir="end" />
  <interface name="ts_out" internal="temp_sense.tsdcalo" type="conduit" dir="end" />
  <module name="DE5Top_0" kind="DE5Top" version="1.0" enabled="1" />
- <module name="clk_156" kind="clock_source" version="16.0" enabled="1">
+ <module name="clk_156" kind="clock_source" version="16.1" enabled="1">
   <parameter name="clockFrequency" value="156250000" />
   <parameter name="clockFrequencyKnown" value="true" />
   <parameter name="inputClockFrequency" value="0" />
   <parameter name="resetSynchronousEdges" value="NONE" />
  </module>
- <module name="clk_50" kind="clock_source" version="16.0" enabled="1">
+ <module name="clk_50" kind="clock_source" version="16.1" enabled="1">
   <parameter name="clockFrequency" value="50000000" />
   <parameter name="clockFrequencyKnown" value="true" />
   <parameter name="inputClockFrequency" value="0" />
@@ -356,7 +356,7 @@
  <module
    name="jtag_uart_0"
    kind="altera_avalon_jtag_uart"
-   version="16.0"
+   version="16.1"
    enabled="1">
   <parameter name="allowMultipleConnections" value="false" />
   <parameter name="avalonSpec" value="2.0" />
@@ -372,7 +372,7 @@
   <parameter name="writeBufferDepth" value="64" />
   <parameter name="writeIRQThreshold" value="8" />
  </module>
- <module name="mac_a" kind="altera_eth_10g_mac" version="16.0" enabled="1">
+ <module name="mac_a" kind="altera_eth_10g_mac" version="16.1" enabled="1">
   <parameter name="AUTO_DEVICE" value="5SGXEA7N2F45C2" />
   <parameter name="AUTO_DEVICE_SPEEDGRADE" value="2_H2" />
   <parameter name="DATAPATH_OPTION" value="3" />
@@ -393,7 +393,7 @@
  <module
    name="mac_a_rx_fifo"
    kind="altera_avalon_dc_fifo"
-   version="16.0"
+   version="16.1"
    enabled="1">
   <parameter name="BITS_PER_SYMBOL" value="8" />
   <parameter name="CHANNEL_WIDTH" value="0" />
@@ -411,7 +411,7 @@
  <module
    name="mac_a_tx_fifo"
    kind="altera_avalon_dc_fifo"
-   version="16.0"
+   version="16.1"
    enabled="1">
   <parameter name="BITS_PER_SYMBOL" value="8" />
   <parameter name="CHANNEL_WIDTH" value="0" />
@@ -426,7 +426,7 @@
   <parameter name="USE_PACKETS" value="1" />
   <parameter name="WR_SYNC_DEPTH" value="3" />
  </module>
- <module name="mac_b" kind="altera_eth_10g_mac" version="16.0" enabled="1">
+ <module name="mac_b" kind="altera_eth_10g_mac" version="16.1" enabled="1">
   <parameter name="AUTO_DEVICE" value="5SGXEA7N2F45C2" />
   <parameter name="AUTO_DEVICE_SPEEDGRADE" value="2_H2" />
   <parameter name="DATAPATH_OPTION" value="3" />
@@ -447,7 +447,7 @@
  <module
    name="mac_b_rx_fifo"
    kind="altera_avalon_dc_fifo"
-   version="16.0"
+   version="16.1"
    enabled="1">
   <parameter name="BITS_PER_SYMBOL" value="8" />
   <parameter name="CHANNEL_WIDTH" value="0" />
@@ -465,7 +465,7 @@
  <module
    name="mac_b_tx_fifo"
    kind="altera_avalon_dc_fifo"
-   version="16.0"
+   version="16.1"
    enabled="1">
   <parameter name="BITS_PER_SYMBOL" value="8" />
   <parameter name="CHANNEL_WIDTH" value="0" />
@@ -480,7 +480,7 @@
   <parameter name="USE_PACKETS" value="1" />
   <parameter name="WR_SYNC_DEPTH" value="3" />
  </module>
- <module name="mac_c" kind="altera_eth_10g_mac" version="16.0" enabled="1">
+ <module name="mac_c" kind="altera_eth_10g_mac" version="16.1" enabled="1">
   <parameter name="AUTO_DEVICE" value="5SGXEA7N2F45C2" />
   <parameter name="AUTO_DEVICE_SPEEDGRADE" value="2_H2" />
   <parameter name="DATAPATH_OPTION" value="3" />
@@ -501,7 +501,7 @@
  <module
    name="mac_c_rx_fifo"
    kind="altera_avalon_dc_fifo"
-   version="16.0"
+   version="16.1"
    enabled="1">
   <parameter name="BITS_PER_SYMBOL" value="8" />
   <parameter name="CHANNEL_WIDTH" value="0" />
@@ -519,7 +519,7 @@
  <module
    name="mac_c_tx_fifo"
    kind="altera_avalon_dc_fifo"
-   version="16.0"
+   version="16.1"
    enabled="1">
   <parameter name="BITS_PER_SYMBOL" value="8" />
   <parameter name="CHANNEL_WIDTH" value="0" />
@@ -534,7 +534,7 @@
   <parameter name="USE_PACKETS" value="1" />
   <parameter name="WR_SYNC_DEPTH" value="3" />
  </module>
- <module name="mac_d" kind="altera_eth_10g_mac" version="16.0" enabled="1">
+ <module name="mac_d" kind="altera_eth_10g_mac" version="16.1" enabled="1">
   <parameter name="AUTO_DEVICE" value="5SGXEA7N2F45C2" />
   <parameter name="AUTO_DEVICE_SPEEDGRADE" value="2_H2" />
   <parameter name="DATAPATH_OPTION" value="3" />
@@ -555,7 +555,7 @@
  <module
    name="mac_d_rx_fifo"
    kind="altera_avalon_dc_fifo"
-   version="16.0"
+   version="16.1"
    enabled="1">
   <parameter name="BITS_PER_SYMBOL" value="8" />
   <parameter name="CHANNEL_WIDTH" value="0" />
@@ -573,7 +573,7 @@
  <module
    name="mac_d_tx_fifo"
    kind="altera_avalon_dc_fifo"
-   version="16.0"
+   version="16.1"
    enabled="1">
   <parameter name="BITS_PER_SYMBOL" value="8" />
   <parameter name="CHANNEL_WIDTH" value="0" />
@@ -591,7 +591,7 @@
  <module
    name="mem_if_ddr3_emif"
    kind="altera_mem_if_ddr3_emif"
-   version="16.0"
+   version="16.1"
    enabled="1">
   <parameter name="ABSTRACT_REAL_COMPARE_TEST" value="false" />
   <parameter name="ABS_RAM_MEM_INIT_FILENAME" value="meminit" />
@@ -638,7 +638,7 @@
   <parameter name="CTL_ENABLE_BURST_INTERRUPT" value="false" />
   <parameter name="CTL_ENABLE_BURST_TERMINATE" value="false" />
   <parameter name="CTL_HRB_ENABLED" value="false" />
-  <parameter name="CTL_LOOK_AHEAD_DEPTH" value="4" />
+  <parameter name="CTL_LOOK_AHEAD_DEPTH" value="8" />
   <parameter name="CTL_SELF_REFRESH_EN" value="false" />
   <parameter name="CTL_USR_REFRESH_EN" value="false" />
   <parameter name="CTL_ZQCAL_EN" value="false" />
@@ -914,7 +914,7 @@
  <module
    name="mem_if_ddr3_emif_2"
    kind="altera_mem_if_ddr3_emif"
-   version="16.0"
+   version="16.1"
    enabled="1">
   <parameter name="ABSTRACT_REAL_COMPARE_TEST" value="false" />
   <parameter name="ABS_RAM_MEM_INIT_FILENAME" value="meminit" />
@@ -961,7 +961,7 @@
   <parameter name="CTL_ENABLE_BURST_INTERRUPT" value="false" />
   <parameter name="CTL_ENABLE_BURST_TERMINATE" value="false" />
   <parameter name="CTL_HRB_ENABLED" value="false" />
-  <parameter name="CTL_LOOK_AHEAD_DEPTH" value="4" />
+  <parameter name="CTL_LOOK_AHEAD_DEPTH" value="8" />
   <parameter name="CTL_SELF_REFRESH_EN" value="false" />
   <parameter name="CTL_USR_REFRESH_EN" value="false" />
   <parameter name="CTL_ZQCAL_EN" value="false" />
@@ -1234,7 +1234,7 @@
   <parameter name="WEIGHT_PORT" value="0,0,0,0,0,0" />
   <parameter name="WRBUFFER_ADDR_WIDTH" value="6" />
  </module>
- <module name="temp_sense" kind="altera_temp_sense" version="16.0" enabled="1">
+ <module name="temp_sense" kind="altera_temp_sense" version="16.1" enabled="1">
   <parameter name="CBX_AUTO_BLACKBOX" value="ALL" />
   <parameter name="CE_CHECK" value="true" />
   <parameter name="CLK_FREQUENCY" value="50.0" />
@@ -1250,7 +1250,7 @@
  <module
    name="uart_bridge"
    kind="altera_avalon_mm_clock_crossing_bridge"
-   version="16.0"
+   version="16.1"
    enabled="1">
   <parameter name="ADDRESS_UNITS" value="SYMBOLS" />
   <parameter name="ADDRESS_WIDTH" value="10" />
@@ -1266,7 +1266,7 @@
  </module>
  <connection
    kind="avalon"
-   version="16.0"
+   version="16.1"
    start="DE5Top_0.dram_1"
    end="mem_if_ddr3_emif.avl">
   <parameter name="arbitrationPriority" value="1" />
@@ -1275,7 +1275,7 @@
  </connection>
  <connection
    kind="avalon"
-   version="16.0"
+   version="16.1"
    start="DE5Top_0.dram_2"
    end="mem_if_ddr3_emif_2.avl">
   <parameter name="arbitrationPriority" value="1" />
@@ -1284,7 +1284,7 @@
  </connection>
  <connection
    kind="avalon"
-   version="16.0"
+   version="16.1"
    start="DE5Top_0.jtag_master"
    end="uart_bridge.s0">
   <parameter name="arbitrationPriority" value="1" />
@@ -1293,7 +1293,7 @@
  </connection>
  <connection
    kind="avalon"
-   version="16.0"
+   version="16.1"
    start="uart_bridge.m0"
    end="jtag_uart_0.avalon_jtag_slave">
   <parameter name="arbitrationPriority" value="1" />
@@ -1302,211 +1302,211 @@
  </connection>
  <connection
    kind="avalon_streaming"
-   version="16.0"
+   version="16.1"
    start="mac_a.avalon_st_rx"
    end="mac_a_rx_fifo.in" />
  <connection
    kind="avalon_streaming"
-   version="16.0"
+   version="16.1"
    start="mac_b.avalon_st_rx"
    end="mac_b_rx_fifo.in" />
  <connection
    kind="avalon_streaming"
-   version="16.0"
+   version="16.1"
    start="mac_c.avalon_st_rx"
    end="mac_c_rx_fifo.in" />
  <connection
    kind="avalon_streaming"
-   version="16.0"
+   version="16.1"
    start="mac_d.avalon_st_rx"
    end="mac_d_rx_fifo.in" />
  <connection
    kind="avalon_streaming"
-   version="16.0"
+   version="16.1"
    start="DE5Top_0.eastmac_source"
    end="mac_c_tx_fifo.in" />
  <connection
    kind="avalon_streaming"
-   version="16.0"
+   version="16.1"
    start="DE5Top_0.northmac_source"
    end="mac_a_tx_fifo.in" />
  <connection
    kind="avalon_streaming"
-   version="16.0"
+   version="16.1"
    start="mac_a_tx_fifo.out"
    end="mac_a.avalon_st_tx" />
  <connection
    kind="avalon_streaming"
-   version="16.0"
+   version="16.1"
    start="mac_b_tx_fifo.out"
    end="mac_b.avalon_st_tx" />
  <connection
    kind="avalon_streaming"
-   version="16.0"
+   version="16.1"
    start="mac_c_tx_fifo.out"
    end="mac_c.avalon_st_tx" />
  <connection
    kind="avalon_streaming"
-   version="16.0"
+   version="16.1"
    start="mac_d_tx_fifo.out"
    end="mac_d.avalon_st_tx" />
  <connection
    kind="avalon_streaming"
-   version="16.0"
+   version="16.1"
    start="mac_c_rx_fifo.out"
    end="DE5Top_0.eastmac_sink" />
  <connection
    kind="avalon_streaming"
-   version="16.0"
+   version="16.1"
    start="mac_a_rx_fifo.out"
    end="DE5Top_0.northmac_sink" />
  <connection
    kind="avalon_streaming"
-   version="16.0"
+   version="16.1"
    start="mac_b_rx_fifo.out"
    end="DE5Top_0.southmac_sink" />
  <connection
    kind="avalon_streaming"
-   version="16.0"
+   version="16.1"
    start="mac_d_rx_fifo.out"
    end="DE5Top_0.westmac_sink" />
  <connection
    kind="avalon_streaming"
-   version="16.0"
+   version="16.1"
    start="DE5Top_0.southmac_source"
    end="mac_b_tx_fifo.in" />
  <connection
    kind="avalon_streaming"
-   version="16.0"
+   version="16.1"
    start="DE5Top_0.westmac_source"
    end="mac_d_tx_fifo.in" />
  <connection
    kind="clock"
-   version="16.0"
+   version="16.1"
    start="mem_if_ddr3_emif.afi_clk"
    end="mem_if_ddr3_emif_2.afi_clk_in" />
  <connection
    kind="clock"
-   version="16.0"
+   version="16.1"
    start="mem_if_ddr3_emif.afi_clk"
    end="DE5Top_0.clock" />
  <connection
    kind="clock"
-   version="16.0"
+   version="16.1"
    start="mem_if_ddr3_emif.afi_clk"
    end="mac_a_tx_fifo.in_clk" />
  <connection
    kind="clock"
-   version="16.0"
+   version="16.1"
    start="mem_if_ddr3_emif.afi_clk"
    end="mac_b_tx_fifo.in_clk" />
  <connection
    kind="clock"
-   version="16.0"
+   version="16.1"
    start="mem_if_ddr3_emif.afi_clk"
    end="mac_c_tx_fifo.in_clk" />
  <connection
    kind="clock"
-   version="16.0"
+   version="16.1"
    start="mem_if_ddr3_emif.afi_clk"
    end="mac_d_tx_fifo.in_clk" />
  <connection
    kind="clock"
-   version="16.0"
+   version="16.1"
    start="mem_if_ddr3_emif.afi_clk"
    end="mac_a_rx_fifo.out_clk" />
  <connection
    kind="clock"
-   version="16.0"
+   version="16.1"
    start="mem_if_ddr3_emif.afi_clk"
    end="mac_b_rx_fifo.out_clk" />
  <connection
    kind="clock"
-   version="16.0"
+   version="16.1"
    start="mem_if_ddr3_emif.afi_clk"
    end="mac_c_rx_fifo.out_clk" />
  <connection
    kind="clock"
-   version="16.0"
+   version="16.1"
    start="mem_if_ddr3_emif.afi_clk"
    end="mac_d_rx_fifo.out_clk" />
  <connection
    kind="clock"
-   version="16.0"
+   version="16.1"
    start="mem_if_ddr3_emif.afi_clk"
    end="uart_bridge.s0_clk" />
  <connection
    kind="clock"
-   version="16.0"
+   version="16.1"
    start="mem_if_ddr3_emif.afi_half_clk"
    end="mem_if_ddr3_emif_2.afi_half_clk_in" />
- <connection kind="clock" version="16.0" start="clk_50.clk" end="jtag_uart_0.clk" />
- <connection kind="clock" version="16.0" start="clk_50.clk" end="temp_sense.clk" />
- <connection kind="clock" version="16.0" start="clk_50.clk" end="mac_a.csr_clk" />
- <connection kind="clock" version="16.0" start="clk_50.clk" end="mac_b.csr_clk" />
- <connection kind="clock" version="16.0" start="clk_50.clk" end="mac_c.csr_clk" />
- <connection kind="clock" version="16.0" start="clk_50.clk" end="mac_d.csr_clk" />
+ <connection kind="clock" version="16.1" start="clk_50.clk" end="jtag_uart_0.clk" />
+ <connection kind="clock" version="16.1" start="clk_50.clk" end="temp_sense.clk" />
+ <connection kind="clock" version="16.1" start="clk_50.clk" end="mac_a.csr_clk" />
+ <connection kind="clock" version="16.1" start="clk_50.clk" end="mac_b.csr_clk" />
+ <connection kind="clock" version="16.1" start="clk_50.clk" end="mac_c.csr_clk" />
+ <connection kind="clock" version="16.1" start="clk_50.clk" end="mac_d.csr_clk" />
  <connection
    kind="clock"
-   version="16.0"
+   version="16.1"
    start="clk_156.clk"
    end="mac_a_rx_fifo.in_clk" />
  <connection
    kind="clock"
-   version="16.0"
+   version="16.1"
    start="clk_156.clk"
    end="mac_b_rx_fifo.in_clk" />
  <connection
    kind="clock"
-   version="16.0"
+   version="16.1"
    start="clk_156.clk"
    end="mac_c_rx_fifo.in_clk" />
  <connection
    kind="clock"
-   version="16.0"
+   version="16.1"
    start="clk_156.clk"
    end="mac_d_rx_fifo.in_clk" />
  <connection
    kind="clock"
-   version="16.0"
+   version="16.1"
    start="clk_50.clk"
    end="uart_bridge.m0_clk" />
  <connection
    kind="clock"
-   version="16.0"
+   version="16.1"
    start="clk_156.clk"
    end="mac_a_tx_fifo.out_clk" />
  <connection
    kind="clock"
-   version="16.0"
+   version="16.1"
    start="clk_156.clk"
    end="mac_b_tx_fifo.out_clk" />
  <connection
    kind="clock"
-   version="16.0"
+   version="16.1"
    start="clk_156.clk"
    end="mac_c_tx_fifo.out_clk" />
  <connection
    kind="clock"
-   version="16.0"
+   version="16.1"
    start="clk_156.clk"
    end="mac_d_tx_fifo.out_clk" />
  <connection
    kind="clock"
-   version="16.0"
+   version="16.1"
    start="clk_50.clk"
    end="mem_if_ddr3_emif.pll_ref_clk" />
- <connection kind="clock" version="16.0" start="clk_156.clk" end="mac_a.rx_clk" />
- <connection kind="clock" version="16.0" start="clk_156.clk" end="mac_b.rx_clk" />
- <connection kind="clock" version="16.0" start="clk_156.clk" end="mac_c.rx_clk" />
- <connection kind="clock" version="16.0" start="clk_156.clk" end="mac_d.rx_clk" />
- <connection kind="clock" version="16.0" start="clk_156.clk" end="mac_a.tx_clk" />
- <connection kind="clock" version="16.0" start="clk_156.clk" end="mac_b.tx_clk" />
- <connection kind="clock" version="16.0" start="clk_156.clk" end="mac_c.tx_clk" />
- <connection kind="clock" version="16.0" start="clk_156.clk" end="mac_d.tx_clk" />
+ <connection kind="clock" version="16.1" start="clk_156.clk" end="mac_a.rx_clk" />
+ <connection kind="clock" version="16.1" start="clk_156.clk" end="mac_b.rx_clk" />
+ <connection kind="clock" version="16.1" start="clk_156.clk" end="mac_c.rx_clk" />
+ <connection kind="clock" version="16.1" start="clk_156.clk" end="mac_d.rx_clk" />
+ <connection kind="clock" version="16.1" start="clk_156.clk" end="mac_a.tx_clk" />
+ <connection kind="clock" version="16.1" start="clk_156.clk" end="mac_b.tx_clk" />
+ <connection kind="clock" version="16.1" start="clk_156.clk" end="mac_c.tx_clk" />
+ <connection kind="clock" version="16.1" start="clk_156.clk" end="mac_d.tx_clk" />
  <connection
    kind="conduit"
-   version="16.0"
+   version="16.1"
    start="mem_if_ddr3_emif.dll_sharing"
    end="mem_if_ddr3_emif_2.dll_sharing">
   <parameter name="endPort" value="" />
@@ -1517,7 +1517,7 @@
  </connection>
  <connection
    kind="conduit"
-   version="16.0"
+   version="16.1"
    start="mem_if_ddr3_emif.oct_sharing"
    end="mem_if_ddr3_emif_2.oct_sharing">
   <parameter name="endPort" value="" />
@@ -1528,7 +1528,7 @@
  </connection>
  <connection
    kind="conduit"
-   version="16.0"
+   version="16.1"
    start="mem_if_ddr3_emif.pll_sharing"
    end="mem_if_ddr3_emif_2.pll_sharing">
   <parameter name="endPort" value="" />
@@ -1539,237 +1539,237 @@
  </connection>
  <connection
    kind="reset"
-   version="16.0"
+   version="16.1"
    start="mem_if_ddr3_emif.afi_reset"
    end="mem_if_ddr3_emif_2.afi_reset_in" />
  <connection
    kind="reset"
-   version="16.0"
+   version="16.1"
    start="mem_if_ddr3_emif.afi_reset"
    end="mac_a_tx_fifo.in_clk_reset" />
  <connection
    kind="reset"
-   version="16.0"
+   version="16.1"
    start="mem_if_ddr3_emif.afi_reset"
    end="mac_b_tx_fifo.in_clk_reset" />
  <connection
    kind="reset"
-   version="16.0"
+   version="16.1"
    start="mem_if_ddr3_emif.afi_reset"
    end="mac_c_tx_fifo.in_clk_reset" />
  <connection
    kind="reset"
-   version="16.0"
+   version="16.1"
    start="mem_if_ddr3_emif.afi_reset"
    end="mac_d_tx_fifo.in_clk_reset" />
  <connection
    kind="reset"
-   version="16.0"
+   version="16.1"
    start="mem_if_ddr3_emif.afi_reset"
    end="mac_a_rx_fifo.out_clk_reset" />
  <connection
    kind="reset"
-   version="16.0"
+   version="16.1"
    start="mem_if_ddr3_emif.afi_reset"
    end="mac_b_rx_fifo.out_clk_reset" />
  <connection
    kind="reset"
-   version="16.0"
+   version="16.1"
    start="mem_if_ddr3_emif.afi_reset"
    end="mac_c_rx_fifo.out_clk_reset" />
  <connection
    kind="reset"
-   version="16.0"
+   version="16.1"
    start="mem_if_ddr3_emif.afi_reset"
    end="mac_d_rx_fifo.out_clk_reset" />
  <connection
    kind="reset"
-   version="16.0"
+   version="16.1"
    start="mem_if_ddr3_emif.afi_reset"
    end="DE5Top_0.reset_sink" />
  <connection
    kind="reset"
-   version="16.0"
+   version="16.1"
    start="mem_if_ddr3_emif.afi_reset"
    end="uart_bridge.s0_reset" />
  <connection
    kind="reset"
-   version="16.0"
+   version="16.1"
    start="clk_50.clk_reset"
    end="mac_a.csr_reset" />
  <connection
    kind="reset"
-   version="16.0"
+   version="16.1"
    start="clk_50.clk_reset"
    end="mac_b.csr_reset" />
  <connection
    kind="reset"
-   version="16.0"
+   version="16.1"
    start="clk_50.clk_reset"
    end="mac_c.csr_reset" />
  <connection
    kind="reset"
-   version="16.0"
+   version="16.1"
    start="clk_50.clk_reset"
    end="mac_d.csr_reset" />
  <connection
    kind="reset"
-   version="16.0"
+   version="16.1"
    start="clk_50.clk_reset"
    end="mem_if_ddr3_emif.global_reset" />
  <connection
    kind="reset"
-   version="16.0"
+   version="16.1"
    start="clk_50.clk_reset"
    end="mem_if_ddr3_emif_2.global_reset" />
  <connection
    kind="reset"
-   version="16.0"
+   version="16.1"
    start="clk_50.clk_reset"
    end="mac_a_tx_fifo.in_clk_reset" />
  <connection
    kind="reset"
-   version="16.0"
+   version="16.1"
    start="clk_156.clk_reset"
    end="mac_a_rx_fifo.in_clk_reset" />
  <connection
    kind="reset"
-   version="16.0"
+   version="16.1"
    start="clk_50.clk_reset"
    end="mac_b_tx_fifo.in_clk_reset" />
  <connection
    kind="reset"
-   version="16.0"
+   version="16.1"
    start="clk_156.clk_reset"
    end="mac_b_rx_fifo.in_clk_reset" />
  <connection
    kind="reset"
-   version="16.0"
+   version="16.1"
    start="clk_50.clk_reset"
    end="mac_c_tx_fifo.in_clk_reset" />
  <connection
    kind="reset"
-   version="16.0"
+   version="16.1"
    start="clk_156.clk_reset"
    end="mac_c_rx_fifo.in_clk_reset" />
  <connection
    kind="reset"
-   version="16.0"
+   version="16.1"
    start="clk_50.clk_reset"
    end="mac_d_tx_fifo.in_clk_reset" />
  <connection
    kind="reset"
-   version="16.0"
+   version="16.1"
    start="clk_156.clk_reset"
    end="mac_d_rx_fifo.in_clk_reset" />
  <connection
    kind="reset"
-   version="16.0"
+   version="16.1"
    start="clk_50.clk_reset"
    end="uart_bridge.m0_reset" />
  <connection
    kind="reset"
-   version="16.0"
+   version="16.1"
    start="clk_156.clk_reset"
    end="mac_a_tx_fifo.out_clk_reset" />
  <connection
    kind="reset"
-   version="16.0"
+   version="16.1"
    start="clk_50.clk_reset"
    end="mac_a_rx_fifo.out_clk_reset" />
  <connection
    kind="reset"
-   version="16.0"
+   version="16.1"
    start="clk_156.clk_reset"
    end="mac_b_tx_fifo.out_clk_reset" />
  <connection
    kind="reset"
-   version="16.0"
+   version="16.1"
    start="clk_50.clk_reset"
    end="mac_b_rx_fifo.out_clk_reset" />
  <connection
    kind="reset"
-   version="16.0"
+   version="16.1"
    start="clk_156.clk_reset"
    end="mac_c_tx_fifo.out_clk_reset" />
  <connection
    kind="reset"
-   version="16.0"
+   version="16.1"
    start="clk_50.clk_reset"
    end="mac_c_rx_fifo.out_clk_reset" />
  <connection
    kind="reset"
-   version="16.0"
+   version="16.1"
    start="clk_156.clk_reset"
    end="mac_d_tx_fifo.out_clk_reset" />
  <connection
    kind="reset"
-   version="16.0"
+   version="16.1"
    start="clk_50.clk_reset"
    end="mac_d_rx_fifo.out_clk_reset" />
  <connection
    kind="reset"
-   version="16.0"
+   version="16.1"
    start="clk_50.clk_reset"
    end="jtag_uart_0.reset" />
  <connection
    kind="reset"
-   version="16.0"
+   version="16.1"
    start="clk_50.clk_reset"
    end="DE5Top_0.reset_sink" />
  <connection
    kind="reset"
-   version="16.0"
+   version="16.1"
    start="clk_156.clk_reset"
    end="mac_a.rx_reset" />
  <connection
    kind="reset"
-   version="16.0"
+   version="16.1"
    start="clk_156.clk_reset"
    end="mac_b.rx_reset" />
  <connection
    kind="reset"
-   version="16.0"
+   version="16.1"
    start="clk_156.clk_reset"
    end="mac_c.rx_reset" />
  <connection
    kind="reset"
-   version="16.0"
+   version="16.1"
    start="clk_156.clk_reset"
    end="mac_d.rx_reset" />
  <connection
    kind="reset"
-   version="16.0"
+   version="16.1"
    start="clk_50.clk_reset"
    end="uart_bridge.s0_reset" />
  <connection
    kind="reset"
-   version="16.0"
+   version="16.1"
    start="clk_50.clk_reset"
    end="mem_if_ddr3_emif.soft_reset" />
  <connection
    kind="reset"
-   version="16.0"
+   version="16.1"
    start="clk_50.clk_reset"
    end="mem_if_ddr3_emif_2.soft_reset" />
  <connection
    kind="reset"
-   version="16.0"
+   version="16.1"
    start="clk_156.clk_reset"
    end="mac_a.tx_reset" />
  <connection
    kind="reset"
-   version="16.0"
+   version="16.1"
    start="clk_156.clk_reset"
    end="mac_b.tx_reset" />
  <connection
    kind="reset"
-   version="16.0"
+   version="16.1"
    start="clk_156.clk_reset"
    end="mac_c.tx_reset" />
  <connection
    kind="reset"
-   version="16.0"
+   version="16.1"
    start="clk_156.clk_reset"
    end="mac_d.tx_reset" />
  <interconnectRequirement for="$system" name="qsys_mm.clockCrossingAdapter" value="FIFO" />

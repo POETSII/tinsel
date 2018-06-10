@@ -174,6 +174,8 @@ inline void* tinselHeapBase()
   uint32_t partId = me & (TinselThreadsPerDRAM-1);
   uint32_t addr = TinselBytesPerDRAM -
                     ((partId+1) << TinselLogBytesPerDRAMPartition);
+  // Use the partition-interleaved translation
+  addr |= 0x80000000;
   return (void*) addr;
 }
 

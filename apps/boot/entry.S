@@ -15,5 +15,9 @@ la sp, DRAM_TOP
 sub sp, sp, a0
 addi sp, sp, -32
 
+# Use the partition-interleaved translation
+li a0, 0x80000000
+or sp, sp, a0
+
 # Jump to main (which we assume will never return)
 j main

@@ -7,7 +7,7 @@ set_global_assignment -name FAMILY "Stratix V"
 set_global_assignment -name DEVICE 5SGXEA7N2F45C2
 set_global_assignment -name TOP_LEVEL_ENTITY "DE5"
 set_global_assignment -name ORIGINAL_QUARTUS_VERSION 11
-set_global_assignment -name LAST_QUARTUS_VERSION 16.0.0
+set_global_assignment -name LAST_QUARTUS_VERSION "16.1.0 Standard Edition"
 set_global_assignment -name PROJECT_CREATION_TIME_DATE "TUE FEB 28 09:17:32 2012"
 set_global_assignment -name DEVICE_FILTER_PACKAGE FBGA
 
