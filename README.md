@@ -14,7 +14,8 @@ machine running Tinsel in the
 * [v0.2](https://github.com/POETSII/tinsel/releases/tag/v0.2):
 Released on 12 April 2017 and maintained in the
 [tinsel-0.2 branch](https://github.com/POETSII/tinsel/tree/tinsel-0.2).
-* v0.3: Under development in the
+* [v0.3](https://github.com/POETSII/tinsel/releases/tag/v0.3):
+Released on 11 June 2018.  Maintained in the
 [master branch](https://github.com/POETSII/tinsel).
 
 ## Contents
