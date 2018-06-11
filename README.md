@@ -4,9 +4,9 @@ Tinsel is a [RISC-V](https://riscv.org/)-based manythread
 message-passing architecture designed for FPGA clusters.  It is being
 developed as part of the [POETS
 Project](https://poets-project.org/about) (Partially Ordered Event
-Triggered Systems).  This manual describes the tinsel architecture and
+Triggered Systems).  This manual describes the Tinsel architecture and
 associated APIs.  If you're a POETS Partner, you can access a
-machine running tinsel in the
+machine running Tinsel in the
 [POETS Cloud](https://github.com/POETSII/poets-cloud).
 
 ## Release Log
@@ -63,7 +63,7 @@ synthesis, are somewhat more ambitous and are in any case likely to
 reuse components and ideas from the overlay.
 
 In the remainder of this section we give an overview of our soft-core
-overlay architecture for POETS, called *tinsel*.
+overlay architecture for POETS, called *Tinsel*.
 
 ### 1.1 Compute Subsystem
 
@@ -87,7 +87,7 @@ applications the illusion of a single shared memory space: message-passing is
 intended to be the primary communication mechansim.
 
 To keep the programming model simple, we have opted to use *caches* to optimise
-access to DRAM rather than *DMA*.  The tinsel cache is partitioned by thread id
+access to DRAM rather than *DMA*.  The Tinsel cache is partitioned by thread id
 (the hash function combines the thread id with some number of address bits) and
 permits at most one request per thread to be present in the cache pipeline at
 any time.  Consequently, there is no aliasing between threads and all data
@@ -132,7 +132,7 @@ by numerous high-speed serial links in a 3D mesh topology.  Each group
 of ten FPGAs will reside in a separate *POETs box*.  One FPGA in each
 box will serve as a *PCI Express bridge board* that connects a modern
 PC to the remaining nine FPGA *worker boards*, with the worker boards
-running tinsel by default.
+running Tinsel by default.
 
 ## 2. Tinsel Core
 
@@ -212,7 +212,7 @@ inline void tinselKillThread();
 ```
 
 Single-precision floating-point operations are implemented by the
-*tinsel FPU*, which may be shared by any number of cores, as defined
+*Tinsel FPU*, which may be shared by any number of cores, as defined
 by the `LogCoresPerFPU` parameter.  Note that, because the FPU is
 implemented using IP blocks provided by the FPGA vendor, there are
 some small [limitations](h-missing-rv32imf-features) with respect to
@@ -288,7 +288,7 @@ to load responses.
 
 A *cache flush* operation is provided that evicts all cache lines
 owned by the calling thread.  This operation is invoked through the
-RISC-V `fence` opcode, or the tinsel API:
+RISC-V `fence` opcode, or the Tinsel API:
 
 ```c
 // Cache flush
@@ -318,7 +318,7 @@ network on which any thread can send a message to any other thread
 communication is more efficient between threads that share the same
 mailbox.
 
-A tinsel *message* is comprised of a bounded number of *flits*.  A
+A Tinsel *message* is comprised of a bounded number of *flits*.  A
 thread can send a message containing any number of flits (up to the
 bound defined by `LogMaxFlitsPerMsg`), but conceptually the message is
 treated as an *atomic unit*: at any moment, either the whole message
@@ -527,14 +527,14 @@ purposes, resulting in very little overhead on the wire.
 
 ## 6. Tinsel HostLink
 
-*HostLink* is the means by which tinsel cores running on a mesh of
+*HostLink* is the means by which Tinsel cores running on a mesh of
 FPGA boards communicate with a *host PC*.  It comprises three main
 communication channels:
 
 * An FPGA *bridge board* that connects to the host PC via PCI
 Express and to the FPGA mesh via a 10Gbps reliable link.  Using this
 high-bandwidth channel (around 1GB/s), the host PC can efficiently
-send messages to any tinsel thread and vice-versa.
+send messages to any Tinsel thread and vice-versa.
 
 * A set of *debug links* connecting the host PC to each FPGA via
 separate USB UART cables.  These low-bandwidth connections (around
@@ -548,14 +548,14 @@ debugging and can be used to implement functions such as `printf` and
 connections can be used to power-on/power-off each FPGA and to monitor
 power consumption and temperature.
 
-A tinsel application typically consists of two programs: one which runs on the
+A Tinsel application typically consists of two programs: one which runs on the
 RISC-V cores, linked against the [Tinsel API](#f-tinsel-api), and the other
 which runs on the host PC, linked against the [HostLink API](#g-hostlink-api).
 The HostLink API is implemented as a C++ class called `HostLink`.  The
 constructor for this class first carries out a reset of the hardware: (1) all
 of the mesh FPGAs are powered down; (2) a soft-reset of the bridge board is
 performed; and (3) all of the mesh FPGAs are powered up.  On power-up the FPGAs
-are automatically programmed using the tinsel bit-file residing in flash
+are automatically programmed using the Tinsel bit-file residing in flash
 memory, and are ready to be used within a few seconds, as soon as the
 `HostLink` constructor returns.
 
@@ -616,7 +616,7 @@ void HostLink::fromAddr(uint32_t addr, uint32_t* meshX, uint32_t* meshY,
                                        uint32_t* coreId, uint32_t* threadId);
 ```
 
-To send a message from a tinsel thread to the host PC, the thread
+To send a message from a Tinsel thread to the host PC, the thread
 needs to know the address of the host PC.  A suitable address depends
 on how the bridge board is connected to the FPGA mesh, and we provide
 the following Tinsel API function to abstract over this detail.
@@ -691,7 +691,7 @@ indicates whether or not a byte was received.  The `ToUart` CSR should
 be read and written atomically using the `cssrw` instruction and the
 value read is non-zero on success (the write may fail due to
 back-pressure).  These CSRs are used to implement the following
-non-blocking functions in the tinsel API:
+non-blocking functions in the Tinsel API:
 
 ```c
 // Receive byte from StdIn (over DebugLink)
@@ -703,7 +703,7 @@ inline uint32_t tinselUartTryGet();
 inline uint32_t tinselUartTryPut(uint8_t x);
 ```
 
-On power-up, only a single tinsel thread (with id 0) on each core is
+On power-up, only a single Tinsel thread (with id 0) on each core is
 active and running a [boot loader](/apps/boot/boot.c).  When the boot
 loader is running, the HostLink API supports the following methods.
 
@@ -737,7 +737,7 @@ the boot loader.
 
 ## A. DE5-Net Synthesis Report
 
-The default tinsel configuration on a single DE5-Net board contains:
+The default Tinsel configuration on a single DE5-Net board contains:
 
   * 64 cores
   * 16 threads per core
