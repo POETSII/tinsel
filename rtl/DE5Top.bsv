@@ -77,7 +77,6 @@ module de5Top (DE5Top);
     for (Integer j = 0; j < `DCachesPerDRAM; j=j+1)
       for (Integer k = 0; k < `CoresPerDCache; k=k+1) begin
         cores[i][j][k] <- mkCore(fromInteger(coreCount));
-        mkInstrMem(cores[i][j][k].instrMemClient);
         coreCount = coreCount+1;
       end
 
@@ -88,6 +87,24 @@ module de5Top (DE5Top);
         for (Integer k = 0; k < `CoresPerDCache; k=k+1)
           cores[i][j][k].setBoardId(boardId);
   endrule
+
+  // Create instruction memories
+  `ifdef SharedInstrMem
+    for (Integer i = 0; i < `DRAMsPerBoard; i=i+1)
+      for (Integer j = 0; j < `DCachesPerDRAM; j=j+1)
+        for (Integer k = 0; k < `CoresPerDCache; k=k+2) begin
+          if (k+1 < `CoresPerDCache)
+            mkDualInstrMem(cores[i][j][k].instrMemClient,
+                           cores[i][j][k+1].instrMemClient);
+          else
+            mkInstrMem(cores[i][j][k].instrMemClient);
+        end
+  `else
+    for (Integer i = 0; i < `DRAMsPerBoard; i=i+1)
+      for (Integer j = 0; j < `DCachesPerDRAM; j=j+1)
+        for (Integer k = 0; k < `CoresPerDCache; k=k+1)
+          mkInstrMem(cores[i][j][k].instrMemClient);
+  `endif
 
   // Connect cores to data caches
   function dcacheClient(core) = core.dcacheClient;

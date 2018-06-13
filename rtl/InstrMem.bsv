@@ -14,6 +14,7 @@ import RegFile   :: *;
 import Assert    :: *;
 import Util      :: *;
 import ConfigReg :: *;
+import BRAMCore  :: *;
 
 // An index to instruction memory
 typedef Bit#(`LogInstrsPerCore) InstrIndex;
@@ -50,26 +51,21 @@ endmodule
 
 `ifdef SIMULATE
 
-// In simulation, use a RegFile
+// In simulation, use a BSV block RAM
 module mkDualInstrMem#(InstrMemClient clientA, InstrMemClient clientB) (Empty);
   // Instruction memory
-  RegFile#(InstrIndex, Bit#(32)) instrMem <- mkRegFileFullLoad("InstrMem");
-
-  // Data out registers
-  Reg#(Bit#(32)) dataA <- mkRegU;
-  Reg#(Bit#(32)) dataB <- mkRegU;
+  BRAM_DUAL_PORT#(InstrIndex, Bit#(32)) instrMem <-
+    mkBRAMCore2Load(2**`LogInstrsPerCore, False, "InstrMem.hex", False);
 
   // Connect to clients
   rule connectA;
-    if (clientA.write) instrMem.upd(clientA.addr, clientA.writeData);
-    else dataA <= instrMem.sub(clientA.addr);
-    clientA.resp(dataA);
+    instrMem.a.put(clientA.write, clientA.addr, clientA.writeData);
+    clientA.resp(instrMem.a.read);
   endrule
 
   rule connectB;
-    if (clientB.write) instrMem.upd(clientB.addr, clientB.writeData);
-    else dataB <= instrMem.sub(clientB.addr);
-    clientB.resp(dataB);
+    instrMem.b.put(clientB.write, clientB.addr, clientB.writeData);
+    clientB.resp(instrMem.b.read);
   endrule
 endmodule
 
