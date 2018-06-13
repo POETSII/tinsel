@@ -21,6 +21,7 @@ import Globals   :: *;
 import DebugLink :: *;
 import FPU       :: *;
 import FPUOps    :: *;
+import InstrMem  :: *;
 
 // ============================================================================
 // Control/status registers (CSRs) supported
@@ -467,6 +468,7 @@ interface Core;
   interface MailboxClient   mailboxClient;
   interface DebugLinkClient debugLinkClient;
   interface FPUClient       fpuClient;
+  interface InstrMemClient  instrMemClient;
   (* always_ready, always_enabled *)
   method Action setBoardId(BoardId id);
 endinterface
@@ -565,10 +567,17 @@ module mkCore#(CoreId myId) (Core);
   BlockRam#(ThreadId, SuspendedThreadState) suspended <- mkBlockRam;
 
   // Instruction memory
-  BlockRamOpts instrMemOpts = defaultBlockRamOpts;
-  instrMemOpts.initFile = Valid("InstrMem");
-  instrMemOpts.registerDataOut = False;
-  BlockRam#(InstrIndex, Bit#(32)) instrMem <- mkBlockRamOpts(instrMemOpts);
+  // Declared outside core since it may be shared
+  // Wire-based interfaced used due to synthesis boundary
+  Wire#(Bool)       instrMemWrite     <- mkDWire(False);
+  Wire#(InstrIndex) instrMemReadAddr  <- mkDWire(0);
+  Wire#(InstrIndex) instrMemWriteAddr <- mkDWire(0);
+  Wire#(Bit#(32))   instrMemWriteData <- mkDWire(?);
+  Wire#(Bit#(32))   instrMemReadData  <- mkDWire(?);
+
+  // The schedule stage doesn't fire when thi
+  // The first pipeline stage ('schedule') doesn't fire when this is high
+  Wire#(Bool) stall <- mkDWire(False);
 
   // Register file (duplicated to allow two reads per cycle)
   BlockRamOpts regFileOpts = defaultBlockRamOpts;
@@ -635,7 +644,7 @@ module mkCore#(CoreId myId) (Core);
   // False if taken from resumeQueue
   Reg#(Bool) prevFromRunQueue <- mkReg(False);
 
-  rule schedule1 (runQueue.canDeq || resumeQueue.canDeq);
+  rule schedule1 (!stall && (runQueue.canDeq || resumeQueue.canDeq));
     // Take next thread from runQueue or resumeQueue using fair merge
     if (resumeQueue.canDeq && (prevFromRunQueue || !runQueue.canDeq)) begin
       resumeQueue.deq;
@@ -659,7 +668,7 @@ module mkCore#(CoreId myId) (Core);
     PipelineToken token = ?;
     token.thread = next;
     // Use thread's PC to fetch instruction
-    instrMem.read(truncateLSB(next.pc));
+    instrMemReadAddr <= truncateLSB(next.pc);
     // Trigger second fetch sub-stage
     fetch2Input  <= token;
   endrule
@@ -667,7 +676,7 @@ module mkCore#(CoreId myId) (Core);
   rule fetch2;
     PipelineToken token = fetch2Input;
     // Register instruction memory outputs
-    token.instr = instrMem.dataOut;
+    token.instr = instrMemReadData;
     // Does result go to integer or floating-point register file?
     token.destRegFile = rdRegFile(token.instr);
     // Fetch operands from integer or floating-point register file?
@@ -740,8 +749,11 @@ module mkCore#(CoreId myId) (Core);
     token.canSend = mailbox.canSend;
     token.canRecv = mailbox.canRecv;
     // Address for write-port of instrMem
-    if (token.op.csr.isInstrAddr)
+    if (token.op.csr.isInstrAddr) begin
       token.thread.instrWriteIndex = truncate(token.valA);
+      // Stall pipeline because instruction write will happen on next cycle
+      stall <= True;
+    end
     // Emit char to console (simulation only)
     `ifdef SIMULATE
     if (token.op.csr.isEmit) begin
@@ -776,8 +788,11 @@ module mkCore#(CoreId myId) (Core);
     res.opui = token.imm + (addPCtoUI(token.instr) ?
                               zeroExtend(token.thread.pc) : 0);
     // Write to instruction memory
-    if (token.op.csr.isInstr)
-      instrMem.write(token.thread.instrWriteIndex, token.valA);
+    if (token.op.csr.isInstr) begin
+      instrMemWrite <= True;
+      instrMemWriteAddr <= token.thread.instrWriteIndex;
+      instrMemWriteData <= token.valA;
+    end
     // Load or store: send request to data cache or scratchpad
     Bool retry = False;
     Bool suspend = False;
@@ -1107,6 +1122,15 @@ module mkCore#(CoreId myId) (Core);
   interface FPUClient fpuClient;
     interface Out fpuReqOut = toFPUPort.out;
     interface In  fpuRespIn = fromFPUPort.in;
+  endinterface
+
+  interface InstrMemClient instrMemClient;
+    method write     = instrMemWrite;
+    method addr      = instrMemReadAddr | instrMemWriteAddr;
+    method writeData = instrMemWriteData;
+    method Action resp(Bit#(32) readData);
+      instrMemReadData <= readData;
+    endmethod
   endinterface
 
   method Action setBoardId(BoardId id);
