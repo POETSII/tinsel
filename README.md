@@ -162,15 +162,18 @@ completes.  While suspended, a thread is not present in the queue of
 runnable threads from which the scheduler will select the next thread,
 so does not burn CPU cycles.
 
-The core fetches instructions from an *instruction memory*
-implemented using on-chip block RAM.  The size of this memory is
-controlled by the synthesis-time parameter `LogInstrsPerCore`.  All
-threads in a core share the same instruction memory.  The initial
-contents of the memory is specified in the FPGA bitstream and typically
-contains a boot loader.  The instruction memory is not memory-mapped
-(i.e. not accessible via load/store instructions) but two CSRs are
-provided for writing instructions into the memory: `InstrAddr` and
-`Instr`.
+The core fetches instructions from an *instruction memory* implemented
+using on-chip block RAM.  The size of this memory is controlled by the
+synthesis-time parameter `LogInstrsPerCore`.  All threads in a core
+share the same instruction memory.  If the `SharedInstrMem` parameter
+is `True` then each instruction memory will be shared by up to two
+cores, using the dual-port feature of block RAMs. Otherwise, if it is
+`False` then each core will have its own instruction memory.  The
+initial contents of the memory is specified in the FPGA bitstream and
+typically contains a boot loader.  The instruction memory is not
+memory-mapped (i.e. not accessible via load/store instructions) but
+two CSRs are provided for writing instructions into the memory:
+`InstrAddr` and `Instr`.
 
   CSR Name    | CSR    | R/W | Function
   ----------- | ------ | --- | --------
@@ -229,6 +232,7 @@ A summary of synthesis-time parameters introduced in this section:
   ------------------- | ------- | -----------
   `LogThreadsPerCore` |       4 | Number of hardware threads per core
   `LogInstrsPerCore`  |      11 | Size of each instruction memory
+  `SharedInstrMem`    |    True | Is each instruction memory shared by 2 cores?
   `LogCoresPerFPU`    |       2 | Number of cores sharing a floating-point unit
 
 ## 3. Tinsel Cache
@@ -761,6 +765,7 @@ ALMs, *50% of the DE5-Net*.
   ------------------------ | ------- | -----------
   `LogThreadsPerCore`      |       4 | Number of hardware threads per core
   `LogInstrsPerCore`       |      11 | Size of each instruction memory
+  `SharedInstrMem`         |    True | Is each instr memory shared by 2 cores?
   `LogCoresPerFPU`         |       2 | Number of cores sharing an FPU
   `LogCoresPerDCache`      |       2 | Cores per cache
   `LogDCachesPerDRAM`      |       3 | Caches per DRAM

@@ -27,6 +27,9 @@ p["LogThreadsPerCore"] = 4
 # The number of 32-bit instructions that fit in a core's instruction memory
 p["LogInstrsPerCore"] = 11
 
+# Share instruction memory between two cores?
+p["SharedInstrMem"] = True
+
 # Log of number of multi-threaded cores sharing a DCache
 p["LogCoresPerDCache"] = 2
 
