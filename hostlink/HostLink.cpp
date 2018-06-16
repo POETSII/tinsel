@@ -377,32 +377,37 @@ void HostLink::boot(const char* codeFilename, const char* dataFilename)
   // Step 2: initialise data memory
   // ------------------------------
 
-  // Compute number of cores per DRAM
-  const uint32_t coresPerDRAM = 1 <<
-    (TinselLogCoresPerDCache + TinselLogDCachesPerDRAM);
+  // Data section only supported when caches are being used
+  if (TinselUseCaches) {
 
-  // Write data to DRAMs
-  addrReg = 0;
-  while (data.getWord(&addr, &word)) {
-    for (int x = 0; x < TinselMeshXLen; x++) {
-      for (int y = 0; y < TinselMeshYLen; y++) {
-        for (int i = 0; i < TinselDRAMsPerBoard; i++) {
-          // Use one core to initialise each DRAM
-          uint32_t dest = toAddr(x, y, coresPerDRAM * i, 0);
-          if (addr != addrReg) {
-            req.cmd = SetAddrCmd;
+    // Compute number of cores per DRAM
+    const uint32_t coresPerDRAM = 1 <<
+      (TinselLogCoresPerDCache + TinselLogDCachesPerDRAM);
+
+    // Write data to DRAMs
+    addrReg = 0;
+    while (data.getWord(&addr, &word)) {
+      for (int x = 0; x < TinselMeshXLen; x++) {
+        for (int y = 0; y < TinselMeshYLen; y++) {
+          for (int i = 0; i < TinselDRAMsPerBoard; i++) {
+            // Use one core to initialise each DRAM
+            uint32_t dest = toAddr(x, y, coresPerDRAM * i, 0);
+            if (addr != addrReg) {
+              req.cmd = SetAddrCmd;
+              req.numArgs = 1;
+              req.args[0] = addr;
+              send(dest, 1, &req);
+            }
+            req.cmd = StoreCmd;
             req.numArgs = 1;
-            req.args[0] = addr;
+            req.args[0] = word;
             send(dest, 1, &req);
           }
-          req.cmd = StoreCmd;
-          req.numArgs = 1;
-          req.args[0] = word;
-          send(dest, 1, &req);
         }
       }
+      addrReg = addr + 4;
     }
-    addrReg = addr + 4;
+
   }
 
   // Step 3: start cores
@@ -479,7 +484,7 @@ void HostLink::bootOne(const char* codeFilename, const char* dataFilename)
   // Step 2: initialise data memory
   // ------------------------------
 
-  // Write data to DRAM
+  // Write data section to memory
   addrReg = 0;
   while (data.getWord(&addr, &word)) {
     // Write data

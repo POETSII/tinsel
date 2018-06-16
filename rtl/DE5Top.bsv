@@ -45,8 +45,10 @@ endinterface
 `endif
 
 // ============================================================================
-// Implementation
+// Implementation with caches
 // ============================================================================
+
+`ifdef UseCaches
 
 module de5Top (DE5Top);
   // Board Id
@@ -179,5 +181,123 @@ module de5Top (DE5Top);
   endmethod
   `endif
 endmodule
+
+`else
+
+// ============================================================================
+// Implementation without caches
+// ============================================================================
+
+module de5Top (DE5Top);
+  // Board Id
+  `ifdef SIMULATE
+  BoardId boardId = unpack(truncate(getBoardId()));
+  `else
+  Wire#(BoardId) boardId <- mkDWire(?);
+  `endif
+
+  // Create DRAMs
+  Vector#(`DRAMsPerBoard, DRAM) drams;
+  for (Integer i = 0; i < `DRAMsPerBoard; i=i+1)
+    drams[i] <- mkDRAM(fromInteger(i));
+
+  // Create cores
+  Integer coreCount = 0;
+  Vector#(`MailboxesPerBoard,
+    Vector#(`CoresPerMailbox, Core)) cores = newVector;
+  for (Integer i = 0; i < `MailboxesPerBoard; i=i+1)
+    for (Integer j = 0; j < `CoresPerMailbox; j=j+1) begin
+      cores[i][j] <- mkCore(fromInteger(coreCount));
+      coreCount = coreCount+1;
+    end
+
+  // Set board ids
+  rule setBoardIds;
+    for (Integer i = 0; i < `MailboxesPerBoard; i=i+1)
+      for (Integer j = 0; j < `CoresPerMailbox; j=j+1)
+        cores[i][j].setBoardId(boardId);
+  endrule
+
+  // Create instruction memories
+  `ifdef SharedInstrMem
+    for (Integer i = 0; i < `MailboxesPerBoard; i=i+1)
+      for (Integer j = 0; j < `CoresPerMailbox; j=j+2) begin
+        if (j+1 < `CoresPerMailbox)
+          mkDualInstrMem(cores[i][j].instrMemClient,
+                         cores[i][j+1].instrMemClient);
+        else
+          mkInstrMem(cores[i][j].instrMemClient);
+      end
+  `else
+    for (Integer i = 0; i < `MailboxesPerBoard; i=i+1)
+      for (Integer j = 0; j < `CoresPerMailbox; j=j+1)
+        mkInstrMem(cores[i][j].instrMemClient);
+  `endif
+
+  // Create FPUs
+  Vector#(`FPUsPerBoard, FPU) fpus;
+  for (Integer i = 0; i < `FPUsPerBoard; i=i+1)
+    fpus[i] <- mkFPU;
+
+  // Connect cores to FPUs
+  let vecOfCores = concat(cores);
+  for (Integer i = 0; i < `FPUsPerBoard; i=i+1) begin
+    // Get sub-vector of cores to be connected to FPU i
+    Vector#(`CoresPerFPU, Core) cs =
+      takeAt(`CoresPerFPU*i, vecOfCores);
+    function fpuClient(core) = core.fpuClient;
+    // Connect sub-vector of cores to FPU
+    connectCoresToFPU(map(fpuClient, cs), fpus[i]);
+  end
+
+  // Create mailboxes
+  Vector#(`MailboxesPerBoard, Mailbox) mailboxes;
+  for (Integer i = 0; i < `MailboxesPerBoard; i=i+1)
+    mailboxes[i] <- mkMailbox;
+
+  // Connect cores to mailboxes
+  for (Integer i = 0; i < `MailboxesPerBoard; i=i+1) begin
+    // Get sub-vector of cores to be connected to mailbox i
+    Vector#(`CoresPerMailbox, Core) cs =
+      takeAt(`CoresPerMailbox*i, vecOfCores);
+    function mailboxClient(core) = core.mailboxClient;
+    // Connect sub-vector of cores to mailbox
+    connectCoresToMailbox(map(mailboxClient, cs), mailboxes[i]);
+  end
+
+  // Create bus of mailboxes
+  function MailboxNet mailboxNet(Mailbox mbox) = mbox.net;
+  ExtNetwork net <- mkBus(boardId, map(mailboxNet, mailboxes));
+
+  // Create DebugLink interface
+  function DebugLinkClient getDebugLinkClient(Core core) = core.debugLinkClient;
+  DebugLink debugLink <-
+    mkDebugLink(boardId, map(getDebugLinkClient, vecOfCores));
+
+  // In simulation, display start-up message
+  `ifdef SIMULATE
+  rule displayStartup;
+    let t <- $time;
+    if (t == 0) begin
+      $display("\nSimulator for board %d started", boardId);
+    end
+  endrule
+  `endif
+
+  `ifndef SIMULATE
+  function DRAMExtIfc getDRAMExtIfc(DRAM dram) = dram.external;
+  interface dramIfcs = map(getDRAMExtIfc, drams);
+  interface jtagIfc  = debugLink.jtagAvalon;
+  interface northMac = net.north;
+  interface southMac = net.south;
+  interface eastMac  = net.east;
+  interface westMac  = net.west;
+  method Action setBoardId(BoardId id);
+    boardId <= id;
+  endmethod
+  `endif
+endmodule
+
+`endif
 
 endpackage

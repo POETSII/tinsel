@@ -78,7 +78,7 @@ int main()
       }
       else if (cmd == StartCmd) {
         // Cache flush
-        tinselCacheFlush();
+        if (TinselUseCaches) tinselCacheFlush();
         // Send response
         tinselWaitUntil(TINSEL_CAN_SEND);
         msgOut[0] = me;

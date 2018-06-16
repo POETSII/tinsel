@@ -30,6 +30,9 @@ p["LogInstrsPerCore"] = 11
 # Share instruction memory between two cores?
 p["SharedInstrMem"] = True
 
+# Uses data caches?
+p["UseCaches"] = False
+
 # Log of number of multi-threaded cores sharing a DCache
 p["LogCoresPerDCache"] = 2
 
@@ -76,7 +79,7 @@ p["LogMsgsPerThread"] = 4
 p["LogCoresPerMailbox"] = 2
 
 # Number of mailboxes per board
-p["LogMailboxesPerBoard"] = 4
+p["LogMailboxesPerBoard"] = 5
 
 # Maximum size of boot loader (in bytes)
 p["MaxBootImageBytes"] = 512
@@ -195,9 +198,7 @@ p["CoresPerMailbox"] = 2 ** p["LogCoresPerMailbox"]
 p["LogThreadsPerMailbox"] = p["LogCoresPerMailbox"]+p["LogThreadsPerCore"]
 
 # Base of off-chip memory-mapped region in bytes
-p["LogOffChipRAMBaseAddr"] = (1+p["LogWordsPerFlit"]+2+
-                                p["LogMaxFlitsPerMsg"]+
-                                p["LogMsgsPerThread"])
+p["LogOffChipRAMBaseAddr"] = 20
 
 # Size of mailbox transmit buffer
 p["LogTransmitBufferLen"] = (p["LogMaxFlitsPerMsg"]
@@ -284,4 +285,7 @@ elif mode == "envs":
     print("export " + var + "=" + str(p[var]))
 elif mode == "cpp":
   for var in p:
-    print("#define Tinsel" + var + " " + str(p[var]))
+    if isinstance(p[var], bool):
+      print("#define Tinsel" + var + (" 1" if p[var] else " 0"))
+    else:
+      print("#define Tinsel" + var + " " + str(p[var]))

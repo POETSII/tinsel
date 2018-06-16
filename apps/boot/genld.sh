@@ -5,6 +5,8 @@ while read -r EXPORT; do
   eval $EXPORT
 done <<< `python ../../config.py envs`
 
+MailboxTop=$((2 ** ($LogBytesPerMsg+$LogMsgsPerThread+1)))
+
 cat - << EOF
 /* THIS FILE HAS BEEN GENERATED AUTOMATICALLY. */
 /* DO NOT MODIFY. INSTEAD, MODIFY THE genld.sh SCRIPT. */
@@ -12,6 +14,7 @@ cat - << EOF
 OUTPUT_ARCH( "riscv" )
 
 DRAM_TOP = $BytesPerDRAM;
+MAILBOX_TOP = $MailboxTop;
 
 MEMORY
 {
