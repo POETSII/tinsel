@@ -8,6 +8,15 @@ done <<< `python ../../config.py envs`
 # Compute space available for instructions
 MaxInstrBytes=$((4 * 2**$LogInstrsPerCore - $MaxBootImageBytes))
 
+# Data section address and length
+if [ "$UseCaches" = "True" ]; then
+  DataBase="0x100000"
+  DataLength="0x1ff00000"
+else
+  DataBase=0
+  DataLength=0
+fi
+
 cat - << EOF
 /* THIS FILE HAS BEEN GENERATED AUTOMATICALLY. */
 /* DO NOT MODIFY. INSTEAD, MODIFY THE genld.sh SCRIPT. */
@@ -17,7 +26,7 @@ OUTPUT_ARCH( "riscv" )
 MEMORY
 {
   instrs  : ORIGIN = $MaxBootImageBytes, LENGTH = $MaxInstrBytes
-  globals : ORIGIN = 0x100000, LENGTH = 0x1ff00000
+  globals : ORIGIN = $DataBase, LENGTH = $DataLength
 }
 
 SECTIONS
