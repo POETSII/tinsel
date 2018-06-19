@@ -28,7 +28,7 @@ p["LogThreadsPerCore"] = 4
 p["LogInstrsPerCore"] = 11
 
 # Share instruction memory between two cores?
-p["SharedInstrMem"] = True
+p["SharedInstrMem"] = False
 
 # Log of number of multi-threaded cores sharing a DCache
 p["LogCoresPerDCache"] = 2
