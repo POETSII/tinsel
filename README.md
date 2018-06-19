@@ -230,7 +230,7 @@ A summary of synthesis-time parameters introduced in this section:
   ------------------- | ------- | -----------
   `LogThreadsPerCore` |       4 | Number of hardware threads per core
   `LogInstrsPerCore`  |      11 | Size of each instruction memory
-  `SharedInstrMem`    |    True | Is each instruction memory shared by 2 cores?
+  `SharedInstrMem`    |   False | Is each instruction memory shared by 2 cores?
   `LogCoresPerFPU`    |       2 | Number of cores sharing a floating-point unit
 
 ## 3. Tinsel Cache
