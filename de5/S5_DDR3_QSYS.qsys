@@ -49,14 +49,6 @@
          type = "String";
       }
    }
-   element clk_156
-   {
-      datum _sortIndex
-      {
-         value = "6";
-         type = "int";
-      }
-   }
    element clk_50
    {
       datum _sortIndex
@@ -125,7 +117,7 @@
    {
       datum _sortIndex
       {
-         value = "13";
+         value = "14";
          type = "int";
       }
    }
@@ -133,7 +125,7 @@
    {
       datum _sortIndex
       {
-         value = "15";
+         value = "16";
          type = "int";
       }
    }
@@ -141,7 +133,7 @@
    {
       datum _sortIndex
       {
-         value = "14";
+         value = "15";
          type = "int";
       }
    }
@@ -149,7 +141,7 @@
    {
       datum _sortIndex
       {
-         value = "16";
+         value = "17";
          type = "int";
       }
    }
@@ -157,7 +149,7 @@
    {
       datum _sortIndex
       {
-         value = "18";
+         value = "19";
          type = "int";
       }
    }
@@ -165,7 +157,7 @@
    {
       datum _sortIndex
       {
-         value = "17";
+         value = "18";
          type = "int";
       }
    }
@@ -198,11 +190,27 @@
          type = "int";
       }
    }
+   element pcie_clk_156
+   {
+      datum _sortIndex
+      {
+         value = "13";
+         type = "int";
+      }
+   }
+   element sfp_clk_156
+   {
+      datum _sortIndex
+      {
+         value = "6";
+         type = "int";
+      }
+   }
    element temp_sense
    {
       datum _sortIndex
       {
-         value = "19";
+         value = "20";
          type = "int";
       }
    }
@@ -237,7 +245,6 @@
  <instanceScript></instanceScript>
  <interface name="board_id" internal="DE5Top_0.board_id" type="conduit" dir="end" />
  <interface name="clk" internal="clk_50.clk_in" type="clock" dir="end" />
- <interface name="clk_156" internal="clk_156.clk_in" type="clock" dir="end" />
  <interface
    name="ddr3_reset"
    internal="mem_if_ddr3_emif.afi_reset_export"
@@ -326,10 +333,25 @@
    dir="end" />
  <interface name="oct" internal="mem_if_ddr3_emif.oct" type="conduit" dir="end" />
  <interface name="oct_2" internal="mem_if_ddr3_emif_2.oct" />
+ <interface
+   name="pcie_clk_156"
+   internal="pcie_clk_156.clk_in"
+   type="clock"
+   dir="end" />
+ <interface
+   name="pcie_reset_156"
+   internal="pcie_clk_156.clk_in_reset"
+   type="reset"
+   dir="end" />
  <interface name="reset" internal="clk_50.clk_in_reset" type="reset" dir="end" />
  <interface
-   name="reset_156"
-   internal="clk_156.clk_in_reset"
+   name="sfp_clk_156"
+   internal="sfp_clk_156.clk_in"
+   type="clock"
+   dir="end" />
+ <interface
+   name="sfp_reset_156"
+   internal="sfp_clk_156.clk_in_reset"
    type="reset"
    dir="end" />
  <interface name="ts_clear" internal="temp_sense.clr" type="reset" dir="end" />
@@ -341,12 +363,6 @@
  <interface name="ts_enable" internal="temp_sense.ce" type="conduit" dir="end" />
  <interface name="ts_out" internal="temp_sense.tsdcalo" type="conduit" dir="end" />
  <module name="DE5Top_0" kind="DE5Top" version="1.0" enabled="1" />
- <module name="clk_156" kind="clock_source" version="16.1" enabled="1">
-  <parameter name="clockFrequency" value="156250000" />
-  <parameter name="clockFrequencyKnown" value="true" />
-  <parameter name="inputClockFrequency" value="0" />
-  <parameter name="resetSynchronousEdges" value="NONE" />
- </module>
  <module name="clk_50" kind="clock_source" version="16.1" enabled="1">
   <parameter name="clockFrequency" value="50000000" />
   <parameter name="clockFrequencyKnown" value="true" />
@@ -1234,6 +1250,18 @@
   <parameter name="WEIGHT_PORT" value="0,0,0,0,0,0" />
   <parameter name="WRBUFFER_ADDR_WIDTH" value="6" />
  </module>
+ <module name="pcie_clk_156" kind="clock_source" version="16.1" enabled="1">
+  <parameter name="clockFrequency" value="156250000" />
+  <parameter name="clockFrequencyKnown" value="true" />
+  <parameter name="inputClockFrequency" value="0" />
+  <parameter name="resetSynchronousEdges" value="NONE" />
+ </module>
+ <module name="sfp_clk_156" kind="clock_source" version="16.1" enabled="1">
+  <parameter name="clockFrequency" value="156250000" />
+  <parameter name="clockFrequencyKnown" value="true" />
+  <parameter name="inputClockFrequency" value="0" />
+  <parameter name="resetSynchronousEdges" value="NONE" />
+ </module>
  <module name="temp_sense" kind="altera_temp_sense" version="16.1" enabled="1">
   <parameter name="CBX_AUTO_BLACKBOX" value="ALL" />
   <parameter name="CE_CHECK" value="true" />
@@ -1449,22 +1477,22 @@
  <connection
    kind="clock"
    version="16.1"
-   start="clk_156.clk"
+   start="sfp_clk_156.clk"
    end="mac_a_rx_fifo.in_clk" />
  <connection
    kind="clock"
    version="16.1"
-   start="clk_156.clk"
+   start="sfp_clk_156.clk"
    end="mac_b_rx_fifo.in_clk" />
  <connection
    kind="clock"
    version="16.1"
-   start="clk_156.clk"
+   start="pcie_clk_156.clk"
    end="mac_c_rx_fifo.in_clk" />
  <connection
    kind="clock"
    version="16.1"
-   start="clk_156.clk"
+   start="pcie_clk_156.clk"
    end="mac_d_rx_fifo.in_clk" />
  <connection
    kind="clock"
@@ -1474,36 +1502,68 @@
  <connection
    kind="clock"
    version="16.1"
-   start="clk_156.clk"
+   start="sfp_clk_156.clk"
    end="mac_a_tx_fifo.out_clk" />
  <connection
    kind="clock"
    version="16.1"
-   start="clk_156.clk"
+   start="sfp_clk_156.clk"
    end="mac_b_tx_fifo.out_clk" />
  <connection
    kind="clock"
    version="16.1"
-   start="clk_156.clk"
+   start="pcie_clk_156.clk"
    end="mac_c_tx_fifo.out_clk" />
  <connection
    kind="clock"
    version="16.1"
-   start="clk_156.clk"
+   start="pcie_clk_156.clk"
    end="mac_d_tx_fifo.out_clk" />
  <connection
    kind="clock"
    version="16.1"
    start="clk_50.clk"
    end="mem_if_ddr3_emif.pll_ref_clk" />
- <connection kind="clock" version="16.1" start="clk_156.clk" end="mac_a.rx_clk" />
- <connection kind="clock" version="16.1" start="clk_156.clk" end="mac_b.rx_clk" />
- <connection kind="clock" version="16.1" start="clk_156.clk" end="mac_c.rx_clk" />
- <connection kind="clock" version="16.1" start="clk_156.clk" end="mac_d.rx_clk" />
- <connection kind="clock" version="16.1" start="clk_156.clk" end="mac_a.tx_clk" />
- <connection kind="clock" version="16.1" start="clk_156.clk" end="mac_b.tx_clk" />
- <connection kind="clock" version="16.1" start="clk_156.clk" end="mac_c.tx_clk" />
- <connection kind="clock" version="16.1" start="clk_156.clk" end="mac_d.tx_clk" />
+ <connection
+   kind="clock"
+   version="16.1"
+   start="sfp_clk_156.clk"
+   end="mac_a.rx_clk" />
+ <connection
+   kind="clock"
+   version="16.1"
+   start="sfp_clk_156.clk"
+   end="mac_b.rx_clk" />
+ <connection
+   kind="clock"
+   version="16.1"
+   start="pcie_clk_156.clk"
+   end="mac_c.rx_clk" />
+ <connection
+   kind="clock"
+   version="16.1"
+   start="pcie_clk_156.clk"
+   end="mac_d.rx_clk" />
+ <connection
+   kind="clock"
+   version="16.1"
+   start="sfp_clk_156.clk"
+   end="mac_a.tx_clk" />
+ <connection
+   kind="clock"
+   version="16.1"
+   start="sfp_clk_156.clk"
+   end="mac_b.tx_clk" />
+ <connection
+   kind="clock"
+   version="16.1"
+   start="pcie_clk_156.clk"
+   end="mac_c.tx_clk" />
+ <connection
+   kind="clock"
+   version="16.1"
+   start="pcie_clk_156.clk"
+   end="mac_d.tx_clk" />
  <connection
    kind="conduit"
    version="16.1"
@@ -1630,7 +1690,7 @@
  <connection
    kind="reset"
    version="16.1"
-   start="clk_156.clk_reset"
+   start="sfp_clk_156.clk_reset"
    end="mac_a_rx_fifo.in_clk_reset" />
  <connection
    kind="reset"
@@ -1640,7 +1700,7 @@
  <connection
    kind="reset"
    version="16.1"
-   start="clk_156.clk_reset"
+   start="sfp_clk_156.clk_reset"
    end="mac_b_rx_fifo.in_clk_reset" />
  <connection
    kind="reset"
@@ -1650,17 +1710,17 @@
  <connection
    kind="reset"
    version="16.1"
-   start="clk_156.clk_reset"
-   end="mac_c_rx_fifo.in_clk_reset" />
- <connection
-   kind="reset"
-   version="16.1"
    start="clk_50.clk_reset"
    end="mac_d_tx_fifo.in_clk_reset" />
  <connection
    kind="reset"
    version="16.1"
-   start="clk_156.clk_reset"
+   start="pcie_clk_156.clk_reset"
+   end="mac_c_rx_fifo.in_clk_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="pcie_clk_156.clk_reset"
    end="mac_d_rx_fifo.in_clk_reset" />
  <connection
    kind="reset"
@@ -1670,7 +1730,7 @@
  <connection
    kind="reset"
    version="16.1"
-   start="clk_156.clk_reset"
+   start="sfp_clk_156.clk_reset"
    end="mac_a_tx_fifo.out_clk_reset" />
  <connection
    kind="reset"
@@ -1680,7 +1740,7 @@
  <connection
    kind="reset"
    version="16.1"
-   start="clk_156.clk_reset"
+   start="sfp_clk_156.clk_reset"
    end="mac_b_tx_fifo.out_clk_reset" />
  <connection
    kind="reset"
@@ -1690,23 +1750,23 @@
  <connection
    kind="reset"
    version="16.1"
-   start="clk_156.clk_reset"
-   end="mac_c_tx_fifo.out_clk_reset" />
- <connection
-   kind="reset"
-   version="16.1"
    start="clk_50.clk_reset"
    end="mac_c_rx_fifo.out_clk_reset" />
  <connection
    kind="reset"
    version="16.1"
-   start="clk_156.clk_reset"
-   end="mac_d_tx_fifo.out_clk_reset" />
+   start="clk_50.clk_reset"
+   end="mac_d_rx_fifo.out_clk_reset" />
  <connection
    kind="reset"
    version="16.1"
-   start="clk_50.clk_reset"
-   end="mac_d_rx_fifo.out_clk_reset" />
+   start="pcie_clk_156.clk_reset"
+   end="mac_c_tx_fifo.out_clk_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="pcie_clk_156.clk_reset"
+   end="mac_d_tx_fifo.out_clk_reset" />
  <connection
    kind="reset"
    version="16.1"
@@ -1720,22 +1780,22 @@
  <connection
    kind="reset"
    version="16.1"
-   start="clk_156.clk_reset"
+   start="sfp_clk_156.clk_reset"
    end="mac_a.rx_reset" />
  <connection
    kind="reset"
    version="16.1"
-   start="clk_156.clk_reset"
+   start="sfp_clk_156.clk_reset"
    end="mac_b.rx_reset" />
  <connection
    kind="reset"
    version="16.1"
-   start="clk_156.clk_reset"
+   start="pcie_clk_156.clk_reset"
    end="mac_c.rx_reset" />
  <connection
    kind="reset"
    version="16.1"
-   start="clk_156.clk_reset"
+   start="pcie_clk_156.clk_reset"
    end="mac_d.rx_reset" />
  <connection
    kind="reset"
@@ -1755,22 +1815,22 @@
  <connection
    kind="reset"
    version="16.1"
-   start="clk_156.clk_reset"
+   start="sfp_clk_156.clk_reset"
    end="mac_a.tx_reset" />
  <connection
    kind="reset"
    version="16.1"
-   start="clk_156.clk_reset"
+   start="sfp_clk_156.clk_reset"
    end="mac_b.tx_reset" />
  <connection
    kind="reset"
    version="16.1"
-   start="clk_156.clk_reset"
+   start="pcie_clk_156.clk_reset"
    end="mac_c.tx_reset" />
  <connection
    kind="reset"
    version="16.1"
-   start="clk_156.clk_reset"
+   start="pcie_clk_156.clk_reset"
    end="mac_d.tx_reset" />
  <interconnectRequirement for="$system" name="qsys_mm.clockCrossingAdapter" value="FIFO" />
  <interconnectRequirement for="$system" name="qsys_mm.maxAdditionalLatency" value="4" />

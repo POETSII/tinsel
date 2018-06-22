@@ -392,4 +392,40 @@ endmodule
 
 `endif
 
+// =============================================================================
+// MAC Switch
+// =============================================================================
+
+function AvalonMac macMux(Bool sel, AvalonMac macA, AvalonMac macB) =
+  interface AvalonMac;
+    method source_data =
+      sel ? macB.source_data : macA.source_data;
+    method source_valid =
+      sel ? macB.source_valid : macA.source_valid;
+    method source_startofpacket =
+      sel ? macB.source_startofpacket : macA.source_startofpacket;
+    method Bool source_endofpacket =
+      sel ? macB.source_endofpacket : macA.source_endofpacket;
+    method Bit#(1) source_error =
+      sel ? macB.source_error : macA.source_error;
+    method Bit#(3) source_empty =
+      sel ? macB.source_empty : macA.source_empty;
+    method Action source(Bool source_ready);
+      if (sel) macB.source(source_ready);
+      else macA.source(source_ready);
+    endmethod
+    method Bool sink_ready =
+      sel ? macB.sink_ready : macA.sink_ready;
+    method Action sink(Bit#(64) sink_data, Bool sink_valid,
+                         Bool sink_startofpacket, Bool sink_endofpacket,
+                           Bit#(6) sink_error, Bit#(3) sink_empty);
+      if (sel)
+        macB.sink(sink_data, sink_valid, sink_startofpacket,
+                  sink_endofpacket, sink_error, sink_empty);
+      else
+        macA.sink(sink_data, sink_valid, sink_startofpacket,
+                  sink_endofpacket, sink_error, sink_empty);
+    endmethod
+  endinterface;
+
 endpackage
