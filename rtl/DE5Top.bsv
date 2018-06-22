@@ -166,14 +166,28 @@ module de5Top (DE5Top);
   endrule
   `endif
 
+  `ifdef SIMULATE
+  AvalonMac east = net.east;
+  AvalonMac west = net.west;
+  `else
+  // Using the PCIe motherboard, the east and west lanes differ
+  // depending on which slot we're in:
+  //   slot id 0 (C) ==> swap
+  //   slot id 1 (B) ==> no swap
+  //   slot id 2 (A) ==> no swap
+  Bool swap = boardId.x == 0;
+  AvalonMac east = macMux(swap, net.east, net.west);
+  AvalonMac west = macMux(swap, net.west, net.east);
+  `endif
+
   `ifndef SIMULATE
   function DRAMExtIfc getDRAMExtIfc(DRAM dram) = dram.external;
   interface dramIfcs = map(getDRAMExtIfc, drams);
   interface jtagIfc  = debugLink.jtagAvalon;
   interface northMac = net.north;
   interface southMac = net.south;
-  interface eastMac  = net.east;
-  interface westMac  = net.west;
+  interface eastMac  = east;
+  interface westMac  = west;
   method Action setBoardId(BoardId id);
     boardId <= id;
   endmethod

@@ -7,7 +7,7 @@ set_global_assignment -name FAMILY "Stratix V"
 set_global_assignment -name DEVICE 5SGXEA7N2F45C2
 set_global_assignment -name TOP_LEVEL_ENTITY "Golden_top"
 set_global_assignment -name ORIGINAL_QUARTUS_VERSION 11
-set_global_assignment -name LAST_QUARTUS_VERSION 16.0.0
+set_global_assignment -name LAST_QUARTUS_VERSION "16.1.0 Standard Edition"
 set_global_assignment -name PROJECT_CREATION_TIME_DATE "TUE FEB 28 09:17:32 2012"
 set_global_assignment -name DEVICE_FILTER_PACKAGE FBGA
 
@@ -2243,8 +2243,10 @@ set_instance_assignment -name GLOBAL_SIGNAL OFF -to u0|mem_if_ddr3_emif_2|p0|ume
 set_instance_assignment -name ENABLE_BENEFICIAL_SKEW_OPTIMIZATION_FOR_NON_GLOBAL_CLOCKS ON -to u0|mem_if_ddr3_emif_2 -tag __S5_DDR3_QSYS_mem_if_ddr3_emif_2_p0
 set_instance_assignment -name PLL_COMPENSATION_MODE DIRECT -to u0|mem_if_ddr3_emif_2|pll0|fbout -tag __S5_DDR3_QSYS_mem_if_ddr3_emif_2_p0
 set_global_assignment -name USE_DLL_FREQUENCY_FOR_DQS_DELAY_CHAIN ON
-set_global_assignment -name QIP_FILE megafuns/phy_reconfig/phy_reconfig.qip
-set_global_assignment -name QIP_FILE megafuns/phy/phy.qip
+set_global_assignment -name QIP_FILE megafuns/phy_reconfig4/phy_reconfig4.qip
+set_global_assignment -name QIP_FILE megafuns/phy4/phy4.qip
+set_global_assignment -name QIP_FILE megafuns/phy_reconfig8/phy_reconfig8.qip
+set_global_assignment -name QIP_FILE megafuns/phy8/phy8.qip
 set_global_assignment -name QIP_FILE megafuns/fp/AlteraFPAddSub.qip
 set_global_assignment -name QIP_FILE megafuns/fp/AlteraFPMult.qip
 set_global_assignment -name QIP_FILE megafuns/fp/AlteraFPDiv.qip
@@ -2253,6 +2255,8 @@ set_global_assignment -name QIP_FILE megafuns/fp/AlteraFPFromInt.qip
 set_global_assignment -name QIP_FILE megafuns/fp/AlteraFPToInt.qip
 set_global_assignment -name VERILOG_FILE si570/si570_i2c_init.v
 set_global_assignment -name VERILOG_FILE si570/i2c_master.v
+set_global_assignment -name VERILOG_FILE cdcm61004/SetPLL.v
+set_global_assignment -name VERILOG_FILE cdcm61004/ext_pll_ctrl.v
 set_global_assignment -name VERILOG_FILE sync_reset.v
 set_global_assignment -name VERILOG_FILE temp_display.v
 set_global_assignment -name MIF_FILE InstrMem.mif
