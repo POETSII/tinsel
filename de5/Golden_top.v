@@ -299,22 +299,22 @@ wire [71:0] sfp_c_tx_dc;
 wire [71:0] sfp_c_rx_dc;
 wire [71:0] sfp_d_tx_dc;
 wire [71:0] sfp_d_rx_dc;
-wire [71:0] pcie_left0_rx_dc;
-wire [71:0] pcie_left0_tx_dc;
-wire [71:0] pcie_left1_rx_dc;
-wire [71:0] pcie_left1_tx_dc;
-wire [71:0] pcie_left2_rx_dc;
-wire [71:0] pcie_left2_tx_dc;
-wire [71:0] pcie_left3_rx_dc;
-wire [71:0] pcie_left3_tx_dc;
-wire [71:0] pcie_right4_rx_dc;
-wire [71:0] pcie_right4_tx_dc;
-wire [71:0] pcie_right5_rx_dc;
-wire [71:0] pcie_right5_tx_dc;
-wire [71:0] pcie_right6_rx_dc;
-wire [71:0] pcie_right6_tx_dc;
-wire [71:0] pcie_right7_rx_dc;
-wire [71:0] pcie_right7_tx_dc;
+wire [71:0] pcie_west0_rx_dc;
+wire [71:0] pcie_west0_tx_dc;
+wire [71:0] pcie_west1_rx_dc;
+wire [71:0] pcie_west1_tx_dc;
+wire [71:0] pcie_west2_rx_dc;
+wire [71:0] pcie_west2_tx_dc;
+wire [71:0] pcie_west3_rx_dc;
+wire [71:0] pcie_west3_tx_dc;
+wire [71:0] pcie_east4_rx_dc;
+wire [71:0] pcie_east4_tx_dc;
+wire [71:0] pcie_east5_rx_dc;
+wire [71:0] pcie_east5_tx_dc;
+wire [71:0] pcie_east6_rx_dc;
+wire [71:0] pcie_east6_tx_dc;
+wire [71:0] pcie_east7_rx_dc;
+wire [71:0] pcie_east7_tx_dc;
 
 wire phy4_pll_locked;
 wire [367:0] phy_reconfig4_from_xcvr;
@@ -408,7 +408,6 @@ phy8 phy8_inst (
   //.pll_ref_clk(SATA_HOST_REFCLK_p),
   .pll_locked(phy8_pll_locked),
 
-  // TODO: check that {0,1,2,3} & {4,5,6,7} really are left & right
   .tx_serial_data_0(PCIE_TX_p[0]),
   .rx_serial_data_0(PCIE_RX_p[0]),
   .tx_serial_data_1(PCIE_TX_p[1]),
@@ -426,22 +425,22 @@ phy8 phy8_inst (
   .tx_serial_data_7(PCIE_TX_p[7]),
   .rx_serial_data_7(PCIE_RX_p[7]),
 
-  .xgmii_tx_dc_0(pcie_left0_tx_dc),
-  .xgmii_rx_dc_0(pcie_left0_rx_dc),
-  .xgmii_tx_dc_1(pcie_left1_tx_dc),
-  .xgmii_rx_dc_1(pcie_left1_rx_dc),
-  .xgmii_tx_dc_2(pcie_left2_tx_dc),
-  .xgmii_rx_dc_2(pcie_left2_rx_dc),
-  .xgmii_tx_dc_3(pcie_left3_tx_dc),
-  .xgmii_rx_dc_3(pcie_left3_rx_dc),
-  .xgmii_tx_dc_4(pcie_right0_tx_dc),
-  .xgmii_rx_dc_4(pcie_right0_rx_dc),
-  .xgmii_tx_dc_5(pcie_right1_tx_dc),
-  .xgmii_rx_dc_5(pcie_right1_rx_dc),
-  .xgmii_tx_dc_6(pcie_right2_tx_dc),
-  .xgmii_rx_dc_6(pcie_right2_rx_dc),
-  .xgmii_tx_dc_7(pcie_right3_tx_dc),
-  .xgmii_rx_dc_7(pcie_right3_rx_dc),
+  .xgmii_tx_dc_0(pcie_west0_tx_dc),
+  .xgmii_rx_dc_0(pcie_west0_rx_dc),
+  .xgmii_tx_dc_1(pcie_west1_tx_dc),
+  .xgmii_rx_dc_1(pcie_west1_rx_dc),
+  .xgmii_tx_dc_2(pcie_west2_tx_dc),
+  .xgmii_rx_dc_2(pcie_west2_rx_dc),
+  .xgmii_tx_dc_3(pcie_west3_tx_dc),
+  .xgmii_rx_dc_3(pcie_west3_rx_dc),
+  .xgmii_tx_dc_4(pcie_east0_tx_dc),
+  .xgmii_rx_dc_4(pcie_east0_rx_dc),
+  .xgmii_tx_dc_5(pcie_east1_tx_dc),
+  .xgmii_rx_dc_5(pcie_east1_rx_dc),
+  .xgmii_tx_dc_6(pcie_east2_tx_dc),
+  .xgmii_rx_dc_6(pcie_east2_rx_dc),
+  .xgmii_tx_dc_7(pcie_east3_tx_dc),
+  .xgmii_rx_dc_7(pcie_east3_rx_dc),
 
   .xgmii_rx_clk(pcie_clk_156mhz),
   .xgmii_tx_clk(pcie_clk_156mhz),
@@ -551,12 +550,12 @@ S5_DDR3_QSYS u0 (
 */
 
   .mac_c_pause_data(0),
-  .mac_c_xgmii_rx_data(pcie_left0_rx_dc),
-  .mac_c_xgmii_tx_data(pcie_left0_tx_dc),
+  .mac_c_xgmii_rx_data(pcie_east0_rx_dc),
+  .mac_c_xgmii_tx_data(pcie_east0_tx_dc),
 
   .mac_d_pause_data(0),
-  .mac_d_xgmii_rx_data(pcie_right0_rx_dc),
-  .mac_d_xgmii_tx_data(pcie_right0_tx_dc),
+  .mac_d_xgmii_rx_data(pcie_west0_rx_dc),
+  .mac_d_xgmii_tx_data(pcie_west0_tx_dc),
 
   .ts_done_tsdcaldone(ts_done),
   .ts_out_tsdcalo(ts_out),
