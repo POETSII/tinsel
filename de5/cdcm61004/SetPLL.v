@@ -37,7 +37,7 @@ ext_pll_ctrl ext_pll_ctrl_inst
     // device 3
     .clk3_set_wr(val[11:8]),
     // setting trigger
-    .conf_wr(write_active),
+    .conf_wr(write_trigger),
     .conf_rd(0),
     // status 
     .conf_ready(conf_ready),
