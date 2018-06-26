@@ -552,18 +552,20 @@ endmodule
 // =============================================================================
 
 // Reduce a list of interfaces down to a given number of interfaces,
-// by merging. First, a module to reduce by up to factor of two.
-module mkReduceOneLevel#(Integer n, List#(Out#(t) in)) (List#(Out#(t)))
+// by merging.
+
+// First, a module to reduce by up to factor of two.
+module mkReduceOneLevel#(List#(Out#(t) in)) (List#(Out#(t)))
          provisos (Bits#(t, twidth));
 
   // Number of inputs
   Integer numIn = List::length(in);
 
-  if (numIn <= n)
+  if (numIn <= 1)
     return in;
   else begin
     let out <- mkMergeTwo(Fair, mkUGShiftQueue1(QueueOptFmax), in[0], in[1]);
-    let rest <- mergeOneLevel(n-1, List::drop(2, in));
+    let rest <- mergeOneLevel(List::drop(2, in));
     return (Cons(out, rest));
   end
 endmodule
@@ -579,12 +581,8 @@ module mkReduce#(Integer n, List#(Out#(t) in)) (List#(Out#(t)))
     return in;
   else begin
     let out <- mkReduceOneLevel(in);
-    if (List::length(out) <= n)
-      return out;
-    else begin
-      let list <- mkReduce(n, out);
-      return list;
-    end
+    let list <- mkReduce(n, out);
+    return list;
   end
 endmodule
 
