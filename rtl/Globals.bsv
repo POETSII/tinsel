@@ -12,10 +12,17 @@ typedef struct {
   Bit#(`MeshXBits) x;
 } BoardId deriving (Eq, Bits);
 
+// Mailbox id
+typedef struct {
+  Bit#(`MailboxMeshYBits) y;
+  Bit#(`MailboxMeshXBits) x;
+} MailboxId deriving (Bits, Eq);
+
 // Network address
 typedef struct {
   BoardId board;
-  CoreId core;
+  MailboxId mailbox;
+  Bit#(`LogCoresPerMailbox) core;
   ThreadId thread;
 } NetAddr deriving (Bits, Eq);
 

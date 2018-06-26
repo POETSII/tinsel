@@ -75,6 +75,18 @@ p["LogMsgsPerThread"] = 4
 # Number of cores sharing a mailbox
 p["LogCoresPerMailbox"] = 2
 
+# Number of bits in mailbox mesh X coord
+p["MailboxMeshXBits"] = 2
+
+# Number of bits in mailbox mesh Y coord
+p["MailboxMeshYBits"] = 2
+
+# Length of mailbox mesh X dimension
+p["MailboxMeshXLen"] = 2 ** p["MailboxMeshXBits"]
+
+# Length of mailbox mesh Y dimension
+p["MailboxMeshYLen"] = 2 ** p["MailboxMeshYBits"]
+
 # Number of mailboxes per board
 p["LogMailboxesPerBoard"] = 4
 
@@ -99,16 +111,16 @@ p["LinkTimeout"] = 1024
 # Latency of 10G MAC in cycles (simulation only)
 p["MacLatency"] = 100
 
-# Number of bits in mesh X coord
+# Number of bits in board mesh X coord
 p["MeshXBits"] = 2
 
-# Number of bits in mesh Y coord
+# Number of bits in board mesh Y coord
 p["MeshYBits"] = 2
 
-# Mesh X length
+# Board mesh X length
 p["MeshXLen"] = 3
 
-# Mesh Y length
+# Board mesh Y length
 p["MeshYLen"] = 1
 
 # Number of cores per FPU
