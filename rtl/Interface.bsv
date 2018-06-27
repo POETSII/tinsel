@@ -623,12 +623,15 @@ module expandConnect#(List#(Out#(t)) from, List#(In#(t)) to) ()
   // Count inputs and outputs
   Integer numFrom = List::length(from);
   Integer numTo = List::length(to);
+  Integer q = numTo/numFrom;
 
   for (Integer i = 0; i < numTo; i=i+1) begin
-    if ((i%numFrom) == 0) begin
+    if (q == 0) begin
       // Connect input
-      connectUsing(mkUGShiftQueue1(QueueOptFmax),
-                     from[i/numFrom], to[i]);
+      connectUsing(mkUGShiftQueue1(QueueOptFmax), from[i], to[i]);
+    end else if ((i%q) == 0) begin
+      // Connect input
+      connectUsing(mkUGShiftQueue1(QueueOptFmax), from[i/q], to[i]);
     end else begin
       // Connect terminator
       BOut#(t) nullOut <- mkNullBOut;
