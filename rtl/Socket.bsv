@@ -12,12 +12,12 @@ import Util   :: *;
 typedef Bit#(32) SocketId;
 
 // Socket ids used in tinsel
-SocketId             uartSocket  = 0;
-Vector#(2, SocketId) northSocket = vector(1, 2);
-Vector#(2, SocketId) southSocket = vector(3, 4);
-Vector#(4, SocketId) eastSocket  = vector(5, 6, 7, 8);
-Vector#(4, SocketId) westSocket  = vector(9, 10, 11, 12);
-SocketId             pcieSocket  = 13;
+SocketId uartSocket  = 0;
+SocketId pcieSocket  = 1;
+Vector#(`NumNorthSouthLinks, SocketId) northSocket = genVectorFrom(4);
+Vector#(`NumNorthSouthLinks, SocketId) southSocket = genVectorFrom(8);
+Vector#(`NumEastWestLinks, SocketId) eastSocket  = genVectorFrom(12);
+Vector#(`NumEastWestLinks, SocketId) westSocket  = genVectorFrom(16);
 
 `ifdef SIMULATE
 

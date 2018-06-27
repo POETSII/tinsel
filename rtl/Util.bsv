@@ -157,6 +157,12 @@ endmodule
 function Bit#(8) hexDigit(Bit#(4) nibble) =
   nibble >= 10 ? 55 + zeroExtend(nibble) : 48 + zeroExtend(nibble);
 
+// Generate vector containing integers
+function Vector#(n, Integer) genVectorFrom(Integer from);
+  function add(a, b) = a+b;
+  return Vector::map(add(from), genVector());
+endfunction
+
 // The following type-class allows convenient construction of lists, e.g.
 //
 //   List#(String) xs = list("push", "pop", "top");
