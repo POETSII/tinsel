@@ -143,16 +143,15 @@ module mkMeshRouter#(MailboxId m) (MeshRouter);
 
   // Routing function
   function Route route(NetAddr addr);
-    if (addr.board.x < b.x || getMailboxId(addr).x < m.x)
-      return Left;
-    else if (addr.board.x > b.x || getMailboxId(addr).x > m.x)
-      return Right;
-    else if (addr.board.y > b.y || getMailboxId(addr).y > m.y)
-      return Up;
-    else if (addr.board.y < b.y || getMailboxId(addr).y < m.y)
-      return Down;
-    else
-      return Mailbox;
+    if      (addr.board.x < b.x)         return Left;
+    else if (addr.board.x > b.x)         return Right;
+    else if (getMailboxId(addr).x < m.x) return Left;
+    else if (getMailboxId(addr).x > m.x) return Right;
+    else if (addr.board.y < b.y)         return Down;
+    else if (addr.board.y > b.y)         return Up;
+    else if (getMailboxId(addr).y < m.y) return Down;
+    else if (getMailboxId(addr).y > m.y) return Up;
+    else return Mailbox;
   endfunction
 
   // Route to the mailbox
