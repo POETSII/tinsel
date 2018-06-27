@@ -134,7 +134,8 @@ module de5Top (DE5Top);
 
   // Create mailboxes
   Vector#(`MailboxMeshYLen,
-    Vector#(`MailboxMeshXLen, Mailbox)) mailboxes;
+    Vector#(`MailboxMeshXLen, Mailbox)) mailboxes =
+      Vector::replicate(newVector());
   for (Integer y = 0; y < `MailboxMeshYLen; y=y+1)
     for (Integer x = 0; x < `MailboxMeshXLen; x=x+1)
       mailboxes[y][x] <- mkMailbox;
@@ -150,7 +151,6 @@ module de5Top (DE5Top);
       // Connect sub-vector of cores to mailbox
       connectCoresToMailbox(map(mailboxClient, cs), mailboxes[y][x]);
     end
-  end
 
   // Create mesh of mailboxes
   function MailboxNet mailboxNet(Mailbox mbox) = mbox.net;
@@ -177,12 +177,9 @@ module de5Top (DE5Top);
   //   slot id 0 (C) ==> swap
   //   slot id 1 (B) ==> no swap
   //   slot id 2 (A) ==> no swap
-  Vector#(`NumEastLinks, AvalonMac) east;
-  Vector#(`NumWestLinks, AvalonMac) west;
-  `ifdef SIMULATE
-  east = net.east;
-  west = net.west;
-  `else
+  `ifndef SIMULATE
+  Vector#(`NumEastWestLinks, AvalonMac) east;
+  Vector#(`NumEastWestLinks, AvalonMac) west;
   Bool swap = boardId.x == 0;
   east = newVector();
   west = newVector();

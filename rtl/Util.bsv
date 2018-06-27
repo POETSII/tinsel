@@ -183,8 +183,6 @@ function b list() provisos (MkList#(b, a));
   return mkList(Nil);
 endfunction
 
-endpackage
-
 // The following type-class allows convenient construction of vectors, e.g.
 //
 //   Vector#(3, String) xs = vector("push", "pop", "top");
@@ -195,7 +193,8 @@ typeclass MkVector#(type a, type b, type n)
 endtypeclass
 
 instance MkVector#(Vector#(n, a), a, n);
-  function Vector#(n, a) mkVector(Vector#(n, a) acc) = Vector::reverse(acc);
+  function Vector#(n, a) mkVector(Vector#(n, a) acc) =
+Vector::reverse(acc);
 endinstance
 
 instance MkVector#(function b f(a elem), a, n)
@@ -206,3 +205,5 @@ endinstance
 function b vector() provisos (MkVector#(b, a, 0));
   return mkVector(Vector::nil);
 endfunction
+
+endpackage
