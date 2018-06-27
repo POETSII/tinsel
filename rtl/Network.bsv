@@ -4,7 +4,7 @@ package Network;
 
 // This package supports creation of mesh of MailboxNet interfaces.
 // Recall that a MailboxNet consists simply of a flit-sized input and
-// output port.
+// output port (see Mailbox.bsv).
 
 // =============================================================================
 // Imports
@@ -137,13 +137,13 @@ module mkMeshRouter#(BoardId b, MailboxId m) (MeshRouter);
 
   // Routing function
   function Route route(NetAddr addr);
-    if (addr.board.x < b.x || addr.mailbox.x < m.x)
+    if (addr.board.x < b.x || getMailboxId(addr).x < m.x)
       return Left;
-    else if (addr.board.x > b.x || addr.mailbox.x > m.x)
+    else if (addr.board.x > b.x || getMailboxId(addr).x > m.x)
       return Right;
-    else if (addr.board.y > b.y || addr.mailbox.y > m.y)
+    else if (addr.board.y > b.y || getMailboxId(addr).y > m.y)
       return Up;
-    else if (addr.board.y < b.y || addr.mailbox.y < m.y)
+    else if (addr.board.y < b.y || getMailboxId(addr).y < m.y)
       return Down;
     else
       return Mailbox;
@@ -263,10 +263,10 @@ endmodule
 interface ExtNetwork;
 `ifndef SIMULATE
   // Avalon interfaces to 10G MACs
-  interface Vector#(2, AvalonMac) north;
-  interface Vector#(2, AvalonMac) south;
-  interface Vector#(4, AvalonMac) east;
-  interface Vector#(4, AvalonMac) west;
+  interface Vector#(`NumNorthSouthLinks, AvalonMac) north;
+  interface Vector#(`NumNorthSouthLinks, AvalonMac) south;
+  interface Vector#(`NumEastWestLinks, AvalonMac) east;
+  interface Vector#(`NumEastWestLinks, AvalonMac) west;
 `endif
 endinterface
 
@@ -277,10 +277,14 @@ module mkMailboxMesh#(
        (ExtNetwork);
 
   // Create off-board links
-  Vector#(2, AvalonMac) northLink <- mapM(mkBoardLink, northSocket);
-  Vector#(2, AvalonMac) southLink <- mapM(mkBoardLink, southSocket);
-  Vector#(4, AvalonMac) eastLink  <- mapM(mkBoardLink, eastSocket);
-  Vector#(4, AvalonMac) westLink  <- mapM(mkBoardLink, westSocket);
+  Vector#(`NumNorthSouthLinks, AvalonMac) northLink <-
+    mapM(mkBoardLink, northSocket);
+  Vector#(`NumNorthSouthLinks, AvalonMac) southLink <-
+    mapM(mkBoardLink, southSocket);
+  Vector#(`NumEastWestLinks, AvalonMac) eastLink <-
+    mapM(mkBoardLink, eastSocket);
+  Vector#(`NumEastWestLinks, AvalonMac) westLink <-
+    mapM(mkBoardLink, westSocket);
 
   // Create mailbox routers
   Vector#(MailboxMeshYLen,
@@ -394,10 +398,14 @@ module mkMailboxMesh#(
 
 `ifndef SIMULATE
   function getMac(link) = link.avalonMac;
-  interface Vector#(2, AvalonMac) north = Vector::map(getMac, northLink);
-  interface Vector#(2, AvalonMac) south = Vector::map(getMac, southLink);
-  interface Vector#(4, AvalonMac) east  = Vector::map(getMac, eastLink);
-  interface Vector#(4, AvalonMac) west  = Vector::map(getMac, westLink);
+  interface Vector#(`NumNorthSouthLinks, AvalonMac) north =
+    Vector::map(getMac, northLink);
+  interface Vector#(`NumNorthSouthLinks, AvalonMac) south =
+    Vector::map(getMac, southLink);
+  interface Vector#(`NumEastWestLinks, AvalonMac) east =
+    Vector::map(getMac, eastLink);
+  interface Vector#(`NumEastWestLinks, AvalonMac) west =
+    Vector::map(getMac, westLink);
 `endif
 
 endmodule

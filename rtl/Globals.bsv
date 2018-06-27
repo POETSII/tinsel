@@ -12,19 +12,21 @@ typedef struct {
   Bit#(`MeshXBits) x;
 } BoardId deriving (Eq, Bits);
 
+// Network address
+typedef struct {
+  BoardId board;
+  CoreId core;
+  ThreadId thread;
+} NetAddr deriving (Bits, Eq);
+
 // Mailbox id
 typedef struct {
   Bit#(`MailboxMeshYBits) y;
   Bit#(`MailboxMeshXBits) x;
 } MailboxId deriving (Bits, Eq);
 
-// Network address
-typedef struct {
-  BoardId board;
-  MailboxId mailbox;
-  Bit#(`LogCoresPerMailbox) core;
-  ThreadId thread;
-} NetAddr deriving (Bits, Eq);
+function MailboxId getMailboxId(NetAddr addr) =
+  unpack(truncateLSB(addr.core));
 
 // ============================================================================
 // Messages
