@@ -14,10 +14,14 @@ typedef Bit#(32) SocketId;
 // Socket ids used in tinsel
 SocketId uartSocket  = 0;
 SocketId pcieSocket  = 1;
-Vector#(`NumNorthSouthLinks, SocketId) northSocket = genVectorFrom(4);
-Vector#(`NumNorthSouthLinks, SocketId) southSocket = genVectorFrom(8);
-Vector#(`NumEastWestLinks, SocketId) eastSocket  = genVectorFrom(12);
-Vector#(`NumEastWestLinks, SocketId) westSocket  = genVectorFrom(16);
+Vector#(`NumNorthSouthLinks, SocketId) northSocket =
+  Vector::map(fromInteger, genVectorFrom(4));
+Vector#(`NumNorthSouthLinks, SocketId) southSocket =
+  Vector::map(fromInteger, genVectorFrom(8));
+Vector#(`NumEastWestLinks, SocketId) eastSocket =
+  Vector::map(fromInteger, genVectorFrom(12));
+Vector#(`NumEastWestLinks, SocketId) westSocket =
+  Vector::map(fromInteger, genVectorFrom(16));
 
 `ifdef SIMULATE
 

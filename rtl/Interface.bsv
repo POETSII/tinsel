@@ -555,32 +555,33 @@ endmodule
 // by merging.
 
 // First, a module to reduce by up to factor of two.
-module mkReduceOneLevel#(List#(Out#(t) in)) (List#(Out#(t)))
+module mkReduceOneLevel#(List#(Out#(t)) inps) (List#(Out#(t)))
          provisos (Bits#(t, twidth));
 
   // Number of inputs
-  Integer numIn = List::length(in);
+  Integer numIn = List::length(inps);
 
   if (numIn <= 1)
-    return in;
+    return inps;
   else begin
-    let out <- mkMergeTwo(Fair, mkUGShiftQueue1(QueueOptFmax), in[0], in[1]);
-    let rest <- mergeOneLevel(List::drop(2, in));
+    let out <- mkMergeTwo(Fair, mkUGShiftQueue1(QueueOptFmax),
+                            inps[0], inps[1]);
+    let rest <- mkReduceOneLevel(List::drop(2, inps));
     return (Cons(out, rest));
   end
 endmodule
 
 // Now reduce as many levels as required
-module mkReduce#(Integer n, List#(Out#(t) in)) (List#(Out#(t)))
+module mkReduce#(Integer n, List#(Out#(t)) inps) (List#(Out#(t)))
          provisos (Bits#(t, twidth));
 
    // Number of inputs
-  Integer numIn = length(in);
+  Integer numIn = length(inps);
 
   if (numIn <= n)
-    return in;
+    return inps;
   else begin
-    let out <- mkReduceOneLevel(in);
+    let out <- mkReduceOneLevel(inps);
     let list <- mkReduce(n, out);
     return list;
   end
@@ -589,7 +590,8 @@ endmodule
 // Connect 'from' ports to 'to' ports,
 // where 'length(from)' may be more than 'length(to)'.
 // Works by fair-merging of 'from' ports.
-module reduceConnect(List#(Out#(t)) from, List#(In#(t)) to) ();
+module reduceConnect#(List#(Out#(t)) from, List#(In#(t)) to) ()
+         provisos (Bits#(t, twidth));
 
   // Count inputs and outputs
   Integer numFrom = List::length(from);
@@ -605,7 +607,7 @@ module reduceConnect(List#(Out#(t)) from, List#(In#(t)) to) ();
       connectUsing(mkUGShiftQueue1(QueueOptFmax), inter[i], to[i]);
     else begin
        // Connect terminator
-      BOut#(Flit) nullOut <- mkNullBOut;
+      BOut#(t) nullOut <- mkNullBOut;
       connectDirect(nullOut, to[i]);
     end
   end
@@ -615,7 +617,8 @@ endmodule
 // Connect 'from' ports to 'to' ports,
 // where 'length(from)' may be less than 'length(to)'.
 // Works by wiring null to any unused 'to' ports.
-module expandConnect#(List#(Out#(t)) from, List#(In#(t)) to) ();
+module expandConnect#(List#(Out#(t)) from, List#(In#(t)) to) ()
+         provisos (Bits#(t, twidth));
 
   // Count inputs and outputs
   Integer numFrom = List::length(from);
@@ -628,7 +631,7 @@ module expandConnect#(List#(Out#(t)) from, List#(In#(t)) to) ();
                      from[i/numFrom], to[i]);
     end else begin
       // Connect terminator
-      BOut#(Flit) nullOut <- mkNullBOut;
+      BOut#(t) nullOut <- mkNullBOut;
       connectDirect(nullOut, to[i]);
     end
   end
