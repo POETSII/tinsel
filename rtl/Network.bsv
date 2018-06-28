@@ -411,15 +411,11 @@ module mkMailboxMesh#(
   expandConnect(List::map(getFlitOut, toList(westLink)), leftInList);
 
 `ifndef SIMULATE
-  function getMac(link) = link.avalonMac;
-  interface Vector#(`NumNorthSouthLinks, AvalonMac) north =
-    Vector::map(getMac, northLink);
-  interface Vector#(`NumNorthSouthLinks, AvalonMac) south =
-    Vector::map(getMac, southLink);
-  interface Vector#(`NumEastWestLinks, AvalonMac) east =
-    Vector::map(getMac, eastLink);
-  interface Vector#(`NumEastWestLinks, AvalonMac) west =
-    Vector::map(getMac, westLink);
+  function AvalonMac getMac(BoardLink link) = link.avalonMac;
+  interface north = Vector::map(getMac, northLink);
+  interface south = Vector::map(getMac, southLink);
+  interface east = Vector::map(getMac, eastLink);
+  interface west = Vector::map(getMac, westLink);
 `endif
 
 endmodule
