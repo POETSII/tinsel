@@ -73,7 +73,8 @@ clean:
 	rm -f *.cxx *.o *.h *.ba *.bo *.so *.ipinfo
 	rm -f InstrMem.hex DataMem.hex RunQueue.hex
 	rm -f testMem de5Top testMailbox de5BridgeTop
-	rm -f de5Top.v mkCore.v mkDCache.v mkMailbox.v mkDebugLinkRouter.v mkFPU.v
+	rm -f de5Top.v mkCore.v mkDCache.v mkMailbox.v mkDebugLinkRouter.v
+	rm -f mkFPU.v mkMeshRouter.v
 	rm -f de5BridgeTop.v
 	rm -rf test-mem-log
 	rm -rf test-mailbox-log
