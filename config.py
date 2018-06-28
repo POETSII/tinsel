@@ -129,7 +129,7 @@ p["LogNorthSouthLinks"] = 1
 
 # Number of inter-FPGA links on east edge
 # Number of inter-FPGA links on west edge
-p["LogEastWestLinks"] = 2
+p["LogEastWestLinks"] = 1
 
 # Latencies of arithmetic megafunctions
 p["IntMultLatency"] = 3
