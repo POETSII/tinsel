@@ -547,21 +547,21 @@ S5_DDR3_QSYS u0 (
   .mac_d_xgmii_rx_data(sfp_d_rx_dc),
   .mac_d_xgmii_tx_data(sfp_d_tx_dc),
 
-  .mac_d_pause_data(0),
-  .mac_d_xgmii_rx_data(pcie_east0_rx_dc),
-  .mac_d_xgmii_tx_data(pcie_east0_tx_dc),
-
   .mac_e_pause_data(0),
-  .mac_e_xgmii_rx_data(pcie_west0_rx_dc),
-  .mac_e_xgmii_tx_data(pcie_west0_tx_dc),
+  .mac_e_xgmii_rx_data(pcie_east0_rx_dc),
+  .mac_e_xgmii_tx_data(pcie_east0_tx_dc),
 
   .mac_f_pause_data(0),
-  .mac_f_xgmii_rx_data(pcie_east1_rx_dc),
-  .mac_f_xgmii_tx_data(pcie_east1_tx_dc),
+  .mac_f_xgmii_rx_data(pcie_west0_rx_dc),
+  .mac_f_xgmii_tx_data(pcie_west0_tx_dc),
 
   .mac_g_pause_data(0),
-  .mac_g_xgmii_rx_data(pcie_west1_rx_dc),
-  .mac_g_xgmii_tx_data(pcie_west1_tx_dc),
+  .mac_g_xgmii_rx_data(pcie_east1_rx_dc),
+  .mac_g_xgmii_tx_data(pcie_east1_tx_dc),
+
+  .mac_h_pause_data(0),
+  .mac_h_xgmii_rx_data(pcie_west1_rx_dc),
+  .mac_h_xgmii_tx_data(pcie_west1_tx_dc),
 
   .ts_done_tsdcaldone(ts_done),
   .ts_out_tsdcalo(ts_out),
