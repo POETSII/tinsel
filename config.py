@@ -125,11 +125,11 @@ p["LogCoresPerFPU"] = 2
 
 # Number of inter-FPGA links on north edge
 # Number of inter-FPGA links on south edge
-p["LogNorthSouthLinks"] = 1
+p["LogNorthSouthLinks"] = 0
 
 # Number of inter-FPGA links on east edge
 # Number of inter-FPGA links on west edge
-p["LogEastWestLinks"] = 1
+p["LogEastWestLinks"] = 0
 
 # Latencies of arithmetic megafunctions
 p["IntMultLatency"] = 3
