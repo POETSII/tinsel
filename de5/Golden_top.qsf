@@ -2262,6 +2262,7 @@ set_global_assignment -name VERILOG_FILE temp_display.v
 set_global_assignment -name MIF_FILE InstrMem.mif
 set_global_assignment -name VERILOG_FILE ../rtl/AlteraMult.v
 set_global_assignment -name VERILOG_FILE ../rtl/mkMailbox.v
+set_global_assignment -name VERILOG_FILE ../rtl/mkMeshRouter.v
 set_global_assignment -name VERILOG_FILE ../rtl/mkDebugLinkRouter.v
 set_global_assignment -name VERILOG_FILE ../rtl/de5Top.v
 set_global_assignment -name VERILOG_FILE ../rtl/mkCore.v

@@ -1351,12 +1351,12 @@
  <connection
    kind="avalon_streaming"
    version="16.1"
-   start="DE5Top_0.eastmac_source"
+   start="DE5Top_0.eastmac_0_source"
    end="mac_c_tx_fifo.in" />
  <connection
    kind="avalon_streaming"
    version="16.1"
-   start="DE5Top_0.northmac_source"
+   start="DE5Top_0.northmac_0_source"
    end="mac_a_tx_fifo.in" />
  <connection
    kind="avalon_streaming"
@@ -1382,31 +1382,31 @@
    kind="avalon_streaming"
    version="16.1"
    start="mac_c_rx_fifo.out"
-   end="DE5Top_0.eastmac_sink" />
+   end="DE5Top_0.eastmac_0_sink" />
  <connection
    kind="avalon_streaming"
    version="16.1"
    start="mac_a_rx_fifo.out"
-   end="DE5Top_0.northmac_sink" />
+   end="DE5Top_0.northmac_0_sink" />
  <connection
    kind="avalon_streaming"
    version="16.1"
    start="mac_b_rx_fifo.out"
-   end="DE5Top_0.southmac_sink" />
+   end="DE5Top_0.southmac_0_sink" />
  <connection
    kind="avalon_streaming"
    version="16.1"
    start="mac_d_rx_fifo.out"
-   end="DE5Top_0.westmac_sink" />
+   end="DE5Top_0.westmac_0_sink" />
  <connection
    kind="avalon_streaming"
    version="16.1"
-   start="DE5Top_0.southmac_source"
+   start="DE5Top_0.southmac_0_source"
    end="mac_b_tx_fifo.in" />
  <connection
    kind="avalon_streaming"
    version="16.1"
-   start="DE5Top_0.westmac_source"
+   start="DE5Top_0.westmac_0_source"
    end="mac_d_tx_fifo.in" />
  <connection
    kind="clock"
