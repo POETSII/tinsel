@@ -353,7 +353,8 @@ module mkMailboxMesh#(
 
   // Connect the outgoing links
   function In#(Flit) getFlitIn(BoardLink link) = link.flitIn;
-  reduceConnect(topOutList, List::map(getFlitIn, toList(northLink)));
+  reduceConnect(mkFlitMerger,
+    topOutList, List::map(getFlitIn, toList(northLink)));
   
   // Connect the incoming links
   function Out#(Flit) getFlitOut(BoardLink link) = link.flitOut;
@@ -371,7 +372,8 @@ module mkMailboxMesh#(
   end
 
   // Connect the outgoing links
-  reduceConnect(botOutList, List::map(getFlitIn, toList(southLink)));
+  reduceConnect(mkFlitMerger, botOutList,
+    List::map(getFlitIn, toList(southLink)));
   
   // Connect the incoming links
   expandConnect(List::map(getFlitOut, toList(southLink)), botInList);
@@ -388,7 +390,8 @@ module mkMailboxMesh#(
   end
 
   // Connect the outgoing links
-  reduceConnect(rightOutList, List::map(getFlitIn, toList(eastLink)));
+  reduceConnect(mkFlitMerger,
+    rightOutList, List::map(getFlitIn, toList(eastLink)));
   
   // Connect the incoming links
   expandConnect(List::map(getFlitOut, toList(eastLink)), rightInList);
@@ -405,7 +408,8 @@ module mkMailboxMesh#(
   end
 
   // Connect the outgoing links
-  reduceConnect(leftOutList, List::map(getFlitIn, toList(westLink)));
+  reduceConnect(mkFlitMerger,
+    leftOutList, List::map(getFlitIn, toList(westLink)));
   
   // Connect the incoming links
   expandConnect(List::map(getFlitOut, toList(westLink)), leftInList);
@@ -417,6 +421,51 @@ module mkMailboxMesh#(
   interface east = Vector::map(getMac, eastLink);
   interface west = Vector::map(getMac, westLink);
 `endif
+
+endmodule
+
+// =============================================================================
+// Flit merger
+// =============================================================================
+
+// Fair merge two flit ports
+module mkFlitMerger#(Out#(Flit) left, Out#(Flit) right) (Out#(Flit));
+
+  // Ports
+  InPort#(Flit) leftIn <- mkInPort;
+  InPort#(Flit) rightIn <- mkInPort;
+  OutPort#(Flit) outPort <- mkOutPort;
+
+  connectUsing(mkUGShiftQueue1(QueueOptFmax), left, leftIn.in);
+  connectUsing(mkUGShiftQueue1(QueueOptFmax), right, rightIn.in);
+
+  // State
+  Reg#(Bool) prevChoiceWasLeft <- mkReg(False);
+  Reg#(RouteLock) lock <- mkReg(Unlocked);
+
+  // Rules
+  rule merge (outPort.canPut);
+    Bool chooseRight = 
+      lock == FromRight ||
+        (lock == Unlocked &&
+           rightIn.canGet &&
+             (!leftIn.canGet || prevChoiceWasLeft));
+    // Consume input
+    if (chooseRight && rightIn.canGet) begin
+      rightIn.get;
+      outPort.put(rightIn.value);
+      lock <= rightIn.value.notFinalFlit ? FromRight : Unlocked;
+      prevChoiceWasLeft <= False;
+    end else if (leftIn.canGet) begin
+      leftIn.get;
+      outPort.put(leftIn.value);
+      lock <= leftIn.value.notFinalFlit ? FromLeft : Unlocked;
+      prevChoiceWasLeft <= True;
+    end
+  endrule
+
+  // Interface
+  return outPort.out;
 
 endmodule
 
