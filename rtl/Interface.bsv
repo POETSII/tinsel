@@ -555,8 +555,11 @@ endmodule
 // by merging.
 
 // First, a module to reduce by up to factor of two.
-module mkReduceOneLevel#(List#(Out#(t)) inps) (List#(Out#(t)))
-         provisos (Bits#(t, twidth));
+module mkReduceOneLevel#(
+         function module#(Out#(t)) mergeTwo(Out#(t) a, Out#(t) b),
+           List#(Out#(t)) inps)
+         (List#(Out#(t)))
+       provisos (Bits#(t, twidth));
 
   // Number of inputs
   Integer numIn = List::length(inps);
@@ -564,16 +567,18 @@ module mkReduceOneLevel#(List#(Out#(t)) inps) (List#(Out#(t)))
   if (numIn <= 1)
     return inps;
   else begin
-    let out <- mkMergeTwo(Fair, mkUGShiftQueue1(QueueOptFmax),
-                            inps[0], inps[1]);
-    let rest <- mkReduceOneLevel(List::drop(2, inps));
+    let out <- mergeTwo(inps[0], inps[1]);
+    let rest <- mkReduceOneLevel(mergeTwo, List::drop(2, inps));
     return (Cons(out, rest));
   end
 endmodule
 
 // Now reduce as many levels as required
-module mkReduce#(Integer n, List#(Out#(t)) inps) (List#(Out#(t)))
-         provisos (Bits#(t, twidth));
+module mkReduce#(
+         function module#(Out#(t)) mergeTwo(Out#(t) a, Out#(t) b),
+           Integer n, List#(Out#(t)) inps)
+         (List#(Out#(t)))
+       provisos (Bits#(t, twidth));
 
    // Number of inputs
   Integer numIn = length(inps);
@@ -581,8 +586,8 @@ module mkReduce#(Integer n, List#(Out#(t)) inps) (List#(Out#(t)))
   if (numIn <= n)
     return inps;
   else begin
-    let out <- mkReduceOneLevel(inps);
-    let list <- mkReduce(n, out);
+    let out <- mkReduceOneLevel(mergeTwo, inps);
+    let list <- mkReduce(mergeTwo, n, out);
     return list;
   end
 endmodule
@@ -590,7 +595,9 @@ endmodule
 // Connect 'from' ports to 'to' ports,
 // where 'length(from)' may be more than 'length(to)'.
 // Works by fair-merging of 'from' ports.
-module reduceConnect#(List#(Out#(t)) from, List#(In#(t)) to) ()
+module reduceConnect#(
+         function module#(Out#(t)) mergeTwo(Out#(t) a, Out#(t) b),
+           List#(Out#(t)) from, List#(In#(t)) to) ()
          provisos (Bits#(t, twidth));
 
   // Count inputs and outputs
@@ -598,7 +605,7 @@ module reduceConnect#(List#(Out#(t)) from, List#(In#(t)) to) ()
   Integer numTo = List::length(to);
 
   // Merge down to 'numTo' ports
-  let inter <- mkReduce(numTo, from);
+  let inter <- mkReduce(mergeTwo, numTo, from);
   Integer numInter = List::length(inter);
 
   // Now connect
