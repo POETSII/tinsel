@@ -74,7 +74,7 @@ clean:
 	rm -f InstrMem.hex DataMem.hex RunQueue.hex
 	rm -f testMem de5Top testMailbox de5BridgeTop
 	rm -f de5Top.v mkCore.v mkDCache.v mkMailbox.v mkDebugLinkRouter.v mkFPU.v
-	rm -f de5BridgeTop.v
+	rm -f mkMeshRouter.v de5BridgeTop.v
 	rm -rf test-mem-log
 	rm -rf test-mailbox-log
 	rm -rf test-array-of-queue-log
