@@ -399,6 +399,213 @@ add_interface_port westmac_0_sink westMac_0_sink_sink_empty empty Input 3
 
 
 # 
+# connection point northmac_1_source
+# 
+add_interface northmac_1_source avalon_streaming start
+set_interface_property northmac_1_source associatedClock clock
+set_interface_property northmac_1_source associatedReset reset_sink
+set_interface_property northmac_1_source dataBitsPerSymbol 8
+set_interface_property northmac_1_source errorDescriptor ""
+set_interface_property northmac_1_source firstSymbolInHighOrderBits true
+set_interface_property northmac_1_source maxChannel 0
+set_interface_property northmac_1_source readyLatency 0
+set_interface_property northmac_1_source ENABLED true
+set_interface_property northmac_1_source EXPORT_OF ""
+set_interface_property northmac_1_source PORT_NAME_MAP ""
+set_interface_property northmac_1_source CMSIS_SVD_VARIABLES ""
+set_interface_property northmac_1_source SVD_ADDRESS_GROUP ""
+
+add_interface_port northmac_1_source northMac_1_source_endofpacket endofpacket Output 1
+add_interface_port northmac_1_source northMac_1_source_data data Output 64
+add_interface_port northmac_1_source northMac_1_source_source_ready ready Input 1
+add_interface_port northmac_1_source northMac_1_source_startofpacket startofpacket Output 1
+add_interface_port northmac_1_source northMac_1_source_valid valid Output 1
+add_interface_port northmac_1_source northMac_1_source_empty empty Output 3
+add_interface_port northmac_1_source northMac_1_source_error error Output 1
+
+
+# 
+# connection point southmac_1_source
+# 
+add_interface southmac_1_source avalon_streaming start
+set_interface_property southmac_1_source associatedClock clock
+set_interface_property southmac_1_source associatedReset reset_sink
+set_interface_property southmac_1_source dataBitsPerSymbol 8
+set_interface_property southmac_1_source errorDescriptor ""
+set_interface_property southmac_1_source firstSymbolInHighOrderBits true
+set_interface_property southmac_1_source maxChannel 0
+set_interface_property southmac_1_source readyLatency 0
+set_interface_property southmac_1_source ENABLED true
+set_interface_property southmac_1_source EXPORT_OF ""
+set_interface_property southmac_1_source PORT_NAME_MAP ""
+set_interface_property southmac_1_source CMSIS_SVD_VARIABLES ""
+set_interface_property southmac_1_source SVD_ADDRESS_GROUP ""
+
+add_interface_port southmac_1_source southMac_1_source_endofpacket endofpacket Output 1
+add_interface_port southmac_1_source southMac_1_source_data data Output 64
+add_interface_port southmac_1_source southMac_1_source_source_ready ready Input 1
+add_interface_port southmac_1_source southMac_1_source_startofpacket startofpacket Output 1
+add_interface_port southmac_1_source southMac_1_source_valid valid Output 1
+add_interface_port southmac_1_source southMac_1_source_empty empty Output 3
+add_interface_port southmac_1_source southMac_1_source_error error Output 1
+
+
+# 
+# connection point eastmac_1_source
+# 
+add_interface eastmac_1_source avalon_streaming start
+set_interface_property eastmac_1_source associatedClock clock
+set_interface_property eastmac_1_source associatedReset reset_sink
+set_interface_property eastmac_1_source dataBitsPerSymbol 8
+set_interface_property eastmac_1_source errorDescriptor ""
+set_interface_property eastmac_1_source firstSymbolInHighOrderBits true
+set_interface_property eastmac_1_source maxChannel 0
+set_interface_property eastmac_1_source readyLatency 0
+set_interface_property eastmac_1_source ENABLED true
+set_interface_property eastmac_1_source EXPORT_OF ""
+set_interface_property eastmac_1_source PORT_NAME_MAP ""
+set_interface_property eastmac_1_source CMSIS_SVD_VARIABLES ""
+set_interface_property eastmac_1_source SVD_ADDRESS_GROUP ""
+
+add_interface_port eastmac_1_source eastMac_1_source_endofpacket endofpacket Output 1
+add_interface_port eastmac_1_source eastMac_1_source_data data Output 64
+add_interface_port eastmac_1_source eastMac_1_source_source_ready ready Input 1
+add_interface_port eastmac_1_source eastMac_1_source_startofpacket startofpacket Output 1
+add_interface_port eastmac_1_source eastMac_1_source_valid valid Output 1
+add_interface_port eastmac_1_source eastMac_1_source_empty empty Output 3
+add_interface_port eastmac_1_source eastMac_1_source_error error Output 1
+
+
+# 
+# connection point westmac_1_source
+# 
+add_interface westmac_1_source avalon_streaming start
+set_interface_property westmac_1_source associatedClock clock
+set_interface_property westmac_1_source associatedReset reset_sink
+set_interface_property westmac_1_source dataBitsPerSymbol 8
+set_interface_property westmac_1_source errorDescriptor ""
+set_interface_property westmac_1_source firstSymbolInHighOrderBits true
+set_interface_property westmac_1_source maxChannel 0
+set_interface_property westmac_1_source readyLatency 0
+set_interface_property westmac_1_source ENABLED true
+set_interface_property westmac_1_source EXPORT_OF ""
+set_interface_property westmac_1_source PORT_NAME_MAP ""
+set_interface_property westmac_1_source CMSIS_SVD_VARIABLES ""
+set_interface_property westmac_1_source SVD_ADDRESS_GROUP ""
+
+add_interface_port westmac_1_source westMac_1_source_endofpacket endofpacket Output 1
+add_interface_port westmac_1_source westMac_1_source_data data Output 64
+add_interface_port westmac_1_source westMac_1_source_source_ready ready Input 1
+add_interface_port westmac_1_source westMac_1_source_startofpacket startofpacket Output 1
+add_interface_port westmac_1_source westMac_1_source_valid valid Output 1
+add_interface_port westmac_1_source westMac_1_source_empty empty Output 3
+add_interface_port westmac_1_source westMac_1_source_error error Output 1
+
+
+# 
+# connection point northmac_1_sink
+# 
+add_interface northmac_1_sink avalon_streaming end
+set_interface_property northmac_1_sink associatedClock clock
+set_interface_property northmac_1_sink associatedReset reset_sink
+set_interface_property northmac_1_sink dataBitsPerSymbol 8
+set_interface_property northmac_1_sink errorDescriptor ""
+set_interface_property northmac_1_sink firstSymbolInHighOrderBits true
+set_interface_property northmac_1_sink maxChannel 0
+set_interface_property northmac_1_sink readyLatency 0
+set_interface_property northmac_1_sink ENABLED true
+set_interface_property northmac_1_sink EXPORT_OF ""
+set_interface_property northmac_1_sink PORT_NAME_MAP ""
+set_interface_property northmac_1_sink CMSIS_SVD_VARIABLES ""
+set_interface_property northmac_1_sink SVD_ADDRESS_GROUP ""
+
+add_interface_port northmac_1_sink northMac_1_sink_ready ready Output 1
+add_interface_port northmac_1_sink northMac_1_sink_sink_data data Input 64
+add_interface_port northmac_1_sink northMac_1_sink_sink_endofpacket endofpacket Input 1
+add_interface_port northmac_1_sink northMac_1_sink_sink_error error Input 6
+add_interface_port northmac_1_sink northMac_1_sink_sink_startofpacket startofpacket Input 1
+add_interface_port northmac_1_sink northMac_1_sink_sink_valid valid Input 1
+add_interface_port northmac_1_sink northMac_1_sink_sink_empty empty Input 3
+
+
+# 
+# connection point eastmac_1_sink
+# 
+add_interface eastmac_1_sink avalon_streaming end
+set_interface_property eastmac_1_sink associatedClock clock
+set_interface_property eastmac_1_sink associatedReset reset_sink
+set_interface_property eastmac_1_sink dataBitsPerSymbol 8
+set_interface_property eastmac_1_sink errorDescriptor ""
+set_interface_property eastmac_1_sink firstSymbolInHighOrderBits true
+set_interface_property eastmac_1_sink maxChannel 0
+set_interface_property eastmac_1_sink readyLatency 0
+set_interface_property eastmac_1_sink ENABLED true
+set_interface_property eastmac_1_sink EXPORT_OF ""
+set_interface_property eastmac_1_sink PORT_NAME_MAP ""
+set_interface_property eastmac_1_sink CMSIS_SVD_VARIABLES ""
+set_interface_property eastmac_1_sink SVD_ADDRESS_GROUP ""
+
+add_interface_port eastmac_1_sink eastMac_1_sink_ready ready Output 1
+add_interface_port eastmac_1_sink eastMac_1_sink_sink_data data Input 64
+add_interface_port eastmac_1_sink eastMac_1_sink_sink_endofpacket endofpacket Input 1
+add_interface_port eastmac_1_sink eastMac_1_sink_sink_error error Input 6
+add_interface_port eastmac_1_sink eastMac_1_sink_sink_startofpacket startofpacket Input 1
+add_interface_port eastmac_1_sink eastMac_1_sink_sink_valid valid Input 1
+add_interface_port eastmac_1_sink eastMac_1_sink_sink_empty empty Input 3
+
+
+# 
+# connection point southmac_1_sink
+# 
+add_interface southmac_1_sink avalon_streaming end
+set_interface_property southmac_1_sink associatedClock clock
+set_interface_property southmac_1_sink associatedReset reset_sink
+set_interface_property southmac_1_sink dataBitsPerSymbol 8
+set_interface_property southmac_1_sink errorDescriptor ""
+set_interface_property southmac_1_sink firstSymbolInHighOrderBits true
+set_interface_property southmac_1_sink maxChannel 0
+set_interface_property southmac_1_sink readyLatency 0
+set_interface_property southmac_1_sink ENABLED true
+set_interface_property southmac_1_sink EXPORT_OF ""
+set_interface_property southmac_1_sink PORT_NAME_MAP ""
+set_interface_property southmac_1_sink CMSIS_SVD_VARIABLES ""
+set_interface_property southmac_1_sink SVD_ADDRESS_GROUP ""
+
+add_interface_port southmac_1_sink southMac_1_sink_ready ready Output 1
+add_interface_port southmac_1_sink southMac_1_sink_sink_data data Input 64
+add_interface_port southmac_1_sink southMac_1_sink_sink_endofpacket endofpacket Input 1
+add_interface_port southmac_1_sink southMac_1_sink_sink_error error Input 6
+add_interface_port southmac_1_sink southMac_1_sink_sink_startofpacket startofpacket Input 1
+add_interface_port southmac_1_sink southMac_1_sink_sink_valid valid Input 1
+add_interface_port southmac_1_sink southMac_1_sink_sink_empty empty Input 3
+
+
+# 
+# connection point westmac_1_sink
+# 
+add_interface westmac_1_sink avalon_streaming end
+set_interface_property westmac_1_sink associatedClock clock
+set_interface_property westmac_1_sink associatedReset reset_sink
+set_interface_property westmac_1_sink dataBitsPerSymbol 8
+set_interface_property westmac_1_sink errorDescriptor ""
+set_interface_property westmac_1_sink firstSymbolInHighOrderBits true
+set_interface_property westmac_1_sink maxChannel 0
+set_interface_property westmac_1_sink readyLatency 0
+set_interface_property westmac_1_sink ENABLED true
+set_interface_property westmac_1_sink EXPORT_OF ""
+set_interface_property westmac_1_sink PORT_NAME_MAP ""
+set_interface_property westmac_1_sink CMSIS_SVD_VARIABLES ""
+set_interface_property westmac_1_sink SVD_ADDRESS_GROUP ""
+
+add_interface_port westmac_1_sink westMac_1_sink_ready ready Output 1
+add_interface_port westmac_1_sink westMac_1_sink_sink_data data Input 64
+add_interface_port westmac_1_sink westMac_1_sink_sink_endofpacket endofpacket Input 1
+add_interface_port westmac_1_sink westMac_1_sink_sink_error error Input 6
+add_interface_port westmac_1_sink westMac_1_sink_sink_startofpacket startofpacket Input 1
+add_interface_port westmac_1_sink westMac_1_sink_sink_valid valid Input 1
+add_interface_port westmac_1_sink westMac_1_sink_sink_empty empty Input 3
+
+# 
 # connection point board_id
 # 
 add_interface board_id conduit end
