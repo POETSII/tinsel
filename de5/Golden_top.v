@@ -285,7 +285,7 @@ si570_i2c_master_inst (
 // Set the SATA and SFP1G clock rates
 SetPLL setPLL (
   .clk(clk_50mhz),
-  .reset_n(rst_50mhz_n),
+  .reset_n(CPU_RESET_n),
   .i2c_scl(PLL_SCL),
   .i2c_sda(PLL_SDA),
   //.conf_ready()
