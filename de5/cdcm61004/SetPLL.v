@@ -16,8 +16,11 @@ always @ (posedge clk) begin
   end else begin
     if (counter < 32)
       counter <= counter+1;
-    else
+    else if (counter == 32) begin
+      counter <= counter+1;
       write_trigger <= 1;
+    end else
+      write_trigger <= 0;
   end
 end
 
