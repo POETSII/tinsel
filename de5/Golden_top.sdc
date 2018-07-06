@@ -15,7 +15,6 @@ create_clock -period 20 [get_ports OSC_50_B8D]
 
 
 create_clock -period 1.5515 [get_ports SFP_REFCLK_p]
-create_clock -period 1.6 [get_ports SATA_DEVICE_REFCLK_p]
 
 #**************************************************************
 # JTAG
