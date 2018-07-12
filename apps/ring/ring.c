@@ -1,8 +1,8 @@
 #include <tinsel.h>
 
 #define RING_LENGTH 1024
-#define NUM_TOKENS  16
-#define NUM_LOOPS   16
+#define NUM_TOKENS  1000
+#define NUM_LOOPS   10000
 
 int main()
 {
@@ -22,28 +22,34 @@ int main()
   // Number of tokens to receive before finishing
   uint32_t toRecv = NUM_LOOPS*NUM_TOKENS;
 
+  // Mapping from thread id to ring id
+  // (Gains a few % performace!)
+  uint32_t id = (me  & 0xffffff00)
+              | ((me & 0xf) << 4)
+              | ((me >> 4) & 0xf);
+
   // Next thread in ring
-  uint32_t next = me == (RING_LENGTH-1) ? 0 : me+1;
+  uint32_t next = id == (RING_LENGTH-1) ? 0 : id+1;
 
   while (1) {
     // Termination condition
-    if (me == 0 && toRecv == 0 && tinselCanSend()) {
+    if (id == 0 && toRecv == 0 && tinselCanSend()) {
       int host = tinselHostId();
       tinselSend(host, msgOut);
     }
-    // Send
-    else if (toSend > 0 && tinselCanSend()) {
-      tinselSend(next, msgOut);
-      toSend--;
-    }
     // Receive
-    else if (tinselCanRecv()) {
+    if (tinselCanRecv()) {
       volatile int* msgIn = tinselRecv();
       tinselAlloc(msgIn);
       if (toRecv > 0) {
         toRecv--;
         toSend++;
       }
+    }
+    // Send
+    if (toSend > 0 && tinselCanSend()) {
+      tinselSend(next, msgOut);
+      toSend--;
     }
   }
 
