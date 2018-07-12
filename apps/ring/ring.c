@@ -15,13 +15,6 @@ int main()
   // Allocate space for some incoming messages
   for (int i = 0; i < 4; i++) tinselAlloc(tinselSlot(i+1));
 
-  // Number of tokens to send
-  uint32_t toSend = 0;
-  if (me == 0) toSend = NUM_TOKENS;
-
-  // Number of tokens to receive before finishing
-  uint32_t toRecv = NUM_LOOPS*NUM_TOKENS;
-
   // Mapping from thread id to ring id
   // (Gains a few % performace!)
   uint32_t id = (me  & 0xffffff00)
@@ -30,6 +23,13 @@ int main()
 
   // Next thread in ring
   uint32_t next = id == (RING_LENGTH-1) ? 0 : id+1;
+
+  // Number of tokens to send
+  uint32_t toSend = 0;
+  if (id == 0) toSend = NUM_TOKENS;
+
+  // Number of tokens to receive before finishing
+  uint32_t toRecv = NUM_LOOPS*NUM_TOKENS;
 
   while (1) {
     // Termination condition
