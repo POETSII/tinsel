@@ -16,10 +16,7 @@ int main()
   for (int i = 0; i < 4; i++) tinselAlloc(tinselSlot(i+1));
 
   // Mapping from thread id to ring id
-  // (Gains a few % performace!)
-  uint32_t id = (me  & 0xffffff00)
-              | ((me & 0xf) << 4)
-              | ((me >> 4) & 0xf);
+  uint32_t id = me;
 
   // Next thread in ring
   uint32_t next = id == (RING_LENGTH-1) ? 0 : id+1;
