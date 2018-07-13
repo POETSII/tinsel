@@ -171,32 +171,28 @@ void powerEnable(int enable)
   for (int i = 0; ; i++) {
     if (fgets(line, sizeof(line), fp) == NULL) break;
     if (feof(fp)) break;
-    if (i >= done) {
-      // Trim the new line
-      char* ptr = line;
-      while (*ptr) { if (*ptr == '\n') *ptr = '\0'; ptr++; }
-      // Open link
-      int fd = powerInit(line);
-      // Send command
-      char resp[256];
-      int ok;
-      if (enable)
-        ok = powerPutCmd(fd, (char*) "p=1.", resp, sizeof(resp));
-      else
-        ok = powerPutCmd(fd, (char*) "p=0.", resp, sizeof(resp));
-      // On error, reset PSoCs and retry
-      if (ok < 0) {
-        powerResetPSoCs(done);
-        //sleep(1);
-        close(fd);
-        fclose(fp);
-        goto retry;
-      }
-      // Another link sucesfully enabled/disabled
-      done++;
-      // Close link
+    // Trim the new line
+    char* ptr = line;
+    while (*ptr) { if (*ptr == '\n') *ptr = '\0'; ptr++; }
+    // Open link
+    int fd = powerInit(line);
+    // Send command
+    char resp[256];
+    int ok;
+    if (enable)
+      ok = powerPutCmd(fd, (char*) "p=1.", resp, sizeof(resp));
+    else
+      ok = powerPutCmd(fd, (char*) "p=0.", resp, sizeof(resp));
+    // On error, reset PSoCs and retry
+    if (ok < 0) {
+      powerResetPSoCs(0);
+      sleep(1);
       close(fd);
+      fclose(fp);
+      goto retry;
     }
+    // Close link
+    close(fd);
   }
   fclose(fp);
 }
