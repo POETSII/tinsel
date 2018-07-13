@@ -54,7 +54,7 @@ function start {
 
   # Start the PCIeStream Daemon
   echo "Starting pciestreamd (BAR=$BAR)"
-  $TINSEL_ROOT/hostlink/pciestreamd $BAR &
+  $TINSEL_ROOT/hostlink/pciestreamd $BAR 2>&1 > /tmp/pciestreamd.log &
 }
 
 case $1 in

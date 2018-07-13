@@ -152,19 +152,17 @@ int powerPutCmd(int fd, char* cmd, char* resp, int respSize)
   return 0;
 }
 
-// Enable power to all worker FPGAs
-void powerEnable(int enable)
+// Send a command over all power links
+void powerPutCmdAll(const char* cmd, bool retry)
 {
-  // All links up to this index have been sucessfully enabled/disabled
-  int done = 0;
   // Retry from here, if necessary
-  retry:
+  retry_label:
   // Determine all the power links
   char line[256];
   FILE* fp = popen(
     "ls /dev/serial/by-id/usb-Cypress_Semiconductor_USBUART*", "r");
   if (!fp) {
-    fprintf(stderr, "Power-enable failed");
+    fprintf(stderr, "Power-enable failed\n");
     exit(EXIT_FAILURE);
   }
   // For each power link
@@ -178,23 +176,36 @@ void powerEnable(int enable)
     int fd = powerInit(line);
     // Send command
     char resp[256];
-    int ok;
-    if (enable)
-      ok = powerPutCmd(fd, (char*) "p=1.", resp, sizeof(resp));
-    else
-      ok = powerPutCmd(fd, (char*) "p=0.", resp, sizeof(resp));
-    // On error, reset PSoCs and retry
+    int ok = powerPutCmd(fd, (char*) cmd, resp, sizeof(resp));
+    // On error, optionally reset PSoCs and retry
     if (ok < 0) {
-      powerResetPSoCs(0);
-      sleep(1);
-      close(fd);
-      fclose(fp);
-      goto retry;
+      if (retry) {
+        powerResetPSoCs(0);
+        close(fd);
+        fclose(fp);
+        goto retry_label;
+      }
+      else {
+        fprintf(stderr, "Temporarily unable to connect to PowerLinks\n");
+      }
     }
     // Close link
     close(fd);
   }
   fclose(fp);
+}
+
+// Enable power to all worker FPGAs
+void powerEnable(int enable)
+{
+  // Try to talk to power boards and reset them if neccessary
+  // (This is a workaround for occasionally unresponsive powers boards)
+  powerPutCmdAll("p?", true);
+  // Now enable or disable the power
+  if (enable)
+    powerPutCmdAll("p=1.", false);
+  else
+    powerPutCmdAll("p=0.", false);
 }
 
 // Disable then enable power to all worker FPGAs
