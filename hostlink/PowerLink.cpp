@@ -187,6 +187,7 @@ void powerPutCmdAll(const char* cmd, bool retry)
       }
       else {
         fprintf(stderr, "Temporarily unable to connect to PowerLinks\n");
+        exit(EXIT_FAILURE);
       }
     }
     // Close link
