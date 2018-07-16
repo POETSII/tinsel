@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <config.h>
 #include <io.h>
+#include <tinsel-interface.h>
 
 // Control/status registers
 #define CSR_INSTR_ADDR  "0x800"
@@ -23,8 +24,6 @@
 #define CSR_KILL_THREAD "0x80e"
 #define CSR_EMIT        "0x80f"
 #define CSR_CYCLE       "0xc00"
-
-#define INLINE inline __attribute__((always_inline))
 
 // Get globally unique thread id of caller
 INLINE int tinselId()
@@ -92,14 +91,6 @@ INLINE void tinselKillThread()
   asm volatile("csrrw zero, " CSR_KILL_THREAD ", zero\n");
 }
 
-// Get pointer to message-aligned slot in mailbox scratchpad
-INLINE volatile void* tinselSlot(int n)
-{
-  const volatile char* mb_scratchpad_base =
-    (char*) (1 << (TinselLogBytesPerMsg + TinselLogMsgsPerThread));
-  return (void*) (mb_scratchpad_base + (n << TinselLogBytesPerMsg));
-}
-
 // Give mailbox permission to use given address to store an message
 INLINE void tinselAlloc(volatile void* addr)
 {
@@ -143,9 +134,6 @@ INLINE volatile void* tinselRecv()
   asm volatile("csrrw %0, " CSR_RECV ", zero" : "=r"(ok));
   return ok;
 }
-
-// Thread can be woken by a logical-OR of these events
-typedef enum {TINSEL_CAN_SEND = 1, TINSEL_CAN_RECV = 2} TinselWakeupCond;
 
 // Suspend thread until wakeup condition satisfied
 INLINE void tinselWaitUntil(TinselWakeupCond cond)
