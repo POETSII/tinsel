@@ -13,7 +13,7 @@ void swap(int &x, int&y) {
 int main()
 {
   int numThreads = (1 << TinselLogThreadsPerBoard)
-                     * TinselMeshXLen * TinselMeshXLen;
+                     * TinselMeshXLen * TinselMeshYLen;
   int numThreadsUsed = (1 << LOG_THREADS_PER_BOARD) * NUM_BOARDS;
 
   // This sequence maps each thread id to its neighbour
