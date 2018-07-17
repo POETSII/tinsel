@@ -1,5 +1,5 @@
 # Tinsel root
-TINSEL_ROOT=../..
+TINSEL_ROOT=../../..
 
 ifndef QUARTUS_ROOTDIR
   $(error Please set QUARTUS_ROOTDIR)
@@ -22,9 +22,15 @@ data.v: ring.elf
 	$(RV_OBJCOPY) -O verilog --remove-section=.text \
                 --set-section-flags .bss=alloc,load,contents ring.elf data.v
 
-ring.elf: ring.c link.ld $(INC)/config.h $(INC)/tinsel.h entry.o
+ring.elf: ring.c link.ld $(INC)/config.h $(INC)/tinsel.h entry.o ring.h layout.h
 	$(RV_CC) $(CFLAGS) -Wall -c -o ring.o ring.c
 	$(RV_LD) $(LDFLAGS) -T link.ld -o ring.elf entry.o ring.o
+
+GenLayout: GenLayout.cpp $(INC)/config.h ring.h
+	gcc -I $(INC) GenLayout.cpp -o GenLayout
+
+layout.h: GenLayout
+	./GenLayout > layout.h
 
 entry.o:
 	$(RV_CC) $(CFLAGS) -Wall -c -o entry.o entry.S
@@ -48,4 +54,4 @@ sim: run.cpp $(HL)/sim/*.o
 
 .PHONY: clean
 clean:
-	rm -f *.o *.elf link.ld *.v run sim
+	rm -f *.o *.elf link.ld *.v run sim GenLayout layout.h
