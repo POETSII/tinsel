@@ -75,8 +75,17 @@ p["LogMsgsPerThread"] = 4
 # Number of cores sharing a mailbox
 p["LogCoresPerMailbox"] = 2
 
-# Number of mailboxes per board
-p["LogMailboxesPerBoard"] = 4
+# Number of bits in mailbox mesh X coord
+p["MailboxMeshXBits"] = 2
+
+# Number of bits in mailbox mesh Y coord
+p["MailboxMeshYBits"] = 2
+
+# Length of mailbox mesh X dimension
+p["MailboxMeshXLen"] = 2 ** p["MailboxMeshXBits"]
+
+# Length of mailbox mesh Y dimension
+p["MailboxMeshYLen"] = 2 ** p["MailboxMeshYBits"]
 
 # Maximum size of boot loader (in bytes)
 p["MaxBootImageBytes"] = 512
@@ -99,20 +108,28 @@ p["LinkTimeout"] = 1024
 # Latency of 10G MAC in cycles (simulation only)
 p["MacLatency"] = 100
 
-# Number of bits in mesh X coord
+# Number of bits in board mesh X coord
 p["MeshXBits"] = 2
 
-# Number of bits in mesh Y coord
+# Number of bits in board mesh Y coord
 p["MeshYBits"] = 2
 
-# Mesh X length
+# Board mesh X length
 p["MeshXLen"] = 3
 
-# Mesh Y length
+# Board mesh Y length
 p["MeshYLen"] = 1
 
 # Number of cores per FPU
 p["LogCoresPerFPU"] = 2
+
+# Number of inter-FPGA links on north edge
+# Number of inter-FPGA links on south edge
+p["LogNorthSouthLinks"] = 0
+
+# Number of inter-FPGA links on east edge
+# Number of inter-FPGA links on west edge
+p["LogEastWestLinks"] = 0
 
 # Latencies of arithmetic megafunctions
 p["IntMultLatency"] = 3
@@ -204,6 +221,9 @@ p["LogTransmitBufferLen"] = (p["LogMaxFlitsPerMsg"]
                                if p["LogMaxFlitsPerMsg"] > 1 else 1)
 
 # Number of mailboxes per board
+p["LogMailboxesPerBoard"] = p["MailboxMeshXBits"] + p["MailboxMeshYBits"]
+
+# Number of mailboxes per board
 p["MailboxesPerBoard"] = 2 ** p["LogMailboxesPerBoard"]
 
 # Number of DRAMs per FPGA board
@@ -262,6 +282,10 @@ p["FPUOpMaxLatency"] = max(
   , p["FPConvertLatency"]
   , p["FPCompareLatency"]
   ])
+
+# Number of inter-FPGA links
+p["NumNorthSouthLinks"] = 2 ** p["LogNorthSouthLinks"]
+p["NumEastWestLinks"] = 2 ** p["LogEastWestLinks"]
 
 #==============================================================================
 # Main 

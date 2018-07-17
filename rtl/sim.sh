@@ -42,6 +42,12 @@ function fromCoords {
 LAST_X=$(($MESH_X - 1))
 LAST_Y=$(($MESH_Y - 1))
 
+# Socket ids for each link
+NORTH_ID_BASE=4
+SOUTH_ID_BASE=8
+EAST_ID_BASE=12
+WEST_ID_BASE=16
+
 # Run one simulator per board
 for X in $(seq 0 $LAST_X); do
   for Y in $(seq 0 $LAST_Y); do
@@ -66,8 +72,12 @@ for Y in $(seq 0 $LAST_Y); do
     A=$(fromCoords $X $Y)
     B=$(fromCoords $(($X+1)) $Y)
     if [ $(($X+1)) -lt $MESH_X ]; then
-      $UDSOCK join "@tinsel.b$A.3" "@tinsel.b$B.4" &
-      PIDS="$PIDS $!"
+      for I in $(seq 1 $NumEastWestLinks); do
+        E=$(($EAST_ID_BASE + $I - 1))
+        W=$(($WEST_ID_BASE + $I - 1))
+        $UDSOCK join "@tinsel.b$A.$E" "@tinsel.b$B.$W" &
+        PIDS="$PIDS $!"
+      done
     fi
   done
 done
@@ -78,15 +88,20 @@ for X in $(seq 0 $LAST_X); do
     A=$(fromCoords $X $Y)
     B=$(fromCoords $X $(($Y+1)))
     if [ $(($Y+1)) -lt $MESH_Y ]; then
-      $UDSOCK join "@tinsel.b$A.1" "@tinsel.b$B.2" &
-      PIDS="$PIDS $!"
+      for I in $(seq 1 $NumNorthSouthLinks); do
+        N=$(($NORTH_ID_BASE + $I - 1))
+        S=$(($SOUTH_ID_BASE + $I - 1))
+        $UDSOCK join "@tinsel.b$A.$N" "@tinsel.b$B.$S" &
+        PIDS="$PIDS $!"
+      done
     fi
   done
 done
 
 # Connect bridge board to mesh
 ENTRY_ID=$(fromCoords 0 $(($MESH_Y-1)))
-$UDSOCK join "@tinsel.b$ENTRY_ID.1" "@tinsel.b$HOST_ID.1" &
+$UDSOCK join "@tinsel.b$ENTRY_ID.$NORTH_ID_BASE" \
+             "@tinsel.b$HOST_ID.$NORTH_ID_BASE" &
 PIDS="$PIDS $!"
 
 # On CTRL-C, call quit()
