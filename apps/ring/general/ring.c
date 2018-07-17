@@ -1,8 +1,6 @@
 #include <tinsel.h>
-
-#define RING_LENGTH 1024
-#define NUM_TOKENS  1000
-#define NUM_LOOPS   10000
+#include "ring.h"
+#include "layout.h"
 
 int main()
 {
@@ -15,22 +13,22 @@ int main()
   // Allocate space for some incoming messages
   for (int i = 0; i < 4; i++) tinselAlloc(tinselSlot(i+1));
 
-  // Mapping from thread id to ring id
-  uint32_t id = me;
-
   // Next thread in ring
-  uint32_t next = id == (RING_LENGTH-1) ? 0 : id+1;
+  int next = layout[me];
+
+  // If thread is unused, sleep
+  if (next < 0) tinselWaitUntil(TINSEL_CAN_RECV);
 
   // Number of tokens to send
   uint32_t toSend = 0;
-  if (id == 0) toSend = NUM_TOKENS;
+  if (me == 0) toSend = NUM_TOKENS;
 
   // Number of tokens to receive before finishing
   uint32_t toRecv = NUM_LOOPS*NUM_TOKENS;
 
   while (1) {
     // Termination condition
-    if (id == 0 && toRecv == 0 && tinselCanSend()) {
+    if (me == 0 && toRecv == 0 && tinselCanSend()) {
       int host = tinselHostId();
       tinselSend(host, msgOut);
     }
