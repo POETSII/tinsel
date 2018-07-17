@@ -33,10 +33,10 @@ import "BDPI" function Bit#(32) getBoardId();
 
 interface DE5Top;
   interface Vector#(`DRAMsPerBoard, DRAMExtIfc) dramIfcs;
-  interface AvalonMac northMac;
-  interface AvalonMac southMac;
-  interface AvalonMac eastMac;
-  interface AvalonMac westMac;
+  interface Vector#(`NumNorthSouthLinks, AvalonMac) northMac;
+  interface Vector#(`NumNorthSouthLinks, AvalonMac) southMac;
+  interface Vector#(`NumEastWestLinks, AvalonMac) eastMac;
+  interface Vector#(`NumEastWestLinks, AvalonMac) westMac;
   interface JtagUartAvalon jtagIfc;
   (* always_ready, always_enabled *)
   method Action setBoardId(BoardId id);
@@ -133,23 +133,29 @@ module de5Top (DE5Top);
   end
 
   // Create mailboxes
-  Vector#(`MailboxesPerBoard, Mailbox) mailboxes;
-  for (Integer i = 0; i < `MailboxesPerBoard; i=i+1)
-    mailboxes[i] <- mkMailbox;
+  Vector#(`MailboxMeshYLen,
+    Vector#(`MailboxMeshXLen, Mailbox)) mailboxes =
+      Vector::replicate(newVector());
+  for (Integer y = 0; y < `MailboxMeshYLen; y=y+1)
+    for (Integer x = 0; x < `MailboxMeshXLen; x=x+1)
+      mailboxes[y][x] <- mkMailbox;
 
   // Connect cores to mailboxes
-  for (Integer i = 0; i < `MailboxesPerBoard; i=i+1) begin
-    // Get sub-vector of cores to be connected to mailbox i
-    Vector#(`CoresPerMailbox, Core) cs =
-      takeAt(`CoresPerMailbox*i, vecOfCores);
-    function mailboxClient(core) = core.mailboxClient;
-    // Connect sub-vector of cores to mailbox
-    connectCoresToMailbox(map(mailboxClient, cs), mailboxes[i]);
-  end
+  for (Integer y = 0; y < `MailboxMeshYLen; y=y+1)
+    for (Integer x = 0; x < `MailboxMeshXLen; x=x+1) begin
+      // Get sub-vector of cores to be connected to mailbox
+      Integer i = y*`MailboxMeshXLen+x;
+      Vector#(`CoresPerMailbox, Core) cs =
+        takeAt(`CoresPerMailbox*i, vecOfCores);
+      function mailboxClient(core) = core.mailboxClient;
+      // Connect sub-vector of cores to mailbox
+      connectCoresToMailbox(map(mailboxClient, cs), mailboxes[y][x]);
+    end
 
-  // Create bus of mailboxes
+  // Create mesh of mailboxes
   function MailboxNet mailboxNet(Mailbox mbox) = mbox.net;
-  ExtNetwork net <- mkBus(boardId, map(mailboxNet, mailboxes));
+  ExtNetwork net <- mkMailboxMesh(boardId,
+                      map(map(mailboxNet), mailboxes));
 
   // Create DebugLink interface
   function DebugLinkClient getDebugLinkClient(Core core) = core.debugLinkClient;
