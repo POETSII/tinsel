@@ -5,17 +5,23 @@ package Socket;
 // Access named sockets on the file system in simulation.
 
 import Vector :: *;
+import List   :: *;
+import Util   :: *;
 
 // Socket identifier
 typedef Bit#(32) SocketId;
 
 // Socket ids used in tinsel
 SocketId uartSocket  = 0;
-SocketId northSocket = 1;
-SocketId southSocket = 2;
-SocketId eastSocket  = 3;
-SocketId westSocket  = 4;
-SocketId pcieSocket  = 5;
+SocketId pcieSocket  = 1;
+Vector#(`NumNorthSouthLinks, SocketId) northSocket =
+  Vector::map(fromInteger, genVectorFrom(4));
+Vector#(`NumNorthSouthLinks, SocketId) southSocket =
+  Vector::map(fromInteger, genVectorFrom(8));
+Vector#(`NumEastWestLinks, SocketId) eastSocket =
+  Vector::map(fromInteger, genVectorFrom(12));
+Vector#(`NumEastWestLinks, SocketId) westSocket =
+  Vector::map(fromInteger, genVectorFrom(16));
 
 `ifdef SIMULATE
 

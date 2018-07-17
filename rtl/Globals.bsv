@@ -19,6 +19,15 @@ typedef struct {
   ThreadId thread;
 } NetAddr deriving (Bits, Eq);
 
+// Mailbox id
+typedef struct {
+  Bit#(`MailboxMeshYBits) y;
+  Bit#(`MailboxMeshXBits) x;
+} MailboxId deriving (Bits, Eq);
+
+function MailboxId getMailboxId(NetAddr addr) =
+  unpack(truncateLSB(addr.core));
+
 // ============================================================================
 // Messages
 // ============================================================================

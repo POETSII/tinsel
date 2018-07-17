@@ -8,33 +8,33 @@
 #define INLINE inline __attribute__((always_inline))
 
 // Get globally unique thread id of caller
-int tinselId();
+INLINE int tinselId();
 
 // Read cycle counter
-uint32_t tinselCycleCount();
+INLINE uint32_t tinselCycleCount();
 
 // Cache flush
-void tinselCacheFlush();
+INLINE void tinselCacheFlush();
 
 // Write a word to instruction memory
-void tinselWriteInstr(uint32_t addr, uint32_t word);
+INLINE void tinselWriteInstr(uint32_t addr, uint32_t word);
 
 // Emit word to console (simulation only)
-void tinselEmit(uint32_t x);
+INLINE void tinselEmit(uint32_t x);
 
 // Send byte to host (over DebugLink UART)
 // (Returns non-zero on success)
-uint32_t tinselUartTryPut(uint8_t x);
+INLINE uint32_t tinselUartTryPut(uint8_t x);
 
 // Receive byte from host (over DebugLink UART)
 // (Byte present in bits [7:0]; bit 8 indicates validity)
-uint32_t tinselUartTryGet();
+INLINE uint32_t tinselUartTryGet();
 
 // Insert new thread (with given id) into run queue
-void tinselCreateThread(uint32_t id);
+INLINE void tinselCreateThread(uint32_t id);
 
 // Do not insert currently running thread back in to run queue
-void tinselKillThread();
+INLINE void tinselKillThread();
 
 // Get pointer to message-aligned slot in mailbox scratchpad
 INLINE volatile void* tinselSlot(int n)
@@ -45,39 +45,39 @@ INLINE volatile void* tinselSlot(int n)
 }
 
 // Give mailbox permission to use given address to store an message
-void tinselAlloc(volatile void* addr);
+INLINE void tinselAlloc(volatile void* addr);
 
 // Determine if calling thread can send a message
-int tinselCanSend();
+INLINE int tinselCanSend();
 
 // Determine if calling thread can receive a message
-int tinselCanRecv();
+INLINE int tinselCanRecv();
 
 // Set message length for send operation
 // (A message of length N is comprised of N+1 flits)
-void tinselSetLen(int n);
+INLINE void tinselSetLen(int n);
 
 // Send message at addr to dest
-void tinselSend(int dest, volatile void* addr);
+INLINE void tinselSend(int dest, volatile void* addr);
 
 // Receive message
-volatile void* tinselRecv();
+INLINE volatile void* tinselRecv();
 
 // Thread can be woken by a logical-OR of these events
 typedef enum {TINSEL_CAN_SEND = 1, TINSEL_CAN_RECV = 2} TinselWakeupCond;
 
 // Suspend thread until wakeup condition satisfied
-void tinselWaitUntil(TinselWakeupCond cond);
+INLINE void tinselWaitUntil(TinselWakeupCond cond);
 
 #ifdef __cplusplus
-TinselWakeupCond operator|(TinselWakeupCond a, TinselWakeupCond b);
+INLINE TinselWakeupCond operator|(TinselWakeupCond a, TinselWakeupCond b);
 #endif
 
 // Get globally unique thread id of host
 // (Host board has X coordinate of 0 and Y coordinate on mesh rim)
-uint32_t tinselHostId();
+INLINE uint32_t tinselHostId();
 
 // Return pointer to base of thread's DRAM partition
-void* tinselHeapBase();
+INLINE void* tinselHeapBase();
 
 #endif

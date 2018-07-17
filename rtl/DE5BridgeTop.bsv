@@ -90,7 +90,7 @@ module de5BridgeTop (DE5BridgeTop);
   connectUsing(mkUGShiftQueue1(QueueOptFmax), uart.jtagOut, fromJtag.in);
 
   // Create off-board link
-  BoardLink link <- mkBoardLink(northSocket);
+  BoardLink link <- mkBoardLink(northSocket[0]);
 
   // Connect ports to off-board link
   connectUsing(mkUGQueue, toLink.out, link.flitIn);

@@ -207,13 +207,13 @@ set_interface_property northmac_source PORT_NAME_MAP ""
 set_interface_property northmac_source CMSIS_SVD_VARIABLES ""
 set_interface_property northmac_source SVD_ADDRESS_GROUP ""
 
-add_interface_port northmac_source northMac_source_endofpacket endofpacket Output 1
-add_interface_port northmac_source northMac_source_data data Output 64
-add_interface_port northmac_source northMac_source_source_ready ready Input 1
-add_interface_port northmac_source northMac_source_startofpacket startofpacket Output 1
-add_interface_port northmac_source northMac_source_valid valid Output 1
-add_interface_port northmac_source northMac_source_empty empty Output 3
-add_interface_port northmac_source northMac_source_error error Output 1
+add_interface_port northmac_source northMac_0_source_endofpacket endofpacket Output 1
+add_interface_port northmac_source northMac_0_source_data data Output 64
+add_interface_port northmac_source northMac_0_source_source_ready ready Input 1
+add_interface_port northmac_source northMac_0_source_startofpacket startofpacket Output 1
+add_interface_port northmac_source northMac_0_source_valid valid Output 1
+add_interface_port northmac_source northMac_0_source_empty empty Output 3
+add_interface_port northmac_source northMac_0_source_error error Output 1
 
 
 # 
@@ -233,13 +233,13 @@ set_interface_property southmac_source PORT_NAME_MAP ""
 set_interface_property southmac_source CMSIS_SVD_VARIABLES ""
 set_interface_property southmac_source SVD_ADDRESS_GROUP ""
 
-add_interface_port southmac_source southMac_source_endofpacket endofpacket Output 1
-add_interface_port southmac_source southMac_source_data data Output 64
-add_interface_port southmac_source southMac_source_source_ready ready Input 1
-add_interface_port southmac_source southMac_source_startofpacket startofpacket Output 1
-add_interface_port southmac_source southMac_source_valid valid Output 1
-add_interface_port southmac_source southMac_source_empty empty Output 3
-add_interface_port southmac_source southMac_source_error error Output 1
+add_interface_port southmac_source southMac_0_source_endofpacket endofpacket Output 1
+add_interface_port southmac_source southMac_0_source_data data Output 64
+add_interface_port southmac_source southMac_0_source_source_ready ready Input 1
+add_interface_port southmac_source southMac_0_source_startofpacket startofpacket Output 1
+add_interface_port southmac_source southMac_0_source_valid valid Output 1
+add_interface_port southmac_source southMac_0_source_empty empty Output 3
+add_interface_port southmac_source southMac_0_source_error error Output 1
 
 
 # 
@@ -259,13 +259,13 @@ set_interface_property eastmac_source PORT_NAME_MAP ""
 set_interface_property eastmac_source CMSIS_SVD_VARIABLES ""
 set_interface_property eastmac_source SVD_ADDRESS_GROUP ""
 
-add_interface_port eastmac_source eastMac_source_endofpacket endofpacket Output 1
-add_interface_port eastmac_source eastMac_source_data data Output 64
-add_interface_port eastmac_source eastMac_source_source_ready ready Input 1
-add_interface_port eastmac_source eastMac_source_startofpacket startofpacket Output 1
-add_interface_port eastmac_source eastMac_source_valid valid Output 1
-add_interface_port eastmac_source eastMac_source_empty empty Output 3
-add_interface_port eastmac_source eastMac_source_error error Output 1
+add_interface_port eastmac_source eastMac_0_source_endofpacket endofpacket Output 1
+add_interface_port eastmac_source eastMac_0_source_data data Output 64
+add_interface_port eastmac_source eastMac_0_source_source_ready ready Input 1
+add_interface_port eastmac_source eastMac_0_source_startofpacket startofpacket Output 1
+add_interface_port eastmac_source eastMac_0_source_valid valid Output 1
+add_interface_port eastmac_source eastMac_0_source_empty empty Output 3
+add_interface_port eastmac_source eastMac_0_source_error error Output 1
 
 
 # 
@@ -285,13 +285,13 @@ set_interface_property westmac_source PORT_NAME_MAP ""
 set_interface_property westmac_source CMSIS_SVD_VARIABLES ""
 set_interface_property westmac_source SVD_ADDRESS_GROUP ""
 
-add_interface_port westmac_source westMac_source_endofpacket endofpacket Output 1
-add_interface_port westmac_source westMac_source_data data Output 64
-add_interface_port westmac_source westMac_source_source_ready ready Input 1
-add_interface_port westmac_source westMac_source_startofpacket startofpacket Output 1
-add_interface_port westmac_source westMac_source_valid valid Output 1
-add_interface_port westmac_source westMac_source_empty empty Output 3
-add_interface_port westmac_source westMac_source_error error Output 1
+add_interface_port westmac_source westMac_0_source_endofpacket endofpacket Output 1
+add_interface_port westmac_source westMac_0_source_data data Output 64
+add_interface_port westmac_source westMac_0_source_source_ready ready Input 1
+add_interface_port westmac_source westMac_0_source_startofpacket startofpacket Output 1
+add_interface_port westmac_source westMac_0_source_valid valid Output 1
+add_interface_port westmac_source westMac_0_source_empty empty Output 3
+add_interface_port westmac_source westMac_0_source_error error Output 1
 
 
 # 
@@ -311,13 +311,13 @@ set_interface_property northmac_sink PORT_NAME_MAP ""
 set_interface_property northmac_sink CMSIS_SVD_VARIABLES ""
 set_interface_property northmac_sink SVD_ADDRESS_GROUP ""
 
-add_interface_port northmac_sink northMac_sink_ready ready Output 1
-add_interface_port northmac_sink northMac_sink_sink_data data Input 64
-add_interface_port northmac_sink northMac_sink_sink_endofpacket endofpacket Input 1
-add_interface_port northmac_sink northMac_sink_sink_error error Input 6
-add_interface_port northmac_sink northMac_sink_sink_startofpacket startofpacket Input 1
-add_interface_port northmac_sink northMac_sink_sink_valid valid Input 1
-add_interface_port northmac_sink northMac_sink_sink_empty empty Input 3
+add_interface_port northmac_sink northMac_0_sink_ready ready Output 1
+add_interface_port northmac_sink northMac_0_sink_sink_data data Input 64
+add_interface_port northmac_sink northMac_0_sink_sink_endofpacket endofpacket Input 1
+add_interface_port northmac_sink northMac_0_sink_sink_error error Input 6
+add_interface_port northmac_sink northMac_0_sink_sink_startofpacket startofpacket Input 1
+add_interface_port northmac_sink northMac_0_sink_sink_valid valid Input 1
+add_interface_port northmac_sink northMac_0_sink_sink_empty empty Input 3
 
 
 # 
@@ -337,13 +337,13 @@ set_interface_property eastmac_sink PORT_NAME_MAP ""
 set_interface_property eastmac_sink CMSIS_SVD_VARIABLES ""
 set_interface_property eastmac_sink SVD_ADDRESS_GROUP ""
 
-add_interface_port eastmac_sink eastMac_sink_ready ready Output 1
-add_interface_port eastmac_sink eastMac_sink_sink_data data Input 64
-add_interface_port eastmac_sink eastMac_sink_sink_endofpacket endofpacket Input 1
-add_interface_port eastmac_sink eastMac_sink_sink_error error Input 6
-add_interface_port eastmac_sink eastMac_sink_sink_startofpacket startofpacket Input 1
-add_interface_port eastmac_sink eastMac_sink_sink_valid valid Input 1
-add_interface_port eastmac_sink eastMac_sink_sink_empty empty Input 3
+add_interface_port eastmac_sink eastMac_0_sink_ready ready Output 1
+add_interface_port eastmac_sink eastMac_0_sink_sink_data data Input 64
+add_interface_port eastmac_sink eastMac_0_sink_sink_endofpacket endofpacket Input 1
+add_interface_port eastmac_sink eastMac_0_sink_sink_error error Input 6
+add_interface_port eastmac_sink eastMac_0_sink_sink_startofpacket startofpacket Input 1
+add_interface_port eastmac_sink eastMac_0_sink_sink_valid valid Input 1
+add_interface_port eastmac_sink eastMac_0_sink_sink_empty empty Input 3
 
 
 # 
@@ -363,13 +363,13 @@ set_interface_property southmac_sink PORT_NAME_MAP ""
 set_interface_property southmac_sink CMSIS_SVD_VARIABLES ""
 set_interface_property southmac_sink SVD_ADDRESS_GROUP ""
 
-add_interface_port southmac_sink southMac_sink_ready ready Output 1
-add_interface_port southmac_sink southMac_sink_sink_data data Input 64
-add_interface_port southmac_sink southMac_sink_sink_endofpacket endofpacket Input 1
-add_interface_port southmac_sink southMac_sink_sink_error error Input 6
-add_interface_port southmac_sink southMac_sink_sink_startofpacket startofpacket Input 1
-add_interface_port southmac_sink southMac_sink_sink_valid valid Input 1
-add_interface_port southmac_sink southMac_sink_sink_empty empty Input 3
+add_interface_port southmac_sink southMac_0_sink_ready ready Output 1
+add_interface_port southmac_sink southMac_0_sink_sink_data data Input 64
+add_interface_port southmac_sink southMac_0_sink_sink_endofpacket endofpacket Input 1
+add_interface_port southmac_sink southMac_0_sink_sink_error error Input 6
+add_interface_port southmac_sink southMac_0_sink_sink_startofpacket startofpacket Input 1
+add_interface_port southmac_sink southMac_0_sink_sink_valid valid Input 1
+add_interface_port southmac_sink southMac_0_sink_sink_empty empty Input 3
 
 
 # 
@@ -389,13 +389,13 @@ set_interface_property westmac_sink PORT_NAME_MAP ""
 set_interface_property westmac_sink CMSIS_SVD_VARIABLES ""
 set_interface_property westmac_sink SVD_ADDRESS_GROUP ""
 
-add_interface_port westmac_sink westMac_sink_ready ready Output 1
-add_interface_port westmac_sink westMac_sink_sink_data data Input 64
-add_interface_port westmac_sink westMac_sink_sink_endofpacket endofpacket Input 1
-add_interface_port westmac_sink westMac_sink_sink_error error Input 6
-add_interface_port westmac_sink westMac_sink_sink_startofpacket startofpacket Input 1
-add_interface_port westmac_sink westMac_sink_sink_valid valid Input 1
-add_interface_port westmac_sink westMac_sink_sink_empty empty Input 3
+add_interface_port westmac_sink westMac_0_sink_ready ready Output 1
+add_interface_port westmac_sink westMac_0_sink_sink_data data Input 64
+add_interface_port westmac_sink westMac_0_sink_sink_endofpacket endofpacket Input 1
+add_interface_port westmac_sink westMac_0_sink_sink_error error Input 6
+add_interface_port westmac_sink westMac_0_sink_sink_startofpacket startofpacket Input 1
+add_interface_port westmac_sink westMac_0_sink_sink_valid valid Input 1
+add_interface_port westmac_sink westMac_0_sink_sink_empty empty Input 3
 
 
 # 
