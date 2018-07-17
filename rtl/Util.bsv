@@ -157,4 +157,53 @@ endmodule
 function Bit#(8) hexDigit(Bit#(4) nibble) =
   nibble >= 10 ? 55 + zeroExtend(nibble) : 48 + zeroExtend(nibble);
 
+// Generate vector containing integers
+function Vector#(n, Integer) genVectorFrom(Integer from);
+  function add(a, b) = a+b;
+  return Vector::map(add(from), genVector());
+endfunction
+
+// The following type-class allows convenient construction of lists, e.g.
+//
+//   List#(String) xs = list("push", "pop", "top");
+//
+typeclass MkList#(type a, type b) dependencies (a determines b);
+  function a mkList(List#(b) acc);
+endtypeclass
+
+instance MkList#(List#(a), a);
+  function List#(a) mkList(List#(a) acc) = List::reverse(acc);
+endinstance
+
+instance MkList#(function b f(a elem), a) provisos (MkList#(b, a));
+  function mkList(acc, elem) = mkList(Cons(elem, acc));
+endinstance
+
+function b list() provisos (MkList#(b, a));
+  return mkList(Nil);
+endfunction
+
+// The following type-class allows convenient construction of vectors, e.g.
+//
+//   Vector#(3, String) xs = vector("push", "pop", "top");
+//
+typeclass MkVector#(type a, type b, type n)
+    dependencies (a determines (n, b));
+  function a mkVector(Vector#(n, b) acc);
+endtypeclass
+
+instance MkVector#(Vector#(n, a), a, n);
+  function Vector#(n, a) mkVector(Vector#(n, a) acc) =
+Vector::reverse(acc);
+endinstance
+
+instance MkVector#(function b f(a elem), a, n)
+  provisos (MkVector#(b, a, TAdd#(n, 1)));
+  function mkVector(acc, elem) = mkVector(Vector::cons(elem, acc));
+endinstance
+
+function b vector() provisos (MkVector#(b, a, 0));
+  return mkVector(Vector::nil);
+endfunction
+
 endpackage

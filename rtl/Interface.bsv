@@ -547,4 +547,105 @@ module mkDeserialiser (Deserialiser#(typeIn, typeOut))
   interface Out parallelOut = outPort.out;
 endmodule
 
+// =============================================================================
+// Expansion and reduction connectors
+// =============================================================================
+
+// Reduce a list of interfaces down to a given number of interfaces,
+// by merging.
+
+// First, a module to reduce by up to factor of two.
+module mkReduceOneLevel#(
+         function module#(Out#(t)) mergeTwo(Out#(t) a, Out#(t) b),
+           List#(Out#(t)) inps)
+         (List#(Out#(t)))
+       provisos (Bits#(t, twidth));
+
+  // Number of inputs
+  Integer numIn = List::length(inps);
+
+  if (numIn <= 1)
+    return inps;
+  else begin
+    let out <- mergeTwo(inps[0], inps[1]);
+    let rest <- mkReduceOneLevel(mergeTwo, List::drop(2, inps));
+    return (Cons(out, rest));
+  end
+endmodule
+
+// Now reduce as many levels as required
+module mkReduce#(
+         function module#(Out#(t)) mergeTwo(Out#(t) a, Out#(t) b),
+           Integer n, List#(Out#(t)) inps)
+         (List#(Out#(t)))
+       provisos (Bits#(t, twidth));
+
+   // Number of inputs
+  Integer numIn = length(inps);
+
+  if (numIn <= n)
+    return inps;
+  else begin
+    let out <- mkReduceOneLevel(mergeTwo, inps);
+    let list <- mkReduce(mergeTwo, n, out);
+    return list;
+  end
+endmodule
+
+// Connect 'from' ports to 'to' ports,
+// where 'length(from)' may be more than 'length(to)'.
+// Works by fair-merging of 'from' ports.
+module reduceConnect#(
+         function module#(Out#(t)) mergeTwo(Out#(t) a, Out#(t) b),
+           List#(Out#(t)) from, List#(In#(t)) to) ()
+         provisos (Bits#(t, twidth));
+
+  // Count inputs and outputs
+  Integer numFrom = List::length(from);
+  Integer numTo = List::length(to);
+
+  // Merge down to 'numTo' ports
+  let inter <- mkReduce(mergeTwo, numTo, from);
+  Integer numInter = List::length(inter);
+
+  // Now connect
+  for (Integer i = 0; i < numTo; i=i+1) begin
+    if (i < numInter)
+      connectUsing(mkUGShiftQueue1(QueueOptFmax), inter[i], to[i]);
+    else begin
+       // Connect terminator
+      BOut#(t) nullOut <- mkNullBOut;
+      connectDirect(nullOut, to[i]);
+    end
+  end
+
+endmodule
+
+// Connect 'from' ports to 'to' ports,
+// where 'length(from)' may be less than 'length(to)'.
+// Works by wiring null to any unused 'to' ports.
+module expandConnect#(List#(Out#(t)) from, List#(In#(t)) to) ()
+         provisos (Bits#(t, twidth));
+
+  // Count inputs and outputs
+  Integer numFrom = List::length(from);
+  Integer numTo = List::length(to);
+  Integer q = numTo/numFrom;
+
+  for (Integer i = 0; i < numTo; i=i+1) begin
+    if (q == 0) begin
+      // Connect input
+      connectUsing(mkUGShiftQueue1(QueueOptFmax), from[i], to[i]);
+    end else if ((i%q) == 0) begin
+      // Connect input
+      connectUsing(mkUGShiftQueue1(QueueOptFmax), from[i/q], to[i]);
+    end else begin
+      // Connect terminator
+      BOut#(t) nullOut <- mkNullBOut;
+      connectDirect(nullOut, to[i]);
+    end
+  end
+  
+endmodule
+
 endpackage
