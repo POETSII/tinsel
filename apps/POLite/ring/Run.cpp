@@ -9,7 +9,7 @@
 int main()
 {
   // Parameters
-  const int numThreads    = 1024;
+  const int numDevices    = 1024;
   const int numTokens     = 1024;
   const int numIterations = 1000;
 
@@ -20,13 +20,13 @@ int main()
   PGraph<RingDevice, RingMessage> graph;
 
   // Create ring of devices
-  PDeviceId ring[numThreads];
-  for (uint32_t i = 0; i < numThreads; i++)
+  PDeviceId ring[numDevices];
+  for (uint32_t i = 0; i < numDevices; i++)
     ring[i] = graph.newDevice();
 
   // Add edges
-  for (uint32_t i = 0; i < numThreads; i++)
-    graph.addEdge(ring[i], ring[(i+1)%numThreads]);
+  for (uint32_t i = 0; i < numDevices; i++)
+    graph.addEdge(ring[i], ring[(i+1)%numDevices]);
 
   // Prepare mapping from graph to hardware
   graph.map();
