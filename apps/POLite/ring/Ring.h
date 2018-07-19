@@ -16,8 +16,6 @@ struct RingDevice : PDevice {
   uint32_t sent;
   // How many messages should root receive before signaling termination?
   uint32_t stopCount;
-  // Used to make sure we only send one 'done' message to the host
-  uint8_t done;
 
   // Called once by POLite at start of execution
   void init() {
@@ -37,8 +35,7 @@ struct RingDevice : PDevice {
     // Check termination condition
     if (root && received == stopCount) {
       dest = hostDeviceId();
-      readyToSend = !done;
-      done = 1;
+      readyToSend = 1; 
     }
     else
       readyToSend = received > sent;
