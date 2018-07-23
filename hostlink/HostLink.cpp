@@ -350,7 +350,7 @@ void HostLink::boot(const char* codeFilename, const char* dataFilename)
   // Step 1: load code into instruction memory
   // -----------------------------------------
 
-  uint32_t addrReg = 0;
+  uint32_t addrReg = 0xffffffff;
   uint32_t addr, word;
   while (code.getWord(&addr, &word)) {
     // Send instruction to each core
@@ -382,7 +382,7 @@ void HostLink::boot(const char* codeFilename, const char* dataFilename)
     (TinselLogCoresPerDCache + TinselLogDCachesPerDRAM);
 
   // Write data to DRAMs
-  addrReg = 0;
+  addrReg = 0xffffffff;
   while (data.getWord(&addr, &word)) {
     for (int x = 0; x < TinselMeshXLen; x++) {
       for (int y = 0; y < TinselMeshYLen; y++) {
@@ -446,21 +446,18 @@ void HostLink::go()
   }
 }
 
-// Load application code and data onto a single thread
-void HostLink::bootOne(const char* codeFilename, const char* dataFilename)
+// Load instructions into given core's instruction memory
+void HostLink::loadInstrsOntoCore(const char* codeFilename,
+       uint32_t meshX, uint32_t meshY, uint32_t coreId)
 {
+  // Code file
   MemFileReader code(codeFilename);
-  MemFileReader data(dataFilename);
 
-  // Request to boot loader
+  // Load loop
   BootReq req;
-
-  // Step 1: load code into instruction memory
-  // -----------------------------------------
-
-  uint32_t addrReg = 0;
+  uint32_t addrReg = 0xffffffff;
   uint32_t addr, word;
-  uint32_t dest = toAddr(0, 0, 0, 0);
+  uint32_t dest = toAddr(meshX, meshY, coreId, 0);
   while (code.getWord(&addr, &word)) {
     // Write instruction
     if (addr != addrReg) {
@@ -475,12 +472,19 @@ void HostLink::bootOne(const char* codeFilename, const char* dataFilename)
     send(dest, 1, &req);
     addrReg = addr + 4;
   }
+}
 
-  // Step 2: initialise data memory
-  // ------------------------------
+// Load data via given core on given board
+void HostLink::loadDataViaCore(const char* dataFilename,
+        uint32_t meshX, uint32_t meshY, uint32_t coreId)
+{
+  MemFileReader data(dataFilename);
 
   // Write data to DRAM
-  addrReg = 0;
+  BootReq req;
+  uint32_t addrReg = 0xffffffff;
+  uint32_t addr, word;
+  uint32_t dest = toAddr(meshX, meshY, coreId, 0);
   while (data.getWord(&addr, &word)) {
     // Write data
     if (addr != addrReg) {
@@ -495,13 +499,20 @@ void HostLink::bootOne(const char* codeFilename, const char* dataFilename)
     send(dest, 1, &req);
     addrReg = addr + 4;
   }
+}
 
-  // Step 3: start thread
-  // --------------------
+// Start given number of threads on given core
+void HostLink::startOne(uint32_t meshX, uint32_t meshY,
+       uint32_t coreId, uint32_t numThreads)
+{
+  assert(numThreads > 0 && numThreads <= TinselThreadsPerCore);
+
+  BootReq req;
+  uint32_t dest = toAddr(meshX, meshY, coreId, 0);
 
   // Send start command
   req.cmd = StartCmd;
-  req.args[0] = 0;
+  req.args[0] = numThreads-1;
   send(dest, 1, &req);
 
   // Wait for start response
@@ -509,11 +520,11 @@ void HostLink::bootOne(const char* codeFilename, const char* dataFilename)
   recv(flit);
 }
 
-// Trigger to start application execution on a single thread
-void HostLink::goOne()
+// Trigger application execution on all started threads on given core
+void HostLink::goOne(uint32_t meshX, uint32_t meshY, uint32_t coreId)
 {
-  mesh[0][0]->setDest(0, 0);
-  mesh[0][0]->put(0);
+  mesh[meshX][meshY]->setDest(coreId, 0);
+  mesh[meshX][meshY]->put(0);
 }
 
 // Set address for remote memory access on given board via given core
