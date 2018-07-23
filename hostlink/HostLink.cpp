@@ -474,24 +474,17 @@ void HostLink::loadInstrsOntoCore(const char* codeFilename,
   }
 }
 
-// Load data into given DRAM on give board
-void HostLink::loadDataOntoDRAM(const char* dataFilename,
-        uint32_t meshX, uint32_t meshY, uint32_t dramId)
+// Load data via given core on given board
+void HostLink::loadDataViaCore(const char* dataFilename,
+        uint32_t meshX, uint32_t meshY, uint32_t coreId)
 {
   MemFileReader data(dataFilename);
-
-  // Check that dramId is in valid range
-  assert(dramId < TinselDRAMsPerBoard);
-
-  // Compute number of cores per DRAM
-  const uint32_t coresPerDRAM = 1 <<
-    (TinselLogCoresPerDCache + TinselLogDCachesPerDRAM);
 
   // Write data to DRAM
   BootReq req;
   uint32_t addrReg = 0xffffffff;
   uint32_t addr, word;
-  uint32_t dest = toAddr(meshX, meshY, dramId * coresPerDRAM, 0);
+  uint32_t dest = toAddr(meshX, meshY, coreId, 0);
   while (data.getWord(&addr, &word)) {
     // Write data
     if (addr != addrReg) {
