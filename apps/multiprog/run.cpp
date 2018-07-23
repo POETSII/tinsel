@@ -8,12 +8,11 @@ int main()
 
   // Load program 0 onto core 0
   hostLink.loadInstrsOntoCore("code_0.v", 0, 0, 0);
-  hostLink.loadDataOntoDRAM("data_0.v", 0, 0, 0);
+  hostLink.loadDataViaCore("data_0.v", 0, 0, 0);
 
   // Load program 1 onto core 1
   hostLink.loadInstrsOntoCore("code_1.v", 0, 0, 1);
-  hostLink.loadDataOntoDRAM("data_1.v", 0, 0, 0);
-  // TODO: loadDataViaCore
+  hostLink.loadDataViaCore("data_1.v", 0, 0, 1);
 
   // Start cores
   hostLink.startOne(0, 0, 0, 1);

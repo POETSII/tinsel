@@ -30,7 +30,7 @@ int runOne(HostLink* hostLink, const char* test)
 
   // Boot and run test on thread 0 only
   hostLink->loadInstrsOntoCore(codeFilename, 0, 0, 0);
-  hostLink->loadDataOntoDRAM(dataFilename, 0, 0, 0);
+  hostLink->loadDataViaCore(dataFilename, 0, 0, 0);
   hostLink->startOne(0, 0, 0, 1);
   hostLink->goOne(0, 0, 0);
 

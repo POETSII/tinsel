@@ -109,9 +109,9 @@ class HostLink {
   void loadInstrsOntoCore(const char* codeFilename,
          uint32_t meshX, uint32_t meshY, uint32_t coreId);
 
-  // Load data into given DRAM on given board
-  void loadDataOntoDRAM(const char* dataFilename,
-        uint32_t meshX, uint32_t meshY, uint32_t dramId);
+  // Load data via given core on given board
+  void loadDataViaCore(const char* dataFilename,
+        uint32_t meshX, uint32_t meshY, uint32_t coreId);
 
   // Start given number of threads on given core
   void startOne(uint32_t meshX, uint32_t meshY,
