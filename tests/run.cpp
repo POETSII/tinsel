@@ -28,9 +28,11 @@ int runOne(HostLink* hostLink, const char* test)
   char dataFilename[1024];
   snprintf(dataFilename, sizeof(dataFilename), "%s.data.v", test);
 
-  // Boot and run test
-  hostLink->bootOne(codeFilename, dataFilename);
-  hostLink->goOne();
+  // Boot and run test on thread 0 only
+  hostLink->loadInstrsOntoCore(codeFilename, 0, 0, 0);
+  hostLink->loadDataOntoDRAM(dataFilename, 0, 0, 0);
+  hostLink->startOne(0, 0, 0, 1);
+  hostLink->goOne(0, 0, 0);
 
   // Get test result
   uint32_t coreId, threadId;
