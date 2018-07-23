@@ -21,6 +21,7 @@ clean:
 	make -C apps/flood clean
 	make -C apps/benchmarks clean
 	make -C apps/linktest clean
+	make -C apps/multiprog clean
 	make -C apps/POLite/heat clean
 	make -C apps/POLite/asp clean
 	make -C apps/POLite/sorter clean
