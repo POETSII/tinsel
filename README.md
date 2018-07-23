@@ -994,7 +994,7 @@ class HostLink {
          uint32_t meshX, uint32_t meshY, uint32_t coreId);
 
   // Load data via given core on given board
-  void HostLink::loadDataViaCore(const char* dataFilename,
+  void loadDataViaCore(const char* dataFilename,
          uint32_t meshX, uint32_t meshY, uint32_t coreId);
 
   // Start given number of threads on given core
