@@ -93,11 +93,24 @@ class HostLink {
   // Trigger to start application execution
   void go();
 
-  // Load application code and data onto a single thread
-  void bootOne(const char* codeFilename, const char* dataFilename);
+  // Load instructions into given core's instruction memory
+  void loadInstrsOntoCore(const char* codeFilename,
+         uint32_t meshX, uint32_t meshY, uint32_t coreId);
+
+  // Load data into given DRAM on give board
+  void loadDataOntoDRAM(const char* dataFilename,
+        uint32_t meshX, uint32_t meshY, uint32_t dramId);
+
+  // Start given number of threads on given core
+  void startOne(uint32_t meshX, uint32_t meshY,
+         uint32_t coreId, uint32_t numThreads);
 
   // Trigger to start application execution on a single thread
-  void goOne();
+  void goOneThread(uint32_t meshX, uint32_t meshY,
+         uint32_t coreId, uint32_t threadId);
+
+  // Trigger application execution on all started threads on given core
+  void goOne(uint32_t meshX, uint32_t meshY, uint32_t coreId);
 
   // Set address for remote memory access to given board via given core
   // (This address is auto-incremented on loads and stores)
