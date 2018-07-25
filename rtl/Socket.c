@@ -20,13 +20,17 @@
 #define SOCKET "@tinsel"
 
 // Max number of sockets supported
-#define MAX_SOCKETS 8
+#define MAX_SOCKETS 24
 
 // A file descriptor for each socket
-int sock[MAX_SOCKETS] = {-1,-1,-1,-1,-1,-1,-1,-1};
+int sock[MAX_SOCKETS] = {-1,-1,-1,-1,-1,-1,-1,-1,
+                         -1,-1,-1,-1,-1,-1,-1,-1,
+                         -1,-1,-1,-1,-1,-1,-1,-1};
 
 // A file descriptor for each connection
-int conn[MAX_SOCKETS] = {-1,-1,-1,-1,-1,-1,-1,-1};
+int conn[MAX_SOCKETS] = {-1,-1,-1,-1,-1,-1,-1,-1,
+                         -1,-1,-1,-1,-1,-1,-1,-1,
+                         -1,-1,-1,-1,-1,-1,-1,-1};
 
 // Get board identifier from environment
 int getBoardId()
