@@ -75,8 +75,20 @@ p["LogMsgsPerThread"] = 4
 # Number of cores sharing a mailbox
 p["LogCoresPerMailbox"] = 2
 
+# Number of bits in mailbox mesh X coord
+p["MailboxMeshXBits"] = 2
+
+# Number of bits in mailbox mesh Y coord
+p["MailboxMeshYBits"] = 2
+
+# Length of mailbox mesh X dimension
+p["MailboxMeshXLen"] = 2 ** p["MailboxMeshXBits"]
+
+# Length of mailbox mesh Y dimension
+p["MailboxMeshYLen"] = 2 ** p["MailboxMeshYBits"]
+
 # Number of mailboxes per board
-p["LogMailboxesPerBoard"] = 4
+p["LogMailboxesPerBoard"] = p["MailboxMeshXBits"] + p["MailboxMeshYBits"]
 
 # Maximum size of boot loader (in bytes)
 p["MaxBootImageBytes"] = 512
@@ -113,6 +125,14 @@ p["MeshYLen"] = 1
 
 # Number of cores per FPU
 p["LogCoresPerFPU"] = 2
+
+# Number of inter-FPGA links on north edge
+# Number of inter-FPGA links on south edge
+p["LogNorthSouthLinks"] = 0
+
+# Number of inter-FPGA links on east edge
+# Number of inter-FPGA links on west edge
+p["LogEastWestLinks"] = 0
 
 # Latencies of arithmetic megafunctions
 p["IntMultLatency"] = 3
@@ -262,6 +282,10 @@ p["FPUOpMaxLatency"] = max(
   , p["FPConvertLatency"]
   , p["FPCompareLatency"]
   ])
+
+# Number of inter-FPGA links
+p["NumNorthSouthLinks"] = 2 ** p["LogNorthSouthLinks"]
+p["NumEastWestLinks"] = 2 ** p["LogEastWestLinks"]
 
 #==============================================================================
 # Main 
