@@ -11,10 +11,10 @@ int powerInit(char* dev);
 int powerPutCmd(int fd, char* cmd, char* resp, int respSize);
 
 // Enable or disable power to all worker FPGAs
-void powerEnable(int enable);
+int powerEnable(int enable);
 
 // Disable then enable power to all worker FPGAs
-void powerReset();
+int powerReset();
 
 // Wait for FPGAs to be detected after powerup
 void waitForFPGAs(int numFPGAs);

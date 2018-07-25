@@ -95,7 +95,7 @@ int powerPutCmd(int fd, char* cmd, char* resp, int respSize)
     int ret = select(fd+1, NULL, &fds, NULL, &tv);
     if (ret < 0) {
       perror("select() on power link");
-      exit(EXIT_FAILURE);
+      return -1;
     }
     else if (ret == 0) {
       // Timeout elapsed
@@ -107,7 +107,7 @@ int powerPutCmd(int fd, char* cmd, char* resp, int respSize)
       int n = write(fd, ptr, 1);
       if (n == -1) {
         perror("write() on power link");
-        exit(EXIT_FAILURE);
+        return -1;
       }
       if (n == 1) ptr++;
     }
@@ -125,7 +125,7 @@ int powerPutCmd(int fd, char* cmd, char* resp, int respSize)
     int ret = select(fd+1, &fds, NULL, NULL, &tv);
     if (ret < 0) {
       perror("select() on power link");
-      exit(EXIT_FAILURE);
+      return -1;
     }
     else if (ret == 0) {
       // Timeout elapsed
@@ -137,7 +137,7 @@ int powerPutCmd(int fd, char* cmd, char* resp, int respSize)
       int n = read(fd, &c, 1);
       if (n == -1) {
         perror("read() on power link");
-        exit(EXIT_FAILURE);
+        return -1;
       }
       if (n == 1) {
         if (c == '!') {
@@ -153,8 +153,9 @@ int powerPutCmd(int fd, char* cmd, char* resp, int respSize)
 }
 
 // Send a command over all power links
-void powerPutCmdAll(const char* cmd, bool retry)
+int powerPutCmdAll(const char* cmd, bool retry)
 {
+  int retryCount = 0;
   // Retry from here, if necessary
   retry_label:
   // Determine all the power links
@@ -163,7 +164,7 @@ void powerPutCmdAll(const char* cmd, bool retry)
     "ls /dev/serial/by-id/usb-Cypress_Semiconductor_USBUART*", "r");
   if (!fp) {
     fprintf(stderr, "Power-enable failed\n");
-    exit(EXIT_FAILURE);
+    return -1;
   }
   // For each power link
   for (int i = 0; ; i++) {
@@ -179,7 +180,8 @@ void powerPutCmdAll(const char* cmd, bool retry)
     int ok = powerPutCmd(fd, (char*) cmd, resp, sizeof(resp));
     // On error, optionally reset PSoCs and retry
     if (ok < 0) {
-      if (retry) {
+      if (retry && retryCount < 2) {
+        retryCount++;
         powerResetPSoCs(0);
         close(fd);
         fclose(fp);
@@ -187,34 +189,45 @@ void powerPutCmdAll(const char* cmd, bool retry)
       }
       else {
         fprintf(stderr, "Temporarily unable to connect to PowerLinks\n");
-        exit(EXIT_FAILURE);
+        return -1;
       }
     }
     // Close link
     close(fd);
   }
   fclose(fp);
+  return 0;
 }
 
 // Enable power to all worker FPGAs
-void powerEnable(int enable)
+int powerEnable(int enable)
 {
   // Try to talk to power boards and reset them if neccessary
   // (This is a workaround for occasionally unresponsive powers boards)
-  powerPutCmdAll("p?", true);
+  int ret = powerPutCmdAll("p?", true);
+  if (ret < 0) return -1;
   // Now enable or disable the power
   if (enable)
-    powerPutCmdAll("p=1.", false);
+    return powerPutCmdAll("p=1.", false);
   else
-    powerPutCmdAll("p=0.", false);
+    return powerPutCmdAll("p=0.", false);
 }
 
 // Disable then enable power to all worker FPGAs
-void powerReset()
+int powerReset()
 {
-  powerEnable(0);
+  int ret = powerEnable(0);
+  if (ret < 0) {
+    fprintf(stderr, "Failed to reset FPGAs.\n");
+    return -1;
+  }
   sleep(3);
-  powerEnable(1);
+  ret = powerEnable(1);
+  if (ret < 0) {
+    fprintf(stderr, "Failed to reset FPGAs.\n");
+    return -1;
+  }
+  return 0;
 }
 
 // Wait for FPGAs to be detected after powerup
