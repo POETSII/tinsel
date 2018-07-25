@@ -18,6 +18,7 @@ clean:
 	make -C apps/heat clean
 	make -C apps/ping clean
 	make -C apps/ring clean
+	make -C apps/ring/general clean
 	make -C apps/flood clean
 	make -C apps/benchmarks clean
 	make -C apps/linktest clean
