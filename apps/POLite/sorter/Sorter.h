@@ -42,7 +42,7 @@ struct TwoSorterDevice : PDevice {
   void init() {
     numEdges = fanIn + fanOut;
     readyToSend = 1;
-    dest = edge(0);
+    dest = edge(this, 0);
   }
 
   // We call this on every state change
@@ -53,7 +53,7 @@ struct TwoSorterDevice : PDevice {
     else {
       if (sent < numEdges) {
         readyToSend = 1;
-        dest = edge(sent);
+        dest = edge(this, sent);
       }
       else {
         readyToSend = 0;
@@ -87,7 +87,7 @@ struct TwoSorterDevice : PDevice {
           if (kind == SINK && time == 0)
             dest = hostDeviceId();
           else
-            dest = edge(0);
+            dest = edge(this, 0);
         }
       }
     }

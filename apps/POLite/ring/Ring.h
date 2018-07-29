@@ -14,13 +14,13 @@ struct RingDevice : PDevice {
   uint32_t received;
   // How many have we sent?
   uint32_t sent;
-  // How many messages should root receive before signaling termination?
+  // How many should root device receive before signaling termination?
   uint32_t stopCount;
 
   // Called once by POLite at start of execution
   void init() {
     readyToSend = received > sent;
-    dest = outEdge(0);
+    dest = outEdge(this, 0);
   }
 
   // Send handler

@@ -28,20 +28,8 @@ struct PDevice {
   PDeviceAddr dest;
   // Number of incoming and outgoing edges
   uint16_t fanIn, fanOut;
-  // Incoming and outgoing edges
-  PTR(PDeviceAddr) edges;
 
   #ifdef TINSEL
-    // Obtain pointer to outgoing edges
-    inline PTR(PDeviceAddr) outEdges() { return edges; }
-    // Obtain pointer to incoming edges
-    inline PTR(PDeviceAddr) inEdges() { return edges + fanOut; }
-    // Obtain nth outgoing edge
-    inline PDeviceAddr outEdge(uint32_t n) { return outEdges()[n]; }
-    // Obtain nth incoming edge
-    inline PDeviceAddr inEdge(uint32_t n) { return inEdges()[n]; }
-    // Obtain nth edge
-    inline PDeviceAddr edge(uint32_t n) { return outEdges()[n]; }
     // Obtain device id
     inline PDeviceAddr thisDeviceId() {
       PDeviceAddr devId;
@@ -63,17 +51,6 @@ struct PDevice {
       devId.localAddr = 0xffff;
       return devId;
     }
-    // Obtain pointer to outgoing edges
-    inline PTR(PDeviceAddr) outEdges() { return edges; }
-    // Obtain pointer to incoming edges
-    inline PTR(PDeviceAddr) inEdges()
-      { return edges+sizeof(PDeviceAddr)*fanOut; }
-    // Obtain nth outgoing edge
-    inline PDeviceAddr outEdge(uint32_t n) { return undef(); }
-    // Obtain nth incoming edge
-    inline PDeviceAddr inEdge(uint32_t n) { return undef(); }
-    // Obtain nth edge
-    inline PDeviceAddr edge(uint32_t n) { return undef(); }
     // Obtain device id
     inline PDeviceAddr thisDeviceId() { return undef(); }
     // Obtain device id of host
@@ -104,8 +81,10 @@ template <typename DeviceType, typename MessageType> class PThread {
 
   // Number of devices handled by thread
   PLocalDeviceAddr numDevices;
+  // Device size (number of bytes)
+  uint16_t deviceSize;
   // Pointer to array of devices
-  PTR(DeviceType) devices;
+  PTR(uint8_t) devices;
   // Array of pointers to devices that are ready to send internally
   // (to device on same thread) or externally (to device on different thread)
   PTR(PTR(DeviceType)) intArray;
@@ -113,6 +92,11 @@ template <typename DeviceType, typename MessageType> class PThread {
   // These arrays are accessed in a LIFO manner
   PTR(PTR(DeviceType)) intTop;
   PTR(PTR(DeviceType)) extTop;
+
+  // Get pointer to device at given index
+  inline DeviceType* getDevicePtr(uint32_t i) {
+    return (DeviceType*) (devices + (i*deviceSize));
+  }
 
   #ifdef TINSEL
   // Insert device into internal senders or external senders
@@ -129,7 +113,7 @@ template <typename DeviceType, typename MessageType> class PThread {
     intTop = intArray;
     extTop = extArray;
     for (uint32_t i = 0; i < numDevices; i++) {
-      DeviceType* dev = &devices[i];
+      DeviceType* dev = getDevicePtr(i);
       // Invoke the initialiser for each device
       dev->init();
       // Device ready to send?
@@ -145,21 +129,7 @@ template <typename DeviceType, typename MessageType> class PThread {
 
     // Event loop
     while (1) {
-      if (tinselCanRecv()) {
-        // Receive message
-        MessageType *msg = (MessageType *) tinselRecv();
-        // Lookup destination device
-        DeviceType* dev = &devices[msg->dest];
-        // Was it ready to send?
-        uint32_t wasReadyToSend = dev->readyToSend;
-        // Invoke receive handler
-        dev->recv(msg);
-        // Reallocate mailbox slot
-        tinselAlloc(msg);
-        // Insert device into a senders array, if not already there
-        if (dev->readyToSend && !wasReadyToSend) insert(dev);
-      }
-      else if (tinselCanSend() && extTop != extArray) { // External senders
+      if (tinselCanSend() && extTop != extArray) { // External senders
         // Lookup the next external sender
         DeviceType* dev = *(--extTop);
         // Destination device is on another thread
@@ -172,12 +142,26 @@ template <typename DeviceType, typename MessageType> class PThread {
         // Reinsert device into a senders array
         if (dev->readyToSend) insert(dev);
       }
+      else if (tinselCanRecv()) {
+        // Receive message
+        MessageType *msg = (MessageType *) tinselRecv();
+        // Lookup destination device
+        DeviceType* dev = getDevicePtr(msg->dest);
+        // Was it ready to send?
+        uint32_t wasReadyToSend = dev->readyToSend;
+        // Invoke receive handler
+        dev->recv(msg);
+        // Reallocate mailbox slot
+        tinselAlloc(msg);
+        // Insert device into a senders array, if not already there
+        if (dev->readyToSend && !wasReadyToSend) insert(dev);
+      }
       else if (intTop != intArray) { // Internal senders
         MessageType msg;
         // Lookup the next internal sender
         DeviceType* dev = *(--intTop);
         // Lookup destination device
-        DeviceType* destDev = &devices[dev->dest.localAddr];
+        DeviceType* destDev = getDevicePtr(dev->dest.localAddr);
         uint32_t wasReadyToSend = destDev->readyToSend;
         // Invoke both send and recv handlers
         dev->send(&msg);
@@ -197,5 +181,18 @@ template <typename DeviceType, typename MessageType> class PThread {
   #endif
 
 };
+
+// Obtain edge with given index
+template <typename T> inline PDeviceAddr edge(T* dev, uint32_t i)
+{ 
+  uint32_t* ptr = (uint32_t*) dev + ((sizeof(T)+3)>>2) + i;
+  return *((PDeviceAddr*) ptr);
+}
+
+// Obtain outgoing edge with given index
+template <typename T> inline PDeviceAddr outEdge(T* dev, uint32_t i)
+{ 
+  return edge(dev, i);
+}
 
 #endif

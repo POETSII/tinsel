@@ -60,7 +60,7 @@ struct ASPDevice : PDevice {
     numMsgs = fanIn * chunks;
     // Setup first round of sends
     readyToSend = 1;
-    dest = outEdge(0);
+    dest = outEdge(this, 0);
   }
 
   // We call this on every state change
@@ -70,7 +70,7 @@ struct ASPDevice : PDevice {
     // Ready to send?
     if (sent < numMsgs) {
       readyToSend = 1;
-      dest = outEdge(nextDest);
+      dest = outEdge(this, nextDest);
     }
     else {
       readyToSend = 0;
@@ -104,7 +104,7 @@ struct ASPDevice : PDevice {
         // Fresh round of sends
         sent = 0;
         readyToSend = 1;
-        dest = outEdge(0);
+        dest = outEdge(this, 0);
       }
     }
   }

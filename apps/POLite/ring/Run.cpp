@@ -9,8 +9,8 @@
 int main()
 {
   // Parameters
-  const int numDevices    = 1024;
-  const int numTokens     = 1024;
+  const int numDevices    = 1000;
+  const int numTokens     = 1000;
   const int numIterations = 1000;
 
   // Connection to tinsel machine

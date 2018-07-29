@@ -76,6 +76,21 @@ template <typename DeviceType, typename MessageType> class PGraph {
     graph.addBidirectionalEdge(a, b);
   }
 
+  // Determine max device edges on given thread
+  uint16_t computeMaxEdges(uint32_t threadId) {
+    uint16_t max = 0;
+    uint32_t numDevs = numDevicesOnThread[threadId];
+    for (uint32_t devNum = 0; devNum < numDevs; devNum++) {
+      PDeviceId id = fromDeviceAddr[threadId][devNum];
+      DeviceType* dev = devices[id];
+      Seq<PDeviceId>* in = graph.incoming->elems[id];
+      Seq<PDeviceId>* out = graph.outgoing->elems[id];
+      uint32_t numEdges = out->numElems+ in->numElems;
+      max = numEdges > max ? numEdges : max;
+    }
+    return max;
+  }
+
   // Allocate heaps
   void allocateHeaps() {
     // Decide a maximum heap size that is reasonable
@@ -93,19 +108,18 @@ template <typename DeviceType, typename MessageType> class PGraph {
       uint32_t size = 0;
       // Add space for thread structure
       size = cacheAlign(size + sizeof(PThread<DeviceType, MessageType>));
-      // Add space for device array
-      size = cacheAlign(size + numDevicesOnThread[threadId] *
-                                 sizeof(DeviceType));
-      // Add space for edge lists
+      // Determine max number of edges on thread
+      uint32_t maxEdges = computeMaxEdges(threadId);
+      // Add space for devices
       uint32_t numDevs = numDevicesOnThread[threadId];
       for (uint32_t devNum = 0; devNum < numDevs; devNum++) {
         PDeviceId id = fromDeviceAddr[threadId][devNum];
         // Add space for edge lists
-        uint32_t numEdges = graph.incoming->elems[id]->numElems +
-                            graph.outgoing->elems[id]->numElems;
-        size = cacheAlign(size + numEdges * sizeof(PDeviceAddr));
+        size = wordAlign(size + sizeof(DeviceType));
+        size = cacheAlign(size + maxEdges * sizeof(PDeviceAddr));
       }
       // The total heap size including unintialised portions
+      // (Add on the size of the internal and external sender arrays)
       uint32_t totalSize = size + 8 * numDevs;
       // Check that total size is reasonable
       if (totalSize > maxHeapSize) {
@@ -136,6 +150,13 @@ template <typename DeviceType, typename MessageType> class PGraph {
       hp = cacheAlign(hp + sizeof(PThread<DeviceType, MessageType>));
       // Set number of devices on thread
       thread->numDevices = numDevicesOnThread[threadId];
+      // Determin max number of edges
+      uint32_t maxEdges = computeMaxEdges(threadId);
+      // Set device size on thread (number of bytes)
+      // Includes device state and connectivity
+      thread->deviceSize =
+        cacheAlign(wordAlign(sizeof(DeviceType)) +
+                     maxEdges * sizeof(PDeviceAddr));
       // Set tinsel address of devices array
       thread->devices = heapBase[threadId] + hp;
       // Add space for each device on thread
@@ -144,15 +165,6 @@ template <typename DeviceType, typename MessageType> class PGraph {
         DeviceType* dev = (DeviceType*) &heap[threadId][hp];
         PDeviceId id = fromDeviceAddr[threadId][devNum];
         devices[id] = dev;
-        // Add space for device
-        hp = hp + sizeof(DeviceType);
-      }
-      // Re-align hp
-      hp = cacheAlign(hp);
-      // Initialise each device and associated edge list
-      for (uint32_t devNum = 0; devNum < numDevs; devNum++) {
-        PDeviceId id = fromDeviceAddr[threadId][devNum];
-        DeviceType* dev = devices[id];
         // Set thread-local device address
         dev->localAddr = devNum;
         // Set fanIn and fanOut
@@ -160,19 +172,17 @@ template <typename DeviceType, typename MessageType> class PGraph {
         Seq<PDeviceId>* out = graph.outgoing->elems[id];
         dev->fanIn = in->numElems;
         dev->fanOut = out->numElems;
-        // Set tinsel address of edges array
-        dev->edges = heapBase[threadId] + hp;
+        // Add space for device
+        hp = wordAlign(hp + sizeof(DeviceType));
         // Edge array
         PDeviceAddr* edgeArray = (PDeviceAddr*) &heap[threadId][hp];
-        // Outgoing edges
+        uint32_t e = 0;
         for (uint32_t i = 0; i < out->numElems; i++)
-          edgeArray[i] = toDeviceAddr[out->elems[i]];
-        // Incoming edges
+          edgeArray[e++] = toDeviceAddr[out->elems[i]];
         for (uint32_t i = 0; i < in->numElems; i++)
-          edgeArray[out->numElems+i] = toDeviceAddr[in->elems[i]];
+          edgeArray[e++] = toDeviceAddr[in->elems[i]];
         // Add space for edges
-        uint32_t numEdges = in->numElems + out->numElems;
-        hp = cacheAlign(hp + numEdges * sizeof(PDeviceAddr));
+        hp = cacheAlign(hp + maxEdges * sizeof(PDeviceAddr));
       }
       // At this point, check that hp lines up with heap size
       if (hp != heapSize[threadId]) {
@@ -231,42 +241,46 @@ template <typename DeviceType, typename MessageType> class PGraph {
       for (uint32_t boardX = 0; boardX < TinselMeshXLen; boardX++) {
         // Partition into subgraphs, one per mailbox
         PartitionId b = boards.mapping[boardY][boardX];
-        Placer boxes(&boards.subgraphs[b], TinselMailboxesPerBoard, 1);
+        Placer boxes(&boards.subgraphs[b], 
+                 TinselMailboxMeshXLen, TinselMailboxMeshXLen);
         boxes.place(placerEffort);
 
         // For each mailbox
-        for (uint32_t boxNum = 0; boxNum < TinselMailboxesPerBoard; boxNum++) {
-          // Partition into subgraphs, one per thread
-          uint32_t numThreads = 1<<TinselLogThreadsPerMailbox;
-          PartitionId t = boxes.mapping[0][boxNum];
-          Placer threads(&boxes.subgraphs[t], numThreads, 1);
+        for (uint32_t boxX = 0; boxX < TinselMailboxMeshXLen; boxX++) {
+          for (uint32_t boxY = 0; boxY < TinselMailboxMeshYLen; boxY++) {
+            // Partition into subgraphs, one per thread
+            uint32_t numThreads = 1<<TinselLogThreadsPerMailbox;
+            PartitionId t = boxes.mapping[boxY][boxX];
+            Placer threads(&boxes.subgraphs[t], numThreads, 1);
 
-          // For each thread
-          for (uint32_t threadNum = 0; threadNum < numThreads; threadNum++) {
-            // Determine tinsel thread id
-            uint32_t threadId = boardY;
-            threadId = (threadId << TinselMeshXBits) | boardX;
-            threadId = (threadId << TinselLogMailboxesPerBoard) | boxNum;
-            threadId = (threadId << (TinselLogCoresPerMailbox +
-                          TinselLogThreadsPerCore)) | threadNum;
+            // For each thread
+            for (uint32_t threadNum = 0; threadNum < numThreads; threadNum++) {
+              // Determine tinsel thread id
+              uint32_t threadId = boardY;
+              threadId = (threadId << TinselMeshXBits) | boardX;
+              threadId = (threadId << TinselMailboxMeshYBits) | boxY;
+              threadId = (threadId << TinselMailboxMeshXBits) | boxX;
+              threadId = (threadId << (TinselLogCoresPerMailbox +
+                            TinselLogThreadsPerCore)) | threadNum;
 
-            // Get subgraph
-            Graph* g = &threads.subgraphs[threadNum];
+              // Get subgraph
+              Graph* g = &threads.subgraphs[threadNum];
 
-            // Populate fromDeviceAddr mapping
-            uint32_t numDevs = g->incoming->numElems;
-            numDevicesOnThread[threadId] = numDevs;
-            fromDeviceAddr[threadId] = (PDeviceId*)
-              malloc(sizeof(PDeviceId) * numDevs);
-            for (uint32_t devNum = 0; devNum < numDevs; devNum++)
-              fromDeviceAddr[threadId][devNum] = g->labels->elems[devNum];
-
-            // Populate toDeviceAddr mapping
-            for (uint32_t devNum = 0; devNum < numDevs; devNum++) {
-              PDeviceAddr devAddr;
-              devAddr.threadId = threadId;
-              devAddr.localAddr = devNum;
-              toDeviceAddr[g->labels->elems[devNum]] = devAddr;
+              // Populate fromDeviceAddr mapping
+              uint32_t numDevs = g->incoming->numElems;
+              numDevicesOnThread[threadId] = numDevs;
+              fromDeviceAddr[threadId] = (PDeviceId*)
+                malloc(sizeof(PDeviceId) * numDevs);
+              for (uint32_t devNum = 0; devNum < numDevs; devNum++)
+                fromDeviceAddr[threadId][devNum] = g->labels->elems[devNum];
+  
+              // Populate toDeviceAddr mapping
+              for (uint32_t devNum = 0; devNum < numDevs; devNum++) {
+                PDeviceAddr devAddr;
+                devAddr.threadId = threadId;
+                devAddr.localAddr = devNum;
+                toDeviceAddr[g->labels->elems[devNum]] = devAddr;
+              }
             }
           }
         }

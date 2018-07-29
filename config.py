@@ -28,7 +28,7 @@ p["LogThreadsPerCore"] = 4
 p["LogInstrsPerCore"] = 11
 
 # Share instruction memory between two cores?
-p["SharedInstrMem"] = False
+p["SharedInstrMem"] = True
 
 # Log of number of multi-threaded cores sharing a DCache
 p["LogCoresPerDCache"] = 2
@@ -40,13 +40,13 @@ p["LogDCachesPerDRAM"] = 3
 p["LogWordsPerBeat"] = 3
 
 # Log of number of beats in a cache line
-p["LogBeatsPerLine"] = 0
+p["LogBeatsPerLine"] = 1
 
 # Log of number of sets per thread in set-associative data cache
-p["DCacheLogSetsPerThread"] = 3
+p["DCacheLogSetsPerThread"] = 1
 
 # Log of number of ways per set in set-associative data cache
-p["DCacheLogNumWays"] = 2
+p["DCacheLogNumWays"] = 3
 
 # Number of DRAMs per FPGA board
 p["LogDRAMsPerBoard"] = 1
@@ -180,6 +180,9 @@ p["BeatWidth"] = p["WordsPerBeat"] * 32
 
 # Longest possible burst transfer is 2^BeatBurstWidth-1
 p["BeatBurstWidth"] = p["LogBeatsPerLine"]+1
+
+# Cache line size
+p["BytesPerLine"] = 2**p["LogBytesPerLine"]
 
 # Cores per DCache
 p["CoresPerDCache"] = 2**p["LogCoresPerDCache"]

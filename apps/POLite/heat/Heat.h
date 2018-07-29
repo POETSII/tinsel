@@ -27,7 +27,7 @@ struct HeatDevice : PDevice {
   // Called once by POLite at start of execution
   void init() {
     readyToSend = 1;
-    dest = outEdge(0);
+    dest = outEdge(this, 0);
   }
 
   // We call this on every state change
@@ -40,7 +40,7 @@ struct HeatDevice : PDevice {
     // Ready to send?
     if (sent < fanOut) {
       readyToSend = 1;
-      dest = outEdge(sent);
+      dest = outEdge(this, sent);
     }
     else {
       readyToSend = 0;
@@ -53,7 +53,7 @@ struct HeatDevice : PDevice {
         accNext = receivedNext = 0;
         sent = 0;
         readyToSend = 1;
-        dest = outEdge(0);
+        dest = outEdge(this, 0);
       }
     }
     // On final time step, send to host
