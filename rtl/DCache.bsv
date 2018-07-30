@@ -424,12 +424,8 @@ module mkDCache#(DCacheId myId) (DCache);
 
   rule hitUnit1;
     DCacheToken token = hitUnitInput;
-    // Has a new dirty bit been set?
-    Bool setDirtyBit = False;
     // New dirty bits
     Vector#(DCacheNumWays, Bool) newDirtyBits = token.metaData.dirty;
-    // Will a line been evicted?
-    Bool willEvict = False;
     if (token.isHit) begin
       // On hit: enqueue response queue
       myAssert(respQueue.notFull, "DCache: response queue full");
