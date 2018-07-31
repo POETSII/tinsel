@@ -295,14 +295,24 @@ operate on different lines, simplifying the implementation.  To allow
 cores to meet this assumption, store responses are issued in addition
 to load responses.
 
-A *cache flush* operation is provided that evicts all cache lines
-owned by the calling thread.  This operation is invoked through the
-RISC-V `fence` opcode, or the Tinsel API:
+A *cache flush* function is provided that evicts all cache lines
+owned by the calling thread.
 
 ```c
-// Cache flush
+// Full cache flush
+// (Issues flush request for every line, and waits until all requests are done)
 inline void tinselCacheFlush();
+
+// Flush given cache line
+// (Issues flush request, but doesn't wait until request is done)
+inline void tinselFlushLine(uint32_t lineNum, uint32_t way)
 ```
+
+These functions are implemented using the following CSR.
+
+  CSR Name     | CSR    | R/W | Function
+  ------------ | ------ | --- | --------
+  `Flush`      | 0xc01  | W   | Cache line flush (line number, way)
 
 The following parameters control the number of caches and the
 structure of each cache.
@@ -837,6 +847,7 @@ separate memory regions (which they are not).
   `FRM`        | 0x002  | R   | Floating-point dynamic rounding mode
   `FCSR`       | 0x003  | RW  | Concatenation of FRM and FFlag
   `Cycle`      | 0xc00  | R   | 32-bit cycle counter
+  `Flush`      | 0xc01  | W   | Cache line flush (line number, way)
 
 ## E. Tinsel Address Structure
 
