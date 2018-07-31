@@ -45,7 +45,7 @@ try:
   numAddrs      = int(os.environ.get("NUM_ADDRS", "3"))
   maxDelay      = int(os.environ.get("MAX_DELAY", "8"))
   assoc         = int(os.environ.get("ASSOC", "4"))
-  insertFlushes = int(os.environ.get("FLUSHES", "0"))
+  insertFlushes = int(os.environ.get("FLUSHES", "1"))
   logDir        = os.environ.get("LOG_DIR", "test-mem-log")
 except:
   print "Invalid options"
@@ -112,7 +112,10 @@ def genReqs():
       reqs = reqs + " " + str(uniqueVal) + "\n"
       uniqueVal = uniqueVal+1
     elif op == 'F':
-      reqs = reqs + "F " + str(thread) + "\n"
+      lineNum = random.randint(0,64)
+      way = random.randint(0,4)
+      reqs = (reqs + "F " + str(thread) + " " + str(lineNum) + 
+                " " + str(way) + "\n")
   reqs = reqs + "E\n"
   return reqs
 
