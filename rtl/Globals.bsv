@@ -65,4 +65,7 @@ function Flit unpadFlit(PaddedFlit flit) = unpack(truncate(pack(flit)));
 // Unique identifier per data cache
 typedef Bit#(`LogDCachesPerDRAM) DCacheId;
 
+// Cache way
+typedef Bit#(`DCacheLogNumWays) Way;
+
 endpackage

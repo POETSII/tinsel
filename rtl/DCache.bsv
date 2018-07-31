@@ -100,6 +100,7 @@ import Assert    :: *;
 import ConfigReg :: *;
 import Interface :: *;
 import DRAM      :: *;
+import PseudoLRU :: *;
 
 // ============================================================================
 // Types  
@@ -111,9 +112,6 @@ typedef Bit#(DCacheClientIdBits) DCacheClientId;
 
 // Number of ways
 typedef TExp#(`DCacheLogNumWays) DCacheNumWays;
-
-// Way
-typedef Bit#(`DCacheLogNumWays) Way;
 
 // Client request command (one hot encoding)
 typedef struct {
@@ -172,7 +170,7 @@ typedef Bit#(KeyNumBits) Key;
 
 // Meta data per set
 typedef struct {
-  Way oldestWay;
+  PLRUState plruState; // For psuedo LRU replacement policy
   Vector#(DCacheNumWays, Bool) dirty;
 } SetMetaData deriving (Bits);
 
@@ -181,6 +179,7 @@ typedef struct {
   DCacheReq req;
   Vector#(DCacheNumWays, Bool) matching;
   Bool isHit;
+  Way matchingWay;
   Way evictWay;
   Tag evictTag;
   Bool evictDirty;
@@ -358,7 +357,8 @@ module mkDCache#(DCacheId myId) (DCache);
     // In case of a miss, choose a way to evict and remember the old tag
     // On a flush, the way is specified in the data field of the request
     token.evictWay   = token.req.cmd.isFlush ?
-                         truncate(token.req.data) : metaData.dataOut.oldestWay;
+                         truncate(token.req.data) :
+                         plru(metaData.dataOut.plruState);
     token.evictTag   = tags[token.evictWay];
     token.evictDirty = metaData.dataOut.dirty[token.evictWay];
     // Remember meta data for later stages
@@ -371,13 +371,13 @@ module mkDCache#(DCacheId myId) (DCache);
   rule dataLookup2 (dataLookup2Trigger);
     DCacheToken token = dataLookup2Input;
     // Convert index of match from one-hot to binary
-    Way matchingWay = encode(token.matching);
+    token.matchingWay = encode(token.matching);
     // Handle hit or miss
     if (token.isHit) begin
       // On read hit: read word data from dataMem
       // On write hit: write word data to dataMem
       dataMem.putB(token.req.cmd.isStore,
-                   wordIndex(token.req.id, token.req.addr, matchingWay),
+                   wordIndex(token.req.id, token.req.addr, token.matchingWay),
                    token.req.data, token.req.byteEn);
     end else begin
       // Put miss requests into miss queue
@@ -403,21 +403,17 @@ module mkDCache#(DCacheId myId) (DCache);
 
   rule hitUnit1;
     DCacheToken token = hitUnitInput;
-    // Has a new dirty bit been set?
-    Bool setDirtyBit = False;
     // New dirty bits
     Vector#(DCacheNumWays, Bool) newDirtyBits = token.metaData.dirty;
-    // Will a line been evicted?
-    Bool willEvict = False;
     if (token.isHit) begin
       // On hit: enqueue response queue
       myAssert(respQueue.notFull, "DCache: response queue full");
       DCacheResp resp;
       resp.id = token.req.id;
       resp.data = dataMem.dataOutB;
-      setDirtyBit = token.req.cmd.isStore;
       for (Integer i = 0; i < valueOf(DCacheNumWays); i=i+1)
-        if (token.matching[i]) newDirtyBits[i] = True;
+        if (token.matching[i] && token.req.cmd.isStore)
+          newDirtyBits[i] = True;
       respQueue.enq(resp);
     end else begin
       // On miss: update tag
@@ -430,15 +426,14 @@ module mkDCache#(DCacheId myId) (DCache);
           newDirtyBits[i] = False;
           tagMem[i].write(setIndex(token.req.id, token.req.addr), newTag);
         end
-      // A line will be evicted
-      willEvict = True;
     end
     // Update meta data
     SetMetaData newMetaData;
-    newMetaData.oldestWay = token.metaData.oldestWay + (willEvict ? 1 : 0);
+    newMetaData.plruState = plruNext(
+      token.isHit ? token.matchingWay : token.evictWay,
+      token.metaData.plruState);
     newMetaData.dirty = newDirtyBits;
-    if (setDirtyBit || willEvict)
-      metaData.write(setIndex(token.req.id, token.req.addr), newMetaData);
+    metaData.write(setIndex(token.req.id, token.req.addr), newMetaData);
   endrule
 
   // Memory response stage
