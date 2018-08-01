@@ -6,22 +6,23 @@ package Core;
 // Imports
 // ============================================================================
 
-import Vector    :: *;
-import FIFO      :: *;
-import BlockRam  :: *;
-import Queue     :: *;
-import Assert    :: *;
-import Util      :: *;
-import DReg      :: *;
-import DCache    :: *;
-import ConfigReg :: *;
-import Interface :: *;
-import Mailbox   :: *;
-import Globals   :: *;
-import DebugLink :: *;
-import FPU       :: *;
-import FPUOps    :: *;
-import InstrMem  :: *;
+import Vector      :: *;
+import FIFO        :: *;
+import BlockRam    :: *;
+import Queue       :: *;
+import Assert      :: *;
+import Util        :: *;
+import DReg        :: *;
+import DCache      :: *;
+import ConfigReg   :: *;
+import Interface   :: *;
+import Mailbox     :: *;
+import Globals     :: *;
+import DebugLink   :: *;
+import FPU         :: *;
+import FPUOps      :: *;
+import InstrMem    :: *;
+import DCacheTypes :: *;
 
 // ============================================================================
 // Control/status registers (CSRs) supported
@@ -828,7 +829,7 @@ module mkCore#(CoreId myId) (Core);
           req.id = {truncate(myId), token.thread.id};
           req.cmd.isLoad = token.op.isLoad;
           req.cmd.isStore = token.op.isStore;
-          req.cmd.isFlush = token.op.csr.isFlush
+          req.cmd.isFlush = token.op.csr.isFlush;
           req.cmd.isFlushResp = False;
           req.addr = token.op.csr.isFlush ? zeroExtend(line) : token.memAddr;
           req.data = token.op.csr.isFlush ? zeroExtend(way) : writeData;

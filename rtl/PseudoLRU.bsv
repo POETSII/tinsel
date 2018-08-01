@@ -1,8 +1,9 @@
 // Pseudo Least Recently Used (PLRU) Cache Replacement Policy
 // ==========================================================
 
-import List :: *;
-import Globals :: *;
+import List        :: *;
+import Globals     :: *;
+import DCacheTypes :: *;
 
 // PLRU state
 typedef TSub#(TExp#(`DCacheLogNumWays), 1) NumPLRUBits;
