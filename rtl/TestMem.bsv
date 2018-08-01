@@ -4,16 +4,17 @@ package TestMem;
 // Imports
 // ============================================================================
 
-import Globals   :: *;
-import FIFOF     :: *;
-import DCache    :: *;
-import DRAM      :: *;
-import Vector    :: *;
-import RegFile   :: *;
-import Util      :: *;
-import Interface :: *;
-import ConfigReg :: *;
-import Queue     :: *;
+import Globals     :: *;
+import FIFOF       :: *;
+import DCache      :: *;
+import DRAM        :: *;
+import Vector      :: *;
+import RegFile     :: *;
+import Util        :: *;
+import Interface   :: *;
+import ConfigReg   :: *;
+import Queue       :: *;
+import DCacheTypes :: *;
 
 // Interface to C functions
 import "BDPI" function ActionValue#(Bit#(32)) getUInt32();
