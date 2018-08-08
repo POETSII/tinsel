@@ -142,6 +142,15 @@ p["FPDivLatency"] = 14
 p["FPConvertLatency"] = 6
 p["FPCompareLatency"] = 3
 
+# SRAM parameters
+p["SRAMsPerBoard"] = 4
+p["SRAMAddrWidth"] = 20
+p["LogBytesPerSRAMBeat"] = 3
+p["SRAMBurstWidth"] = 3
+p["SRAMLatency"] = 8
+p["SRAMLogMaxInFlight"] = 4
+p["SRAMStoreLatency"] = 4
+
 #==============================================================================
 # Derived Parameters
 #==============================================================================
@@ -286,6 +295,11 @@ p["FPUOpMaxLatency"] = max(
 # Number of inter-FPGA links
 p["NumNorthSouthLinks"] = 2 ** p["LogNorthSouthLinks"]
 p["NumEastWestLinks"] = 2 ** p["LogEastWestLinks"]
+
+# SRAM parameters
+p["BytesPerSRAMBeat"] = 2 ** p["LogBytesPerSRAMBeat"]
+p["WordsPerSRAMBeat"] = p["BytesPerSRAMBeat"] / 4
+p["SRAMDataWidth"] = 32 * p["WordsPerSRAMBeat"]
 
 #==============================================================================
 # Main 
