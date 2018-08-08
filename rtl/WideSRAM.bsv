@@ -40,7 +40,7 @@ module mkWideSRAM#(RAMId id) (WideSRAM);
   // Prevent loads from overtaking stores from same client
   // There are too many clients to keep a precise log, so
   // we keep an approximate one using the DCache id.
-  Vector#(`DCachesPerDRAM, SetReset) busy <- replicateM(mkSetReset(False));
+  Vector#(`DCachesPerDRAM, UpDown#(2)) busy <- replicateM(mkUpDown);
 
   // Store queue and progress counter
   Queue#(DRAMReq) storeQueue <- mkUGQueue;
@@ -68,21 +68,22 @@ module mkWideSRAM#(RAMId id) (WideSRAM);
     // Approximate client id
     DRAMReqId client = reqIn.id;
     if (reqIn.isStore) begin
-      if (storeQueue.notFull) begin
-        busy[client].set;
+      if (storeQueue.notFull && busy[client].canInc) begin
+        busy[client].inc;
         storeQueue.enq(reqIn);
         reqInPort.get;
-      end
+      end 
     end else begin
-if (busy[client].value) $display("BUSY\n");
-      if (loadPort.canPut && !busy[client].value) begin
-        SRAMLoadReq reqOut;
-        reqOut.id = reqIn.id;
-        reqOut.addr = { truncate(reqIn.addr), 2'b00 };
-        reqOut.burst = 4;
-        reqOut.info = unpack(truncate(reqIn.data));
-        loadPort.put(reqOut);
-        reqInPort.get;
+      if (loadPort.canPut) begin
+        if (busy[client].value == 0) begin
+          SRAMLoadReq reqOut;
+          reqOut.id = reqIn.id;
+          reqOut.addr = { truncate(reqIn.addr), 2'b00 };
+          reqOut.burst = 4;
+          reqOut.info = unpack(truncate(reqIn.data));
+          loadPort.put(reqOut);
+          reqInPort.get;
+        end 
       end
     end
   endrule
@@ -125,7 +126,7 @@ if (busy[client].value) $display("BUSY\n");
     // Increment count
     if (done.valid) storeDoneCount <= storeDoneCount + 1;
     // Clear busy bit when store completes
-    if (done.valid && storeDoneCount == 3) busy[client].clear;
+    if (done.valid && storeDoneCount == 3) busy[client].dec;
   endrule
 
   // Request interface

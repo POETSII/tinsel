@@ -83,6 +83,39 @@ module mkSetReset#(Bool init) (SetReset);
   method Bool value = state;
 endmodule
 
+// Up/down counter
+interface UpDown#(numeric type n);
+  method Action inc;
+  method Action dec;
+  method Bool canInc;
+  method Bool canDec;
+  method Bit#(n) value;
+endinterface
+
+module mkUpDown (UpDown#(n));
+  // State
+  Reg#(Bit#(n)) count <- mkReg(0);
+
+  // Wires
+  PulseWire incWire <- mkPulseWire;
+  PulseWire decWire <- mkPulseWire;
+
+  rule update;
+    if (incWire && !decWire)
+      count <= count+1;
+    else if (!incWire && decWire)
+      count <= count-1;
+  endrule
+
+  // Methods
+  method Action inc = incWire.send;
+  method Action dec = decWire.send;
+  method Bool canInc = !allHigh(count);
+  method Bool canDec = count != 0;
+  method Bit#(n) value = count;
+  
+endmodule
+
 // Simple counter
 interface Count#(numeric type n);
   method Action inc;
