@@ -56,7 +56,7 @@ INLINE void tinselCacheFlush()
     for (uint32_t j = 0; j < (1<<TinselDCacheLogNumWays); j++)
       tinselFlushLine(i, j);
   // Load from each off-chip RAM to ensure that flushes have fully propagated
-  volatile uint8_t* base = tinselHeapBase();
+  volatile uint8_t* base = (uint8_t*) tinselHeapBase();
   base[0];
 }
 
