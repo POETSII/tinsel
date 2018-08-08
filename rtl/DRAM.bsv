@@ -24,6 +24,9 @@ typedef struct {
   InflightDCacheReqInfo info;
 } DRAMResp deriving (Bits);
 
+// DRAM identifier
+typedef Bit#(3) RAMId;
+
 // ============================================================================
 // Address mapping
 // ============================================================================
@@ -82,9 +85,6 @@ import DCacheTypes :: *;
 
 // In simulation, external interface is empty
 typedef Empty DRAMExtIfc;
-
-// DRAM identifier
-typedef Bit#(3) RAMId;
 
 // Interface to C functions
 import "BDPI" function ActionValue#(Bit#(32)) ramRead(

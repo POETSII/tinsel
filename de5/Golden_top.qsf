@@ -211,287 +211,287 @@ set_instance_assignment -name IO_STANDARD "2.5 V" -to PLL_SDA
 #============================================================
 # QDRIIA
 #============================================================
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_A[0]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_A[1]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_A[2]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_A[3]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_A[4]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_A[5]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_A[6]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_A[7]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_A[8]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_A[9]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_A[10]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_A[11]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_A[12]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_A[13]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_A[14]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_A[15]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_A[16]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_A[17]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_A[18]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_A[19]
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_A[0] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_A[1] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_A[2] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_A[3] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_A[4] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_A[5] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_A[6] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_A[7] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_A[8] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_A[9] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_A[10] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_A[11] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_A[12] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_A[13] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_A[14] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_A[15] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_A[16] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_A[17] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_A[18] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_A[19] -tag __S5_DDR3_QSYS_qdr_a_p0
 set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_A[20]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_BWS_n[0]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_BWS_n[1]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_CQ_n
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_CQ_p
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_D[0]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_D[1]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_D[2]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_D[3]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_D[4]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_D[5]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_D[6]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_D[7]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_D[8]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_D[9]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_D[10]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_D[11]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_D[12]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_D[13]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_D[14]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_D[15]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_D[16]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_D[17]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_DOFF_n
-set_instance_assignment -name IO_STANDARD "DIFFERENTIAL 1.8-V HSTL CLASS I" -to QDRIIA_K_n
-set_instance_assignment -name IO_STANDARD "DIFFERENTIAL 1.8-V HSTL CLASS I" -to QDRIIA_K_p
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_BWS_n[0] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_BWS_n[1] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_CQ_n -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_CQ_p -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_D[0] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_D[1] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_D[2] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_D[3] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_D[4] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_D[5] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_D[6] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_D[7] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_D[8] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_D[9] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_D[10] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_D[11] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_D[12] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_D[13] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_D[14] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_D[15] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_D[16] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_D[17] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_DOFF_n -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "DIFFERENTIAL 1.8-V HSTL CLASS I" -to QDRIIA_K_n -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "DIFFERENTIAL 1.8-V HSTL CLASS I" -to QDRIIA_K_p -tag __S5_DDR3_QSYS_qdr_a_p0
 set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_ODT
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_Q[0]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_Q[1]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_Q[2]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_Q[3]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_Q[4]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_Q[5]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_Q[6]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_Q[7]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_Q[8]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_Q[9]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_Q[10]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_Q[11]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_Q[12]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_Q[13]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_Q[14]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_Q[15]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_Q[16]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_Q[17]
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_Q[0] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_Q[1] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_Q[2] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_Q[3] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_Q[4] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_Q[5] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_Q[6] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_Q[7] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_Q[8] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_Q[9] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_Q[10] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_Q[11] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_Q[12] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_Q[13] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_Q[14] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_Q[15] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_Q[16] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_Q[17] -tag __S5_DDR3_QSYS_qdr_a_p0
 set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_QVLD
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_RPS_n
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_WPS_n
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_RPS_n -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIA_WPS_n -tag __S5_DDR3_QSYS_qdr_a_p0
 #============================================================
 # QDRIIB
 #============================================================
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_A[0]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_A[1]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_A[2]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_A[3]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_A[4]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_A[5]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_A[6]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_A[7]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_A[8]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_A[9]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_A[10]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_A[11]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_A[12]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_A[13]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_A[14]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_A[15]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_A[16]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_A[17]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_A[18]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_A[19]
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_A[0] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_A[1] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_A[2] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_A[3] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_A[4] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_A[5] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_A[6] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_A[7] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_A[8] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_A[9] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_A[10] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_A[11] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_A[12] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_A[13] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_A[14] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_A[15] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_A[16] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_A[17] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_A[18] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_A[19] -tag __S5_DDR3_QSYS_qdr_b_p0
 set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_A[20]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_BWS_n[0]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_BWS_n[1]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_CQ_n
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_CQ_p
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_D[0]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_D[1]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_D[2]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_D[3]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_D[4]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_D[5]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_D[6]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_D[7]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_D[8]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_D[9]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_D[10]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_D[11]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_D[12]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_D[13]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_D[14]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_D[15]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_D[16]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_D[17]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_DOFF_n
-set_instance_assignment -name IO_STANDARD "DIFFERENTIAL 1.8-V HSTL CLASS I" -to QDRIIB_K_n
-set_instance_assignment -name IO_STANDARD "DIFFERENTIAL 1.8-V HSTL CLASS I" -to QDRIIB_K_p
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_BWS_n[0] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_BWS_n[1] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_CQ_n -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_CQ_p -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_D[0] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_D[1] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_D[2] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_D[3] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_D[4] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_D[5] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_D[6] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_D[7] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_D[8] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_D[9] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_D[10] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_D[11] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_D[12] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_D[13] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_D[14] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_D[15] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_D[16] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_D[17] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_DOFF_n -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name IO_STANDARD "DIFFERENTIAL 1.8-V HSTL CLASS I" -to QDRIIB_K_n -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name IO_STANDARD "DIFFERENTIAL 1.8-V HSTL CLASS I" -to QDRIIB_K_p -tag __S5_DDR3_QSYS_qdr_b_p0
 set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_ODT
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_Q[0]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_Q[1]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_Q[2]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_Q[3]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_Q[4]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_Q[5]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_Q[6]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_Q[7]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_Q[8]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_Q[9]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_Q[10]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_Q[11]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_Q[12]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_Q[13]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_Q[14]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_Q[15]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_Q[16]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_Q[17]
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_Q[0] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_Q[1] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_Q[2] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_Q[3] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_Q[4] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_Q[5] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_Q[6] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_Q[7] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_Q[8] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_Q[9] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_Q[10] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_Q[11] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_Q[12] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_Q[13] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_Q[14] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_Q[15] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_Q[16] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_Q[17] -tag __S5_DDR3_QSYS_qdr_b_p0
 set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_QVLD
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_RPS_n
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_WPS_n
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_RPS_n -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIB_WPS_n -tag __S5_DDR3_QSYS_qdr_b_p0
 #============================================================
 # QDRIIC
 #============================================================
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_A[0]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_A[1]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_A[2]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_A[3]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_A[4]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_A[5]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_A[6]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_A[7]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_A[8]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_A[9]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_A[10]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_A[11]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_A[12]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_A[13]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_A[14]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_A[15]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_A[16]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_A[17]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_A[18]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_A[19]
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_A[0] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_A[1] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_A[2] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_A[3] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_A[4] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_A[5] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_A[6] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_A[7] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_A[8] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_A[9] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_A[10] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_A[11] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_A[12] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_A[13] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_A[14] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_A[15] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_A[16] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_A[17] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_A[18] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_A[19] -tag __S5_DDR3_QSYS_qdr_a_p0
 set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_A[20]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_BWS_n[0]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_BWS_n[1]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_CQ_n
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_CQ_p
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_D[0]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_D[1]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_D[2]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_D[3]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_D[4]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_D[5]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_D[6]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_D[7]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_D[8]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_D[9]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_D[10]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_D[11]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_D[12]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_D[13]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_D[14]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_D[15]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_D[16]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_D[17]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_DOFF_n
-set_instance_assignment -name IO_STANDARD "DIFFERENTIAL 1.8-V HSTL CLASS I" -to QDRIIC_K_n
-set_instance_assignment -name IO_STANDARD "DIFFERENTIAL 1.8-V HSTL CLASS I" -to QDRIIC_K_p
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_BWS_n[0] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_BWS_n[1] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_CQ_n -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_CQ_p -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_D[0] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_D[1] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_D[2] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_D[3] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_D[4] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_D[5] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_D[6] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_D[7] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_D[8] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_D[9] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_D[10] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_D[11] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_D[12] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_D[13] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_D[14] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_D[15] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_D[16] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_D[17] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_DOFF_n -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "DIFFERENTIAL 1.8-V HSTL CLASS I" -to QDRIIC_K_n -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "DIFFERENTIAL 1.8-V HSTL CLASS I" -to QDRIIC_K_p -tag __S5_DDR3_QSYS_qdr_a_p0
 set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_ODT
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_Q[0]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_Q[1]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_Q[2]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_Q[3]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_Q[4]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_Q[5]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_Q[6]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_Q[7]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_Q[8]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_Q[9]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_Q[10]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_Q[11]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_Q[12]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_Q[13]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_Q[14]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_Q[15]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_Q[16]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_Q[17]
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_Q[0] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_Q[1] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_Q[2] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_Q[3] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_Q[4] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_Q[5] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_Q[6] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_Q[7] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_Q[8] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_Q[9] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_Q[10] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_Q[11] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_Q[12] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_Q[13] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_Q[14] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_Q[15] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_Q[16] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_Q[17] -tag __S5_DDR3_QSYS_qdr_a_p0
 set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_QVLD
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_RPS_n
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_WPS_n
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_RPS_n -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIIC_WPS_n -tag __S5_DDR3_QSYS_qdr_a_p0
 #============================================================
 # QDRIID
 #============================================================
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_A[0]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_A[1]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_A[2]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_A[3]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_A[4]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_A[5]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_A[6]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_A[7]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_A[8]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_A[9]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_A[10]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_A[11]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_A[12]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_A[13]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_A[14]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_A[15]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_A[16]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_A[17]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_A[18]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_A[19]
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_A[0] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_A[1] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_A[2] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_A[3] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_A[4] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_A[5] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_A[6] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_A[7] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_A[8] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_A[9] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_A[10] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_A[11] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_A[12] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_A[13] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_A[14] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_A[15] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_A[16] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_A[17] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_A[18] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_A[19] -tag __S5_DDR3_QSYS_qdr_d_p0
 set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_A[20]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_BWS_n[0]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_BWS_n[1]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_CQ_n
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_CQ_p
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_D[0]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_D[1]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_D[2]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_D[3]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_D[4]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_D[5]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_D[6]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_D[7]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_D[8]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_D[9]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_D[10]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_D[11]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_D[12]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_D[13]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_D[14]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_D[15]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_D[16]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_D[17]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_DOFF_n
-set_instance_assignment -name IO_STANDARD "DIFFERENTIAL 1.8-V HSTL CLASS I" -to QDRIID_K_n
-set_instance_assignment -name IO_STANDARD "DIFFERENTIAL 1.8-V HSTL CLASS I" -to QDRIID_K_p
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_BWS_n[0] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_BWS_n[1] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_CQ_n -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_CQ_p -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_D[0] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_D[1] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_D[2] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_D[3] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_D[4] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_D[5] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_D[6] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_D[7] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_D[8] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_D[9] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_D[10] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_D[11] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_D[12] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_D[13] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_D[14] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_D[15] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_D[16] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_D[17] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_DOFF_n -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name IO_STANDARD "DIFFERENTIAL 1.8-V HSTL CLASS I" -to QDRIID_K_n -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name IO_STANDARD "DIFFERENTIAL 1.8-V HSTL CLASS I" -to QDRIID_K_p -tag __S5_DDR3_QSYS_qdr_d_p0
 set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_ODT
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_Q[0]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_Q[1]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_Q[2]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_Q[3]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_Q[4]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_Q[5]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_Q[6]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_Q[7]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_Q[8]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_Q[9]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_Q[10]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_Q[11]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_Q[12]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_Q[13]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_Q[14]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_Q[15]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_Q[16]
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_Q[17]
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_Q[0] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_Q[1] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_Q[2] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_Q[3] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_Q[4] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_Q[5] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_Q[6] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_Q[7] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_Q[8] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_Q[9] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_Q[10] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_Q[11] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_Q[12] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_Q[13] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_Q[14] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_Q[15] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_Q[16] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_Q[17] -tag __S5_DDR3_QSYS_qdr_d_p0
 set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_QVLD
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_RPS_n
-set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_WPS_n
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_RPS_n -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name IO_STANDARD "1.8-V HSTL CLASS I" -to QDRIID_WPS_n -tag __S5_DDR3_QSYS_qdr_d_p0
 #============================================================
 # RS422
 #============================================================
@@ -2269,3 +2269,647 @@ set_global_assignment -name QIP_FILE S5_DDR3_QSYS/synthesis/S5_DDR3_QSYS.qip
 set_global_assignment -name SDC_FILE Golden_top.sdc
 set_global_assignment -name VERILOG_FILE Golden_top.v
 set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
+
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIIA_CQ_p -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIIA_CQ_n -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIIA_Q[0] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIIA_Q[1] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIIA_Q[2] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIIA_Q[3] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIIA_Q[4] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIIA_Q[5] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIIA_Q[6] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIIA_Q[7] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIIA_Q[8] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIIA_Q[9] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIIA_Q[10] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIIA_Q[11] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIIA_Q[12] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIIA_Q[13] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIIA_Q[14] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIIA_Q[15] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIIA_Q[16] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIIA_Q[17] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITHOUT CALIBRATION" -to QDRIIA_K_p -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITHOUT CALIBRATION" -to QDRIIA_K_n -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIIA_D[0] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIIA_D[1] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIIA_D[2] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIIA_D[3] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIIA_D[4] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIIA_D[5] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIIA_D[6] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIIA_D[7] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIIA_D[8] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIIA_D[9] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIIA_D[10] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIIA_D[11] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIIA_D[12] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIIA_D[13] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIIA_D[14] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIIA_D[15] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIIA_D[16] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIIA_D[17] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIIA_A[0] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIIA_A[10] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIIA_A[11] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIIA_A[12] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIIA_A[13] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIIA_A[14] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIIA_A[15] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIIA_A[16] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIIA_A[17] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIIA_A[18] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIIA_A[19] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIIA_A[1] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIIA_A[2] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIIA_A[3] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIIA_A[4] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIIA_A[5] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIIA_A[6] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIIA_A[7] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIIA_A[8] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIIA_A[9] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIIA_WPS_n -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIIA_RPS_n -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIIA_DOFF_n -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIIA_BWS_n[0] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIIA_BWS_n[1] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name D5_DELAY 30 -to QDRIIA_K_p -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name D6_DELAY 0 -to QDRIIA_K_p -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name D5_DELAY 30 -to QDRIIA_K_n -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name D6_DELAY 0 -to QDRIIA_K_n -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIA_D[0] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIA_D[1] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIA_D[2] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIA_D[3] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIA_D[4] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIA_D[5] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIA_D[6] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIA_D[7] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIA_D[8] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIA_D[9] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIA_D[10] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIA_D[11] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIA_D[12] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIA_D[13] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIA_D[14] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIA_D[15] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIA_D[16] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIA_D[17] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIA_Q[0] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIA_Q[1] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIA_Q[2] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIA_Q[3] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIA_Q[4] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIA_Q[5] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIA_Q[6] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIA_Q[7] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIA_Q[8] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIA_Q[9] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIA_Q[10] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIA_Q[11] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIA_Q[12] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIA_Q[13] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIA_Q[14] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIA_Q[15] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIA_Q[16] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIA_Q[17] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIA_BWS_n[0] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIA_BWS_n[1] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIA_K_p -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIA_K_n -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIA_CQ_p -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIA_CQ_n -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIA_A[0] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIA_A[10] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIA_A[11] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIA_A[12] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIA_A[13] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIA_A[14] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIA_A[15] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIA_A[16] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIA_A[17] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIA_A[18] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIA_A[19] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIA_A[1] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIA_A[2] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIA_A[3] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIA_A[4] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIA_A[5] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIA_A[6] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIA_A[7] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIA_A[8] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIA_A[9] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIA_WPS_n -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIA_RPS_n -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIA_DOFF_n -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIIA_Q[0] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIIA_Q[1] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIIA_Q[2] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIIA_Q[3] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIIA_Q[4] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIIA_Q[5] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIIA_Q[6] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIIA_Q[7] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIIA_Q[8] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIIA_Q[9] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIIA_Q[10] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIIA_Q[11] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIIA_Q[12] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIIA_Q[13] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIIA_Q[14] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIIA_Q[15] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIIA_Q[16] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIIA_Q[17] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIIA_CQ_p -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIIA_CQ_n -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name GLOBAL_SIGNAL "DUAL-REGIONAL CLOCK" -to u0|qdr_b|pll0|pll_avl_clk -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name GLOBAL_SIGNAL "DUAL-REGIONAL CLOCK" -to u0|qdr_b|pll0|pll_config_clk -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name GLOBAL_SIGNAL "GLOBAL CLOCK" -to u0|qdr_b|pll0|afi_clk -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name GLOBAL_SIGNAL OFF -to u0|qdr_a|s0|sequencer_rw_mgr_inst|rw_mgr_inst|rw_mgr_core_inst|rw_soft_reset_n -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name GLOBAL_SIGNAL OFF -to u0|qdr_a|p0|umemphy|uread_datapath|reset_n_fifo_write_side[0] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name GLOBAL_SIGNAL OFF -to u0|qdr_a|p0|umemphy|uread_datapath|reset_n_fifo_wraddress[0] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name ENABLE_BENEFICIAL_SKEW_OPTIMIZATION_FOR_NON_GLOBAL_CLOCKS ON -to u0|qdr_a -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PLL_COMPENSATION_MODE DIRECT -to u0|qdr_a|pll0|fbout -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIIC_CQ_p -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIIC_CQ_n -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIIC_Q[0] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIIC_Q[1] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIIC_Q[2] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIIC_Q[3] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIIC_Q[4] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIIC_Q[5] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIIC_Q[6] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIIC_Q[7] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIIC_Q[8] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIIC_Q[9] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIIC_Q[10] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIIC_Q[11] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIIC_Q[12] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIIC_Q[13] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIIC_Q[14] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIIC_Q[15] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIIC_Q[16] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIIC_Q[17] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITHOUT CALIBRATION" -to QDRIIC_K_p -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITHOUT CALIBRATION" -to QDRIIC_K_n -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIIC_D[0] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIIC_D[1] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIIC_D[2] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIIC_D[3] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIIC_D[4] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIIC_D[5] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIIC_D[6] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIIC_D[7] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIIC_D[8] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIIC_D[9] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIIC_D[10] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIIC_D[11] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIIC_D[12] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIIC_D[13] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIIC_D[14] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIIC_D[15] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIIC_D[16] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIIC_D[17] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIIC_A[0] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIIC_A[10] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIIC_A[11] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIIC_A[12] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIIC_A[13] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIIC_A[14] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIIC_A[15] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIIC_A[16] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIIC_A[17] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIIC_A[18] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIIC_A[19] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIIC_A[1] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIIC_A[2] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIIC_A[3] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIIC_A[4] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIIC_A[5] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIIC_A[6] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIIC_A[7] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIIC_A[8] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIIC_A[9] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIIC_WPS_n -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIIC_RPS_n -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIIC_DOFF_n -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIIC_BWS_n[0] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIIC_BWS_n[1] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name D5_DELAY 30 -to QDRIIC_K_p -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name D6_DELAY 0 -to QDRIIC_K_p -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name D5_DELAY 30 -to QDRIIC_K_n -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name D6_DELAY 0 -to QDRIIC_K_n -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIC_D[0] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIC_D[1] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIC_D[2] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIC_D[3] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIC_D[4] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIC_D[5] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIC_D[6] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIC_D[7] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIC_D[8] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIC_D[9] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIC_D[10] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIC_D[11] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIC_D[12] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIC_D[13] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIC_D[14] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIC_D[15] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIC_D[16] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIC_D[17] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIC_Q[0] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIC_Q[1] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIC_Q[2] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIC_Q[3] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIC_Q[4] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIC_Q[5] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIC_Q[6] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIC_Q[7] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIC_Q[8] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIC_Q[9] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIC_Q[10] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIC_Q[11] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIC_Q[12] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIC_Q[13] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIC_Q[14] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIC_Q[15] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIC_Q[16] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIC_Q[17] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIC_BWS_n[0] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIC_BWS_n[1] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIC_K_p -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIC_K_n -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIC_CQ_p -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIC_CQ_n -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIC_A[0] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIC_A[10] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIC_A[11] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIC_A[12] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIC_A[13] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIC_A[14] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIC_A[15] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIC_A[16] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIC_A[17] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIC_A[18] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIC_A[19] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIC_A[1] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIC_A[2] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIC_A[3] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIC_A[4] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIC_A[5] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIC_A[6] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIC_A[7] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIC_A[8] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIC_A[9] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIC_WPS_n -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIC_RPS_n -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIC_DOFF_n -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIIC_Q[0] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIIC_Q[1] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIIC_Q[2] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIIC_Q[3] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIIC_Q[4] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIIC_Q[5] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIIC_Q[6] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIIC_Q[7] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIIC_Q[8] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIIC_Q[9] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIIC_Q[10] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIIC_Q[11] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIIC_Q[12] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIIC_Q[13] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIIC_Q[14] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIIC_Q[15] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIIC_Q[16] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIIC_Q[17] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIIC_CQ_p -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIIC_CQ_n -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name GLOBAL_SIGNAL OFF -to u0|qdr_c|s0|sequencer_rw_mgr_inst|rw_mgr_inst|rw_mgr_core_inst|rw_soft_reset_n -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name GLOBAL_SIGNAL OFF -to u0|qdr_c|p0|umemphy|uread_datapath|reset_n_fifo_write_side[0] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name GLOBAL_SIGNAL OFF -to u0|qdr_c|p0|umemphy|uread_datapath|reset_n_fifo_wraddress[0] -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name ENABLE_BENEFICIAL_SKEW_OPTIMIZATION_FOR_NON_GLOBAL_CLOCKS ON -to u0|qdr_c -tag __S5_DDR3_QSYS_qdr_a_p0
+set_instance_assignment -name PLL_COMPENSATION_MODE DIRECT -to u0|qdr_c|pll0|fbout -tag __S5_DDR3_QSYS_qdr_a_p0
+set_global_assignment -name ENABLE_ADVANCED_IO_DELAY_CHAIN_OPTIMIZATION ON
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIIB_CQ_p -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIIB_CQ_n -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIIB_Q[0] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIIB_Q[1] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIIB_Q[2] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIIB_Q[3] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIIB_Q[4] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIIB_Q[5] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIIB_Q[6] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIIB_Q[7] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIIB_Q[8] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIIB_Q[9] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIIB_Q[10] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIIB_Q[11] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIIB_Q[12] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIIB_Q[13] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIIB_Q[14] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIIB_Q[15] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIIB_Q[16] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIIB_Q[17] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITHOUT CALIBRATION" -to QDRIIB_K_p -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITHOUT CALIBRATION" -to QDRIIB_K_n -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIIB_D[0] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIIB_D[1] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIIB_D[2] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIIB_D[3] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIIB_D[4] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIIB_D[5] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIIB_D[6] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIIB_D[7] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIIB_D[8] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIIB_D[9] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIIB_D[10] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIIB_D[11] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIIB_D[12] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIIB_D[13] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIIB_D[14] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIIB_D[15] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIIB_D[16] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIIB_D[17] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIIB_A[0] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIIB_A[10] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIIB_A[11] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIIB_A[12] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIIB_A[13] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIIB_A[14] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIIB_A[15] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIIB_A[16] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIIB_A[17] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIIB_A[18] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIIB_A[19] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIIB_A[1] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIIB_A[2] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIIB_A[3] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIIB_A[4] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIIB_A[5] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIIB_A[6] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIIB_A[7] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIIB_A[8] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIIB_A[9] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIIB_WPS_n -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIIB_RPS_n -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIIB_DOFF_n -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIIB_BWS_n[0] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIIB_BWS_n[1] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name D5_DELAY 30 -to QDRIIB_K_p -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name D6_DELAY 0 -to QDRIIB_K_p -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name D5_DELAY 30 -to QDRIIB_K_n -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name D6_DELAY 0 -to QDRIIB_K_n -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIB_D[0] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIB_D[1] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIB_D[2] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIB_D[3] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIB_D[4] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIB_D[5] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIB_D[6] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIB_D[7] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIB_D[8] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIB_D[9] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIB_D[10] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIB_D[11] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIB_D[12] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIB_D[13] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIB_D[14] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIB_D[15] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIB_D[16] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIB_D[17] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIB_Q[0] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIB_Q[1] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIB_Q[2] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIB_Q[3] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIB_Q[4] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIB_Q[5] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIB_Q[6] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIB_Q[7] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIB_Q[8] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIB_Q[9] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIB_Q[10] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIB_Q[11] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIB_Q[12] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIB_Q[13] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIB_Q[14] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIB_Q[15] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIB_Q[16] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIB_Q[17] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIB_BWS_n[0] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIB_BWS_n[1] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIB_K_p -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIB_K_n -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIB_CQ_p -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIB_CQ_n -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIB_A[0] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIB_A[10] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIB_A[11] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIB_A[12] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIB_A[13] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIB_A[14] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIB_A[15] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIB_A[16] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIB_A[17] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIB_A[18] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIB_A[19] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIB_A[1] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIB_A[2] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIB_A[3] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIB_A[4] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIB_A[5] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIB_A[6] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIB_A[7] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIB_A[8] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIB_A[9] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIB_WPS_n -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIB_RPS_n -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIIB_DOFF_n -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIIB_Q[0] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIIB_Q[1] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIIB_Q[2] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIIB_Q[3] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIIB_Q[4] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIIB_Q[5] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIIB_Q[6] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIIB_Q[7] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIIB_Q[8] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIIB_Q[9] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIIB_Q[10] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIIB_Q[11] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIIB_Q[12] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIIB_Q[13] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIIB_Q[14] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIIB_Q[15] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIIB_Q[16] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIIB_Q[17] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIIB_CQ_p -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIIB_CQ_n -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name GLOBAL_SIGNAL OFF -to u0|qdr_b|s0|sequencer_rw_mgr_inst|rw_mgr_inst|rw_mgr_core_inst|rw_soft_reset_n -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name GLOBAL_SIGNAL OFF -to u0|qdr_b|p0|umemphy|uread_datapath|reset_n_fifo_write_side[0] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name GLOBAL_SIGNAL OFF -to u0|qdr_b|p0|umemphy|uread_datapath|reset_n_fifo_wraddress[0] -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name ENABLE_BENEFICIAL_SKEW_OPTIMIZATION_FOR_NON_GLOBAL_CLOCKS ON -to u0|qdr_b -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name PLL_COMPENSATION_MODE DIRECT -to u0|qdr_b|pll0|fbout -tag __S5_DDR3_QSYS_qdr_b_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIID_CQ_p -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIID_CQ_n -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIID_Q[0] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIID_Q[1] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIID_Q[2] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIID_Q[3] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIID_Q[4] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIID_Q[5] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIID_Q[6] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIID_Q[7] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIID_Q[8] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIID_Q[9] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIID_Q[10] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIID_Q[11] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIID_Q[12] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIID_Q[13] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIID_Q[14] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIID_Q[15] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIID_Q[16] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIID_Q[17] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITHOUT CALIBRATION" -to QDRIID_K_p -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITHOUT CALIBRATION" -to QDRIID_K_n -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIID_D[0] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIID_D[1] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIID_D[2] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIID_D[3] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIID_D[4] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIID_D[5] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIID_D[6] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIID_D[7] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIID_D[8] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIID_D[9] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIID_D[10] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIID_D[11] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIID_D[12] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIID_D[13] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIID_D[14] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIID_D[15] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIID_D[16] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIID_D[17] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIID_A[0] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIID_A[10] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIID_A[11] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIID_A[12] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIID_A[13] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIID_A[14] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIID_A[15] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIID_A[16] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIID_A[17] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIID_A[18] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIID_A[19] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIID_A[1] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIID_A[2] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIID_A[3] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIID_A[4] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIID_A[5] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIID_A[6] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIID_A[7] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIID_A[8] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIID_A[9] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIID_WPS_n -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIID_RPS_n -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to QDRIID_DOFF_n -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIID_BWS_n[0] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITH CALIBRATION" -to QDRIID_BWS_n[1] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name D5_DELAY 30 -to QDRIID_K_p -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name D6_DELAY 0 -to QDRIID_K_p -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name D5_DELAY 30 -to QDRIID_K_n -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name D6_DELAY 0 -to QDRIID_K_n -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIID_D[0] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIID_D[1] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIID_D[2] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIID_D[3] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIID_D[4] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIID_D[5] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIID_D[6] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIID_D[7] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIID_D[8] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIID_D[9] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIID_D[10] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIID_D[11] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIID_D[12] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIID_D[13] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIID_D[14] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIID_D[15] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIID_D[16] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIID_D[17] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIID_Q[0] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIID_Q[1] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIID_Q[2] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIID_Q[3] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIID_Q[4] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIID_Q[5] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIID_Q[6] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIID_Q[7] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIID_Q[8] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIID_Q[9] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIID_Q[10] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIID_Q[11] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIID_Q[12] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIID_Q[13] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIID_Q[14] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIID_Q[15] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIID_Q[16] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIID_Q[17] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIID_BWS_n[0] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIID_BWS_n[1] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIID_K_p -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIID_K_n -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIID_CQ_p -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIID_CQ_n -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIID_A[0] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIID_A[10] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIID_A[11] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIID_A[12] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIID_A[13] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIID_A[14] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIID_A[15] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIID_A[16] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIID_A[17] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIID_A[18] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIID_A[19] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIID_A[1] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIID_A[2] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIID_A[3] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIID_A[4] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIID_A[5] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIID_A[6] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIID_A[7] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIID_A[8] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIID_A[9] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIID_WPS_n -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIID_RPS_n -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name PACKAGE_SKEW_COMPENSATION ON -to QDRIID_DOFF_n -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIID_Q[0] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIID_Q[1] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIID_Q[2] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIID_Q[3] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIID_Q[4] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIID_Q[5] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIID_Q[6] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIID_Q[7] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIID_Q[8] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIID_Q[9] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIID_Q[10] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIID_Q[11] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIID_Q[12] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIID_Q[13] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIID_Q[14] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIID_Q[15] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIID_Q[16] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIID_Q[17] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIID_CQ_p -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name TERMINATION_CONTROL_BLOCK "S5_DDR3_QSYS:u0|S5_DDR3_QSYS_qdr_b:qdr_b|altera_mem_if_oct_stratixv:oct0|sd1a_0" -to QDRIID_CQ_n -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name GLOBAL_SIGNAL "DUAL-REGIONAL CLOCK" -to u0|qdr_d|pll0|pll_avl_clk -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name GLOBAL_SIGNAL "DUAL-REGIONAL CLOCK" -to u0|qdr_d|pll0|pll_config_clk -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name GLOBAL_SIGNAL "GLOBAL CLOCK" -to u0|qdr_d|pll0|afi_clk -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name GLOBAL_SIGNAL OFF -to u0|qdr_d|s0|sequencer_rw_mgr_inst|rw_mgr_inst|rw_mgr_core_inst|rw_soft_reset_n -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name GLOBAL_SIGNAL OFF -to u0|qdr_d|p0|umemphy|uread_datapath|reset_n_fifo_write_side[0] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name GLOBAL_SIGNAL OFF -to u0|qdr_d|p0|umemphy|uread_datapath|reset_n_fifo_wraddress[0] -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name ENABLE_BENEFICIAL_SKEW_OPTIMIZATION_FOR_NON_GLOBAL_CLOCKS ON -to u0|qdr_d -tag __S5_DDR3_QSYS_qdr_d_p0
+set_instance_assignment -name PLL_COMPENSATION_MODE DIRECT -to u0|qdr_d|pll0|fbout -tag __S5_DDR3_QSYS_qdr_d_p0
