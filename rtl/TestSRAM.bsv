@@ -17,6 +17,7 @@ import DebugLink  :: *;
 import JtagUart   :: *;
 import Mac        :: *;
 import FPU        :: *;
+import NarrowSRAM :: *;
 import WideSRAM   :: *;
 import Util       :: *;
 import Socket     :: *;
@@ -36,10 +37,10 @@ import "BDPI" function Bit#(32) getBoardId();
 interface DE5Top;
   interface Vector#(`DRAMsPerBoard, DRAMExtIfc) dramIfcs;
   interface Vector#(`SRAMsPerBoard, SRAMExtIfc) sramIfcs;
-  interface AvalonMac northMac;
-  interface AvalonMac southMac;
-  interface AvalonMac eastMac;
-  interface AvalonMac westMac;
+  interface Vector#(`NumNorthSouthLinks, AvalonMac) northMac;
+  interface Vector#(`NumNorthSouthLinks, AvalonMac) southMac;
+  interface Vector#(`NumEastWestLinks, AvalonMac) eastMac;
+  interface Vector#(`NumEastWestLinks, AvalonMac) westMac;
   interface JtagUartAvalon jtagIfc;
   (* always_ready, always_enabled *)
   method Action setBoardId(BoardId id);
@@ -65,8 +66,8 @@ module de5Top (DE5Top);
     drams[i] <- mkDRAM(fromInteger(i));
 
   // Create SRAMs
-  Vector#(`SRAMsPerBoard, DRAM) srams;
-  for (Integer i = 0; i < `DRAMsPerBoard; i=i+1)
+  Vector#(`SRAMsPerBoard, WideSRAM) srams;
+  for (Integer i = 0; i < `SRAMsPerBoard; i=i+1)
     srams[i] <- mkWideSRAM(fromInteger(`DRAMsPerBoard+i));
 
   // Ports
@@ -76,6 +77,12 @@ module de5Top (DE5Top);
   // Connect ports to SRAM
   connectUsing(mkUGQueue, reqOut.out, srams[0].reqIn);
   connectDirect(srams[0].respOut, respIn.in);
+
+  // Null connections to unused SRAMs
+  for (Integer i = 1; i < `SRAMsPerBoard; i=i+1) begin
+    let n <- mkNullBOut;
+    connectDirect(n, srams[i].reqIn);
+  end
 
   // Create inter-FPGA links
   Vector#(`NumNorthSouthLinks, BoardLink) northLink <-
@@ -172,15 +179,15 @@ module de5Top (DE5Top);
 
   `ifndef SIMULATE
   function DRAMExtIfc getDRAMExtIfc(DRAM dram) = dram.external;
+  function SRAMExtIfc getSRAMExtIfc(WideSRAM sram) = sram.external;
+  function AvalonMac getMac(BoardLink link) = link.avalonMac;
   interface dramIfcs = map(getDRAMExtIfc, drams);
-  function DRAMExtIfc getSRAMExtIfc(WideSRAM sram) = sram.external;
   interface sramIfcs = map(getSRAMExtIfc, srams);
   interface jtagIfc  = uart.jtagAvalon;
-  function AvalonMac getMac(BoardLink link) = link.avalonMac;
-  interface north = Vector::map(getMac, northLink);
-  interface south = Vector::map(getMac, southLink);
-  interface east = Vector::map(getMac, eastLink);
-  interface west = Vector::map(getMac, westLink);
+  interface northMac = Vector::map(getMac, northLink);
+  interface southMac = Vector::map(getMac, southLink);
+  interface eastMac = Vector::map(getMac, eastLink);
+  interface westMac = Vector::map(getMac, westLink);
   method Action setBoardId(BoardId id);
     boardId <= id;
   endmethod

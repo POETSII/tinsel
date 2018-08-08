@@ -256,7 +256,7 @@ typedef struct {
 // SRAM Implementation
 // -------------------
 
-module mkSRAM (SRAM);
+module mkSRAM#(t id) (SRAM);
   // Ports
   InPort#(SRAMLoadReq) loadReqPort <- mkInPort;
   InPort#(SRAMStoreReq) storeReqPort <- mkInPort;

@@ -18,7 +18,7 @@ interface WideSRAM;
   interface SRAMExtIfc external;
 endinterface
 
-module mkWideSRAM#(RAMId id) (DRAM);
+module mkWideSRAM#(RAMId id) (WideSRAM);
 
   // Create SRAM instance
   SRAM sram <- mkSRAM(id);
@@ -133,6 +133,6 @@ module mkWideSRAM#(RAMId id) (DRAM);
   endinterface
 
   // External interface
-  interface external = sram.external;
+  interface SRAMExtIfc external = sram.external;
 
 endmodule
