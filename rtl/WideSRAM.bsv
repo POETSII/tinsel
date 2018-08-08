@@ -74,6 +74,7 @@ module mkWideSRAM#(RAMId id) (WideSRAM);
         reqInPort.get;
       end
     end else begin
+if (busy[client].value) $display("BUSY\n");
       if (loadPort.canPut && !busy[client].value) begin
         SRAMLoadReq reqOut;
         reqOut.id = reqIn.id;
@@ -113,13 +114,18 @@ module mkWideSRAM#(RAMId id) (WideSRAM);
     end
   endrule
 
+  // Count number of store-done responses
+  Reg#(Bit#(2)) storeDoneCount <- mkReg(0);
+
   // Consume store-done responses
   rule consumeStoreDones;
     Option#(SRAMReqId) done = sram.storeDone();
     // Approximate client id
     DRAMReqId client = truncateLSB(done.value);
+    // Increment count
+    if (done.valid) storeDoneCount <= storeDoneCount + 1;
     // Clear busy bit when store completes
-    if (done.valid) busy[client].clear;
+    if (done.valid && storeDoneCount == 3) busy[client].clear;
   endrule
 
   // Request interface
