@@ -143,13 +143,12 @@ p["FPConvertLatency"] = 6
 p["FPCompareLatency"] = 3
 
 # SRAM parameters
-p["SRAMsPerBoard"] = 4
 p["SRAMAddrWidth"] = 20
 p["LogBytesPerSRAMBeat"] = 3
 p["SRAMBurstWidth"] = 3
 p["SRAMLatency"] = 8
 p["SRAMLogMaxInFlight"] = 4
-p["SRAMStoreLatency"] = 4
+p["SRAMStoreLatency"] = 2
 
 #==============================================================================
 # Derived Parameters
@@ -300,6 +299,9 @@ p["NumEastWestLinks"] = 2 ** p["LogEastWestLinks"]
 p["BytesPerSRAMBeat"] = 2 ** p["LogBytesPerSRAMBeat"]
 p["WordsPerSRAMBeat"] = p["BytesPerSRAMBeat"] / 4
 p["SRAMDataWidth"] = 32 * p["WordsPerSRAMBeat"]
+p["SRAMsPerBoard"] = 2 * p["DRAMsPerBoard"]
+p["LogBeatsPerSRAM"] = ((p["SRAMAddrWidth"] + p["LogBytesPerBeat"])
+                          - p["LogBytesPerBeat"])
 
 #==============================================================================
 # Main 

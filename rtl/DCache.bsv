@@ -100,6 +100,7 @@ import Assert      :: *;
 import ConfigReg   :: *;
 import Interface   :: *;
 import DRAM        :: *;
+import OffChipRAM  :: *;
 import PseudoLRU   :: *;
 import DCacheTypes :: *;
 
@@ -586,24 +587,24 @@ module connectCoresToDCache#(
 
 endmodule
 
-module connectDCachesToDRAM#(
-         Vector#(`DCachesPerDRAM, DCache) caches, DRAM dram) ();
+module connectDCachesToOffChipRAM#(
+         Vector#(`DCachesPerDRAM, DCache) caches, OffChipRAM ram) ();
 
   // Connect requests
   function getReqOut(cache) = cache.reqOut;
   let reqs <- mkMergeTreeB(Fair,
                 mkUGShiftQueue1(QueueOptFmax),
                 map(getReqOut, caches));
-  connectUsing(mkUGQueue, reqs, dram.reqIn);
+  connectUsing(mkUGQueue, reqs, ram.reqIn);
 
   // Connect load responses
   function DCacheId getRespKey(DRAMResp resp) = resp.id;
   function getRespIn(cache) = cache.respIn;
-  let dramResps <- mkResponseDistributor(
+  let ramResps <- mkResponseDistributor(
                     getRespKey,
                     mkUGQueue,
                     map(getRespIn, caches));
-  connectDirect(dram.respOut, dramResps);
+  connectDirect(ram.respOut, ramResps);
 
 endmodule
 

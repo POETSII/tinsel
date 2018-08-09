@@ -12,7 +12,7 @@
 
 // Connections to PCIeStream
 #define PCIESTREAM      "pciestream"
-#define PCIESTREAM_SIM  "tinsel.b-1.5"
+#define PCIESTREAM_SIM  "tinsel.b-1.4"
 
 // Power down the mesh boards
 void powerdown();
