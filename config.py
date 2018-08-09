@@ -300,8 +300,15 @@ p["BytesPerSRAMBeat"] = 2 ** p["LogBytesPerSRAMBeat"]
 p["WordsPerSRAMBeat"] = p["BytesPerSRAMBeat"] / 4
 p["SRAMDataWidth"] = 32 * p["WordsPerSRAMBeat"]
 p["SRAMsPerBoard"] = 2 * p["DRAMsPerBoard"]
-p["LogBeatsPerSRAM"] = ((p["SRAMAddrWidth"] + p["LogBytesPerBeat"])
-                          - p["LogBytesPerBeat"])
+p["LogThreadsPerSRAM"] = p["LogThreadsPerDRAM"] - 1
+p["LogBeatsPerSRAM"] = (
+  (p["SRAMAddrWidth"] + p["LogBytesPerSRAMBeat"]) - p["LogBytesPerBeat"])
+p["LogBytesPerSRAM"] = p["LogBeatsPerSRAM"] + p["LogBytesPerBeat"]
+p["LogBytesPerSRAMPartition"] = p["LogBytesPerSRAM"] - p["LogThreadsPerSRAM"]
+
+# DRAM base and length
+p["DRAMBase"] = 3 * (2 ** p["LogBytesPerSRAM"])
+p["DRAMGlobalsLength"] = 2 ** (p["LogBytesPerDRAM"] - 1) - p["DRAMBase"]
 
 #==============================================================================
 # Main 

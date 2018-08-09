@@ -17,7 +17,7 @@ OUTPUT_ARCH( "riscv" )
 MEMORY
 {
   instrs  : ORIGIN = $MaxBootImageBytes, LENGTH = $MaxInstrBytes
-  globals : ORIGIN = 0x100000, LENGTH = 0x1ff00000
+  globals : ORIGIN = $DRAMBase, LENGTH = $DRAMGlobalsLength
 }
 
 SECTIONS

@@ -56,8 +56,13 @@ INLINE void tinselCacheFlush()
     for (uint32_t j = 0; j < (1<<TinselDCacheLogNumWays); j++)
       tinselFlushLine(i, j);
   // Load from each off-chip RAM to ensure that flushes have fully propagated
-  volatile uint8_t* base = (uint8_t*) tinselHeapBase();
-  base[0];
+  volatile uint8_t* base;
+  // Load from DRAM
+  base = (uint8_t*) TinselDRAMBase; base[0];
+  // Load from SRAM A
+  base = (uint8_t*) ((uint32_t) 1 << TinselLogBytesPerSRAM); base[0];
+  // Load from SRAM B
+  base = (uint8_t*) ((uint32_t) 2 << TinselLogBytesPerSRAM); base[0];
 }
 
 // Write a word to instruction memory
@@ -179,6 +184,16 @@ INLINE void* tinselHeapBase()
                     ((partId+1) << TinselLogBytesPerDRAMPartition);
   // Use the partition-interleaved translation
   addr |= 0x80000000;
+  return (void*) addr;
+}
+
+// Return pointer to base of thread's SRAM partition
+INLINE void* tinselHeapBaseSRAM()
+{
+  uint32_t me = tinselId();
+  uint32_t partId = me & (TinselThreadsPerDRAM-1);
+  uint32_t addr = (1 << TinselLogBytesPerSRAM)
+                + (partId << TinselLogBytesPerSRAMPartition);
   return (void*) addr;
 }
 

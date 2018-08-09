@@ -30,10 +30,10 @@ entry.o:
 	$(RV_CC) $(CFLAGS) -Wall -c -o entry.o entry.S
 
 link_0.ld: genld.sh
-	./genld.sh 0x100000 > $@
+	./genld.sh 0x2000000 > $@
 
 link_1.ld: genld.sh
-	./genld.sh 0x200000 > $@
+	./genld.sh 0x3000000 > $@
 
 $(INC)/config.h: $(TINSEL_ROOT)/config.py
 	make -C $(INC)
