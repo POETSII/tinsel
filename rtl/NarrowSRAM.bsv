@@ -105,13 +105,12 @@ module mkSRAM#(RAMId id) (SRAM);
   // Response buffers
   FIFOF#(SRAMResp) resps <- mkUGSizedFIFOF(32);
 
-  // Count outstanding loads
-  Reg#(Bit#(32)) outstanding <- mkReg(0);
-  Wire#(Bit#(32)) incOutstanding <- mkDWire(0);
-  PulseWire decOutstanding <- mkPulseWire;
+  // Counter
+  Count#(TAdd#(`SRAMLogMaxInFlight, 1)) inFlightCount <-
+    mkCount(2 ** `SRAMLogMaxInFlight);
 
   // Constants
-  Integer maxOutstanding = 2 ** `SRAMLogMaxInFlight;
+  Integer maxBurst = 2 ** (`SRAMBurstWidth-1);
 
   // This wire indicates when a store has been completed
   Wire#(Option#(SRAMReqId)) storeDoneWire <- mkDWire(option(False, ?));
@@ -142,15 +141,15 @@ module mkSRAM#(RAMId id) (SRAM);
         resp.info = req.info;
         resp.info.beat = truncate(loadBurstCount);
         resps.enq(resp);
-        decOutstanding.send;
+        inFlightCount.dec;
       end
     end
     // Insert a new request
     if (loadReqPort.canGet && loadReqs.notFull &&
-          outstanding < fromInteger(maxOutstanding)) begin
+          inFlightCount.available >= fromInteger(maxBurst)) begin
       loadReqPort.get;
       loadReqs.enq(loadReqPort.value);
-      incOutstanding <= zeroExtend(loadReqPort.value.burst);
+      inFlightCount.incBy(zeroExtend(loadReqPort.value.burst));
     end
   endrule
 
@@ -176,13 +175,6 @@ module mkSRAM#(RAMId id) (SRAM);
       storeReqPort.get;
       storeReqs.enq(storeReqPort.value);
     end
-  endrule
-
-  // Track number of outstanding loads
-  rule countOutstanding;
-    let count = outstanding + incOutstanding;
-    if (decOutstanding) count = count-1;
-    outstanding <= count;
   endrule
 
   // Interfaces
@@ -279,20 +271,12 @@ module mkSRAM#(t id) (SRAM);
   Reg#(Bit#(`SRAMBurstWidth)) storeBurstReg <- mkReg(0);
   Reg#(Bit#(`SRAMBurstWidth)) loadBurstCount <- mkReg(1);
 
-  // Count outstanding loads
-  Reg#(Bit#(TAdd#(`SRAMLogMaxInFlight,1))) outstanding <- mkReg(0);
-  Wire#(Bit#(TAdd#(`SRAMLogMaxInFlight,1))) incOutstanding <- mkDWire(0);
-  PulseWire decOutstanding <- mkPulseWire;
+  // Counter
+  Count#(TAdd#(`SRAMLogMaxInFlight, 1)) inFlightCount <-
+    mkCount(2 ** `SRAMLogMaxInFlight);
 
   // Constants
-  Integer maxOutstanding = 2 ** `SRAMLogMaxInFlight;
-
-  // Track number of outstanding loads
-  rule countOutstanding;
-    let count = outstanding + incOutstanding;
-    if (decOutstanding) count = count-1;
-    outstanding <= count;
-  endrule
+  Integer maxBurst = 2 ** (`SRAMBurstWidth-1);
 
   // Wires
   Wire#(Bool) loadWaitRequest <- mkBypassWire;
@@ -332,13 +316,13 @@ module mkSRAM#(t id) (SRAM);
 
   rule consumeLoadRequest;
     if (loadReqPort.canGet && !loadWaitRequest &&
-          outstanding < fromInteger(maxOutstanding)) begin
+          inFlightCount.available >= fromInteger(maxBurst)) begin
       SRAMLoadReq req = loadReqPort.value;
       loadReqPort.get;
       loadAddress <= req.addr;
       loadBurstReg <= req.burst;
       putLoad.send;
-      incOutstanding <= zeroExtend(req.burst);
+      inFlightCount.incBy(zeroExtend(req.burst));
       SRAMInFlightReq inflight;
       inflight.id = req.id;
       inflight.burst = req.burst;
@@ -368,11 +352,11 @@ module mkSRAM#(t id) (SRAM);
     method Action get;
       if (loadBurstCount == inFlight.dataOut.burst) begin
         inFlight.deq;
-        loadBurstCount <= 0;
+        loadBurstCount <= 1;
       end else
         loadBurstCount <= loadBurstCount+1;
       respBuffer.deq;
-      decOutstanding.send;
+      inFlightCount.dec;
     endmethod
     method Bool valid =
       respBuffer.canPeek && respBuffer.canDeq &&

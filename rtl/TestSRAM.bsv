@@ -19,6 +19,7 @@ import Mac        :: *;
 import FPU        :: *;
 import NarrowSRAM :: *;
 import WideSRAM   :: *;
+import OffChipRAM :: *;
 import Util       :: *;
 import Socket     :: *;
 
@@ -60,29 +61,22 @@ module de5Top (DE5Top);
   Wire#(BoardId) boardId <- mkDWire(?);
   `endif
 
-  // Create DRAMs
-  Vector#(`DRAMsPerBoard, DRAM) drams;
+  // Create RAMs
+  Vector#(`DRAMsPerBoard, OffChipRAM) rams;
   for (Integer i = 0; i < `DRAMsPerBoard; i=i+1)
-    drams[i] <- mkDRAM(fromInteger(i));
-
-  // Create SRAMs
-  Vector#(`SRAMsPerBoard, WideSRAM) srams;
-  for (Integer i = 0; i < `SRAMsPerBoard; i=i+1)
-    srams[i] <- mkWideSRAM(fromInteger(`DRAMsPerBoard+i));
+    rams[i] <- mkOffChipRAM(fromInteger(i*3));
 
   // Ports
-  OutPort#(DRAMReq) reqOut <- mkOutPort;
-  InPort#(DRAMResp) respIn <- mkInPort;
+  OutPort#(DRAMReq) reqOutA <- mkOutPort;
+  InPort#(DRAMResp) respInA <- mkInPort;
+  OutPort#(DRAMReq) reqOutB <- mkOutPort;
+  InPort#(DRAMResp) respInB <- mkInPort;
 
   // Connect ports to SRAM
-  connectUsing(mkUGQueue, reqOut.out, srams[0].reqIn);
-  connectDirect(srams[0].respOut, respIn.in);
-
-  // Null connections to unused SRAMs
-  for (Integer i = 1; i < `SRAMsPerBoard; i=i+1) begin
-    let n <- mkNullBOut;
-    connectDirect(n, srams[i].reqIn);
-  end
+  connectUsing(mkUGQueue, reqOutA.out, rams[0].reqIn);
+  connectDirect(rams[0].respOut, respInA.in);
+  connectUsing(mkUGQueue, reqOutB.out, rams[1].reqIn);
+  connectDirect(rams[1].respOut, respInB.in);
 
   // Create inter-FPGA links
   Vector#(`NumNorthSouthLinks, BoardLink) northLink <-
@@ -106,7 +100,8 @@ module de5Top (DE5Top);
   connectUsing(mkUGShiftQueue1(QueueOptFmax), uart.jtagOut, fromJtag.in);
 
   // Address accessed by test bench
-  Bit#(27) addr = 0;
+  Reg#(Bit#(27)) addr <- mkRegU;
+  Reg#(Bit#(27)) baseAddr <- mkRegU;
 
   // Testbench state
   Reg#(Bit#(4)) state <- mkReg(0);
@@ -116,56 +111,69 @@ module de5Top (DE5Top);
   rule state0 (state == 0);
     if (fromJtag.canGet && toJtag.canPut) begin
       fromJtag.get;
+      Bit#(27) x;
+      if (fromJtag.value == 65)
+        x = fromInteger(8388608/32);
+      else if (fromJtag.value == 66)
+        x = fromInteger(16777216/32);
+      else
+        x = fromInteger(25165824/32);
+      baseAddr <= x;
+      addr <= x;
       toJtag.put(88);
       state <= 1;
     end
   endrule
 
-  // State of write
-  Reg#(Bit#(256)) writeData <- mkReg(
-    256'h0001234567abcd03_0001234567abcd02_0001234567abcd01_0001234567abcd00);
-  Reg#(Bit#(4)) writeCount <- mkReg(0);
+  // State of access
+  Reg#(Bit#(256)) writeData <- mkReg(0);
+  Reg#(Bit#(10)) writeCount <- mkReg(0);
+  Reg#(Bit#(10)) readCount <- mkReg(0);
+  Reg#(Bit#(10)) respCount <- mkReg(0);
+  PulseWire gotAllResps <- mkPulseWire;
 
   // Send multiple stores to same address
   rule state1 (state == 1);
-    if (reqOut.canPut) begin
+    if (reqOutA.canPut && reqOutB.canPut) begin
       DRAMReq req;
       req.isStore = True;
       req.id = 0;
       req.addr = addr;
       req.data = writeData;
       req.burst = 1;
-      reqOut.put(req);
+      reqOutA.put(req);
+      reqOutB.put(req);
       writeCount <= writeCount+1;
       if (writeCount == ~0) state <= 3;
+      writeData <= {0, writeData[31:0] + 1};
     end
   endrule
 
-  Reg#(Bit#(4)) delay <- mkReg(0);
-  rule state2 (state == 2);
-    delay <= delay + 1;
-    if (delay == ~0) state <= 3;
-  endrule
-
   rule state3 (state == 3);
-    if (reqOut.canPut) begin
+    if (reqOutA.canPut) begin
       DRAMReq req;
       req.isStore = False;
       req.id = 0;
       req.addr = addr;
       req.data = ?;
       req.burst = 1;
-      reqOut.put(req);
-      state <= 4;
+      reqOutA.put(req);
+      if (readCount == ~0) state <= 4;
+      readCount <= readCount+1;
     end
   endrule
 
-  rule state4 (state == 4);
-    if (respIn.canGet) begin
-      respIn.get;
-      displayVal <= truncate(respIn.value.data);
-      state <= 5;
+  rule state4a (state != 5);
+    if (respInA.canGet) begin
+      respInA.get;
+      respCount <= respCount+1;
+      displayVal <= truncate(respInA.value.data);
+      if (respCount == ~0) gotAllResps.send;
     end
+  endrule
+
+  rule state4b (state == 4 && gotAllResps);
+    state <= 5;
   endrule
 
   rule display (state == 5 && toJtag.canPut);
@@ -176,13 +184,12 @@ module de5Top (DE5Top);
     if (displayCount == 15) state <= 0;
   endrule
 
-
   `ifndef SIMULATE
-  function DRAMExtIfc getDRAMExtIfc(DRAM dram) = dram.external;
-  function SRAMExtIfc getSRAMExtIfc(WideSRAM sram) = sram.external;
+  function DRAMExtIfc getDRAMExtIfc(OffChipRAM ram) = ram.extDRAM;
+  function Vector#(2, SRAMExtIfc) getSRAMExtIfcs(OffChipRAM ram) = ram.extSRAM;
   function AvalonMac getMac(BoardLink link) = link.avalonMac;
-  interface dramIfcs = map(getDRAMExtIfc, drams);
-  interface sramIfcs = map(getSRAMExtIfc, srams);
+  interface dramIfcs = map(getDRAMExtIfc, rams);
+  interface sramIfcs = concat(map(getSRAMExtIfcs, rams));
   interface jtagIfc  = uart.jtagAvalon;
   interface northMac = Vector::map(getMac, northLink);
   interface southMac = Vector::map(getMac, southLink);
