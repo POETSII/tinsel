@@ -28,7 +28,7 @@ p["LogThreadsPerCore"] = 4
 p["LogInstrsPerCore"] = 11
 
 # Share instruction memory between two cores?
-p["SharedInstrMem"] = False
+p["SharedInstrMem"] = True
 
 # Log of number of multi-threaded cores sharing a DCache
 p["LogCoresPerDCache"] = 2
@@ -147,7 +147,7 @@ p["SRAMAddrWidth"] = 20
 p["LogBytesPerSRAMBeat"] = 3
 p["SRAMBurstWidth"] = 3
 p["SRAMLatency"] = 8
-p["SRAMLogMaxInFlight"] = 4
+p["SRAMLogMaxInFlight"] = 5
 p["SRAMStoreLatency"] = 2
 
 #==============================================================================
