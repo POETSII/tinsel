@@ -144,7 +144,7 @@ set_interface_property dram_1 CMSIS_SVD_VARIABLES ""
 set_interface_property dram_1 SVD_ADDRESS_GROUP ""
 
 add_interface_port dram_1 dramIfcs_0_m_address address Output 26
-add_interface_port dram_1 dramIfcs_0_m_burstcount burstcount Output 1
+add_interface_port dram_1 dramIfcs_0_m_burstcount burstcount Output 3
 add_interface_port dram_1 dramIfcs_0_m_read read Output 1
 add_interface_port dram_1 dramIfcs_0_m_readdata readdata Input 256
 add_interface_port dram_1 dramIfcs_0_m_readdatavalid readdatavalid Input 1
@@ -187,7 +187,7 @@ add_interface_port dram_2 dramIfcs_1_m_writedata writedata Output 256
 add_interface_port dram_2 dramIfcs_1_m_address address Output 26
 add_interface_port dram_2 dramIfcs_1_m_read read Output 1
 add_interface_port dram_2 dramIfcs_1_m_write write Output 1
-add_interface_port dram_2 dramIfcs_1_m_burstcount burstcount Output 1
+add_interface_port dram_2 dramIfcs_1_m_burstcount burstcount Output 3
 
 
 # 

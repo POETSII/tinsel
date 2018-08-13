@@ -262,7 +262,7 @@
          type = "int";
       }
    }
-   element qdr_b_w_bridge_0
+   element qdr_b_w_bridge
    {
       datum _sortIndex
       {
@@ -1645,11 +1645,11 @@
    enabled="1">
   <parameter name="ADDRESS_UNITS" value="WORDS" />
   <parameter name="ADDRESS_WIDTH" value="20" />
-  <parameter name="COMMAND_FIFO_DEPTH" value="2" />
+  <parameter name="COMMAND_FIFO_DEPTH" value="16" />
   <parameter name="DATA_WIDTH" value="64" />
   <parameter name="MASTER_SYNC_DEPTH" value="2" />
   <parameter name="MAX_BURST_SIZE" value="4" />
-  <parameter name="RESPONSE_FIFO_DEPTH" value="8" />
+  <parameter name="RESPONSE_FIFO_DEPTH" value="32" />
   <parameter name="SLAVE_SYNC_DEPTH" value="2" />
   <parameter name="SYMBOL_WIDTH" value="8" />
   <parameter name="SYSINFO_ADDR_WIDTH" value="23" />
@@ -1898,17 +1898,17 @@
   <parameter name="USE_AUTO_ADDRESS_WIDTH" value="0" />
  </module>
  <module
-   name="qdr_b_w_bridge_0"
+   name="qdr_b_w_bridge"
    kind="altera_avalon_mm_clock_crossing_bridge"
    version="16.1"
    enabled="1">
   <parameter name="ADDRESS_UNITS" value="WORDS" />
   <parameter name="ADDRESS_WIDTH" value="20" />
-  <parameter name="COMMAND_FIFO_DEPTH" value="2" />
+  <parameter name="COMMAND_FIFO_DEPTH" value="16" />
   <parameter name="DATA_WIDTH" value="64" />
   <parameter name="MASTER_SYNC_DEPTH" value="2" />
   <parameter name="MAX_BURST_SIZE" value="4" />
-  <parameter name="RESPONSE_FIFO_DEPTH" value="8" />
+  <parameter name="RESPONSE_FIFO_DEPTH" value="32" />
   <parameter name="SLAVE_SYNC_DEPTH" value="2" />
   <parameter name="SYMBOL_WIDTH" value="8" />
   <parameter name="SYSINFO_ADDR_WIDTH" value="23" />
@@ -2163,11 +2163,11 @@
    enabled="1">
   <parameter name="ADDRESS_UNITS" value="WORDS" />
   <parameter name="ADDRESS_WIDTH" value="20" />
-  <parameter name="COMMAND_FIFO_DEPTH" value="2" />
+  <parameter name="COMMAND_FIFO_DEPTH" value="16" />
   <parameter name="DATA_WIDTH" value="64" />
   <parameter name="MASTER_SYNC_DEPTH" value="2" />
   <parameter name="MAX_BURST_SIZE" value="4" />
-  <parameter name="RESPONSE_FIFO_DEPTH" value="8" />
+  <parameter name="RESPONSE_FIFO_DEPTH" value="32" />
   <parameter name="SLAVE_SYNC_DEPTH" value="2" />
   <parameter name="SYMBOL_WIDTH" value="8" />
   <parameter name="SYSINFO_ADDR_WIDTH" value="23" />
@@ -2422,11 +2422,11 @@
    enabled="1">
   <parameter name="ADDRESS_UNITS" value="WORDS" />
   <parameter name="ADDRESS_WIDTH" value="20" />
-  <parameter name="COMMAND_FIFO_DEPTH" value="2" />
+  <parameter name="COMMAND_FIFO_DEPTH" value="16" />
   <parameter name="DATA_WIDTH" value="64" />
   <parameter name="MASTER_SYNC_DEPTH" value="2" />
   <parameter name="MAX_BURST_SIZE" value="4" />
-  <parameter name="RESPONSE_FIFO_DEPTH" value="8" />
+  <parameter name="RESPONSE_FIFO_DEPTH" value="32" />
   <parameter name="SLAVE_SYNC_DEPTH" value="2" />
   <parameter name="SYMBOL_WIDTH" value="8" />
   <parameter name="SYSINFO_ADDR_WIDTH" value="23" />
@@ -2558,7 +2558,7 @@
  <connection
    kind="avalon"
    version="16.1"
-   start="qdr_b_w_bridge_0.m0"
+   start="qdr_b_w_bridge.m0"
    end="qdr_b.avl_w">
   <parameter name="arbitrationPriority" value="1" />
   <parameter name="baseAddress" value="0x0000" />
@@ -2613,7 +2613,7 @@
    kind="avalon"
    version="16.1"
    start="DE5Top_0.qdr_b_w"
-   end="qdr_b_w_bridge_0.s0">
+   end="qdr_b_w_bridge.s0">
   <parameter name="arbitrationPriority" value="1" />
   <parameter name="baseAddress" value="0x0000" />
   <parameter name="defaultConnection" value="false" />
@@ -2793,7 +2793,7 @@
    kind="clock"
    version="16.1"
    start="qdr_b.afi_clk"
-   end="qdr_b_w_bridge_0.m0_clk" />
+   end="qdr_b_w_bridge.m0_clk" />
  <connection
    kind="clock"
    version="16.1"
@@ -2858,7 +2858,7 @@
    kind="clock"
    version="16.1"
    start="mem_if_ddr3_emif.afi_clk"
-   end="qdr_b_w_bridge_0.s0_clk" />
+   end="qdr_b_w_bridge.s0_clk" />
  <connection
    kind="clock"
    version="16.1"
@@ -3132,7 +3132,7 @@
    kind="reset"
    version="16.1"
    start="qdr_b.afi_reset"
-   end="qdr_b_w_bridge_0.m0_reset" />
+   end="qdr_b_w_bridge.m0_reset" />
  <connection
    kind="reset"
    version="16.1"
@@ -3202,7 +3202,7 @@
    kind="reset"
    version="16.1"
    start="mem_if_ddr3_emif.afi_reset"
-   end="qdr_b_w_bridge_0.s0_reset" />
+   end="qdr_b_w_bridge.s0_reset" />
  <connection
    kind="reset"
    version="16.1"
@@ -3337,7 +3337,7 @@
    kind="reset"
    version="16.1"
    start="ref_clk_a_b_c.clk_reset"
-   end="qdr_b_w_bridge_0.m0_reset" />
+   end="qdr_b_w_bridge.m0_reset" />
  <connection
    kind="reset"
    version="16.1"
@@ -3452,7 +3452,7 @@
    kind="reset"
    version="16.1"
    start="clk_50.clk_reset"
-   end="qdr_b_w_bridge_0.s0_reset" />
+   end="qdr_b_w_bridge.s0_reset" />
  <connection
    kind="reset"
    version="16.1"
