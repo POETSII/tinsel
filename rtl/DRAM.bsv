@@ -22,6 +22,7 @@ typedef struct {
   DRAMReqId id;
   Bit#(`BeatWidth) data;
   InflightDCacheReqInfo info;
+  Bool finalBeat;
 } DRAMResp deriving (Bits);
 
 // DRAM identifier
@@ -129,11 +130,14 @@ module mkDRAM#(RAMId id) (DRAM);
       DRAMReq req = reqs.dataOut;
       if (!req.isStore) begin
         if (resps.notFull) begin
+          Bool finalBeat = True;
           if (burstCount+1 == req.burst) begin
             reqs.deq;
             burstCount <= 0;
-          end else
+          end else begin
             burstCount <= burstCount+1;
+            finalBeat = False;
+          end
           Vector#(`WordsPerBeat, Bit#(32)) elems;
           Bit#(`LogBytesPerBeat) low = 0;
           Bit#(32) addr = {0, req.addr, low};
@@ -148,6 +152,7 @@ module mkDRAM#(RAMId id) (DRAM);
           resp.data = pack(elems);
           resp.info = unpack(truncate(req.data));
           resp.info.beat = truncate(burstCount);
+          resp.finalBeat = finalBeat;
           resps.enq(resp);
           decOutstanding.send;
         end
@@ -332,6 +337,7 @@ module mkDRAM#(t id) (DRAM);
       resp.info = inFlight.dataOut.info;
       resp.info.beat = truncate(burstCount-1);
       resp.data = respBuffer.dataOut;
+      resp.finalBeat = burstCount == inFlight.dataOut.burst;
       return resp;
     endmethod
   endinterface

@@ -106,6 +106,7 @@ module mkWideSRAM#(RAMId id) (WideSRAM);
         respOut.id = respIn.id;
         respOut.data = pack(data);
         respOut.info = respIn.info;
+        respOut.finalBeat = True;
         respQueue.enq(respOut);
         respCount <= 0;
       end
