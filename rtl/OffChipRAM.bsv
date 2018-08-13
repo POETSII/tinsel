@@ -81,17 +81,24 @@ module mkOffChipRAM#(RAMId base) (OffChipRAM);
     end
   endrule
 
+  // Only DRAM supports burst access at this point
+  // Use a lock to prevent interleaving of unrelated beats
+  Reg#(Bool) dramLock <- mkReg(False);
+
   // Forward responses
   rule forwardResps (respQueue.notFull);
-    if (fromSRAMA.canGet) begin
+    if (dramLock || fromDRAM.canGet) begin
+      if (fromDRAM.canGet) begin
+        dramLock <= !fromDRAM.value.finalBeat;
+        respQueue.enq(fromDRAM.value);
+        fromDRAM.get;
+      end
+    end else if (fromSRAMA.canGet) begin
       respQueue.enq(fromSRAMA.value);
       fromSRAMA.get;
     end else if (fromSRAMB.canGet) begin
       respQueue.enq(fromSRAMB.value);
       fromSRAMB.get;
-    end else if (fromDRAM.canGet) begin
-      respQueue.enq(fromDRAM.value);
-      fromDRAM.get;
     end
   endrule
 
