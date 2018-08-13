@@ -515,15 +515,15 @@ parameter `LogMailboxesPerBoard`.
   ------------------------ | ------- | -----------
   `LogMailboxesPerBoard`   |       4 | Number of mailboxes per FPGA board
 
-The mailboxes are connected together by a *bidirectional serial bus*
+The mailboxes are connected together by a 2D network-on-chip (NoC)
 carrying message flits (see section [Tinsel
 Mailbox](#4-tinsel-mailbox)).  The network ensures that flits from
 different messages are not interleaved or, equivalently, flits from
-the same message appear *contiguously* on the bus.  This avoids
-complex logic for reassembling messages.  It also avoids the deadlock
-case whereby a receiver's buffer is exhausted with partial messages,
-yet is unable to provide a single whole message for the receiver to
-consume in order free space.
+the same message appear *contiguously* between any two mailboxes.
+This avoids complex logic for reassembling messages.  It also avoids
+the deadlock case whereby a receiver's buffer is exhausted with
+partial messages, yet is unable to provide a single whole message for
+the receiver to consume in order free space.
 
 It is more efficient to send messages between threads that share a
 mailbox than between threads on different mailboxes.  This is because,
@@ -533,9 +533,9 @@ messages do not occupy any bandwidth on the bidirectional bus
 connecting the mailboxes.
 
 It is also more efficient to send messages between threads on
-neighbouring mailboxes, w.r.t. the bidirectional bus, than between
-threads on distant mailboxes.  This is because, in the former case,
-the message spends less time on the bus, consuming less bandwidth.
+neighbouring mailboxes, w.r.t. the 2D NoC, than between threads on
+distant mailboxes.  This is because, in the former case, the message
+spends less time on the network, consuming less bandwidth.
 
 The mailbox network extends across multiple FPGA boards arranged in a
 *2D mesh* of size `MeshXLen` x `MeshYLen`.
