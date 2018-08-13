@@ -22,6 +22,7 @@ import WideSRAM   :: *;
 import OffChipRAM :: *;
 import Util       :: *;
 import Socket     :: *;
+import ConfigReg  :: *;
 
 // ============================================================================
 // Interface
@@ -108,6 +109,10 @@ module de5Top (DE5Top);
   Reg#(Bit#(64)) displayVal <- mkRegU;
   Reg#(Bit#(4)) displayCount <- mkReg(0);
 
+  // Time the load and store sequences
+  Reg#(Bit#(32)) loadTime <- mkReg(0);
+  Reg#(Bit#(32)) storeTime <- mkReg(0);
+
   rule state0 (state == 0);
     if (fromJtag.canGet && toJtag.canPut) begin
       fromJtag.get;
@@ -122,14 +127,16 @@ module de5Top (DE5Top);
       addr <= x;
       toJtag.put(88);
       state <= 1;
+      loadTime <= 0;
+      storeTime <= 0;
     end
   endrule
 
   // State of access
   Reg#(Bit#(256)) writeData <- mkReg(0);
-  Reg#(Bit#(10)) writeCount <- mkReg(0);
-  Reg#(Bit#(10)) readCount <- mkReg(0);
-  Reg#(Bit#(10)) respCount <- mkReg(0);
+  Reg#(Bit#(16)) writeCount <- mkReg(0);
+  Reg#(Bit#(16)) readCount <- mkConfigReg(0);
+  Reg#(Bit#(16)) respCount <- mkConfigReg(0);
   PulseWire gotAllResps <- mkPulseWire;
 
   // Send multiple stores to same address
@@ -147,6 +154,7 @@ module de5Top (DE5Top);
       if (writeCount == ~0) state <= 3;
       writeData <= {0, writeData[31:0] + 1};
     end
+    storeTime <= storeTime + 1;
   endrule
 
   rule state3 (state == 3);
@@ -167,13 +175,18 @@ module de5Top (DE5Top);
     if (respInA.canGet) begin
       respInA.get;
       respCount <= respCount+1;
-      displayVal <= truncate(respInA.value.data);
+      //displayVal <= truncate(respInA.value.data);
+      displayVal <= { storeTime, loadTime };
       if (respCount == ~0) gotAllResps.send;
     end
   endrule
 
   rule state4b (state == 4 && gotAllResps);
     state <= 5;
+  endrule
+
+  rule count (state == 3 || state == 4);
+    loadTime <= loadTime+1;
   endrule
 
   rule display (state == 5 && toJtag.canPut);
