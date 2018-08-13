@@ -187,7 +187,8 @@ p["LogBytesPerBeat"] = p["LogWordsPerBeat"] + 2
 p["BeatWidth"] = p["WordsPerBeat"] * 32
 
 # Longest possible burst transfer is 2^BeatBurstWidth-1
-p["BeatBurstWidth"] = p["LogBeatsPerLine"]+1
+p["BeatBurstWidth"] = 3
+assert p["LogBeatsPerLine"] < p["BeatBurstWidth"]
 
 # Cores per DCache
 p["CoresPerDCache"] = 2**p["LogCoresPerDCache"]

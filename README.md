@@ -20,7 +20,7 @@ Released on 11 June 2018 and maintained in the
 [tinsel-0.3.1 branch](https://github.com/POETSII/tinsel/tree/tinsel-0.3.1).
 (Multi-board plus PCIe host-link.)
 * v0.4: Under development in the master branch.
-(2D NoC plus hardware multicasting).
+(2D NoC plus off-chip SRAMs.)
 
 ## Contents
 
@@ -45,82 +45,95 @@ Released on 11 June 2018 and maintained in the
 ## 1. Overview
 
 Efficient communication and low power consumption are two key goals in
-the construction of scalable computer systems.  Potentially, both of
-these requirements can be met using existing commodity hardware
-components that are fairly straightforward to put together, namely
-*FPGA development boards*.  These boards combine state-of-the-art
-networking facilities with reconfigurable logic which, when customised
-to a particular application or application domain, can offer better
-performance-per-watt than other commodity devices such as CPUs and
-GPUs.
+the construction of scalable computer systems. Potentially, both can
+be achieved using commodity FPGA development boards. These boards
+combine state-of-the-art networking facilities with reconfigurable
+logic which, when customised to a particular application or
+application domain, can offer better performance-per-watt than other
+commodity devices such as CPUs and GPUs.
 
-However, FPGA-based systems face challenges of their own. Low-level
+Despite their potential, FPGA-based systems face challenges. Low-level
 hardware description languages and long synthesis times are major
-barriers to productivity for application developers.  An attractive
+barriers to productivity for application developers. An attractive
 approach for the [POETS Project](https://poets-project.org/about) is
-therefore to provide a *soft-core overlay architecture* on top of the
+therefore to provide a soft-core overlay architecture on top of the
 FPGA logic that can be programmed quickly and easily using standard
-software languages and tools.  While this overlay is not customised to
+software languages and tools. While this overlay is not customised to
 a particular POETS *application*, it is at least customised to the
-POETS application *domain*.  This is a natural first step because
-higher levels of customisation, using techniques such as high-level
-synthesis, are somewhat more ambitous and are in any case likely to
-reuse components and ideas from the overlay.
+POETS *application domain*. This is a natural first step because
+higher levels of customisation are more ambitious and would, in any
+case, reuse components and ideas from the overlay.
 
 In the remainder of this section we give an overview of our soft-core
 overlay architecture for POETS, called *Tinsel*.
 
 ### 1.1 Compute Subsystem
 
-We have developed our own 32-bit RISC-V core specially for POETS.  This core is
-heavily *multithreaded*, supporting up to 32 threads, enabling it to tolerate
-the inherent latencies of deeply-pipelined FPGA floating-point operations.
-Multithreading also tolerates the latency of arbitration logic, allowing
-aggressive sharing of large components such as FPUs and caches between cores.
-At most one instruction per thread is allowed in the core's pipeline at any
-time, eliminating all control and data hazards.  This leads to a small, simple,
-high-frequency design that is able to execute one instruction per cycle
-provided there are sufficient parallel threads, which we expect to be the case
-for POETS.  Custom instructions are provided for sending and receiving messages
-between threads running on the same core or different cores.  
+Simulation of the physical world, and large-scale graph analytics, are
+two of the main target application domains for POETS technology, and
+this leads to two important requirements on the POETS hardware:
+floating-point support (for physics calculations) and off-chip
+memories (for storing large graphs). On FPGA, both floating-point
+operations and off-chip memory accesses are known to introduce
+significant latency into the system. A critical aspect of the design
+is therefore to tolerate this latency as cleanly as possible.
+
+In response, we have developed a custom multithreaded processor called
+Tinsel -- a 32-bit RISC-V floating-point-enabled processor supporting
+up to 32 threads per core. Multithreading allows the processor to stay
+busy even when some threads are blocked on the result of a latent
+operation. This is achieved while keeping the programming model
+simple: low-level interrupt handlers and software scheduling are not
+required just to do a floating-point operation or a memory access.
+Multithreading also tolerates the latency of arbitration logic,
+allowing efficient sharing of large components such as FPUs and caches
+between cores.
+
+At most one instruction per thread is allowed in the core's pipeline
+at any time, eliminating all control and data hazards.  This leads to
+a small, simple, high-frequency design that is able to execute one
+instruction per cycle provided there are sufficient parallel threads,
+which we expect to be the case for POETS.  Custom instructions are
+provided for sending and receiving messages between threads running on
+the same core or different cores.  
 
 ### 1.2 Memory Subsystem
 
-POETS applications will typically process large graph structures and hence
-require a generous amount of memory.  But there is no requirement to give
-applications the illusion of a single shared memory space: message-passing is
-intended to be the primary communication mechansim.
+Although there is a requirement to support a large amount of memory,
+it is not necessary to provide the illusion of a single shared memory
+space: message-passing is intended to be the primary communication
+mechanism.
 
-To keep the programming model simple, we have opted to use *caches* to optimise
-access to DRAM rather than *DMA*.  The Tinsel cache is partitioned by thread id
-(the hash function combines the thread id with some number of address bits) and
-permits at most one request per thread to be present in the cache pipeline at
-any time.  Consequently, there is no aliasing between threads and all data
-hazards are eliminated, yielding a simple, non-blocking design that can consume
-a request on every cycle, even if it is a miss.  This full-throughput cache can
-usefully be shared by up to four cores, based on the observation that an
-typical RISC workload will access data memory once every four instructions.
+To keep the programming model simple, we have opted to use data caches
+to optimise access to off-chip memory rather than DMA.  The Tinsel
+cache can serve requests at full-throughput (one per cycle) and a
+typical RISC workload will access data memory once every four
+instructions, so a cache can usefully be shared by up to four cores.
+Provided that threads typically access all the words of cache line
+before it is evicted, a single DDR3 DRAM can satisfy around 32 cores
+(assuming most memory access are indeed to DRAM-mapped memory and not
+the local scratchpad).
 
 ### 1.3 Communication Subsystem
 
-One of the challenges in supporting large 64-byte POETS messages is
-the amount of serialisation/deserialisation required to get a message
-into/out-of a 32-bit core.  Our solution is to use a dual-ported
-memory-mapped *mailbox* with a 32-bit port connected to the core and a
-much wider port connected to the on-chip network.  The mailbox stores
-both incoming and outgoing messages.  A message can be forwarded
-(received and sent) in a single instruction, which is useful to
-implement efficient multicasting in software.  A single mailbox can be
-shared between several cores, reducing the size of the on-chip network
-needed connect the mailboxes together.
-
+Tinsel provides custom instructions for sending and receiving messages
+(up to 512 bits in size) between any two threads in the system.  One
+of the challenges in supporting such large messages is the amount of
+serialisation/deserialisation required to get a message into/out-of a
+32-bit core.  Our solution is to use a dual-ported memory-mapped
+mailbox with a 32-bit port connected to the core and a much wider port
+connected to the on-chip network.  The mailbox stores both incoming
+and outgoing messages.  A message can be forwarded (received and sent)
+with just two instructions, which is useful to implement efficient
+multicasting in software.  A single mailbox can be shared between
+several cores, reducing the size of the on-chip network needed connect
+the mailboxes together.
+ 
 Fundamental to POETS is the ability to scale the hardware to an
 arbitrary number of cores, and hence we must exploit multiple FPGAs.
 The inter-board serial communication links available on modern FPGAs
 are both numerous and fast but, like all serial links, some errors are
-to be expected.  Even if there is only one bit error in every thousand
-billion bits (10^12), that is still an error every ten seconds for a
-10Gbps link.  Therefore, on top of a raw link we place a 10Gbps
+to be expected.  Therefore, on top of a raw link we place a 10Gbps
 Ethernet MAC, which automatically detects and drops packets containing
 CRC errors.  On top of the MAC we place our own window-based
 reliability layer that retransmits dropped packets.  The use of
@@ -134,9 +147,9 @@ for our own purposes, resulting in very little overhead on the wire.
 A prototype POETS hardware system is currently under construction and,
 when complete, will consist of around 50 DE5-NET FPGA boards connected
 by numerous high-speed serial links in a 3D mesh topology.  Each group
-of ten FPGAs will reside in a separate *POETs box*.  One FPGA in each
+of 7-10 FPGAs will reside in a separate *POETs box*.  One FPGA in each
 box will serve as a *PCI Express bridge board* that connects a modern
-PC to the remaining nine FPGA *worker boards*, with the worker boards
+PC to the remaining FPGA *worker boards*, with the worker boards
 running Tinsel by default.
 
 ## 2. Tinsel Core
@@ -234,21 +247,28 @@ A summary of synthesis-time parameters introduced in this section:
   ------------------- | ------- | -----------
   `LogThreadsPerCore` |       4 | Number of hardware threads per core
   `LogInstrsPerCore`  |      11 | Size of each instruction memory
-  `SharedInstrMem`    |   False | Is each instruction memory shared by 2 cores?
+  `SharedInstrMem`    |    True | Is each instruction memory shared by 2 cores?
   `LogCoresPerFPU`    |       2 | Number of cores sharing a floating-point unit
 
 ## 3. Tinsel Cache
 
-The [DE5-Net](http://de5-net.terasic.com) contains two DDR3 DIMMs,
-each capable of performing two 64-bit memory operations on every cycle
-of an 800MHz clock (one operation on the rising edge and one on the
-falling edge).  By serial-to-parallel conversion, a single 256-bit
-memory operation can be performed by a single DIMM on every cycle of a
-400MHz core clock.  This means that when a core performs a 32-bit
-load, it potentially throws away 224 of the bits returned by DRAM.  To
-avoid this, we use a *data cache* local to a group of cores, giving
-the illusion of a 32-bit memory while behind-the-scenes transferring
-256-bit *lines* (or larger, see below) between the cache and DRAM.
+The [DE5-Net](http://de5-net.terasic.com) contains two off-chip DDR3
+DRAMs, each capable of performing two 64-bit memory operations on
+every cycle of an 800MHz clock (one operation on the rising edge and
+one on the falling edge).  By serial-to-parallel conversion, a single
+256-bit memory operation can be performed by a single DIMM on every
+cycle of a 400MHz core clock.  This means that when a core performs a
+32-bit load, it potentially throws away 224 of the bits returned by
+DRAM.  To avoid this, we use a *data cache* local to a group of cores,
+giving the illusion of a 32-bit memory while behind-the-scenes
+transferring 256-bit *lines* (or larger, see below) between the cache
+and DRAM.
+
+The [DE5-Net](http://de5-net.terasic.com) also contains four off-chip
+QDRII+ SRAMs, each with a capacity of 8MB and capable of performing a
+64-bit read and a 64-bit write on every cycle of a 225MHz clock.  One
+DRAM and two SRAMS are mapped into the cached address space of each
+thread (see [Tinsel Memory Map](#c-tinsel-memory-map)).
 
 The cache line size must be larger than or equal to the DRAM data bus
 width: lines are read and written by the cache in contiguous chunks
@@ -281,12 +301,15 @@ core-cycle.  For the same data width per core-cycle, each 12.8GB/s
 DIMM on the [DE5-Net](http://de5-net.terasic.com) could serve 64 x
 400MHz cores.)
 
-The cache is an *N*-way *set-associative write-back* cache.
-It is designed to serve one or more highly-threaded cores, where high
-throughput and high Fmax are more important than low latency.  It
-employs a hash function that appends the thread id and some number of
-address bits.  This means that cache lines are *not shared* between
-threads and, consequently, there is no aliasing between threads.
+The cache is an *N*-way *set-associative write-back* cache with a
+*pseudo least-recently-used*
+([Pseudo-LRU](https://en.wikipedia.org/wiki/Pseudo-LRU)) replacement
+policy.  It is designed to serve one or more highly-threaded cores,
+where high throughput and high Fmax are more important than low
+latency.  It employs a hash function that appends the thread id and
+some number of address bits.  This means that cache lines are *not
+shared* between threads and, consequently, there is no aliasing
+between threads.
 
 The cache pipeline is *hazard-free*: at most one request per thread
 is present in the pipeline at any time which, combined with the
@@ -786,6 +809,8 @@ ALMs, *50% of the DE5-Net*.
   `DCacheLogNumWays`       |       2 | Cache lines in each associative set
   `DCacheLogSetsPerThread` |       3 | Associative sets per thread
   `LogBeatsPerDRAM`        |      26 | Size of DRAM
+  `SRAMAddrWidth`          |      20 | Address width of each off-chip SRAM
+  `LogBytesPerSRAMBeat`    |       3 | Data width of each off-chip SRAM
   `LogCoresPerMailbox`     |       2 | Number of cores sharing a mailbox
   `LogWordsPerFlit`        |       2 | Number of 32-bit words in a flit
   `LogMaxFlitsPerMsg`      |       2 | Max number of flits in a message
@@ -796,6 +821,7 @@ ALMs, *50% of the DE5-Net*.
   `MeshXLen`               |       3 | Length of X dimension
   `MeshYLen`               |       3 | Length of Y dimension
 
+
 ## C. Tinsel Memory Map
 
   Region                  | Description
@@ -803,7 +829,9 @@ ALMs, *50% of the DE5-Net*.
   `0x00000000-0x000003ff` | Reserved
   `0x00000400-0x000007ff` | Thread-local mailbox scratchpad
   `0x00000800-0x000fffff` | Reserved
-  `0x00100000-0x7fffffff` | Cached off-chip DRAM
+  `0x00800000-0x00ffffff` | Cached off-chip SRAM A
+  `0x01000000-0x017fffff` | Cached off-chip SRAM B
+  `0x01800000-0x7fffffff` | Cached off-chip DRAM
   `0xc0000000-0xffffffff` | Partition-interleaved cached off-chip DRAM
 
 Note that the regions `0x40000000-0x7fffffff` and
@@ -928,6 +956,9 @@ inline uint32_t tinselHostId();
 
 // Return pointer to base of thread's DRAM partition
 inline void* tinselHeapBase();
+
+// Return pointer to base of thread's SRAM partition
+inline void* tinselHeapBaseSRAM();
 ```
 
 ## G. HostLink API
