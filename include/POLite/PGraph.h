@@ -247,42 +247,46 @@ template <typename DeviceType, typename MessageType> class PGraph {
       for (uint32_t boardX = 0; boardX < TinselMeshXLen; boardX++) {
         // Partition into subgraphs, one per mailbox
         PartitionId b = boards.mapping[boardY][boardX];
-        Placer boxes(&boards.subgraphs[b], TinselMailboxesPerBoard, 1);
+        Placer boxes(&boards.subgraphs[b], 
+                 TinselMailboxMeshXLen, TinselMailboxMeshYLen);
         boxes.place(placerEffort);
 
         // For each mailbox
-        for (uint32_t boxNum = 0; boxNum < TinselMailboxesPerBoard; boxNum++) {
-          // Partition into subgraphs, one per thread
-          uint32_t numThreads = 1<<TinselLogThreadsPerMailbox;
-          PartitionId t = boxes.mapping[0][boxNum];
-          Placer threads(&boxes.subgraphs[t], numThreads, 1);
+        for (uint32_t boxX = 0; boxX < TinselMailboxMeshXLen; boxX++) {
+          for (uint32_t boxY = 0; boxY < TinselMailboxMeshYLen; boxY++) {
+            // Partition into subgraphs, one per thread
+            uint32_t numThreads = 1<<TinselLogThreadsPerMailbox;
+            PartitionId t = boxes.mapping[boxY][boxX];
+            Placer threads(&boxes.subgraphs[t], numThreads, 1);
 
-          // For each thread
-          for (uint32_t threadNum = 0; threadNum < numThreads; threadNum++) {
-            // Determine tinsel thread id
-            uint32_t threadId = boardY;
-            threadId = (threadId << TinselMeshXBits) | boardX;
-            threadId = (threadId << TinselLogMailboxesPerBoard) | boxNum;
-            threadId = (threadId << (TinselLogCoresPerMailbox +
-                          TinselLogThreadsPerCore)) | threadNum;
+            // For each thread
+            for (uint32_t threadNum = 0; threadNum < numThreads; threadNum++) {
+              // Determine tinsel thread id
+              uint32_t threadId = boardY;
+              threadId = (threadId << TinselMeshXBits) | boardX;
+              threadId = (threadId << TinselMailboxMeshYBits) | boxY;
+              threadId = (threadId << TinselMailboxMeshXBits) | boxX;
+              threadId = (threadId << (TinselLogCoresPerMailbox +
+                            TinselLogThreadsPerCore)) | threadNum;
 
-            // Get subgraph
-            Graph* g = &threads.subgraphs[threadNum];
+              // Get subgraph
+              Graph* g = &threads.subgraphs[threadNum];
 
-            // Populate fromDeviceAddr mapping
-            uint32_t numDevs = g->incoming->numElems;
-            numDevicesOnThread[threadId] = numDevs;
-            fromDeviceAddr[threadId] = (PDeviceId*)
-              malloc(sizeof(PDeviceId) * numDevs);
-            for (uint32_t devNum = 0; devNum < numDevs; devNum++)
-              fromDeviceAddr[threadId][devNum] = g->labels->elems[devNum];
-
-            // Populate toDeviceAddr mapping
-            for (uint32_t devNum = 0; devNum < numDevs; devNum++) {
-              PDeviceAddr devAddr;
-              devAddr.threadId = threadId;
-              devAddr.localAddr = devNum;
-              toDeviceAddr[g->labels->elems[devNum]] = devAddr;
+              // Populate fromDeviceAddr mapping
+              uint32_t numDevs = g->incoming->numElems;
+              numDevicesOnThread[threadId] = numDevs;
+              fromDeviceAddr[threadId] = (PDeviceId*)
+                malloc(sizeof(PDeviceId) * numDevs);
+              for (uint32_t devNum = 0; devNum < numDevs; devNum++)
+                fromDeviceAddr[threadId][devNum] = g->labels->elems[devNum];
+  
+              // Populate toDeviceAddr mapping
+              for (uint32_t devNum = 0; devNum < numDevs; devNum++) {
+                PDeviceAddr devAddr;
+                devAddr.threadId = threadId;
+                devAddr.localAddr = devNum;
+                toDeviceAddr[g->labels->elems[devNum]] = devAddr;
+              }
             }
           }
         }
