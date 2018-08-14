@@ -6,7 +6,7 @@ int main()
 {
   // Point thread structure at base of thread's heap
   PThread<HeatDevice, HeatMessage>* thread =
-    (PThread<HeatDevice, HeatMessage>*) tinselHeapBase();
+    (PThread<HeatDevice, HeatMessage>*) tinselHeapBaseSRAM();
   
   // Invoke interpreter
   thread->run();

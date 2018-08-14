@@ -16,6 +16,9 @@ int main()
   // Create POETS graph
   PGraph<HeatDevice, HeatMessage> graph;
 
+  // Use off-chip SRAMs
+  graph.useOffChipSRAMs = true;
+
   // Create 2D mesh of devices
   PDeviceId mesh[height][width];
   for (uint32_t y = 0; y < height; y++)

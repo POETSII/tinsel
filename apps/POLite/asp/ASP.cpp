@@ -6,7 +6,7 @@ int main()
 {
   // Point thread structure at base of thread's heap
   PThread<ASPDevice, ASPMessage>* thread =
-    (PThread<ASPDevice, ASPMessage>*) tinselHeapBase();
+    (PThread<ASPDevice, ASPMessage>*) tinselHeapBaseSRAM();
   
   // Invoke interpreter
   thread->run();
