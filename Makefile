@@ -26,6 +26,7 @@ clean:
 	make -C apps/POLite/heat clean
 	make -C apps/POLite/asp clean
 	make -C apps/POLite/sorter clean
+	make -C apps/POLite/ring clean
 	make -C apps/Synch/heat clean
 	make -C apps/Synch/asp clean
 	make -C apps/Synch/sorter clean

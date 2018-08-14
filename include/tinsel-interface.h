@@ -16,6 +16,9 @@ INLINE uint32_t tinselCycleCount();
 // Cache flush
 INLINE void tinselCacheFlush();
 
+// Flush cache line
+INLINE void tinselFlushLine(uint32_t lineNum, uint32_t way);
+
 // Write a word to instruction memory
 INLINE void tinselWriteInstr(uint32_t addr, uint32_t word);
 
