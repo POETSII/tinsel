@@ -18,6 +18,8 @@ import JtagUart   :: *;
 import Mac        :: *;
 import FPU        :: *;
 import InstrMem   :: *;
+import NarrowSRAM :: *;
+import OffChipRAM :: *;
 
 // ============================================================================
 // Interface
@@ -33,6 +35,7 @@ import "BDPI" function Bit#(32) getBoardId();
 
 interface DE5Top;
   interface Vector#(`DRAMsPerBoard, DRAMExtIfc) dramIfcs;
+  interface Vector#(`SRAMsPerBoard, SRAMExtIfc) sramIfcs;
   interface Vector#(`NumNorthSouthLinks, AvalonMac) northMac;
   interface Vector#(`NumNorthSouthLinks, AvalonMac) southMac;
   interface Vector#(`NumEastWestLinks, AvalonMac) eastMac;
@@ -56,10 +59,10 @@ module de5Top (DE5Top);
   Wire#(BoardId) boardId <- mkDWire(?);
   `endif
 
-  // Create DRAMs
-  Vector#(`DRAMsPerBoard, DRAM) drams;
+  // Create off-chip RAMs
+  Vector#(`DRAMsPerBoard, OffChipRAM) rams;
   for (Integer i = 0; i < `DRAMsPerBoard; i=i+1)
-    drams[i] <- mkDRAM(fromInteger(i));
+    rams[i] <- mkOffChipRAM(fromInteger(i*3));
 
   // Create data caches
   Vector#(`DRAMsPerBoard,
@@ -114,7 +117,7 @@ module de5Top (DE5Top);
 
   // Connect data caches to DRAM
   for (Integer i = 0; i < `DRAMsPerBoard; i=i+1)
-    connectDCachesToDRAM(dcaches[i], drams[i]);
+    connectDCachesToOffChipRAM(dcaches[i], rams[i]);
 
   // Create FPUs
   Vector#(`FPUsPerBoard, FPU) fpus;
@@ -173,8 +176,10 @@ module de5Top (DE5Top);
   `endif
 
   `ifndef SIMULATE
-  function DRAMExtIfc getDRAMExtIfc(DRAM dram) = dram.external;
-  interface dramIfcs = map(getDRAMExtIfc, drams);
+  function DRAMExtIfc getDRAMExtIfc(OffChipRAM ram) = ram.extDRAM;
+  function Vector#(2, SRAMExtIfc) getSRAMExtIfcs(OffChipRAM ram) = ram.extSRAM;
+  interface dramIfcs = map(getDRAMExtIfc, rams);
+  interface sramIfcs = concat(map(getSRAMExtIfcs, rams));
   interface jtagIfc  = debugLink.jtagAvalon;
   interface northMac = net.north;
   interface southMac = net.south;

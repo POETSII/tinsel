@@ -19,6 +19,9 @@ int main()
   // Create POETS graph
   PGraph<RingDevice, RingMessage> graph;
 
+  // Use off-chip SRAMs
+  graph.useOffChipSRAMs = true;
+
   // Create ring of devices
   PDeviceId ring[numDevices];
   for (uint32_t i = 0; i < numDevices; i++)

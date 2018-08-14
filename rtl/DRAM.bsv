@@ -21,7 +21,12 @@ typedef struct {
 typedef struct {
   DRAMReqId id;
   Bit#(`BeatWidth) data;
+  InflightDCacheReqInfo info;
+  Bool finalBeat;
 } DRAMResp deriving (Bits);
+
+// DRAM identifier
+typedef Bit#(3) RAMId;
 
 // ============================================================================
 // Address mapping
@@ -67,12 +72,14 @@ endinterface
 // Imports
 // -------
 
-import Globals   :: *;
-import FIFOF     :: *;
-import Vector    :: *;
-import Util      :: *;
-import Interface :: *;
-import Queue     :: *;
+import Globals     :: *;
+import FIFOF       :: *;
+import Vector      :: *;
+import Util        :: *;
+import Interface   :: *;
+import Queue       :: *;
+import Assert      :: *;
+import DCacheTypes :: *;
 
 // Types
 // -----
@@ -80,13 +87,10 @@ import Queue     :: *;
 // In simulation, external interface is empty
 typedef Empty DRAMExtIfc;
 
-// DRAM identifier
-typedef Bit#(3) DRAMId;
-
 // Interface to C functions
 import "BDPI" function ActionValue#(Bit#(32)) ramRead(
-                DRAMId ramId, Bit#(32) addr);
-import "BDPI" function Action ramWrite(DRAMId ramId,
+                RAMId ramId, Bit#(32) addr);
+import "BDPI" function Action ramWrite(RAMId ramId,
                 Bit#(32) addr, Bit#(32) data, Bit#(32) bitEn);
 
 // Functions
@@ -101,7 +105,7 @@ endfunction
 // Implementation
 // --------------
 
-module mkDRAM#(DRAMId id) (DRAM);
+module mkDRAM#(RAMId id) (DRAM);
   // Ports
   InPort#(DRAMReq) reqPort <- mkInPort;
 
@@ -126,11 +130,14 @@ module mkDRAM#(DRAMId id) (DRAM);
       DRAMReq req = reqs.dataOut;
       if (!req.isStore) begin
         if (resps.notFull) begin
+          Bool finalBeat = True;
           if (burstCount+1 == req.burst) begin
             reqs.deq;
             burstCount <= 0;
-          end else
+          end else begin
             burstCount <= burstCount+1;
+            finalBeat = False;
+          end
           Vector#(`WordsPerBeat, Bit#(32)) elems;
           Bit#(`LogBytesPerBeat) low = 0;
           Bit#(32) addr = {0, req.addr, low};
@@ -143,6 +150,9 @@ module mkDRAM#(DRAMId id) (DRAM);
           DRAMResp resp;
           resp.id = req.id;
           resp.data = pack(elems);
+          resp.info = unpack(truncate(req.data));
+          resp.info.beat = truncate(burstCount);
+          resp.finalBeat = finalBeat;
           resps.enq(resp);
           decOutstanding.send;
         end
@@ -201,12 +211,14 @@ endmodule
 // Imports
 // -------
 
-import Globals   :: *;
-import Vector    :: *;
-import Queue     :: *;
-import Interface :: *;
-import Assert    :: *;
-import Util      :: *;
+import Globals     :: *;
+import Vector      :: *;
+import Queue       :: *;
+import Interface   :: *;
+import Assert      :: *;
+import Util        :: *;
+import Assert      :: *;
+import DCacheTypes :: *;
 
 // Types
 // -----
@@ -231,6 +243,7 @@ endinterface
 typedef struct {
   DRAMReqId id;
   Bit#(`BeatBurstWidth) burst;
+  InflightDCacheReqInfo info;
 } DRAMInFlightReq deriving (Bits);
 
 // Implementation
@@ -295,6 +308,7 @@ module mkDRAM#(t id) (DRAM);
           DRAMInFlightReq inflightReq;
           inflightReq.id = req.id;
           inflightReq.burst = req.burst;
+          inflightReq.info = unpack(truncate(req.data));
           inFlight.enq(inflightReq);
           inFlightCount.incBy(zeroExtend(req.burst));
         end
@@ -320,7 +334,10 @@ module mkDRAM#(t id) (DRAM);
     method DRAMResp value;
       DRAMResp resp;
       resp.id = inFlight.dataOut.id;
+      resp.info = inFlight.dataOut.info;
+      resp.info.beat = truncate(burstCount-1);
       resp.data = respBuffer.dataOut;
+      resp.finalBeat = burstCount == inFlight.dataOut.burst;
       return resp;
     endmethod
   endinterface
@@ -335,7 +352,7 @@ module mkDRAM#(t id) (DRAM);
     method m_address    = address;
     method m_read       = doRead;
     method m_write      = doWrite;
-    method m_burstcount = burstReg;
+    method m_burstcount = zeroExtend(burstReg);
     //method m_byteenable = byteEn;
   endinterface
 endmodule

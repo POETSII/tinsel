@@ -4,16 +4,17 @@ package TestMem;
 // Imports
 // ============================================================================
 
-import Globals   :: *;
-import FIFOF     :: *;
-import DCache    :: *;
-import DRAM      :: *;
-import Vector    :: *;
-import RegFile   :: *;
-import Util      :: *;
-import Interface :: *;
-import ConfigReg :: *;
-import Queue     :: *;
+import Globals     :: *;
+import FIFOF       :: *;
+import DCache      :: *;
+import DRAM        :: *;
+import Vector      :: *;
+import RegFile     :: *;
+import Util        :: *;
+import Interface   :: *;
+import ConfigReg   :: *;
+import Queue       :: *;
+import DCacheTypes :: *;
 
 // Interface to C functions
 import "BDPI" function ActionValue#(Bit#(32)) getUInt32();
@@ -109,7 +110,12 @@ module testMem ();
       let threadId <- getUInt32();
       myAssert(threadId <= fromInteger(maxThreadId),
                 "TestMem.bsv: thread id too large");
+      let addr <- getUInt32();
+      let data <- getUInt32();
       req.threadId = threadId;
+      Bit#(`LogBytesPerLine) bottom = 0;
+      req.addr = {truncate(addr), bottom};
+      req.data = data;
       rawReqs.enq(req);
     end else if (op == opDELAY || op == opBACK) begin
       let delay <- getUInt32();
@@ -153,15 +159,9 @@ module testMem ();
         req.cmd.isStore = rawReq.op == opSW;
         req.cmd.isFlush = rawReq.op == opFLUSH;
         req.cmd.isFlushResp = False;
-        if (req.cmd.isFlush) begin
-          req.addr = 0;
-          req.data = 0;
-          req.byteEn = 0;
-        end else begin
-          req.addr = rawReq.addr;
-          req.data = rawReq.data;
-          req.byteEn = -1;
-        end
+        req.addr = rawReq.addr;
+        req.data = rawReq.data;
+        req.byteEn = -1;
         dcacheReq.put(req);
         inFlightValid[id] <= True;
         inFlight.upd(id, rawReq);

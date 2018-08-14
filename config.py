@@ -28,7 +28,7 @@ p["LogThreadsPerCore"] = 4
 p["LogInstrsPerCore"] = 11
 
 # Share instruction memory between two cores?
-p["SharedInstrMem"] = False
+p["SharedInstrMem"] = True
 
 # Log of number of multi-threaded cores sharing a DCache
 p["LogCoresPerDCache"] = 2
@@ -91,7 +91,7 @@ p["MailboxMeshYLen"] = 2 ** p["MailboxMeshYBits"]
 p["LogMailboxesPerBoard"] = p["MailboxMeshXBits"] + p["MailboxMeshYBits"]
 
 # Maximum size of boot loader (in bytes)
-p["MaxBootImageBytes"] = 512
+p["MaxBootImageBytes"] = 576
 
 # Size of transmit buffer in a reliable link
 p["LogTransmitBufferSize"] = 10
@@ -142,6 +142,14 @@ p["FPDivLatency"] = 14
 p["FPConvertLatency"] = 6
 p["FPCompareLatency"] = 3
 
+# SRAM parameters
+p["SRAMAddrWidth"] = 20
+p["LogBytesPerSRAMBeat"] = 3
+p["SRAMBurstWidth"] = 3
+p["SRAMLatency"] = 8
+p["SRAMLogMaxInFlight"] = 5
+p["SRAMStoreLatency"] = 2
+
 #==============================================================================
 # Derived Parameters
 #==============================================================================
@@ -179,7 +187,8 @@ p["LogBytesPerBeat"] = p["LogWordsPerBeat"] + 2
 p["BeatWidth"] = p["WordsPerBeat"] * 32
 
 # Longest possible burst transfer is 2^BeatBurstWidth-1
-p["BeatBurstWidth"] = p["LogBeatsPerLine"]+1
+p["BeatBurstWidth"] = 3
+assert p["LogBeatsPerLine"] < p["BeatBurstWidth"]
 
 # Cores per DCache
 p["CoresPerDCache"] = 2**p["LogCoresPerDCache"]
@@ -286,6 +295,21 @@ p["FPUOpMaxLatency"] = max(
 # Number of inter-FPGA links
 p["NumNorthSouthLinks"] = 2 ** p["LogNorthSouthLinks"]
 p["NumEastWestLinks"] = 2 ** p["LogEastWestLinks"]
+
+# SRAM parameters
+p["BytesPerSRAMBeat"] = 2 ** p["LogBytesPerSRAMBeat"]
+p["WordsPerSRAMBeat"] = p["BytesPerSRAMBeat"] / 4
+p["SRAMDataWidth"] = 32 * p["WordsPerSRAMBeat"]
+p["SRAMsPerBoard"] = 2 * p["DRAMsPerBoard"]
+p["LogThreadsPerSRAM"] = p["LogThreadsPerDRAM"] - 1
+p["LogBeatsPerSRAM"] = (
+  (p["SRAMAddrWidth"] + p["LogBytesPerSRAMBeat"]) - p["LogBytesPerBeat"])
+p["LogBytesPerSRAM"] = p["LogBeatsPerSRAM"] + p["LogBytesPerBeat"]
+p["LogBytesPerSRAMPartition"] = p["LogBytesPerSRAM"] - p["LogThreadsPerSRAM"]
+
+# DRAM base and length
+p["DRAMBase"] = 3 * (2 ** p["LogBytesPerSRAM"])
+p["DRAMGlobalsLength"] = 2 ** (p["LogBytesPerDRAM"] - 1) - p["DRAMBase"]
 
 #==============================================================================
 # Main 

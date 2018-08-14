@@ -158,6 +158,62 @@ module Golden_top(
   input wire SFPD_TXFAULT,
   output wire SFPD_TX_p,
 
+  output wire [20:0] QDRIIA_A,
+  output wire [1:0] QDRIIA_BWS_n,
+  input wire QDRIIA_CQ_n,
+  input wire QDRIIA_CQ_p,
+  output wire [17:0] QDRIIA_D,
+  output wire QDRIIA_DOFF_n,
+  output wire QDRIIA_K_n,
+  output wire QDRIIA_K_p,
+  output wire QDRIIA_ODT,
+  input wire [17:0] QDRIIA_Q,
+  input wire QDRIIA_QVLD,
+  output wire QDRIIA_RPS_n,
+  output wire QDRIIA_WPS_n,
+
+  output wire [20:0] QDRIIB_A,
+  output wire [1:0] QDRIIB_BWS_n,
+  input wire QDRIIB_CQ_n,
+  input wire QDRIIB_CQ_p,
+  output wire [17:0] QDRIIB_D,
+  output wire QDRIIB_DOFF_n,
+  output wire QDRIIB_K_n,
+  output wire QDRIIB_K_p,
+  output wire QDRIIB_ODT,
+  input wire [17:0] QDRIIB_Q,
+  input wire QDRIIB_QVLD,
+  output wire QDRIIB_RPS_n,
+  output wire QDRIIB_WPS_n,
+
+  output wire [20:0] QDRIIC_A,
+  output wire [1:0] QDRIIC_BWS_n,
+  input wire QDRIIC_CQ_n,
+  input wire QDRIIC_CQ_p,
+  output wire [17:0] QDRIIC_D,
+  output wire QDRIIC_DOFF_n,
+  output wire QDRIIC_K_n,
+  output wire QDRIIC_K_p,
+  output wire QDRIIC_ODT,
+  input wire [17:0] QDRIIC_Q,
+  input wire QDRIIC_QVLD,
+  output wire QDRIIC_RPS_n,
+  output wire QDRIIC_WPS_n,
+
+  output wire [20:0] QDRIID_A,
+  output wire [1:0] QDRIID_BWS_n,
+  input wire QDRIID_CQ_n,
+  input wire QDRIID_CQ_p,
+  output wire [17:0] QDRIID_D,
+  output wire QDRIID_DOFF_n,
+  output wire QDRIID_K_n,
+  output wire QDRIID_K_p,
+  output wire QDRIID_ODT,
+  input wire [17:0] QDRIID_Q,
+  input wire QDRIID_QVLD,
+  output wire QDRIID_RPS_n,
+  output wire QDRIID_WPS_n,
+
   input wire SMA_CLKIN,
   output wire SMA_CLKOUT,
 
@@ -177,10 +233,26 @@ wire rst_50mhz_n = 1;
 wire clk_156mhz;
 wire phy_pll_locked;
 
+reg rst_sram_n = 0;
+
 wire ddr3_local_init_done;
 wire ddr3_local_cal_success;
 wire ddr3_2_local_init_done;
 wire ddr3_2_local_cal_success;
+
+wire qdr_a_status_local_init_done;
+wire qdr_a_status_local_cal_success;
+wire qdr_a_status_local_cal_fail;
+wire qdr_b_status_local_init_done;
+wire qdr_b_status_local_cal_success;
+wire qdr_b_status_local_cal_fail;
+wire qdr_c_status_local_init_done;
+wire qdr_c_status_local_cal_success;
+wire qdr_c_status_local_cal_fail;
+wire qdr_d_status_local_init_done;
+wire qdr_d_status_local_cal_success;
+wire qdr_d_status_local_cal_fail;
+
 
 wire [7:0] ts_out;
 wire ts_done;
@@ -302,6 +374,11 @@ assign SFPD_MOD2_SDA = 1'bz;
 assign SFPD_TXDISABLE = 1'b0;
 assign SPFD_RATESEL = 2'b00;
 
+assign QDRIIA_ODT = 1'b0;
+assign QDRIIB_ODT = 1'b0;
+assign QDRIIC_ODT = 1'b0;
+assign QDRIID_ODT = 1'b0;
+
 phy phy_inst (
   .pll_ref_clk(SFP_REFCLK_p),
   .pll_locked(phy_pll_locked),
@@ -367,6 +444,8 @@ S5_DDR3_QSYS u0 (
   .reset_reset_n                             (rst_50mhz_n),
   .board_id_id                               (SW),
 
+  // DRAMs
+
   .memory_mem_a                              (DDR3A_A),
   .memory_mem_ba                             (DDR3A_BA),
   .memory_mem_ck                             (DDR3A_CK),
@@ -406,6 +485,8 @@ S5_DDR3_QSYS u0 (
   .mem_if_ddr3_emif_2_status_local_cal_success (ddr3_2_local_cal_success),
   .mem_if_ddr3_emif_2_status_local_cal_fail    (ddr3_2_local_cal_fail),
 
+  // Networking
+
   .clk_156_clk(clk_156mhz),
   .reset_156_reset_n(phy_pll_locked),
 
@@ -425,10 +506,82 @@ S5_DDR3_QSYS u0 (
   .mac_d_xgmii_rx_data(sfp_d_rx_dc),
   .mac_d_xgmii_tx_data(sfp_d_tx_dc),
 
+  // Temperature sensor
+
   .ts_done_tsdcaldone(ts_done),
   .ts_out_tsdcalo(ts_out),
   .ts_enable_ce(ts_enable),
-  .ts_clear_reset(ts_clear)
+  .ts_clear_reset(ts_clear),
+
+  // SRAMs
+
+  .clk_a_b_c_clk(OSC_50_B4A),
+  .clk_d_clk(OSC_50_B8D),
+  .reset_a_b_c_reset_n(rst_sram_n),
+  .reset_d_reset_n(rst_sram_n),
+
+  .oct_0_rzqin(RZQ_1),
+
+  .qdr_a_mem_d(QDRIIA_D),
+  .qdr_a_mem_wps_n(QDRIIA_WPS_n),
+  .qdr_a_mem_bws_n(QDRIIA_BWS_n),
+  .qdr_a_mem_a(QDRIIA_A),
+  .qdr_a_mem_q(QDRIIA_Q),
+  .qdr_a_mem_rps_n(QDRIIA_RPS_n),
+  .qdr_a_mem_k(QDRIIA_K_p),
+  .qdr_a_mem_k_n(QDRIIA_K_n),
+  .qdr_a_mem_cq(QDRIIA_CQ_p),
+  .qdr_a_mem_cq_n(QDRIIA_CQ_n),
+  .qdr_a_mem_doff_n(QDRIIA_DOFF_n),
+  .qdr_a_status_local_init_done(qdr_a_status_local_init_done),
+  .qdr_a_status_local_cal_success(qdr_a_status_local_cal_success),
+  .qdr_a_status_local_cal_fail(qdr_a_status_local_cal_fail),
+
+  .qdr_b_mem_d(QDRIIB_D),
+  .qdr_b_mem_wps_n(QDRIIB_WPS_n),
+  .qdr_b_mem_bws_n(QDRIIB_BWS_n),
+  .qdr_b_mem_a(QDRIIB_A),
+  .qdr_b_mem_q(QDRIIB_Q),
+  .qdr_b_mem_rps_n(QDRIIB_RPS_n),
+  .qdr_b_mem_k(QDRIIB_K_p),
+  .qdr_b_mem_k_n(QDRIIB_K_n),
+  .qdr_b_mem_cq(QDRIIB_CQ_p),
+  .qdr_b_mem_cq_n(QDRIIB_CQ_n),
+  .qdr_b_mem_doff_n(QDRIIB_DOFF_n),
+  .qdr_b_status_local_init_done(qdr_b_status_local_init_done),
+  .qdr_b_status_local_cal_success(qdr_b_status_local_cal_success),
+  .qdr_b_status_local_cal_fail(qdr_b_status_local_cal_fail),
+
+  .qdr_c_mem_d(QDRIIC_D),
+  .qdr_c_mem_wps_n(QDRIIC_WPS_n),
+  .qdr_c_mem_bws_n(QDRIIC_BWS_n),
+  .qdr_c_mem_a(QDRIIC_A),
+  .qdr_c_mem_q(QDRIIC_Q),
+  .qdr_c_mem_rps_n(QDRIIC_RPS_n),
+  .qdr_c_mem_k(QDRIIC_K_p),
+  .qdr_c_mem_k_n(QDRIIC_K_n),
+  .qdr_c_mem_cq(QDRIIC_CQ_p),
+  .qdr_c_mem_cq_n(QDRIIC_CQ_n),
+  .qdr_c_mem_doff_n(QDRIIC_DOFF_n),
+  .qdr_c_status_local_init_done(qdr_c_status_local_init_done),
+  .qdr_c_status_local_cal_success(qdr_c_status_local_cal_success),
+  .qdr_c_status_local_cal_fail(qdr_c_status_local_cal_fail),
+
+  .qdr_d_mem_d(QDRIID_D),
+  .qdr_d_mem_wps_n(QDRIID_WPS_n),
+  .qdr_d_mem_bws_n(QDRIID_BWS_n),
+  .qdr_d_mem_a(QDRIID_A),
+  .qdr_d_mem_q(QDRIID_Q),
+  .qdr_d_mem_rps_n(QDRIID_RPS_n),
+  .qdr_d_mem_k(QDRIID_K_p),
+  .qdr_d_mem_k_n(QDRIID_K_n),
+  .qdr_d_mem_cq(QDRIID_CQ_p),
+  .qdr_d_mem_cq_n(QDRIID_CQ_n),
+  .qdr_d_mem_doff_n(QDRIID_DOFF_n),
+  .qdr_d_status_local_init_done(qdr_d_status_local_init_done),
+  .qdr_d_status_local_cal_success(qdr_d_status_local_cal_success),
+  .qdr_d_status_local_cal_fail(qdr_d_status_local_cal_fail),
+
 );
 
 temp_display temp_display_inst (
@@ -442,5 +595,12 @@ temp_display temp_display_inst (
   .HEX1_D(HEX1_D),
   .HEX1_DP(HEX1_DP)
 );
+
+// Reset SRAMs
+reg [7:0] rst_sram_count = 0;
+always @(posedge clk_50mhz) begin
+  if (rst_sram_count == 255) rst_sram_n <= 1;
+  else rst_sram_count <= rst_sram_count + 1;
+end
 
 endmodule 

@@ -145,7 +145,20 @@ template <typename DeviceType, typename MessageType> class PThread {
 
     // Event loop
     while (1) {
-      if (tinselCanRecv()) {
+      if (tinselCanSend() && extTop != extArray) { // External senders
+        // Lookup the next external sender
+        DeviceType* dev = *(--extTop);
+        // Destination device is on another thread
+        MessageType* msg = (MessageType*) tinselSlot(0);
+        msg->dest = dev->dest.localAddr;
+        PThreadId destThread = dev->dest.threadId;
+        // Invoke send handler & send resulting message
+        sendHandler(dev, msg);
+        tinselSend(destThread, msg);
+        // Reinsert device into a senders array
+        if (dev->readyToSend) insert(dev);
+      }
+      else if (tinselCanRecv()) {
         // Receive message
         MessageType *msg = (MessageType *) tinselRecv();
         // Lookup destination device
@@ -158,19 +171,6 @@ template <typename DeviceType, typename MessageType> class PThread {
         tinselAlloc(msg);
         // Insert device into a senders array, if not already there
         if (dev->readyToSend && !wasReadyToSend) insert(dev);
-      }
-      else if (tinselCanSend() && extTop != extArray) { // External senders
-        // Lookup the next external sender
-        DeviceType* dev = *(--extTop);
-        // Destination device is on another thread
-        MessageType* msg = (MessageType*) tinselSlot(0);
-        msg->dest = dev->dest.localAddr;
-        PThreadId destThread = dev->dest.threadId;
-        // Invoke send handler & send resulting message
-        sendHandler(dev, msg);
-        tinselSend(destThread, msg);
-        // Reinsert device into a senders array
-        if (dev->readyToSend) insert(dev);
       }
       else if (intTop != intArray) { // Internal senders
         MessageType msg;

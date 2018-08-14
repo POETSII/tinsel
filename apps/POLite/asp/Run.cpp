@@ -14,6 +14,9 @@ int main()
   // Create POETS graph
   PGraph<ASPDevice, ASPMessage> graph;
 
+  // Use off-chip SRAMs
+  graph.useOffChipSRAMs = true;
+
   // Create 2D mesh of devices for testing purposes
   PDeviceId mesh[height][width];
   for (uint32_t y = 0; y < height; y++)
