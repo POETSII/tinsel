@@ -6,7 +6,7 @@ int main()
 {
   // Point thread structure at base of thread's heap
   PThread<TwoSorterDevice, TwoSorterMsg>* thread =
-    (PThread<TwoSorterDevice, TwoSorterMsg>*) tinselHeapBase();
+    (PThread<TwoSorterDevice, TwoSorterMsg>*) tinselHeapBaseSRAM();
   
   // Invoke interpreter
   thread->run();

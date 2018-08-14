@@ -6,7 +6,7 @@ int main()
 {
   // Point thread structure at base of thread's heap
   PThread<RingDevice, RingMessage>* thread =
-    (PThread<RingDevice, RingMessage>*) tinselHeapBase();
+    (PThread<RingDevice, RingMessage>*) tinselHeapBaseSRAM();
   
   // Invoke interpreter
   thread->run();

@@ -88,6 +88,8 @@ struct BitonicMergeSort {
 
   // Constructor
   BitonicMergeSort(int n) {
+    // Use off-chip SRAMs
+    graph.useOffChipSRAMs = true;
     // Allocate inputs and outputs
     Pin* ins = new Pin [1 << n];
     Pin* outs = new Pin [1 << n];

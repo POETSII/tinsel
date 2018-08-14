@@ -41,6 +41,9 @@ template <typename DeviceType, typename MessageType> class PGraph {
   // Graph containing device ids and connections
   Graph graph;
 
+  // Flag indicating whether to use off-chip SRAMs
+  bool useOffChipSRAMs;
+
   // Mapping from device id to device pointer
   // (Not valid until the mapper is called)
   DeviceType** devices;
@@ -54,7 +57,7 @@ template <typename DeviceType, typename MessageType> class PGraph {
   PDeviceAddr* toDeviceAddr;  // Device id -> device address
   PDeviceId** fromDeviceAddr; // Device address -> device id
 
-  // Each thread's heap (DRAM partition), size, and base
+  // Each thread's heap (DRAM or SRAM partition), size, and base
   // (Not valid until the mapper is called)
   uint8_t** heap;
   uint32_t* heapSize;
@@ -79,8 +82,15 @@ template <typename DeviceType, typename MessageType> class PGraph {
   // Allocate heaps
   void allocateHeaps() {
     // Decide a maximum heap size that is reasonable
-    // (We choose the partition size minus 65536 bytes for the stack.)
-    const uint32_t maxHeapSize = (1<<TinselLogBytesPerDRAMPartition) - 65536;
+    uint32_t maxHeapSize;
+    if (useOffChipSRAMs) {
+      // Partition size minus 2048 bytes for the stack
+      maxHeapSize = (1<<TinselLogBytesPerSRAMPartition) - 2048;
+    }
+    else {
+      // Partition size minus 65536 bytes for the stack
+      maxHeapSize = (1<<TinselLogBytesPerDRAMPartition) - 65536;
+    }
     // Allocate heap sizes and bases
     heap = (uint8_t**) calloc(TinselMaxThreads, sizeof(uint8_t*));
     heapSize = (uint32_t*) calloc(TinselMaxThreads, sizeof(uint32_t));
@@ -117,10 +127,16 @@ template <typename DeviceType, typename MessageType> class PGraph {
       heapSize[threadId] = size;
       // Tinsel address of base of heap
       uint32_t partId = threadId & (TinselThreadsPerDRAM-1);
-      heapBase[threadId] = TinselBytesPerDRAM -
-        ((partId+1) << TinselLogBytesPerDRAMPartition);
-      // Use interleaved memory
-      heapBase[threadId] |= 0x80000000;
+      if (useOffChipSRAMs) {
+        heapBase[threadId] = (1 << TinselLogBytesPerSRAM)
+                           + (partId << TinselLogBytesPerSRAMPartition);
+      }
+      else {
+        heapBase[threadId] = TinselBytesPerDRAM -
+          ((partId+1) << TinselLogBytesPerDRAMPartition);
+        // Use interleaved memory
+        heapBase[threadId] |= 0x80000000;
+      }
     }
   }
 
@@ -281,6 +297,7 @@ template <typename DeviceType, typename MessageType> class PGraph {
   // Constructor
   PGraph() {
     numDevices = 0;
+    useOffChipSRAMs = false;
     devices = NULL;
     toDeviceAddr = NULL;
     numDevicesOnThread = NULL;
