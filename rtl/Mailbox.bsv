@@ -22,19 +22,24 @@ package Mailbox;
 //                 |       +------------+             |  
 //                 |                                  |
 //                 |       +---------------+          | 
-//              <--------->| Transmit Unit |          |
-//    Group        |       +---------------+          |<----- Flit in
-//     of          |                                  | 
-//    cores        |       +--------------+           |-----> Flit out
-//              <--------->| Receive Unit |           |
-//                 |       +--------------+           |
-//                 |                                  |
-//                 |       +---------------+          | 
-//              <--------->| Allocate Unit |          | 
-//                 |       +---------------+          |
-//                 |                                  | 
-//                 +----------------------------------+
-//                                              
+//              <--------->| Transmit Unit |<-----+   |
+//    Group        |       +---------------+      |   |<----- Flit in
+//     of          |                              |   | 
+//    cores        |       +--------------+       |   |-----> Flit out
+//              <--------->| Receive Unit |       |   |
+//                 |       +--------------+       |   |
+//                 |                              |   |
+//                 |       +---------------+      |   | 
+//              <--------->| Allocate Unit |      |   | 
+//                 |       +---------------+      |   |
+//                 |                              |   | 
+//                 +------------------------------|---+
+//                                                |
+//                                                |
+//                                                v
+//
+//                                           Off-chip RAM
+//                               
 //
 // Scratchpad
 // ----------
@@ -57,6 +62,9 @@ package Mailbox;
 // (aligned) in the scratchpad to be sent to a given destination.
 // When the Transmit Unit eventually sends the message, it will
 // produce a response, notifying the thread that made the request.
+//
+// The Transmit Unit also supports *multicast sends*, with an
+// array of destinations automatically loaded from off-chip RAM.
 //
 // Receive Unit
 // ------------
@@ -97,6 +105,7 @@ import ConfigReg    :: *;
 import Util         :: *;
 import Globals      :: *;
 import DReg         :: *;
+import DRAM         :: *;
 
 // =============================================================================
 // Types
@@ -235,6 +244,9 @@ interface Mailbox;
   // Core-side interfaces to receive unit
   interface In#(AllocReq)         allocReqIn;
   interface BOut#(ReceiveAlert)   rxAlertOut;
+  // Connection to off-chip RAM
+  interface In#(DRAMResp)         ramRespIn;
+  interface BOut#(DRAMReq)        ramReqOut;
   // Network-side interface
   interface MailboxNet            net;
 endinterface
@@ -265,11 +277,12 @@ module mkMailbox (Mailbox);
   ArrayOfSet#(`LogThreadsPerMailbox, `LogMsgsPerThread) statusMem <-
     mkArrayOfSet;
 
-  // Request & response ports
+  // Input ports
   InPort#(ScratchpadReq)   spadReqPort   <- mkInPort;
   InPort#(TransmitReq)     txReqPort     <- mkInPort;
   InPort#(Flit)            flitInPort    <- mkInPort;
   InPort#(AllocReq)        allocReqPort  <- mkInPort;
+  InPort#(DRAMResp)        ramRespPort   <- mkInPort;
 
   // Message access unit
   // ===================
@@ -435,6 +448,9 @@ module mkMailbox (Mailbox);
   // Transmit response-buffer
   Queue#(TransmitResp) transmitRespBuffer <- mkUGShiftQueue(QueueOptFmax);
 
+  // RAM request queue
+  Queue#(DRAMReq) ramReqQueue <- mkUGShiftQueue(QueueOptFmax);
+
   // Flit count
   Reg#(MsgLen) transmitFlitCount <- mkConfigReg(0);
 
@@ -541,6 +557,7 @@ module mkMailbox (Mailbox);
   interface In txReqIn    = txReqPort.in;
   interface In allocReqIn = allocReqPort.in;
   interface In spadReqIn  = spadReqPort.in;
+  interface In ramRespIn  = ramRespPort.in;
 
   interface BOut rxAlertOut;
     method Action get;
@@ -566,6 +583,14 @@ module mkMailbox (Mailbox);
     endmethod
     method Bool valid = scratchpadRespBuffer.canDeq;
     method ScratchpadResp value = scratchpadRespBuffer.dataOut;
+  endinterface
+
+  interface BOut ramReqOut;
+    method Action get;
+      ramReqQueue.deq;
+    endmethod
+    method Bool valid = ramReqQueue.canDeq;
+    method DRAMReq value = ramReqQueue.dataOut;
   endinterface
 
   interface MailboxNet net;
