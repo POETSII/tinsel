@@ -239,4 +239,15 @@ function b vector() provisos (MkVector#(b, a, 0));
   return mkVector(Vector::nil);
 endfunction
 
+// Interleave two vectors
+function Vector#(TAdd#(n, n), a) interleave(
+                   Vector#(n, a) v, Vector#(n, a) w);
+  Vector#(TAdd#(n, n), a) x = newVector();
+  for (Integer i = 0; i < valueOf(n); i=i+1) begin
+    x[2*i] = v[i];
+    x[2*i+1] = w[i];
+  end
+  return x;
+endfunction
+
 endpackage

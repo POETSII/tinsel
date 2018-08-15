@@ -103,6 +103,7 @@ import DRAM        :: *;
 import OffChipRAM  :: *;
 import PseudoLRU   :: *;
 import DCacheTypes :: *;
+import Mailbox     :: *;
 
 // ============================================================================
 // Types  
@@ -482,7 +483,7 @@ module mkDCache#(DCacheId myId) (DCache);
     // Create memory request
     DRAMReq memReq;
     memReq.isStore = !isLoad;
-    memReq.id = myId;
+    memReq.id = {myId, 1'b0};
     memReq.addr = {isLoad ? readLineAddr : writeLineAddr, reqBeat};
     memReq.data = isLoad ? {?, pack(info)} : dataMem.dataOutA;
     memReq.burst = isLoad ? `BeatsPerLine : 1;
@@ -587,23 +588,29 @@ module connectCoresToDCache#(
 
 endmodule
 
-module connectDCachesToOffChipRAM#(
-         Vector#(`DCachesPerDRAM, DCache) caches, OffChipRAM ram) ();
+module connectDCachesAndMailboxesToOffChipRAM#(
+         Vector#(`DCachesPerDRAM, DCache) caches,
+         Vector#(`DCachesPerDRAM, Mailbox) mboxes,
+         OffChipRAM ram) ();
 
   // Connect requests
-  function getReqOut(cache) = cache.reqOut;
+  function getReqOutC(cache) = cache.reqOut;
+  function getReqOutM(mbox) = mbox.ramReqOut;
   let reqs <- mkMergeTreeB(Fair,
                 mkUGShiftQueue1(QueueOptFmax),
-                map(getReqOut, caches));
+                interleave(map(getReqOutC, caches),
+                           map(getReqOutM, mboxes)));
   connectUsing(mkUGQueue, reqs, ram.reqIn);
 
   // Connect load responses
-  function DCacheId getRespKey(DRAMResp resp) = resp.id;
-  function getRespIn(cache) = cache.respIn;
+  function DRAMReqId getRespKey(DRAMResp resp) = resp.id;
+  function getRespInC(cache) = cache.respIn;
+  function getRespInM(mbox) = mbox.ramRespIn;
   let ramResps <- mkResponseDistributor(
                     getRespKey,
                     mkUGQueue,
-                    map(getRespIn, caches));
+                    interleave(map(getRespInC, caches),
+                               map(getRespInM, mboxes)));
   connectDirect(ram.respOut, ramResps);
 
 endmodule

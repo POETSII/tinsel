@@ -20,6 +20,7 @@ import FPU        :: *;
 import InstrMem   :: *;
 import NarrowSRAM :: *;
 import OffChipRAM :: *;
+import Assert     :: *;
 
 // ============================================================================
 // Interface
@@ -115,10 +116,6 @@ module de5Top (DE5Top);
     for (Integer j = 0; j < `DCachesPerDRAM; j=j+1)
       connectCoresToDCache(map(dcacheClient, cores[i][j]), dcaches[i][j]);
 
-  // Connect data caches to DRAM
-  for (Integer i = 0; i < `DRAMsPerBoard; i=i+1)
-    connectDCachesToOffChipRAM(dcaches[i], rams[i]);
-
   // Create FPUs
   Vector#(`FPUsPerBoard, FPU) fpus;
   for (Integer i = 0; i < `FPUsPerBoard; i=i+1)
@@ -159,6 +156,17 @@ module de5Top (DE5Top);
   function MailboxNet mailboxNet(Mailbox mbox) = mbox.net;
   ExtNetwork net <- mkMailboxMesh(boardId,
                       map(map(mailboxNet), mailboxes));
+
+  // Connect data caches and mailboxes to off-chip RAM
+  staticAssert(`MailboxesPerBoard == `DCachesPerDRAM * `DRAMsPerBoard,
+             "Number of mailboxes must equal number of caches");
+  Vector#(`MailboxesPerBoard, Mailbox) vecOfMailboxes = concat(mailboxes);
+  for (Integer i = 0; i < `DRAMsPerBoard; i=i+1) begin
+    Vector#(`DCachesPerDRAM, Mailbox) mboxes =
+      takeAt(i*`DCachesPerDRAM, vecOfMailboxes);
+    connectDCachesAndMailboxesToOffChipRAM(
+      dcaches[i], mboxes, rams[i]);
+  end
 
   // Create DebugLink interface
   function DebugLinkClient getDebugLinkClient(Core core) = core.debugLinkClient;
