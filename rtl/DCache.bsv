@@ -425,8 +425,8 @@ module mkDCache#(DCacheId myId) (DCache);
     let flush = flushQueue.dataOut;
     let resp = respPort.value;
     lineWriteDataWire <= resp.data;
-    lineWriteIndexWire <= beatIndex(resp.info.beat, resp.info.req.id,
-                            resp.info.req.addr, resp.info.way);
+    lineWriteIndexWire <= beatIndex(resp.beat, resp.info.DCacheInfo.req.id,
+      resp.info.DCacheInfo.req.addr, resp.info.DCacheInfo.way);
     // Ready to consume flush queue?
     if (flushQueue.canDeq && flushQueue.canPeek) begin
       flush.req.cmd.isFlush = False;
@@ -440,14 +440,14 @@ module mkDCache#(DCacheId myId) (DCache);
       // Remove item from fill queue and feed associated request (which
       // will definitely hit if it starts again from the beginning of
       // the pipeline) back to beginning of the pipeline
-      if (allHigh(resp.info.beat))
+      if (allHigh(resp.beat))
         feedbackTrigger <= True;
       // Write new line data to dataMem
       // (The write parameters are set outside condition for better timing)
       lineWriteReqWire <= True;
       respPort.get;
       // Set feedback request
-      feedbackReq <= resp.info.req;
+      feedbackReq <= resp.info.DCacheInfo.req;
     end
   endrule
 
@@ -476,16 +476,15 @@ module mkDCache#(DCacheId myId) (DCache);
     let readLineAddr = 
       miss.req.addr[`LogBytesPerDRAM:`LogBytesPerLine];
     // Create inflight request info
-    InflightDCacheReqInfo info;
+    DCacheReqInfo info;
     info.req = miss.req;
     info.way = miss.evictWay;
-    info.beat = ?;
     // Create memory request
     DRAMReq memReq;
     memReq.isStore = !isLoad;
     memReq.id = {myId, 1'b0};
     memReq.addr = {isLoad ? readLineAddr : writeLineAddr, reqBeat};
-    memReq.data = isLoad ? {?, pack(info)} : dataMem.dataOutA;
+    memReq.data = isLoad ? {?, pack(DCacheInfo(info))} : dataMem.dataOutA;
     memReq.burst = isLoad ? `BeatsPerLine : 1;
     // Are we going to send a memory request to the next stage?
     Bool sendMemReq = False;

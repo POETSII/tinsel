@@ -30,19 +30,23 @@ typedef struct {
 // Details of a flush request: the 'addr' field specifies the
 // line to evict and the 'data' field specifies the way.
 
-// This structure contains DCache-related information about an
-// in-flight memory request.  When the DCache issues a memory load
-// request, this info is packed into the unused data field of the
-// request.  When the memory subsystem responds, it passes back the
-// same info in an extra field inside the memory response structure.
-// Maintaining info about an inflight request inside the request itself
-// provides an easy way to handle out-of-order responses from memory.
-// We try to keep this structure as small as possible so that memory
-// responses do not become too big.
+// This structure contains information about an in-flight off-chip RAM
+// request.  When a client issues a memory load request, this info is
+// packed into the unused data field of the request.  When the memory
+// subsystem responds, it passes back the same info in an extra field
+// inside the memory response structure.  Maintaining info about the
+// original client request inside the RAM request itself provides an easy way
+// to handle out-of-order responses from RAM.  We try to keep this
+// structure as small as possible so that RAM responses do not
+// become too big.
+typedef union tagged {
+  // Info about the originating DCache request
+  DCacheReqInfo DCacheInfo;
+} DRAMReqInfo deriving (Bits);
+
 typedef struct {
   DCacheReq req;
   Way way;
-  Bit#(`LogBeatsPerLine) beat;
-} InflightDCacheReqInfo deriving (Bits);
+} DCacheReqInfo deriving (Bits);
 
 endpackage
