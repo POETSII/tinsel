@@ -15,7 +15,7 @@ typedef struct {
   SRAMReqId id;
   Bit#(`SRAMAddrWidth) addr;
   Bit#(`SRAMBurstWidth) burst;
-  InflightDCacheReqInfo info;
+  DRAMReqInfo info;
 } SRAMLoadReq deriving (Bits);
 
 // SRAM store request
@@ -30,7 +30,7 @@ typedef struct {
 typedef struct {
   SRAMReqId id;
   Bit#(`SRAMDataWidth) data;
-  InflightDCacheReqInfo info;
+  DRAMReqInfo info;
 } SRAMResp deriving (Bits);
 
 // ============================================================================
@@ -139,7 +139,6 @@ module mkSRAM#(RAMId id) (SRAM);
         resp.id = req.id;
         resp.data = pack(elems);
         resp.info = req.info;
-        resp.info.beat = truncate(loadBurstCount);
         resps.enq(resp);
         inFlightCount.dec;
       end
@@ -242,7 +241,7 @@ endinterface
 typedef struct {
   SRAMReqId id;
   Bit#(`SRAMBurstWidth) burst;
-  InflightDCacheReqInfo info;
+  DRAMReqInfo info;
 } SRAMInFlightReq deriving (Bits);
 
 // SRAM Implementation
