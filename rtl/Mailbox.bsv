@@ -65,6 +65,11 @@ package Mailbox;
 //
 // The Transmit Unit also supports *multicast sends*, with an
 // array of destinations automatically loaded from off-chip RAM.
+// Each destination is a 64-bit word comprising:
+//
+//   * One bit, denoting the final destination in the array
+//   * 31-bit destination thread id
+//   * 32-bit message header (first word of the message is replaced by this)
 //
 // Receive Unit
 // ------------
@@ -180,7 +185,11 @@ typedef struct {
   // Message length
   MsgLen len;
   // Destination thread
-  NetAddr dest;
+  Bit#(32) dest;
+  // Is it a multicast send?
+  Bool multicast;
+  // If so, what's the new message header? (Only used internally)
+  Bit#(32) header;
 } TransmitReq deriving (Bits);
 
 // Transmit unit response
@@ -482,7 +491,8 @@ module mkMailbox (Mailbox);
         { truncate(req.id), req.msgIndex, transmitFlitCount };
       // Trigger next stage
       inFlightTransmits.inc;
-      let token = TransmitToken {dest: req.dest, notFinalFlit: !endOfMsg};
+      let token = TransmitToken { dest: unpack(truncate(req.dest))
+                                , notFinalFlit: !endOfMsg };
       transmit2Input <= token;
     end
   endrule
@@ -501,6 +511,7 @@ module mkMailbox (Mailbox);
     TransmitToken token = transmit4Input;
     // Put flit into transmit buffer
     myAssert(transmitBuffer.notFull, "transmitBuffer overflow");
+    // TODO insert header
     let flit = Flit { dest:         token.dest
                     , payload:      scratchpad.dataOutA
                     , notFinalFlit: token.notFinalFlit };
@@ -659,7 +670,7 @@ interface MailboxClientUnit;
   // (Must only be called on 2nd cycle after call to "prepare")
   method Action recv;
   method Action send(ThreadId id, MsgLen len,
-                       NetAddr dest, MailboxThreadMsgAddr addr);
+                       Bit#(32) dest, MailboxThreadMsgAddr addr);
   // Scratchpad address of message received
   // (Valid on 2nd cycle after call to "recv")
   method Bit#(32) recvAddr;
@@ -855,7 +866,7 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
   method Bool canSend = canSendReg2;
 
   method Action send(ThreadId id, MsgLen len,
-                       NetAddr dest, MailboxThreadMsgAddr addr);
+                       Bit#(32) dest, MailboxThreadMsgAddr addr);
     myAssert(canSendReg2, "MailboxClientUnit: send violation");
     // Construct transmit request
     TransmitReq req;
@@ -863,6 +874,8 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
     req.msgIndex = addr;
     req.len = len;
     req.dest = dest;
+    req.multicast = False;
+    req.header = ?;
     // Put in queue
     myAssert(transmitQueue.notFull, "MailboxClientUnit: transmitQueue full");
     transmitQueue.enq(req);
