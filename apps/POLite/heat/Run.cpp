@@ -16,9 +16,6 @@ int main()
   // Create POETS graph
   PGraph<HeatDevice, HeatMessage> graph;
 
-  // Use off-chip SRAMs
-  graph.useOffChipSRAMs = true;
-
   // Create 2D mesh of devices
   PDeviceId mesh[height][width];
   for (uint32_t y = 0; y < height; y++)
@@ -28,8 +25,10 @@ int main()
   // Add edges
   for (uint32_t y = 0; y < height; y++)
     for (uint32_t x = 0; x < width; x++) {
-      if (x < width-1) graph.addBidirectionalEdge(mesh[y][x], mesh[y][x+1]);
-      if (y < height-1) graph.addBidirectionalEdge(mesh[y][x], mesh[y+1][x]);
+      if (x < width-1)
+        graph.addBidirectionalEdge(mesh[y][x], 0, mesh[y][x+1], 0);
+      if (y < height-1)
+        graph.addBidirectionalEdge(mesh[y][x], 0, mesh[y+1][x], 0);
     }
 
   // Prepare mapping from graph to hardware
@@ -73,7 +72,9 @@ int main()
     HeatMessage msg;
     hostLink.recvMsg(&msg, sizeof(HeatMessage));
     // Save final value
-    PDeviceId id = graph.fromDeviceAddr[msg.from.threadId][msg.from.localAddr];
+    PDeviceId id = graph.fromDeviceAddr
+                     [getPThreadId(msg.from)]
+                     [getPLocalDeviceAddr(msg.from)];
     pixels[id] = msg.val;
   }
 

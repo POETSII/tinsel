@@ -7,77 +7,60 @@
   #include <tinsel.h>
   #define PTR(t) t*
 #else
+  #include <tinsel-interface.h>
   #define PTR(t) uint32_t
 #endif
 
 // Physical device identifier
+// Bits [31:16] are the thread id
+// Bits [15:1] are the thread-local device id
+// Bit 0 is the valid bit
 typedef uint16_t PLocalDeviceAddr;
 typedef uint16_t PThreadId;
-struct PDeviceAddr {
-  PThreadId threadId;
-  PLocalDeviceAddr localAddr;
-};
+typedef uint32_t PDeviceAddr;
+
+// Constructor
+inline PDeviceAddr makePDeviceAddr(
+         PThreadId threadId, PLocalDeviceAddr devId, uint16_t valid)
+  { return (threadId << 16) | (devId << 1) | valid; }
+
+// Selectors
+inline PThreadId getPThreadId(PDeviceAddr addr) { return (addr >> 16); }
+inline PLocalDeviceAddr getPLocalDeviceAddr(PDeviceAddr addr)
+  { return (addr >> 1); };
+inline bool isPDeviceAddrValid(PDeviceAddr addr) { return (addr & 1); }
+
+//struct PDeviceAddr {
+//  PThreadId threadId          : 16;
+//  PLocalDeviceAddr localAddr  : 15;
+//  uint16_t valid              : 1;
+//};
+
+// Pin macros
+// NONE means 'not ready to send'
+// HOST_PIN means 'send to host'
+// PIN(n) means 'send to applicaiton pin number n'
+#define NONE 0
+#define HOST_PIN 1
+#define PIN(n) ((n)+2)
 
 // Generic device structure
 struct PDevice {
   // Thread local device id
   PLocalDeviceAddr localAddr;
   // Is the device ready to send?
-  uint8_t readyToSend;
-  // If ready to send, what is the destination?
-  PDeviceAddr dest;
-  // Number of incoming and outgoing edges
-  uint16_t fanIn, fanOut;
-  // Incoming and outgoing edges
-  PTR(PDeviceAddr) edges;
+  // (If so, to which pin? See the pin macros)
+  uint16_t readyToSend;
+  // Number of incoming edges
+  uint16_t fanIn;
 
   #ifdef TINSEL
-    // Obtain pointer to outgoing edges
-    inline PTR(PDeviceAddr) outEdges() { return edges; }
-    // Obtain pointer to incoming edges
-    inline PTR(PDeviceAddr) inEdges() { return edges + fanOut; }
-    // Obtain nth outgoing edge
-    inline PDeviceAddr outEdge(uint32_t n) { return outEdges()[n]; }
-    // Obtain nth incoming edge
-    inline PDeviceAddr inEdge(uint32_t n) { return inEdges()[n]; }
-    // Obtain nth edge
-    inline PDeviceAddr edge(uint32_t n) { return outEdges()[n]; }
     // Obtain device id
     inline PDeviceAddr thisDeviceId() {
-      PDeviceAddr devId;
-      devId.threadId = tinselId();
-      devId.localAddr = localAddr;
-      return devId;
-    }
-    // Obtain device id of host
-    inline PDeviceAddr hostDeviceId() {
-      PDeviceAddr devId;
-      devId.threadId = tinselHostId();
-      devId.localAddr = 0;
-      return devId;
+      return makePDeviceAddr(tinselId(), localAddr, 1);
     }
   #else
-    inline PDeviceAddr undef() { 
-      PDeviceAddr devId;
-      devId.threadId = 0xffff;
-      devId.localAddr = 0xffff;
-      return devId;
-    }
-    // Obtain pointer to outgoing edges
-    inline PTR(PDeviceAddr) outEdges() { return edges; }
-    // Obtain pointer to incoming edges
-    inline PTR(PDeviceAddr) inEdges()
-      { return edges+sizeof(PDeviceAddr)*fanOut; }
-    // Obtain nth outgoing edge
-    inline PDeviceAddr outEdge(uint32_t n) { return undef(); }
-    // Obtain nth incoming edge
-    inline PDeviceAddr inEdge(uint32_t n) { return undef(); }
-    // Obtain nth edge
-    inline PDeviceAddr edge(uint32_t n) { return undef(); }
-    // Obtain device id
-    inline PDeviceAddr thisDeviceId() { return undef(); }
-    // Obtain device id of host
-    inline PDeviceAddr hostDeviceId() { return undef(); }
+    inline PDeviceAddr thisDeviceId() { return 0xdeadbeef; }
   #endif
 };
 
@@ -104,36 +87,34 @@ template <typename DeviceType, typename MessageType> class PThread {
 
   // Number of devices handled by thread
   PLocalDeviceAddr numDevices;
+  // Track progress of a multicast send
+  int16_t multicastProgress;
+  // Source of current multicase
+  PTR(DeviceType) multicastSource;
   // Pointer to array of devices
   PTR(DeviceType) devices;
-  // Array of pointers to devices that are ready to send internally
-  // (to device on same thread) or externally (to device on different thread)
-  PTR(PTR(DeviceType)) intArray;
-  PTR(PTR(DeviceType)) extArray;
-  // These arrays are accessed in a LIFO manner
-  PTR(PTR(DeviceType)) intTop;
-  PTR(PTR(DeviceType)) extTop;
+  // Pointer to base of neighbours arrays
+  PTR(PDeviceAddr) neighboursBase;
+  // Pointer to neighbours array of current multicast
+  PTR(PDeviceAddr) neighbours;
+  // Array of pointers to devices that are ready to send
+  PTR(PTR(DeviceType)) senders;
+  // This array is accessed in a LIFO manner
+  PTR(PTR(DeviceType)) sendersTop;
 
   #ifdef TINSEL
-  // Insert device into internal senders or external senders
-  inline void insert(DeviceType* dev) {
-    if (dev->dest.threadId == tinselId())
-      *(intTop++) = dev;
-    else
-      *(extTop++) = dev;
-  }
 
   // Invoke device handlers
   void run() {
     // Initialisation
-    intTop = intArray;
-    extTop = extArray;
+    sendersTop = senders;
+    multicastProgress = -1;
     for (uint32_t i = 0; i < numDevices; i++) {
       DeviceType* dev = &devices[i];
       // Invoke the initialiser for each device
       dev->init();
       // Device ready to send?
-      if (dev->readyToSend) insert(dev);
+      if (dev->readyToSend != NONE) *(sendersTop++) = dev;
     }
 
     // Set number of flits per message
@@ -141,56 +122,78 @@ template <typename DeviceType, typename MessageType> class PThread {
 
     // Allocate some slots for incoming messages
     // (Slot 0 is reserved for outgoing messages)
-    for (int i = 1; i <= 4; i++) tinselAlloc(tinselSlot(i));
+    for (int i = 1; i <= 7; i++) tinselAlloc(tinselSlot(i));
 
     // Event loop
     while (1) {
-      if (tinselCanSend() && extTop != extArray) { // External senders
-        // Lookup the next external sender
-        DeviceType* dev = *(--extTop);
-        // Destination device is on another thread
-        MessageType* msg = (MessageType*) tinselSlot(0);
-        msg->dest = dev->dest.localAddr;
-        PThreadId destThread = dev->dest.threadId;
-        // Invoke send handler & send resulting message
-        sendHandler(dev, msg);
-        tinselSend(destThread, msg);
-        // Reinsert device into a senders array
-        if (dev->readyToSend) insert(dev);
+      // Step 1: try to send
+      if (multicastProgress >= 0) {
+        PDeviceAddr dest = neighbours[multicastProgress];
+        if (! isPDeviceAddrValid(dest)) {
+          // Multicast is complete
+          multicastProgress = -1;
+        }
+        else if (getPThreadId(dest) == tinselId()) {
+          // Lookup destination device
+          DeviceType* destDev = &devices[getPLocalDeviceAddr(dest)];
+          uint16_t oldReadyToSend = destDev->readyToSend;
+          // Invoke receive handler
+          destDev->recv((MessageType*) tinselSlot(0));
+          // Insert devices into a senders array, if not already there
+          if (oldReadyToSend == NONE && destDev->readyToSend != NONE)
+             *(sendersTop++) = destDev;
+          // Update progress
+          multicastProgress++;
+        }
+        else if (tinselCanSend()) {
+          // Destination device is on another thread
+          MessageType* msg = (MessageType*) tinselSlot(0);
+          msg->dest = getPLocalDeviceAddr(dest);
+          // Send message
+          tinselSend(getPThreadId(dest), msg);
+          // Update progress
+          multicastProgress++;
+        }
+        else {
+          // Go to sleep
+          tinselWaitUntil(TINSEL_CAN_RECV | TINSEL_CAN_SEND);
+        }
       }
-      else if (tinselCanRecv()) {
+      else if (sendersTop != senders) {
+        if (tinselCanSend()) {
+          // Start new multicast
+          multicastProgress = 0;
+          multicastSource = *(--sendersTop);
+          // Invoke send handler
+          sendHandler(multicastSource, (MessageType*) tinselSlot(0));
+          // Reinsert sender, if it still wants to send
+          if (multicastSource->readyToSend != NONE)
+            *(sendersTop++) = multicastSource;
+          // Determine neighbours array for sender
+          neighbours = neighboursBase + (multicastSource->localAddr *
+                                          (multicastSource->readyToSend-1));
+        }
+      }
+      else {
+        // Go to sleep
+        tinselWaitUntil(TINSEL_CAN_RECV);
+      }
+
+      // Step 2: try to receive
+      if (tinselCanRecv()) {
         // Receive message
         MessageType *msg = (MessageType *) tinselRecv();
         // Lookup destination device
         DeviceType* dev = &devices[msg->dest];
         // Was it ready to send?
-        uint32_t wasReadyToSend = dev->readyToSend;
+        uint16_t oldReadyToSend = dev->readyToSend;
         // Invoke receive handler
         dev->recv(msg);
         // Reallocate mailbox slot
         tinselAlloc(msg);
         // Insert device into a senders array, if not already there
-        if (dev->readyToSend && !wasReadyToSend) insert(dev);
-      }
-      else if (intTop != intArray) { // Internal senders
-        MessageType msg;
-        // Lookup the next internal sender
-        DeviceType* dev = *(--intTop);
-        // Lookup destination device
-        DeviceType* destDev = &devices[dev->dest.localAddr];
-        uint32_t wasReadyToSend = destDev->readyToSend;
-        // Invoke both send and recv handlers
-        dev->send(&msg);
-        destDev->recv(&msg);
-        // Insert devices into a senders array, if not already there
-        if (dev->readyToSend) insert(dev);
-        if (!wasReadyToSend && destDev->readyToSend) insert(destDev);
-      }
-      else {
-        // Go to sleep
-        TinselWakeupCond cond = TINSEL_CAN_RECV |
-          (extTop == extArray ? (TinselWakeupCond) 0 : TINSEL_CAN_SEND);
-        tinselWaitUntil(cond);
+        if (dev->readyToSend != NONE && oldReadyToSend == NONE)
+          *(sendersTop++) = dev;
       }
     }
   }
