@@ -11,6 +11,9 @@
   #define PTR(t) uint32_t
 #endif
 
+// This is a static limit on the fan out of any pin
+#define MAX_PIN_FANOUT 32
+
 // Physical device identifier
 // Bits [31:16] are the thread id
 // Bits [15:1] are the thread-local device id
@@ -53,6 +56,8 @@ struct PDevice {
   uint16_t readyToSend;
   // Number of incoming edges
   uint16_t fanIn;
+  // Pointer to base of neighbours arrays
+  PTR(PDeviceAddr) neighboursBase;
 
   #ifdef TINSEL
     // Obtain device id
@@ -93,8 +98,6 @@ template <typename DeviceType, typename MessageType> class PThread {
   PTR(DeviceType) multicastSource;
   // Pointer to array of devices
   PTR(DeviceType) devices;
-  // Pointer to base of neighbours arrays
-  PTR(PDeviceAddr) neighboursBase;
   // Pointer to neighbours array of current multicast
   PTR(PDeviceAddr) neighbours;
   // Array of pointers to devices that are ready to send
@@ -164,14 +167,15 @@ template <typename DeviceType, typename MessageType> class PThread {
           // Start new multicast
           multicastProgress = 0;
           multicastSource = *(--sendersTop);
+          uint16_t pin = multicastSource->readyToSend-1;
           // Invoke send handler
           sendHandler(multicastSource, (MessageType*) tinselSlot(0));
           // Reinsert sender, if it still wants to send
           if (multicastSource->readyToSend != NONE)
             *(sendersTop++) = multicastSource;
           // Determine neighbours array for sender
-          neighbours = neighboursBase + (multicastSource->localAddr *
-                                          (multicastSource->readyToSend-1));
+          neighbours = multicastSource->neighboursBase +
+                         MAX_PIN_FANOUT * pin;
         }
       }
       else {

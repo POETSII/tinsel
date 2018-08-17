@@ -11,9 +11,6 @@
 #include <POLite/Graph.h>
 #include <POLite/Placer.h>
 
-// This is a static limit on the fan out of any pin
-#define MAX_PIN_FANOUT 32
-
 // Nodes of a POETS graph are devices
 typedef NodeId PDeviceId;
 
@@ -104,17 +101,15 @@ template <typename DeviceType, typename MessageType> class PGraph {
       // Add space for thread structure (stored in SRAM)
       sizeSRAM = cacheAlign(sizeSRAM +
                               sizeof(PThread<DeviceType, MessageType>));
-      // Add space for device array (stored in SRAM)
-      sizeSRAM = cacheAlign(sizeSRAM + numDevicesOnThread[threadId] *
-                                 sizeof(DeviceType));
       // Add space for edge lists (stored in DRAM)
       uint32_t numDevs = numDevicesOnThread[threadId];
       for (uint32_t devNum = 0; devNum < numDevs; devNum++) {
+        // Add space for device
+        sizeSRAM = cacheAlign(sizeSRAM + sizeof(DeviceType));
+        // Add space for neighbour arrays
         PDeviceId id = fromDeviceAddr[threadId][devNum];
         // Determine number of pins
-        uint32_t numPins = 0;
-        PinId max = graph.maxPin(id);
-        if (max >= 0) numPins = max+1;
+        int32_t numPins = graph.maxPin(id) + 2;
         // Add space for neighbour arrays for each pin
         sizeDRAM = cacheAlign(sizeDRAM + numPins * MAX_PIN_FANOUT
                                                  * sizeof(PDeviceAddr));
@@ -172,8 +167,6 @@ template <typename DeviceType, typename MessageType> class PGraph {
         // Add space for device
         nextSRAM = cacheAlign(nextSRAM + sizeof(DeviceType));
       }
-      // Set tinsel address of neighbours arrays
-      thread->neighboursBase = dramBase[threadId] + nextDRAM;
       // Initialise each device and associated edge list
       for (uint32_t devNum = 0; devNum < numDevs; devNum++) {
         PDeviceId id = fromDeviceAddr[threadId][devNum];
@@ -184,6 +177,8 @@ template <typename DeviceType, typename MessageType> class PGraph {
         Seq<PDeviceId>* in = graph.incoming->elems[id];
         dev->fanIn = in->numElems;
 
+        // Set tinsel address of neighbours arrays
+        dev->neighboursBase = dramBase[threadId] + nextDRAM;
         // Edge array
         PDeviceAddr* edgeArray = (PDeviceAddr*) &dram[threadId][nextDRAM];
         // Emit neighbours array for host pin
@@ -196,7 +191,7 @@ template <typename DeviceType, typename MessageType> class PGraph {
           // Find outgoing edges of current pin
           for (uint32_t i = 0; i < graph.outgoing->elems[id]->numElems; i++) {
             if (graph.pins->elems[id]->elems[i] == p) {
-              if (offset >= MAX_PIN_FANOUT) {
+              if (offset+1 >= MAX_PIN_FANOUT) {
                 printf("Error: pin fanout exceeds maximum\n");
                 exit(EXIT_FAILURE);
               }
