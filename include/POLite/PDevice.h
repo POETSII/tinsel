@@ -30,7 +30,7 @@ inline PDeviceAddr makePDeviceAddr(
 // Selectors
 inline PThreadId getPThreadId(PDeviceAddr addr) { return (addr >> 16); }
 inline PLocalDeviceAddr getPLocalDeviceAddr(PDeviceAddr addr)
-  { return (addr >> 1); };
+  { return ((addr&0xffff) >> 1); };
 inline bool isPDeviceAddrValid(PDeviceAddr addr) { return (addr & 1); }
 
 //struct PDeviceAddr {
@@ -142,7 +142,7 @@ template <typename DeviceType, typename MessageType> class PThread {
           uint16_t oldReadyToSend = destDev->readyToSend;
           // Invoke receive handler
           destDev->recv((MessageType*) tinselSlot(0));
-          // Insert devices into a senders array, if not already there
+          // Insert device into a senders array, if not already there
           if (oldReadyToSend == NONE && destDev->readyToSend != NONE)
              *(sendersTop++) = destDev;
           // Update progress
@@ -150,7 +150,7 @@ template <typename DeviceType, typename MessageType> class PThread {
         }
         else if (tinselCanSend()) {
           // Destination device is on another thread
-          MessageType* msg = (MessageType*) tinselSlot(0);
+          volatile MessageType* msg = (MessageType*) tinselSlot(0);
           msg->dest = getPLocalDeviceAddr(dest);
           // Send message
           tinselSend(getPThreadId(dest), msg);
@@ -171,8 +171,7 @@ template <typename DeviceType, typename MessageType> class PThread {
           // Invoke send handler
           sendHandler(multicastSource, (MessageType*) tinselSlot(0));
           // Reinsert sender, if it still wants to send
-          if (multicastSource->readyToSend != NONE)
-            *(sendersTop++) = multicastSource;
+          if (multicastSource->readyToSend != NONE) sendersTop++;
           // Determine neighbours array for sender
           neighbours = multicastSource->neighboursBase +
                          MAX_PIN_FANOUT * pin;
