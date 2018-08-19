@@ -105,7 +105,7 @@ template <typename DeviceType, typename MessageType> class PGraph {
       uint32_t numDevs = numDevicesOnThread[threadId];
       for (uint32_t devNum = 0; devNum < numDevs; devNum++) {
         // Add space for device
-        sizeSRAM = cacheAlign(sizeSRAM + sizeof(DeviceType));
+        sizeSRAM = wordAlign(sizeSRAM + sizeof(DeviceType));
         // Add space for neighbour arrays
         PDeviceId id = fromDeviceAddr[threadId][devNum];
         // Determine number of pins
@@ -165,7 +165,7 @@ template <typename DeviceType, typename MessageType> class PGraph {
         PDeviceId id = fromDeviceAddr[threadId][devNum];
         devices[id] = dev;
         // Add space for device
-        nextSRAM = cacheAlign(nextSRAM + sizeof(DeviceType));
+        nextSRAM = wordAlign(nextSRAM + sizeof(DeviceType));
       }
       // Initialise each device and associated edge list
       for (uint32_t devNum = 0; devNum < numDevs; devNum++) {

@@ -19,9 +19,6 @@ int main()
   // Create POETS graph
   PGraph<RingDevice, RingMessage> graph;
 
-  // Use off-chip SRAMs
-  graph.useOffChipSRAMs = true;
-
   // Create ring of devices
   PDeviceId ring[numDevices];
   for (uint32_t i = 0; i < numDevices; i++)
@@ -29,7 +26,7 @@ int main()
 
   // Add edges
   for (uint32_t i = 0; i < numDevices; i++)
-    graph.addEdge(ring[i], ring[(i+1)%numDevices]);
+    graph.addEdge(ring[i], 0, ring[(i+1)%numDevices]);
 
   // Prepare mapping from graph to hardware
   graph.map();
@@ -37,7 +34,7 @@ int main()
   // Specify initial state of root device
   graph.devices[ring[0]]->root = 1;
   graph.devices[ring[0]]->received = numTokens;
-  graph.devices[ring[0]]->stopCount = numTokens * numIterations;
+  graph.devices[ring[0]]->stopCount = numTokens * (numIterations+1);
  
   // Write graph down to tinsel machine via HostLink
   graph.write(&hostLink);
