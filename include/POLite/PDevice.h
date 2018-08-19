@@ -86,8 +86,8 @@ template <typename DeviceType, typename MessageType> class PThread {
 
   // Number of devices handled by thread
   PLocalDeviceAddr numDevices;
-  // Track progress of a multicast send
-  int16_t multicastProgress;
+  // Current destination for multicast
+  PDeviceAddr dest;
   // Source of current multicase
   PTR(DeviceType) multicastSource;
   // Pointer to array of devices
@@ -105,7 +105,7 @@ template <typename DeviceType, typename MessageType> class PThread {
   void run() {
     // Initialisation
     sendersTop = senders;
-    multicastProgress = -1;
+    dest = 0; // Initial destination is invalid
     for (uint32_t i = 0; i < numDevices; i++) {
       DeviceType* dev = &devices[i];
       // Invoke the initialiser for each device
@@ -124,13 +124,8 @@ template <typename DeviceType, typename MessageType> class PThread {
     // Event loop
     while (1) {
       // Step 1: try to send
-      if (multicastProgress >= 0) {
-        PDeviceAddr dest = neighbours[multicastProgress];
-        if (! isPDeviceAddrValid(dest)) {
-          // Multicast is complete
-          multicastProgress = -1;
-        }
-        else if (getPThreadId(dest) == tinselId()) {
+      if (isPDeviceAddrValid(dest)) {
+        if (getPThreadId(dest) == tinselId()) {
           // Lookup destination device
           DeviceType* destDev = &devices[getPLocalDeviceAddr(dest)];
           uint16_t oldReadyToSend = destDev->readyToSend;
@@ -139,8 +134,8 @@ template <typename DeviceType, typename MessageType> class PThread {
           // Insert device into a senders array, if not already there
           if (oldReadyToSend == NONE && destDev->readyToSend != NONE)
              *(sendersTop++) = destDev;
-          // Update progress
-          multicastProgress++;
+          // Lookup next destination
+          dest = *(++neighbours);
         }
         else if (tinselCanSend()) {
           // Destination device is on another thread
@@ -148,8 +143,8 @@ template <typename DeviceType, typename MessageType> class PThread {
           msg->dest = getPLocalDeviceAddr(dest);
           // Send message
           tinselSend(getPThreadId(dest), msg);
-          // Update progress
-          multicastProgress++;
+          // Lookup next destination
+          dest = *(++neighbours);
         }
         else {
           // Go to sleep
@@ -159,7 +154,6 @@ template <typename DeviceType, typename MessageType> class PThread {
       else if (sendersTop != senders) {
         if (tinselCanSend()) {
           // Start new multicast
-          multicastProgress = 0;
           multicastSource = *(--sendersTop);
           uint16_t pin = multicastSource->readyToSend-1;
           // Invoke send handler
@@ -169,6 +163,8 @@ template <typename DeviceType, typename MessageType> class PThread {
           // Determine neighbours array for sender
           neighbours = multicastSource->neighboursBase +
                          MAX_PIN_FANOUT * pin;
+          // Lookup first destination
+          dest = *neighbours;
         }
         else {
           // Go to sleep
