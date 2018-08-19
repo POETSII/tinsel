@@ -170,6 +170,10 @@ template <typename DeviceType, typename MessageType> class PThread {
           neighbours = multicastSource->neighboursBase +
                          MAX_PIN_FANOUT * pin;
         }
+        else {
+          // Go to sleep
+          tinselWaitUntil(TINSEL_CAN_RECV | TINSEL_CAN_SEND);
+        }
       }
       else {
         // Go to sleep
