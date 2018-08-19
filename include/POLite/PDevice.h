@@ -33,12 +33,6 @@ inline PLocalDeviceAddr getPLocalDeviceAddr(PDeviceAddr addr)
   { return ((addr&0xffff) >> 1); };
 inline bool isPDeviceAddrValid(PDeviceAddr addr) { return (addr & 1); }
 
-//struct PDeviceAddr {
-//  PThreadId threadId          : 16;
-//  PLocalDeviceAddr localAddr  : 15;
-//  uint16_t valid              : 1;
-//};
-
 // Pin macros
 // NONE means 'not ready to send'
 // HOST_PIN means 'send to host'
@@ -65,7 +59,7 @@ struct PDevice {
       return makePDeviceAddr(tinselId(), localAddr, 1);
     }
   #else
-    inline PDeviceAddr thisDeviceId() { return 0xdeadbeef; }
+    PDeviceAddr thisDeviceId();
   #endif
 };
 
