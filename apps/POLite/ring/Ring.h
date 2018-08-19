@@ -19,26 +19,23 @@ struct RingDevice : PDevice {
 
   // Called once by POLite at start of execution
   void init() {
-    readyToSend = received > sent;
-    dest = outEdge(0);
+    readyToSend = received > sent ? PIN(0) : NONE;
   }
 
   // Send handler
   inline void send(RingMessage* msg) {
     sent++;
-    readyToSend = received > sent;
+    readyToSend = received > sent ? PIN(0) : NONE;
   }
 
   // Receive handler
   inline void recv(RingMessage* msg) {
     received++;
     // Check termination condition
-    if (root && received == stopCount) {
-      dest = hostDeviceId();
-      readyToSend = 1; 
-    }
+    if (root && received == stopCount)
+      readyToSend = HOST_PIN;
     else
-      readyToSend = received > sent;
+      readyToSend = received > sent ? PIN(0) : NONE;
   }
 };
 
