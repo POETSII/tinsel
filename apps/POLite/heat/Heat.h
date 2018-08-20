@@ -12,7 +12,7 @@ struct HeatMessage : PMessage {
   PDeviceAddr from;
 };
 
-struct HeatDevice : PDevice {
+struct ALIGNED HeatDevice : PDevice {
   // Current time step of device
   uint32_t t;
   // Current temperature of device

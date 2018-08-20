@@ -11,6 +11,9 @@
   #define PTR(t) uint32_t
 #endif
 
+// Use this to align on cache-line boundary
+#define ALIGNED __attribute__((aligned(1<<TinselLogBytesPerLine)))
+
 // This is a static limit on the fan out of any pin
 #define MAX_PIN_FANOUT 32
 

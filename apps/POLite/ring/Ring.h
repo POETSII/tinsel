@@ -7,7 +7,7 @@ struct RingMessage : PMessage {
   // Empty
 };
 
-struct RingDevice : PDevice {
+struct ALIGNED RingDevice : PDevice {
   // Is this the root device in the ring?
   uint8_t root;
   // How many messages have we received?
