@@ -26,7 +26,7 @@ struct ASPMessage : PMessage {
   uint32_t reaching[M];
 };
 
-struct ASPDevice : PDevice {
+struct ALIGNED ASPDevice : PDevice {
   // Current time step
   uint16_t time;
   // Node id
@@ -35,8 +35,6 @@ struct ASPDevice : PDevice {
   uint16_t offset;
   // Number of messages sent and received
   uint16_t sent, received, receivedNext;
-  // Index of next destination in edge list
-  uint8_t nextDest;
   // Completion status
   uint8_t done;
   // Number of messages sent/received on each time step
@@ -55,30 +53,27 @@ struct ASPDevice : PDevice {
     // Set bit corresponding to node id handled by this device
     // (By definition, a node reaches itself)
     reaching[id >> 5] = 1 << (id & 0x1f);
-    // Calculate number of messages to be sent/received in each time step
+    // Calculate number of messages to be received in each time step
     uint32_t chunks = (N+(M-1)) / M;
     numMsgs = fanIn * chunks;
     // Setup first round of sends
-    readyToSend = 1;
-    dest = outEdge(0);
+    readyToSend = PIN(0);
   }
 
   // We call this on every state change
   void step() {
     // Finished execution?
-    if (done) { readyToSend = 0; return; }
+    if (done) { readyToSend = done == 2 ? NONE : HOST_PIN; return; }
     // Ready to send?
-    if (sent < numMsgs) {
-      readyToSend = 1;
-      dest = outEdge(nextDest);
-    }
+    uint32_t chunks = (N+(M-1)) / M;
+    if (sent < chunks)
+      readyToSend = PIN(0);
     else {
-      readyToSend = 0;
+      readyToSend = NONE;
       // Check for completion
       if (toReach == 0) {
         done = 1;
-        dest = hostDeviceId();
-        readyToSend = 1;
+        readyToSend = HOST_PIN;
       }
       else if (received == numMsgs) {
         // Proceed to next time step
@@ -103,24 +98,24 @@ struct ASPDevice : PDevice {
         offset = 0;
         // Fresh round of sends
         sent = 0;
-        readyToSend = 1;
-        dest = outEdge(0);
+        readyToSend = PIN(0);
       }
     }
   }
 
   // Send handler
   inline void send(ASPMessage* msg) {
-    msg->time = done ? sum : time;
-    msg->offset = offset;
-    for (uint32_t i = 0; i < M; i++)
-      msg->reaching[i] = reaching[offset+i];
-    nextDest++;
-    if (nextDest == fanOut) {
-      nextDest = 0;
+    if (done) {
+      msg->time = sum;
+      done = 2;
+    } else {
+      msg->time = time;
+      msg->offset = offset;
+      for (uint32_t i = 0; i < M; i++)
+        msg->reaching[i] = reaching[offset+i];
       offset += M;
+      sent++;
     }
-    sent++;
     step();
   }
 
