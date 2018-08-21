@@ -11,51 +11,36 @@
 // Lightweight POETS frontend
 #include <POLite.h>
 
-// There are a max of N*32 nodes in the graph
-#define N 2
-
-// M*32 nodes are transferred in each message
-#define M 1
+// NUM_SOURCES*32 is the number of sources to compute ASP for
+#define NUM_SOURCES 14
 
 struct ASPMessage : PMessage {
-  // Offset of reaching vector (see below)
-  uint16_t offset;
   // Time step of sender
-  uint32_t time;
+  uint16_t time;
   // Bit vector of nodes reaching sender
-  uint32_t reaching[M];
+  uint32_t reaching[NUM_SOURCES];
 };
 
 struct ALIGNED ASPDevice : PDevice {
   // Current time step
   uint16_t time;
-  // Node id
-  uint16_t id;
-  // Amount of reaching vector sent so far on current time step
-  uint16_t offset;
-  // Number of messages sent and received
-  uint16_t sent, received, receivedNext;
   // Completion status
   uint8_t done;
-  // Number of messages sent/received on each time step
-  uint16_t numMsgs;
+  // Has state been sent?
+  uint8_t sent;
+  // Number of messages received
+  uint16_t received, receivedNext;
   // Number of nodes still to reach this device
   uint32_t toReach;
   // Sum of lengths of all paths reaching this device
   uint32_t sum;
   // Bit vector of nodes reaching this device at times t, t+1, and t+2
-  uint32_t reaching[N];
-  uint32_t reaching1[N];
-  uint32_t reaching2[N];
+  uint32_t reaching[NUM_SOURCES];
+  uint32_t reaching1[NUM_SOURCES];
+  uint32_t reaching2[NUM_SOURCES];
 
   // Called once by POLite at start of execution
   void init() {
-    // Set bit corresponding to node id handled by this device
-    // (By definition, a node reaches itself)
-    reaching[id >> 5] = 1 << (id & 0x1f);
-    // Calculate number of messages to be received in each time step
-    uint32_t chunks = (N+(M-1)) / M;
-    numMsgs = fanIn * chunks;
     // Setup first round of sends
     readyToSend = PIN(0);
   }
@@ -65,8 +50,7 @@ struct ALIGNED ASPDevice : PDevice {
     // Finished execution?
     if (done) { readyToSend = done == 2 ? NONE : HOST_PIN; return; }
     // Ready to send?
-    uint32_t chunks = (N+(M-1)) / M;
-    if (sent < chunks)
+    if (sent == 0)
       readyToSend = PIN(0);
     else {
       readyToSend = NONE;
@@ -75,11 +59,11 @@ struct ALIGNED ASPDevice : PDevice {
         done = 1;
         readyToSend = HOST_PIN;
       }
-      else if (received == numMsgs) {
+      else if (received == fanIn) {
         // Proceed to next time step
         time++;
         // Update reaching vectors
-        for (uint32_t i = 0; i < N; i++) {
+        for (uint32_t i = 0; i < NUM_SOURCES; i++) {
           uint32_t s = reaching[i];
           uint32_t s1 = reaching1[i];
           reaching[i] = s | s1;
@@ -95,7 +79,6 @@ struct ALIGNED ASPDevice : PDevice {
         // Update counters
         received = receivedNext;
         receivedNext = 0;
-        offset = 0;
         // Fresh round of sends
         sent = 0;
         readyToSend = PIN(0);
@@ -106,15 +89,13 @@ struct ALIGNED ASPDevice : PDevice {
   // Send handler
   inline void send(ASPMessage* msg) {
     if (done) {
-      msg->time = sum;
+      msg->reaching[0] = sum;
       done = 2;
     } else {
       msg->time = time;
-      msg->offset = offset;
-      for (uint32_t i = 0; i < M; i++)
-        msg->reaching[i] = reaching[offset+i];
-      offset += M;
-      sent++;
+      for (uint32_t i = 0; i < NUM_SOURCES; i++)
+        msg->reaching[i] = reaching[i];
+      sent = 1;
     }
     step();
   }
@@ -122,14 +103,14 @@ struct ALIGNED ASPDevice : PDevice {
   // Receive handler
   inline void recv(ASPMessage* msg) {
     if (msg->time == time) {
-      for (uint32_t i = 0; i < M; i++)
-        reaching1[msg->offset+i] |= msg->reaching[i];
+      for (uint32_t i = 0; i < NUM_SOURCES; i++)
+        reaching1[i] |= msg->reaching[i];
       received++;
       step();
     }
     else {
-      for (uint32_t i = 0; i < M; i++)
-        reaching2[msg->offset+i] |= msg->reaching[i];
+      for (uint32_t i = 0; i < NUM_SOURCES; i++)
+        reaching2[i] |= msg->reaching[i];
       receivedNext++;
     }
   }
