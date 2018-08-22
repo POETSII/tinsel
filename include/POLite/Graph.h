@@ -6,6 +6,7 @@
 #include <POLite/Seq.h>
 
 typedef uint32_t NodeId;
+typedef int32_t PinId;
 typedef uint32_t NodeLabel;
 
 struct Graph {
@@ -13,6 +14,10 @@ struct Graph {
   // Invariant: these two sequences always have equal length
   Seq<Seq<NodeId>*>* incoming;
   Seq<Seq<NodeId>*>* outgoing;
+
+  // Each outgoing edge has a pin id
+  // Invariant: this sequence always has the same structure as 'outgoing'
+  Seq<Seq<PinId>*>* pins;
 
   // Each node has a label
   Seq<NodeLabel>* labels;
@@ -22,6 +27,7 @@ struct Graph {
     const uint32_t initialCapacity = 4096;
     incoming = new Seq<Seq<NodeId>*> (initialCapacity);
     outgoing = new Seq<Seq<NodeId>*> (initialCapacity);
+    pins = new Seq<Seq<PinId>*> (initialCapacity);
     labels = new Seq<NodeLabel> (initialCapacity);
   }
 
@@ -30,9 +36,11 @@ struct Graph {
     for (uint32_t i = 0; i < incoming->numElems; i++) {
       delete incoming->elems[i];
       delete outgoing->elems[i];
+      delete pins->elems[i];
     }
     delete incoming;
     delete outgoing;
+    delete pins;
     delete labels;
   }
 
@@ -41,6 +49,7 @@ struct Graph {
     const uint32_t initialCapacity = 8;
     incoming->append(new Seq<NodeId> (initialCapacity));
     outgoing->append(new Seq<NodeId> (initialCapacity));
+    pins->append(new Seq<PinId> (initialCapacity));
     labels->append(incoming->numElems - 1);
     return incoming->numElems - 1;
   }
@@ -51,16 +60,41 @@ struct Graph {
     labels->elems[id] = lab;
   }
 
-  // Add edge
+  // Add edge using output pin 0
   void addEdge(NodeId x, NodeId y) {
     outgoing->elems[x]->append(y);
+    pins->elems[x]->append(0);
     incoming->elems[y]->append(x);
   }
 
-  // Add bidirectional edge
+  // Add bidirectional edge using output pin 0
   void addBidirectionalEdge(NodeId x, NodeId y) {
     addEdge(x, y);
     addEdge(y, x);
+  }
+
+  // Add edge using given output pin
+  void addEdge(NodeId x, PinId p, NodeId y) {
+    outgoing->elems[x]->append(y);
+    pins->elems[x]->append(p);
+    incoming->elems[y]->append(x);
+  }
+
+  // Add bidirectional edge using given output pins
+  void addBidirectionalEdge(NodeId x, PinId px, NodeId y, PinId py) {
+    addEdge(x, px, y);
+    addEdge(y, py, x);
+  }
+
+  // Determine max pin used by given node
+  // (Returns -1 if node has no outgoing edges)
+  PinId maxPin(NodeId x) {
+    int max = -1;
+    for (uint32_t i = 0; i < pins->elems[x]->numElems; i++) {
+      if (pins->elems[x]->elems[i] > max)
+        max = pins->elems[x]->elems[i];
+    }
+    return max;
   }
 };
 

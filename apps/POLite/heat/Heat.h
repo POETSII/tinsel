@@ -12,7 +12,7 @@ struct HeatMessage : PMessage {
   PDeviceAddr from;
 };
 
-struct HeatDevice : PDevice {
+struct ALIGNED HeatDevice : PDevice {
   // Current time step of device
   uint32_t t;
   // Current temperature of device
@@ -26,38 +26,25 @@ struct HeatDevice : PDevice {
 
   // Called once by POLite at start of execution
   void init() {
-    readyToSend = 1;
-    dest = outEdge(0);
+    readyToSend = PIN(0);
   }
 
   // We call this on every state change
   inline void step() {
     // Execution complete?
-    if (t == 0) {
-      readyToSend = 0;
-      return;
+    if (t == 0) return;
+
+    // Proceed to next time step?
+    if (sent && received == fanIn) {
+      t--;
+      if (!isConstant) val = acc >> 2;
+      acc = accNext;
+      received = receivedNext;
+      accNext = receivedNext = 0;
+      sent = 0;
+      // On final time step, send to host
+      readyToSend = t == 0 ? HOST_PIN : PIN(0);
     }
-    // Ready to send?
-    if (sent < fanOut) {
-      readyToSend = 1;
-      dest = outEdge(sent);
-    }
-    else {
-      readyToSend = 0;
-      // Proceed to next time step?
-      if (received == fanIn) {
-        t--;
-        if (!isConstant) val = acc >> 2;
-        acc = accNext;
-        received = receivedNext;
-        accNext = receivedNext = 0;
-        sent = 0;
-        readyToSend = 1;
-        dest = outEdge(0);
-      }
-    }
-    // On final time step, send to host
-    if (t == 0) dest = hostDeviceId();
   }
 
   // Send handler
@@ -65,7 +52,8 @@ struct HeatDevice : PDevice {
     msg->t = t;
     msg->val = val;
     msg->from = thisDeviceId();
-    sent++;
+    sent = 1;
+    readyToSend = NONE;
     step();
   }
 
