@@ -1,12 +1,26 @@
 #include <HostLink.h>
 #include <POLite.h>
+#include <assert.h>
+#include <sys/time.h>
 #include "ASP.h"
+#include "Network.h"
 
-int main()
+int main(int argc, char**argv)
 {
-  // Parameters
-  const uint32_t width  = 6;
-  const uint32_t height = 6;
+  if (argc != 2) {
+    printf("Specify edges file\n");
+    exit(EXIT_FAILURE);
+  }
+
+  // Read network
+  Network net;
+  net.read(argv[1]);
+
+  // Print max fan-out
+  printf("Max fan-out = %d\n", net.maxFanOut());
+
+  // Check that parameters make sense
+  assert(32*NUM_SOURCES <= net.numNodes);
 
   // Connection to tinsel machine
   HostLink hostLink;
@@ -14,29 +28,33 @@ int main()
   // Create POETS graph
   PGraph<ASPDevice, ASPMessage> graph;
 
-  // Use off-chip SRAMs
-  graph.useOffChipSRAMs = true;
+  // Create nodes in POETS graph
+  for (uint32_t i = 0; i < net.numNodes; i++) {
+    PDeviceId id = graph.newDevice();
+    assert(i == id);
+  }
 
-  // Create 2D mesh of devices for testing purposes
-  PDeviceId mesh[height][width];
-  for (uint32_t y = 0; y < height; y++)
-    for (uint32_t x = 0; x < width; x++)
-      mesh[y][x] = graph.newDevice();
-
-  // Add edges
-  for (uint32_t y = 0; y < height; y++)
-    for (uint32_t x = 0; x < width; x++) {
-      if (x < width-1) graph.addBidirectionalEdge(mesh[y][x], mesh[y][x+1]);
-      if (y < height-1) graph.addBidirectionalEdge(mesh[y][x], mesh[y+1][x]);
-    }
+  // Create connections in POETS graph
+  for (uint32_t i = 0; i < net.numNodes; i++) {
+    uint32_t numNeighbours = net.neighbours[i][0];
+    for (uint32_t j = 0; j < numNeighbours; j++)
+      graph.addEdge(i, 0, net.neighbours[i][j+1]);
+  }
 
   // Prepare mapping from graph to hardware
   graph.map();
 
   // Initialise devices
   for (PDeviceId i = 0; i < graph.numDevices; i++) {
-    graph.devices[i]->id = i;
-    graph.devices[i]->toReach = graph.numDevices-1;
+    ASPDevice* dev = graph.devices[i];
+    if (i < 32*NUM_SOURCES) {
+      // This is a source node
+      // By definition, a source node reaches itself
+      dev->reaching[i >> 5] = 1 << (i & 0x1f);
+      dev->toReach = 32*NUM_SOURCES-1;
+    }
+    else
+      dev->toReach = 32*NUM_SOURCES;
   }
  
   // Write graph down to tinsel machine via HostLink
@@ -46,6 +64,11 @@ int main()
   hostLink.boot("code.v", "data.v");
   hostLink.go();
 
+  // Timer
+  printf("Started\n");
+  struct timeval start, finish, diff;
+  gettimeofday(&start, NULL);
+
   // Sum of all shortest paths
   uint32_t sum = 0;
 
@@ -53,11 +76,19 @@ int main()
   for (uint32_t i = 0; i < graph.numDevices; i++) {
     ASPMessage msg;
     hostLink.recvMsg(&msg, sizeof(ASPMessage));
-    sum += msg.time;
+    sum += msg.reaching[0];
   }
 
+  // Stop timer
+  gettimeofday(&finish, NULL);
+
   // Emit sum
-  printf("Sum of all shortest paths = %i\n", sum);
+  printf("Sum of subset of shortest paths = %i\n", sum);
+
+  // Display time
+  timersub(&finish, &start, &diff);
+  double duration = (double) diff.tv_sec + (double) diff.tv_usec / 1000000.0;
+  printf("Time = %lf\n", duration);
 
   return 0;
 }

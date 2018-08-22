@@ -82,12 +82,9 @@ In response, we have developed a custom multithreaded processor called
 Tinsel -- a 32-bit RISC-V floating-point-enabled processor supporting
 up to 32 threads per core. Multithreading allows the processor to stay
 busy even when some threads are blocked on the result of a latent
-operation. This is achieved while keeping the programming model
-simple: low-level interrupt handlers and software scheduling are not
-required just to do a floating-point operation or a memory access.
-Multithreading also tolerates the latency of arbitration logic,
-allowing efficient sharing of large components such as FPUs and caches
-between cores.
+operation.  Multithreading also tolerates the latency of arbitration
+logic, allowing efficient sharing of large components such as FPUs and
+caches between cores.
 
 At most one instruction per thread is allowed in the core's pipeline
 at any time, eliminating all control and data hazards.  This leads to
@@ -145,7 +142,7 @@ for our own purposes, resulting in very little overhead on the wire.
 ### 1.4 POETS Hardware
 
 A prototype POETS hardware system is currently under construction and,
-when complete, will consist of around 50 DE5-NET FPGA boards connected
+when complete, will consist of around 50 DE5-Net FPGA boards connected
 by numerous high-speed serial links in a 3D mesh topology.  Each group
 of 7-10 FPGAs will reside in a separate *POETs box*.  One FPGA in each
 box will serve as a *PCI Express bridge board* that connects a modern
@@ -236,8 +233,8 @@ Single-precision floating-point operations are implemented by the
 *Tinsel FPU*, which may be shared by any number of cores, as defined
 by the `LogCoresPerFPU` parameter.  Note that, because the FPU is
 implemented using IP blocks provided by the FPGA vendor, there are
-some small [limitations](h-missing-rv32imf-features) with respect to
-the RISC-V spec.  Most FPU operations have a high latency on the
+some [limitations](h-missing-rv32imf-features) with respect to the
+RISC-V spec.  Most FPU operations have a high latency on the
 [DE5-Net](http://de5-net.terasic.com) (up to 14 clock cycles) so
 multithreading is important for efficient implementation.
 
@@ -787,12 +784,14 @@ The default Tinsel configuration on a single DE5-Net board contains:
   * 16 mailboxes
   * 16 caches
   * 16 floating-point units
+  * 2D network-on-chip
   * two DDR3 DRAM controllers
+  * four QDRII++ SRAM controllers
   * four 10Gbps reliable links
   * a JTAG UART
 
-The clock frequency is 250MHz and the resource utilisation is 116K
-ALMs, *50% of the DE5-Net*.
+The clock frequency is 250MHz and the resource utilisation is 135K
+ALMs, *58% of the DE5-Net*.
 
 ## B. Tinsel Parameters
 
