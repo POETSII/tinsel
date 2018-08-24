@@ -10,7 +10,7 @@
 // And there is a 2D mesh of boards
 // Assumption 1: X_BOARDS <= TinselMeshXLen
 // Assumption 2: Y_BOARDS <= TinselMeshYLen
-#define X_BOARDS 3
+#define X_BOARDS 1
 #define Y_BOARDS 1
 
 // In all, the program uses an X_LEN * Y_LEN grid of threads
