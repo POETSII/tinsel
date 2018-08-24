@@ -15,16 +15,13 @@ DEPS = $(INC)/config.h $(INC)/boot.h \
 .PHONY: all
 all: DebugLink.o HostLink.o MemFileReader.o UART.o pciestreamd \
      sim/DebugLink.o sim/HostLink.o sim/MemFileReader.o sim/UART.o \
-     udsock tinsel-power
+     udsock
 
 pciestreamd: pciestreamd.cpp PowerLink.o
 	g++ -O2 pciestreamd.cpp PowerLink.o -o pciestreamd
 
 udsock: udsock.c
 	gcc -O2 udsock.c -o udsock
-
-tinsel-power: tinsel-power.cpp PowerLink.o
-	g++ $(CPPFLAGS) tinsel-power.cpp PowerLink.o -o tinsel-power
 
 sim/%.o: %.cpp $(DEPS)
 	mkdir -p sim
@@ -38,5 +35,5 @@ $(INC)/config.h: $(TINSEL_ROOT)/config.py
 
 .PHONY: clean
 clean:
-	rm -f *.o pciestreamd udsock tinsel-power
+	rm -f *.o pciestreamd udsock
 	rm -rf sim

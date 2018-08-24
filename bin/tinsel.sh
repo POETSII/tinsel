@@ -11,37 +11,24 @@ fi
 function stop {
   echo "Stopping tinsel service"
 
-  # Try to exit PCIeStream Daemon gracefully
-  RUNNING=$(netstat -anx | grep pciestream)
-  if [ ! -z "$RUNNING" ]; then
-    echo "Sending exit command to pciestreamd"
-    echo -n e | $TINSEL_ROOT/hostlink/udsock in @pciestream-ctrl
-  fi
-
   # Turn off power to the worker boards
   echo "Turning off worker FPGAs"
-  $TINSEL_ROOT/hostlink/tinsel-power off
+  $TINSEL_ROOT/bin/fpga-power.sh off
   sleep 1
   
-  # If pciestreamd is still alive, kill it
+  # If pciestreamd is alive, kill it
   echo "Terminating pciestreamd"
   killall -q -9 pciestreamd
   sleep 1
 }
 
 function start {
-  # Reset the power management boards
-  echo "Resetting PSoC power management boards"
-  $TINSEL_ROOT/bin/reset-psocs.sh
 
   stop
   echo "Starting tinsel service"
 
   # Load PCIeStream Daemon kernel module
-  MOD_LOADED=$(lsmod | grep dmabuffer)
-  if [ -z "$MOD_LOADED" ]; then
-    insmod $TINSEL_ROOT/hostlink/driver/dmabuffer.ko
-  fi
+  modprobe dmabuffer
 
   # Determine bridge board's PCIe BAR
   BAR=$(lspci -d 1172:0de5 -v   | \
@@ -67,18 +54,7 @@ case $1 in
     stop
   ;;
 
-  restart)
-    start
-  ;;
-
-  reboot)
-    stop
-    echo "Reprogramming bridge board"
-    $QUARTUS_PGM -m jtag -o "p;$TINSEL_ROOT/sof/tinsel-0.3-bridge.sof"
-    reboot
-  ;;
-
   *)
-    echo "Usage: tinsel.sh (start|stop|restart|reboot)"
+    echo "Usage: tinsel.sh (start|stop)"
   ;;
 esac
