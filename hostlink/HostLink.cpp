@@ -72,12 +72,6 @@ HostLink::HostLink()
   // Determine number of boards
   int numBoards = TinselMeshXLen * TinselMeshYLen + 1;
 
-  // Power down mesh boards
-  #ifndef SIMULATE
-  powerdown();
-  sleep(1);
-  #endif
-
   // Ignore SIGPIPE
   signal(SIGPIPE, SIG_IGN);
 
