@@ -80,9 +80,10 @@ INLINE TinselWakeupCond operator|(TinselWakeupCond a, TinselWakeupCond b);
 // (Host board has X coordinate of 0 and Y coordinate on mesh rim)
 INLINE uint32_t tinselHostId()
 {
-  return TinselMeshYLen << (TinselMeshXBits +
-                              TinselLogCoresPerBoard +
-                                TinselLogThreadsPerCore);
+  return ((1<<TinselMeshYBits)-1) <<
+             (TinselMeshXBits +
+                TinselLogCoresPerBoard +
+                  TinselLogThreadsPerCore);
 }
 
 // Return pointer to base of thread's DRAM partition

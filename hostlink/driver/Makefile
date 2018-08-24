@@ -7,4 +7,5 @@ all:
 
 clean:
 	make -C $(KERNEL_SRC_DIR) M=$(PWD) clean
+	rm -f *.ur-safe
 
