@@ -121,7 +121,7 @@ p["MeshYBits"] = 2
 p["MeshXLen"] = 3
 
 # Mesh Y length
-p["MeshYLen"] = 1
+p["MeshYLen"] = 2
 
 # Number of cores per FPU
 p["LogCoresPerFPU"] = 2
