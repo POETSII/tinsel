@@ -451,11 +451,13 @@ module mkFlitMerger#(Out#(Flit) left, Out#(Flit) right) (Out#(Flit));
            rightIn.canGet &&
              (!leftIn.canGet || prevChoiceWasLeft));
     // Consume input
-    if (chooseRight && rightIn.canGet) begin
-      rightIn.get;
-      outPort.put(rightIn.value);
-      lock <= rightIn.value.notFinalFlit ? FromRight : Unlocked;
-      prevChoiceWasLeft <= False;
+    if (chooseRight) begin
+      if (rightIn.canGet) begin
+        rightIn.get;
+        outPort.put(rightIn.value);
+        lock <= rightIn.value.notFinalFlit ? FromRight : Unlocked;
+        prevChoiceWasLeft <= False;
+      end
     end else if (leftIn.canGet) begin
       leftIn.get;
       outPort.put(leftIn.value);
