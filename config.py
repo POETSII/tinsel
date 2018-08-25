@@ -43,10 +43,10 @@ p["LogWordsPerBeat"] = 3
 p["LogBeatsPerLine"] = 0
 
 # Log of number of sets per thread in set-associative data cache
-p["DCacheLogSetsPerThread"] = 3
+p["DCacheLogSetsPerThread"] = 2
 
 # Log of number of ways per set in set-associative data cache
-p["DCacheLogNumWays"] = 2
+p["DCacheLogNumWays"] = 3
 
 # Number of DRAMs per FPGA board
 p["LogDRAMsPerBoard"] = 1
