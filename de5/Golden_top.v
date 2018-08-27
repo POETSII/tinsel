@@ -517,7 +517,7 @@ S5_DDR3_QSYS u0 (
 
   // SRAMs
 
-  .clk_a_b_c_clk(OSC_50_B4A),
+  .clk_b_clk(OSC_50_B4A),
   .clk_d_clk(OSC_50_B8D),
   .reset_b_reset_n(rst_sram_n),
   .reset_d_reset_n(rst_sram_n),
