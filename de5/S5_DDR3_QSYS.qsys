@@ -318,7 +318,7 @@
          type = "int";
       }
    }
-   element ref_clk_a_b_c
+   element ref_clk_b
    {
       datum _sortIndex
       {
@@ -331,6 +331,14 @@
       datum _sortIndex
       {
          value = "2";
+         type = "int";
+      }
+   }
+   element reset_bridge_0
+   {
+      datum _sortIndex
+      {
+         value = "34";
          type = "int";
       }
    }
@@ -374,12 +382,13 @@
  <interface name="board_id" internal="DE5Top_0.board_id" type="conduit" dir="end" />
  <interface name="clk" internal="clk_50.clk_in" type="clock" dir="end" />
  <interface name="clk_156" internal="clk_156.clk_in" type="clock" dir="end" />
- <interface
-   name="clk_a_b_c"
-   internal="ref_clk_a_b_c.clk_in"
-   type="clock"
-   dir="end" />
+ <interface name="clk_b" internal="ref_clk_b.clk_in" type="clock" dir="end" />
  <interface name="clk_d" internal="ref_clk_d.clk_in" type="clock" dir="end" />
+ <interface
+   name="ddr3_afi_reset"
+   internal="reset_bridge_0.out_reset"
+   type="reset"
+   dir="start" />
  <interface
    name="ddr3_reset"
    internal="mem_if_ddr3_emif.afi_reset_export"
@@ -485,8 +494,8 @@
    type="reset"
    dir="end" />
  <interface
-   name="reset_a_b_c"
-   internal="ref_clk_a_b_c.clk_in_reset"
+   name="reset_b"
+   internal="ref_clk_b.clk_in_reset"
    type="reset"
    dir="end" />
  <interface
@@ -2432,7 +2441,7 @@
   <parameter name="SYSINFO_ADDR_WIDTH" value="23" />
   <parameter name="USE_AUTO_ADDRESS_WIDTH" value="0" />
  </module>
- <module name="ref_clk_a_b_c" kind="clock_source" version="16.1" enabled="1">
+ <module name="ref_clk_b" kind="clock_source" version="16.1" enabled="1">
   <parameter name="clockFrequency" value="50000000" />
   <parameter name="clockFrequencyKnown" value="true" />
   <parameter name="inputClockFrequency" value="0" />
@@ -2443,6 +2452,17 @@
   <parameter name="clockFrequencyKnown" value="true" />
   <parameter name="inputClockFrequency" value="0" />
   <parameter name="resetSynchronousEdges" value="NONE" />
+ </module>
+ <module
+   name="reset_bridge_0"
+   kind="altera_reset_bridge"
+   version="16.1"
+   enabled="1">
+  <parameter name="ACTIVE_LOW_RESET" value="0" />
+  <parameter name="AUTO_CLK_CLOCK_RATE" value="-1" />
+  <parameter name="NUM_RESET_OUTPUTS" value="1" />
+  <parameter name="SYNCHRONOUS_EDGES" value="none" />
+  <parameter name="USE_RESET_REQUEST" value="0" />
  </module>
  <module name="temp_sense" kind="altera_temp_sense" version="16.1" enabled="1">
   <parameter name="CBX_AUTO_BLACKBOX" value="ALL" />
@@ -2953,7 +2973,7 @@
  <connection
    kind="clock"
    version="16.1"
-   start="ref_clk_a_b_c.clk"
+   start="ref_clk_b.clk"
    end="qdr_b.pll_ref_clk" />
  <connection
    kind="clock"
@@ -3096,6 +3116,16 @@
  <connection
    kind="reset"
    version="16.1"
+   start="qdr_b.afi_reset"
+   end="qdr_a.global_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="qdr_b.afi_reset"
+   end="qdr_c.global_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
    start="mem_if_ddr3_emif.afi_reset"
    end="mac_a_tx_fifo.in_clk_reset" />
  <connection
@@ -3113,6 +3143,11 @@
    version="16.1"
    start="mem_if_ddr3_emif.afi_reset"
    end="mac_d_tx_fifo.in_clk_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="mem_if_ddr3_emif.afi_reset"
+   end="reset_bridge_0.in_reset" />
  <connection
    kind="reset"
    version="16.1"
@@ -3226,6 +3261,16 @@
  <connection
    kind="reset"
    version="16.1"
+   start="qdr_b.afi_reset"
+   end="qdr_a.soft_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="qdr_b.afi_reset"
+   end="qdr_c.soft_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
    start="clk_50.clk_reset"
    end="mac_a.csr_reset" />
  <connection
@@ -3261,17 +3306,12 @@
  <connection
    kind="reset"
    version="16.1"
-   start="ref_clk_a_b_c.clk_reset"
-   end="qdr_c.global_reset" />
- <connection
-   kind="reset"
-   version="16.1"
-   start="ref_clk_a_b_c.clk_reset"
+   start="ref_clk_b.clk_reset"
    end="qdr_b.global_reset" />
  <connection
    kind="reset"
    version="16.1"
-   start="ref_clk_a_b_c.clk_reset"
+   start="ref_clk_b.clk_reset"
    end="qdr_a.global_reset" />
  <connection
    kind="reset"
@@ -3321,32 +3361,32 @@
  <connection
    kind="reset"
    version="16.1"
-   start="ref_clk_a_b_c.clk_reset"
+   start="ref_clk_b.clk_reset"
    end="qdr_a_r_bridge.m0_reset" />
  <connection
    kind="reset"
    version="16.1"
-   start="ref_clk_a_b_c.clk_reset"
+   start="ref_clk_b.clk_reset"
    end="qdr_a_w_bridge.m0_reset" />
  <connection
    kind="reset"
    version="16.1"
-   start="ref_clk_a_b_c.clk_reset"
+   start="ref_clk_b.clk_reset"
    end="qdr_b_r_bridge.m0_reset" />
  <connection
    kind="reset"
    version="16.1"
-   start="ref_clk_a_b_c.clk_reset"
+   start="ref_clk_b.clk_reset"
    end="qdr_b_w_bridge.m0_reset" />
  <connection
    kind="reset"
    version="16.1"
-   start="ref_clk_a_b_c.clk_reset"
+   start="ref_clk_b.clk_reset"
    end="qdr_c_r_bridge.m0_reset" />
  <connection
    kind="reset"
    version="16.1"
-   start="ref_clk_a_b_c.clk_reset"
+   start="ref_clk_b.clk_reset"
    end="qdr_c_w_bridge.m0_reset" />
  <connection
    kind="reset"
@@ -3491,17 +3531,12 @@
  <connection
    kind="reset"
    version="16.1"
-   start="ref_clk_a_b_c.clk_reset"
-   end="qdr_c.soft_reset" />
- <connection
-   kind="reset"
-   version="16.1"
-   start="ref_clk_a_b_c.clk_reset"
+   start="ref_clk_b.clk_reset"
    end="qdr_b.soft_reset" />
  <connection
    kind="reset"
    version="16.1"
-   start="ref_clk_a_b_c.clk_reset"
+   start="ref_clk_b.clk_reset"
    end="qdr_a.soft_reset" />
  <connection
    kind="reset"
