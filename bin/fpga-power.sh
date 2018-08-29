@@ -23,4 +23,8 @@ for DEV in /sys/bus/usb/devices/*; do
   fi
 done
 
+if [ "$1" == "off" ]; then
+  killall -q jtagd 2> /dev/null
+fi
+
 sleep 1
