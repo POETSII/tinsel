@@ -412,7 +412,7 @@ int main(int argc, char* argv[])
     csrs[2*CSR_EN] = 0;
     while (csrs[2*CSR_INFLIGHT] != 0);
     csrs[2*CSR_RESET] = 1;
-    usleep(100000);
+    usleep(1000000);
     csrs[2*CSR_ADDR_RX_A] = addrRxA;
     csrs[2*CSR_ADDR_RX_B] = addrRxB;
     csrs[2*CSR_ADDR_TX_A] = addrTxA;
