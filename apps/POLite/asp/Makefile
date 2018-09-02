@@ -43,7 +43,7 @@ $(HL)/%.o:
 	make -C $(HL)
 
 run: Run.cpp $(HL)/*.o
-	g++ -O2 -I $(INC) -I $(HL) -o run Run.cpp $(HL)/*.o \
+	g++ -O2 -std=c++98 -I $(INC) -I $(HL) -o run Run.cpp $(HL)/*.o \
 	  -ljtag_atlantic -ljtag_client -L $(QUARTUS_ROOTDIR)/linux64/ \
 	  -Wl,-rpath,$(QUARTUS_ROOTDIR)/linux64 -lmetis
 
