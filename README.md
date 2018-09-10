@@ -1,4 +1,4 @@
-# Tinsel v0.4
+# Tinsel 0.5
 
 Tinsel is a [RISC-V](https://riscv.org/)-based manythread
 message-passing architecture designed for FPGA clusters.  It is being
@@ -12,14 +12,16 @@ machine running Tinsel in the
 ## Release Log
 
 * [v0.2](https://github.com/POETSII/tinsel/releases/tag/v0.2):
-Released on 12 April 2017 and maintained in the
+Released on 12 Apr 2017 and maintained in the
 [tinsel-0.2 branch](https://github.com/POETSII/tinsel/tree/tinsel-0.2).
 (First single-board release.)
 * [v0.3](https://github.com/POETSII/tinsel/releases/tag/v0.3):
-Released on 11 June 2018 and maintained in the
+Released on 11 Jun 2018 and maintained in the
 [tinsel-0.3.1 branch](https://github.com/POETSII/tinsel/tree/tinsel-0.3.1).
 (Multi-board plus PCIe host-link.)
-* v0.4: Under development in the master branch.
+* [v0.4](https://github.com/POETSII/tinsel/releases/tag/v0.4):
+Released on 10 Sep 2018 and maintained in the
+[tinsel-0.4 branch](https://github.com/POETSII/tinsel/tree/tinsel-0.4).
 (2D NoC plus off-chip SRAMs.)
 
 ## Contents
