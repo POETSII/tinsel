@@ -23,6 +23,7 @@ Released on 11 Jun 2018 and maintained in the
 Released on 10 Sep 2018 and maintained in the
 [tinsel-0.4 branch](https://github.com/POETSII/tinsel/tree/tinsel-0.4).
 (2D NoC plus off-chip SRAMs.)
+* v0.5: Under development in the master branch.
 
 ## Contents
 
