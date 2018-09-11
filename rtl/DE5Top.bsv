@@ -175,6 +175,20 @@ module de5Top (DE5Top);
   endrule
   `endif
 
+  `ifdef SIMULATE
+  AvalonMac east = net.east;
+  AvalonMac west = net.west;
+  `else
+  // Using the PCIe motherboard, the east and west lanes differ
+  // depending on which slot we're in:
+  //   Slot C: X=1, swap
+  //   Slot B: unused (until we put FPGAs in all 3 slots)
+  //   Slot A: X=0, no swap
+  Bool swap = boardId.x == 1;
+  AvalonMac east = macMux(swap, net.east, net.west);
+  AvalonMac west = macMux(swap, net.west, net.east);
+  `endif
+
   `ifndef SIMULATE
   function DRAMExtIfc getDRAMExtIfc(OffChipRAM ram) = ram.extDRAM;
   function Vector#(2, SRAMExtIfc) getSRAMExtIfcs(OffChipRAM ram) = ram.extSRAM;
