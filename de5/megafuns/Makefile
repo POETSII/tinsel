@@ -1,15 +1,25 @@
 .PHONY: all
-all: phy phy_reconfig fp
+all: phy8 phy_reconfig8 phy4 phy_reconfig4 fp
 
-phy: phy.v
-	mkdir -p phy
-	cp -a phy.v phy
-	cd phy && qmegawiz -silent phy.v
+phy8: phy8.v
+	mkdir -p phy8
+	cp -a phy8.v phy8
+	cd phy8 && qmegawiz -silent phy8.v
 
-phy_reconfig: phy_reconfig.v
-	mkdir -p phy_reconfig
-	cp -a phy_reconfig.v phy_reconfig
-	cd phy_reconfig && qmegawiz -silent phy_reconfig.v
+phy_reconfig8: phy_reconfig8.v
+	mkdir -p phy_reconfig8
+	cp -a phy_reconfig8.v phy_reconfig8
+	cd phy_reconfig8 && qmegawiz -silent phy_reconfig8.v
+
+phy4: phy4.v
+	mkdir -p phy4
+	cp -a phy4.v phy4
+	cd phy4 && qmegawiz -silent phy4.v
+
+phy_reconfig4: phy_reconfig4.v
+	mkdir -p phy_reconfig4
+	cp -a phy_reconfig4.v phy_reconfig4
+	cd phy_reconfig4 && qmegawiz -silent phy_reconfig4.v
 
 fp:
 	mkdir -p fp
@@ -30,4 +40,4 @@ fp:
 
 .PHONY: clean
 clean:
-	rm -rf phy phy_reconfig fp
+	rm -rf phy4 phy_reconfig4 phy8 phy_reconfig8 fp
