@@ -622,8 +622,8 @@ S5_DDR3_QSYS u0 (
   .mac_b_xgmii_tx_data(sfp_b_tx_dc),
 
   .mac_c_pause_data(0),
-  .mac_c_xgmii_rx_data(pcie_east0_c_rx_dc),
-  .mac_c_xgmii_tx_data(pcie_east0_c_tx_dc),
+  .mac_c_xgmii_rx_data(pcie_east0_rx_dc),
+  .mac_c_xgmii_tx_data(pcie_east0_tx_dc),
 
   .mac_d_pause_data(0),
   .mac_d_xgmii_rx_data(pcie_west0_rx_dc),
