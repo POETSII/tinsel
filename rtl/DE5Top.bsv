@@ -175,9 +175,12 @@ module de5Top (DE5Top);
   endrule
   `endif
 
+  Vector#(`NumEastWestLinks, AvalonMac) east;
+  Vector#(`NumEastWestLinks, AvalonMac) west;
+
   `ifdef SIMULATE
-  AvalonMac east = net.east;
-  AvalonMac west = net.west;
+  east = net.east;
+  west = net.west;
   `else
   // Using the PCIe motherboard, the east and west lanes differ
   // depending on which slot we're in:
@@ -185,8 +188,10 @@ module de5Top (DE5Top);
   //   Slot B: unused (until we put FPGAs in all 3 slots)
   //   Slot A: X=0, no swap
   Bool swap = boardId.x == 1;
-  AvalonMac east = macMux(swap, net.east, net.west);
-  AvalonMac west = macMux(swap, net.west, net.east);
+  for (Integer i = 0; i < `NumEastWestLinks; i=i+1) begin
+    east[i] = macMux(swap, net.east[i], net.west[i]);
+    west[i] = macMux(swap, net.west[i], net.east[i]);
+  end
   `endif
 
   `ifndef SIMULATE
@@ -197,8 +202,8 @@ module de5Top (DE5Top);
   interface jtagIfc  = debugLink.jtagAvalon;
   interface northMac = net.north;
   interface southMac = net.south;
-  interface eastMac  = net.east;
-  interface westMac  = net.west;
+  interface eastMac  = east;
+  interface westMac  = west;
   method Action setBoardId(BoardId id);
     boardId <= id;
   endmethod
