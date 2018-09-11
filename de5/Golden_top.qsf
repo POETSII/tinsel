@@ -2246,7 +2246,7 @@ set_global_assignment -name USE_DLL_FREQUENCY_FOR_DQS_DELAY_CHAIN ON
 set_global_assignment -name QIP_FILE megafuns/phy_reconfig4/phy_reconfig4.qip
 set_global_assignment -name QIP_FILE megafuns/phy4/phy4.qip
 set_global_assignment -name QIP_FILE megafuns/phy_reconfig8/phy_reconfig8.qip
-set_global_assignment -name QIP_FILE megafuns/phy4/phy8.qip
+set_global_assignment -name QIP_FILE megafuns/phy8/phy8.qip
 set_global_assignment -name QIP_FILE megafuns/fp/AlteraFPAddSub.qip
 set_global_assignment -name QIP_FILE megafuns/fp/AlteraFPMult.qip
 set_global_assignment -name QIP_FILE megafuns/fp/AlteraFPDiv.qip
