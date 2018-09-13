@@ -558,6 +558,7 @@ phy_reconfig8 phy_reconfig8_inst (
   .reconfig_from_xcvr(phy_reconfig8_from_xcvr)
 );
 
+reg reset_mac = 1;
 
 S5_DDR3_QSYS u0 (
   .clk_clk                                   (clk_50mhz),
@@ -608,10 +609,10 @@ S5_DDR3_QSYS u0 (
   // Networking
 
   .sfp_clk_156_clk(sfp_clk_156mhz),
-  .sfp_reset_156_reset_n(phy4_pll_locked),
+  .sfp_reset_156_reset_n(~((~phy4_pll_locked) | reset_mac)),
 
   .pcie_clk_156_clk(pcie_clk_156mhz),
-  .pcie_reset_156_reset_n(phy8_pll_locked),
+  .pcie_reset_156_reset_n(~((~phy8_pll_locked) | reset_mac)),
 
   .mac_a_pause_data(0),
   .mac_a_xgmii_rx_data(sfp_a_rx_dc),
@@ -729,6 +730,13 @@ reg [7:0] rst_sram_d_count = 0;
 always @(posedge OSC_50_B8D) begin
   if (rst_sram_d_count == 255) rst_sram_d_n <= 1;
   else rst_sram_d_count <= rst_sram_d_count + 1;
+end
+
+// Reset MACs
+reg [32:0] rst_mac_count = 0;
+always @(posedge OSC_50_B7A) begin
+  if (rst_mac_count == 50000000) reset_mac <= 0;
+  else rst_mac_count <= rst_mac_count + 1;
 end
 
 endmodule 
