@@ -225,7 +225,7 @@ assign SFPD_MOD2_SDA = 1'bz;
 assign SFPD_TXDISABLE = 1'b0;
 assign SPFD_RATESEL = 2'b00;
 
-phy phy_inst (
+phy4 phy_inst (
   .pll_ref_clk(SFP_REFCLK_p),
   .pll_locked(phy_pll_locked),
 
@@ -268,7 +268,7 @@ phy phy_inst (
   .reconfig_to_xcvr(phy_reconfig_to_xcvr)
 );
 
-phy_reconfig phy_reconfig_inst (
+phy_reconfig4 phy_reconfig_inst (
   .reconfig_busy(),
 
   .mgmt_clk_clk(clk_50mhz),
