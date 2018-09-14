@@ -1,16 +1,16 @@
 .PHONY: all
-all: phy phy_reconfig
+all: phy4 phy_reconfig4
 
-phy: ../../megafuns/phy.v
-	mkdir -p phy
-	cp -a ../../megafuns/phy.v phy
-	cd phy && qmegawiz -silent phy.v
+phy4: ../../megafuns/phy4.v
+	mkdir -p phy4
+	cp -a ../../megafuns/phy4.v phy4
+	cd phy4 && qmegawiz -silent phy4.v
 
-phy_reconfig: ../../megafuns/phy_reconfig.v
-	mkdir -p phy_reconfig
-	cp -a ../../megafuns/phy_reconfig.v phy_reconfig
-	cd phy_reconfig && qmegawiz -silent phy_reconfig.v
+phy_reconfig4: ../../megafuns/phy_reconfig4.v
+	mkdir -p phy_reconfig4
+	cp -a ../../megafuns/phy_reconfig4.v phy_reconfig4
+	cd phy_reconfig4 && qmegawiz -silent phy_reconfig4.v
 
 .PHONY: clean
 clean:
-	rm -rf phy phy_reconfig
+	rm -rf phy4 phy_reconfig4
