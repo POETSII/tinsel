@@ -106,7 +106,8 @@ wire rst_50mhz = 0;
 
 wire clk_156mhz;
 wire phy_pll_locked;
-wire soft_reset;
+wire soft_reset_in;
+reg soft_reset_out = 0;
 
 wire [7:0] ts_out;
 wire ts_done;
@@ -287,7 +288,7 @@ phy_reconfig4 phy_reconfig_inst (
 
 SoC system (
   .clk_clk                                   (clk_50mhz),
-  .reset_reset_n                             (~soft_reset),
+  .reset_reset_n                             (~soft_reset_out),
 
   .pcie_mm_hip_ctrl_test_in                    (),
   .pcie_mm_hip_ctrl_simu_mode_pipe             (1'b0),
@@ -314,15 +315,15 @@ SoC system (
   .pcie_xcvr_reset_reset_n                     (PCIE_PERST_n),
 
   .clk_156_clk(clk_156mhz),
-  .reset_156_reset_n(~(soft_reset | ~phy_pll_locked)),
+  .reset_156_reset_n(~(soft_reset_out | ~phy_pll_locked)),
 
   .mac_a_pause_data(0),
   .mac_a_xgmii_rx_data(sfp_a_rx_dc),
   .mac_a_xgmii_tx_data(sfp_a_tx_dc),
 
-  .soft_reset_val(soft_reset),
+  .soft_reset_val(soft_reset_in),
 
-  .pcie_clk_reset_reset(soft_reset),
+  .pcie_clk_reset_reset(soft_reset_out),
 
   .ts_done_tsdcaldone(ts_done),
   .ts_out_tsdcalo(ts_out),
@@ -342,5 +343,18 @@ temp_display temp_display_inst (
   .HEX1_D(HEX1_D),
   .HEX1_DP(HEX1_DP)
 );
- 
+
+reg [11:0] reset_count = 0;
+always @(posedge clk_50mhz) begin
+  if (soft_reset_in) begin
+    reset_count <= 0;
+    soft_reset_out <= 1;
+  end else begin
+    if (reset_count == 1024) begin
+      soft_reset_out <= 0;
+    end else
+      reset_count <= reset_count + 1;
+  end
+end
+
 endmodule 
