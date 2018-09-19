@@ -3306,6 +3306,26 @@
  <connection
    kind="reset"
    version="16.1"
+   start="sfp_clk_156.clk_reset"
+   end="mac_a.csr_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="sfp_clk_156.clk_reset"
+   end="mac_b.csr_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="pcie_clk_156.clk_reset"
+   end="mac_c.csr_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="pcie_clk_156.clk_reset"
+   end="mac_d.csr_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
    start="clk_50.clk_reset"
    end="mem_if_ddr3_emif.global_reset" />
  <connection
