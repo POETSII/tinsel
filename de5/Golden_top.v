@@ -244,8 +244,7 @@ wire rst_50mhz_n = 1;
 wire sfp_clk_156mhz;
 wire pcie_clk_156mhz;
 
-reg rst_sram_b_n = 0;
-reg rst_sram_d_n = 0;
+reg rst_sram_n = 0;
 
 wire ddr3_local_init_done;
 wire ddr3_local_cal_success;
@@ -641,8 +640,8 @@ S5_DDR3_QSYS u0 (
 
   .clk_a_b_c_clk(OSC_50_B4A),
   .clk_d_clk(OSC_50_B8D),
-  .reset_a_b_c_reset_n(rst_sram_b_n),
-  .reset_d_reset_n(rst_sram_d_n),
+  .reset_a_b_c_reset_n(rst_sram_n),
+  .reset_d_reset_n(rst_sram_n),
 
   .oct_0_rzqin(RZQ_1),
 
@@ -721,15 +720,10 @@ temp_display temp_display_inst (
 );
 
 // Reset SRAMs
-reg [7:0] rst_sram_b_count = 0;
-always @(posedge OSC_50_B4A) begin
-  if (rst_sram_b_count == 255) rst_sram_b_n <= 1;
-  else rst_sram_b_count <= rst_sram_b_count + 1;
-end
-reg [7:0] rst_sram_d_count = 0;
-always @(posedge OSC_50_B8D) begin
-  if (rst_sram_d_count == 255) rst_sram_d_n <= 1;
-  else rst_sram_d_count <= rst_sram_d_count + 1;
+reg [31:0] rst_sram_count = 0;
+always @(posedge OSC_50_B3B) begin
+  if (rst_sram_count == 10000000) rst_sram_n <= 1;
+  else rst_sram_count <= rst_sram_count + 1;
 end
 
 // Reset MACs

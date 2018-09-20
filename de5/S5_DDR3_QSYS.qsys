@@ -2786,11 +2786,6 @@
    kind="clock"
    version="16.1"
    start="mem_if_ddr3_emif.afi_clk"
-   end="mac_a_tx_fifo.in_clk" />
- <connection
-   kind="clock"
-   version="16.1"
-   start="mem_if_ddr3_emif.afi_clk"
    end="mac_b_tx_fifo.in_clk" />
  <connection
    kind="clock"
@@ -2802,6 +2797,11 @@
    version="16.1"
    start="mem_if_ddr3_emif.afi_clk"
    end="mac_d_tx_fifo.in_clk" />
+ <connection
+   kind="clock"
+   version="16.1"
+   start="mem_if_ddr3_emif.afi_clk"
+   end="mac_a_tx_fifo.in_clk" />
  <connection
    kind="clock"
    version="16.1"
@@ -3176,6 +3176,26 @@
  <connection
    kind="reset"
    version="16.1"
+   start="mem_if_ddr3_emif.afi_reset"
+   end="mac_a_rx_fifo.in_clk_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="mem_if_ddr3_emif.afi_reset"
+   end="mac_b_rx_fifo.in_clk_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="mem_if_ddr3_emif.afi_reset"
+   end="mac_c_rx_fifo.in_clk_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="mem_if_ddr3_emif.afi_reset"
+   end="mac_d_rx_fifo.in_clk_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
    start="qdr_b.afi_reset"
    end="qdr_a_w_bridge.m0_reset" />
  <connection
@@ -3207,11 +3227,56 @@
    kind="reset"
    version="16.1"
    start="qdr_d.afi_reset"
-   end="qdr_d_r_bridge.m0_reset" />
+   end="qdr_d_w_bridge.m0_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="mem_if_ddr3_emif.afi_reset"
+   end="uart_bridge.m0_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="mem_if_ddr3_emif.afi_reset"
+   end="qdr_a_r_bridge.m0_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="mem_if_ddr3_emif.afi_reset"
+   end="qdr_a_w_bridge.m0_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="mem_if_ddr3_emif.afi_reset"
+   end="qdr_b_r_bridge.m0_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="mem_if_ddr3_emif.afi_reset"
+   end="qdr_b_w_bridge.m0_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="mem_if_ddr3_emif.afi_reset"
+   end="qdr_c_r_bridge.m0_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="mem_if_ddr3_emif.afi_reset"
+   end="qdr_c_w_bridge.m0_reset" />
  <connection
    kind="reset"
    version="16.1"
    start="qdr_d.afi_reset"
+   end="qdr_d_r_bridge.m0_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="mem_if_ddr3_emif.afi_reset"
+   end="qdr_d_r_bridge.m0_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="mem_if_ddr3_emif.afi_reset"
    end="qdr_d_w_bridge.m0_reset" />
  <connection
    kind="reset"
@@ -3233,6 +3298,26 @@
    version="16.1"
    start="mem_if_ddr3_emif.afi_reset"
    end="mac_d_rx_fifo.out_clk_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="mem_if_ddr3_emif.afi_reset"
+   end="mac_a_tx_fifo.out_clk_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="mem_if_ddr3_emif.afi_reset"
+   end="mac_b_tx_fifo.out_clk_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="mem_if_ddr3_emif.afi_reset"
+   end="mac_c_tx_fifo.out_clk_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="mem_if_ddr3_emif.afi_reset"
+   end="mac_d_tx_fifo.out_clk_reset" />
  <connection
    kind="reset"
    version="16.1"
@@ -3282,6 +3367,46 @@
    kind="reset"
    version="16.1"
    start="mem_if_ddr3_emif.afi_reset"
+   end="qdr_d_w_bridge.s0_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="qdr_b.afi_reset"
+   end="qdr_a_r_bridge.s0_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="qdr_b.afi_reset"
+   end="qdr_a_w_bridge.s0_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="qdr_b.afi_reset"
+   end="qdr_b_r_bridge.s0_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="qdr_b.afi_reset"
+   end="qdr_b_w_bridge.s0_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="qdr_b.afi_reset"
+   end="qdr_c_r_bridge.s0_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="qdr_b.afi_reset"
+   end="qdr_c_w_bridge.s0_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="qdr_d.afi_reset"
+   end="qdr_d_r_bridge.s0_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="qdr_d.afi_reset"
    end="qdr_d_w_bridge.s0_reset" />
  <connection
    kind="reset"
@@ -3396,48 +3521,28 @@
  <connection
    kind="reset"
    version="16.1"
+   start="sfp_clk_156.clk_reset"
+   end="mac_a_tx_fifo.in_clk_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="sfp_clk_156.clk_reset"
+   end="mac_b_tx_fifo.in_clk_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="pcie_clk_156.clk_reset"
+   end="mac_c_tx_fifo.in_clk_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="pcie_clk_156.clk_reset"
+   end="mac_d_tx_fifo.in_clk_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
    start="clk_50.clk_reset"
    end="uart_bridge.m0_reset" />
- <connection
-   kind="reset"
-   version="16.1"
-   start="ref_clk_a_b_c.clk_reset"
-   end="qdr_a_r_bridge.m0_reset" />
- <connection
-   kind="reset"
-   version="16.1"
-   start="ref_clk_a_b_c.clk_reset"
-   end="qdr_a_w_bridge.m0_reset" />
- <connection
-   kind="reset"
-   version="16.1"
-   start="ref_clk_a_b_c.clk_reset"
-   end="qdr_b_r_bridge.m0_reset" />
- <connection
-   kind="reset"
-   version="16.1"
-   start="ref_clk_a_b_c.clk_reset"
-   end="qdr_b_w_bridge.m0_reset" />
- <connection
-   kind="reset"
-   version="16.1"
-   start="ref_clk_a_b_c.clk_reset"
-   end="qdr_c_r_bridge.m0_reset" />
- <connection
-   kind="reset"
-   version="16.1"
-   start="ref_clk_a_b_c.clk_reset"
-   end="qdr_c_w_bridge.m0_reset" />
- <connection
-   kind="reset"
-   version="16.1"
-   start="ref_clk_d.clk_reset"
-   end="qdr_d_r_bridge.m0_reset" />
- <connection
-   kind="reset"
-   version="16.1"
-   start="ref_clk_d.clk_reset"
-   end="qdr_d_w_bridge.m0_reset" />
  <connection
    kind="reset"
    version="16.1"
@@ -3478,6 +3583,26 @@
    version="16.1"
    start="pcie_clk_156.clk_reset"
    end="mac_d_tx_fifo.out_clk_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="sfp_clk_156.clk_reset"
+   end="mac_a_rx_fifo.out_clk_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="sfp_clk_156.clk_reset"
+   end="mac_b_rx_fifo.out_clk_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="pcie_clk_156.clk_reset"
+   end="mac_c_rx_fifo.out_clk_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="pcie_clk_156.clk_reset"
+   end="mac_d_rx_fifo.out_clk_reset" />
  <connection
    kind="reset"
    version="16.1"
