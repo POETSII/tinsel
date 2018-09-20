@@ -320,7 +320,7 @@ p["DRAMGlobalsLength"] = 2 ** (p["LogBytesPerDRAM"] - 1) - p["DRAMBase"]
 if len(sys.argv) > 1:
   mode = sys.argv[1]
 else:
-  print "Usage: config.py <defs|envs|cpp>"
+  print "Usage: config.py <defs|envs|cpp|conf>"
   sys.exit(-1)
 
 if mode == "defs":
@@ -335,3 +335,25 @@ elif mode == "envs":
 elif mode == "cpp":
   for var in p:
     print("#define Tinsel" + var + " " + str(p[var]))
+elif mode == "conf":
+  # Dumps a conf-file of the configuration to stdout.
+  import ConfigParser
+  import datetime
+  writer = ConfigParser.ConfigParser()
+
+  # Write circuit data.
+  hardwareHandle = "HARDWARE"
+  writer.add_section(hardwareHandle)
+  for item in p.items():
+    writer.set(hardwareHandle, *item)
+
+  # Add a version section for auditing.
+  metadataHandle = "METADATA"
+  metadata = {"ConfigVersion": "0.0.0",
+              "Created": datetime.datetime.now().isoformat()}
+  writer.add_section(metadataHandle)
+  for item in metadata.items():
+    writer.set(metadataHandle, *item)
+
+  # Dump to stdout.
+  writer.write(sys.stdout)
