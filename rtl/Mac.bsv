@@ -129,7 +129,7 @@ module mkReceiveBuffer (ReceiveBuffer);
     // Increment pointer
     ReceiveBufferPtr ptr = farBackPtr+1;
     // Look for CRC or overflow errors
-    if (beat.stop && (err[1] == 1 || err[5] == 1 || err[0] == 1 || drop)) begin
+    if (beat.stop && (err != 0 || drop)) begin
       // Drop packet
       farBackPtr <= nearBackPtr;
       drop <= False;
