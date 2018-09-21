@@ -1580,6 +1580,11 @@
  <connection
    kind="reset"
    version="16.1"
+   start="clk_156.clk_reset"
+   end="mac_a.csr_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
    start="clk_50.clk_reset"
    end="mem_if_ddr3_emif.global_reset" />
  <connection
@@ -1595,6 +1600,11 @@
  <connection
    kind="reset"
    version="16.1"
+   start="clk_156.clk_reset"
+   end="mac_a_tx_fifo.in_clk_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
    start="clk_50.clk_reset"
    end="uart_bridge.m0_reset" />
  <connection
@@ -1607,6 +1617,11 @@
    version="16.1"
    start="clk_156.clk_reset"
    end="mac_a_tx_fifo.out_clk_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="clk_156.clk_reset"
+   end="mac_a_rx_fifo.out_clk_reset" />
  <connection
    kind="reset"
    version="16.1"
@@ -1661,7 +1676,17 @@
    kind="reset"
    version="16.1"
    start="pcie_clk_reset.out_reset"
+   end="mac_a.csr_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="pcie_clk_reset.out_reset"
    end="mac_a_tx_fifo.in_clk_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="pcie_clk_reset.out_reset"
+   end="mac_a_rx_fifo.in_clk_reset" />
  <connection
    kind="reset"
    version="16.1"
@@ -1671,12 +1696,27 @@
    kind="reset"
    version="16.1"
    start="pcie_clk_reset.out_reset"
+   end="mac_a_tx_fifo.out_clk_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="pcie_clk_reset.out_reset"
    end="DE5BridgeTop_0.reset_sink" />
  <connection
    kind="reset"
    version="16.1"
    start="pcie_clk_reset.out_reset"
+   end="mac_a.rx_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="pcie_clk_reset.out_reset"
    end="uart_bridge.s0_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="pcie_clk_reset.out_reset"
+   end="mac_a.tx_reset" />
  <interconnectRequirement for="$system" name="qsys_mm.clockCrossingAdapter" value="FIFO" />
  <interconnectRequirement for="$system" name="qsys_mm.maxAdditionalLatency" value="4" />
 </system>
