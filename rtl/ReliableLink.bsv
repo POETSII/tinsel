@@ -243,6 +243,10 @@ module mkReliableLinkCore#(Mac mac) (ReliableLink);
   SizedQueue#(`LogReliableLinkRecvBufferSize, Bit#(64))
     receiveBuffer <- mkUGSizedQueuePrefetch;
 
+  // Have any packets been received yet
+  // (Used to keep MACs quiet at powerup)
+  Reg#(Bool) receiveStarted <- mkConfigReg(False);
+
   // Transmitter
   // -----------
 
@@ -259,7 +263,7 @@ module mkReliableLinkCore#(Mac mac) (ReliableLink);
   Reg#(TransmitBufferPtr) nextItemToRecv <- mkConfigReg(0);
 
   // Count the number of idle cycles since an ACK was last sent
-  Reg#(Bit#(8)) idlesSinceACKSent <- mkConfigReg(0);
+  Reg#(Bit#(6)) idlesSinceACKSent <- mkConfigReg(0);
 
   rule transmit0 (txState == 0 && toMACPort.canPut);
     // Bound number of items in packet
@@ -280,7 +284,8 @@ module mkReliableLinkCore#(Mac mac) (ReliableLink);
     beat.stop  = False;
     beat.data  = zeroExtend(pack(h));
     // Send beat (only send empty ACK once every 40 idle cycles)
-    if (toSend != 0 || idlesSinceACKSent == 40) begin
+    Bool sendACK = receiveStarted && idlesSinceACKSent == 40;
+    if (toSend != 0 || sendACK) begin
       toMACPort.put(beat);
       idlesSinceACKSent <= 0;
       // Next state
@@ -335,6 +340,7 @@ module mkReliableLinkCore#(Mac mac) (ReliableLink);
 
   rule receive0 (rxState == 0 && fromMACPort.canGet);
     fromMACPort.get;
+    receiveStarted <= True;
     // Receive beat
     MacBeat beat = fromMACPort.value;
     // Extract header
