@@ -315,7 +315,7 @@ SoC system (
   .pcie_xcvr_reset_reset_n                     (PCIE_PERST_n),
 
   .clk_156_clk(clk_156mhz),
-  .reset_156_reset_n(~phy_pll_locked),
+  .reset_156_reset_n(phy_pll_locked),
 
   .mac_a_pause_data(0),
   .mac_a_xgmii_rx_data(sfp_a_rx_dc),
