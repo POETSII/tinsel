@@ -227,8 +227,8 @@ module Golden_top(
 );
 
 wire clk_50mhz = OSC_50_B7A;
-wire rst_50mhz = 0;
-wire rst_50mhz_n = 1;
+wire rst_50mhz = ~CPU_RESET_n;
+wire rst_50mhz_n = CPU_RESET_n;
 
 wire clk_156mhz;
 wire phy_pll_locked;
@@ -442,7 +442,7 @@ phy_reconfig phy_reconfig_inst (
 
 S5_DDR3_QSYS u0 (
   .clk_clk                                   (clk_50mhz),
-  .reset_reset_n                             (rst_50mhz_n),
+  .reset_reset_n                             (~(rst_50mhz | ~phy_locked)),
   .board_id_id                               (SW),
 
   // DRAMs
