@@ -442,7 +442,7 @@ phy_reconfig phy_reconfig_inst (
 
 S5_DDR3_QSYS u0 (
   .clk_clk                                   (clk_50mhz),
-  .reset_reset_n                             (~(rst_50mhz | ~phy_locked)),
+  .reset_reset_n                             (rst_50mhz_n),
   .board_id_id                               (SW),
 
   // DRAMs
