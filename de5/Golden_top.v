@@ -260,9 +260,6 @@ wire ts_done;
 wire ts_enable;
 wire ts_clear;
 
-assign LED[3:0] = {ddr3_local_init_done, ddr3_local_cal_success,
-                   ddr3_2_local_init_done, ddr3_2_local_cal_success};
-
 wire si570_scl_i;
 wire si570_scl_o;
 wire si570_scl_t;
@@ -598,15 +595,22 @@ temp_display temp_display_inst (
 );
 
 // Reset SRAMs
-reg [7:0] rst_sram_b_count = 0;
+reg [31:0] rst_sram_b_count = 0;
 always @(posedge OSC_50_B4A) begin
-  if (rst_sram_b_count == 255) rst_sram_b_n <= 1;
+  if (rst_sram_b_count == 50000000) rst_sram_b_n <= 1;
   else rst_sram_b_count <= rst_sram_b_count + 1;
 end
-reg [7:0] rst_sram_d_count = 0;
+reg [31:0] rst_sram_d_count = 0;
 always @(posedge OSC_50_B8D) begin
-  if (rst_sram_d_count == 255) rst_sram_d_n <= 1;
+  if (rst_sram_d_count == 50000000) rst_sram_d_n <= 1;
   else rst_sram_d_count <= rst_sram_d_count + 1;
 end
+
+assign LED[3:0] = {
+  qdr_a_status_local_cal_success,
+  qdr_b_status_local_cal_success,
+  qdr_c_status_local_cal_success,
+  qdr_d_status_local_cal_success
+};
 
 endmodule 
