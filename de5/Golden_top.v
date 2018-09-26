@@ -597,12 +597,12 @@ temp_display temp_display_inst (
 // Reset SRAMs
 reg [31:0] rst_sram_b_count = 0;
 always @(posedge OSC_50_B4A) begin
-  if (rst_sram_b_count == 50000000) rst_sram_b_n <= 1;
+  if (rst_sram_b_count == 10000000) rst_sram_b_n <= 1;
   else rst_sram_b_count <= rst_sram_b_count + 1;
 end
 reg [31:0] rst_sram_d_count = 0;
 always @(posedge OSC_50_B8D) begin
-  if (rst_sram_d_count == 50000000) rst_sram_d_n <= 1;
+  if (rst_sram_d_count == 10000000) rst_sram_d_n <= 1;
   else rst_sram_d_count <= rst_sram_d_count + 1;
 end
 
