@@ -21,7 +21,7 @@ Released on 11 Jun 2018 and maintained in the
 (Multi-board plus PCIe host-link.)
 * [v0.4](https://github.com/POETSII/tinsel/releases/tag/v0.4):
 Released on 10 Sep 2018 and maintained in the
-[tinsel-0.4 branch](https://github.com/POETSII/tinsel/tree/tinsel-0.4).
+[tinsel-0.4.1 branch](https://github.com/POETSII/tinsel/tree/tinsel-0.4.1).
 (2D NoC plus off-chip SRAMs.)
 * v0.5: Under development in the master branch.
 
