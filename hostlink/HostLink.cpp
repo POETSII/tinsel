@@ -86,9 +86,8 @@ HostLink::HostLink()
   // Power up mesh boards
   #ifndef SIMULATE
   sleep(1);
-  powerup();
-  sleep(1);
   waitForFPGAs(numBoards);
+  sleep(1);
   #endif
 
   // Create a DebugLink (UART) for each board
