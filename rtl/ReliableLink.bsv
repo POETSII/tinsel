@@ -263,7 +263,7 @@ module mkReliableLinkCore#(Mac mac) (ReliableLink);
   Reg#(TransmitBufferPtr) nextItemToRecv <- mkConfigReg(0);
 
   // Count the number of idle cycles since an ACK was last sent
-  Reg#(Bit#(8)) idlesSinceACKSent <- mkConfigReg(0);
+  Reg#(Bit#(6)) idlesSinceACKSent <- mkConfigReg(0);
 
   rule transmit0 (txState == 0 && toMACPort.canPut);
     // Bound number of items in packet
