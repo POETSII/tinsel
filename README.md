@@ -110,9 +110,7 @@ cache can serve requests at full-throughput (one per cycle) and a
 typical RISC workload will access data memory once every four
 instructions, so a cache can usefully be shared by up to four cores.
 Provided that threads typically access all the words of cache line
-before it is evicted, a single DDR3 DRAM can satisfy around 32 cores
-(assuming most memory access are indeed to DRAM-mapped memory and not
-the local scratchpad).
+before it is evicted, a single DDR3 DRAM can satisfy around 32 cores.
 
 ### 1.3 Communication Subsystem
 
@@ -151,6 +149,49 @@ of 7-10 FPGAs will reside in a separate *POETs box*.  One FPGA in each
 box will serve as a *PCI Express bridge board* that connects a modern
 PC to the remaining FPGA *worker boards*, with the worker boards
 running Tinsel by default.
+
+### 1.5 Structure
+
+The following diagrams are *illustrative* of a Tinsel system running
+on a POETS box.  The system is highly-parameterised, so the actual
+numbers of component parts shown may vary.
+
+#### Tinsel Tile
+
+A Tinsel tile consists of four Tinsel cores sharing a mailbox, an FPU,
+and a data cache.
+ 
+<img align="center" src="doc/tile.png" width="80%">
+
+#### Tinsel Slice
+
+Each FPGA contains two *Tinsel Slices*, with each slice comprising
+eight tiles connected to one 4GB DDR3 DIMM and two 8MB QDRII+ SRAMs.
+All tiles are connected together via a 2D NoC.  At the edges of the
+NoC are the inter-FPGA links, with the north and south edges using
+SFP+ connectors, and the east and west edges using PCIe lanes.  Note
+that the number of inter-FPGAs links at each edge is illustrative.
+
+<img align="center" src="doc/fpga.png" width="80%">
+
+#### POETS box
+
+A POETS box comprises of a modern PC, a PCIe FPGA bridge board
+connecting the PC to the worker FPGAs, and three FPGA-triplets.  Each
+FPGA triplet consists of three worker FPGAs connected in a ring via a
+PCIe backplane.  Each FPGA has a further four inter-FPGA links via
+SFP+ cables.  A power monitor between the PC and each FPGA allows
+inidividual software-controlled power-switching of the FPGAs from the
+PC.  Each FPGA is also connected to the PC via a 4MB/s USB serial
+link.
+
+<img align="center" src="doc/box.png" width="80%">
+
+(Above we see three PCIe backplanes per box, giving a 3x3 arragement
+of worker FPGAs. Due to thermal issues, we are currently using only
+two FPGAs per backplane, giving a 3x2 arrangement, and we are moving
+towards a design with two PCIe backplanes per box, which will
+eventually give a 2x3 arrangement.)
 
 ## 2. Tinsel Core
 
