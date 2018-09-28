@@ -102,7 +102,7 @@ module DE5(
 );
 
 wire clk_50mhz = OSC_50_B7A;
-wire rst_50mhz = 0;
+wire rst_50mhz = ~CPU_RESET_n;
 
 wire clk_156mhz;
 wire phy_pll_locked;
