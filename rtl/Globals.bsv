@@ -47,6 +47,8 @@ typedef struct {
   FlitPayload payload;
   // Is this the final flit in the message?
   Bool notFinalFlit;
+  // Is this a special packet for idle-detection?
+  Bool isIdleToken;
 } Flit deriving (Bits);
 
 // A padded flit is a multiple of 64 bits

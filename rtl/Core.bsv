@@ -181,6 +181,7 @@ typedef struct {
   Bool isLoad;             // Is it waiting for a load?
   Bool isStore;            // Or a store?
   Bool isFPUOp;            // Or an FPU operation?
+  Bool isWaitUntil;        // Or a wait-until operation?
   Bit#(6) destReg;         // Destination register for the result
   Bit#(2) loadSelector;    // Bottom two bits of load address
   AccessWidth accessWidth; // Access width of load (byte, half, word)
@@ -473,8 +474,20 @@ interface Core;
   interface DebugLinkClient debugLinkClient;
   interface FPUClient       fpuClient;
   interface InstrMemClient  instrMemClient;
+
+  // Each core can see its board id
   (* always_ready, always_enabled *)
   method Action setBoardId(BoardId id);
+
+  // For idle-detection (see IdleDetector.bsv)
+  method Bit#(1) incSent;
+  method Bit#(1) incReceived;
+  method Bool active;
+  (* always_ready, always_enabled *)
+  method Action idleDetectedStage1(Bool pulse);
+  (* always_ready, always_enabled *)
+  method Action idleDetectedStage2(Bool pulse);
+  method Bool idleStage1Ack
 endinterface
 
 // ============================================================================
@@ -641,6 +654,10 @@ module mkCore#(CoreId myId) (Core);
     resumeQueue.enq(resumeWire ? writebackQueue.dataOut.thread : newThread);
   endrule
 
+  // For idle detection (see IdleDetect.bsv)
+  Reg#(Bit#(1)) incSentReg <- mkDReg(0);
+  Reg#(Bit#(1)) incRecvReg <- mkDReg(0);
+
   // Schedule stage
   // --------------
 
@@ -735,12 +752,16 @@ module mkCore#(CoreId myId) (Core);
     token.jumpBase = token.op.isJumpReg ?
                        truncate(token.valA) : token.thread.pc;
     // Mailbox send
-    if (mailbox.canSend && token.op.csr.isSend)
+    if (mailbox.canSend && token.op.csr.isSend) begin
       mailbox.send(token.thread.id, token.thread.msgLen,
                      unpack(truncate(token.valA)), token.thread.msgPtr);
+      incSentReg <= True;
+    end
     // Mailbox receive
-    if (mailbox.canRecv && token.op.csr.isRecv)
+    if (mailbox.canRecv && token.op.csr.isRecv) begin
       mailbox.recv;
+      incRecvReg <= True;
+    end
     // Mailbox set message length
     if (token.op.csr.isSendLen)
       token.thread.msgLen = truncate(token.valA);
@@ -855,8 +876,11 @@ module mkCore#(CoreId myId) (Core);
     end
     // WaitUntil CSR
     if (token.op.csr.isWaitUntil) begin
-      mailbox.sleep(token.thread.id, truncate(token.valA));
-      suspend = True;
+      if (mailbox.canSleep) begin
+        mailbox.sleep(token.thread.id, truncate(token.valA));
+        suspend = True;
+      end else
+        retry = True;
     end
     // ToUart CSR
     if (token.op.csr.isToUart) begin
@@ -918,6 +942,7 @@ module mkCore#(CoreId myId) (Core);
       susp.isLoad = token.op.isLoad;
       susp.isStore = token.op.isStore;
       susp.isFPUOp = token.op.isFPUOp;
+      susp.isWaitUntil = token.op.csr.isWaitUntil;
       susp.destReg = {token.destRegFile, rd(token.instr)};
       susp.loadSelector = token.memAddr[1:0];
       susp.accessWidth = susp.isFPUOp ? wordAccess : token.accessWidth;
@@ -1071,6 +1096,7 @@ module mkCore#(CoreId myId) (Core);
       end else if (wakeupPort.canGet) begin
         wakeupPort.get;
         token.id = truncate(wakeupPort.value.id);
+        token.data = zeroExtend(wakeupPort.value.wakeEvent);
       end else if (fromFPUPort.canGet) begin
         fromFPUPort.get;
         FPUOpOutput out = fromFPUPort.value.out;
@@ -1096,7 +1122,8 @@ module mkCore#(CoreId myId) (Core);
     let token = resumeThread3Input;
     // Prepare request for writeback stage
     Writeback wb;
-    wb.write = (susp.isLoad || susp.isFPUOp) && susp.destReg != 0;
+    wb.write = (susp.isLoad || susp.isFPUOp || susp.isWaitUntil) &&
+                  susp.destReg != 0;
     wb.thread = susp.thread;
     wb.thread.id = token.id;
     wb.thread.fpFlags = wb.thread.fpFlags | token.fpFlags;
@@ -1144,6 +1171,17 @@ module mkCore#(CoreId myId) (Core);
   method Action setBoardId(BoardId id);
     boardId <= id;
   endmethod
+
+  method Bit#(1) incSent = incSentReg;
+  method Bit#(1) incReceived = incRecvReg;
+  method Bool active = mailbox.active;
+  method Action idleDetectedStage1(Bool pulse);
+    mailbox.idleDetectedStage1(pulse);
+  endmethod
+  method Action idleDetectedStage2(Bool pulse);
+    mailbox.idleDetectedStage2(pulse);
+  endmethod
+  method Bool idleStage1Ack = mailbox.idleStage1Ack;
 
 endmodule
 

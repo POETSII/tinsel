@@ -487,7 +487,8 @@ module mkMailbox (Mailbox);
     myAssert(transmitBuffer.notFull, "transmitBuffer overflow");
     let flit = Flit { dest:         token.dest
                     , payload:      scratchpad.dataOutA
-                    , notFinalFlit: token.notFinalFlit };
+                    , notFinalFlit: token.notFinalFlit
+                    , isIdleToken:  False };
     transmitBuffer.enq(flit);
   endrule
   
@@ -601,8 +602,10 @@ interface MailboxClient;
 endinterface
 
 // A bit vector of events that can cause a sleeping thread to wake up
-// (Bit 0 represents can-send, bit 1 represents can-receive)
-typedef Bit#(2) WakeEvent;
+// Bit 0: can-send
+// Bit 1: can-receive
+// Bit 2: idle
+typedef Bit#(3) WakeEvent;
 
 // Pair containing thread id and wake event
 typedef struct {
@@ -641,11 +644,21 @@ interface MailboxClientUnit;
 
   // Suspend thread until event(s)
   method Action sleep(ThreadId id, WakeEvent e);
+  // Guard on above method
+  method Bool canSleep;
   // Port used to indicate when a thread should be woken
   interface Out#(ThreadEventPair) wakeup;
 
   // Tinsel core's interface to the mailbox
   interface MailboxClient client;
+
+  // For idle detection
+  method Bool active;
+  (* always_ready, always_enabled *)
+  method Action idleDetectedStage1(Bool pulse);
+  (* always_ready, always_enabled *)
+  method Action idleDetectedStage2(Bool pulse);
+  method Bool idleStage1Ack;
 endinterface
 
 module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
@@ -761,6 +774,38 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
     sleepQueue.enq(doSleep ? sleepThread : wakeupReg);
   endrule
 
+  // Idle detection (see IdleDetect.bsv)
+  // ===================================
+
+  // Iterface to idle detector
+  Wire#(Bool) idleStage1Wire <- mkBypassWire;
+  Wire#(Bool) idleStage2Wire <- mkBypassWire;
+
+  // Latch the pulses
+  Reg#(Bool) idleStage1Reg <- mkConfigReg(False);
+
+  // Has the idle event been detected?
+  Reg#(Bool) idleDetected <- mkConfigReg(False);
+
+  // Stage 1 acknowledgement
+  Wire#(Bool) stage1AckWire <- mkDWire(False);
+
+  // Track the number of threads waiting on the idle event
+  Reg#(Bit#(TAdd#(`LogThreadsPerCore, 1))) numIdleWaiters <-
+    mkCount(2 ** `LogThreadsPerCore);
+
+  rule updateIdleStage;
+    if (idleStage1Reg && !sleepQueue.notEmpty) begin
+      idleStage1Reg <= False;
+      stage1AckWire <= True;
+    end else if (idleStage1Wire) begin
+      idleDetected <= True;
+      idleStage1Reg <= True;
+    end else if (idleStage2Wire) begin
+      idleDetected <= False;
+    end
+  endrule
+
   // Wakeup unit
   // ===========
   //
@@ -791,7 +836,7 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
   rule wakeup2 (wakeupState == 2);
     // Select only the bits of the event that match
     let eventMatchNow = wakeupReg.wakeEvent &
-                          {pack(unread.canGet), pack(canSendReg2)};
+          {idleStage1Reg, pack(unread.canGet), pack(canSendReg2)};
     let eventMatch = wakeup2Fire ? eventMatchNow : eventMatchReg;
     eventMatchReg <= eventMatch;
     // Should a wakeup be sent?
@@ -804,6 +849,7 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
         // Send wakeup
         wakeupPort.put(wakeup);
         wakeupState <= 0;
+        if (wakeupReg.wakeEvent[2] == 1) numIdleWaiters.dec;
       end else if (!doSleep) begin
         // Retry later
         doRequeue <= True;
@@ -827,7 +873,7 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
     unread.get;
   endmethod
 
-  method Bool canSend = canSendReg2;
+  method Bool canSend = canSendReg2 && !idleDetected;
 
   method Action send(ThreadId id, MsgLen len,
                        NetAddr dest, MailboxThreadMsgAddr addr);
@@ -848,9 +894,25 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
   method Bit#(32) recvAddr = msgAddrToByteAddr(unread.itemOut);
 
   method Action sleep(ThreadId id, WakeEvent e);
+    if (e[2] == 1) numIdleWaiters.inc;
     doSleep <= True;
     sleepThread <= ThreadEventPair { id: id, wakeEvent: e };
   endmethod
+
+  method Bool canSleep = !idleDetected;
+
+  method Bool active = !numIdleWaiters.notFull;
+
+  method Action idleDetectedStage1(Bool pulse);
+    idleStage1Wire <= pulse;
+  endmethod
+
+  method Action idleDetectedStage2(Bool pulse);
+    idleStage2Wire <= pulse;
+  endmethod
+
+  method Bool idleStage1Ack = stage1AckWire;
+
 
   // Interfaces
   // ==========
@@ -872,6 +934,7 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
   endinterface
 
   interface wakeup = wakeupPort.out;
+
 endmodule
 
 // =============================================================================

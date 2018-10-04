@@ -131,6 +131,7 @@ module de5BridgeTop (DE5BridgeTop);
       flit.dest = unpack(truncate(fromPCIeDA));
       flit.payload = fromPCIe.value;
       flit.notFinalFlit = True;
+      flit.isIdleToken = False;
       if (flitCount == fromPCIeFM) begin
         flitCount <= 0;
         flit.notFinalFlit = False;

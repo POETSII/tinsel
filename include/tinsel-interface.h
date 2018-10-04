@@ -72,6 +72,9 @@ typedef enum {TINSEL_CAN_SEND = 1, TINSEL_CAN_RECV = 2} TinselWakeupCond;
 // Suspend thread until wakeup condition satisfied
 INLINE void tinselWaitUntil(TinselWakeupCond cond);
 
+// Suspend thread until message arrives or all threads globally are idle
+INLINE void tinselIdle();
+
 #ifdef __cplusplus
 INLINE TinselWakeupCond operator|(TinselWakeupCond a, TinselWakeupCond b);
 #endif
