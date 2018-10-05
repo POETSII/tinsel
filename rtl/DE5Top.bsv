@@ -140,7 +140,8 @@ module de5Top (DE5Top);
   IdleDetector idle <- mkIdleDetector(boardId);
 
   // Connect cores to idle-detector
-  connectCoresToIdleDetector(vecOfCores, idle);
+  function idleClient(core) = core.idleClient;
+  connectCoresToIdleDetector(map(idleClient, vecOfCores), idle);
 
   // Create mailboxes
   Vector#(`MailboxMeshYLen,

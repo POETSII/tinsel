@@ -318,15 +318,15 @@ module mkMailboxMesh#(
       // Mailbox (0,0) is special (connects to idle detector)
       if (x == 0 && y == 0) begin
         // Connect mailbox to idle-detector
-        connectDirect(mailboxes[y][x].flitOut, idle.mbox.flitIn);
+        connectDirect(mailboxes[y][x].flitOut, idle.mboxFlitIn);
         connectUsing(mkUGShiftQueue1(QueueOptFmax),
-                       idle.mbox.flitOut, routers[y][x].fromMailbox);
+                       idle.mboxFlitOut, routers[y][x].fromMailbox);
  
         // Connect idle-detector to mailbox
         connectUsing(mkUGShiftQueue1(QueueOptFmax),
-                       routers[y][x].toMailbox, idle.net.flitIn);
+                       routers[y][x].toMailbox, idle.netFlitIn);
         connectUsing(mkUGShiftQueue1(QueueOptFmax),
-                       idle.net.flitout, mailboxes[y][x].flitIn);
+                       idle.netFlitOut, mailboxes[y][x].flitIn);
       end else begin
         connectDirect(mailboxes[y][x].flitOut, routers[y][x].fromMailbox);
         connectUsing(mkUGShiftQueue1(QueueOptFmax),

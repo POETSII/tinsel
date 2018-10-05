@@ -6,23 +6,24 @@ package Core;
 // Imports
 // ============================================================================
 
-import Vector      :: *;
-import FIFO        :: *;
-import BlockRam    :: *;
-import Queue       :: *;
-import Assert      :: *;
-import Util        :: *;
-import DReg        :: *;
-import DCache      :: *;
-import ConfigReg   :: *;
-import Interface   :: *;
-import Mailbox     :: *;
-import Globals     :: *;
-import DebugLink   :: *;
-import FPU         :: *;
-import FPUOps      :: *;
-import InstrMem    :: *;
-import DCacheTypes :: *;
+import Vector       :: *;
+import FIFO         :: *;
+import BlockRam     :: *;
+import Queue        :: *;
+import Assert       :: *;
+import Util         :: *;
+import DReg         :: *;
+import DCache       :: *;
+import ConfigReg    :: *;
+import Interface    :: *;
+import Mailbox      :: *;
+import Globals      :: *;
+import DebugLink    :: *;
+import FPU          :: *;
+import FPUOps       :: *;
+import InstrMem     :: *;
+import DCacheTypes  :: *;
+import IdleDetector :: *;
 
 // ============================================================================
 // Control/status registers (CSRs) supported
@@ -469,25 +470,16 @@ endfunction
 // ============================================================================
 
 interface Core;
-  interface DCacheClient    dcacheClient;
-  interface MailboxClient   mailboxClient;
-  interface DebugLinkClient debugLinkClient;
-  interface FPUClient       fpuClient;
-  interface InstrMemClient  instrMemClient;
+  interface DCacheClient       dcacheClient;
+  interface MailboxClient      mailboxClient;
+  interface DebugLinkClient    debugLinkClient;
+  interface FPUClient          fpuClient;
+  interface InstrMemClient     instrMemClient;
+  interface IdleDetectorClient idleClient;
 
   // Each core can see its board id
   (* always_ready, always_enabled *)
   method Action setBoardId(BoardId id);
-
-  // For idle-detection (see IdleDetector.bsv)
-  method Bit#(1) incSent;
-  method Bit#(1) incReceived;
-  method Bool active;
-  (* always_ready, always_enabled *)
-  method Action idleDetectedStage1(Bool pulse);
-  (* always_ready, always_enabled *)
-  method Action idleDetectedStage2(Bool pulse);
-  method Bool idleStage1Ack
 endinterface
 
 // ============================================================================
@@ -755,12 +747,12 @@ module mkCore#(CoreId myId) (Core);
     if (mailbox.canSend && token.op.csr.isSend) begin
       mailbox.send(token.thread.id, token.thread.msgLen,
                      unpack(truncate(token.valA)), token.thread.msgPtr);
-      incSentReg <= True;
+      incSentReg <= 1;
     end
     // Mailbox receive
     if (mailbox.canRecv && token.op.csr.isRecv) begin
       mailbox.recv;
-      incRecvReg <= True;
+      incRecvReg <= 1;
     end
     // Mailbox set message length
     if (token.op.csr.isSendLen)
@@ -1172,16 +1164,18 @@ module mkCore#(CoreId myId) (Core);
     boardId <= id;
   endmethod
 
-  method Bit#(1) incSent = incSentReg;
-  method Bit#(1) incReceived = incRecvReg;
-  method Bool active = mailbox.active;
-  method Action idleDetectedStage1(Bool pulse);
-    mailbox.idleDetectedStage1(pulse);
-  endmethod
-  method Action idleDetectedStage2(Bool pulse);
-    mailbox.idleDetectedStage2(pulse);
-  endmethod
-  method Bool idleStage1Ack = mailbox.idleStage1Ack;
+  interface IdleDetectorClient idleClient;
+    method Bit#(1) incSent = incSentReg;
+    method Bit#(1) incReceived = incRecvReg;
+    method Bool active = mailbox.active;
+    method Action idleDetectedStage1(Bool pulse);
+      mailbox.idleDetectedStage1(pulse);
+    endmethod
+    method Action idleDetectedStage2(Bool pulse);
+      mailbox.idleDetectedStage2(pulse);
+    endmethod
+    method Bool idleStage1Ack = mailbox.idleStage1Ack;
+  endinterface
 
 endmodule
 
