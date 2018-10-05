@@ -81,6 +81,8 @@ module de5BridgeTop (DE5BridgeTop);
   InPort#(Flit) fromLink <- mkInPort;
   OutPort#(Bit#(8)) toJtag <- mkOutPort;
   InPort#(Bit#(8)) fromJtag <- mkInPort;
+  OutPort#(Flit) toDetector <- mkOutPort;
+  InPort#(Flit) fromDetector <- mkInPort;
 
   // Create JTAG UART instance
   JtagUart uart <- mkJtagUart;
@@ -103,54 +105,84 @@ module de5BridgeTop (DE5BridgeTop);
   connectUsing(mkUGQueue, toPCIe.out, pcie.streamIn);
   connectDirect(pcie.streamOut, fromPCIe.in);
 
+  // Create idle detector master
+  IdleDetectMaster detector <- mkIdleDetectMaster;
+
+  // Connect ports to idle detect master
+  connectUsing(mkUGQueue, toDetector.out, detector.flitIn);
+  connectUsing(mkUGQueue, detector.flitOut, fromDetector.in);
+
   // Connect PCIe stream and 10G link
   // --------------------------------
 
   Reg#(Bit#(32)) fromPCIeDA    <- mkConfigRegU;
   Reg#(Bit#(32)) fromPCIeNM    <- mkConfigRegU;
   Reg#(Bit#(8))  fromPCIeFM    <- mkConfigRegU;
-  Reg#(Bit#(1))  fromPCIeState <- mkConfigReg(0);
+  Reg#(Bit#(1))  toLinkState   <- mkConfigReg(0);
 
   Reg#(Bit#(32)) messageCount  <- mkConfigReg(0);
   Reg#(Bit#(8))  flitCount     <- mkConfigReg(0);
 
-  rule pcieToLink0 (fromPCIeState == 0);
-    if (fromPCIe.canGet) begin
-      Bit#(128) data = fromPCIe.value;
-      fromPCIeDA <= data[31:0];
-      fromPCIeNM <= data[63:32];
-      fromPCIeFM <= data[95:88];
-      fromPCIeState <= 1;
-      fromPCIe.get;
+  rule toLink0 (toLinkState == 0);
+    if (fromDetector.canGet) begin
+      if (toLink.canPut) begin
+        toLink.put(fromDetector.value);
+        fromDetector.get;
+      end
+    end else begin
+      if (fromPCIe.canGet) begin
+        Bit#(128) data = fromPCIe.value;
+        fromPCIeDA <= data[31:0];
+        fromPCIeNM <= data[63:32];
+        fromPCIeFM <= data[95:88];
+        toLinkState <= 1;
+        fromPCIe.get;
+      end
     end
   endrule
 
-  rule pcieToLink1 (fromPCIeState == 1);
-    if (fromPCIe.canGet && toLink.canPut) begin
-      Flit flit;
-      flit.dest = unpack(truncate(fromPCIeDA));
-      flit.payload = fromPCIe.value;
-      flit.notFinalFlit = True;
-      flit.isIdleToken = False;
-      if (flitCount == fromPCIeFM) begin
-        flitCount <= 0;
-        flit.notFinalFlit = False;
-        if (messageCount == fromPCIeNM) begin
-          messageCount <= 0;
-          fromPCIeState <= 0;
+  rule toLink1 (toLinkState == 1);
+    if (flitCount == 0 && detector.disableHostMsgs) begin
+      // Hold off sending
+    end else begin
+      if (fromPCIe.canGet && toLink.canPut) begin
+        Flit flit;
+        flit.dest = unpack(truncate(fromPCIeDA));
+        flit.payload = fromPCIe.value;
+        flit.notFinalFlit = True;
+        flit.isIdleToken = False;
+        if (flitCount == fromPCIeFM) begin
+          flitCount <= 0;
+          flit.notFinalFlit = False;
+          if (messageCount == fromPCIeNM) begin
+            messageCount <= 0;
+            toLinkState <= 0;
+          end else
+            messageCount <= messageCount+1;
         end else
-          messageCount <= messageCount+1;
-      end else
-        flitCount <= flitCount+1;
-      toLink.put(flit);
-      fromPCIe.get;
+          flitCount <= flitCount+1;
+        toLink.put(flit);
+        fromPCIe.get;
+        if (flitCount == 0) detector.incCount;
+      end
     end
   endrule
 
-  // Connect 10G link to PCIe stream
-  rule linkToPCIe (fromLink.canGet && toPCIe.canPut);
-    toPCIe.put(fromLink.value.payload);
-    fromLink.get;
+  // Connect 10G link to PCIe stream and idle detector
+  rule fromLink (fromLink.canGet);
+    Flit flit = fromLink.value;
+    if (flit.isIdleToken) begin
+      if (toDetetor.canPut) begin
+        detector.put(flit);
+        fromLink.get;
+      end
+    end else begin
+      if (toPCIe.canPut) begin
+        toPCIe.put(flit.payload);
+        fromLink.get;
+        if (!flit.notFinalFlit) detector.decCount;
+      end
+    end
   endrule
 
   // In simulation, display start-up message

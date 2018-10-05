@@ -316,7 +316,7 @@ interface IdleDetectMaster;
   interface Out#(Flit) flitOut;
 
   // Disable host messages when this is high
-  method Bool disableHostMessages;
+  method Bool disableHostMsgs;
 
   // Increment in-flight message count
   method Action incCount;
@@ -422,7 +422,9 @@ module mkIdleDetectMaster (IdleDetectMaster);
     endcase
   endrule
 
-  method Bool disableHostMessages =
+  interface In#(Flit) flitIn = flitInPort.in;
+  interface Out#(Flit) flitOut = flitOutPort.out;
+  method Bool disableHostMsgs =
     disableHostMsgsWire || disableHostMsgsReg;
   method Action incCount = incWire.send;
   method Action decCount = decWire.send;
