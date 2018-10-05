@@ -13,6 +13,15 @@
 // The implementation below is based on Safra's termination detection
 // algorithm (EWD998).
 
+import Mailbox   :: *;
+import Globals   :: *;
+import Interface :: *;
+import Queue     :: *;
+import Vector    :: *;
+import ConfigReg :: *;
+import Util      :: *;
+import DReg      :: *;
+
 // The total number of messages sent by all threads on an FPGA minus
 // the total number of messages received by all threads on an FPGA.
 typedef Int#(62) MsgCount;
@@ -25,7 +34,7 @@ typedef struct {
   Bool done;
   // In-flight message count
   MsgCount count;
-} IdleToken;
+} IdleToken deriving (Bits);
 
 // We added the 1-bit termination flag to Safra's token.  The idea is
 // that once termination is detected, the token is sent twice round
@@ -65,8 +74,12 @@ endinterface
 // The idle detector itself is designed to connect onto mailbox (0,0).
 interface IdleDetector;
   interface IdleSignals idle;
-  interface MailboxNet net; // Network side
-  interface MailboxNet mbox; // Mailbox side
+  // Network side
+  interface In#(Flit) netFlitIn;
+  interface Out#(Flit) netFlitOut;
+  // Mailbox side
+  interface In#(Flit) mboxFlitIn;
+  interface Out#(Flit) mboxFlitOut;
 endinterface
 
 // An idle probe is initiated by the bridge FPGA board sending a token
@@ -161,7 +174,7 @@ module mkIdleDetector#(BoardId me) (IdleDetector);
   rule sendToken (tokenInQueue.canDeq);
     myAssert(tokenOutQueue.notFull, "Multiple idle tokens in flight");
     // Extract input token from flit
-    Idle in = unpack(truncate(tokenInQueue.dataOut));
+    IdleToken in = unpack(truncate(tokenInQueue.dataOut.payload));
     IdleToken token;
     token.black = black || in.black;
     token.done = in.done;
@@ -173,14 +186,14 @@ module mkIdleDetector#(BoardId me) (IdleDetector);
       NetAddr {
         board: getNextBoard(me),
         core: 0,
-        threadId: 0
+        thread: 0
       };
     outFlit.notFinalFlit = False;
     outFlit.payload = zeroExtend(pack(token));
     if (state == 0) begin
       tokenForwarded <= True;
       tokenInQueue.deq;
-      tokenOutQueuq.enq(outFlit);
+      tokenOutQueue.enq(outFlit);
     end else if (state == 1) begin
       detectedStage1Reg <= True;
       state <= 2;
@@ -191,7 +204,7 @@ module mkIdleDetector#(BoardId me) (IdleDetector);
         state <= 3;
       end
     end else if (state == 3) begin
-      detetedStage2Reg <= True;
+      detectedStage2Reg <= True;
       state <= 0;
       tokenInQueue.deq;
       tokenOutQueue.enq(outFlit);
@@ -215,15 +228,11 @@ module mkIdleDetector#(BoardId me) (IdleDetector);
     endmethod
   endinterface
 
-  interface MailboxNet net;
-    interface In flitIn = netInPort.in;
-    interface Out flitOut = netOutPort.out;
-  endinterface
+  interface In netFlitIn = netInPort.in;
+  interface Out netFlitOut = netOutPort.out;
 
-   interface MailboxNet mbox;
-    interface In flitIn = mboxInPort.in;
-    interface Out flitOut = mboxOutPort.out;
-  endinterface
+  interface In mboxFlitIn = mboxInPort.in;
+  interface Out mboxFlitOut = mboxOutPort.out;
 
 endmodule
 
@@ -254,38 +263,47 @@ module mkPipelinedReductionTree#(
   end
 endmodule
 
+interface IdleDetectorClient;
+  method Bit#(1) incSent;
+  method Bit#(1) incReceived;
+  method Bool active;
+  (* always_ready, always_enabled *)
+  method Action idleDetectedStage1(Bool pulse);
+  (* always_ready, always_enabled *)
+  method Action idleDetectedStage2(Bool pulse);
+  method Bool idleStage1Ack;
+endinterface
+
 // Connect cores to idle detector
-module connectCoresToIdleDetector(
-         Vector#(n, Core) cores, IdleDetector detector) ()
-           provisos (Log#(n, m));
+module connectCoresToIdleDetector#(
+         Vector#(n, IdleDetectorClient) core, IdleDetector detector) ()
+           provisos (Log#(n, log_n), Add#(log_n, 1, m), Add#(_a, m, 62));
 
   // Sum "incSent" wires from each core
   Vector#(n, Bit#(m)) incSents = newVector;
   for (Integer i = 0; i < valueOf(n); i=i+1)
     incSents[i] = zeroExtend(core[i].incSent);
-  Bit#(m) incSent <- mkPipelinedReductionTree( \+ , 0, incSents);
+  Bit#(m) incSent <- mkPipelinedReductionTree( \+ , 0, toList(incSents));
 
   // Sum "decSent" wires from each core
   Vector#(n, Bit#(m)) decSents = newVector;
   for (Integer i = 0; i < valueOf(n); i=i+1)
     decSents[i] = zeroExtend(core[i].incSent);
-  Bit#(m) decSent <- mkPipelinedReductionTree( \+ , 0, decSents);
+  Bit#(m) decSent <- mkPipelinedReductionTree( \+ , 0, toList(decSents));
 
   // Maintain the total count
   Reg#(MsgCount) count <- mkConfigReg(0);
 
   rule updateCount;
-    count <= count + incSent - decSent;
+    count <= count + unpack(zeroExtend(incSent))
+                   - unpack(zeroExtend(decSent));
   endrule
-
-  // Feed count to the idle detector
-  detector.idle.countIn(count);
 
   // OR the "active" wires from each core
   Vector#(n, Bool) actives = newVector;
   for (Integer i = 0; i < valueOf(n); i=i+1)
     actives[i] = core[i].active;
-  Bool anyActive <- mkPipelinedReductionTree( \|| , True, actives);
+  Bool anyActive <- mkPipelinedReductionTree( \|| , True, toList(actives));
 
   // Register the result
   Reg#(Bool) active <- mkConfigReg(True);
@@ -294,14 +312,39 @@ module connectCoresToIdleDetector(
     active <= anyActive;
   endrule
 
-  // Feed active signal to idle detector
-  detector.idle.activeIn(active);
+  // Counter number of stage 1 acks
+  Reg#(Bit#(m)) numAcks <- mkConfigReg(0);
+
+  // Sum stage 1 ack wires from each core
+  Vector#(n, Bit#(m)) incAcks = newVector;
+  for (Integer i = 0; i < valueOf(n); i=i+1)
+    incAcks[i] = zeroExtend(pack(core[i].idleStage1Ack));
+  Bit#(m) incAck <- mkPipelinedReductionTree( \+ , 0, toList(incAcks));
+
+  // Stage 1 output ack
+  Wire#(Bool) stage1AckWire <- mkDWire(False);
+
+  rule updateAcks;
+    Bit#(m) total = numAcks + incAck;
+    if (total == fromInteger(valueOf(n))) begin
+      numAcks <= 0;
+      stage1AckWire <= True;
+    end else begin
+      numAcks <= total;
+    end
+  endrule
 
   // Direct connections
   rule connect;
-    core.idleDetectedStage1(detector.detectedStage1);
-    detector.ackStage1(core.idleStage1Ack);
-    core.idleDetectedStage2(detector.detectedStage2);
+    // Feed signals to the idle detector
+    detector.idle.countIn(count);
+    detector.idle.activeIn(active);
+    detector.idle.ackStage1(stage1AckWire);
+
+    for (Integer i = 0; i < valueOf(n); i=i+1) begin
+      core[i].idleDetectedStage1(detector.idle.detectedStage1);
+      core[i].idleDetectedStage2(detector.idle.detectedStage2);
+    end
   endrule
 
 endmodule
@@ -340,7 +383,7 @@ module mkIdleDetectMaster (IdleDetectMaster);
   rule updateCount;
     if (incWire && !decWire)
       count <= count + 1;
-    else if (!inWire && decWire)
+    else if (!incWire && decWire)
       count <= count - 1;
   endrule
   
@@ -370,7 +413,7 @@ module mkIdleDetectMaster (IdleDetectMaster);
       NetAddr {
         board: BoardId { y: 0, x: 0 },
         core: 0,
-        threadId: 0
+        thread: 0
       };
     flit.payload = ?;
     flit.notFinalFlit = False;
@@ -387,7 +430,7 @@ module mkIdleDetectMaster (IdleDetectMaster);
       1: if (flitInPort.canGet) begin
            disableHostMsgsWire <= True;
            flitInPort.get;
-           IdleToken token = unpack(truncate(flitInPort.value));
+           token = unpack(truncate(flitInPort.value.payload));
            if (!token.black && (count+token.count == 0)) begin
              disableHostMsgsReg <= True;
              state <= 2;
@@ -422,8 +465,8 @@ module mkIdleDetectMaster (IdleDetectMaster);
     endcase
   endrule
 
-  interface In#(Flit) flitIn = flitInPort.in;
-  interface Out#(Flit) flitOut = flitOutPort.out;
+  interface In flitIn = flitInPort.in;
+  interface Out flitOut = flitOutPort.out;
   method Bool disableHostMsgs =
     disableHostMsgsWire || disableHostMsgsReg;
   method Action incCount = incWire.send;

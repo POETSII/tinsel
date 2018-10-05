@@ -27,19 +27,20 @@ package DE5BridgeTop;
 // Imports
 // ============================================================================
 
-import Globals    :: *;
-import DRAM       :: *;
-import Interface  :: *;
-import Queue      :: *;
-import Vector     :: *;
-import Mailbox    :: *;
-import Network    :: *;
-import Mac        :: *;
-import PCIeStream :: *;
-import Socket     :: *;
-import ConfigReg  :: *;
-import JtagUart   :: *;
-import DebugLink   :: *;
+import Globals      :: *;
+import DRAM         :: *;
+import Interface    :: *;
+import Queue        :: *;
+import Vector       :: *;
+import Mailbox      :: *;
+import Network      :: *;
+import Mac          :: *;
+import PCIeStream   :: *;
+import Socket       :: *;
+import ConfigReg    :: *;
+import JtagUart     :: *;
+import DebugLink    :: *;
+import IdleDetector :: *;
 
 // ============================================================================
 // Interface
@@ -169,11 +170,11 @@ module de5BridgeTop (DE5BridgeTop);
   endrule
 
   // Connect 10G link to PCIe stream and idle detector
-  rule fromLink (fromLink.canGet);
+  rule fromLinkRule (fromLink.canGet);
     Flit flit = fromLink.value;
     if (flit.isIdleToken) begin
-      if (toDetetor.canPut) begin
-        detector.put(flit);
+      if (toDetector.canPut) begin
+        toDetector.put(flit);
         fromLink.get;
       end
     end else begin

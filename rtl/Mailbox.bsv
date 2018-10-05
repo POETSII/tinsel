@@ -774,8 +774,8 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
     sleepQueue.enq(doSleep ? sleepThread : wakeupReg);
   endrule
 
-  // Idle detection (see IdleDetect.bsv)
-  // ===================================
+  // Idle detection (see IdleDetector.bsv)
+  // =====================================
 
   // Iterface to idle detector
   Wire#(Bool) idleStage1Wire <- mkBypassWire;
@@ -791,7 +791,7 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
   Wire#(Bool) stage1AckWire <- mkDWire(False);
 
   // Track the number of threads waiting on the idle event
-  Reg#(Bit#(TAdd#(`LogThreadsPerCore, 1))) numIdleWaiters <-
+  Count#(TAdd#(`LogThreadsPerCore, 1)) numIdleWaiters <-
     mkCount(2 ** `LogThreadsPerCore);
 
   rule updateIdleStage;
@@ -836,7 +836,7 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
   rule wakeup2 (wakeupState == 2);
     // Select only the bits of the event that match
     let eventMatchNow = wakeupReg.wakeEvent &
-          {idleStage1Reg, pack(unread.canGet), pack(canSendReg2)};
+          {pack(idleStage1Reg), pack(unread.canGet), pack(canSendReg2)};
     let eventMatch = wakeup2Fire ? eventMatchNow : eventMatchReg;
     eventMatchReg <= eventMatch;
     // Should a wakeup be sent?
