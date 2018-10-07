@@ -103,8 +103,8 @@ module mkIdleDetector#(BoardId me) (IdleDetector);
   OutPort#(Flit) mboxOutPort <- mkOutPort;
 
   // An idle-detection token waits here
-  Queue1#(Flit) tokenInQueue <- mkShiftQueue(QueueOptFmax);
-  Queue1#(Flit) tokenOutQueue <- mkShiftQueue(QueueOptFmax);
+  Queue1#(Flit) tokenInQueue <- mkUGShiftQueue1(QueueOptFmax);
+  Queue1#(Flit) tokenOutQueue <- mkUGShiftQueue1(QueueOptFmax);
 
   // Goes high when multi-flit message being processed
   Reg#(Bool) multiFlit <- mkConfigReg(False);
