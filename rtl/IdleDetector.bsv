@@ -140,9 +140,8 @@ module mkIdleDetector#(BoardId me) (IdleDetector);
 
   // Idle detection states
   // 0: waiting to forward the idle token
-  // 1: waiting for first done token
-  // 2: waiting for stage 1 ack 
-  // 3: waiting for second done token
+  // 1: waiting for stage 1 ack 
+  // 2: waiting for second done token
   Reg#(Bit#(2)) state <- mkConfigReg(0);
 
   // FPGA colour (white or black);
@@ -190,24 +189,29 @@ module mkIdleDetector#(BoardId me) (IdleDetector);
       };
     outFlit.notFinalFlit = False;
     outFlit.payload = zeroExtend(pack(token));
-    if (state == 0 && !activeWire) begin
-      tokenForwarded <= True;
-      tokenInQueue.deq;
-      tokenOutQueue.enq(outFlit);
-    end else if (state == 1) begin
-      detectedStage1Reg <= True;
-      state <= 2;
-    end else if (state == 2) begin
-      if (ackStage1Wire) begin
+    if (in.done) begin
+      if (state == 0) begin
+        detectedStage1Reg <= True;
+        state <= 1;
+      end else if (state == 1) begin
+        if (ackStage1Wire) begin
+          tokenInQueue.deq;
+          tokenOutQueue.enq(outFlit);
+          state <= 2;
+        end
+      end else if (state == 2) begin
+        detectedStage2Reg <= True;
+        state <= 0;
         tokenInQueue.deq;
         tokenOutQueue.enq(outFlit);
-        state <= 3;
       end
-    end else if (state == 3) begin
-      detectedStage2Reg <= True;
-      state <= 0;
-      tokenInQueue.deq;
-      tokenOutQueue.enq(outFlit);
+    end else begin
+      myAssert(state == 0, "Unexpected idle done token");
+      if (!activeWire) begin
+        tokenForwarded <= True;
+        tokenInQueue.deq;
+        tokenOutQueue.enq(outFlit);
+      end
     end
   endrule
  
@@ -285,18 +289,18 @@ module connectCoresToIdleDetector#(
     incSents[i] = zeroExtend(core[i].incSent);
   Bit#(m) incSent <- mkPipelinedReductionTree( \+ , 0, toList(incSents));
 
-  // Sum "decSent" wires from each core
-  Vector#(n, Bit#(m)) decSents = newVector;
+  // Sum "incRecv" wires from each core
+  Vector#(n, Bit#(m)) incRecvs = newVector;
   for (Integer i = 0; i < valueOf(n); i=i+1)
-    decSents[i] = zeroExtend(core[i].incSent);
-  Bit#(m) decSent <- mkPipelinedReductionTree( \+ , 0, toList(decSents));
+    incRecvs[i] = zeroExtend(core[i].incReceived);
+  Bit#(m) incRecv <- mkPipelinedReductionTree( \+ , 0, toList(incRecvs));
 
   // Maintain the total count
   Reg#(MsgCount) count <- mkConfigReg(0);
 
   rule updateCount;
     count <= count + unpack(zeroExtend(incSent))
-                   - unpack(zeroExtend(decSent));
+                   - unpack(zeroExtend(incRecv));
   endrule
 
   // OR the "active" wires from each core

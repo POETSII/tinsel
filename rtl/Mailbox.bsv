@@ -795,7 +795,7 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
     mkCount(2 ** `LogThreadsPerCore);
 
   rule updateIdleStage;
-    if (idleStage1Reg && !sleepQueue.notEmpty) begin
+    if (idleStage1Reg && numIdleWaiters.value == 0) begin
       idleStage1Reg <= False;
       stage1AckWire <= True;
     end else if (idleStage1Wire) begin
