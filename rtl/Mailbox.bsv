@@ -901,7 +901,7 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
 
   method Bool canSleep = !idleDetected;
 
-  method Bool active = !numIdleWaiters.notFull;
+  method Bool active = numIdleWaiters.notFull;
 
   method Action idleDetectedStage1(Bool pulse);
     idleStage1Wire <= pulse;

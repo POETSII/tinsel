@@ -129,7 +129,7 @@ module mkIdleDetector#(BoardId me) (IdleDetector);
       Flit flit = netInPort.value;
       if (flit.isIdleToken) begin
         myAssert(tokenInQueue.notFull, "Multiple idle tokens in flight");
-        tokenInQueue.enq(netInPort.value);
+        tokenInQueue.enq(flit);
         netInPort.get;
       end else if (mboxOutPort.canPut) begin
         mboxOutPort.put(flit);
@@ -190,7 +190,7 @@ module mkIdleDetector#(BoardId me) (IdleDetector);
       };
     outFlit.notFinalFlit = False;
     outFlit.payload = zeroExtend(pack(token));
-    if (state == 0) begin
+    if (state == 0 && !activeWire) begin
       tokenForwarded <= True;
       tokenInQueue.deq;
       tokenOutQueue.enq(outFlit);
