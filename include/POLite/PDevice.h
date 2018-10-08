@@ -175,8 +175,16 @@ template <typename DeviceType, typename MessageType> class PThread {
         }
       }
       else {
-        // Go to sleep
-        tinselWaitUntil(TINSEL_CAN_RECV);
+        // Idle detection
+        if (tinselIdle()) {
+          for (uint32_t i = 0; i < numDevices; i++) {
+            DeviceType* dev = &devices[i];
+            // Invoke the idle handler for each device
+            dev->idle();
+            // Device ready to send?
+            if (dev->readyToSend != NONE) *(sendersTop++) = dev;
+          }
+        }
       }
 
       // Step 2: try to receive
