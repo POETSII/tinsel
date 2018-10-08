@@ -22,6 +22,9 @@ struct ALIGNED RingDevice : PDevice {
     readyToSend = received > sent ? PIN(0) : NONE;
   }
 
+  // Called by POLite when system becomes idle
+  inline void idle() { return; }
+
   // Send handler
   inline void send(RingMessage* msg) {
     sent++;

@@ -29,6 +29,9 @@ struct ALIGNED HeatDevice : PDevice {
     readyToSend = PIN(0);
   }
 
+  // Called by POLite when system becomes idle
+  inline void idle() { return; }
+
   // We call this on every state change
   inline void step() {
     // Execution complete?
