@@ -370,6 +370,9 @@ interface IdleDetectMaster;
 
   // Decrement in-flight message count
   method Action decCount;
+
+  (* always_ready, always_enabled *)
+  method Action enabled(Bool en);
 endinterface
 
 module mkIdleDetectMaster (IdleDetectMaster);
@@ -382,6 +385,9 @@ module mkIdleDetectMaster (IdleDetectMaster);
   Reg#(MsgCount) count <- mkConfigReg(0);
   PulseWire incWire <- mkPulseWire;
   PulseWire decWire <- mkPulseWire;
+
+  // Enabled
+  Wire#(Bool) enableWire <- mkBypassWire;
 
   // Update message count
   rule updateCount;
@@ -405,7 +411,7 @@ module mkIdleDetectMaster (IdleDetectMaster);
   Wire#(Bool) disableHostMsgsWire <- mkDWire(False);
 
   // Probe for termination
-  rule probe;
+  rule probe (enableWire);
     // Construct idle token
     IdleToken token;
     token.black = False;
@@ -475,5 +481,8 @@ module mkIdleDetectMaster (IdleDetectMaster);
     disableHostMsgsWire || disableHostMsgsReg;
   method Action incCount = incWire.send;
   method Action decCount = decWire.send;
+  method Action enabled(Bool en);
+    enableWire <= en;
+  endmethod
 
 endmodule

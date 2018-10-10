@@ -113,6 +113,9 @@ module de5BridgeTop (DE5BridgeTop);
   connectUsing(mkUGQueue, toDetector.out, detector.flitIn);
   connectUsing(mkUGQueue, detector.flitOut, fromDetector.in);
 
+  // Has board been enumerated over JTAG yet?
+  Reg#(Bool) enumerated <- mkConfigReg(False);
+
   // Connect PCIe stream and 10G link
   // --------------------------------
 
@@ -186,6 +189,11 @@ module de5BridgeTop (DE5BridgeTop);
     end
   endrule
 
+  // Enable idle detector
+  rule enabler;
+    detector.enabled(enumerated);
+  endrule
+
   // In simulation, display start-up message
   `ifdef SIMULATE
   rule displayStartup;
@@ -207,6 +215,7 @@ module de5BridgeTop (DE5BridgeTop);
 
   rule uartReceive (fromJtag.canGet && uartState == 0);
     fromJtag.get;
+    enumerated <= True;
     uartState <= 1;
   endrule
 
