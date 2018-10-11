@@ -1,0 +1,9 @@
+*.o
+code.v
+data.v
+*.elf
+link.ld
+.vscode*
+run
+build/*
+*.ppm
