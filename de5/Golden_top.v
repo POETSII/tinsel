@@ -597,13 +597,25 @@ temp_display temp_display_inst (
 // Reset SRAMs
 reg [31:0] rst_sram_b_count = 0;
 always @(posedge OSC_50_B4A) begin
-  if (rst_sram_b_count == 10000000) rst_sram_b_n <= 1;
-  else rst_sram_b_count <= rst_sram_b_count + 1;
+  if ((qdr_a_status_local_init_done && !qdr_a_status_local_cal_success) ||
+      (qdr_b_status_local_init_done && !qdr_b_status_local_cal_success) ||
+      (qdr_c_status_local_init_done && !qdr_c_status_local_cal_success)) begin
+    rst_sram_b_n <= 0;
+    rst_sram_b_count <= 0;
+  end else begin
+    if (rst_sram_b_count == 1000000) rst_sram_b_n <= 1;
+    else rst_sram_b_count <= rst_sram_b_count + 1;
+  end
 end
 reg [31:0] rst_sram_d_count = 0;
 always @(posedge OSC_50_B8D) begin
-  if (rst_sram_d_count == 10000000) rst_sram_d_n <= 1;
-  else rst_sram_d_count <= rst_sram_d_count + 1;
+  if (qdr_d_status_local_init_done && !qdr_d_status_local_cal_success) begin
+    rst_sram_d_n <= 0;
+    rst_sram_d_count <= 0;
+  end else begin
+    if (rst_sram_d_count == 1000000) rst_sram_d_n <= 1;
+    else rst_sram_d_count <= rst_sram_d_count + 1;
+  end
 end
 
 assign LED[3:0] = {
