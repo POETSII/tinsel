@@ -82,18 +82,6 @@ interface IdleDetector;
   interface Out#(Flit) mboxFlitOut;
 endinterface
 
-// An idle probe is initiated by the bridge FPGA board sending a token
-// to the origin worker FPGA board.  Each woker then passes the
-// token one step closer to the bridge.  Eventually the token ends up
-// back at the bridge.  We use the following function to determine the
-// coordinates of an FPGA board that is "one step" closer to the
-// bridge.
-function BoardId getNextBoard(BoardId me) =
-  BoardId {
-    x: me.x == `MeshXLen-1 ? 0      : me.x+1
-  , y: me.x == `MeshXLen-1 ? me.y+1 : me.y
-  };
-
 module mkIdleDetector#(BoardId me) (IdleDetector);
 
   // Ports  
@@ -175,15 +163,15 @@ module mkIdleDetector#(BoardId me) (IdleDetector);
     // Extract input token from flit
     IdleToken in = unpack(truncate(tokenInQueue.dataOut.payload));
     IdleToken token;
-    token.black = black || in.black;
+    token.black = black;
     token.done = in.done;
-    token.count = in.count + countWire;
+    token.count = countWire;
     // Construct flit containing output token
     Flit outFlit;
     outFlit.isIdleToken = True;
     outFlit.dest =
       NetAddr {
-        board: getNextBoard(me),
+        board: BoardId { y: `MeshYLen , x: 0 },
         core: 0,
         thread: 0
       };
@@ -382,33 +370,59 @@ module mkIdleDetectMaster (IdleDetectMaster);
   OutPort#(Flit) flitOutPort <- mkOutPort;
 
   // Number of messages sent minus number of message received
-  Reg#(MsgCount) count <- mkConfigReg(0);
+  Reg#(MsgCount) localCount <- mkConfigReg(0);
   PulseWire incWire <- mkPulseWire;
   PulseWire decWire <- mkPulseWire;
+
+  // Sum counts received from worker boards
+  Reg#(MsgCount) totalCount <- mkConfigReg(0);
+
+  // Master is white at beginning of new probe,
+  // and goes black when a message is sent/received
+  Reg#(Bool) localBlack <- mkConfigReg(False);
+  PulseWire localBlackReset <- mkPulseWire;
 
   // Enabled
   Wire#(Bool) enableWire <- mkBypassWire;
 
-  // Update message count
-  rule updateCount;
+  // Update local message count
+  rule updateLocalCount;
     if (incWire && !decWire)
-      count <= count + 1;
+      localCount <= localCount + 1;
     else if (!incWire && decWire)
-      count <= count - 1;
+      localCount <= localCount - 1;
   endrule
-  
+
+  // Update local colour
+  rule updateLocalColour;
+    if (localBlackReset)
+      localBlack <= False;
+    else if (incWire || decWire)
+      localBlack <= True;
+  endrule
+ 
   // FSM state
-  // 0: send probe
-  // 1: receive probe
-  // 2: send stage1 done
-  // 3: receive stage1 done
-  // 4: send stage2 done
-  // 5: receive stage2 done
-  Reg#(Bit#(3)) state <- mkConfigReg(0);
+  // 0: probe
+  // 1: stage 1 done
+  // 2: stage 2 done
+  Reg#(Bit#(2)) state <- mkConfigReg(0);
 
   // Disable host messages when either of these go high
   Reg#(Bool) disableHostMsgsReg <- mkConfigReg(False);
   Wire#(Bool) disableHostMsgsWire <- mkDWire(False);
+
+  // For iterating over the worker boards
+  Reg#(Bit#(`MeshXBits)) boardX <- mkConfigReg(0);
+  Reg#(Bit#(`MeshYBits)) boardY <- mkConfigReg(0);
+
+  // Count responses from worker boards
+  Reg#(Bit#(TAdd#(`MeshXBits, `MeshYBits))) respCount <- mkConfigReg(0);
+
+  // Are any responses so far black?
+  Reg#(Bool) anyBlack <- mkConfigReg(False);
+
+  // Goes high when probe has been sent to all workers
+  Reg#(Bool) probeSent <- mkConfigReg(False);
 
   // Probe for termination
   rule probe (enableWire);
@@ -421,60 +435,74 @@ module mkIdleDetectMaster (IdleDetectMaster);
     Flit flit;
     flit.dest =
       NetAddr {
-        board: BoardId { y: 0, x: 0 },
+        board: BoardId { y: boardY, x: boardX },
         core: 0,
         thread: 0
       };
     flit.payload = ?;
     flit.notFinalFlit = False;
     flit.isIdleToken = True;
-    // State machine
-    case (state)
-      // Send probe
-      0: if (flitOutPort.canPut) begin
-           flit.payload = zeroExtend(pack(token));
-           flitOutPort.put(flit);
-           state <= 1;
-         end
-      // Receive probe
-      1: if (flitInPort.canGet) begin
-           disableHostMsgsWire <= True;
-           flitInPort.get;
-           token = unpack(truncate(flitInPort.value.payload));
-           if (!token.black && (count+token.count == 0)) begin
-             disableHostMsgsReg <= True;
-             state <= 2;
-           end else
-             state <= 0;
-         end
-      // Send stage 1 done
-      2: if (flitOutPort.canPut) begin
-           token.done = True;
-           flit.payload = zeroExtend(pack(token));
-           flitOutPort.put(flit);
-           state <= 3;
-         end
-      // Receive stage 1 done
-      3: if (flitInPort.canGet) begin
-           flitInPort.get;
-           state <= 4;
-         end
-      // Send stage 2 done
-      4: if (flitOutPort.canPut) begin
-           token.done = True;
-           flit.payload = zeroExtend(pack(token));
-           flitOutPort.put(flit);
-           state <= 5;
-         end
-      // Receive stage 2 done
-      5: if (flitInPort.canGet) begin
-           flitInPort.get;
-           state <= 0;
-           disableHostMsgsReg <= False;
-         end
-    endcase
-  endrule
+    // New value for probeSent
+    Bool probeSentNew = probeSent;
 
+    // Continue sending current probe
+    if (! probeSent) begin
+      if (flitOutPort.canPut) begin
+        // Send probe
+        if (state != 0) token.done = True;
+        flit.payload = zeroExtend(pack(token));
+        flitOutPort.put(flit);
+
+        // Move to next board
+        if (boardX == fromInteger(`MeshXLen-1)) begin
+          boardX <= 0;
+          if (boardY == fromInteger(`MeshYLen-1)) begin
+            boardY <= 0;
+            probeSentNew = True;
+          end else
+            boardY <= boardY+1;
+        end else
+          boardX <= boardX+1;
+      end
+    end
+
+    // Receive probe responses
+    if (flitInPort.canGet) begin
+      flitInPort.get;
+      token = unpack(truncate(flitInPort.value.payload));
+      if (respCount == fromInteger(`MeshXLen * `MeshYLen - 1)) begin
+        respCount <= 0;
+        probeSentNew = False;
+        if (state == 0) begin
+          totalCount <= localCount;
+          anyBlack <= False;
+          localBlackReset.send;
+      
+          disableHostMsgsWire <= True;
+          if (!token.black && !localBlack && !anyBlack &&
+                (totalCount+token.count == 0)) begin
+            disableHostMsgsReg <= True;
+            state <= 1;
+          end
+        end else if (state == 1)
+          state <= 2;
+        else if (state == 2) begin
+          state <= 0;
+          disableHostMsgsReg <= False;
+        end
+      end else begin
+        respCount <= respCount+1;
+        if (state == 0) begin
+          totalCount <= totalCount + token.count;
+          anyBlack <= anyBlack || token.black;
+        end
+      end
+    end
+
+    // Update probeSent
+    probeSent <= probeSentNew;
+  endrule
+  
   interface In flitIn = flitInPort.in;
   interface Out flitOut = flitOutPort.out;
   method Bool disableHostMsgs =

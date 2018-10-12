@@ -24,7 +24,9 @@ clean:
 	make -C apps/benchmarks clean
 	make -C apps/linktest clean
 	make -C apps/multiprog clean
+	make -C apps/sync clean
 	make -C apps/POLite/heat clean
+	make -C apps/POLite/heat-sync clean
 	make -C apps/POLite/asp clean
 	make -C apps/POLite/ring clean
 	make -C bin clean
