@@ -29,20 +29,31 @@ void readGraph(const char* filename)
     exit(EXIT_FAILURE);
   }
 
+  // Count number of nodes and edges
+  numEdges = 0;
+  numNodes = 0;
+  int ret;
+  while (1) {
+    uint32_t src, dst;
+    ret = fscanf(fp, "%d %d", &src, &dst);
+    if (ret == EOF) break;
+    numEdges++;
+    numNodes = src >= numNodes ? src+1 : numNodes;
+    numNodes = dst >= numNodes ? dst+1 : numNodes;
+  }
+  rewind(fp);
+
   // Create mapping from node id to number of neighbours
-  int ret = fscanf(fp, "%d %d", &numNodes, &numEdges);
   uint32_t* count = (uint32_t*) calloc(numNodes, sizeof(uint32_t));
   for (int i = 0; i < numEdges; i++) {
     uint32_t src, dst;
     ret = fscanf(fp, "%d %d", &src, &dst);
     count[src]++;
-    count[dst]++;
   }
 
   // Create mapping from node id to neighbours
   neighbours = (uint32_t**) calloc(numNodes, sizeof(uint32_t*));
   rewind(fp);
-  ret = fscanf(fp, "%d %d", &numNodes, &numEdges);
   for (int i = 0; i < numNodes; i++) {
     neighbours[i] = (uint32_t*) calloc(count[i]+1, sizeof(uint32_t));
     neighbours[i][0] = count[i];
@@ -51,7 +62,6 @@ void readGraph(const char* filename)
     uint32_t src, dst;
     ret = fscanf(fp, "%d %d", &src, &dst);
     neighbours[src][count[src]--] = dst;
-    neighbours[dst][count[dst]--] = src;
   }
 
   // Create mapping from node id to bit vector of reaching nodes

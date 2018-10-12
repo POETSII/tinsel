@@ -32,6 +32,9 @@ render n (vs, es) =
     [ do putStr (show (encode n src))
          putStr " "
          putStrLn (show (encode n dst))
+         putStr (show (encode n dst))
+         putStr " "
+         putStrLn (show (encode n src))
     | (src, dst) <- es
     ]
 
@@ -41,6 +44,4 @@ main = do
   let dims = read d :: Int
   let size = read n :: Int
   let g = hypercube dims size
-  print (length (fst g))
-  print (length (snd g))
   render size (hypercube dims size)
