@@ -3,7 +3,7 @@
 #include <assert.h>
 #include <sys/time.h>
 #include "ASP.h"
-#include "Network.h"
+#include "EdgeList.h"
 
 int main(int argc, char**argv)
 {
@@ -13,7 +13,7 @@ int main(int argc, char**argv)
   }
 
   // Read network
-  Network net;
+  EdgeList net;
   net.read(argv[1]);
 
   // Print max fan-out
