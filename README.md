@@ -553,7 +553,8 @@ which blocks until either
 The function returns false in the former case and true in the latter.
 This feature allows efficient termination detection in asynchronous
 applications and efficient barrier synchronisation in synchronous
-applications.
+applications.  For more details, see the original feature proposal:
+[PIP 13](doc/PIP-0013-idle-detection.md).
 
 A summary of synthesis-time parameters introduced in this section:
 
