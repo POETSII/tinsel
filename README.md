@@ -530,13 +530,30 @@ typedef enum {TINSEL_CAN_SEND = 1, TINSEL_CAN_RECV = 2} TinselWakeupCond;
 inline void tinselWaitUntil(TinselWakeupCond cond);
 ```
 
-Finally, a quick note on the design.  One of the main goals of the
-mailbox is to support efficient software multicasting: when a message
-is received, it can be forwarded on to multiple destinations without
-having to serialise the message contents into and out of the 32-bit
-core.  The mailbox scratchpad has a flit-sized port on the network
-side, providing much more efficient access to messages than is
-possible from the core.
+One of the main goals of the mailbox is to support efficient software
+multicasting: when a message is received, it can be forwarded on to
+multiple destinations without having to serialise the message contents
+into and out of the 32-bit core.  The mailbox scratchpad has a
+flit-sized port on the network side, providing much more efficient
+access to messages than is possible from the core.
+
+Tinsel also provides a function 
+
+```
+  int tinselIdle();
+```
+
+which blocks until either
+
+  1. a message is available to receive, or
+
+  2. all threads in the entire system are blocked on a call to
+     `tinselIdle()` and there are no undelivered messages in the system.
+
+The function returns false in the former case and true in the latter.
+This feature allows efficient termination detection in asynchronous
+applications and efficient barrier synchronisation in synchronous
+applications.
 
 A summary of synthesis-time parameters introduced in this section:
 
