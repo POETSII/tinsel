@@ -539,7 +539,7 @@ access to messages than is possible from the core.
 
 Tinsel also provides a function 
 
-```
+```c
   int tinselIdle();
 ```
 
