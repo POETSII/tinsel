@@ -22,6 +22,8 @@ struct ASPMessage : PMessage {
 };
 
 struct ALIGNED ASPDevice : PDevice {
+  // Number of incoming connections
+  uint16_t fanIn;
   // Current time step
   uint16_t time;
   // Completion status

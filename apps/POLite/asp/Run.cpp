@@ -55,6 +55,7 @@ int main(int argc, char**argv)
     }
     else
       dev->toReach = 32*NUM_SOURCES;
+    dev->fanIn = graph.fanIn(i);
   }
  
   // Write graph down to tinsel machine via HostLink
