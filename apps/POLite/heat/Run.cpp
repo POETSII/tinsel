@@ -34,9 +34,11 @@ int main()
   // Prepare mapping from graph to hardware
   graph.map();
 
-  // Specify number of time steps to run on each device
-  for (PDeviceId i = 0; i < graph.numDevices; i++)
+  // Device initialisation
+  for (PDeviceId i = 0; i < graph.numDevices; i++) {
     graph.devices[i]->t = time;
+    graph.devices[i]->fanIn = graph.fanIn(i);
+  }
  
   // Apply constant heat at north edge
   // Apply constant cool at south edge

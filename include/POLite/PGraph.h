@@ -173,9 +173,6 @@ template <typename DeviceType, typename MessageType> class PGraph {
         DeviceType* dev = devices[id];
         // Set thread-local device address
         dev->localAddr = devNum;
-        // Set fanIn
-        Seq<PDeviceId>* in = graph.incoming->elems[id];
-        dev->fanIn = in->numElems;
 
         // Set tinsel address of neighbours arrays
         dev->neighboursBase = dramBase[threadId] + nextDRAM;
@@ -414,6 +411,17 @@ template <typename DeviceType, typename MessageType> class PGraph {
     // Write DRAM partitions
     writeRAM(hostLink, 1);
   }
+
+  // Determine fan-in of given device
+  uint32_t fanIn(PDeviceId id) {
+    return graph.fanIn(id);
+  }
+
+  // Determine fan-out of given device
+  uint32_t fanOut(PDeviceId id) {
+    return graph.fanOut(id);
+  }
+
 };
 
 #endif

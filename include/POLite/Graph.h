@@ -96,6 +96,17 @@ struct Graph {
     }
     return max;
   }
+
+  // Determine fan-in of given node
+  uint32_t fanIn(NodeId id) {
+    return incoming->elems[id]->numElems;
+  }
+
+  // Determine fan-out of given node
+  uint32_t fanOut(NodeId id) {
+    return outgoing->elems[id]->numElems;
+  }
+
 };
 
 #endif

@@ -46,15 +46,15 @@ inline bool isPDeviceAddrValid(PDeviceAddr addr) { return (addr & 1); }
 
 // Generic device structure
 struct PDevice {
+  // Pointer to base of neighbours arrays
+  PTR(PDeviceAddr) neighboursBase;
+
   // Thread local device id
   PLocalDeviceAddr localAddr;
+
   // Is the device ready to send?
   // (If so, to which pin? See the pin macros)
   uint16_t readyToSend;
-  // Number of incoming edges
-  uint16_t fanIn;
-  // Pointer to base of neighbours arrays
-  PTR(PDeviceAddr) neighboursBase;
 
   #ifdef TINSEL
     // Obtain device id
