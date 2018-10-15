@@ -848,8 +848,9 @@ The default Tinsel configuration on a single DE5-Net board contains:
   * 16 floating-point units
   * 2D network-on-chip
   * two DDR3 DRAM controllers
-  * four QDRII++ SRAM controllers
+  * four QDRII+ SRAM controllers
   * four 10Gbps reliable links
+  * one termination/idle detector
   * a JTAG UART
 
 The clock frequency is 250MHz and the resource utilisation is 135K
