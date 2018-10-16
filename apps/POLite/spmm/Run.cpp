@@ -71,10 +71,10 @@ void bench_tinsel(benchmark::State &st, HostLink &hostLink,
 
     // wait until we get the correct response
     int x = 0;
-    std::chrono::high_resolution_clock::time_point last_recv = std::chrono::high_resolution_clock::now() - std::chrono::seconds(10);
+    std::chrono::high_resolution_clock::time_point last_recv = std::chrono::high_resolution_clock::now() + std::chrono::seconds(6000);
     bool last_recv_done = false;
     auto extra_time = std::chrono::microseconds(st.range(0));
-    const bool enable_poke = true;
+    const bool enable_poke = false;
 
     while(true) {
       if(true or DEBUG_VERBOSITY > 1) {
@@ -233,7 +233,7 @@ int main(int argc, char **argv)
                                [&hostLink, &inputs, &all_nodes, total](auto &st) {
                                  bench_tinsel(st, hostLink, inputs, all_nodes, total);
                                });
-  b->Range(1000000, 1000000);
+  b->Range(5000, 500000);
   benchmark::Initialize(&argc, argv);
   benchmark::RunSpecifiedBenchmarks();
 
