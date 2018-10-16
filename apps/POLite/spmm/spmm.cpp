@@ -1,3 +1,7 @@
+// #ifndef TINSEL
+// #define TINSEL
+// #endif
+
 #include <tinsel.h>
 #include <POLite.h>
 #include "spmm.h"

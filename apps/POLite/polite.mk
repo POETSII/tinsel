@@ -8,8 +8,8 @@ endif
 include $(TINSEL_ROOT)/globals.mk
 
 # Local compiler flags
-CFLAGS = $(RV_CFLAGS) -O2 -I $(INC)
-LDFLAGS = -melf32lriscv -G 0 
+CFLAGS += $(RV_CFLAGS) -Os -I $(INC)
+LDFLAGS += -melf32lriscv -G 0 
 
 BUILD=build
 
@@ -47,14 +47,15 @@ $(INC)/config.h: $(TINSEL_ROOT)/config.py
 $(HL)/%.o:
 	make -C $(HL)
 
-run: $(RUN_CPP) $(HL)/*.o
-	g++ -std=c++11 -O2 -I $(INC) -I $(HL) -o $(BUILD)/run $(RUN_CPP) $(HL)/*.o \
-	  -ljtag_atlantic -ljtag_client -L $(QUARTUS_ROOTDIR)/linux64/ \
-	  -Wl,-rpath,$(QUARTUS_ROOTDIR)/linux64 -lmetis -fno-exceptions
+$(BUILD)/run: builddir $(RUN_CPP) $(HL)/*.o
+	g++ -g -std=c++17 -O2 $(RUN_CFLAGS) -I$(INC) -I$(HL) -o $(BUILD)/run $(RUN_CPP) $(HL)/*.o \
+	  -static-libgcc -static-libstdc++ \
+	  -ljtag_atlantic -ljtag_client $(RUN_LDFLAGS) -L $(QUARTUS_ROOTDIR)/linux64 \
+	  -Wl,-rpath,$(QUARTUS_ROOTDIR)/linux64 -lmetis
 
-sim: $(RUN_CPP) $(HL)/sim/*.o
-	g++ -O2 -I $(INC) -I $(HL) -o sim $(RUN_CPP) $(HL)/sim/*.o \
-    -lmetis
+# $(BUILD)/sim: $(RUN_CPP) $(HL)/sim/*.o
+# 	g++ -O2 -I $(INC) -I $(HL) -o sim $(RUN_CPP) $(HL)/sim/*.o \
+#     -lmetis
 
 .PHONY: clean
 clean:
