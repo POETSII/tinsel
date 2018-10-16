@@ -66,10 +66,13 @@ struct ALIGNED SPMMDevice : PDevice
 
   inline void send(SPMMMessage *msg)
   {
-    if(output < highest_output) {
-      printf("Emitting lower output, hi=%x cu=%x\n", highest_output, output);
-    } else {
-      highest_output = output;
+    if (DEBUG_VERBOSITY > 5)
+    {
+      if(output < highest_output) {
+        printf("Emitting lower output, hi=%x cu=%x\n", highest_output, output);
+      } else {
+        highest_output = output;
+      }
     }
 
     msg->value = output;
@@ -110,16 +113,19 @@ struct ALIGNED SPMMDevice : PDevice
         if (e.src == msg->src)
         {
           if(msg->update_ts <= e.update_ts) {
-            printf("Found out of order update, src=%x existing=%x v=%x new=%x v=%x\n", e.src, e.update_ts, e.value, msg->update_ts, msg->value);
+            if (DEBUG_VERBOSITY > 2)
+            {
+              printf("Found out of order update, src=%x existing=%x v=%x new=%x v=%x\n", e.src, e.update_ts, e.value, msg->update_ts, msg->value);
+            }
             return 0;
           }
 
           auto d = (msg->value - e.value) * e.weight;
           
-          if (d < 0)
-          {
-            printf("Found existing contrib, d=%x src=%x v=%x ov=%x ts=%x ots=%x\n", d, e.src, msg->value, e.value, msg->update_ts, e.update_ts);
-          }
+          // if (d < 0)
+          // {
+          //   printf("Found existing contrib, d=%x src=%x v=%x ov=%x ts=%x ots=%x\n", d, e.src, msg->value, e.value, msg->update_ts, e.update_ts);
+          // }
 
           e.value = msg->value;
           e.update_ts = msg->update_ts;
@@ -133,10 +139,10 @@ struct ALIGNED SPMMDevice : PDevice
           e.src = msg->src;
           e.weight = init_weight;
 
-          if (d < 0)
-          {
-            printf("Found new contrib, d=%x src=%x val=%x w=%x\n", d, msg->src, msg->value, e.weight);
-          }
+          // if (d < 0)
+          // {
+          //   printf("Found new contrib, d=%x src=%x val=%x w=%x\n", d, msg->src, msg->value, e.weight);
+          // }
           
           e.value = msg->value;
           e.update_ts = msg->update_ts;
