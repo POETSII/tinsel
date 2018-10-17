@@ -48,6 +48,7 @@ void bench_tinsel(benchmark::State &st, HostLink &hostLink,
       }
       // needs to be a thread address
       hostLink.send(ptid, 1, &send_msg);
+      //break;
     }
   };
     
@@ -208,7 +209,7 @@ void init_hostlink(HostLink &hostLink, T &graph,
 int main(int argc, char **argv)
 {
   std::vector<std::pair<SPMMDevice::Type, int>> layers;
-  for(int i = 0; i < 3; i++) {
+  for(int i = 0; i < 5; i++) {
     layers.push_back({SPMMDevice::MIDDLE, 5});
   }
   layers.push_back({SPMMDevice::OUTPUT, 1});

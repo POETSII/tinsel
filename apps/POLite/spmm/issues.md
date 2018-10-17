@@ -83,4 +83,68 @@ HOST: Received output dest=0 exp=2000 v=304 src=0x10800001 last_update=0x810571a
 ```
 
 # Further issues
-- Not all messages seem to get delivered -> fix: you can probe the nodes to re-emit the values periodically, however, when you do this the ordering becomes vague. A message resulting from a probe might be re-ordered with one of the messages that isn't a probe, which is bad, as they might have older values if you probe while the network is still propagating.
+- Not all messages seem to get delivered -> fix: you can probe the nodes to re-emit the values periodically, however, when you do this the ordering becomes vague. A message resulting from a probe might be re-ordered with one of the messages that isn't a probe, which is bad, as they might have older values if you probe while the network is still propagating. Occasionally it works however:
+```
+total=2000
+Creating layer of size=5
+Creating layer of size=5
+Creating layer of size=5
+Creating layer of size=1
+2018-10-16 20:22:49
+Running ./build/run
+Run on (12 X 3501 MHz CPU s)
+CPU Caches:
+  L1 Data 32K (x6)
+  L1 Instruction 32K (x6)
+  L2 Unified 1024K (x6)
+  L3 Unified 8448K (x1)
+***WARNING*** CPU scaling is enabled, the benchmark real time measurements may be noisy and will incur extra overhead.
+HOST: Sending value 1 to ptid=0x1580 uc=0x1
+HOST: Sending value 1 to ptid=0x19c0 uc=0x2
+HOST: Sending value 1 to ptid=0x12c0 uc=0x3
+HOST: Sending value 1 to ptid=0x1ac0 uc=0x4
+HOST: Sending value 1 to ptid=0x1900 uc=0x5
+HOST: Received output dest=0 exp=2000 v=16 src=0x10800001 last_update=0x0
+HOST: Received output dest=0 exp=2000 v=48 src=0x10800001 last_update=0x1
+HOST: Received output dest=0 exp=2000 v=176 src=0x10800001 last_update=0x2
+HOST: Received output dest=0 exp=2000 v=448 src=0x10800001 last_update=0x3
+HOST: Received output dest=0 exp=2000 v=656 src=0x10800001 last_update=0x4
+HOST: Received output dest=0 exp=2000 v=1120 src=0x10800001 last_update=0x5
+HOST: Received output dest=0 exp=2000 v=1264 src=0x10800001 last_update=0x6
+HOST: Received output dest=0 exp=2000 v=1392 src=0x10800001 last_update=0x7
+HOST: Received output dest=0 exp=2000 v=1584 src=0x10800001 last_update=0x8
+HOST: Received output dest=0 exp=2000 v=1728 src=0x10800001 last_update=0x9
+HOST: Received output dest=0 exp=2000 v=1808 src=0x10800001 last_update=0xa
+HOST: Received output dest=0 exp=2000 v=2000 src=0x10800001 last_update=0xb
+HOST: Sending value 0 to ptid=0x1580 uc=0x6
+HOST: Sending value 0 to ptid=0x19c0 uc=0x7
+HOST: Sending value 0 to ptid=0x12c0 uc=0x8
+HOST: Sending value 0 to ptid=0x1ac0 uc=0x9
+HOST: Sending value 0 to ptid=0x1900 uc=0xa
+HOST: Received output dest=0 exp=0 v=1984 src=0x10800001 last_update=0xc
+HOST: Received output dest=0 exp=0 v=1952 src=0x10800001 last_update=0xd
+HOST: Received output dest=0 exp=0 v=1888 src=0x10800001 last_update=0xe
+HOST: Received output dest=0 exp=0 v=1632 src=0x10800001 last_update=0xf
+HOST: Received output dest=0 exp=0 v=1296 src=0x10800001 last_update=0x10
+HOST: Received output dest=0 exp=0 v=880 src=0x10800001 last_update=0x11
+HOST: Received output dest=0 exp=0 v=784 src=0x10800001 last_update=0x12
+HOST: Received output dest=0 exp=0 v=656 src=0x10800001 last_update=0x13
+HOST: Received output dest=0 exp=0 v=528 src=0x10800001 last_update=0x14
+HOST: Received output dest=0 exp=0 v=272 src=0x10800001 last_update=0x15
+HOST: Received output dest=0 exp=0 v=0 src=0x10800001 last_update=0x16
+HOST: Sending value 1 to ptid=0x1580 uc=0xb
+HOST: Sending value 1 to ptid=0x19c0 uc=0xc
+HOST: Sending value 1 to ptid=0x12c0 uc=0xd
+HOST: Sending value 1 to ptid=0x1ac0 uc=0xe
+HOST: Sending value 1 to ptid=0x1900 uc=0xf
+HOST: Received output dest=0 exp=2000 v=16 src=0x10800001 last_update=0x17
+HOST: Received output dest=0 exp=2000 v=48 src=0x10800001 last_update=0x18
+HOST: Received output dest=0 exp=2000 v=112 src=0x10800001 last_update=0x19
+HOST: Received output dest=0 exp=2000 v=288 src=0x10800001 last_update=0x1a
+HOST: Received output dest=0 exp=2000 v=672 src=0x10800001 last_update=0x1b
+HOST: Received output dest=0 exp=2000 v=1072 src=0x10800001 last_update=0x1c
+HOST: Received output dest=0 exp=2000 v=1216 src=0x10800001 last_update=0x1d
+HOST: Received output dest=0 exp=2000 v=1360 src=0x10800001 last_update=0x1e
+HOST: Received output dest=0 exp=2000 v=1520 src=0x10800001 last_update=0x1f
+HOST: Received output dest=0 exp=2000 v=1792 src=0x10800001 last_update=0x20
+```
