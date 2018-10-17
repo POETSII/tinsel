@@ -27,13 +27,17 @@ struct ALIGNED SPMMDevice : PDevice
   Type type;
   RING_TYPE init_weight;
   RING_TYPE output;
-  int num_inputs;
+  //int num_inputs;
+
+  // debug info
   bool copy_host;
   RING_TYPE highest_output;
 
+  uint32_t want_to_send = 0;
+  uint32_t actually_sent = 0;
+  
   struct Entry
   {
-
     uint32_t src = -1;
     RING_TYPE value = 0;
     RING_TYPE weight = 0;
@@ -54,7 +58,6 @@ struct ALIGNED SPMMDevice : PDevice
     output = 0;
     highest_output = 0;
 
-    
     for (auto &e : entries)
     {
       e.src = -1;
@@ -64,45 +67,7 @@ struct ALIGNED SPMMDevice : PDevice
     }
   }
 
-  inline void send(SPMMMessage *msg)
-  {
-    if (DEBUG_VERBOSITY > 5)
-    {
-      if(output < highest_output) {
-        printf("Emitting lower output, hi=%x cu=%x\n", highest_output, output);
-      } else {
-        highest_output = output;
-      }
-    }
-
-    msg->value = output;
-    msg->src = thisDeviceId();
-    msg->update_ts = last_update_cause++; //tinselCycleCount();
-    //msg->dest = ();
-
-    if (DEBUG_VERBOSITY > 3)
-    {
-      printf("op=send thread=0x%x o=0x%x src=0x%x val=0x%x ts=0x%x luc=0x%x\n",
-             thisDeviceId(), output, msg->src, msg->value, msg->update_ts,
-             last_update_cause);
-    }
-    const bool enable_host_copy = false;
-
-    if(enable_host_copy) 
-    {
-      if(copy_host) {
-        readyToSend = HOST_PIN;
-        copy_host = false;
-      } else {
-        readyToSend = NONE;
-      }
-    } 
-    else 
-    {
-      readyToSend = NONE;
-    }
-  }
-
+#ifdef TINSEL
   uint16_t dest() const { return this->type == OUTPUT ? HOST_PIN : PIN(0); }
 
   bool updateOutput(SPMMMessage *msg, uint32_t now) {
@@ -170,55 +135,102 @@ struct ALIGNED SPMMDevice : PDevice
 
     return true;
 
-    /*
-    uint32_t last_sent_diff = now - lastSendTime;
-    uint32_t last_sent_diff_us = (last_sent_diff >> 8);
-    RING_TYPE mult_threshold = 0; // this will need to be tweaked based on the network busyness
+    // uint32_t last_sent_diff = now - lastSendTime;
+    // uint32_t last_sent_diff_us = (last_sent_diff >> 8);
+    // RING_TYPE mult_threshold = 0; // this will need to be tweaked based on the network busyness
 
-    // if either the difference or the time since the last message is small
-    // resulting in the value being below the threshold
-    // assume that we haven't changed too much yet
-    bool res = (output_diff * last_sent_diff_us) >= mult_threshold;
-    if (DEBUG_VERBOSITY > 4)
-    {
-      printf("slow path res=0x%x od=0x%x lsdu=%x\n", res, output_diff, last_sent_diff_us);
-    }
-    return res;
-    */
+    // // if either the difference or the time since the last message is small
+    // // resulting in the value being below the threshold
+    // // assume that we haven't changed too much yet
+    // bool res = (output_diff * last_sent_diff_us) >= mult_threshold;
+    // if (DEBUG_VERBOSITY > 4)
+    // {
+    //   printf("slow path res=0x%x od=0x%x lsdu=%x\n", res, output_diff, last_sent_diff_us);
+    // }
+    // return res;
   }
-
-  // Receive handler
-  inline void recv(SPMMMessage *msg)
-  {
+  inline void onSendStart() {
+      if (DEBUG_VERBOSITY > 1)
+      {
+        printf("onSendStart\n");
+      }
+  }
+  inline void onSendRestart() {
+      if (DEBUG_VERBOSITY > 1)
+      {
+        printf("onSendRestart\n");
+      }
+  }
+  inline void onSendFinished() {
+      if (DEBUG_VERBOSITY > 1)
+      {
+        printf("onSendFinished\n");
+      }
+  }
+  inline void onTrigger() {
+      /*
+      if (DEBUG_VERBOSITY > 1)
+      {
+        printf("onTrigger\n");
+      }
+      */
+  }
+  inline bool process(SPMMMessage * input_msg, PThread<SPMMDevice, SPMMMessage>* thread) {
     if (DEBUG_VERBOSITY > 3)
     {
       printf("op=recv thread=0x%x o=0x%x src=0x%x val=0x%x ts=0x%x\n",
-             thisDeviceId(), output, msg->src, msg->value, msg->update_ts);
+             thisDeviceId(), output, input_msg->src, input_msg->value, input_msg->update_ts);
     }
 
-    if (msg->update_ts == -1)
+    bool should_send = false;
+
+    /*
+    if (input_msg->update_ts == -1)
     {
       // handle the trigger messages
       readyToSend = dest();
-      return;
+      want_to_send++;
+      return true;
     }
+    */
 
     RING_TYPE pre_out = output;
     auto now = tinselCycleCount();
 
-    if (updateOutput(msg, now))
+    if (updateOutput(input_msg, now))
     {
+      volatile SPMMMessage * output_msg = thread->get_send_buffer(localAddr);
+
+      if(output_msg == nullptr)
+      {
+        // TODO implement the case with multiple devices per thread
+        if (DEBUG_VERBOSITY > 1)
+        {
+          printf("cannot send, output == nullptr\n");
+        }
+        return false;
+      }
+
       readyToSend = dest();
-      copy_host = true;
+      //want_to_send++;
+      //copy_host = true;
+      output_msg->value = output;
+      output_msg->src = thisDeviceId();
+      output_msg->update_ts = last_update_cause++; //tinselCycleCount();
+    
+      should_send = true;
     }
     else
     {
-      readyToSend = NONE;
+      should_send = false;
     }
 
     if (DEBUG_VERBOSITY > 2)
     {
       printf("UPDATE thread=0x%x before=0x%x after=0x%x\n", thisDeviceId(), pre_out, output);
     }
-  }
+
+    return should_send;
+  } 
+#endif
 };
