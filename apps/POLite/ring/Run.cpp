@@ -1,23 +1,24 @@
+#include "Ring.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <sys/time.h>
 #include <HostLink.h>
 #include <POLite.h>
-#include "Ring.h"
 
 int main()
 {
   // Parameters
   const int numDevices    = 1024;
   const int numTokens     = 1024;
-  const int numIterations = 1000;
+  const int numIterations = 100;
 
   // Connection to tinsel machine
   HostLink hostLink;
 
   // Create POETS graph
-  PGraph<RingDevice, RingMessage> graph;
+  PGraph<RingDevice, PEmpty, RingState, PEmpty, RingMessage> graph;
 
   // Create ring of devices
   PDeviceId ring[numDevices];
@@ -32,9 +33,9 @@ int main()
   graph.map();
 
   // Specify initial state of root device
-  graph.devices[ring[0]]->root = 1;
-  graph.devices[ring[0]]->received = numTokens;
-  graph.devices[ring[0]]->stopCount = numTokens * (numIterations+1);
+  graph.devices[ring[0]]->state.root = 1;
+  graph.devices[ring[0]]->state.received = numTokens;
+  graph.devices[ring[0]]->state.stopCount = numTokens * (numIterations+1);
  
   // Write graph down to tinsel machine via HostLink
   graph.write(&hostLink);
