@@ -108,7 +108,7 @@ template <typename DeviceType,
       uint32_t numDevs = numDevicesOnThread[threadId];
       for (uint32_t devNum = 0; devNum < numDevs; devNum++) {
         // Add space for device
-        sizeSRAM = wordAlign(sizeSRAM + sizeof(PState<S>));
+        sizeSRAM = sizeSRAM + sizeof(PState<S>);
         // Add space for neighbour arrays
         PDeviceId id = fromDeviceAddr[threadId][devNum];
         // Determine number of pins
@@ -168,7 +168,7 @@ template <typename DeviceType,
         PDeviceId id = fromDeviceAddr[threadId][devNum];
         devices[id] = dev;
         // Add space for device
-        nextSRAM = wordAlign(nextSRAM + sizeof(PState<S>));
+        nextSRAM = nextSRAM + sizeof(PState<S>);
       }
       // Initialise each device and associated edge list
       for (uint32_t devNum = 0; devNum < numDevs; devNum++) {
@@ -199,8 +199,8 @@ template <typename DeviceType,
               PDeviceAddr addr = toDeviceAddr[
                 graph.outgoing->elems[id]->elems[i]];
               edgeArray[base+offset].destThread = addr.threadId;
-              edgeArray[base+offset].edge.devId = addr.devId;
-              // TODO: insert edge label here
+              edgeArray[base+offset].devId = addr.devId;
+              // TODO: insert edge label here (if E != None)
               offset++;
             }
           }
@@ -220,7 +220,7 @@ template <typename DeviceType,
         exit(EXIT_FAILURE);
       }
       // Check that there sufficient space for readyToSend and accumulator
-      uint32_t accumSize = typeid(A) == typeid(PEmpty) ? 0 : sizeof(A);
+      uint32_t accumSize = typeid(A) == typeid(None) ? 0 : sizeof(A);
       uint32_t mailboxBytes =
         NUM_RECV_SLOTS * (1<<TinselLogBytesPerMsg) +
           numDevs + numDevs * accumSize;

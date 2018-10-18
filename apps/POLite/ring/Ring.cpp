@@ -4,11 +4,11 @@
 
 typedef PThread<
           RingDevice,
-          PEmpty,
-          RingState,
-          PEmpty,
-          RingMessage>
-        RingThread;
+          None,         // Accumulator (small state)
+          RingState,    // State
+          None,         // Edge label
+          RingMessage   // Message
+        > RingThread;
 
 int main()
 {

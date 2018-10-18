@@ -2,6 +2,7 @@
 #define _PDEVICE_H_
 
 #include <stdint.h>
+#include <typeinfo>
 
 #ifdef TINSEL
   #include <tinsel.h>
@@ -28,7 +29,7 @@
 typedef uint16_t PLocalDeviceId;
 
 // Thread id
-typedef uint32_t PThreadId;
+typedef uint16_t PThreadId;
 
 // Device address
 struct PDeviceAddr {
@@ -37,8 +38,8 @@ struct PDeviceAddr {
 };
 
 // In some cases we use the MSB of this to mean "invalid thread"
-inline bool isValidThreadId(PThreadId id) { return !(id >> 31); }
-inline PThreadId invalidThreadId() { return 0x80000000; }
+inline bool isValidThreadId(PThreadId id) { return !(id >> 15); }
+inline PThreadId invalidThreadId() { return 0x8000; }
 
 // Pins
 //   No      - means 'not ready to send'
@@ -49,8 +50,8 @@ typedef uint8_t PPin;
 #define HostPin 1
 #define Pin(n) ((n)+2)
 
-// Empty structure
-struct PEmpty {};
+// For template arguments that are not used
+struct None {};
 
 // Generic device structure
 // Type parameters:
@@ -71,25 +72,7 @@ template <typename A, typename S, typename E, typename M> struct PDevice {
   void idle();
 };
 
-// Generic edge structure
-// (Only used internally)
-template <typename E> struct PEdge {
-  // Target device on receiving thread
-  PLocalDeviceId devId;
-  // Appliation edge label/weight
-  E label;
-};
-
-// Generic message structure
-template <typename E, typename M> struct PMessage {
-  // Edge info
-  PEdge<E> edge;
-  // Application message
-  M msg;
-};
-
 // Generic device state structure
-// (Only used internally)
 template <typename S> struct ALIGNED PState {
   // Pointer to base of neighbours arrays
   PTR(void) neighboursBase;
@@ -97,13 +80,50 @@ template <typename S> struct ALIGNED PState {
   S state;
 };
 
+// Message structure (labelled edges)
+template <typename E, typename M> struct PMessage {
+  // Target device on receiving thread
+  PLocalDeviceId devId;
+  // Edge info
+  E edge;
+  // Application message
+  M msg;
+};
+
+// Message structure (unlabelled edges)
+template <typename M> struct PMessage<None, M> {
+  union {
+    // Target device on receiving thread
+    PLocalDeviceId devId;
+    // Unused
+    None edge;
+  };
+  // Application message
+  M msg;
+};
+
 // Component type of neighbours array
-// (Only used internally)
+// For labelleled edges
 template <typename E> struct PNeighbour {
   // Destination thread
   PThreadId destThread;
+  // Target device on receiving thread
+  PLocalDeviceId devId;
   // Edge info
-  PEdge<E> edge;
+  E edge;
+};
+
+// Component type of neighbours array
+// For unlabelleled
+template <> struct PNeighbour<None> {
+  // Destination thread
+  PThreadId destThread;
+  union {
+    // Target device on receiving thread
+    PLocalDeviceId devId;
+    // Unused
+    None edge;
+  };
 };
 
 // Generic thread structure
@@ -169,7 +189,7 @@ template <typename DeviceType,
       if (isValidThreadId(neighbour->destThread)) {
         if (neighbour->destThread == tinselId()) {
           // Lookup destination device
-          PLocalDeviceId id = neighbour->edge.devId;
+          PLocalDeviceId id = neighbour->devId;
           DeviceType dev;
           dev.s           = &devices[id].state;
           dev.acc         = accum(id);
@@ -177,7 +197,7 @@ template <typename DeviceType,
           PPin oldReadyToSend = *dev.readyToSend;
           // Invoke receive handler
           PMessage<E,M>* m = (PMessage<E,M>*) tinselSlot(0);
-          dev.recv(&m->msg, &m->edge.label);
+          dev.recv(&m->msg, &m->edge);
           // Insert device into a senders array, if not already there
           if (oldReadyToSend == No && *dev.readyToSend != No)
              *(sendersTop++) = id;
@@ -188,7 +208,9 @@ template <typename DeviceType,
           // Destination device is on another thread
           PMessage<E,M>* m = (PMessage<E,M>*) tinselSlot(0);
           // Copy neighbour edge info into message
-          m->edge = neighbour->edge;
+          m->devId = neighbour->devId;
+          if (typeid(E) != typeid(None))
+            m->edge = neighbour->edge;
           // Send message
           tinselSend(neighbour->destThread, m);
           // Move to next neighbour
@@ -244,7 +266,7 @@ template <typename DeviceType,
         // Receive message
         PMessage<E,M> *m = (PMessage<E,M>*) tinselRecv();
         // Lookup destination device
-        PLocalDeviceId id = m->edge.devId;
+        PLocalDeviceId id = m->devId;
         DeviceType dev;
         dev.s           = &devices[id].state;
         dev.acc         = accum(id);
@@ -252,7 +274,7 @@ template <typename DeviceType,
         // Was it ready to send?
         PPin oldReadyToSend = *dev.readyToSend;
         // Invoke receive handler
-        dev.recv(&m->msg, &m->edge.label);
+        dev.recv(&m->msg, &m->edge);
         // Reallocate mailbox slot
         tinselAlloc(m);
         // Insert device into a senders array, if not already there
