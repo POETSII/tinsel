@@ -74,12 +74,6 @@ template <typename DeviceType,
     graph.addEdge(from, pin, to);
   }
 
-  // Add a bidirectional connection between devices
-  inline void addBidirectionalEdge(PDeviceId x, PinId px,
-                                   PDeviceId y, PinId py) {
-    graph.addBidirectionalEdge(x, px, y, py);
-  }
-
   // Allocate SRAM and DRAM partitions
   void allocatePartitions() {
     // Decide a maximum partition size that is reasonable

@@ -1,6 +1,6 @@
+#include "Ring.h"
 #include <tinsel.h>
 #include <POLite.h>
-#include "Ring.h"
 
 typedef PThread<
           RingDevice,

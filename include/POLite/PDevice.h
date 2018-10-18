@@ -87,7 +87,7 @@ template <typename E, typename M> struct PMessage {
   // Edge info
   E edge;
   // Application message
-  M msg;
+  M payload;
 };
 
 // Message structure (unlabelled edges)
@@ -99,7 +99,7 @@ template <typename M> struct PMessage<None, M> {
     None edge;
   };
   // Application message
-  M msg;
+  M payload;
 };
 
 // Component type of neighbours array
@@ -177,7 +177,7 @@ template <typename DeviceType,
     }
 
     // Set number of flits per message
-    tinselSetLen((sizeof(PMessage<M,E>)-1) >> TinselLogBytesPerFlit);
+    tinselSetLen((sizeof(PMessage<E,M>)-1) >> TinselLogBytesPerFlit);
 
     // Allocate some slots for incoming messages
     // (Slot 0 is reserved for outgoing messages)
@@ -197,7 +197,7 @@ template <typename DeviceType,
           PPin oldReadyToSend = *dev.readyToSend;
           // Invoke receive handler
           PMessage<E,M>* m = (PMessage<E,M>*) tinselSlot(0);
-          dev.recv(&m->msg, &m->edge);
+          dev.recv(&m->payload, &m->edge);
           // Insert device into a senders array, if not already there
           if (oldReadyToSend == No && *dev.readyToSend != No)
              *(sendersTop++) = id;
@@ -233,7 +233,7 @@ template <typename DeviceType,
           PPin pin        = *dev.readyToSend - 1;
           // Invoke send handler
           PMessage<E,M>* m = (PMessage<E,M>*) tinselSlot(0);
-          dev.send(&m->msg);
+          dev.send(&m->payload);
           // Reinsert sender, if it still wants to send
           if (*dev.readyToSend != No) sendersTop++;
           // Determine neighbours array for sender
@@ -274,7 +274,7 @@ template <typename DeviceType,
         // Was it ready to send?
         PPin oldReadyToSend = *dev.readyToSend;
         // Invoke receive handler
-        dev.recv(&m->msg, &m->edge);
+        dev.recv(&m->payload, &m->edge);
         // Reallocate mailbox slot
         tinselAlloc(m);
         // Insert device into a senders array, if not already there

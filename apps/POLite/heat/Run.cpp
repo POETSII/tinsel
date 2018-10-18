@@ -25,10 +25,14 @@ int main()
   // Add edges
   for (uint32_t y = 0; y < height; y++)
     for (uint32_t x = 0; x < width; x++) {
-      if (x < width-1)
-        graph.addBidirectionalEdge(mesh[y][x], 0, mesh[y][x+1], 0);
-      if (y < height-1)
-        graph.addBidirectionalEdge(mesh[y][x], 0, mesh[y+1][x], 0);
+      if (x < width-1) {
+        graph.addEdge(mesh[y][x],   0, mesh[y][x+1]);
+        graph.addEdge(mesh[y][x+1], 0, mesh[y][x]);
+      }
+      if (y < height-1) {
+        graph.addEdge(mesh[y][x],   0, mesh[y+1][x]);
+        graph.addEdge(mesh[y+1][x], 0, mesh[y][x]);
+      }
     }
 
   // Prepare mapping from graph to hardware
