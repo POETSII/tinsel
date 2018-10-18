@@ -22,7 +22,8 @@ struct ALIGNED PageRankDevice : PDevice {
   // the score for the current timestep
   float score;
   // Count messages sent and received
-  uint8_t sent, received, receivedNext;
+  uint8_t sent;
+  uint16_t received, receivedNext;
   // the fanOut for this vertex
   uint16_t fanOut;
   // the total number of vertices in the graph
