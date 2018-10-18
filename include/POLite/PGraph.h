@@ -10,12 +10,15 @@
 #include <POLite/Seq.h>
 #include <POLite/Graph.h>
 #include <POLite/Placer.h>
+#include <typeinfo>
 
 // Nodes of a POETS graph are devices
 typedef NodeId PDeviceId;
 
 // POETS graph
-template <typename DeviceType, typename MessageType> class PGraph {
+template <typename DeviceType,
+          typename A, typename S,
+          typename E, typename M> class PGraph {
  private:
   // Align address to 2^n byte boundary
   inline uint32_t align(uint32_t n, uint32_t addr) {
@@ -41,9 +44,9 @@ template <typename DeviceType, typename MessageType> class PGraph {
   // Graph containing device ids and connections
   Graph graph;
 
-  // Mapping from device id to device pointer
+  // Mapping from device id to device state
   // (Not valid until the mapper is called)
-  DeviceType** devices;
+  PState<S>** devices;
 
   // Mapping from thread id to number of devices on that thread
   // (Not valid until the mapper is called)
@@ -100,22 +103,22 @@ template <typename DeviceType, typename MessageType> class PGraph {
       uint32_t sizeDRAM = 0;
       // Add space for thread structure (stored in SRAM)
       sizeSRAM = cacheAlign(sizeSRAM +
-                              sizeof(PThread<DeviceType, MessageType>));
+                              sizeof(PThread<DeviceType, A, S, E, M>));
       // Add space for edge lists (stored in DRAM)
       uint32_t numDevs = numDevicesOnThread[threadId];
       for (uint32_t devNum = 0; devNum < numDevs; devNum++) {
         // Add space for device
-        sizeSRAM = wordAlign(sizeSRAM + sizeof(DeviceType));
+        sizeSRAM = wordAlign(sizeSRAM + sizeof(PState<S>));
         // Add space for neighbour arrays
         PDeviceId id = fromDeviceAddr[threadId][devNum];
         // Determine number of pins
         int32_t numPins = graph.maxPin(id) + 2;
         // Add space for neighbour arrays for each pin
         sizeDRAM = cacheAlign(sizeDRAM + numPins * MAX_PIN_FANOUT
-                                                 * sizeof(PDeviceAddr));
+                                                 * sizeof(PNeighbour<E>));
       }
-      // The total partition size including unintialised portions
-      uint32_t totalSizeSRAM = sizeSRAM + 4 * numDevs;
+      // The total partition size including uninitialised portions
+      uint32_t totalSizeSRAM = sizeSRAM + sizeof(PLocalDeviceId) * numDevs;
       uint32_t totalSizeDRAM = sizeDRAM;
       // Check that total size is reasonable
       if (totalSizeSRAM > maxSRAMSize) {
@@ -149,37 +152,38 @@ template <typename DeviceType, typename MessageType> class PGraph {
       uint32_t nextDRAM = 0;
       uint32_t nextSRAM = 0;
       // Pointer to thread structure
-      PThread<DeviceType, MessageType>* thread =
-        (PThread<DeviceType, MessageType>*) &sram[threadId][nextSRAM];
+      PThread<DeviceType, A, S, E, M>* thread =
+        (PThread<DeviceType, A, S, E, M>*) &sram[threadId][nextSRAM];
       // Add space for thread structure
       nextSRAM = cacheAlign(nextSRAM +
-                   sizeof(PThread<DeviceType, MessageType>));
+                   sizeof(PThread<DeviceType, A, S, E, M>));
       // Set number of devices on thread
       thread->numDevices = numDevicesOnThread[threadId];
-      // Set tinsel address of devices array
+      // Set tinsel address of array of device states
       thread->devices = sramBase[threadId] + nextSRAM;
       // Add space for each device on thread
       uint32_t numDevs = numDevicesOnThread[threadId];
       for (uint32_t devNum = 0; devNum < numDevs; devNum++) {
-        DeviceType* dev = (DeviceType*) &sram[threadId][nextSRAM];
+        PState<S>* dev = (PState<S>*) &sram[threadId][nextSRAM];
         PDeviceId id = fromDeviceAddr[threadId][devNum];
         devices[id] = dev;
         // Add space for device
-        nextSRAM = wordAlign(nextSRAM + sizeof(DeviceType));
+        nextSRAM = wordAlign(nextSRAM + sizeof(PState<S>));
       }
       // Initialise each device and associated edge list
       for (uint32_t devNum = 0; devNum < numDevs; devNum++) {
         PDeviceId id = fromDeviceAddr[threadId][devNum];
-        DeviceType* dev = devices[id];
+        PState<S>* dev = devices[id];
         // Set thread-local device address
-        dev->localAddr = devNum;
+        // dev->localAddr = devNum;
 
         // Set tinsel address of neighbours arrays
         dev->neighboursBase = dramBase[threadId] + nextDRAM;
-        // Edge array
-        PDeviceAddr* edgeArray = (PDeviceAddr*) &dram[threadId][nextDRAM];
+        // Neighbour array
+        PNeighbour<E>* edgeArray = (PNeighbour<E>*) &dram[threadId][nextDRAM];
         // Emit neighbours array for host pin
-        edgeArray[0] = makePDeviceAddr(tinselHostId(), 0, 1);
+        edgeArray[0].destThread = tinselHostId();
+        edgeArray[1].destThread = invalidThreadId(); // Terminator
         // Emit neigbours arrays for each application pin
         PinId numPins = graph.maxPin(id) + 1;
         for (uint32_t p = 0; p < numPins; p++) {
@@ -192,11 +196,15 @@ template <typename DeviceType, typename MessageType> class PGraph {
                 printf("Error: pin fanout exceeds maximum\n");
                 exit(EXIT_FAILURE);
               }
-              edgeArray[base+offset] =
-                toDeviceAddr[graph.outgoing->elems[id]->elems[i]];
+              PDeviceAddr addr = toDeviceAddr[
+                graph.outgoing->elems[id]->elems[i]];
+              edgeArray[base+offset].destThread = addr.threadId;
+              edgeArray[base+offset].edge.devId = addr.devId;
+              // TODO: insert edge label here
               offset++;
             }
           }
+          edgeArray[base+offset].destThread = invalidThreadId(); // Terminator
         }
         // Add space for edges
         nextDRAM = cacheAlign(nextDRAM + (numPins+1) *
@@ -211,6 +219,17 @@ template <typename DeviceType, typename MessageType> class PGraph {
         printf("Error: dram partition size does not match pre-computed size\n");
         exit(EXIT_FAILURE);
       }
+      // Check that there sufficient space for readyToSend and accumulator
+      uint32_t accumSize = typeid(A) == typeid(PEmpty) ? 0 : sizeof(A);
+      uint32_t mailboxBytes =
+        NUM_RECV_SLOTS * (1<<TinselLogBytesPerMsg) +
+          numDevs + numDevs * accumSize;
+      uint32_t maxMailboxBytes =
+        (1<<TinselLogMsgsPerThread) * (1<<TinselLogBytesPerMsg);
+      if (mailboxBytes >= maxMailboxBytes) {
+        printf("Error: mailbox scratchpad overflow\n");
+        exit(EXIT_FAILURE);
+      }
       // Set tinsel address of senders array
       thread->senders = sramBase[threadId] + nextSRAM;
     }
@@ -218,7 +237,7 @@ template <typename DeviceType, typename MessageType> class PGraph {
 
   // Allocate mapping structures
   void allocateMapping() {
-    devices = (DeviceType**) calloc(numDevices, sizeof(DeviceType*));
+    devices = (PState<S>**) calloc(numDevices, sizeof(PState<S>*));
     toDeviceAddr = (PDeviceAddr*) calloc(numDevices, sizeof(PDeviceAddr));
     fromDeviceAddr = (PDeviceId**) calloc(TinselMaxThreads, sizeof(PDeviceId*));
     numDevicesOnThread = (uint32_t*) calloc(TinselMaxThreads, sizeof(uint32_t));
@@ -301,8 +320,9 @@ template <typename DeviceType, typename MessageType> class PGraph {
   
               // Populate toDeviceAddr mapping
               for (uint32_t devNum = 0; devNum < numDevs; devNum++) {
-                PDeviceAddr devAddr = 
-                  makePDeviceAddr(threadId, devNum, 1);
+                PDeviceAddr devAddr;
+                devAddr.threadId = threadId;
+                devAddr.devId = devNum;
                 toDeviceAddr[g->labels->elems[devNum]] = devAddr;
               }
             }

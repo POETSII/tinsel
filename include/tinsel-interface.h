@@ -8,7 +8,7 @@
 #define INLINE inline __attribute__((always_inline))
 
 // Get globally unique thread id of caller
-INLINE int tinselId();
+INLINE uint32_t tinselId();
 
 // Read cycle counter
 INLINE uint32_t tinselCycleCount();
