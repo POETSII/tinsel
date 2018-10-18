@@ -18,7 +18,7 @@ int main()
   HostLink hostLink;
 
   // Create POETS graph
-  PGraph<RingDevice, PEmpty, RingState, PEmpty, RingMessage> graph;
+  PGraph<RingDevice, PNone, RingState, PNone, RingMessage> graph;
 
   // Create ring of devices
   PDeviceId ring[numDevices];

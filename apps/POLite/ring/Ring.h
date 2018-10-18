@@ -18,7 +18,7 @@ struct RingState {
   uint32_t stopCount;
 };
 
-struct RingDevice : PDevice<PEmpty, RingState, PEmpty, RingMessage> {
+struct RingDevice : PDevice<None, RingState, None, RingMessage> {
 
   // Called once by POLite at start of execution
   void init() {
@@ -35,7 +35,7 @@ struct RingDevice : PDevice<PEmpty, RingState, PEmpty, RingMessage> {
   }
 
   // Receive handler
-  inline void recv(RingMessage* msg, PEmpty* edge) {
+  inline void recv(RingMessage* msg, None* edge) {
     s->received++;
     // Check termination condition
     if (s->root && s->received == s->stopCount)
