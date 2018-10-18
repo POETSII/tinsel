@@ -3,50 +3,55 @@
 
 #include <POLite.h>
 
-struct HeatMessage : PMessage {
+struct HeatMessage {
+  // Sender id
+  uint32_t from;
   // Time step
-  uint32_t t;
+  uint32_t time;
   // Temperature at sender
   uint32_t val;
-  // Sender address
-  PDeviceAddr from;
 };
 
-struct ALIGNED HeatDevice : PDevice {
+struct HeatState {
+  // Device id
+  uint32_t id;
   // Current time step of device
-  uint32_t t;
+  uint32_t time;
   // Current temperature of device
   uint32_t val, acc;
   // Is the temperature of this device constant?
   bool isConstant;
+};
+
+struct HeatDevice : PDevice<None, HeatState, None, HeatMessage> {
 
   // Called once by POLite at start of execution
   inline void init() {
-    readyToSend = PIN(0);
+    *readyToSend = Pin(0);
   }
 
   // Called by POLite when system becomes idle
   inline void idle() {
     // Execution complete?
-    if (t == 0) return;
+    if (s->time == 0) return;
 
-    t--;
-    if (!isConstant) val = acc >> 2;
-    acc = 0;
-    readyToSend = t == 0 ? HOST_PIN : PIN(0);
+    s->time--;
+    if (!s->isConstant) s->val = s->acc >> 2;
+    s->acc = 0;
+    *readyToSend = s->time == 0 ? HostPin : Pin(0);
   }
 
   // Send handler
   inline void send(HeatMessage* msg) {
-    msg->t = t;
-    msg->val = val;
-    msg->from = thisDeviceId();
-    readyToSend = NONE;
+    msg->from = s->id;
+    msg->time = s->time;
+    msg->val = s->val;
+    *readyToSend = No;
   }
 
   // Receive handler
-  inline void recv(HeatMessage* msg) {
-    acc += msg->val;
+  inline void recv(HeatMessage* msg, None* edge) {
+    s->acc += msg->val;
   }
 };
 
