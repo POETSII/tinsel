@@ -67,4 +67,4 @@ struct PageRankDevice : PDevice<None, PageRankState, None, PageRankMessage> {
   }
 };
 
-#endif /* _PAGERANK_H */
+#endif
