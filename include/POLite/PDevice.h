@@ -152,7 +152,8 @@ template <typename DeviceType,
 
   // Get accumulator state for given device id
   inline A* accum(PLocalDeviceId id) {
-    A* p = (A*) tinselSlot(NUM_RECV_SLOTS+1) + numDevices;
+    uint32_t offset = (numDevices * sizeof(PPin) + 3) / 4;
+    A* p = (A*) tinselSlot(NUM_RECV_SLOTS+1) + offset;
     return &p[id];
   }
 
