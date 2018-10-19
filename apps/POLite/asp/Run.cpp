@@ -1,9 +1,10 @@
+#include "ASP.h"
+#include "EdgeList.h"
+
 #include <HostLink.h>
 #include <POLite.h>
 #include <assert.h>
 #include <sys/time.h>
-#include "ASP.h"
-#include "EdgeList.h"
 
 int main(int argc, char**argv)
 {
@@ -26,7 +27,7 @@ int main(int argc, char**argv)
   HostLink hostLink;
 
   // Create POETS graph
-  PGraph<ASPDevice, ASPMessage> graph;
+  PGraph<ASPDevice, None, ASPState, None, ASPMessage> graph;
 
   // Create nodes in POETS graph
   for (uint32_t i = 0; i < net.numNodes; i++) {
@@ -46,7 +47,7 @@ int main(int argc, char**argv)
 
   // Initialise devices
   for (PDeviceId i = 0; i < graph.numDevices; i++) {
-    ASPDevice* dev = graph.devices[i];
+    ASPState* dev = &graph.devices[i]->state;
     if (i < 32*NUM_SOURCES) {
       // This is a source node
       // By definition, a source node reaches itself
@@ -75,9 +76,9 @@ int main(int argc, char**argv)
 
   // Accumulate sum at each device
   for (uint32_t i = 0; i < graph.numDevices; i++) {
-    ASPMessage msg;
-    hostLink.recvMsg(&msg, sizeof(ASPMessage));
-    sum += msg.reaching[0];
+    PMessage<None, ASPMessage> msg;
+    hostLink.recvMsg(&msg, sizeof(msg));
+    sum += msg.payload.reaching[0];
   }
 
   // Stop timer

@@ -1,12 +1,20 @@
+#include "ASP.h"
+
 #include <tinsel.h>
 #include <POLite.h>
-#include "ASP.h"
+
+typedef PThread<
+          ASPDevice,
+          None,         // Accumulator (small state)
+          ASPState,     // State
+          None,         // Edge label
+          ASPMessage    // Message
+        > ASPThread;
 
 int main()
 {
   // Point thread structure at base of thread's heap
-  PThread<ASPDevice, ASPMessage>* thread =
-    (PThread<ASPDevice, ASPMessage>*) tinselHeapBaseSRAM();
+  ASPThread* thread = (ASPThread*) tinselHeapBaseSRAM();
   
   // Invoke interpreter
   thread->run();

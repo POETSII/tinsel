@@ -14,14 +14,14 @@
 // NUM_SOURCES*32 is the number of sources to compute ASP for
 #define NUM_SOURCES 14
 
-struct ASPMessage : PMessage {
+struct ASPMessage {
   // Time step of sender
   uint16_t time;
   // Bit vector of nodes reaching sender
   uint32_t reaching[NUM_SOURCES];
 };
 
-struct ALIGNED ASPDevice : PDevice {
+struct ASPState {
   // Number of incoming connections
   uint16_t fanIn;
   // Current time step
@@ -40,86 +40,87 @@ struct ALIGNED ASPDevice : PDevice {
   uint32_t reaching[NUM_SOURCES];
   uint32_t reaching1[NUM_SOURCES];
   uint32_t reaching2[NUM_SOURCES];
+};
 
+struct ASPDevice : PDevice<None, ASPState, None, ASPMessage> {
   // Called once by POLite at start of execution
   void init() {
     // Setup first round of sends
-    readyToSend = PIN(0);
+    *readyToSend = Pin(0);
   }
-
-  // Called by POLite when system becomes idle
-  inline void idle() { return; }
 
   // We call this on every state change
   void step() {
     // Finished execution?
-    if (done) { readyToSend = done == 2 ? NONE : HOST_PIN; return; }
+    if (s->done) { *readyToSend = s->done == 2 ? No : HostPin; return; }
     // Ready to send?
-    if (sent == 0)
-      readyToSend = PIN(0);
+    if (s->sent == 0)
+      *readyToSend = Pin(0);
     else {
-      readyToSend = NONE;
+      *readyToSend = No;
       // Check for completion
-      if (toReach == 0) {
-        done = 1;
-        readyToSend = HOST_PIN;
+      if (s->toReach == 0) {
+        s->done = 1;
+        *readyToSend = HostPin;
       }
-      else if (received == fanIn) {
+      else if (s->received == s->fanIn) {
         // Proceed to next time step
-        time++;
+        s->time++;
         // Update reaching vectors
         for (uint32_t i = 0; i < NUM_SOURCES; i++) {
-          uint32_t s = reaching[i];
-          uint32_t s1 = reaching1[i];
-          reaching[i] = s | s1;
-          uint32_t bits = s1 & ~s;
+          uint32_t bs = s->reaching[i];
+          uint32_t bs1 = s->reaching1[i];
+          s->reaching[i] = bs | bs1;
+          uint32_t bits = bs1 & ~bs;
           while (bits != 0) {
-            sum += time;
-            toReach--;
+            s->sum += s->time;
+            s->toReach--;
             bits = bits & (bits-1);
           }
-          reaching1[i] = reaching2[i];
-          reaching2[i] = 0;
+          s->reaching1[i] = s->reaching2[i];
+          s->reaching2[i] = 0;
         }
         // Update counters
-        received = receivedNext;
-        receivedNext = 0;
+        s->received = s->receivedNext;
+        s->receivedNext = 0;
         // Fresh round of sends
-        sent = 0;
-        readyToSend = PIN(0);
+        s->sent = 0;
+        *readyToSend = Pin(0);
       }
     }
   }
 
   // Send handler
   inline void send(ASPMessage* msg) {
-    if (done) {
-      msg->reaching[0] = sum;
-      done = 2;
+    if (s->done) {
+      msg->reaching[0] = s->sum;
+      s->done = 2;
     } else {
-      msg->time = time;
+      msg->time = s->time;
       for (uint32_t i = 0; i < NUM_SOURCES; i++)
-        msg->reaching[i] = reaching[i];
-      sent = 1;
+        msg->reaching[i] = s->reaching[i];
+      s->sent = 1;
     }
     step();
   }
 
   // Receive handler
-  inline void recv(ASPMessage* msg) {
-    if (msg->time == time) {
+  inline void recv(ASPMessage* msg, None* edge) {
+    if (msg->time == s->time) {
       for (uint32_t i = 0; i < NUM_SOURCES; i++)
-        reaching1[i] |= msg->reaching[i];
-      received++;
+        s->reaching1[i] |= msg->reaching[i];
+      s->received++;
       step();
     }
     else {
       for (uint32_t i = 0; i < NUM_SOURCES; i++)
-        reaching2[i] |= msg->reaching[i];
-      receivedNext++;
+        s->reaching2[i] |= msg->reaching[i];
+      s->receivedNext++;
     }
   }
 
+  // Called by POLite when system becomes idle
+  inline void idle() { return; }
 };
 
 #endif
