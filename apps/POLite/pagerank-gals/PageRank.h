@@ -7,21 +7,21 @@
 
 struct PageRankMessage {
   // Time step
-  uint32_t t;
+  uint16_t t;
   // Page rank score for sender at time step t
   float val;
 };
 
 struct PageRankState {
   // Current time step of device
-  uint32_t t;
+  uint16_t t;
+  // Count messages sent and received
+  uint16_t sent;
+  uint16_t received, receivedNext;
   // Current temperature of device
   float acc, accNext;
   // Score for the current timestep
   float score;
-  // Count messages sent and received
-  uint8_t sent;
-  uint16_t received, receivedNext;
   // Fan-in and fan-out for this vertex
   uint16_t fanIn, fanOut;
   // Total number of vertices in the graph
