@@ -3,7 +3,7 @@
 
 #include <POLite.h>
 
-#define NUM_ITERATIONS 6
+#define NUM_ITERATIONS 30
 
 struct PageRankMessage {
   // Page rank score to pass on 

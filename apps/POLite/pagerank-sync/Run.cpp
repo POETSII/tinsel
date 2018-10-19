@@ -9,17 +9,17 @@
 
 int main(int argc, char **argv)
 {
-  // Connection to tinsel machine
-  HostLink hostLink;
-
-  // Create POETS graph
-  PGraph<PageRankDevice, None, PageRankState, None, PageRankMessage> graph;
-
   // Read in the example edge list and create data structure
   if (argc != 2) {
     printf("Specify edge file\n");
     exit(EXIT_FAILURE);
   }
+
+  // Connection to tinsel machine
+  HostLink hostLink;
+
+  // Create POETS graph
+  PGraph<PageRankDevice, None, PageRankState, None, PageRankMessage> graph;
 
   // Load in the edge list file
   printf("Loading in the graph..."); fflush(stdout);
