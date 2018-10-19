@@ -1,20 +1,21 @@
-#include <HostLink.h>
-#include <POLite.h>
 #include "Heat.h"
 #include "Colours.h"
+
+#include <HostLink.h>
+#include <POLite.h>
 
 int main()
 {
   // Parameters
-  const uint32_t width  = 64;
-  const uint32_t height = 32;
+  const uint32_t width  = 8;
+  const uint32_t height = 8;
   const uint32_t time   = 2;
 
   // Connection to tinsel machine
   HostLink hostLink;
 
   // Create POETS graph
-  PGraph<HeatDevice, HeatMessage> graph;
+  PGraph<HeatDevice, None, HeatState, None, HeatMessage> graph;
 
   // Create 2D mesh of devices
   PDeviceId mesh[height][width];
@@ -38,28 +39,31 @@ int main()
   // Prepare mapping from graph to hardware
   graph.map();
 
-  // Device initialisation
-  for (PDeviceId i = 0; i < graph.numDevices; i++) {
-    graph.devices[i]->t = time;
-    graph.devices[i]->fanIn = graph.fanIn(i);
-  }
+  // Set device ids
+  for (uint32_t y = 0; y < height; y++)
+    for (uint32_t x = 0; x < width; x++)
+      graph.devices[mesh[y][x]]->state.id = mesh[y][x];
+
+  // Specify number of time steps to run on each device
+  for (PDeviceId i = 0; i < graph.numDevices; i++)
+    graph.devices[i]->state.time = time;
  
   // Apply constant heat at north edge
   // Apply constant cool at south edge
   for (uint32_t x = 0; x < width; x++) {
-    graph.devices[mesh[0][x]]->val = 255 << 16;
-    graph.devices[mesh[0][x]]->isConstant = true;
-    graph.devices[mesh[height-1][x]]->val = 40 << 16;
-    graph.devices[mesh[height-1][x]]->isConstant = true;
+    graph.devices[mesh[0][x]]->state.val = 255 << 16;
+    graph.devices[mesh[0][x]]->state.isConstant = true;
+    graph.devices[mesh[height-1][x]]->state.val = 40 << 16;
+    graph.devices[mesh[height-1][x]]->state.isConstant = true;
   }
 
   // Apply constant heat at west edge
   // Apply constant cool at east edge
   for (uint32_t y = 0; y < height; y++) {
-    graph.devices[mesh[y][0]]->val = 255 << 16;
-    graph.devices[mesh[y][0]]->isConstant = true;
-    graph.devices[mesh[y][width-1]]->val = 40 << 16;
-    graph.devices[mesh[y][width-1]]->isConstant = true;
+    graph.devices[mesh[y][0]]->state.val = 255 << 16;
+    graph.devices[mesh[y][0]]->state.isConstant = true;
+    graph.devices[mesh[y][width-1]]->state.val = 40 << 16;
+    graph.devices[mesh[y][width-1]]->state.isConstant = true;
   }
 
   // Write graph down to tinsel machine via HostLink
@@ -68,6 +72,7 @@ int main()
   // Load code and trigger execution
   hostLink.boot("code.v", "data.v");
   hostLink.go();
+  printf("Starting\n");
 
   // Allocate array to contain final value of each device
   uint32_t pixels[graph.numDevices];
@@ -75,13 +80,10 @@ int main()
   // Receive final value of each device
   for (uint32_t i = 0; i < graph.numDevices; i++) {
     // Receive message
-    HeatMessage msg;
-    hostLink.recvMsg(&msg, sizeof(HeatMessage));
+    PMessage<None, HeatMessage> msg;
+    hostLink.recvMsg(&msg, sizeof(msg));
     // Save final value
-    PDeviceId id = graph.fromDeviceAddr
-                     [getPThreadId(msg.from)]
-                     [getPLocalDeviceAddr(msg.from)];
-    pixels[id] = msg.val;
+    pixels[msg.payload.from] = msg.payload.val;
   }
 
   // Emit image

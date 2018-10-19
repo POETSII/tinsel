@@ -3,20 +3,22 @@
 
 #include <POLite.h>
 
-struct HeatMessage : PMessage {
+struct HeatMessage {
+  // Sender id
+  uint32_t from;
   // Time step
-  uint32_t t;
+  uint32_t time;
   // Temperature at sender
   uint32_t val;
-  // Sender address
-  PDeviceAddr from;
 };
 
-struct ALIGNED HeatDevice : PDevice {
+struct HeatState {
   // Number of incoming connections
   uint16_t fanIn;
+  // Device id
+  uint32_t id;
   // Current time step of device
-  uint32_t t;
+  uint32_t time;
   // Current temperature of device
   uint32_t val;
   // Accumulator for temperatures received at times t and t+1
@@ -25,57 +27,60 @@ struct ALIGNED HeatDevice : PDevice {
   uint8_t sent, received, receivedNext;
   // Is the temperature of this device constant?
   bool isConstant;
+};
+
+struct HeatDevice : PDevice<None, HeatState, None, HeatMessage> {
 
   // Called once by POLite at start of execution
   void init() {
-    readyToSend = PIN(0);
+    *readyToSend = Pin(0);
   }
-
-  // Called by POLite when system becomes idle
-  inline void idle() { return; }
 
   // We call this on every state change
   inline void step() {
     // Execution complete?
-    if (t == 0) return;
+    if (s->time == 0) return;
 
     // Proceed to next time step?
-    if (sent && received == fanIn) {
-      t--;
-      if (!isConstant) val = acc >> 2;
-      acc = accNext;
-      received = receivedNext;
-      accNext = receivedNext = 0;
-      sent = 0;
+    if (s->sent && s->received == s->fanIn) {
+      s->time--;
+      if (!s->isConstant) s->val = s->acc >> 2;
+      s->acc = s->accNext;
+      s->received = s->receivedNext;
+      s->accNext = s->receivedNext = 0;
+      s->sent = 0;
       // On final time step, send to host
-      readyToSend = t == 0 ? HOST_PIN : PIN(0);
+      *readyToSend = s->time == 0 ? HostPin : Pin(0);
     }
   }
 
   // Send handler
   inline void send(HeatMessage* msg) {
-    msg->t = t;
-    msg->val = val;
-    msg->from = thisDeviceId();
-    sent = 1;
-    readyToSend = NONE;
+    msg->time = s->time;
+    msg->val = s->val;
+    msg->from = s->id;
+    s->sent = 1;
+    *readyToSend = No;
     step();
   }
 
   // Receive handler
-  inline void recv(HeatMessage* msg) {
-    if (msg->t == t) {
+  inline void recv(HeatMessage* msg, None* edge) {
+    if (msg->time == s->time) {
       // Receive temperature for this time step
-      acc += msg->val;
-      received++;
+      s->acc += msg->val;
+      s->received++;
       step();
     }
     else {
       // Receive temperature for next time step
-      accNext += msg->val;
-      receivedNext++;
+      s->accNext += msg->val;
+      s->receivedNext++;
     }
   }
+
+  // Called by POLite when system becomes idle
+  inline void idle() { return; }
 };
 
 #endif
