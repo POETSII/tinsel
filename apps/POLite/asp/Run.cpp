@@ -1,8 +1,8 @@
 #include "ASP.h"
-#include "EdgeList.h"
 
 #include <HostLink.h>
 #include <POLite.h>
+#include <EdgeList.h>
 #include <assert.h>
 #include <sys/time.h>
 
