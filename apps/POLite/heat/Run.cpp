@@ -44,9 +44,11 @@ int main()
     for (uint32_t x = 0; x < width; x++)
       graph.devices[mesh[y][x]]->state.id = mesh[y][x];
 
-  // Specify number of time steps to run on each device
-  for (PDeviceId i = 0; i < graph.numDevices; i++)
+  // Initialise time and fanIn fields
+  for (PDeviceId i = 0; i < graph.numDevices; i++) {
     graph.devices[i]->state.time = time;
+    graph.devices[i]->state.fanIn = graph.fanIn(i);
+  }
  
   // Apply constant heat at north edge
   // Apply constant cool at south edge
