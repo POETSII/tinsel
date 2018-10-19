@@ -1,10 +1,13 @@
 #define _GLIBCXX_USE_CXX11_ABI 0
 #include <HostLink.h>
 #include <POLite.h>
+#include <assert.h>
+#include <iostream>
 #include "PageRank.h"
-#include "EdgeListReader.hpp"
+#include <sys/time.h>
+#include "EdgeList.h"
 
-int main()
+int main(int argc, char **argv)
 {
   // Connection to tinsel machine
   HostLink hostLink;
@@ -12,52 +15,58 @@ int main()
   // Create POETS graph
   PGraph<PageRankDevice, PageRankMessage> graph;
 
-  std::cout << "Loading in the graph..";
+  printf("Loading in the graph..");
 
   // read in the example edge list and create data structure
-  EdgeListReader elreader("test.el");
-  EdgeListGraph *in_elg = elreader.getELGraph();
-
-  std::cout << " done\n";
-
-  // print out the number of vertices and edges
-  std::cout << "vertices: " << in_elg->numV() << " edges: " << in_elg->numE() << "\n";  
-  fflush(stdout);
-
-  // iterate through all the vertices and make a device for each
-  PDeviceId devices[in_elg->numV()];
-  for(int i=0; i<in_elg->numV(); i++) {
-      devices[i] = graph.newDevice();
-  } 
-
-  // iterate through the edges and add them
-  for(EdgeListGraph::eiterator i=in_elg->ebegin(), e=in_elg->eend(); i!=e; ++i) {
-     edge_t c = *i;
-     graph.addEdge(devices[c.src],0,devices[c.dst]);
+  if (argc != 2) {
+	  printf("Specify edge file\n");
+	  exit(EXIT_FAILURE);
   }
 
-  std::cout << "Placing the graph..";
+  // load in the edge list file
+  EdgeList net;
+  net.read(argv[1]);
+
+  printf(" done\n");
+
+  // Print max fan-out
+  printf("Max fan-out = %d\n", net.maxFanOut());
+  
+  // Create nodes in POETS graph
+  for (uint32_t i = 0; i < net.numNodes; i++) {
+    PDeviceId id = graph.newDevice();
+    assert(i == id);
+  }
+
+  // Create connections in POETS graph
+  for (uint32_t i = 0; i < net.numNodes; i++) {
+    uint32_t numNeighbours = net.neighbours[i][0];
+    for (uint32_t j = 0; j < numNeighbours; j++)
+      graph.addEdge(i, 0, net.neighbours[i][j+1]);
+  }
+
+  printf("Placing the graph..");
   fflush(stdout);
   // Prepare mapping from graph to hardware
   graph.map();
-  std::cout << " done\n";
+  printf(" done\n");
   fflush(stdout);
 
-  std::cout << "Setting up devices..";
+  printf("Setting up devices..");
   fflush(stdout);
   // Specify number of time steps to run on each device
   for (PDeviceId i = 0; i < graph.numDevices; i++) {
     graph.devices[i]->num_vertices = graph.numDevices;
     graph.devices[i]->fanOut = graph.graph.incoming->elems[i]->numElems;//in_elg->fanOut(i);
   }
-  std::cout << " done\n";
+  printf(" done\n");
   fflush(stdout);
 
-  std::cout << "Loading the graph..";
+  printf("Loading the graph..");
   fflush(stdout);
   // Write graph down to tinsel machine via HostLink
   graph.write(&hostLink);
-  std::cout << " done\n";
+  printf(" done\n");
   fflush(stdout);
 
   // Load code and trigger execution
@@ -68,6 +77,7 @@ int main()
   unsigned recv_cnt = 0;
 
   printf("Starting\n");
+  fflush(stdout);
   // Get start time
   struct timeval start, finish, diff; 
   gettimeofday(&start, NULL);
