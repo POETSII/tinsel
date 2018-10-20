@@ -51,7 +51,6 @@ int main(int argc, char **argv)
   printf("Setting up devices..."); fflush(stdout);
   // Specify number of time steps to run on each device
   for (PDeviceId i = 0; i < graph.numDevices; i++) {
-    graph.devices[i]->state.numVertices = graph.numDevices;
     graph.devices[i]->state.fanOut = graph.fanOut(i);
   }
   printf(" done\n");

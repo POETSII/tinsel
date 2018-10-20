@@ -153,6 +153,8 @@ template <typename DeviceType,
                    sizeof(PThread<DeviceType, A, S, E, M>));
       // Set number of devices on thread
       thread->numDevices = numDevicesOnThread[threadId];
+      // Set number of devices in graph
+      thread->numVertices = numDevices;
       // Set tinsel address of array of device states
       thread->devices = sramBase[threadId] + nextSRAM;
       // Add space for each device on thread

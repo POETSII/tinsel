@@ -15,12 +15,10 @@ struct PageRankState {
    float score;
    // Accumulator used to sum in scores from incoming messages
    float sum;
-   // Total number of vertices in the graph
-   uint32_t numVertices;
    // Fan-out for this vertex
    uint16_t fanOut; 
    // Current iteration
-   uint8_t iter;
+   uint16_t iter;
 };
 
 struct PageRankDevice : PDevice<None, PageRankState, None, PageRankMessage> {
@@ -28,16 +26,16 @@ struct PageRankDevice : PDevice<None, PageRankState, None, PageRankMessage> {
   // Called once by POLite at start of execution
   inline void init() { 
     s->sum = 0.0;
-    s->score = 1.0 / s->numVertices;
+    s->score = 1.0 / numVertices;
     s->iter = 0;
     *readyToSend = Pin(0);
   }
 
   // Called by POLite when system becomes idle
   inline void idle() {
-    // calculate the score for this iter
-    s->score = 0.15/s->numVertices + 0.85*s->sum;
-    // clear the accumulator
+    // Calculate the score for this iter
+    s->score = 0.15/numVertices + 0.85*s->sum;
+    // Clear the accumulator
     s->sum = 0.0;
     if (s->iter < NUM_ITERATIONS) {
       s->iter++;
@@ -65,6 +63,7 @@ struct PageRankDevice : PDevice<None, PageRankState, None, PageRankMessage> {
   inline void recv(PageRankMessage* msg, None* edge) {
     s->sum += msg->val;
   }
+
 };
 
 #endif

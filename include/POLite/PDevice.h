@@ -12,8 +12,8 @@
   #define PTR(t) uint32_t
 #endif
 
-// Use this to align on cache-line boundary
-#define ALIGNED __attribute__((aligned(1<<TinselLogBytesPerLine)))
+// Use this to align on half-cache-line boundary
+#define ALIGNED __attribute__((aligned(1<<(TinselLogBytesPerLine-1))))
 
 // This is a static limit on the fan out of any pin
 #ifndef MAX_PIN_FANOUT
@@ -64,6 +64,7 @@ template <typename A, typename S, typename E, typename M> struct PDevice {
   S* s;
   A* acc;
   PPin* readyToSend;
+  uint32_t numVertices;
 
   // Handlers
   void init();
@@ -133,6 +134,8 @@ template <typename DeviceType,
 
   // Number of devices handled by thread
   PLocalDeviceId numDevices;
+  // Number of devices in graph
+  uint32_t numVertices;
   // Current neighbour in multicast
   PTR(PNeighbour<E>) neighbour;
   // Pointer to array of device states
@@ -171,6 +174,7 @@ template <typename DeviceType,
       dev.s           = &devices[i].state;
       dev.acc         = accum(i);
       dev.readyToSend = readyToSend(i);
+      dev.numVertices = numVertices;
       // Invoke the initialiser for each device
       dev.init();
       // Device ready to send?
@@ -195,6 +199,7 @@ template <typename DeviceType,
           dev.s           = &devices[id].state;
           dev.acc         = accum(id);
           dev.readyToSend = readyToSend(id);
+          dev.numVertices = numVertices;
           PPin oldReadyToSend = *dev.readyToSend;
           // Invoke receive handler
           PMessage<E,M>* m = (PMessage<E,M>*) tinselSlot(0);
@@ -231,6 +236,7 @@ template <typename DeviceType,
           dev.s           = &devices[src].state;
           dev.acc         = accum(src);
           dev.readyToSend = readyToSend(src);
+          dev.numVertices = numVertices;
           PPin pin        = *dev.readyToSend - 1;
           // Invoke send handler
           PMessage<E,M>* m = (PMessage<E,M>*) tinselSlot(0);
@@ -254,6 +260,7 @@ template <typename DeviceType,
             dev.s           = &devices[i].state;
             dev.acc         = accum(i);
             dev.readyToSend = readyToSend(i);
+            dev.numVertices = numVertices;
             // Invoke the idle handler for each device
             dev.idle();
             // Device ready to send?
@@ -272,6 +279,7 @@ template <typename DeviceType,
         dev.s           = &devices[id].state;
         dev.acc         = accum(id);
         dev.readyToSend = readyToSend(id);
+        dev.numVertices = numVertices;
         // Was it ready to send?
         PPin oldReadyToSend = *dev.readyToSend;
         // Invoke receive handler
