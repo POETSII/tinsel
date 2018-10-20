@@ -218,8 +218,8 @@ template <typename DeviceType,
       // Check that there sufficient space for readyToSend and accumulator
       uint32_t accumSize = typeid(A) == typeid(None) ? 0 : sizeof(A);
       uint32_t mailboxBytes =
-        NUM_RECV_SLOTS * (1<<TinselLogBytesPerMsg) +
-          numDevs + numDevs * accumSize;
+        wordAlign((1+NUM_RECV_SLOTS) * (1<<TinselLogBytesPerMsg) +
+                     numDevs) + numDevs * accumSize;
       uint32_t maxMailboxBytes =
         (1<<TinselLogMsgsPerThread) * (1<<TinselLogBytesPerMsg);
       if (mailboxBytes >= maxMailboxBytes) {
