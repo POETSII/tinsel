@@ -18,13 +18,15 @@
 int counter = 1;
 bool toggle_flag = true;
 
-void bench_tinsel(benchmark::State &st, HostLink &hostLink,
-                  const std::vector<uint32_t> &inputAddrs, const std::vector<uint32_t> &allNodes, int solution)
-{
-  const int init_value = 1;
+using Nodes = std::vector<uint32_t>;
+using LayerSizes = std::vector<std::pair<SPMMDevice::Type, int>>;
 
-  int value = 0;        // init_value;
-  int target_value = 0; // solution;
+void bench_tinsel(benchmark::State &st, HostLink &hostLink, const Nodes& inputAddrs, const Nodes& allNodes, RING_TYPE solution)
+{
+  const RING_TYPE init_value = 1;
+
+  RING_TYPE value = 0;        // init_value;
+  RING_TYPE target_value = 0; // solution;
 
   SPMMMessage recv_msg;
   SPMMMessage push_msg;
@@ -42,7 +44,7 @@ void bench_tinsel(benchmark::State &st, HostLink &hostLink,
 
       auto ptid = getPThreadId(addr);
 
-      if(DEBUG_VERBOSITY > 0) {
+      if(DEBUG_VERBOSITY > 1) {
         printf("HOST: Sending value %i to ptid=0x%x uc=0x%x\n", v, ptid,
              send_msg.update_ts);
       }
@@ -71,21 +73,21 @@ void bench_tinsel(benchmark::State &st, HostLink &hostLink,
     seedInputs(value);
 
     // wait until we get the correct response
-    int x = 0;
-    std::chrono::high_resolution_clock::time_point last_recv = std::chrono::high_resolution_clock::now() + std::chrono::seconds(6000);
-    bool last_recv_done = false;
-    auto extra_time = std::chrono::microseconds(st.range(0));
-    const bool enable_poke = false;
+    // int x = 0;
+    // std::chrono::high_resolution_clock::time_point last_recv = std::chrono::high_resolution_clock::now() + std::chrono::seconds(6000);
+    // bool last_recv_done = false;
+    // auto extra_time = std::chrono::microseconds(st.range(0));
+    // const bool enable_poke = false;
 
     while(true) {
       if(true or DEBUG_VERBOSITY > 1) {
         hostLink.pollStdOut();
       }
       
+      
+      /*
       // Poking threads should not be necessary
       auto now = std::chrono::high_resolution_clock::now();
-
-      
       if(enable_poke and !last_recv_done and now > last_recv + extra_time) {
         if(DEBUG_VERBOSITY > 0) {
           printf("HOST: Sending pokes to threads\n");
@@ -102,28 +104,40 @@ void bench_tinsel(benchmark::State &st, HostLink &hostLink,
           hostLink.send(tid, 1, &push_msg);
         }
       }
-      
+      */
+
       bool h = hostLink.canRecv();
       if (h)
       {
         hostLink.recvMsg(&recv_msg, sizeof(SPMMMessage));
-        last_recv = now;
-        last_recv_done = false;
+        // last_recv = now;
+        // last_recv_done = false;
 
         if(DEBUG_VERBOSITY > 0) {
-          printf("HOST: Received output dest=%i exp=%i v=%i src=0x%x "
-                "last_update=0x%x\n",
+
+          if constexpr (std::is_same<RING_TYPE, float>::value) {
+            printf("HOST: Received output dest=%i exp=%f v=%f src=0x%x "
+                "last_update=%x %i\n",
                 recv_msg.dest, target_value, recv_msg.value, recv_msg.src,
-                recv_msg.update_ts);
+                recv_msg.update_ts, recv_msg.update_ts);
+          } else {
+            printf("HOST: Received output dest=%i exp=%i v=%i src=0x%x "
+                "last_update=%x %i\n",
+                recv_msg.dest, target_value, recv_msg.value, recv_msg.src,
+                recv_msg.update_ts, recv_msg.update_ts);
+          }
+          
         }
 
         if (recv_msg.value == target_value)
         {
-          // printf("HOST: Value is correct\n");
+          if(DEBUG_VERBOSITY > 0) {
+            printf("HOST: Value is correct\n");
+          }
           break;
         }
       }
-      x++;
+      //x++;
     }
     // usleep(10000);
     // printf("finished an iteration of the bench\n");
@@ -132,12 +146,80 @@ void bench_tinsel(benchmark::State &st, HostLink &hostLink,
   // printf("finished iterations\n");
 }
 
+struct ThreadIdLayout
+{ 
+  unsigned boardY:TinselMeshYBits;            // 2
+  unsigned boardX:TinselMeshXBits;            // 2
+  unsigned boxY:TinselMailboxMeshYBits;       // 2
+  unsigned boxX:TinselMailboxMeshXBits;       // 2
+  unsigned threadNum:6;                       // 2 + 4
+};
+
 template <typename T>
-void init_hostlink(HostLink &hostLink, T &graph,
-              std::vector<std::pair<SPMMDevice::Type, int>> &layer_sizes, std::vector<uint32_t>& inputs, std::vector<uint32_t>& all_nodes)
+void dump_graph(T& graph) {
+  
+  FILE * out = stderr;
+
+  auto printLocation = [&graph, out](PDeviceId pdid) {
+    PDeviceAddr pdaddr = graph.toDeviceAddr[pdid];
+    //printf("pdid=%x addr=%x\n", pdid, pdaddr);
+
+    PLocalDeviceAddr pldaddr = getPLocalDeviceAddr(pdaddr);
+    PThreadId ptid = getPThreadId(pdaddr);
+
+    //printf("pldaddr=%x ptid=%x %x %x\n", pldaddr, ptid, sizeof(PThreadId), sizeof(ThreadIdLayout));
+
+
+
+    //static_assert(sizeof(PThreadId) == sizeof(ThreadIdLayout));
+
+    union C {
+      ThreadIdLayout l;
+      PThreadId ptid;
+    } c;
+    c.ptid = ptid;
+    //printf("boardY=%x boardX=%x boxY=%x boxX=%x threadNum=%x\n", c.l.boardY, c.l.boardX, c.l.boxY, c.l.boxX, c.l.threadNum);
+    
+    fprintf(out, "%u,%u,%u,%u,%u,%u", c.l.boardY, c.l.boardX, c.l.boxY, c.l.boxX, c.l.threadNum, pldaddr);
+  };
+  
+  fprintf(out,"fromBoardY,fromBoardX,fromBoxY,fromBoxX,fromThreadNum,fromDeviceNum,");
+  fprintf(out,"toBoardY,toBoardX,toBoxY,toBoxX,toThreadNum,toDeviceNum\n");
+
+  for(NodeId start_node = 0; start_node < graph.graph.outgoing->numElems; start_node++) {
+    Seq<NodeId>* end_nodes = graph.graph.outgoing->elems[start_node];
+    
+    for(NodeId end_node_idx = 0; end_node_idx < end_nodes->numElems; end_node_idx++) {
+      NodeId end_node = end_nodes->elems[end_node_idx];
+
+      printLocation(start_node);
+      fprintf(out,",");
+      printLocation(end_node);
+      fprintf(out,"\n");
+    }
+
+
+  }
+
+  for(PDeviceId pdid = 0; pdid < graph.numDevices; pdid++) {
+
+    
+    // ThreadIdLayout t;
+    // t = (ThreadIdLayout)ptid;
+    // uint32_t threadId = boardY;
+    // threadId = (threadId << TinselMeshXBits) | boardX;
+    // threadId = (threadId << TinselMailboxMeshYBits) | boxY;
+    // threadId = (threadId << TinselMailboxMeshXBits) | boxX;
+    // threadId = (threadId << (TinselLogCoresPerMailbox +
+    //               TinselLogThreadsPerCore)) | threadNum;
+  }
+}
+
+template <typename T>
+void init_graph(T &graph, LayerSizes &layer_sizes, Nodes& inputs, Nodes& all_nodes, int trigger_time)
 {
   // Create POETS graph
-  const int init_weight = 2;
+  const RING_TYPE init_weight = 2;
 
   struct Layer
   {
@@ -152,7 +234,7 @@ void init_hostlink(HostLink &hostLink, T &graph,
     layers.push_back(Layer(layer.first));
     Layer &l = layers.back();
 
-    printf("Creating layer of size=%i\n", layer.second);
+    //printf("Creating layer of size=%i\n", layer.second);
     for (int i = 0; i < layer.second; i++)
     {
       l.devices.push_back(graph.newDevice());
@@ -172,7 +254,11 @@ void init_hostlink(HostLink &hostLink, T &graph,
   }
 
   // Prepare mapping from graph to hardware
-  graph.map();
+  graph.map([trigger_time](PGraph<SPMMDevice, SPMMMessage>::ThreadType * t){
+    t->triggerTime = trigger_time;
+  });
+
+  dump_graph(graph);
 
   for (auto &l : layers)
   {
@@ -182,15 +268,6 @@ void init_hostlink(HostLink &hostLink, T &graph,
       graph.devices[pdid]->init_weight = init_weight;
     }
   }
-
-  // Write graph down to tinsel machine via HostLink
-  graph.write(&hostLink);
-
-  // Load code and trigger execution
-  hostLink.boot("build/code.v", "build/data.v");
-
-  // Trigger execution
-  hostLink.go();
 
   for (auto pdid : layers[0].devices)
   {
@@ -209,8 +286,13 @@ void init_hostlink(HostLink &hostLink, T &graph,
 int main(int argc, char **argv)
 {
   std::vector<std::pair<SPMMDevice::Type, int>> layers;
-  for(int i = 0; i < 5; i++) {
-    layers.push_back({SPMMDevice::MIDDLE, 5});
+  
+  const int num_layers = std::atoi(argv[1]);
+  const int layer_size = std::atoi(argv[2]);
+  const int trigger_time = std::atoi(argv[3]);
+  
+  for(int i = 0; i < num_layers; i++) {
+    layers.push_back({SPMMDevice::MIDDLE, layer_size});
   }
   layers.push_back({SPMMDevice::OUTPUT, 1});
   setlinebuf(stdout);
@@ -221,20 +303,29 @@ int main(int argc, char **argv)
     // weight * number_of_nodes
     total *= (2 * layers[i].second);
   }
-  printf("total=%i\n", total);
+  //printf("total=%i\n", total);
 
-  HostLink hostLink;
   PGraph<SPMMDevice, SPMMMessage> graph;
-
   std::vector<uint32_t> inputs;
   std::vector<uint32_t> all_nodes;
-  init_hostlink(hostLink, graph, layers, inputs, all_nodes);
+  init_graph(graph, layers, inputs, all_nodes, trigger_time);
+
+  return 0;
+
+  HostLink hostLink;
+  // Write graph down to tinsel machine via HostLink
+  graph.write(&hostLink);
+  // Load code and trigger execution
+  hostLink.boot("build/code.v", "build/data.v");
+  // Trigger execution
+  hostLink.go();
 
   auto b = benchmark::RegisterBenchmark("standard test",
                                [&hostLink, &inputs, &all_nodes, total](auto &st) {
                                  bench_tinsel(st, hostLink, inputs, all_nodes, total);
                                });
-  b->Range(5000, 500000);
+  b->Args({num_layers, layer_size, trigger_time});
+  b->Unit(benchmark::kMicrosecond);
   benchmark::Initialize(&argc, argv);
   benchmark::RunSpecifiedBenchmarks();
 
