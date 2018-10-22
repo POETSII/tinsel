@@ -181,7 +181,7 @@
    {
       datum _sortIndex
       {
-         value = "20";
+         value = "21";
          type = "int";
       }
    }
@@ -189,7 +189,55 @@
    {
       datum _sortIndex
       {
-         value = "19";
+         value = "20";
+         type = "int";
+      }
+   }
+   element mac_e
+   {
+      datum _sortIndex
+      {
+         value = "22";
+         type = "int";
+      }
+   }
+   element mac_e_rx_fifo
+   {
+      datum _sortIndex
+      {
+         value = "24";
+         type = "int";
+      }
+   }
+   element mac_e_tx_fifo
+   {
+      datum _sortIndex
+      {
+         value = "23";
+         type = "int";
+      }
+   }
+   element mac_f
+   {
+      datum _sortIndex
+      {
+         value = "25";
+         type = "int";
+      }
+   }
+   element mac_f_rx_fifo
+   {
+      datum _sortIndex
+      {
+         value = "27";
+         type = "int";
+      }
+   }
+   element mac_f_tx_fifo
+   {
+      datum _sortIndex
+      {
+         value = "26";
          type = "int";
       }
    }
@@ -222,63 +270,15 @@
          type = "int";
       }
    }
+   element pcie_clk_156
+   {
+      datum _sortIndex
+      {
+         value = "19";
+         type = "int";
+      }
+   }
    element qdr_a
-   {
-      datum _sortIndex
-      {
-         value = "22";
-         type = "int";
-      }
-   }
-   element qdr_a_r_bridge
-   {
-      datum _sortIndex
-      {
-         value = "23";
-         type = "int";
-      }
-   }
-   element qdr_a_w_bridge
-   {
-      datum _sortIndex
-      {
-         value = "24";
-         type = "int";
-      }
-   }
-   element qdr_b
-   {
-      datum _sortIndex
-      {
-         value = "25";
-         type = "int";
-      }
-   }
-   element qdr_b_r_bridge
-   {
-      datum _sortIndex
-      {
-         value = "26";
-         type = "int";
-      }
-   }
-   element qdr_b_w_bridge
-   {
-      datum _sortIndex
-      {
-         value = "27";
-         type = "int";
-      }
-   }
-   element qdr_c
-   {
-      datum _sortIndex
-      {
-         value = "28";
-         type = "int";
-      }
-   }
-   element qdr_c_r_bridge
    {
       datum _sortIndex
       {
@@ -286,7 +286,7 @@
          type = "int";
       }
    }
-   element qdr_c_w_bridge
+   element qdr_a_r_bridge
    {
       datum _sortIndex
       {
@@ -294,7 +294,7 @@
          type = "int";
       }
    }
-   element qdr_d
+   element qdr_a_w_bridge
    {
       datum _sortIndex
       {
@@ -302,7 +302,7 @@
          type = "int";
       }
    }
-   element qdr_d_r_bridge
+   element qdr_b
    {
       datum _sortIndex
       {
@@ -310,11 +310,67 @@
          type = "int";
       }
    }
-   element qdr_d_w_bridge
+   element qdr_b_r_bridge
    {
       datum _sortIndex
       {
          value = "33";
+         type = "int";
+      }
+   }
+   element qdr_b_w_bridge
+   {
+      datum _sortIndex
+      {
+         value = "34";
+         type = "int";
+      }
+   }
+   element qdr_c
+   {
+      datum _sortIndex
+      {
+         value = "35";
+         type = "int";
+      }
+   }
+   element qdr_c_r_bridge
+   {
+      datum _sortIndex
+      {
+         value = "36";
+         type = "int";
+      }
+   }
+   element qdr_c_w_bridge
+   {
+      datum _sortIndex
+      {
+         value = "37";
+         type = "int";
+      }
+   }
+   element qdr_d
+   {
+      datum _sortIndex
+      {
+         value = "38";
+         type = "int";
+      }
+   }
+   element qdr_d_r_bridge
+   {
+      datum _sortIndex
+      {
+         value = "39";
+         type = "int";
+      }
+   }
+   element qdr_d_w_bridge
+   {
+      datum _sortIndex
+      {
+         value = "40";
          type = "int";
       }
    }
@@ -338,7 +394,7 @@
    {
       datum _sortIndex
       {
-         value = "21";
+         value = "28";
          type = "int";
       }
    }
@@ -447,6 +503,36 @@
    type="avalon_streaming"
    dir="start" />
  <interface
+   name="mac_e_avalon_st_pause"
+   internal="mac_e.avalon_st_pause"
+   type="avalon_streaming"
+   dir="end" />
+ <interface
+   name="mac_e_xgmii_rx"
+   internal="mac_e.xgmii_rx"
+   type="avalon_streaming"
+   dir="end" />
+ <interface
+   name="mac_e_xgmii_tx"
+   internal="mac_e.xgmii_tx"
+   type="avalon_streaming"
+   dir="start" />
+ <interface
+   name="mac_f_avalon_st_pause"
+   internal="mac_f.avalon_st_pause"
+   type="avalon_streaming"
+   dir="end" />
+ <interface
+   name="mac_f_xgmii_rx"
+   internal="mac_f.xgmii_rx"
+   type="avalon_streaming"
+   dir="end" />
+ <interface
+   name="mac_f_xgmii_tx"
+   internal="mac_f.xgmii_tx"
+   type="avalon_streaming"
+   dir="start" />
+ <interface
    name="mem_if_ddr3_emif_2_status"
    internal="mem_if_ddr3_emif_2.status"
    type="conduit"
@@ -470,6 +556,16 @@
  <interface name="oct_0" internal="qdr_b.oct" type="conduit" dir="end" />
  <interface name="oct_1" internal="qdr_a.oct" />
  <interface name="oct_2" internal="mem_if_ddr3_emif_2.oct" />
+ <interface
+   name="pcie_clk_156"
+   internal="pcie_clk_156.clk_in"
+   type="clock"
+   dir="end" />
+ <interface
+   name="pcie_reset_156"
+   internal="pcie_clk_156.clk_in_reset"
+   type="reset"
+   dir="end" />
  <interface name="qdr_a" internal="qdr_a.memory" type="conduit" dir="end" />
  <interface name="qdr_a_status" internal="qdr_a.status" type="conduit" dir="end" />
  <interface name="qdr_b" internal="qdr_b.memory" type="conduit" dir="end" />
@@ -750,6 +846,114 @@
   <parameter name="USE_PACKETS" value="1" />
   <parameter name="WR_SYNC_DEPTH" value="3" />
  </module>
+ <module name="mac_e" kind="altera_eth_10g_mac" version="16.1" enabled="1">
+  <parameter name="AUTO_DEVICE" value="5SGXEA7N2F45C2" />
+  <parameter name="AUTO_DEVICE_SPEEDGRADE" value="2_H2" />
+  <parameter name="DATAPATH_OPTION" value="3" />
+  <parameter name="DEVICE_FAMILY" value="Stratix V" />
+  <parameter name="ENABLE_1G10G_MAC" value="0" />
+  <parameter name="ENABLE_PFC" value="0" />
+  <parameter name="ENABLE_PTP_1STEP" value="0" />
+  <parameter name="ENABLE_SUPP_ADDR" value="0" />
+  <parameter name="ENABLE_TIMESTAMPING" value="0" />
+  <parameter name="ENABLE_UNIDIRECTIONAL" value="0" />
+  <parameter name="INSTANTIATE_STATISTICS" value="0" />
+  <parameter name="INSTANTIATE_TX_CRC" value="1" />
+  <parameter name="PFC_PRIORITY_NUM" value="8" />
+  <parameter name="PREAMBLE_PASSTHROUGH" value="0" />
+  <parameter name="REGISTER_BASED_STATISTICS" value="0" />
+  <parameter name="TSTAMP_FP_WIDTH" value="4" />
+ </module>
+ <module
+   name="mac_e_rx_fifo"
+   kind="altera_avalon_dc_fifo"
+   version="16.1"
+   enabled="1">
+  <parameter name="BITS_PER_SYMBOL" value="8" />
+  <parameter name="CHANNEL_WIDTH" value="0" />
+  <parameter name="ENABLE_EXPLICIT_MAXCHANNEL" value="false" />
+  <parameter name="ERROR_WIDTH" value="6" />
+  <parameter name="EXPLICIT_MAXCHANNEL" value="0" />
+  <parameter name="FIFO_DEPTH" value="256" />
+  <parameter name="RD_SYNC_DEPTH" value="3" />
+  <parameter name="SYMBOLS_PER_BEAT" value="8" />
+  <parameter name="USE_IN_FILL_LEVEL" value="0" />
+  <parameter name="USE_OUT_FILL_LEVEL" value="0" />
+  <parameter name="USE_PACKETS" value="1" />
+  <parameter name="WR_SYNC_DEPTH" value="3" />
+ </module>
+ <module
+   name="mac_e_tx_fifo"
+   kind="altera_avalon_dc_fifo"
+   version="16.1"
+   enabled="1">
+  <parameter name="BITS_PER_SYMBOL" value="8" />
+  <parameter name="CHANNEL_WIDTH" value="0" />
+  <parameter name="ENABLE_EXPLICIT_MAXCHANNEL" value="false" />
+  <parameter name="ERROR_WIDTH" value="1" />
+  <parameter name="EXPLICIT_MAXCHANNEL" value="0" />
+  <parameter name="FIFO_DEPTH" value="256" />
+  <parameter name="RD_SYNC_DEPTH" value="3" />
+  <parameter name="SYMBOLS_PER_BEAT" value="8" />
+  <parameter name="USE_IN_FILL_LEVEL" value="0" />
+  <parameter name="USE_OUT_FILL_LEVEL" value="0" />
+  <parameter name="USE_PACKETS" value="1" />
+  <parameter name="WR_SYNC_DEPTH" value="3" />
+ </module>
+ <module name="mac_f" kind="altera_eth_10g_mac" version="16.1" enabled="1">
+  <parameter name="AUTO_DEVICE" value="5SGXEA7N2F45C2" />
+  <parameter name="AUTO_DEVICE_SPEEDGRADE" value="2_H2" />
+  <parameter name="DATAPATH_OPTION" value="3" />
+  <parameter name="DEVICE_FAMILY" value="Stratix V" />
+  <parameter name="ENABLE_1G10G_MAC" value="0" />
+  <parameter name="ENABLE_PFC" value="0" />
+  <parameter name="ENABLE_PTP_1STEP" value="0" />
+  <parameter name="ENABLE_SUPP_ADDR" value="0" />
+  <parameter name="ENABLE_TIMESTAMPING" value="0" />
+  <parameter name="ENABLE_UNIDIRECTIONAL" value="0" />
+  <parameter name="INSTANTIATE_STATISTICS" value="0" />
+  <parameter name="INSTANTIATE_TX_CRC" value="1" />
+  <parameter name="PFC_PRIORITY_NUM" value="8" />
+  <parameter name="PREAMBLE_PASSTHROUGH" value="0" />
+  <parameter name="REGISTER_BASED_STATISTICS" value="0" />
+  <parameter name="TSTAMP_FP_WIDTH" value="4" />
+ </module>
+ <module
+   name="mac_f_rx_fifo"
+   kind="altera_avalon_dc_fifo"
+   version="16.1"
+   enabled="1">
+  <parameter name="BITS_PER_SYMBOL" value="8" />
+  <parameter name="CHANNEL_WIDTH" value="0" />
+  <parameter name="ENABLE_EXPLICIT_MAXCHANNEL" value="false" />
+  <parameter name="ERROR_WIDTH" value="6" />
+  <parameter name="EXPLICIT_MAXCHANNEL" value="0" />
+  <parameter name="FIFO_DEPTH" value="256" />
+  <parameter name="RD_SYNC_DEPTH" value="3" />
+  <parameter name="SYMBOLS_PER_BEAT" value="8" />
+  <parameter name="USE_IN_FILL_LEVEL" value="0" />
+  <parameter name="USE_OUT_FILL_LEVEL" value="0" />
+  <parameter name="USE_PACKETS" value="1" />
+  <parameter name="WR_SYNC_DEPTH" value="3" />
+ </module>
+ <module
+   name="mac_f_tx_fifo"
+   kind="altera_avalon_dc_fifo"
+   version="16.1"
+   enabled="1">
+  <parameter name="BITS_PER_SYMBOL" value="8" />
+  <parameter name="CHANNEL_WIDTH" value="0" />
+  <parameter name="ENABLE_EXPLICIT_MAXCHANNEL" value="false" />
+  <parameter name="ERROR_WIDTH" value="1" />
+  <parameter name="EXPLICIT_MAXCHANNEL" value="0" />
+  <parameter name="FIFO_DEPTH" value="256" />
+  <parameter name="RD_SYNC_DEPTH" value="3" />
+  <parameter name="SYMBOLS_PER_BEAT" value="8" />
+  <parameter name="USE_IN_FILL_LEVEL" value="0" />
+  <parameter name="USE_OUT_FILL_LEVEL" value="0" />
+  <parameter name="USE_PACKETS" value="1" />
+  <parameter name="WR_SYNC_DEPTH" value="3" />
+ </module>
  <module
    name="mem_if_ddr3_emif"
    kind="altera_mem_if_ddr3_emif"
@@ -863,7 +1067,7 @@
   <parameter name="MEM_CK_PHASE" value="0.0" />
   <parameter name="MEM_CK_WIDTH" value="1" />
   <parameter name="MEM_CLK_EN_WIDTH" value="1" />
-  <parameter name="MEM_CLK_FREQ" value="500.0" />
+  <parameter name="MEM_CLK_FREQ" value="480.0" />
   <parameter name="MEM_CLK_FREQ_MAX" value="800.0" />
   <parameter name="MEM_COL_ADDR_WIDTH" value="10" />
   <parameter name="MEM_CS_WIDTH" value="1" />
@@ -1186,7 +1390,7 @@
   <parameter name="MEM_CK_PHASE" value="0.0" />
   <parameter name="MEM_CK_WIDTH" value="1" />
   <parameter name="MEM_CLK_EN_WIDTH" value="1" />
-  <parameter name="MEM_CLK_FREQ" value="500.0" />
+  <parameter name="MEM_CLK_FREQ" value="480.0" />
   <parameter name="MEM_CLK_FREQ_MAX" value="800.0" />
   <parameter name="MEM_COL_ADDR_WIDTH" value="10" />
   <parameter name="MEM_CS_WIDTH" value="1" />
@@ -1396,6 +1600,12 @@
   <parameter name="WEIGHT_PORT" value="0,0,0,0,0,0" />
   <parameter name="WRBUFFER_ADDR_WIDTH" value="6" />
  </module>
+ <module name="pcie_clk_156" kind="clock_source" version="16.1" enabled="1">
+  <parameter name="clockFrequency" value="156250000" />
+  <parameter name="clockFrequencyKnown" value="true" />
+  <parameter name="inputClockFrequency" value="0" />
+  <parameter name="resetSynchronousEdges" value="NONE" />
+ </module>
  <module
    name="qdr_a"
    kind="altera_mem_if_qdrii_emif"
@@ -1465,7 +1675,7 @@
   <parameter name="MEM_ADDR_WIDTH" value="20" />
   <parameter name="MEM_BURST_LENGTH" value="4" />
   <parameter name="MEM_CK_PHASE" value="0.0" />
-  <parameter name="MEM_CLK_FREQ" value="420.0" />
+  <parameter name="MEM_CLK_FREQ" value="450.0" />
   <parameter name="MEM_CONTROL_WIDTH" value="1" />
   <parameter name="MEM_CS_WIDTH" value="1" />
   <parameter name="MEM_DENALI_SOMA_FILE" value="qdrii.soma" />
@@ -1724,7 +1934,7 @@
   <parameter name="MEM_ADDR_WIDTH" value="20" />
   <parameter name="MEM_BURST_LENGTH" value="4" />
   <parameter name="MEM_CK_PHASE" value="0.0" />
-  <parameter name="MEM_CLK_FREQ" value="420.0" />
+  <parameter name="MEM_CLK_FREQ" value="450.0" />
   <parameter name="MEM_CONTROL_WIDTH" value="1" />
   <parameter name="MEM_CS_WIDTH" value="1" />
   <parameter name="MEM_DENALI_SOMA_FILE" value="qdrii.soma" />
@@ -1983,7 +2193,7 @@
   <parameter name="MEM_ADDR_WIDTH" value="20" />
   <parameter name="MEM_BURST_LENGTH" value="4" />
   <parameter name="MEM_CK_PHASE" value="0.0" />
-  <parameter name="MEM_CLK_FREQ" value="420.0" />
+  <parameter name="MEM_CLK_FREQ" value="450.0" />
   <parameter name="MEM_CONTROL_WIDTH" value="1" />
   <parameter name="MEM_CS_WIDTH" value="1" />
   <parameter name="MEM_DENALI_SOMA_FILE" value="qdrii.soma" />
@@ -2242,7 +2452,7 @@
   <parameter name="MEM_ADDR_WIDTH" value="20" />
   <parameter name="MEM_BURST_LENGTH" value="4" />
   <parameter name="MEM_CK_PHASE" value="0.0" />
-  <parameter name="MEM_CLK_FREQ" value="420.0" />
+  <parameter name="MEM_CLK_FREQ" value="450.0" />
   <parameter name="MEM_CONTROL_WIDTH" value="1" />
   <parameter name="MEM_CS_WIDTH" value="1" />
   <parameter name="MEM_DENALI_SOMA_FILE" value="qdrii.soma" />
@@ -2677,13 +2887,33 @@
  <connection
    kind="avalon_streaming"
    version="16.1"
-   start="DE5Top_0.eastmac_source"
-   end="mac_c_tx_fifo.in" />
+   start="mac_e.avalon_st_rx"
+   end="mac_e_rx_fifo.in" />
  <connection
    kind="avalon_streaming"
    version="16.1"
-   start="DE5Top_0.northmac_source"
+   start="mac_f.avalon_st_rx"
+   end="mac_f_rx_fifo.in" />
+ <connection
+   kind="avalon_streaming"
+   version="16.1"
+   start="DE5Top_0.eastmac_0_source"
+   end="mac_e_tx_fifo.in" />
+ <connection
+   kind="avalon_streaming"
+   version="16.1"
+   start="DE5Top_0.eastmac_1_source"
+   end="mac_f_tx_fifo.in" />
+ <connection
+   kind="avalon_streaming"
+   version="16.1"
+   start="DE5Top_0.northmac_0_source"
    end="mac_a_tx_fifo.in" />
+ <connection
+   kind="avalon_streaming"
+   version="16.1"
+   start="DE5Top_0.northmac_1_source"
+   end="mac_b_tx_fifo.in" />
  <connection
    kind="avalon_streaming"
    version="16.1"
@@ -2707,32 +2937,52 @@
  <connection
    kind="avalon_streaming"
    version="16.1"
-   start="mac_c_rx_fifo.out"
-   end="DE5Top_0.eastmac_sink" />
+   start="mac_e_tx_fifo.out"
+   end="mac_e.avalon_st_tx" />
+ <connection
+   kind="avalon_streaming"
+   version="16.1"
+   start="mac_f_tx_fifo.out"
+   end="mac_f.avalon_st_tx" />
+ <connection
+   kind="avalon_streaming"
+   version="16.1"
+   start="mac_e_rx_fifo.out"
+   end="DE5Top_0.eastmac_0_sink" />
+ <connection
+   kind="avalon_streaming"
+   version="16.1"
+   start="mac_f_rx_fifo.out"
+   end="DE5Top_0.eastmac_1_sink" />
  <connection
    kind="avalon_streaming"
    version="16.1"
    start="mac_a_rx_fifo.out"
-   end="DE5Top_0.northmac_sink" />
+   end="DE5Top_0.northmac_0_sink" />
  <connection
    kind="avalon_streaming"
    version="16.1"
    start="mac_b_rx_fifo.out"
-   end="DE5Top_0.southmac_sink" />
+   end="DE5Top_0.northmac_1_sink" />
+ <connection
+   kind="avalon_streaming"
+   version="16.1"
+   start="mac_c_rx_fifo.out"
+   end="DE5Top_0.southmac_0_sink" />
  <connection
    kind="avalon_streaming"
    version="16.1"
    start="mac_d_rx_fifo.out"
-   end="DE5Top_0.westmac_sink" />
+   end="DE5Top_0.southmac_1_sink" />
  <connection
    kind="avalon_streaming"
    version="16.1"
-   start="DE5Top_0.southmac_source"
-   end="mac_b_tx_fifo.in" />
+   start="DE5Top_0.southmac_0_source"
+   end="mac_c_tx_fifo.in" />
  <connection
    kind="avalon_streaming"
    version="16.1"
-   start="DE5Top_0.westmac_source"
+   start="DE5Top_0.southmac_1_source"
    end="mac_d_tx_fifo.in" />
  <connection
    kind="clock"
@@ -2774,6 +3024,16 @@
    version="16.1"
    start="mem_if_ddr3_emif.afi_clk"
    end="mac_d_tx_fifo.in_clk" />
+ <connection
+   kind="clock"
+   version="16.1"
+   start="mem_if_ddr3_emif.afi_clk"
+   end="mac_e_tx_fifo.in_clk" />
+ <connection
+   kind="clock"
+   version="16.1"
+   start="mem_if_ddr3_emif.afi_clk"
+   end="mac_f_tx_fifo.in_clk" />
  <connection
    kind="clock"
    version="16.1"
@@ -2834,6 +3094,16 @@
    version="16.1"
    start="mem_if_ddr3_emif.afi_clk"
    end="mac_d_rx_fifo.out_clk" />
+ <connection
+   kind="clock"
+   version="16.1"
+   start="mem_if_ddr3_emif.afi_clk"
+   end="mac_e_rx_fifo.out_clk" />
+ <connection
+   kind="clock"
+   version="16.1"
+   start="mem_if_ddr3_emif.afi_clk"
+   end="mac_f_rx_fifo.out_clk" />
  <connection
    kind="clock"
    version="16.1"
@@ -2900,6 +3170,8 @@
  <connection kind="clock" version="16.1" start="clk_50.clk" end="mac_b.csr_clk" />
  <connection kind="clock" version="16.1" start="clk_50.clk" end="mac_c.csr_clk" />
  <connection kind="clock" version="16.1" start="clk_50.clk" end="mac_d.csr_clk" />
+ <connection kind="clock" version="16.1" start="clk_50.clk" end="mac_e.csr_clk" />
+ <connection kind="clock" version="16.1" start="clk_50.clk" end="mac_f.csr_clk" />
  <connection
    kind="clock"
    version="16.1"
@@ -2920,6 +3192,16 @@
    version="16.1"
    start="clk_156.clk"
    end="mac_d_rx_fifo.in_clk" />
+ <connection
+   kind="clock"
+   version="16.1"
+   start="pcie_clk_156.clk"
+   end="mac_e_rx_fifo.in_clk" />
+ <connection
+   kind="clock"
+   version="16.1"
+   start="pcie_clk_156.clk"
+   end="mac_f_rx_fifo.in_clk" />
  <connection
    kind="clock"
    version="16.1"
@@ -2948,6 +3230,16 @@
  <connection
    kind="clock"
    version="16.1"
+   start="pcie_clk_156.clk"
+   end="mac_e_tx_fifo.out_clk" />
+ <connection
+   kind="clock"
+   version="16.1"
+   start="pcie_clk_156.clk"
+   end="mac_f_tx_fifo.out_clk" />
+ <connection
+   kind="clock"
+   version="16.1"
    start="clk_50.clk"
    end="mem_if_ddr3_emif.pll_ref_clk" />
  <connection
@@ -2964,10 +3256,30 @@
  <connection kind="clock" version="16.1" start="clk_156.clk" end="mac_b.rx_clk" />
  <connection kind="clock" version="16.1" start="clk_156.clk" end="mac_c.rx_clk" />
  <connection kind="clock" version="16.1" start="clk_156.clk" end="mac_d.rx_clk" />
+ <connection
+   kind="clock"
+   version="16.1"
+   start="pcie_clk_156.clk"
+   end="mac_f.rx_clk" />
+ <connection
+   kind="clock"
+   version="16.1"
+   start="pcie_clk_156.clk"
+   end="mac_e.rx_clk" />
  <connection kind="clock" version="16.1" start="clk_156.clk" end="mac_a.tx_clk" />
  <connection kind="clock" version="16.1" start="clk_156.clk" end="mac_b.tx_clk" />
  <connection kind="clock" version="16.1" start="clk_156.clk" end="mac_c.tx_clk" />
  <connection kind="clock" version="16.1" start="clk_156.clk" end="mac_d.tx_clk" />
+ <connection
+   kind="clock"
+   version="16.1"
+   start="pcie_clk_156.clk"
+   end="mac_f.tx_clk" />
+ <connection
+   kind="clock"
+   version="16.1"
+   start="pcie_clk_156.clk"
+   end="mac_e.tx_clk" />
  <connection
    kind="conduit"
    version="16.1"
@@ -3116,6 +3428,16 @@
  <connection
    kind="reset"
    version="16.1"
+   start="mem_if_ddr3_emif.afi_reset"
+   end="mac_e_tx_fifo.in_clk_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="mem_if_ddr3_emif.afi_reset"
+   end="mac_f_tx_fifo.in_clk_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
    start="qdr_b.afi_reset"
    end="qdr_a_w_bridge.m0_reset" />
  <connection
@@ -3173,6 +3495,16 @@
    version="16.1"
    start="mem_if_ddr3_emif.afi_reset"
    end="mac_d_rx_fifo.out_clk_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="mem_if_ddr3_emif.afi_reset"
+   end="mac_e_rx_fifo.out_clk_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="mem_if_ddr3_emif.afi_reset"
+   end="mac_f_rx_fifo.out_clk_reset" />
  <connection
    kind="reset"
    version="16.1"
@@ -3247,6 +3579,16 @@
    kind="reset"
    version="16.1"
    start="clk_50.clk_reset"
+   end="mac_e.csr_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="clk_50.clk_reset"
+   end="mac_f.csr_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="clk_50.clk_reset"
    end="mem_if_ddr3_emif.global_reset" />
  <connection
    kind="reset"
@@ -3313,6 +3655,26 @@
    version="16.1"
    start="clk_156.clk_reset"
    end="mac_d_rx_fifo.in_clk_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="clk_50.clk_reset"
+   end="mac_e_tx_fifo.in_clk_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="clk_50.clk_reset"
+   end="mac_f_tx_fifo.in_clk_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="pcie_clk_156.clk_reset"
+   end="mac_e_rx_fifo.in_clk_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="pcie_clk_156.clk_reset"
+   end="mac_f_rx_fifo.in_clk_reset" />
  <connection
    kind="reset"
    version="16.1"
@@ -3401,6 +3763,26 @@
  <connection
    kind="reset"
    version="16.1"
+   start="pcie_clk_156.clk_reset"
+   end="mac_e_tx_fifo.out_clk_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="pcie_clk_156.clk_reset"
+   end="mac_f_tx_fifo.out_clk_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="clk_50.clk_reset"
+   end="mac_e_rx_fifo.out_clk_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="clk_50.clk_reset"
+   end="mac_f_rx_fifo.out_clk_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
    start="clk_50.clk_reset"
    end="jtag_uart_0.reset" />
  <connection
@@ -3428,6 +3810,16 @@
    version="16.1"
    start="clk_156.clk_reset"
    end="mac_d.rx_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="pcie_clk_156.clk_reset"
+   end="mac_f.rx_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="pcie_clk_156.clk_reset"
+   end="mac_e.rx_reset" />
  <connection
    kind="reset"
    version="16.1"
@@ -3523,6 +3915,16 @@
    version="16.1"
    start="clk_156.clk_reset"
    end="mac_d.tx_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="pcie_clk_156.clk_reset"
+   end="mac_f.tx_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="pcie_clk_156.clk_reset"
+   end="mac_e.tx_reset" />
  <interconnectRequirement for="$system" name="qsys_mm.clockCrossingAdapter" value="FIFO" />
  <interconnectRequirement for="$system" name="qsys_mm.maxAdditionalLatency" value="4" />
 </system>

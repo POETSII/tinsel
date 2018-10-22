@@ -61,7 +61,7 @@ interface DE5BridgeTop;
   // Interface to host over a JTAG UART
   interface JtagUartAvalon jtagAvalon;
   // Connection to FPGA cluster
-  interface AvalonMac mac;
+  interface Vector#(2, AvalonMac) mac;
   // Reset request
   (* always_enabled, always_ready *)
   method Bool resetReq;
@@ -78,12 +78,12 @@ module de5BridgeTop (DE5BridgeTop);
   // Ports
   OutPort#(Bit#(128)) toPCIe <- mkOutPort;
   InPort#(Bit#(128)) fromPCIe <- mkInPort;
-  OutPort#(Flit) toLink <- mkOutPort;
-  InPort#(Flit) fromLink <- mkInPort;
   OutPort#(Bit#(8)) toJtag <- mkOutPort;
   InPort#(Bit#(8)) fromJtag <- mkInPort;
   OutPort#(Flit) toDetector <- mkOutPort;
   InPort#(Flit) fromDetector <- mkInPort;
+
+  Vector#(2, OutPort#(Flit)) toLink <- replicateM(mkOutPort);
 
   // Create JTAG UART instance
   JtagUart uart <- mkJtagUart;
@@ -92,12 +92,14 @@ module de5BridgeTop (DE5BridgeTop);
   connectUsing(mkUGShiftQueue1(QueueOptFmax), toJtag.out, uart.jtagIn);
   connectUsing(mkUGShiftQueue1(QueueOptFmax), uart.jtagOut, fromJtag.in);
 
-  // Create off-board link
-  BoardLink link <- mkBoardLink(northSocket[0]);
+  // Create off-board links
+  Vector#(2, BoardLink) link;
+  for (Integer i = 0; i < 2; i=i+1)
+    link[i] <- mkBoardLink(northSocket[i]);
 
-  // Connect ports to off-board link
-  connectUsing(mkUGQueue, toLink.out, link.flitIn);
-  connectUsing(mkUGQueue, link.flitOut, fromLink.in);
+  // Connect ports to off-board links
+  for (Integer i = 0; i < 2; i=i+1)
+    connectUsing(mkUGQueue, toLink[i].out, link[i].flitIn);
 
   // Create PCIeStream instance
   PCIeStream pcie <- mkPCIeStream;
@@ -116,8 +118,8 @@ module de5BridgeTop (DE5BridgeTop);
   // Has board been enumerated over JTAG yet?
   Reg#(Bool) enumerated <- mkConfigReg(False);
 
-  // Connect PCIe stream and 10G link
-  // --------------------------------
+  // Connect PCIe stream and 10G links
+  // ---------------------------------
 
   Reg#(Bit#(32)) fromPCIeDA    <- mkConfigRegU;
   Reg#(Bit#(32)) fromPCIeNM    <- mkConfigRegU;
@@ -127,10 +129,12 @@ module de5BridgeTop (DE5BridgeTop);
   Reg#(Bit#(32)) messageCount  <- mkConfigReg(0);
   Reg#(Bit#(8))  flitCount     <- mkConfigReg(0);
 
+  InPort#(Flit)   inPort       <- mkInPort;
+
   rule toLink0 (toLinkState == 0);
     if (fromDetector.canGet) begin
-      if (toLink.canPut) begin
-        toLink.put(fromDetector.value);
+      if (toLink[0].canPut) begin
+        toLink[0].put(fromDetector.value);
         fromDetector.get;
       end
     end else begin
@@ -149,7 +153,7 @@ module de5BridgeTop (DE5BridgeTop);
     if (flitCount == 0 && detector.disableHostMsgs) begin
       // Hold off sending
     end else begin
-      if (fromPCIe.canGet && toLink.canPut) begin
+      if (fromPCIe.canGet && toLink[0].canPut) begin
         Flit flit;
         flit.dest = unpack(truncate(fromPCIeDA));
         flit.payload = fromPCIe.value;
@@ -165,7 +169,7 @@ module de5BridgeTop (DE5BridgeTop);
             messageCount <= messageCount+1;
         end else
           flitCount <= flitCount+1;
-        toLink.put(flit);
+        toLink[0].put(flit);
         fromPCIe.get;
         if (flitCount == 0) detector.incCount;
       end
@@ -173,21 +177,25 @@ module de5BridgeTop (DE5BridgeTop);
   endrule
 
   // Connect 10G link to PCIe stream and idle detector
-  rule fromLinkRule (fromLink.canGet);
-    Flit flit = fromLink.value;
+  rule fromLinkRule (inPort.canGet);
+    Flit flit = inPort.value;
     if (flit.isIdleToken) begin
       if (toDetector.canPut) begin
         toDetector.put(flit);
-        fromLink.get;
+        inPort.get;
       end
     end else begin
       if (toPCIe.canPut) begin
         toPCIe.put(flit.payload);
-        fromLink.get;
+        inPort.get;
         if (!flit.notFinalFlit) detector.decCount;
       end
     end
   endrule
+
+  // Join input links to inPort
+  Out#(Flit) flits <- mkFlitMerger(link[0].flitOut, link[1].flitOut);
+  connectUsing(mkUGQueue, flits, inPort.in);
 
   // Enable idle detector
   rule enabler;
@@ -225,10 +233,12 @@ module de5BridgeTop (DE5BridgeTop);
   endrule
 
   `ifndef SIMULATE
+  function AvalonMac getMac(BoardLink lnk) = lnk.avalonMac;
+
   interface controlBAR = pcie.external.controlBAR;
   interface pcieHostBus = pcie.external.hostBus;
   method Bool resetReq = pcie.external.resetReq;
-  interface mac = link.avalonMac;
+  interface mac = map(getMac, link);
   interface jtagAvalon = uart.jtagAvalon;
   `endif
 

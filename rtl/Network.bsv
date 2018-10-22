@@ -143,9 +143,9 @@ module mkMeshRouter#(MailboxId m) (MeshRouter);
   OutPort#(Flit) toMailboxPort   <- mkOutPort;
 
   // Routing function
+  // (Always routes right on X dimenion for 2-way PCIe motherboard)
   function Route route(NetAddr addr);
-    if      (addr.board.x < b.x)         return Left;
-    else if (addr.board.x > b.x)         return Right;
+    if      (addr.board.x != b.x)        return Right;
     else if (addr.board.y < b.y)         return Down;
     else if (addr.board.y > b.y)         return Up;
     else if (getMailboxId(addr).x < m.x) return Left;

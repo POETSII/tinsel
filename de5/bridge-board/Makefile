@@ -1,41 +1,16 @@
-TINSEL_ROOT = ../..
-include $(TINSEL_ROOT)/globals.mk
-
-ifndef QUARTUS_ROOTDIR
-  $(error Please set QUARTUS_ROOTDIR)
-endif
-
 .PHONY: all
-all: 
-	make -C $(TINSEL_ROOT)/rtl verilog
-	make -C megafuns
-	qsys-generate -syn SoC.qsys
-	quartus_dse DE5.qpf    \
-    --num-seeds 11              \
-    --launcher local            \
-    --num-concurrent 4
-	quartus_dse DE5.qpf --report utilization
-	quartus_dse DE5.qpf --report fmax_summary
+all: phy4 phy_reconfig4
 
-.PHONY: one
-one: 
-	make -C $(TINSEL_ROOT)/rtl verilog
-	make -C megafuns
-	qsys-generate -syn SoC.qsys
-	quartus_sh --flow compile DE5.qpf
+phy4: ../../megafuns/phy4.v
+	mkdir -p phy4
+	cp -a ../../megafuns/phy4.v phy4
+	cd phy4 && qmegawiz -silent phy4.v
 
-.PHONY: report
-report:
-	quartus_dse DE5.qpf --report utilization
-	quartus_dse DE5.qpf --report fmax_summary
-
-.PHONY: download-sof
-download-sof:
-	quartus_pgm DE5.cdf
+phy_reconfig4: ../../megafuns/phy_reconfig4.v
+	mkdir -p phy_reconfig4
+	cp -a ../../megafuns/phy_reconfig4.v phy_reconfig4
+	cd phy_reconfig4 && qmegawiz -silent phy_reconfig4.v
 
 .PHONY: clean
 clean:
-	make -C megafuns clean
-	rm -f *.mif *.rpt *.msg *.summary *.sld *.sopcinfo *.jdi
-	rm -f *.pin *.done *.qws *.sof *.csv *.qws *.smsg
-	rm -rf dse* db incremental_db SoC .qsys_edit reconfig_mif SoC .qsys-edit
+	rm -rf phy4 phy_reconfig4 SoC

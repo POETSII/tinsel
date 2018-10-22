@@ -222,7 +222,20 @@ module Golden_top(
   output wire TEMP_CLK,
   inout wire TEMP_DATA,
   input wire TEMP_INT_n,
-  input wire TEMP_OVERT_n
+  input wire TEMP_OVERT_n,
+
+  input wire SATA_DEVICE_REFCLK_p,
+  //input wire SATA_HOST_REFCLK_p,
+
+  input wire PCIE_PERST_n,
+  //input wire PCIE_REFCLK_p,
+  input wire [7:0] PCIE_RX_p,
+  input wire PCIE_SMBCLK,
+  inout wire PCIE_SMBDAT,
+  output wire [7:0] PCIE_TX_p,
+  output wire PCIE_WAKE_n
+
+
 
 );
 
@@ -230,8 +243,8 @@ wire clk_50mhz = OSC_50_B7A;
 wire rst_50mhz = ~CPU_RESET_n;
 wire rst_50mhz_n = CPU_RESET_n;
 
-wire clk_156mhz;
-wire phy_pll_locked;
+wire sfp_clk_156mhz;
+wire pcie_clk_156mhz;
 
 reg rst_sram_b_n = 0;
 reg rst_sram_d_n = 0;
@@ -306,6 +319,7 @@ si570_i2c_init_inst (
     .start(1)
 );
 
+// Set the SFP clock rates
 i2c_master
 si570_i2c_master_inst (
     .clk(clk_50mhz),
@@ -340,6 +354,15 @@ si570_i2c_master_inst (
     .stop_on_idle(1)
 );
 
+// Set the SATA and SFP1G clock rates
+SetPLL setPLL (
+  .clk(clk_50mhz),
+  .reset_n(CPU_RESET_n),
+  .i2c_scl(PLL_SCL),
+  .i2c_sda(PLL_SDA),
+  //.conf_ready()
+);
+
 wire [71:0] sfp_a_tx_dc;
 wire [71:0] sfp_a_rx_dc;
 wire [71:0] sfp_b_tx_dc;
@@ -349,8 +372,29 @@ wire [71:0] sfp_c_rx_dc;
 wire [71:0] sfp_d_tx_dc;
 wire [71:0] sfp_d_rx_dc;
 
-wire [367:0] phy_reconfig_from_xcvr;
-wire [559:0] phy_reconfig_to_xcvr;
+wire [71:0] pcie_west0_rx_dc;
+wire [71:0] pcie_west0_tx_dc;
+wire [71:0] pcie_west1_rx_dc;
+wire [71:0] pcie_west1_tx_dc;
+wire [71:0] pcie_west2_rx_dc;
+wire [71:0] pcie_west2_tx_dc;
+wire [71:0] pcie_west3_rx_dc;
+wire [71:0] pcie_west3_tx_dc;
+wire [71:0] pcie_east0_rx_dc;
+wire [71:0] pcie_east0_tx_dc;
+wire [71:0] pcie_east1_rx_dc;
+wire [71:0] pcie_east1_tx_dc;
+wire [71:0] pcie_east2_rx_dc;
+wire [71:0] pcie_east2_tx_dc;
+wire [71:0] pcie_east3_rx_dc;
+wire [71:0] pcie_east3_tx_dc;
+
+wire phy4_pll_locked;
+wire [367:0] phy_reconfig4_from_xcvr;
+wire [559:0] phy_reconfig4_to_xcvr;
+wire phy8_pll_locked;
+wire [735:0] phy_reconfig8_from_xcvr;
+wire [1119:0] phy_reconfig8_to_xcvr;
 
 assign SFPA_MOD1_SCL = 1'bz;
 assign SFPA_MOD2_SDA = 1'bz;
@@ -377,9 +421,9 @@ assign QDRIIB_ODT = 1'b0;
 assign QDRIIC_ODT = 1'b0;
 assign QDRIID_ODT = 1'b0;
 
-phy phy_inst (
+phy4 phy4_inst (
   .pll_ref_clk(SFP_REFCLK_p),
-  .pll_locked(phy_pll_locked),
+  .pll_locked(phy4_pll_locked),
 
   .tx_serial_data_0(SFPA_TX_p),
   .rx_serial_data_0(SFPA_RX_p),
@@ -399,8 +443,8 @@ phy phy_inst (
   .xgmii_tx_dc_3(sfp_d_tx_dc),
   .xgmii_rx_dc_3(sfp_d_rx_dc),
 
-  .xgmii_rx_clk(clk_156mhz),
-  .xgmii_tx_clk(clk_156mhz),
+  .xgmii_rx_clk(sfp_clk_156mhz),
+  .xgmii_tx_clk(sfp_clk_156mhz),
 
   .tx_ready(),
   .rx_ready(),
@@ -416,11 +460,11 @@ phy phy_inst (
   .phy_mgmt_write(1'b0),
   .phy_mgmt_writedata(32'd0),
 
-  .reconfig_from_xcvr(phy_reconfig_from_xcvr),
-  .reconfig_to_xcvr(phy_reconfig_to_xcvr)
+  .reconfig_from_xcvr(phy_reconfig4_from_xcvr),
+  .reconfig_to_xcvr(phy_reconfig4_to_xcvr)
 );
 
-phy_reconfig phy_reconfig_inst (
+phy_reconfig4 phy_reconfig4_inst (
   .reconfig_busy(),
 
   .mgmt_clk_clk(clk_50mhz),
@@ -433,8 +477,85 @@ phy_reconfig phy_reconfig_inst (
   .reconfig_mgmt_write(1'b0),
   .reconfig_mgmt_writedata(32'd0),
 
-  .reconfig_to_xcvr(phy_reconfig_to_xcvr),
-  .reconfig_from_xcvr(phy_reconfig_from_xcvr)
+  .reconfig_to_xcvr(phy_reconfig4_to_xcvr),
+  .reconfig_from_xcvr(phy_reconfig4_from_xcvr)
+);
+
+phy8 phy8_inst (
+  .pll_ref_clk(SATA_DEVICE_REFCLK_p),
+  //.pll_ref_clk(SATA_HOST_REFCLK_p),
+  .pll_locked(phy8_pll_locked),
+
+  .tx_serial_data_0(PCIE_TX_p[0]),
+  .rx_serial_data_0(PCIE_RX_p[0]),
+  .tx_serial_data_1(PCIE_TX_p[1]),
+  .rx_serial_data_1(PCIE_RX_p[1]),
+  .tx_serial_data_2(PCIE_TX_p[2]),
+  .rx_serial_data_2(PCIE_RX_p[2]),
+  .tx_serial_data_3(PCIE_TX_p[3]),
+  .rx_serial_data_3(PCIE_RX_p[3]),
+  .tx_serial_data_4(PCIE_TX_p[4]),
+  .rx_serial_data_4(PCIE_RX_p[4]),
+  .tx_serial_data_5(PCIE_TX_p[5]),
+  .rx_serial_data_5(PCIE_RX_p[5]),
+  .tx_serial_data_6(PCIE_TX_p[6]),
+  .rx_serial_data_6(PCIE_RX_p[6]),
+  .tx_serial_data_7(PCIE_TX_p[7]),
+  .rx_serial_data_7(PCIE_RX_p[7]),
+
+  .xgmii_tx_dc_0(pcie_east0_tx_dc),
+  .xgmii_rx_dc_0(pcie_east0_rx_dc),
+  .xgmii_tx_dc_1(pcie_east1_tx_dc),
+  .xgmii_rx_dc_1(pcie_east1_rx_dc),
+  .xgmii_tx_dc_2(pcie_east2_tx_dc),
+  .xgmii_rx_dc_2(pcie_east2_rx_dc),
+  .xgmii_tx_dc_3(pcie_east3_tx_dc),
+  .xgmii_rx_dc_3(pcie_east3_rx_dc),
+  .xgmii_tx_dc_4(pcie_west0_tx_dc),
+  .xgmii_rx_dc_4(pcie_west0_rx_dc),
+  .xgmii_tx_dc_5(pcie_west1_tx_dc),
+  .xgmii_rx_dc_5(pcie_west1_rx_dc),
+  .xgmii_tx_dc_6(pcie_west2_tx_dc),
+  .xgmii_rx_dc_6(pcie_west2_rx_dc),
+  .xgmii_tx_dc_7(pcie_west3_tx_dc),
+  .xgmii_rx_dc_7(pcie_west3_rx_dc),
+
+  .xgmii_rx_clk(pcie_clk_156mhz),
+  .xgmii_tx_clk(pcie_clk_156mhz),
+
+  .tx_ready(),
+  .rx_ready(),
+
+  .rx_data_ready(),
+
+  .phy_mgmt_clk(clk_50mhz),
+  .phy_mgmt_clk_reset(rst_50mhz),
+  .phy_mgmt_address(9'd0),
+  .phy_mgmt_read(1'b0),
+  .phy_mgmt_readdata(),
+  .phy_mgmt_waitrequest(),
+  .phy_mgmt_write(1'b0),
+  .phy_mgmt_writedata(32'd0),
+
+  .reconfig_from_xcvr(phy_reconfig8_from_xcvr),
+  .reconfig_to_xcvr(phy_reconfig8_to_xcvr)
+);
+
+phy_reconfig8 phy_reconfig8_inst (
+  .reconfig_busy(),
+
+  .mgmt_clk_clk(clk_50mhz),
+  .mgmt_rst_reset(rst_50mhz),
+
+  .reconfig_mgmt_address(7'd0),
+  .reconfig_mgmt_read(1'b0),
+  .reconfig_mgmt_readdata(),
+  .reconfig_mgmt_waitrequest(),
+  .reconfig_mgmt_write(1'b0),
+  .reconfig_mgmt_writedata(32'd0),
+
+  .reconfig_to_xcvr(phy_reconfig8_to_xcvr),
+  .reconfig_from_xcvr(phy_reconfig8_from_xcvr)
 );
 
 S5_DDR3_QSYS u0 (
@@ -485,8 +606,11 @@ S5_DDR3_QSYS u0 (
 
   // Networking
 
-  .clk_156_clk(clk_156mhz),
-  .reset_156_reset_n(phy_pll_locked),
+  .clk_156_clk(sfp_clk_156mhz),
+  .reset_156_reset_n(phy4_pll_locked),
+
+  .pcie_clk_156_clk(pcie_clk_156mhz),
+  .pcie_reset_156_reset_n(phy8_pll_locked),
 
   .mac_a_pause_data(0),
   .mac_a_xgmii_rx_data(sfp_a_rx_dc),
@@ -503,6 +627,14 @@ S5_DDR3_QSYS u0 (
   .mac_d_pause_data(0),
   .mac_d_xgmii_rx_data(sfp_d_rx_dc),
   .mac_d_xgmii_tx_data(sfp_d_tx_dc),
+
+  .mac_e_pause_data(0),
+  .mac_e_xgmii_rx_data(pcie_east0_rx_dc),
+  .mac_e_xgmii_tx_data(pcie_east0_tx_dc),
+
+  .mac_f_pause_data(0),
+  .mac_f_xgmii_rx_data(pcie_east1_rx_dc),
+  .mac_f_xgmii_tx_data(pcie_east1_tx_dc),
 
   // Temperature sensor
 

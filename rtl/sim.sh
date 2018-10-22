@@ -75,7 +75,10 @@ for Y in $(seq 0 $LAST_Y); do
       for I in $(seq 1 $NumEastWestLinks); do
         E=$(($EAST_ID_BASE + $I - 1))
         W=$(($WEST_ID_BASE + $I - 1))
-        $UDSOCK join "@tinsel.b$A.$E" "@tinsel.b$B.$W" &
+        # XXX
+        # Currntly: assume X dimension is 2 and implemented using PCIe mboard
+        $UDSOCK join "@tinsel.b$A.$E" "@tinsel.b$B.$E" &
+        #$UDSOCK join "@tinsel.b$A.$E" "@tinsel.b$B.$W" &
         PIDS="$PIDS $!"
       done
     fi
@@ -100,9 +103,12 @@ done
 
 # Connect bridge board to mesh
 ENTRY_ID=$(fromCoords 0 $(($MESH_Y-1)))
-$UDSOCK join "@tinsel.b$ENTRY_ID.$NORTH_ID_BASE" \
-             "@tinsel.b$HOST_ID.$NORTH_ID_BASE" &
-PIDS="$PIDS $!"
+for I in $(seq 1 $NumNorthSouthLinks); do
+  N=$(($NORTH_ID_BASE + $I - 1))
+  $UDSOCK join "@tinsel.b$ENTRY_ID.$N" \
+               "@tinsel.b$HOST_ID.$N" &
+  PIDS="$PIDS $!"
+done
 
 # On CTRL-C, call quit()
 trap quit INT

@@ -321,6 +321,10 @@ SoC system (
   .mac_a_xgmii_rx_data(sfp_a_rx_dc),
   .mac_a_xgmii_tx_data(sfp_a_tx_dc),
 
+  .mac_b_pause_data(0),
+  .mac_b_xgmii_rx_data(sfp_b_rx_dc),
+  .mac_b_xgmii_tx_data(sfp_b_tx_dc),
+
   .soft_reset_val(soft_reset_in),
 
   .pcie_clk_reset_reset(soft_reset_out),
