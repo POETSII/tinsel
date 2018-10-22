@@ -40,7 +40,6 @@ interface DE5Top;
   interface Vector#(`NumNorthSouthLinks, AvalonMac) northMac;
   interface Vector#(`NumNorthSouthLinks, AvalonMac) southMac;
   interface Vector#(`NumEastWestLinks, AvalonMac) eastMac;
-  interface Vector#(`NumEastWestLinks, AvalonMac) westMac;
   interface JtagUartAvalon jtagIfc;
   (* always_ready, always_enabled *)
   method Action setBoardId(BoardId id);
@@ -185,6 +184,13 @@ module de5Top (DE5Top);
   endrule
   `endif
 
+  // Currently using two slots of the 3x PCIe motherboard:
+  //   Slot C: X=1:
+  //   Slot B: unused
+  //   Slot A: X=0:
+  // Currently specialised to 3x2 board torus:
+  //   * west link ignored by routing function - see route() in Network.bsv
+
   `ifndef SIMULATE
   function DRAMExtIfc getDRAMExtIfc(OffChipRAM ram) = ram.extDRAM;
   function Vector#(2, SRAMExtIfc) getSRAMExtIfcs(OffChipRAM ram) = ram.extSRAM;
@@ -194,7 +200,6 @@ module de5Top (DE5Top);
   interface northMac = net.north;
   interface southMac = net.south;
   interface eastMac  = net.east;
-  interface westMac  = net.west;
   method Action setBoardId(BoardId id);
     boardId <= id;
   endmethod

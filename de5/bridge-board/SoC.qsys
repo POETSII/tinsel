@@ -97,6 +97,30 @@
          type = "int";
       }
    }
+   element mac_b
+   {
+      datum _sortIndex
+      {
+         value = "16";
+         type = "int";
+      }
+   }
+   element mac_b_rx_fifo
+   {
+      datum _sortIndex
+      {
+         value = "18";
+         type = "int";
+      }
+   }
+   element mac_b_tx_fifo
+   {
+      datum _sortIndex
+      {
+         value = "17";
+         type = "int";
+      }
+   }
    element mem_if_ddr3_emif
    {
       datum _sortIndex
@@ -224,6 +248,21 @@
  <interface
    name="mac_a_xgmii_tx"
    internal="mac_a.xgmii_tx"
+   type="avalon_streaming"
+   dir="start" />
+ <interface
+   name="mac_b_avalon_st_pause"
+   internal="mac_b.avalon_st_pause"
+   type="avalon_streaming"
+   dir="end" />
+ <interface
+   name="mac_b_xgmii_rx"
+   internal="mac_b.xgmii_rx"
+   type="avalon_streaming"
+   dir="end" />
+ <interface
+   name="mac_b_xgmii_tx"
+   internal="mac_b.xgmii_tx"
    type="avalon_streaming"
    dir="start" />
  <interface name="mem_if_ddr3_emif_2_status" internal="mem_if_ddr3_emif_2.status" />
@@ -362,6 +401,60 @@
  </module>
  <module
    name="mac_a_tx_fifo"
+   kind="altera_avalon_dc_fifo"
+   version="16.1"
+   enabled="1">
+  <parameter name="BITS_PER_SYMBOL" value="8" />
+  <parameter name="CHANNEL_WIDTH" value="0" />
+  <parameter name="ENABLE_EXPLICIT_MAXCHANNEL" value="false" />
+  <parameter name="ERROR_WIDTH" value="1" />
+  <parameter name="EXPLICIT_MAXCHANNEL" value="0" />
+  <parameter name="FIFO_DEPTH" value="256" />
+  <parameter name="RD_SYNC_DEPTH" value="3" />
+  <parameter name="SYMBOLS_PER_BEAT" value="8" />
+  <parameter name="USE_IN_FILL_LEVEL" value="0" />
+  <parameter name="USE_OUT_FILL_LEVEL" value="0" />
+  <parameter name="USE_PACKETS" value="1" />
+  <parameter name="WR_SYNC_DEPTH" value="3" />
+ </module>
+ <module name="mac_b" kind="altera_eth_10g_mac" version="16.1" enabled="1">
+  <parameter name="AUTO_DEVICE" value="5SGXEA7N2F45C2" />
+  <parameter name="AUTO_DEVICE_SPEEDGRADE" value="2_H2" />
+  <parameter name="DATAPATH_OPTION" value="3" />
+  <parameter name="DEVICE_FAMILY" value="Stratix V" />
+  <parameter name="ENABLE_1G10G_MAC" value="0" />
+  <parameter name="ENABLE_PFC" value="0" />
+  <parameter name="ENABLE_PTP_1STEP" value="0" />
+  <parameter name="ENABLE_SUPP_ADDR" value="0" />
+  <parameter name="ENABLE_TIMESTAMPING" value="0" />
+  <parameter name="ENABLE_UNIDIRECTIONAL" value="0" />
+  <parameter name="INSTANTIATE_STATISTICS" value="0" />
+  <parameter name="INSTANTIATE_TX_CRC" value="1" />
+  <parameter name="PFC_PRIORITY_NUM" value="8" />
+  <parameter name="PREAMBLE_PASSTHROUGH" value="0" />
+  <parameter name="REGISTER_BASED_STATISTICS" value="0" />
+  <parameter name="TSTAMP_FP_WIDTH" value="4" />
+ </module>
+ <module
+   name="mac_b_rx_fifo"
+   kind="altera_avalon_dc_fifo"
+   version="16.1"
+   enabled="1">
+  <parameter name="BITS_PER_SYMBOL" value="8" />
+  <parameter name="CHANNEL_WIDTH" value="0" />
+  <parameter name="ENABLE_EXPLICIT_MAXCHANNEL" value="false" />
+  <parameter name="ERROR_WIDTH" value="6" />
+  <parameter name="EXPLICIT_MAXCHANNEL" value="0" />
+  <parameter name="FIFO_DEPTH" value="256" />
+  <parameter name="RD_SYNC_DEPTH" value="3" />
+  <parameter name="SYMBOLS_PER_BEAT" value="8" />
+  <parameter name="USE_IN_FILL_LEVEL" value="0" />
+  <parameter name="USE_OUT_FILL_LEVEL" value="0" />
+  <parameter name="USE_PACKETS" value="1" />
+  <parameter name="WR_SYNC_DEPTH" value="3" />
+ </module>
+ <module
+   name="mac_b_tx_fifo"
    kind="altera_avalon_dc_fifo"
    version="16.1"
    enabled="1">
@@ -1392,8 +1485,18 @@
  <connection
    kind="avalon_streaming"
    version="16.1"
-   start="DE5BridgeTop_0.mac_source"
+   start="mac_b.avalon_st_rx"
+   end="mac_b_rx_fifo.in" />
+ <connection
+   kind="avalon_streaming"
+   version="16.1"
+   start="DE5BridgeTop_0.mac_0_source"
    end="mac_a_tx_fifo.in" />
+ <connection
+   kind="avalon_streaming"
+   version="16.1"
+   start="DE5BridgeTop_0.mac_1_source"
+   end="mac_b_tx_fifo.in" />
  <connection
    kind="avalon_streaming"
    version="16.1"
@@ -1402,8 +1505,18 @@
  <connection
    kind="avalon_streaming"
    version="16.1"
+   start="mac_b_tx_fifo.out"
+   end="mac_b.avalon_st_tx" />
+ <connection
+   kind="avalon_streaming"
+   version="16.1"
    start="mac_a_rx_fifo.out"
-   end="DE5BridgeTop_0.mac_sink" />
+   end="DE5BridgeTop_0.mac_0_sink" />
+ <connection
+   kind="avalon_streaming"
+   version="16.1"
+   start="mac_b_rx_fifo.out"
+   end="DE5BridgeTop_0.mac_1_sink" />
  <connection
    kind="clock"
    version="16.1"
@@ -1417,11 +1530,17 @@
  <connection kind="clock" version="16.1" start="clk_50.clk" end="jtag_uart_0.clk" />
  <connection kind="clock" version="16.1" start="clk_50.clk" end="temp_sense.clk" />
  <connection kind="clock" version="16.1" start="clk_50.clk" end="mac_a.csr_clk" />
+ <connection kind="clock" version="16.1" start="clk_50.clk" end="mac_b.csr_clk" />
  <connection
    kind="clock"
    version="16.1"
    start="clk_156.clk"
    end="mac_a_rx_fifo.in_clk" />
+ <connection
+   kind="clock"
+   version="16.1"
+   start="clk_156.clk"
+   end="mac_b_rx_fifo.in_clk" />
  <connection
    kind="clock"
    version="16.1"
@@ -1440,6 +1559,11 @@
  <connection
    kind="clock"
    version="16.1"
+   start="clk_156.clk"
+   end="mac_b_tx_fifo.out_clk" />
+ <connection
+   kind="clock"
+   version="16.1"
    start="clk_50.clk"
    end="mem_if_ddr3_emif.pll_ref_clk" />
  <connection
@@ -1448,7 +1572,9 @@
    start="pcie_xcvr_clk.clk"
    end="pcie_reconfig_driver_0.reconfig_xcvr_clk" />
  <connection kind="clock" version="16.1" start="clk_156.clk" end="mac_a.rx_clk" />
+ <connection kind="clock" version="16.1" start="clk_156.clk" end="mac_b.rx_clk" />
  <connection kind="clock" version="16.1" start="clk_156.clk" end="mac_a.tx_clk" />
+ <connection kind="clock" version="16.1" start="clk_156.clk" end="mac_b.tx_clk" />
  <connection
    kind="clock"
    version="16.1"
@@ -1468,7 +1594,17 @@
    kind="clock"
    version="16.1"
    start="pcie_mm.coreclkout"
+   end="mac_b_tx_fifo.in_clk" />
+ <connection
+   kind="clock"
+   version="16.1"
+   start="pcie_mm.coreclkout"
    end="mac_a_rx_fifo.out_clk" />
+ <connection
+   kind="clock"
+   version="16.1"
+   start="pcie_mm.coreclkout"
+   end="mac_b_rx_fifo.out_clk" />
  <connection
    kind="clock"
    version="16.1"
@@ -1606,6 +1742,21 @@
    kind="reset"
    version="16.1"
    start="clk_50.clk_reset"
+   end="mac_b_tx_fifo.in_clk_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="clk_156.clk_reset"
+   end="mac_b_rx_fifo.in_clk_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="clk_50.clk_reset"
+   end="mac_b_rx_fifo.in_clk_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="clk_50.clk_reset"
    end="uart_bridge.m0_reset" />
  <connection
    kind="reset"
@@ -1627,6 +1778,21 @@
    version="16.1"
    start="clk_50.clk_reset"
    end="mac_a_tx_fifo.out_clk_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="clk_156.clk_reset"
+   end="mac_b_tx_fifo.out_clk_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="clk_50.clk_reset"
+   end="mac_b_tx_fifo.out_clk_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="clk_50.clk_reset"
+   end="mac_b_rx_fifo.out_clk_reset" />
  <connection
    kind="reset"
    version="16.1"
@@ -1655,6 +1821,16 @@
  <connection
    kind="reset"
    version="16.1"
+   start="clk_156.clk_reset"
+   end="mac_b.rx_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="clk_50.clk_reset"
+   end="mac_b.rx_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
    start="clk_50.clk_reset"
    end="uart_bridge.s0_reset" />
  <connection
@@ -1680,13 +1856,33 @@
  <connection
    kind="reset"
    version="16.1"
+   start="clk_156.clk_reset"
+   end="mac_b.tx_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="clk_50.clk_reset"
+   end="mac_b.tx_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
    start="pcie_mm.nreset_status"
    end="mac_a_tx_fifo.in_clk_reset" />
  <connection
    kind="reset"
    version="16.1"
    start="pcie_mm.nreset_status"
+   end="mac_b_tx_fifo.in_clk_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="pcie_mm.nreset_status"
    end="mac_a_rx_fifo.out_clk_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="pcie_mm.nreset_status"
+   end="mac_b_rx_fifo.out_clk_reset" />
  <connection
    kind="reset"
    version="16.1"
@@ -1706,12 +1902,27 @@
    kind="reset"
    version="16.1"
    start="pcie_clk_reset.out_reset"
+   end="mac_b.csr_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="pcie_clk_reset.out_reset"
    end="mac_a_tx_fifo.in_clk_reset" />
  <connection
    kind="reset"
    version="16.1"
    start="pcie_clk_reset.out_reset"
    end="mac_a_rx_fifo.in_clk_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="pcie_clk_reset.out_reset"
+   end="mac_b_tx_fifo.in_clk_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="pcie_clk_reset.out_reset"
+   end="mac_b_rx_fifo.in_clk_reset" />
  <connection
    kind="reset"
    version="16.1"
@@ -1731,6 +1942,16 @@
    kind="reset"
    version="16.1"
    start="pcie_clk_reset.out_reset"
+   end="mac_b_tx_fifo.out_clk_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="pcie_clk_reset.out_reset"
+   end="mac_b_rx_fifo.out_clk_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="pcie_clk_reset.out_reset"
    end="jtag_uart_0.reset" />
  <connection
    kind="reset"
@@ -1746,12 +1967,22 @@
    kind="reset"
    version="16.1"
    start="pcie_clk_reset.out_reset"
+   end="mac_b.rx_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="pcie_clk_reset.out_reset"
    end="uart_bridge.s0_reset" />
  <connection
    kind="reset"
    version="16.1"
    start="pcie_clk_reset.out_reset"
    end="mac_a.tx_reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="pcie_clk_reset.out_reset"
+   end="mac_b.tx_reset" />
  <interconnectRequirement for="$system" name="qsys_mm.clockCrossingAdapter" value="FIFO" />
  <interconnectRequirement for="$system" name="qsys_mm.maxAdditionalLatency" value="4" />
 </system>
