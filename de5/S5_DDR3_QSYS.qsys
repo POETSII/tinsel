@@ -503,7 +503,7 @@
    type="avalon_streaming"
    dir="start" />
  <interface
-   name="mac_e_avalon_st_pause"
+   name="mac_e_pause"
    internal="mac_e.avalon_st_pause"
    type="avalon_streaming"
    dir="end" />
@@ -518,7 +518,7 @@
    type="avalon_streaming"
    dir="start" />
  <interface
-   name="mac_f_avalon_st_pause"
+   name="mac_f_pause"
    internal="mac_f.avalon_st_pause"
    type="avalon_streaming"
    dir="end" />
