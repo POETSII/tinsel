@@ -251,7 +251,7 @@
    type="avalon_streaming"
    dir="start" />
  <interface
-   name="mac_b_avalon_st_pause"
+   name="mac_b_pause"
    internal="mac_b.avalon_st_pause"
    type="avalon_streaming"
    dir="end" />
