@@ -31,15 +31,25 @@ typedef uint16_t PLocalDeviceId;
 // Thread id
 typedef uint16_t PThreadId;
 
-// Device address
-struct PDeviceAddr {
-  PThreadId threadId;
-  PLocalDeviceId devId;
-};
-
 // In some cases we use the MSB of this to mean "invalid thread"
 inline bool isValidThreadId(PThreadId id) { return !(id >> 15); }
 inline PThreadId invalidThreadId() { return 0x8000; }
+
+// Device address
+typedef uint32_t PDeviceAddrNum;
+
+struct PDeviceAddr {
+  PThreadId threadId;
+  PLocalDeviceId devId;
+
+  PDeviceAddrNum num() const {
+    static_assert(sizeof(PDeviceAddr) == 4);
+    PDeviceAddrNum res = 0;
+    res |= threadId << 16;
+    res |= devId;
+    return res;
+  }
+};
 
 // Pins
 //   No      - means 'not ready to send'
@@ -54,37 +64,29 @@ typedef uint8_t PPin;
 struct None {};
 
 // Generic device structure
-<<<<<<< HEAD
 // Type parameters:
 //   A - Accumulator (small, on-chip memory)
 //   S - State (larger, off-chip memory)
 //   E - Edge label
 //   M - Message structure
 template <typename A, typename S, typename E, typename M> struct PDevice {
+  using Accumulator = A;
+  using State = S;
+  using Edge = E;
+  using Message = M;
+
   // State
   S *s;
   A *acc;
   PPin *readyToSend;
   uint32_t numVertices;
+  PDeviceAddr deviceAddr;
 
   // Handlers
   void init();
   void send(volatile M *msg);
   void recv(M *msg, E *edge);
   void idle();
-
-  // Temp extra
-  enum class State { IDLE, WAITING_TO_SEND, SENDING };
-
-  // Thread local device id
-  PLocalDeviceAddr localAddr;
-  // Is the device ready to send?
-  // (If so, to which pin? See the pin macros)
-  uint16_t readyToSend;
-  // Number of incoming edges
-  uint16_t fanIn;
-  // what is the device currently doing
-  State state;
 };
 
 // Generic device state structure
@@ -142,13 +144,14 @@ template <> struct PNeighbour<None> {
 };
 
 // Generic thread structure
-template <typename DeviceType, typename A, typename S, typename E, typename M>
-struct PThread {
-  enum class State { IDLE, SENDING };
+template <typename DeviceType> struct PThread {
+  using A = typename DeviceType::Accumulator;
+  using S = typename DeviceType::State;
+  using E = typename DeviceType::Edge;
+  using M = typename DeviceType::Message;
 
-public:
-  State state;
-
+  // Id of the current thread
+  PThreadId threadId;
   // Number of devices handled by thread
   PLocalDeviceId numDevices;
   // Number of devices in graph
@@ -161,41 +164,55 @@ public:
   PTR(PLocalDeviceId) senders;
   // This array is accessed in a LIFO manner
   PTR(PLocalDeviceId) sendersTop;
-}
 
-template <typename D, typename A, typename S, typename E, typename M>
-struct DefaultPThread : public PThread<D, A, S, E, M> {
-  inline PPin *readyToSend(PLocalDeviceId id) {
+#ifdef TINSEL
+  INLINE PPin *readyToSend(PLocalDeviceId id) {
     PPin *p = (PPin *)tinselSlot(NUM_RECV_SLOTS + 1);
     return &p[id];
   }
 
   // Get accumulator state for given device id
-  inline A *accum(PLocalDeviceId id) {
-    uint32_t offset = (numDevices * sizeof(PPin) + 3) / 4;
+  INLINE A *accum(PLocalDeviceId id) {
+    uint32_t offset = (this->numDevices * sizeof(PPin) + 3) / 4;
     A *p = (A *)tinselSlot(NUM_RECV_SLOTS + 1) + offset;
     return &p[id];
   }
+
+  INLINE DeviceType createDeviceStub(PLocalDeviceId i) {
+    DeviceType dev;
+    dev.s = &(this->devices[i].state);
+    dev.acc = this->accum(i);
+    dev.readyToSend = this->readyToSend(i);
+    dev.numVertices = this->numVertices;
+    dev.deviceAddr.threadId = this->threadId;
+    dev.deviceAddr.devId = i;
+    return dev;
+  }
+#endif
+};
+
+template <typename DeviceType>
+struct DefaultPThread : public PThread<DeviceType> {
+  using A = typename DeviceType::Accumulator;
+  using S = typename DeviceType::State;
+  using E = typename DeviceType::Edge;
+  using M = typename DeviceType::Message;
 
   void run() {
     // Empty neighbour array
     PNeighbour<E> empty;
     empty.destThread = invalidThreadId();
-    neighbour = &empty;
+    this->neighbour = &empty;
 
     // Initialisation
-    sendersTop = senders;
-    for (uint32_t i = 0; i < numDevices; i++) {
-      DeviceType dev;
-      dev.s = &devices[i].state;
-      dev.acc = accum(i);
-      dev.readyToSend = readyToSend(i);
-      dev.numVertices = numVertices;
+    this->sendersTop = this->senders;
+    for (uint32_t i = 0; i < this->numDevices; i++) {
+      DeviceType dev = this->createDeviceStub(i);
       // Invoke the initialiser for each device
       dev.init();
       // Device ready to send?
       if (*dev.readyToSend != No)
-        *(sendersTop++) = i;
+        *(this->sendersTop++) = i;
     }
 
     // Set number of flits per message
@@ -209,59 +226,51 @@ struct DefaultPThread : public PThread<D, A, S, E, M> {
     // Event loop
     while (1) {
       // Step 1: try to send
-      if (isValidThreadId(neighbour->destThread)) {
-        if (neighbour->destThread == tinselId()) {
+      if (isValidThreadId(this->neighbour->destThread)) {
+        if (this->neighbour->destThread == tinselId()) {
           // Lookup destination device
-          PLocalDeviceId id = neighbour->devId;
-          DeviceType dev;
-          dev.s = &devices[id].state;
-          dev.acc = accum(id);
-          dev.readyToSend = readyToSend(id);
-          dev.numVertices = numVertices;
+          PLocalDeviceId id = this->neighbour->devId;
+          DeviceType dev = this->createDeviceStub(id);
           PPin oldReadyToSend = *dev.readyToSend;
           // Invoke receive handler
           PMessage<E, M> *m = (PMessage<E, M> *)tinselSlot(0);
           dev.recv(&m->payload, &m->edge);
           // Insert device into a senders array, if not already there
           if (oldReadyToSend == No && *dev.readyToSend != No)
-            *(sendersTop++) = id;
+            *(this->sendersTop++) = id;
           // Move to next neighbour
-          neighbour++;
+          this->neighbour++;
         } else if (tinselCanSend()) {
           // Destination device is on another thread
           PMessage<E, M> *m = (PMessage<E, M> *)tinselSlot(0);
           // Copy neighbour edge info into message
-          m->devId = neighbour->devId;
+          m->devId = this->neighbour->devId;
           if (typeid(E) != typeid(None))
-            m->edge = neighbour->edge;
+            m->edge = this->neighbour->edge;
           // Send message
-          tinselSend(neighbour->destThread, m);
+          tinselSend(this->neighbour->destThread, m);
           // Move to next neighbour
-          neighbour++;
+          this->neighbour++;
         } else {
           // Go to sleep
           tinselWaitUntil(TINSEL_CAN_RECV | TINSEL_CAN_SEND);
         }
-      } else if (sendersTop != senders) {
+      } else if (this->sendersTop != this->senders) {
         if (tinselCanSend()) {
           // Start new multicast
-          PLocalDeviceId src = *(--sendersTop);
+          PLocalDeviceId src = *(--this->sendersTop);
           // Lookup device
-          DeviceType dev;
-          dev.s = &devices[src].state;
-          dev.acc = accum(src);
-          dev.readyToSend = readyToSend(src);
-          dev.numVertices = numVertices;
+          DeviceType dev = this->createDeviceStub(src);
           PPin pin = *dev.readyToSend - 1;
           // Invoke send handler
           PMessage<E, M> *m = (PMessage<E, M> *)tinselSlot(0);
           dev.send(&m->payload);
           // Reinsert sender, if it still wants to send
           if (*dev.readyToSend != No)
-            sendersTop++;
+            this->sendersTop++;
           // Determine neighbours array for sender
-          neighbour = (PNeighbour<E> *)devices[src].neighboursBase +
-                      MAX_PIN_FANOUT * pin;
+          this->neighbour = (PNeighbour<E> *)this->devices[src].neighboursBase +
+                            MAX_PIN_FANOUT * pin;
         } else {
           // Go to sleep
           tinselWaitUntil(TINSEL_CAN_RECV | TINSEL_CAN_SEND);
@@ -269,32 +278,24 @@ struct DefaultPThread : public PThread<D, A, S, E, M> {
       } else {
         // Idle detection
         if (tinselIdle()) {
-          for (uint32_t i = 0; i < numDevices; i++) {
-            DeviceType dev;
-            dev.s = &devices[i].state;
-            dev.acc = accum(i);
-            dev.readyToSend = readyToSend(i);
-            dev.numVertices = numVertices;
+          for (uint32_t i = 0; i < this->numDevices; i++) {
+            DeviceType dev = this->createDeviceStub(i);
             // Invoke the idle handler for each device
             dev.idle();
             // Device ready to send?
             if (*dev.readyToSend != No)
-              *(sendersTop++) = i;
+              *(this->sendersTop++) = i;
           }
         }
       }
 
       // Step 2: try to receive
-      while (tinselCanRecv()) {
+      if (tinselCanRecv()) {
         // Receive message
         PMessage<E, M> *m = (PMessage<E, M> *)tinselRecv();
         // Lookup destination device
         PLocalDeviceId id = m->devId;
-        DeviceType dev;
-        dev.s = &devices[id].state;
-        dev.acc = accum(id);
-        dev.readyToSend = readyToSend(id);
-        dev.numVertices = numVertices;
+        DeviceType dev = this->createDeviceStub(id);
         // Was it ready to send?
         PPin oldReadyToSend = *dev.readyToSend;
         // Invoke receive handler
@@ -303,34 +304,59 @@ struct DefaultPThread : public PThread<D, A, S, E, M> {
         tinselAlloc(m);
         // Insert device into a senders array, if not already there
         if (*dev.readyToSend != No && oldReadyToSend == No)
-          *(sendersTop++) = id;
+          *(this->sendersTop++) = id;
       }
     }
   }
-}
+};
 
-template <typename D, typename A, typename S, typename E, typename M>
-struct InterruptiblePThread : public PThread<D, A, S, E, M> {
-  volatile MessageType *get_send_buffer(PLocalDeviceAddr addr) {
-    volatile MessageType *sending_slot = nullptr;
-    DeviceType &device = devices[addr];
-    if (device.state == PDevice::State::SENDING or
-        this->state == PThread::State::IDLE) {
-      sending_slot = static_cast<volatile MessageType *>(tinselSlot(0));
+struct InterruptibleState {
+  enum class DeviceState : uint8_t { IDLE, WAITING_TO_SEND, SENDING };
+  DeviceState state;
+};
+
+template <typename DeviceType>
+struct InterruptiblePThread : public PThread<DeviceType> {
+  using A = typename DeviceType::Accumulator;
+  using S = typename DeviceType::State;
+  using E = typename DeviceType::Edge;
+  using M = typename DeviceType::Message;
+
+  using MessageType = PMessage<E, M>;
+
+  uint32_t triggerTime;
+  enum class ThreadState { IDLE, SENDING };
+  ThreadState state;
+
+  PLocalDeviceId multicastSource;
+
+  volatile M *get_send_buffer(PLocalDeviceId addr) {
+    volatile M *sending_slot = nullptr;
+    PState<S> &deviceState = this->devices[addr];
+
+
+    if (deviceState.state.state == InterruptibleState::DeviceState::SENDING or
+        this->state == ThreadState::IDLE) {
+        volatile MessageType * fullMessage = static_cast<volatile MessageType *>(tinselSlot(0));
+        sending_slot = &(fullMessage->payload);
     }
     return sending_slot;
   }
 
   void run() {
-    // Initialisation
-    dest = 0; // destination 0 is invalid
-    state = PThread::State::IDLE;
 
-    for (uint32_t i = 0; i < numDevices; i++) {
-      DeviceType *dev = &devices[i];
+    // Initialisation
+    multicastSource = 0;
+    state = ThreadState::IDLE;
+    PNeighbour<E> empty;
+    empty.destThread = invalidThreadId();
+    this->neighbour = &empty;
+
+    for (uint32_t i = 0; i < this->numDevices; i++) {
+      DeviceType dev = this->createDeviceStub(i);
       // Invoke the initialiser for each device
-      dev->state = PDevice::State::IDLE;
-      dev->init();
+      dev.s->state = S::DeviceState::IDLE;
+      dev.init(this);
     }
 
     // Set number of flits per message
@@ -338,73 +364,47 @@ struct InterruptiblePThread : public PThread<D, A, S, E, M> {
 
     // Allocate some slots for incoming messages
     // (Slot 0 is reserved for outgoing messages)
-    for (int i = 1; i <= 7; i++)
+    for (int i = 1; i <= NUM_RECV_SLOTS; i++)
       tinselAlloc(tinselSlot(i));
+
+    auto send_message = [this](DeviceType& dev, PLocalDeviceId id){
+      // Determine neighbours array for sender
+      uint16_t pin = *(dev.readyToSend) - 1;
+      this->neighbour = (PNeighbour<E> *)this->devices[id].neighboursBase + MAX_PIN_FANOUT * pin;
+
+      // Update the state of sending
+      state = ThreadState::SENDING;
+      multicastSource = id;
+
+      if (dev.s->state == S::DeviceState::SENDING) {
+        dev.onSendRestart();
+      } else {
+        dev.onSendStart();
+      }
+      dev.s->state = S::DeviceState::SENDING;
+    };
+
+    auto handle_message = [this, &send_message](DeviceType& dev, MessageType *msg, PLocalDeviceId id) {
+      bool should_send = dev.process(&(msg->payload), this);
+
+      if (should_send) {
+        send_message(dev, id);
+      }
+    };
 
     uint8_t c = 0;
     // Event loop
+
     while (1) {
-
-      auto handle_message = [this](DeviceType *dev, MessageType *msg) {
-        // get the sending slot - assume that this always works
-        // this will introduce data corruption if you start writing to a mailbox
-        // that is currently sending already
-
-        // if there is you would have to pass a pointer to a SRAM buffer you can
-        // write to and this buffer then gets drained into the mailbox when the
-        // system is otherwise idle
-
-        // several cases:
-        // 1. this thread is already sending    -> overwrite the mailbox and
-        // restart
-        // 2. another thread is already sending -> write message to SRAM and add
-        // to queue
-        // 3. nobody is sending                 -> write to mailbox and start
-        // sending
-
-        // for now assume (2) does not happen (just pass nullptr and handle in
-        // client)
-
-        // IDEA:
-        // now highly optimized for sending a message on every update - might be
-        // better to only get the send buffer when it's actually required from
-        // the client side
-
-        // volatile MessageType * sending_slot =
-        // get_send_buffer(getPLocalDeviceAddr(msg->dest));
-        bool should_send = dev->process(msg, this);
-
-        if (should_send) {
-          // Start new multicast
-          multicastSource = dev;
-
-          // Determine neighbours array for sender
-          uint16_t pin = multicastSource->readyToSend - 1;
-          neighbours = multicastSource->neighboursBase + MAX_PIN_FANOUT * pin;
-          // Lookup first destination
-          dest = *neighbours;
-
-          // Update the state of sending
-          state = PThread::State::SENDING;
-
-          if (multicastSource->state == PDevice::State::SENDING) {
-            multicastSource->onSendRestart();
-          } else {
-            multicastSource->onSendStart();
-          }
-          multicastSource->state = PDevice::State::SENDING;
-        }
-      };
-
       // Step 1: try to receive
       if (tinselCanRecv()) {
         // Receive message
         MessageType *msg = (MessageType *)tinselRecv();
         // Lookup destination device
-        DeviceType *dev = &devices[msg->dest];
+        DeviceType dev = this->createDeviceStub(msg->devId);
 
         // Was it ready to send?
-        handle_message(dev, msg);
+        handle_message(dev, msg, msg->devId);
 
         // Reallocate mailbox slot
         tinselAlloc(msg);
@@ -412,38 +412,52 @@ struct InterruptiblePThread : public PThread<D, A, S, E, M> {
 
       // Step 2: try to send the currently active MC batch
       // check in the current MC batch, can we start sending
-      if (isPDeviceAddrValid(dest)) {
-
-        if (getPThreadId(dest) == tinselId()) {
+      if (isValidThreadId(this->neighbour->destThread)) {
+        if (this->neighbour->destThread == tinselId()) {
           // message is directed at this thread
 
-          // Lookup destination device
-          DeviceType *destDev = &devices[getPLocalDeviceAddr(dest)];
-          handle_message(destDev, (MessageType *)tinselSlot(0));
-          dest = *(++neighbours);
+          PLocalDeviceId id = this->neighbour->devId;
+          DeviceType destDev = this->createDeviceStub(id);
+          MessageType * msg = (MessageType *)tinselSlot(0);
+          handle_message(destDev, msg, id);
+          this->neighbour++;
         } else if (tinselCanSend()) {
           // Destination device is on another thread
-          volatile MessageType *msg = (MessageType *)tinselSlot(0);
-          msg->dest = getPLocalDeviceAddr(dest);
-          // Send message
-          tinselSend(getPThreadId(dest), msg);
-          // Lookup next destination
-          dest = *(++neighbours);
-        }
-      } else if (state != PThread::State::IDLE) {
-        // invalid address to send to
-        state = PThread::State::IDLE;
-        multicastSource->state = PDevice::State::IDLE;
-        multicastSource->onSendFinished();
+          MessageType *msg = (MessageType *)tinselSlot(0);
 
-        // clear for good measure, though not necessary
-        // multicastSource = nullptr;
+          // Copy neighbour edge info into message
+          msg->devId = this->neighbour->devId;
+          if (typeid(E) != typeid(None))
+            msg->edge = this->neighbour->edge;
+          // Send message
+          tinselSend(this->neighbour->destThread, msg);  
+          this->neighbour++;
+        }
+      } else if (state != ThreadState::IDLE) {
+        // invalid address to send to
+        DeviceType dev = this->createDeviceStub(multicastSource);
+        state = ThreadState::IDLE;
+        dev.s->state = S::DeviceState::IDLE;
+        dev.onSendFinished();
       }
 
-      // add in a trigger if this is implemented by the app
-      if (++c == 0) {
-        for (uint32_t i = 0; i < numDevices; i++) {
-          devices[i].onTrigger();
+      // Step 3: Handle idle
+      if (tinselIdle()) {
+        for (uint32_t i = 0; i < this->numDevices; i++) {
+          DeviceType dev = this->createDeviceStub(i);
+          // Invoke the idle handler for each device
+          dev.idle();
+        }
+      }
+
+      // Step 4: handle triggers
+      if (++c >= triggerTime) {
+        c = 0;
+        for (uint32_t i = 0; i < this->numDevices; i++) {
+          DeviceType dev = this->createDeviceStub(i);
+          if(dev.onTrigger(this)) {
+            send_message(dev, i);
+          }
         }
       }
 
@@ -453,3 +467,28 @@ struct InterruptiblePThread : public PThread<D, A, S, E, M> {
 };
 
 #endif
+
+/*
+get the sending slot - assume that this always works
+this will introduce data corruption if you start writing to a mailbox
+that is currently sending already
+
+if there is you would have to pass a pointer to a SRAM buffer you can
+write to and this buffer then gets drained into the mailbox when the
+system is otherwise idle
+
+several cases:
+1. this thread is already sending    -> overwrite the mailbox and restart
+2. another thread is already sending -> write message to SRAM and add to queue
+3. nobody is sending                 -> write to mailbox and start sending
+
+for now assume (2) does not happen (just pass nullptr and handle in client)
+
+IDEA:
+now highly optimized for sending a message on every update - might be
+better to only get the send buffer when it's actually required from
+the client side
+
+volatile MessageType * sending_slot =
+get_send_buffer(getPLocalDeviceAddr(msg->dest));
+*/

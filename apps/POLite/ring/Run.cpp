@@ -18,7 +18,7 @@ int main()
   HostLink hostLink;
 
   // Create POETS graph
-  PGraph<RingDevice, PNone, RingState, PNone, RingMessage> graph;
+  PGraph<DefaultPThread<RingDevice> > graph;
 
   // Create ring of devices
   PDeviceId ring[numDevices];
@@ -41,7 +41,7 @@ int main()
   graph.write(&hostLink);
 
   // Load code and trigger execution
-  hostLink.boot("code.v", "data.v");
+  hostLink.boot("build/code.v", "build/data.v");
 
   // Get start time
   printf("Starting\n");

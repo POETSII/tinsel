@@ -8,7 +8,7 @@ endif
 include $(TINSEL_ROOT)/globals.mk
 
 # Local compiler flags
-CFLAGS += $(RV_CFLAGS) -std=c++17 -Os -I $(INC)
+CFLAGS += $(RV_CFLAGS) -std=c++17 -O2 -I $(INC)
 LDFLAGS += -melf32lriscv -G 0 
 
 BUILD=build
@@ -48,7 +48,7 @@ $(HL)/%.o:
 	make -C $(HL)
 
 $(BUILD)/run: builddir $(RUN_CPP) $(HL)/*.o
-	g++ -g -std=c++17 -O2 $(RUN_CFLAGS) -I$(INC) -I$(HL) -o $(BUILD)/run $(RUN_CPP) $(HL)/*.o \
+	g++ -g -std=c++17 -g -O2 $(RUN_CFLAGS) -I$(INC) -I$(HL) -o $(BUILD)/run $(RUN_CPP) $(HL)/*.o \
 	  -static-libgcc -static-libstdc++ \
 	  -ljtag_atlantic -ljtag_client $(RUN_LDFLAGS) -L $(QUARTUS_ROOTDIR)/linux64 \
 	  -Wl,-rpath,$(QUARTUS_ROOTDIR)/linux64 -lmetis

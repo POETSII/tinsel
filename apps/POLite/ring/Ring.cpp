@@ -2,13 +2,7 @@
 #include <tinsel.h>
 #include <POLite.h>
 
-typedef PThread<
-          RingDevice,
-          None,         // Accumulator (small state)
-          RingState,    // State
-          None,         // Edge label
-          RingMessage   // Message
-        > RingThread;
+typedef DefaultPThread<RingDevice> RingThread;
 
 int main()
 {
