@@ -1,6 +1,7 @@
 #include <algorithm>
-#include <random>
 #include <chrono>
+#include <iostream>
+#include <random>
 
 #include <stdint.h>
 #include <stdio.h>
@@ -10,6 +11,7 @@
 
 #include "spmm.h"
 
+#include <EdgeList.h>
 #include <HostLink.h>
 #include <POLite.h>
 
@@ -19,10 +21,10 @@ int counter = 1;
 bool toggle_flag = true;
 
 using Nodes = std::vector<PDeviceAddr>;
-using LayerSizes = std::vector<std::pair<SPMMState::Type, int>>;
 
-void bench_tinsel(benchmark::State &st, HostLink &hostLink, const Nodes& inputAddrs, const Nodes& allNodes, RING_TYPE solution)
-{
+void bench_tinsel(benchmark::State &st, HostLink &hostLink,
+                  const Nodes &inputAddrs, const Nodes &outputAddrs,
+                  RING_TYPE solution) {
   const RING_TYPE init_value = 1;
 
   RING_TYPE value = 0;        // init_value;
@@ -32,100 +34,126 @@ void bench_tinsel(benchmark::State &st, HostLink &hostLink, const Nodes& inputAd
   PMessage<None, SPMMMessage> push_msg;
   push_msg.payload.update_ts = -1;
 
-  auto seedInputs = [&inputAddrs, &hostLink](int v) {
+  int HOST_SOURCE = 0;
+
+  auto seedInputs = [&](int v) {
     PMessage<None, SPMMMessage> send_msg;
 
-    for (PDeviceAddr addr : inputAddrs){
-      if(DEBUG_VERBOSITY > 1) {
-        printf("HOST: Sending value %i to thread_id=0x%x dev_id=0x%x uc=0x%x\n", v, addr.threadId, addr.devId, send_msg.payload.update_ts);
+    for (PDeviceAddr addr : inputAddrs) {
+      if (DEBUG_VERBOSITY > 1) {
+        printf("HOST: Sending value_update %i to thread_id=0x%x dev_id=0x%x "
+               "uc=0x%x\n",
+               v, addr.threadId, addr.devId, send_msg.payload.update_ts);
       }
 
       send_msg.devId = addr.devId;
+      send_msg.payload.type = SPMMMessage::VALUE_UPDATE;
       send_msg.payload.value = v; // distribution(generator);
-      send_msg.payload.src = 0;
-      send_msg.payload.update_ts = counter++; // higher than everything but not triggering
-      
-      // needs to be a thread address
+      send_msg.payload.src = HOST_SOURCE;
+      send_msg.payload.update_ts = counter++;
+
       hostLink.send(addr.threadId, 2, &send_msg);
     }
   };
-    
-  for (auto _ : st)
-  {
+
+  auto seedWeights = [&](int v) {
+    PMessage<None, SPMMMessage> send_msg;
+
+    for (PDeviceAddr addr : inputAddrs) {
+      if (DEBUG_VERBOSITY > 1) {
+        printf("HOST: Sending weight_update %i to thread_id=0x%x dev_id=0x%x "
+               "uc=0x%x\n",
+               v, addr.threadId, addr.devId, send_msg.payload.update_ts);
+      }
+      send_msg.devId = addr.devId;
+      send_msg.payload.type = SPMMMessage::WEIGHT_UPDATE;
+      send_msg.payload.value = v;
+      send_msg.payload.src = HOST_SOURCE;
+      hostLink.send(addr.threadId, 2, &send_msg);
+    }
+  };
+
+  auto seedExtraEdge = [&](PDeviceAddr target) {
+    // go straight from input to output
+    PMessage<None, SPMMMessage> send_msg;
+
+    for (PDeviceAddr addr : inputAddrs) {
+      if (DEBUG_VERBOSITY > 1) {
+        printf("HOST: Sending ADD_EDGE to thread_id=0x%x dev_id=0x%x "
+               "uc=0x%x\n",
+               addr.threadId, addr.devId, send_msg.payload.update_ts);
+      }
+      send_msg.devId = addr.devId;
+      send_msg.payload.type = SPMMMessage::ADD_EDGE;
+      send_msg.payload.update_ts = 0;
+      send_msg.payload.src = target.num();
+      hostLink.send(addr.threadId, 2, &send_msg);
+    }
+  };
+
+  for (auto _ : st) {
     // switch the expected value
-    if (toggle_flag)
-    {
+    if (toggle_flag) {
       value = init_value;
       target_value = solution;
-    }
-    else
-    {
+    } else {
       value = 0;
       target_value = 0;
     }
     toggle_flag = !toggle_flag;
 
+    seedExtraEdge(outputAddrs[0]);
+
     // send messages to all the inputs
     seedInputs(value);
 
-    while(true) {
-      if(true or DEBUG_VERBOSITY > 1) {
+    while (true) {
+      if (true or DEBUG_VERBOSITY > 1) {
         hostLink.pollStdOut();
       }
-      
-      bool h = hostLink.canRecv();
-      if (h)
-      {
-        hostLink.recvMsg(&recv_msg, sizeof(PMessage<None, SPMMMessage>));
-        // last_recv = now;
-        // last_recv_done = false;
 
-        if(DEBUG_VERBOSITY > 0) {
+      bool h = hostLink.canRecv();
+      if (h) {
+        hostLink.recvMsg(&recv_msg, sizeof(PMessage<None, SPMMMessage>));
+        if (DEBUG_VERBOSITY > 0) {
 
           if constexpr (std::is_same<RING_TYPE, float>::value) {
             printf("HOST: Received output dest=%i exp=%f v=%f src=0x%x "
-                "last_update=%x %i\n",
-                recv_msg.devId, target_value, recv_msg.payload.value, recv_msg.payload.src,
-                recv_msg.payload.update_ts, recv_msg.payload.update_ts);
+                   "last_update=%x %i\n",
+                   recv_msg.devId, target_value, recv_msg.payload.value,
+                   recv_msg.payload.src, recv_msg.payload.update_ts,
+                   recv_msg.payload.update_ts);
           } else {
             printf("HOST: Received output dest=%i exp=%i v=%i src=0x%x "
-                "last_update=%x %i\n",
-                recv_msg.devId, target_value, recv_msg.payload.value, recv_msg.payload.src,
-                recv_msg.payload.update_ts, recv_msg.payload.update_ts);
+                   "last_update=%x %i\n",
+                   recv_msg.devId, target_value, recv_msg.payload.value,
+                   recv_msg.payload.src, recv_msg.payload.update_ts,
+                   recv_msg.payload.update_ts);
           }
-          
         }
 
-        if (recv_msg.payload.value == target_value)
-        {
-          if(DEBUG_VERBOSITY > 0) {
+        if (recv_msg.payload.value == target_value) {
+          if (DEBUG_VERBOSITY > 0) {
             printf("HOST: Value is correct\n");
           }
           break;
         }
       }
-      //x++;
     }
-    // usleep(10000);
-    // printf("finished an iteration of the bench\n");
   }
-
-  // printf("finished iterations\n");
 }
 
-struct ThreadIdLayout
-{ 
-  unsigned boardY:TinselMeshYBits;            // 2
-  unsigned boardX:TinselMeshXBits;            // 2
-  unsigned boxY:TinselMailboxMeshYBits;       // 2
-  unsigned boxX:TinselMailboxMeshXBits;       // 2
-  unsigned threadNum:6;                       // 2 + 4
+struct ThreadIdLayout {
+  uint16_t boardY : TinselMeshYBits;      // 2
+  uint16_t boardX : TinselMeshXBits;      // 2
+  uint16_t boxY : TinselMailboxMeshYBits; // 2
+  uint16_t boxX : TinselMailboxMeshXBits; // 2
+  uint16_t threadNum : 6;                 // 2 + 4
 };
 
-template <typename T>
-void dump_graph(T& graph) {
-  
-  FILE * out = stderr;
+template <typename T> void dump_graph(T &graph) {
+
+  FILE *out = stderr;
 
   auto printLocation = [&graph, out](PDeviceId pdid) {
     PDeviceAddr pdaddr = graph.toDeviceAddr[pdid];
@@ -136,117 +164,93 @@ void dump_graph(T& graph) {
       PThreadId ptid;
     } c;
     c.ptid = ptid;
-    fprintf(out, "%u,%u,%u,%u,%u,%u", c.l.boardY, c.l.boardX, c.l.boxY, c.l.boxX, c.l.threadNum, pldaddr);
+    fprintf(out, "%u,%u,%u,%u,%u,%u", c.l.boardY, c.l.boardX, c.l.boxY,
+            c.l.boxX, c.l.threadNum, pldaddr);
   };
-  
-  fprintf(out,"fromBoardY,fromBoardX,fromBoxY,fromBoxX,fromThreadNum,fromDeviceNum,");
-  fprintf(out,"toBoardY,toBoardX,toBoxY,toBoxX,toThreadNum,toDeviceNum\n");
 
-  for(NodeId start_node = 0; start_node < graph.graph.outgoing->numElems; start_node++) {
-    Seq<NodeId>* end_nodes = graph.graph.outgoing->elems[start_node];
-    
-    for(NodeId end_node_idx = 0; end_node_idx < end_nodes->numElems; end_node_idx++) {
+  fprintf(
+      out,
+      "fromBoardY,fromBoardX,fromBoxY,fromBoxX,fromThreadNum,fromDeviceNum,");
+  fprintf(out, "toBoardY,toBoardX,toBoxY,toBoxX,toThreadNum,toDeviceNum\n");
+
+  for (NodeId start_node = 0; start_node < graph.graph.outgoing->numElems;
+       start_node++) {
+    Seq<NodeId> *end_nodes = graph.graph.outgoing->elems[start_node];
+
+    for (NodeId end_node_idx = 0; end_node_idx < end_nodes->numElems;
+         end_node_idx++) {
       NodeId end_node = end_nodes->elems[end_node_idx];
 
       printLocation(start_node);
-      fprintf(out,",");
+      fprintf(out, ",");
       printLocation(end_node);
-      fprintf(out,"\n");
+      fprintf(out, "\n");
     }
   }
 }
 
-template <typename T>
-void init_graph(T &graph, LayerSizes &layer_sizes, Nodes& inputs, Nodes& all_nodes, int trigger_time)
-{
-  // Create POETS graph
-  const RING_TYPE init_weight = 2;
+int main(int argc, char **argv) {
+  setlinebuf(stdout);
 
-  struct Layer
+  assert(argc >= 4 && "argv[0] [edges_file] [trigger_time] [result]");
+  const char *edges = argv[1];
+  const int trigger_time = std::atoi(argv[2]);
+  const double total = std::atof(argv[3]);
+
+  printf("Loading in the graph...");
+  fflush(stdout);
+  EdgeList net;
+  net.read(edges);
+  printf(" done\n");
+  printf("Max fan-out = %d\n", net.maxFanOut());
+
+  PGraph<InterruptiblePThread<SPMMDevice>> graph;
+
+  Nodes inputs;
+  Nodes outputs;
   {
-    Layer(SPMMState::Type t) : type(t) {}
-    SPMMState::Type type;
-    std::vector<PDeviceId> devices;
-  };
-  std::vector<Layer> layers;
-
-  for (auto &layer : layer_sizes)
-  {
-    layers.push_back(Layer(layer.first));
-    Layer &l = layers.back();
-
-    //printf("Creating layer of size=%i\n", layer.second);
-    for (int i = 0; i < layer.second; i++)
-    {
-      l.devices.push_back(graph.newDevice());
+    // Create nodes in POETS graph
+    for (uint32_t i = 0; i < net.numNodes; i++) {
+      PDeviceId id = graph.newDevice();
+      assert(i == id);
     }
-  }
 
-  for (int x = 1; x < layers.size(); x++)
-  {
-    Layer &l = layers[x];
-    for (auto pdid_this : l.devices)
-    {
-      for (auto pdid_prev : layers[x - 1].devices)
-      {
-        graph.addEdge(pdid_prev, 0, pdid_this);
+    // Create connections in POETS graph
+    for (uint32_t i = 0; i < net.numNodes; i++) {
+      uint32_t numNeighbours = net.neighbours[i][0];
+      for (uint32_t j = 0; j < numNeighbours; j++)
+        graph.addEdge(i, 0, net.neighbours[i][j + 1]);
+    }
+
+    // Create POETS graph
+    const RING_TYPE init_weight = 2;
+
+    // Prepare mapping from graph to hardware
+    graph.map();
+    // dump_graph(graph);
+
+    for (PDeviceId i = 0; i < graph.numDevices; i++) {
+      auto fo = graph.fanOut(i);
+      if (fo == 0) {
+        graph.devices[i]->state.type = SPMMState::OUTPUT;
+        outputs.push_back(graph.toDeviceAddr[i]);
+      } else {
+        graph.devices[i]->state.type = SPMMState::MIDDLE;
+      }
+
+      graph.devices[i]->state.init_weight = init_weight;
+      graph.devices[i]->state.triggerTime = trigger_time;
+
+      auto fi = graph.fanIn(i);
+      assert(fi <= MAX_FAN_IN && "max fan-in exceeded, please partition graph");
+      if (fi == 0) {
+        inputs.push_back(graph.toDeviceAddr[i]);
       }
     }
   }
-  // Prepare mapping from graph to hardware
-  graph.map();
-  dump_graph(graph);
-
-  for (auto &l : layers)
-  {
-    for (auto pdid : l.devices)
-    {
-      graph.devices[pdid]->state.type = l.type;
-      graph.devices[pdid]->state.init_weight = init_weight;
-      graph.devices[pdid]->state.triggerTime = trigger_time;
-    }
-  }
-
-  for (auto pdid : layers[0].devices)
-  {
-    inputs.push_back(graph.toDeviceAddr[pdid]);
-  }
-
-  for (auto& l : layers)
-  {
-    for (auto pdid : l.devices)
-    {
-      all_nodes.push_back(graph.toDeviceAddr[pdid]);
-    }
-  }
-}
-
-int main(int argc, char **argv)
-{
-  std::vector<std::pair<SPMMState::Type, int>> layers;
-  
-  const int num_layers = std::atoi(argv[1]);
-  const int layer_size = std::atoi(argv[2]);
-  const int trigger_time = std::atoi(argv[3]);
-  
-  for(int i = 0; i < num_layers; i++) {
-    layers.push_back({SPMMState::MIDDLE, layer_size});
-  }
-  layers.push_back({SPMMState::OUTPUT, 1});
-  setlinebuf(stdout);
-
-  int total = 1;
-  for (int i = 0; i < layers.size(); i++)
-  {
-    // weight * number_of_nodes
-    total *= (2 * layers[i].second);
-  }
-  //printf("total=%i\n", total);
-
-  PGraph<InterruptiblePThread<SPMMDevice>> graph;
-  Nodes inputs;
-  Nodes all_nodes;
-  init_graph(graph, layers, inputs, all_nodes, trigger_time);
+  std::cout << "Total graph size=" << graph.numDevices
+            << " inputs=" << inputs.size() << " outputs=" << outputs.size()
+            << std::endl;
 
   HostLink hostLink;
   // Write graph down to tinsel machine via HostLink
@@ -256,11 +260,10 @@ int main(int argc, char **argv)
   // Trigger execution
   hostLink.go();
 
-  auto b = benchmark::RegisterBenchmark("standard test",
-                               [&hostLink, &inputs, &all_nodes, total](auto &st) {
-                                 bench_tinsel(st, hostLink, inputs, all_nodes, total);
-                               });
-  b->Args({num_layers, layer_size, trigger_time});
+  auto b = benchmark::RegisterBenchmark(edges, [&](auto &st) {
+    bench_tinsel(st, hostLink, inputs, outputs, total);
+  });
+  b->Args({trigger_time});
   b->Unit(benchmark::kMicrosecond);
   benchmark::Initialize(&argc, argv);
   benchmark::RunSpecifiedBenchmarks();
