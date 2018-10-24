@@ -49,6 +49,13 @@ struct PDeviceAddr {
     res |= devId;
     return res;
   }
+
+  static PDeviceAddr fromNum(PDeviceAddrNum n) {
+    PDeviceAddr pda;
+    pda.threadId = n >> 16;
+    pda.devId = n & (-1 >> 16);
+    return pda;
+  }
 };
 
 // Pins
@@ -188,6 +195,35 @@ template <typename DeviceType> struct PThread {
     dev.deviceAddr.devId = i;
     return dev;
   }
+
+  INLINE bool addEdge(PLocalDeviceId localsource, uint16_t pin, PDeviceAddr target) {
+    PState<S> &dev = this->devices[localsource];
+    PNeighbour<E>* pinEdgeArray = (PNeighbour<E>*) dev.neighboursBase + ((pin+1) * MAX_PIN_FANOUT);
+
+    for(uint32_t i = 0; i < MAX_PIN_FANOUT - 1; i++) {
+      PNeighbour<E>& n = pinEdgeArray[i];
+      if(isValidThreadId(n.destThread)) {
+        continue;
+      }
+      
+      PNeighbour<E>& next = pinEdgeArray[i+1];
+      if(isValidThreadId(next.destThread)) {
+        return false;
+      }
+      n.destThread = target.threadId;
+      n.devId = target.devId;
+      break;
+    }
+
+    /*
+    for(uint32_t i = 0; i < MAX_PIN_FANOUT; i++) {
+      PNeighbour<E>& n = pinEdgeArray[i];
+      printf("i=%x destThread=%x devId=%x isValid=%x\n", i, n.destThread, n.devId, isValidThreadId(n.destThread));
+    }
+    */
+    return true;
+  }
+  
 #endif
 };
 
@@ -325,16 +361,14 @@ struct InterruptiblePThread : public PThread<DeviceType> {
   using MessageType = PMessage<E, M>;
 
   uint32_t triggerTime;
+  PLocalDeviceId multicastSource;
+
   enum class ThreadState { IDLE, SENDING };
   ThreadState state;
-
-  PLocalDeviceId multicastSource;
 
   volatile M *get_send_buffer(PLocalDeviceId addr) {
     volatile M *sending_slot = nullptr;
     PState<S> &deviceState = this->devices[addr];
-
-
     if (deviceState.state.state == InterruptibleState::DeviceState::SENDING or
         this->state == ThreadState::IDLE) {
         volatile MessageType * fullMessage = static_cast<volatile MessageType *>(tinselSlot(0));
@@ -364,9 +398,10 @@ struct InterruptiblePThread : public PThread<DeviceType> {
 
     // Allocate some slots for incoming messages
     // (Slot 0 is reserved for outgoing messages)
-    for (int i = 1; i <= NUM_RECV_SLOTS; i++)
+    for (int i = 1; i <= NUM_RECV_SLOTS; i++) {
       tinselAlloc(tinselSlot(i));
-
+    }
+    
     auto send_message = [this](DeviceType& dev, PLocalDeviceId id){
       // Determine neighbours array for sender
       uint16_t pin = *(dev.readyToSend) - 1;
@@ -449,7 +484,6 @@ struct InterruptiblePThread : public PThread<DeviceType> {
           dev.idle();
         }
       }
-
       // Step 4: handle triggers
       if (++c >= triggerTime) {
         c = 0;
@@ -460,7 +494,6 @@ struct InterruptiblePThread : public PThread<DeviceType> {
           }
         }
       }
-
       tinselWaitUntil(TINSEL_CAN_RECV | TINSEL_CAN_SEND);
     }
   }

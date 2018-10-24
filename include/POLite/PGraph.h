@@ -203,7 +203,10 @@ template <typename ThreadType> class PGraph {
               offset++;
             }
           }
-          edgeArray[base+offset].destThread = invalidThreadId(); // Terminator
+          // also set the rest of the edge array to invalid for when we want to add edges
+          for(uint32_t i = base+offset; i < (p+2) * MAX_PIN_FANOUT; i++) {
+            edgeArray[i].destThread = invalidThreadId(); // Terminator
+          }
         }
         // Add space for edges
         nextDRAM = cacheAlign(nextDRAM + (numPins+1) *
@@ -440,7 +443,6 @@ template <typename ThreadType> class PGraph {
   uint32_t fanOut(PDeviceId id) {
     return graph.fanOut(id);
   }
-
 };
 
 #endif

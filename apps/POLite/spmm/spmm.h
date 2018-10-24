@@ -3,17 +3,21 @@
 #include <POLite.h>
 #include <array>
 
+#define MAX_FAN_IN 16
+
 using RING_TYPE = int;
 enum UpdatePropagation { ONLY_TRIGGER, ALWAYS };
 
 // compile time settings
-constexpr int DEBUG_VERBOSITY = 0;
+constexpr int DEBUG_VERBOSITY = 1;
 constexpr UpdatePropagation prop = ONLY_TRIGGER;
 
 struct SPMMMessage {
+  enum MessageType : uint8_t { VALUE_UPDATE = 0, WEIGHT_UPDATE = 1, ADD_EDGE = 2 };
   PDeviceAddrNum src;
   RING_TYPE value;
   uint32_t update_ts;
+  MessageType type;
 };
 
 struct SPMMInput {
@@ -32,14 +36,14 @@ struct SPMMState : public InterruptibleState {
   RING_TYPE init_weight;
   RING_TYPE output;
   uint32_t last_update_cause;
-  std::array<SPMMInput, 16> entries;
+
+  std::array<SPMMInput, MAX_FAN_IN> entries;
 };
 
 struct SPMMDevice : PDevice<None, SPMMState, None, SPMMMessage> {
   using ThreadType = InterruptiblePThread<SPMMDevice>;
 
 private:
-  INLINE RING_TYPE get_output_diff(SPMMMessage *msg);
   inline bool sendMessage(ThreadType *thread);
 
 public:
@@ -57,7 +61,9 @@ public:
 #ifdef TINSEL
 void SPMMDevice::init(InterruptiblePThread<SPMMDevice> *thread) {
   if (DEBUG_VERBOSITY > 2) {
-    printf("Init thread=0x%x dev=0x%x type=0x%x tt=%x\n", this->deviceAddr.threadId, this->deviceAddr.devId, s->type, s->triggerTime);
+    printf("Init thread=0x%x dev=0x%x type=0x%x tt=%x nd=%x\n",
+           this->deviceAddr.threadId, this->deviceAddr.devId, s->type,
+           s->triggerTime, thread->numDevices);
   }
   this->readyToSend = No;
   s->last_update_cause = 0;
@@ -73,50 +79,13 @@ void SPMMDevice::init(InterruptiblePThread<SPMMDevice> *thread) {
     e.update_ts = 0;
   }
 }
-
-RING_TYPE SPMMDevice::get_output_diff(SPMMMessage *msg) {
-  for (auto &e : s->entries) {
-    // the source has already been registered
-    if (e.src == msg->src) {
-      if (msg->update_ts <= e.update_ts) {
-        if (DEBUG_VERBOSITY > 2) {
-          printf("Found out of order update, src=%x existing=%x v=%x new=%x "
-                 "v=%x\n",
-                 e.src, e.update_ts, e.value, msg->update_ts, msg->value);
-        }
-        return 0;
-      }
-      auto d = (msg->value - e.value) * e.weight;
-      e.value = msg->value;
-      e.update_ts = msg->update_ts;
-      return d;
-    }
-
-    // the source has not yet been registered, pick an empty slot
-    if (e.weight == 0) {
-      auto d = msg->value * s->init_weight;
-      e.src = msg->src;
-      e.weight = s->init_weight;
-      e.value = msg->value;
-      e.update_ts = msg->update_ts;
-
-      if (DEBUG_VERBOSITY > 2) {
-        printf("Filled empty slot d=%x src=%x w=%x, v=%x, u=%x\n", d, e.src, e.weight, e.value, e.update_ts);
-      }
-
-      return d;
-    }
-  }
-  if (DEBUG_VERBOSITY > 1) {
-      printf("Unable to find any slot src=%x\n", msg->src);
-  }
-  return 0;
-}
 inline bool SPMMDevice::sendMessage(InterruptiblePThread<SPMMDevice> *thread) {
-  volatile SPMMMessage *output_msg = thread->get_send_buffer(this->deviceAddr.devId);
+  volatile SPMMMessage *output_msg =
+      thread->get_send_buffer(this->deviceAddr.devId);
 
   if (DEBUG_VERBOSITY > 4) {
-    printf("sending message to next node val=%x luc=%x\n", s->output, s->last_update_cause);
+    printf("sending message to next node val=%x luc=%x\n", s->output,
+           s->last_update_cause);
   }
 
   if (output_msg == nullptr) {
@@ -128,6 +97,7 @@ inline bool SPMMDevice::sendMessage(InterruptiblePThread<SPMMDevice> *thread) {
   }
 
   *readyToSend = s->type == SPMMState::OUTPUT ? HostPin : Pin(0);
+  output_msg->type = SPMMMessage::VALUE_UPDATE;
   output_msg->value = s->output;
   output_msg->src = this->deviceAddr.num();
   output_msg->update_ts = s->last_update_cause++;
@@ -149,6 +119,10 @@ inline void SPMMDevice::onSendFinished() {
   }
 }
 inline bool SPMMDevice::onTrigger(InterruptiblePThread<SPMMDevice> *thread) {
+  if (DEBUG_VERBOSITY > 6) {
+    printf("Handling trigger %u\n", s->send_next_trigger);
+  }
+
   if constexpr (prop == ONLY_TRIGGER) {
     if (s->send_next_trigger and sendMessage(thread)) { // rely on SCE
       if (DEBUG_VERBOSITY > 3) {
@@ -157,46 +131,128 @@ inline bool SPMMDevice::onTrigger(InterruptiblePThread<SPMMDevice> *thread) {
 
       s->send_next_trigger = false;
       return true;
+    } else {
+      if (DEBUG_VERBOSITY > 6) {
+        printf("Unable to send update on trigger\n");
+      }
     }
   }
   return false;
 }
 inline bool SPMMDevice::process(SPMMMessage *msg,
                                 InterruptiblePThread<SPMMDevice> *thread) {
-  if (DEBUG_VERBOSITY > 3) {
-    printf("op=recv tid=0x%x o=0x%x src=0x%x val=0x%x ts=0x%x\n", this->deviceAddr.threadId,
-           s->output, msg->src, msg->value, msg->update_ts);
-  }
-
-  auto output_diff = get_output_diff(msg);
-
-  if (output_diff == 0) {
-    if (DEBUG_VERBOSITY > 4) {
-      printf("fast path output_diff is 0\n");
+  if (DEBUG_VERBOSITY > 1) {
+    const char *key;
+    if (msg->type == SPMMMessage::VALUE_UPDATE) {
+      key = "value_update";
+    } else if (msg->type == SPMMMessage::WEIGHT_UPDATE) {
+      key = "weight_update";
+    } else if (msg->type == SPMMMessage::ADD_EDGE) {
+      key = "add_edge";
+    } else {
+      key = "unknown";
     }
-    return false;
+    printf("op=%s tid=0x%x o=0x%x src=0x%x val=0x%x ts=0x%x type=%x\n", key,
+           this->deviceAddr.threadId, s->output, msg->src, msg->value,
+           msg->update_ts, msg->type);
   }
 
-  if (DEBUG_VERBOSITY > 2) {
-    printf("UPDATE thread=0x%x before=0x%x diff=0x%x\n", this->deviceAddr.threadId, s->output,
-           output_diff);
-  }
+  switch (msg->type) {
+  case SPMMMessage::VALUE_UPDATE: {
+    auto output_diff = [this](SPMMMessage *msg) -> RING_TYPE {
+      for (auto &e : s->entries) {
+        // the source has already been registered
+        if (e.src == msg->src) {
+          if (msg->update_ts <= e.update_ts) {
+            if (DEBUG_VERBOSITY > 2) {
+              printf("Found out of order update, src=%x existing=%x v=%x "
+                     "new=%x "
+                     "v=%x\n",
+                     e.src, e.update_ts, e.value, msg->update_ts, msg->value);
+            }
+            return 0;
+          }
+          auto d = (msg->value - e.value) * e.weight;
+          e.value = msg->value;
+          e.update_ts = msg->update_ts;
+          return d;
+        }
 
-  s->output += output_diff;
+        // the source has not yet been registered, pick an empty slot
+        if (e.weight == 0) {
+          auto d = msg->value * s->init_weight;
+          e.src = msg->src;
+          e.weight = s->init_weight;
+          e.value = msg->value;
+          e.update_ts = msg->update_ts;
 
-  switch (prop) {
-  case ALWAYS: {
-    return sendMessage(thread);
-  }
-  case ONLY_TRIGGER: {
-    s->send_next_trigger = true;
-    if (DEBUG_VERBOSITY > 3) {
-      printf("Sending update on next trigger\n");
+          if (DEBUG_VERBOSITY > 2) {
+            printf("Filled empty slot d=%x src=%x w=%x, v=%x, u=%x\n", d, e.src,
+                   e.weight, e.value, e.update_ts);
+          }
+
+          return d;
+        }
+      }
+      if (DEBUG_VERBOSITY > 1) {
+        printf("Unable to find any slot src=%x\n", msg->src);
+      }
+      return 0;
+    }(msg);
+
+    if (output_diff == 0) {
+      if (DEBUG_VERBOSITY > 4) {
+        printf("fast path output_diff is 0\n");
+      }
+      return false;
     }
-    return false;
-  }
-  }
 
+    if (DEBUG_VERBOSITY > 2) {
+      printf("UPDATE thread=0x%x before=0x%x diff=0x%x\n",
+             this->deviceAddr.threadId, s->output, output_diff);
+    }
+
+    s->output += output_diff;
+
+    if constexpr (prop == ALWAYS) {
+      return sendMessage(thread);
+    } else if (prop == ONLY_TRIGGER) {
+      s->send_next_trigger = true;
+      if (DEBUG_VERBOSITY > 3) {
+        printf("Sending update on next trigger %u\n", s->send_next_trigger);
+      }
+      return false;
+    }
+    break;
+  }
+  case SPMMMessage::WEIGHT_UPDATE: {
+    for(auto& e : s->entries) {
+      // update the entry
+      if(e.src = msg->src) {
+        s->output += (msg->value - e.weight) * e.value;
+        e.weight = msg->value;
+        s->send_next_trigger = true; // output changed, so send
+        break;
+      }
+
+      // re-use the entry
+      if(e.weight == 0) {
+        e.src = msg->src;
+        e.value = 0; // if being repurposed, don't care about the old value
+        e.weight = msg->value;
+        e.update_ts = 0;
+        break;
+      }
+    }
+    break;
+  }
+  case SPMMMessage::ADD_EDGE: {
+    auto pda = PDeviceAddr::fromNum(msg->src);
+    uint16_t pin = msg->update_ts;
+    thread->addEdge(this->deviceAddr.devId, pin, pda);
+    break;
+  }
+  }
   return false;
 }
 
