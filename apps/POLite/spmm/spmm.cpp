@@ -9,8 +9,7 @@
 int main()
 {
   // Point thread structure at base of thread's heap
-  PThread<SPMMDevice, SPMMMessage>* thread =
-    (PThread<SPMMDevice, SPMMMessage>*) tinselHeapBaseSRAM();
+  InterruptiblePThread<SPMMDevice>* thread = (InterruptiblePThread<SPMMDevice>*) tinselHeapBaseSRAM();
   
   // Invoke interpreter
   thread->run();

@@ -16,9 +16,14 @@
 typedef NodeId PDeviceId;
 
 // POETS graph
-template <typename DeviceType,
-          typename A, typename S,
-          typename E, typename M> class PGraph {
+template <typename ThreadType> class PGraph {
+ public:
+  using T = ThreadType;
+  using A = typename ThreadType::A;
+  using S = typename ThreadType::S;
+  using E = typename ThreadType::E;
+  using M = typename ThreadType::M;
+  
  private:
   // Align address to 2^n byte boundary
   inline uint32_t align(uint32_t n, uint32_t addr) {
@@ -96,8 +101,7 @@ template <typename DeviceType,
       uint32_t sizeSRAM = 0;
       uint32_t sizeDRAM = 0;
       // Add space for thread structure (stored in SRAM)
-      sizeSRAM = cacheAlign(sizeSRAM +
-                              sizeof(PThread<DeviceType, A, S, E, M>));
+      sizeSRAM = cacheAlign(sizeSRAM + sizeof(ThreadType));
       // Add space for edge lists (stored in DRAM)
       uint32_t numDevs = numDevicesOnThread[threadId];
       for (uint32_t devNum = 0; devNum < numDevs; devNum++) {
@@ -146,15 +150,14 @@ template <typename DeviceType,
       uint32_t nextDRAM = 0;
       uint32_t nextSRAM = 0;
       // Pointer to thread structure
-      PThread<DeviceType, A, S, E, M>* thread =
-        (PThread<DeviceType, A, S, E, M>*) &sram[threadId][nextSRAM];
+      ThreadType* thread = (ThreadType*) &sram[threadId][nextSRAM];
       // Add space for thread structure
-      nextSRAM = cacheAlign(nextSRAM +
-                   sizeof(PThread<DeviceType, A, S, E, M>));
+      nextSRAM = cacheAlign(nextSRAM + sizeof(ThreadType));
       // Set number of devices on thread
       thread->numDevices = numDevicesOnThread[threadId];
       // Set number of devices in graph
       thread->numVertices = numDevices;
+      thread->threadId = threadId;
       // Set tinsel address of array of device states
       thread->devices = sramBase[threadId] + nextSRAM;
       // Add space for each device on thread
