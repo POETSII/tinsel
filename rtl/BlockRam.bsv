@@ -294,6 +294,16 @@ module mkBlockRamTrueMixedOpts#(BlockRamOpts opts)
   // Wires
   Wire#(BlockRamHandle) ram <- mkBypassWire;
 
+  Wire#(Bool) doPutA <- mkDWire(False);
+  Wire#(Bool) wrA <- mkDWire(False);
+  Wire#(addrA) addressA <- mkDWire(?);
+  Wire#(dataA) datA <- mkDWire(?);
+
+  Wire#(Bool) doPutB <- mkDWire(False);
+  Wire#(Bool) wrB <- mkDWire(False);
+  Wire#(addrB) addressB <- mkDWire(?);
+  Wire#(dataB) datB <- mkDWire(?);
+
   // Rules
   rule create;
     BlockRamHandle h = ramReg;
@@ -309,30 +319,41 @@ module mkBlockRamTrueMixedOpts#(BlockRamOpts opts)
     dataBReg2 <= dataBReg1;
   endrule
 
-  // Port A
-  method Action putA(Bool wr, addrA address, dataA x);
-    if (wr)
-      blockRamWrite(ram, pack(address), pack(x),
-                      dataWidthAInt, addrWidthAInt);
-    else begin
-      let out <- blockRamRead(ram, pack(address),
+  rule perform;
+    if (doPutA && !wrA) begin
+      let out <- blockRamRead(ram, pack(addressA),
                                 dataWidthAInt, addrWidthAInt);
       dataAReg1 <= unpack(out);
     end
+    if (doPutB && !wrB) begin
+      let out <- blockRamRead(ram, pack(addressB),
+                                dataWidthBInt, addrWidthBInt);
+      dataBReg1 <= unpack(out);
+    end
+    if (doPutA && wrA)
+      blockRamWrite(ram, pack(addressA), pack(datA),
+                      dataWidthAInt, addrWidthAInt);
+    if (doPutB && wrB)
+      blockRamWrite(ram, pack(addressB), pack(datB),
+                      dataWidthBInt, addrWidthBInt);
+  endrule
+
+  // Port A
+  method Action putA(Bool wr, addrA address, dataA x);
+    doPutA <= True;
+    wrA <= wr;
+    addressA <= address;
+    datA <= x;
   endmethod
 
   method dataA dataOutA = opts.registerDataOut ? dataAReg2 : dataAReg1;
 
   // Port B
   method Action putB(Bool wr, addrB address, dataB x);
-    if (wr)
-      blockRamWrite(ram, pack(address), pack(x),
-                      dataWidthBInt, addrWidthBInt);
-    else begin
-      let out <- blockRamRead(ram, pack(address),
-                                dataWidthBInt, addrWidthBInt);
-      dataBReg1 <= unpack(out);
-    end
+    doPutB <= True;
+    wrB <= wr;
+    addressB <= address;
+    datB <= x;
   endmethod
 
   method dataB dataOutB = opts.registerDataOut ? dataBReg2 : dataBReg1;
