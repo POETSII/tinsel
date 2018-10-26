@@ -319,17 +319,17 @@ module mkMailboxMesh#(
       if (x == 0 && y == 0) begin
         // Connect mailbox to router via idle-detector
         connectDirect(mailboxes[y][x].flitOut, idle.mboxFlitIn);
-        connectUsing(mkUGShiftQueue1(QueueOptFmax),
+        connectUsing(mkUGQueue,
                        idle.netFlitOut, routers[y][x].fromMailbox);
  
         // Connect router to mailbox via idle-detector
-        connectUsing(mkUGShiftQueue1(QueueOptFmax),
+        connectUsing(mkUGQueue,
                        routers[y][x].toMailbox, idle.netFlitIn);
-        connectUsing(mkUGShiftQueue1(QueueOptFmax),
+        connectUsing(mkUGQueue,
                        idle.mboxFlitOut, mailboxes[y][x].flitIn);
       end else begin
         connectDirect(mailboxes[y][x].flitOut, routers[y][x].fromMailbox);
-        connectUsing(mkUGShiftQueue1(QueueOptFmax),
+        connectUsing(mkUGQueue,
                        routers[y][x].toMailbox, mailboxes[y][x].flitIn);
       end
     end
@@ -338,10 +338,10 @@ module mkMailboxMesh#(
   for (Integer y = 0; y < `MailboxMeshYLen; y=y+1)
     for (Integer x = 0; x < `MailboxMeshXLen-1; x=x+1) begin
       // Left to right direction
-      connectUsing(mkUGShiftQueue1(QueueOptFmax),
+      connectUsing(mkUGQueue,
                      routers[y][x].rightOut, routers[y][x+1].leftIn);
       // Right to left direction
-      connectUsing(mkUGShiftQueue1(QueueOptFmax),
+      connectUsing(mkUGQueue,
                      routers[y][x+1].leftOut, routers[y][x].rightIn);
   end
 
@@ -349,10 +349,10 @@ module mkMailboxMesh#(
   for (Integer y = 0; y < `MailboxMeshYLen-1; y=y+1)
     for (Integer x = 0; x < `MailboxMeshXLen; x=x+1) begin
       // Top to bottom direction
-      connectUsing(mkUGShiftQueue1(QueueOptFmax),
+      connectUsing(mkUGQueue,
                      routers[y][x].topOut, routers[y+1][x].bottomIn);
       // Bottom to top direction
-      connectUsing(mkUGShiftQueue1(QueueOptFmax),
+      connectUsing(mkUGQueue,
                      routers[y+1][x].bottomOut, routers[y][x].topIn);
   end
 
