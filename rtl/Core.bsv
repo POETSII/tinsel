@@ -701,9 +701,6 @@ module mkCore#(CoreId myId) (Core);
     // Read register file
     regFileA.read({token.thread.id, rfA, regA});
     regFileB.read({token.thread.id, rfB, regB});
-    // Prepare mailbox operation
-    if (isCSROp(token.instr))
-      mailbox.prepare(token.thread.id);
     // Trigger next stage
     decode1Input <= token;
   endrule
@@ -720,6 +717,9 @@ module mkCore#(CoreId myId) (Core);
     token.accessWidth = decodeAccessWidth(token.instr);
     // Compute instruction's immediate
     token.imm = decodeImm(token.instr, token.instrType);
+    // Prepare mailbox operation
+    if (token.op.isCSR)
+      mailbox.prepare(token.thread.id);
     // Currently, only CSRRW is supported for accessing CSRs
     if (token.op.isCSR)
       myAssert(token.instr[14:12] == 3'b001,
