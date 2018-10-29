@@ -167,12 +167,12 @@ INLINE TinselWakeupCond operator|(TinselWakeupCond a, TinselWakeupCond b)
 #endif
 
 // Suspend thread until message arrives or all threads globally are idle
-INLINE int tinselIdle()
+INLINE int tinselIdle(int vote)
 {
   int result;
-  int cond = 0b110;
+  int cond = vote ? 0b1110 : 0b0110;
   asm volatile("csrrw %0, " CSR_WAIT_UNTIL ", %1" : "=r"(result) : "r"(cond));
-  return (result == 0b100);
+  return (result >> 2);
 }
 
 // Return pointer to base of thread's DRAM partition

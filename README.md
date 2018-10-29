@@ -539,8 +539,8 @@ access to messages than is possible from the core.
 
 Tinsel also provides a function 
 
-```c
-  int tinselIdle();
+```c++
+  int tinselIdle(bool vote);
 ```
 
 which blocks until either
@@ -550,11 +550,16 @@ which blocks until either
   2. all threads in the entire system are blocked on a call to
      `tinselIdle()` and there are no undelivered messages in the system.
 
-The function returns false in the former case and true in the latter.
-This feature allows efficient termination detection in asynchronous
-applications and efficient barrier synchronisation in synchronous
-applications.  For more details, see the original feature proposal:
-[PIP 13](doc/PIP-0013-idle-detection.md).
+The function returns zero in the former case and non-zero in the
+latter.  A return value of 1 denotes a non-unanamous vote, i.e. not
+all callers voted true, and a return value > 1 denotes a unanamous
+vote, i.e. all callers voted true.  This feature allows efficient
+termination detection in asynchronous applications and efficient
+barrier synchronisation in synchronous applications.  The voting
+mechanism additionally allows termination to be detected in
+synchronous applications, e.g. all threads in the system are stable
+since the last time step.  For more details, see the original feature
+proposal: [PIP 13](doc/PIP-0013-idle-detection.md).
 
 A summary of synthesis-time parameters introduced in this section:
 

@@ -32,7 +32,7 @@ struct PageRankDevice : PDevice<None, PageRankState, None, PageRankMessage> {
   }
 
   // Called by POLite when system becomes idle
-  inline void idle() {
+  inline void idle(bool stable) {
     // Calculate the score for this iter
     s->score = 0.15/numVertices + 0.85*s->sum;
     // Clear the accumulator

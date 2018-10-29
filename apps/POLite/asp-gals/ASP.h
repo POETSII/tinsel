@@ -120,7 +120,7 @@ struct ASPDevice : PDevice<None, ASPState, None, ASPMessage> {
   }
 
   // Called by POLite when system becomes idle
-  inline void idle() { return; }
+  inline void idle(bool stable) { return; }
 };
 
 #endif

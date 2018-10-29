@@ -1,6 +1,6 @@
 // This module supports the Tinsel API function
 //
-//   bool tinselIdle();
+//   uint32_t tinselIdle(bool vote);
 //
 // which blocks until either
 //
@@ -9,7 +9,13 @@
 //   2. all threads are blocked on a call to tinselIdle() and there
 //      are no undelivered messages in the system.
 //
-// The function returns false in the former case and true in the latter.
+// The function returns zero in the former case and non-zero in the latter.
+// A return value of 1 denotes a non-unanamous vote, i.e. not all callers
+// voted true, and a return value > 1 denotes a unanamous vote,
+// i.e. all callers voted true.  The voting mechanism allows a
+// global condition to be established, e.g. every thread in the system
+// agreeing to halt.
+//
 // The implementation below is based on Safra's termination detection
 // algorithm (EWD998).
 
@@ -32,6 +38,8 @@ typedef struct {
   Bool black;
   // Termination flag
   Bool done;
+  // Vote flag
+  Bool vote;
   // In-flight message count
   MsgCount count;
 } IdleToken deriving (Bits);
@@ -54,6 +62,10 @@ interface IdleSignals;
   (* always_ready, always_enabled *)
   method Action activeIn(Bool active);
 
+  // The 'voteIn' bit is sampled when the `activeIn` bit goes low
+  (* always_ready, always_enabled *)
+  method Action voteIn(Bool vote);
+
   // In-flight message count
   (* always_ready, always_enabled *)
   method Action countIn(MsgCount count);
@@ -62,6 +74,10 @@ interface IdleSignals;
   // detected.  This should disable message sending on all threads.
   // At this stage, message counters can also be reset to 0.
   method Bool detectedStage1;
+
+  // This flag indicates a unanamous vote, to be sampled when
+  // detectedStage1 is pulsed.
+  method Bool voteStage1;
 
   // This flag is pulsed high to enable sending again on all threads.
   method Bool detectedStage2;
@@ -137,10 +153,12 @@ module mkIdleDetector#(BoardId me) (IdleDetector);
 
   // Pulse registers
   Reg#(Bool) detectedStage1Reg <- mkDReg(False);
+  Reg#(Bool) voteStage1Reg <- mkDReg(False);
   Reg#(Bool) detectedStage2Reg <- mkDReg(False);
 
-  // Access activeIn and countIn signals
+  // Access activeIn, voteIn, and countIn signals
   Wire#(Bool) activeWire <- mkBypassWire;
+  Wire#(Bool) voteWire <- mkBypassWire;
   Wire#(MsgCount) countWire <- mkBypassWire;
 
   // Ack from cores that stage 1 is complete
@@ -164,6 +182,7 @@ module mkIdleDetector#(BoardId me) (IdleDetector);
     IdleToken in = unpack(truncate(tokenInQueue.dataOut.payload));
     IdleToken token;
     token.black = black;
+    token.vote = voteWire;
     token.done = in.done;
     token.count = countWire;
     // Construct flit containing output token
@@ -180,6 +199,7 @@ module mkIdleDetector#(BoardId me) (IdleDetector);
     if (in.done) begin
       if (state == 0) begin
         detectedStage1Reg <= True;
+        voteStage1Reg <= in.vote;
         state <= 1;
       end else if (state == 1) begin
         if (ackStage1Wire) begin
@@ -208,11 +228,16 @@ module mkIdleDetector#(BoardId me) (IdleDetector);
       activeWire <= active;
     endmethod
 
+    method Action voteIn(Bool vote);
+      voteWire <= vote;
+    endmethod
+
     method Action countIn(MsgCount count);
       countWire <= count;
     endmethod
 
     method Bool detectedStage1 = detectedStage1Reg;
+    method Bool voteStage1 = voteStage1Reg;
     method Bool detectedStage2 = detectedStage2Reg;
 
     method Action ackStage1(Bool pulse);
@@ -259,8 +284,11 @@ interface IdleDetectorClient;
   method Bit#(1) incSent;
   method Bit#(1) incReceived;
   method Bool active;
+  method Bool vote;
   (* always_ready, always_enabled *)
   method Action idleDetectedStage1(Bool pulse);
+  (* always_ready, always_enabled *)
+  method Action idleVoteStage1(Bool pulse);
   (* always_ready, always_enabled *)
   method Action idleDetectedStage2(Bool pulse);
   method Bool idleStage1Ack;
@@ -297,11 +325,19 @@ module connectCoresToIdleDetector#(
     actives[i] = core[i].active;
   Bool anyActive <- mkPipelinedReductionTree( \|| , True, toList(actives));
 
+  // OR the "vote" wires from each core
+  Vector#(n, Bool) votes = newVector;
+  for (Integer i = 0; i < valueOf(n); i=i+1)
+    votes[i] = core[i].vote;
+  Bool unanamous <- mkPipelinedReductionTree( \&& , False, toList(votes));
+
   // Register the result
   Reg#(Bool) active <- mkConfigReg(True);
+  Reg#(Bool) vote <- mkConfigReg(True);
   
   rule updateActive;
     active <= anyActive;
+    vote <= unanamous;
   endrule
 
   // Counter number of stage 1 acks
@@ -331,10 +367,12 @@ module connectCoresToIdleDetector#(
     // Feed signals to the idle detector
     detector.idle.countIn(count);
     detector.idle.activeIn(active);
+    detector.idle.voteIn(vote);
     detector.idle.ackStage1(stage1AckWire);
 
     for (Integer i = 0; i < valueOf(n); i=i+1) begin
       core[i].idleDetectedStage1(detector.idle.detectedStage1);
+      core[i].idleVoteStage1(detector.idle.voteStage1);
       core[i].idleDetectedStage2(detector.idle.detectedStage2);
     end
   endrule
@@ -376,6 +414,9 @@ module mkIdleDetectMaster (IdleDetectMaster);
 
   // Sum counts received from worker boards
   Reg#(MsgCount) totalCount <- mkConfigReg(0);
+
+  // Join all the votes
+  Reg#(Bool) totalVote <- mkConfigReg(True);
 
   // Master is white at beginning of new probe,
   // and goes black when a message is sent/received
@@ -431,6 +472,7 @@ module mkIdleDetectMaster (IdleDetectMaster);
     token.black = False;
     token.done = False;
     token.count = 0;
+    token.vote = totalVote;
     // Construct flit
     Flit flit;
     flit.dest =
@@ -477,6 +519,7 @@ module mkIdleDetectMaster (IdleDetectMaster);
           totalCount <= localCount;
           anyBlack <= False;
           localBlackReset.send;
+          totalVote <= True;
       
           disableHostMsgsWire <= True;
           if (!token.black && !localBlack && !anyBlack &&
@@ -494,6 +537,7 @@ module mkIdleDetectMaster (IdleDetectMaster);
         respCount <= respCount+1;
         if (state == 0) begin
           totalCount <= totalCount + token.count;
+          totalVote <= totalVote && token.vote;
           anyBlack <= anyBlack || token.black;
         end
       end
