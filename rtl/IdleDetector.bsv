@@ -519,7 +519,7 @@ module mkIdleDetectMaster (IdleDetectMaster);
           totalCount <= localCount;
           anyBlack <= False;
           localBlackReset.send;
-          totalVote <= True;
+          totalVote <= totalVote && token.vote;
       
           disableHostMsgsWire <= True;
           if (!token.black && !localBlack && !anyBlack &&
@@ -532,6 +532,7 @@ module mkIdleDetectMaster (IdleDetectMaster);
         else if (state == 2) begin
           state <= 0;
           disableHostMsgsReg <= False;
+          totalVote <= True;
         end
       end else begin
         respCount <= respCount+1;

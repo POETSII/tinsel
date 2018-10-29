@@ -29,6 +29,7 @@ clean:
 	make -C apps/POLite/heat-gals clean
 	make -C apps/POLite/heat-sync clean
 	make -C apps/POLite/asp-gals clean
+	make -C apps/POLite/asp-sync clean
 	make -C apps/POLite/pagerank-sync clean
 	make -C apps/POLite/pagerank-gals clean
 	make -C bin clean
