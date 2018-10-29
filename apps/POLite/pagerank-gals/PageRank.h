@@ -91,7 +91,7 @@ struct PageRankDevice : PDevice<None, PageRankState, None, PageRankMessage> {
   }
 
   // Called by POLite when system becomes idle
-  inline void idle() { return; }
+  inline void idle(bool stable) { return; }
 };
 
 #endif

@@ -70,7 +70,7 @@ template <typename A, typename S, typename E, typename M> struct PDevice {
   void init();
   void send(volatile M* msg);
   void recv(M* msg, E* edge);
-  void idle();
+  void idle(bool vote);
 };
 
 // Generic device state structure
@@ -167,6 +167,9 @@ template <typename DeviceType,
     empty.destThread = invalidThreadId();
     neighbour = &empty;
 
+    // Did last call to init handler or idle handler trigger any send?
+    bool active = false;
+
     // Initialisation
     sendersTop = senders;
     for (uint32_t i = 0; i < numDevices; i++) {
@@ -178,7 +181,10 @@ template <typename DeviceType,
       // Invoke the initialiser for each device
       dev.init();
       // Device ready to send?
-      if (*dev.readyToSend != No) *(sendersTop++) = i;
+      if (*dev.readyToSend != No) {
+        *(sendersTop++) = i;
+        active = true;
+      }
     }
 
     // Set number of flits per message
@@ -254,7 +260,9 @@ template <typename DeviceType,
       }
       else {
         // Idle detection
-        if (tinselIdle()) {
+        int idle = tinselIdle(!active);
+        if (idle) {
+          active = false;
           for (uint32_t i = 0; i < numDevices; i++) {
             DeviceType dev;
             dev.s           = &devices[i].state;
@@ -262,9 +270,12 @@ template <typename DeviceType,
             dev.readyToSend = readyToSend(i);
             dev.numVertices = numVertices;
             // Invoke the idle handler for each device
-            dev.idle();
+            dev.idle(idle > 1);
             // Device ready to send?
-            if (*dev.readyToSend != No) *(sendersTop++) = i;
+            if (*dev.readyToSend != No) {
+              active = true;
+              *(sendersTop++) = i;
+            }
           }
         }
       }

@@ -44,7 +44,7 @@ struct HeatDevice : PDevice<None, HeatState, None, HeatMessage> {
   }
 
   // Called by POLite when system becomes idle
-  inline void idle() {
+  inline void idle(bool stable) {
     // Execution complete?
     if (s->time == 0) return;
 

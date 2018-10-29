@@ -604,8 +604,9 @@ endinterface
 // A bit vector of events that can cause a sleeping thread to wake up
 // Bit 0: can-send
 // Bit 1: can-receive
-// Bit 2: idle
-typedef Bit#(3) WakeEvent;
+// Bit 2: idle, vote false
+// Bit 3: idle, vote true
+typedef Bit#(4) WakeEvent;
 
 // Pair containing thread id and wake event
 typedef struct {
@@ -655,7 +656,11 @@ interface MailboxClientUnit;
   // For idle detection
   method Bool active;
   (* always_ready, always_enabled *)
+  method Bool vote;
+  (* always_ready, always_enabled *)
   method Action idleDetectedStage1(Bool pulse);
+  (* always_ready, always_enabled *)
+  method Action idleVoteStage1(Bool pulse);
   (* always_ready, always_enabled *)
   method Action idleDetectedStage2(Bool pulse);
   method Bool idleStage1Ack;
@@ -779,10 +784,12 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
 
   // Iterface to idle detector
   Wire#(Bool) idleStage1Wire <- mkBypassWire;
+  Wire#(Bool) voteStage1Wire <- mkBypassWire;
   Wire#(Bool) idleStage2Wire <- mkBypassWire;
 
   // Latch the pulses
   Reg#(Bool) idleStage1Reg <- mkConfigReg(False);
+  Reg#(Bool) voteStage1Reg <- mkConfigReg(False);
 
   // Has the idle event been detected?
   Reg#(Bool) idleDetected <- mkConfigReg(False);
@@ -794,6 +801,10 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
   Count#(TAdd#(`LogThreadsPerCore, 1)) numIdleWaiters <-
     mkCount(2 ** `LogThreadsPerCore);
 
+  // Track the number of threads waiting on the idle event that voted true
+  Count#(TAdd#(`LogThreadsPerCore, 1)) idleVotes <-
+    mkCount(2 ** `LogThreadsPerCore);
+
   rule updateIdleStage;
     if (idleStage1Reg && numIdleWaiters.value == 0) begin
       idleStage1Reg <= False;
@@ -801,6 +812,7 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
     end else if (idleStage1Wire) begin
       idleDetected <= True;
       idleStage1Reg <= True;
+      voteStage1Reg <= !idleVotes.notFull;
     end else if (idleStage2Wire) begin
       idleDetected <= False;
     end
@@ -836,7 +848,10 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
   rule wakeup2 (wakeupState == 2);
     // Select only the bits of the event that match
     let eventMatchNow = wakeupReg.wakeEvent &
-          {pack(idleStage1Reg), pack(unread.canGet), pack(canSendReg2)};
+          {pack(idleStage1Reg && voteStage1Reg),
+           pack(idleStage1Reg),
+           pack(unread.canGet),
+           pack(canSendReg2)};
     let eventMatch = wakeup2Fire ? eventMatchNow : eventMatchReg;
     eventMatchReg <= eventMatch;
     // Should a wakeup be sent?
@@ -850,6 +865,7 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
         wakeupPort.put(wakeup);
         wakeupState <= 0;
         if (wakeupReg.wakeEvent[2] == 1) numIdleWaiters.dec;
+        if (wakeupReg.wakeEvent[3] == 1) idleVotes.dec;
       end else if (!doSleep) begin
         // Retry later
         doRequeue <= True;
@@ -895,6 +911,7 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
 
   method Action sleep(ThreadId id, WakeEvent e);
     if (e[2] == 1) numIdleWaiters.inc;
+    if (e[3] == 1) idleVotes.inc;
     doSleep <= True;
     sleepThread <= ThreadEventPair { id: id, wakeEvent: e };
   endmethod
@@ -903,8 +920,14 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
 
   method Bool active = numIdleWaiters.notFull;
 
+  method Bool vote = !idleVotes.notFull;
+
   method Action idleDetectedStage1(Bool pulse);
     idleStage1Wire <= pulse;
+  endmethod
+
+  method Action idleVoteStage1(Bool pulse);
+    voteStage1Wire <= pulse;
   endmethod
 
   method Action idleDetectedStage2(Bool pulse);

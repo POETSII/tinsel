@@ -13,8 +13,8 @@ int main()
   volatile int* msgOut = tinselSlot(1);
 
   for (int i = 0; i < 3; i++) {
-    tinselIdle();
-    tinselEmit(i);
+    int r = tinselIdle(i == 1);
+    tinselEmit(r);
   }
 
   if (me == 0) {
