@@ -1,7 +1,9 @@
 all: asp
 
-asp: asp.c
-	gcc -std=c11 -D_DEFAULT_SOURCE -O3 asp.c -o asp
+INC=../../../../include
+
+asp: asp.cpp
+	g++ -fopenmp -D_DEFAULT_SOURCE -I$(INC) -O3 asp.cpp -o asp
 
 clean:
 	rm -f asp
