@@ -812,7 +812,7 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
     end else if (idleStage1Wire) begin
       idleDetected <= True;
       idleStage1Reg <= True;
-      voteStage1Reg <= !idleVotes.notFull;
+      voteStage1Reg <= voteStage1Wire;
     end else if (idleStage2Wire) begin
       idleDetected <= False;
     end

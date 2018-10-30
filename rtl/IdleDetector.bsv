@@ -415,8 +415,9 @@ module mkIdleDetectMaster (IdleDetectMaster);
   // Sum counts received from worker boards
   Reg#(MsgCount) totalCount <- mkConfigReg(0);
 
-  // Join all the votes
-  Reg#(Bool) totalVote <- mkConfigReg(True);
+  // Track the votes
+  Reg#(Bool) nextVote <- mkConfigReg(False);
+  Reg#(Bool) currentVote <- mkConfigReg(True);
 
   // Master is white at beginning of new probe,
   // and goes black when a message is sent/received
@@ -472,7 +473,7 @@ module mkIdleDetectMaster (IdleDetectMaster);
     token.black = False;
     token.done = False;
     token.count = 0;
-    token.vote = totalVote;
+    token.vote = currentVote;
     // Construct flit
     Flit flit;
     flit.dest =
@@ -519,7 +520,8 @@ module mkIdleDetectMaster (IdleDetectMaster);
           totalCount <= localCount;
           anyBlack <= False;
           localBlackReset.send;
-          totalVote <= totalVote && token.vote;
+          currentVote <= nextVote && token.vote;
+          nextVote <= True;
       
           disableHostMsgsWire <= True;
           if (!token.black && !localBlack && !anyBlack &&
@@ -532,13 +534,12 @@ module mkIdleDetectMaster (IdleDetectMaster);
         else if (state == 2) begin
           state <= 0;
           disableHostMsgsReg <= False;
-          totalVote <= True;
         end
       end else begin
         respCount <= respCount+1;
         if (state == 0) begin
           totalCount <= totalCount + token.count;
-          totalVote <= totalVote && token.vote;
+          nextVote <= nextVote && token.vote;
           anyBlack <= anyBlack || token.black;
         end
       end
