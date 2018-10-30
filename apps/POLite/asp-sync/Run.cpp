@@ -78,7 +78,7 @@ int main(int argc, char**argv)
       // Stop timer
       gettimeofday(&finish, NULL);
     }
-    sum += msg.payload.reaching[0];
+    sum += msg.payload.sum;
   }
 
   // Emit sum
