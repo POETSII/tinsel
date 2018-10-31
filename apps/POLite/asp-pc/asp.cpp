@@ -89,6 +89,7 @@ uint64_t ssp(uint32_t from, uint32_t to)
   const int nodesInVector = to-from;
 
   // Initialise reaching vector for each node
+  #pragma omp parallel for
   for (int i = 0; i < numNodes; i++) {
     for (int j = 0; j < vectorSize; j++) {
       reaching[i][j] = 0;
@@ -101,6 +102,7 @@ uint64_t ssp(uint32_t from, uint32_t to)
   }
 
   char changed[numNodes];
+  #pragma omp parallel for
   for (int i = 0; i < numNodes; i++) changed[i] = 1;
 
   // Distance increases on each iteration
