@@ -82,7 +82,7 @@ int main(int argc, char**argv)
   }
 
   // Emit sum
-  printf("Sum of subset of shortest paths = %i\n", sum);
+  printf("Sum of subset of shortest paths = %u\n", sum);
 
   // Display time
   timersub(&finish, &start, &diff);

@@ -60,6 +60,7 @@ struct ASPDevice : PDevice<None, ASPState, None, ASPMessage> {
       s->done = true;
     }
     else {
+      s->time++;
       // Fold in new reaching nodes
       bool changed = false;
       for (uint32_t i = 0; i < N; i++) {
@@ -75,7 +76,6 @@ struct ASPDevice : PDevice<None, ASPState, None, ASPMessage> {
         s->newReaching[i] = 0;
       }
       // Start new time step
-      s->time++;
       *readyToSend = changed ? Pin(0) : No;
     }
   }
