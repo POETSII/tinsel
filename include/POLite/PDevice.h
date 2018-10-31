@@ -17,7 +17,7 @@
 
 // This is a static limit on the fan out of any pin
 #ifndef MAX_PIN_FANOUT
-#define MAX_PIN_FANOUT 32
+#define MAX_PIN_FANOUT 64
 #endif
 
 // Number of mailbox slots to use for receive buffer
