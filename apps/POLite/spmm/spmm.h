@@ -5,7 +5,7 @@
 
 #define MAX_FAN_IN 16
 
-using RING_TYPE = int;
+using RING_TYPE = float;
 enum UpdatePropagation { ONLY_TRIGGER, ALWAYS };
 
 // compile time settings
@@ -13,7 +13,11 @@ constexpr int DEBUG_VERBOSITY = 1;
 constexpr UpdatePropagation prop = ONLY_TRIGGER;
 
 struct SPMMMessage {
-  enum MessageType : uint8_t { VALUE_UPDATE = 0, WEIGHT_UPDATE = 1, ADD_EDGE = 2 };
+  enum MessageType : uint8_t {
+    VALUE_UPDATE = 0,
+    WEIGHT_UPDATE = 1,
+    ADD_EDGE = 2
+  };
   PDeviceAddrNum src;
   RING_TYPE value;
   uint32_t update_ts;
@@ -104,17 +108,17 @@ inline bool SPMMDevice::sendMessage(InterruptiblePThread<SPMMDevice> *thread) {
   return true;
 }
 inline void SPMMDevice::onSendStart() {
-  if (DEBUG_VERBOSITY > 1) {
+  if (DEBUG_VERBOSITY > 3) {
     printf("onSendStart\n");
   }
 }
 inline void SPMMDevice::onSendRestart() {
-  if (DEBUG_VERBOSITY > 1) {
+  if (DEBUG_VERBOSITY > 3) {
     printf("onSendRestart\n");
   }
 }
 inline void SPMMDevice::onSendFinished() {
-  if (DEBUG_VERBOSITY > 1) {
+  if (DEBUG_VERBOSITY > 3) {
     printf("onSendFinished\n");
   }
 }
@@ -141,7 +145,7 @@ inline bool SPMMDevice::onTrigger(InterruptiblePThread<SPMMDevice> *thread) {
 }
 inline bool SPMMDevice::process(SPMMMessage *msg,
                                 InterruptiblePThread<SPMMDevice> *thread) {
-  if (DEBUG_VERBOSITY > 1) {
+  if (DEBUG_VERBOSITY > 2) {
     const char *key;
     if (msg->type == SPMMMessage::VALUE_UPDATE) {
       key = "value_update";
@@ -226,17 +230,27 @@ inline bool SPMMDevice::process(SPMMMessage *msg,
     break;
   }
   case SPMMMessage::WEIGHT_UPDATE: {
-    for(auto& e : s->entries) {
+    for (auto &e : s->entries) {
+      if (DEBUG_VERBOSITY > 4) {
+        printf("WU: Found entry src=%x v=%x w=%x u=%x\n", e.src,
+                e.weight, e.value, e.update_ts);
+      }
+
       // update the entry
-      if(e.src = msg->src) {
+      if (e.src == msg->src) {
         s->output += (msg->value - e.weight) * e.value;
         e.weight = msg->value;
         s->send_next_trigger = true; // output changed, so send
+
+        if (DEBUG_VERBOSITY > 4) {
+          printf("WU: updated slot for src=%x src=%x w=%x, v=%x, u=%x\n", e.src,
+                 e.weight, e.value, e.update_ts);
+        }
         break;
       }
 
       // re-use the entry
-      if(e.weight == 0) {
+      if (e.weight == 0) {
         e.src = msg->src;
         e.value = 0; // if being repurposed, don't care about the old value
         e.weight = msg->value;
@@ -250,6 +264,7 @@ inline bool SPMMDevice::process(SPMMMessage *msg,
     auto pda = PDeviceAddr::fromNum(msg->src);
     uint16_t pin = msg->update_ts;
     thread->addEdge(this->deviceAddr.devId, pin, pda);
+    s->send_next_trigger = true;
     break;
   }
   }

@@ -196,7 +196,7 @@ template <typename DeviceType> struct PThread {
     return dev;
   }
 
-  INLINE bool addEdge(PLocalDeviceId localsource, uint16_t pin, PDeviceAddr target) {
+  bool addEdge(PLocalDeviceId localsource, uint16_t pin, PDeviceAddr target) {
     PState<S> &dev = this->devices[localsource];
     PNeighbour<E>* pinEdgeArray = (PNeighbour<E>*) dev.neighboursBase + ((pin+1) * MAX_PIN_FANOUT);
 
@@ -214,16 +214,29 @@ template <typename DeviceType> struct PThread {
       n.devId = target.devId;
       break;
     }
-
-    /*
-    for(uint32_t i = 0; i < MAX_PIN_FANOUT; i++) {
-      PNeighbour<E>& n = pinEdgeArray[i];
-      printf("i=%x destThread=%x devId=%x isValid=%x\n", i, n.destThread, n.devId, isValidThreadId(n.destThread));
-    }
-    */
     return true;
   }
-  
+
+  bool removeEdge(PLocalDeviceId localsource, uint16_t pin, PDeviceAddr target) {
+    PState<S> &dev = this->devices[localsource];
+    PNeighbour<E>* pinEdgeArray = (PNeighbour<E>*) dev.neighboursBase + ((pin+1) * MAX_PIN_FANOUT);
+
+    bool found = false;
+    for(uint32_t i = 0; i < MAX_PIN_FANOUT - 1; i++) {
+      PNeighbour<E>& n = pinEdgeArray[i];
+      PNeighbour<E>& next = pinEdgeArray[i+1];
+      
+      if(found) {
+        n = next;
+        continue;
+      }
+      if(n.destThread == target.threadId and n.devId == target.devId) {
+        found = true;
+        n = next;
+      }
+    }
+    return found;
+  }
 #endif
 };
 
@@ -326,7 +339,7 @@ struct DefaultPThread : public PThread<DeviceType> {
       }
 
       // Step 2: try to receive
-      if (tinselCanRecv()) {
+      while (tinselCanRecv()) {
         // Receive message
         PMessage<E, M> *m = (PMessage<E, M> *)tinselRecv();
         // Lookup destination device
@@ -351,6 +364,8 @@ struct InterruptibleState {
   DeviceState state;
 };
 
+const int NUM_SEND_SLOTS = 2;
+
 template <typename DeviceType>
 struct InterruptiblePThread : public PThread<DeviceType> {
   using A = typename DeviceType::Accumulator;
@@ -366,16 +381,31 @@ struct InterruptiblePThread : public PThread<DeviceType> {
   enum class ThreadState { IDLE, SENDING };
   ThreadState state;
 
-  volatile M *get_send_buffer(PLocalDeviceId addr) {
-    volatile M *sending_slot = nullptr;
+  volatile M *get_send_buffer(PLocalDeviceId addr, bool interrupt = false) {
     PState<S> &deviceState = this->devices[addr];
-    if (deviceState.state.state == InterruptibleState::DeviceState::SENDING or
-        this->state == ThreadState::IDLE) {
-        volatile MessageType * fullMessage = static_cast<volatile MessageType *>(tinselSlot(0));
-        sending_slot = &(fullMessage->payload);
+    if ((this->state == ThreadState::IDLE) or (deviceState.state.state == InterruptibleState::DeviceState::SENDING and interrupt)) {
+        return static_cast<volatile MessageType *>(tinselSlot(0));
     }
-    return sending_slot;
+    return nullptr;
   }
+
+  /*
+  void send_message(volatile MessageType* send_buffer, PLocalDeviceId addr, uint16_t destination) {
+    uint16_t pin = destination - 1;
+    this->neighbour = (PNeighbour<E> *)this->devices[id].neighboursBase + MAX_PIN_FANOUT * pin;
+
+    // Update the state of sending
+    state = ThreadState::SENDING;
+    multicastSource = id;
+
+    if (dev.s->state == S::DeviceState::SENDING) {
+      dev.onSendRestart();
+    } else {
+      dev.onSendStart();
+    }
+    dev.s->state = S::DeviceState::SENDING;
+  };
+  */
 
   void run() {
 
@@ -402,31 +432,6 @@ struct InterruptiblePThread : public PThread<DeviceType> {
       tinselAlloc(tinselSlot(i));
     }
     
-    auto send_message = [this](DeviceType& dev, PLocalDeviceId id){
-      // Determine neighbours array for sender
-      uint16_t pin = *(dev.readyToSend) - 1;
-      this->neighbour = (PNeighbour<E> *)this->devices[id].neighboursBase + MAX_PIN_FANOUT * pin;
-
-      // Update the state of sending
-      state = ThreadState::SENDING;
-      multicastSource = id;
-
-      if (dev.s->state == S::DeviceState::SENDING) {
-        dev.onSendRestart();
-      } else {
-        dev.onSendStart();
-      }
-      dev.s->state = S::DeviceState::SENDING;
-    };
-
-    auto handle_message = [this, &send_message](DeviceType& dev, MessageType *msg, PLocalDeviceId id) {
-      bool should_send = dev.process(&(msg->payload), this);
-
-      if (should_send) {
-        send_message(dev, id);
-      }
-    };
-
     uint8_t c = 0;
     // Event loop
 
@@ -439,8 +444,8 @@ struct InterruptiblePThread : public PThread<DeviceType> {
         DeviceType dev = this->createDeviceStub(msg->devId);
 
         // Was it ready to send?
-        handle_message(dev, msg, msg->devId);
-
+        dev.process(&(msg->payload), this);
+        
         // Reallocate mailbox slot
         tinselAlloc(msg);
       }
@@ -454,7 +459,7 @@ struct InterruptiblePThread : public PThread<DeviceType> {
           PLocalDeviceId id = this->neighbour->devId;
           DeviceType destDev = this->createDeviceStub(id);
           MessageType * msg = (MessageType *)tinselSlot(0);
-          handle_message(destDev, msg, id);
+          destDev.process(&(msg->payload), this);
           this->neighbour++;
         } else if (tinselCanSend()) {
           // Destination device is on another thread
@@ -476,22 +481,22 @@ struct InterruptiblePThread : public PThread<DeviceType> {
         dev.onSendFinished();
       }
 
-      // Step 3: Handle idle
-      if (tinselIdle()) {
-        for (uint32_t i = 0; i < this->numDevices; i++) {
-          DeviceType dev = this->createDeviceStub(i);
-          // Invoke the idle handler for each device
-          dev.idle();
-        }
-      }
-      // Step 4: handle triggers
+      // Step 4: handle IDLE + triggers
       if (++c >= triggerTime) {
         c = 0;
+
         for (uint32_t i = 0; i < this->numDevices; i++) {
           DeviceType dev = this->createDeviceStub(i);
-          if(dev.onTrigger(this)) {
-            send_message(dev, i);
+          
+          if (tinselIdle()) {
+            // Invoke the idle handler for each device
+            dev.idle(this);
           }
+        
+          dev.onTrigger(this);
+          // if(dev.onTrigger(this)) {
+          //   send_message(dev, i);
+          // }
         }
       }
       tinselWaitUntil(TINSEL_CAN_RECV | TINSEL_CAN_SEND);
