@@ -8,9 +8,10 @@
 // NUM_SOURCES is the number of sources to compute ASP for
 //#define NUM_SOURCES 32
 #define NUM_UPDATE_SLOTS NUM_SOURCES
-#define NUM_UPDATES 10
+#define NUM_UPDATES 4
 
-//#define WITH_PERF
+#define WITH_PERF
+#define TINSEL_IDLE_SUPPORT
 
 using DistanceType = uint8_t;
 using UpdateCountType = uint16_t;
@@ -146,13 +147,13 @@ inline void ASPDevice::recv(volatile ASPMessage *msg, None *) {
   // that were meant for Pin(0) are instead 
   if(has_changed) {
     *readyToSend = Pin(0);
-  } 
+  }
 }
 inline void ASPDevice::send(volatile ASPMessage *msg) {
   msg->src = s->id;
+  msg->send_time = s->hostMsg++;
   
   if(*readyToSend == Pin(0)) {
-
     int inserted_updates = 0;
     while((s->toUpdateIdx > 0) && (inserted_updates < NUM_UPDATES)) {
       s->toUpdateIdx--;
@@ -167,11 +168,12 @@ inline void ASPDevice::send(volatile ASPMessage *msg) {
 #ifdef WITH_PERF
     s->perf.send_dest_success += inserted_updates;
 #endif
-
+    msg->num_updates = inserted_updates;
+  
     if(s->toUpdateIdx == 0) {
       // when there are no more updates to send, check whether to send to host
       
-#ifdef TINSEL_IDLE_SUPPORT 
+#ifdef TINSEL_IDLE_SUPPORT
       *readyToSend = No;
 #else
       bool found_unupdated = false;
@@ -179,11 +181,13 @@ inline void ASPDevice::send(volatile ASPMessage *msg) {
 
       // ewww linear scan
       for(auto& d : s->distances) {
+        
         if(d == INIT_DISTANCE) {
           found_unupdated = true;
           s->result = 0;
           break;
         }
+
         s->result += d;
       }
 
@@ -192,19 +196,19 @@ inline void ASPDevice::send(volatile ASPMessage *msg) {
       } else {
         *readyToSend = No;
       }
-    }
 #endif
-    msg->num_updates = inserted_updates;
+    }
     return;
   }
 
   if(*readyToSend == HostPin) {
     msg->result = s->result;
-    msg->send_time = s->hostMsg++;
+
 #ifdef WITH_PERF
     s->perf.send_host_success++;
     const_cast<PerfCounters&>(msg->perf) = s->perf;
 #endif
+    
     s->sent_result = true;
     *readyToSend = No;
     return;
