@@ -155,6 +155,7 @@ int main(int argc, char**argv)
   }
   bool undirected = false;
   readGraph(argv[1], undirected);
+  printf("Nodes: %u.  Edges: %u\n", numNodes, numEdges);
 
   struct timeval start, finish, diff;
 
