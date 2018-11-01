@@ -42,6 +42,10 @@ template <typename ThreadType> class PGraph {
   // Helper function
   inline uint32_t min(uint32_t x, uint32_t y) { return x < y ? x : y; }
 
+  // Number of FPGA boards to use
+  uint32_t numBoardsX;
+  uint32_t numBoardsY;
+
  public:
   // Number of devices
   uint32_t numDevices;
@@ -67,6 +71,17 @@ template <typename ThreadType> class PGraph {
   uint8_t** sram;       uint8_t** dram;
   uint32_t* sramSize;   uint32_t* dramSize;
   uint32_t* sramBase;   uint32_t* dramBase;
+
+  // Setter for number of boards
+  void setNumBoards(uint32_t x, uint32_t y) {
+    if (x > TinselMeshXLen || y > TinselMeshYLen) {
+      printf("Mapper: %x x %d boards requested, %d x %d available\n",
+        numBoardsX, numBoardsY, TinselMeshXLen, TinselMeshYLen);
+      exit(EXIT_FAILURE);
+    }
+    numBoardsX = x;
+    numBoardsY = y;
+  }
 
   // Create new device
   inline PDeviceId newDevice() {
@@ -276,15 +291,15 @@ template <typename ThreadType> class PGraph {
     allocateMapping();
 
     // Partition into subgraphs, one per board
-    Placer boards(&graph, TinselMeshXLen, TinselMeshYLen);
+    Placer boards(&graph, numBoardsX, numBoardsY);
 
     // Place subgraphs onto 2D mesh
     const uint32_t placerEffort = 8;
     boards.place(placerEffort);
 
     // For each board
-    for (uint32_t boardY = 0; boardY < TinselMeshYLen; boardY++) {
-      for (uint32_t boardX = 0; boardX < TinselMeshXLen; boardX++) {
+    for (uint32_t boardY = 0; boardY < numBoardsY; boardY++) {
+      for (uint32_t boardX = 0; boardX < numBoardsX; boardX++) {
         // Partition into subgraphs, one per mailbox
         PartitionId b = boards.mapping[boardY][boardX];
         Placer boxes(&boards.subgraphs[b], 
@@ -340,6 +355,8 @@ template <typename ThreadType> class PGraph {
 
   // Constructor
   PGraph() {
+    numBoardsX = TinselMeshXLen;
+    numBoardsY = TinselMeshYLen;
     numDevices = 0;
     devices = NULL;
     toDeviceAddr = NULL;

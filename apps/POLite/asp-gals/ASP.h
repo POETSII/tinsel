@@ -12,7 +12,7 @@
 #include <POLite.h>
 
 // NUM_SOURCES*32 is the number of sources to compute ASP for
-#define NUM_SOURCES 14
+#define NUM_SOURCES 2
 
 struct ASPMessage {
   // Time step of sender
@@ -52,7 +52,7 @@ struct ASPDevice : PDevice<None, ASPState, None, ASPMessage> {
   // We call this on every state change
   void step() {
     // Finished execution?
-    if (s->done) { *readyToSend = s->done == 2 ? No : HostPin; return; }
+    if (s->done) { *readyToSend = No; }
     // Ready to send?
     if (s->sent == 0)
       *readyToSend = Pin(0);
@@ -61,7 +61,6 @@ struct ASPDevice : PDevice<None, ASPState, None, ASPMessage> {
       // Check for completion
       if (s->toReach == 0) {
         s->done = 1;
-        *readyToSend = HostPin;
       }
       else if (s->received == s->fanIn) {
         // Proceed to next time step
@@ -94,8 +93,8 @@ struct ASPDevice : PDevice<None, ASPState, None, ASPMessage> {
   inline void send(ASPMessage* msg) {
     if (s->done) {
       msg->reaching[0] = s->sum;
-      s->done = 2;
-    } else {
+    }
+    else {
       msg->time = s->time;
       for (uint32_t i = 0; i < NUM_SOURCES; i++)
         msg->reaching[i] = s->reaching[i];
@@ -120,7 +119,10 @@ struct ASPDevice : PDevice<None, ASPState, None, ASPMessage> {
   }
 
   // Called by POLite when system becomes idle
-  inline void idle() { return; }
+  inline void idle(bool stable) {
+    *readyToSend = s->done == 1 ? HostPin : No;
+    s->done = 2;
+  }
 };
 
 #endif

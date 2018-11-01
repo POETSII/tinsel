@@ -17,7 +17,7 @@
 
 // This is a static limit on the fan out of any pin
 #ifndef MAX_PIN_FANOUT
-#define MAX_PIN_FANOUT 32
+#define MAX_PIN_FANOUT 64
 #endif
 
 // Number of mailbox slots to use for receive buffer
@@ -91,9 +91,9 @@ template <typename A, typename S, typename E, typename M> struct PDevice {
 
   // Handlers
   void init();
-  void send(volatile M *msg);
-  void recv(M *msg, E *edge);
-  void idle();
+  void send(volatile M* msg);
+  void recv(M* msg, E* edge);
+  void idle(bool vote);
 };
 
 // Generic device state structure
@@ -253,6 +253,9 @@ struct DefaultPThread : public PThread<DeviceType> {
     empty.destThread = invalidThreadId();
     this->neighbour = &empty;
 
+    // Did last call to init handler or idle handler trigger any send?
+    bool active = false;
+
     // Initialisation
     this->sendersTop = this->senders;
     for (uint32_t i = 0; i < this->numDevices; i++) {
@@ -260,8 +263,11 @@ struct DefaultPThread : public PThread<DeviceType> {
       // Invoke the initialiser for each device
       dev.init();
       // Device ready to send?
-      if (*dev.readyToSend != No)
+
+      if (*dev.readyToSend != No) {
         *(this->sendersTop++) = i;
+        active = true;
+      }
     }
 
     // Set number of flits per message
@@ -326,14 +332,18 @@ struct DefaultPThread : public PThread<DeviceType> {
         }
       } else {
         // Idle detection
-        if (tinselIdle()) {
+        int idle = tinselIdle(!active);
+        if (idle) {
+          active = false;
           for (uint32_t i = 0; i < this->numDevices; i++) {
             DeviceType dev = this->createDeviceStub(i);
             // Invoke the idle handler for each device
-            dev.idle();
+            dev.idle(idle > 1);
             // Device ready to send?
-            if (*dev.readyToSend != No)
+            if (*dev.readyToSend != No) {
+              active = true;
               *(this->sendersTop++) = i;
+            }
           }
         }
       }
@@ -488,7 +498,7 @@ struct InterruptiblePThread : public PThread<DeviceType> {
         for (uint32_t i = 0; i < this->numDevices; i++) {
           DeviceType dev = this->createDeviceStub(i);
           
-          if (tinselIdle()) {
+          if (tinselIdle(false)) {
             // Invoke the idle handler for each device
             dev.idle(this);
           }

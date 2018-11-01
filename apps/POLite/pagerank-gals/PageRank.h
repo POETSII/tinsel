@@ -51,11 +51,13 @@ struct PageRankDevice : PDevice<None, PageRankState, None, PageRankMessage> {
         s->sent = 0;
         s->t++;
         *readyToSend = Pin(0);
-      } else if (s->t == NUM_ITERATIONS-1) {
-        *readyToSend = HostPin;
+      }
+      else if (s->t == NUM_ITERATIONS-1) {
+        *readyToSend = No;
         s->sent = 0;
         s->t++;
-      } else {
+      }
+      else {
         *readyToSend = No;
       }
     }
@@ -63,16 +65,14 @@ struct PageRankDevice : PDevice<None, PageRankState, None, PageRankMessage> {
 
   // Send handler
   inline void send(PageRankMessage* msg) {
-    if (s->t == NUM_ITERATIONS)
+    if (s->t > NUM_ITERATIONS)
       msg->val = s->score;
     else
       msg->val = s->score/s->fanOut;
     msg->t = s->t;
     s->sent = 1;
-    if (s->t <= NUM_ITERATIONS) {
-      *readyToSend = No;
-      step();
-    }
+    *readyToSend = No;
+    step();
   }
 
   // Receive handler
@@ -91,7 +91,14 @@ struct PageRankDevice : PDevice<None, PageRankState, None, PageRankMessage> {
   }
 
   // Called by POLite when system becomes idle
-  inline void idle() { return; }
+  inline void idle(bool stable) {
+    if (s->t == NUM_ITERATIONS) {
+      s->t++;
+      *readyToSend = HostPin;
+    }
+    else
+      *readyToSend = No;
+  }
 };
 
 #endif

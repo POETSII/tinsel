@@ -21,7 +21,7 @@ int main(int argc, char**argv)
   printf("Max fan-out = %d\n", net.maxFanOut());
 
   // Check that parameters make sense
-  assert(32*NUM_SOURCES <= net.numNodes);
+  assert(32*N <= net.numNodes);
 
   // Connection to tinsel machine
   HostLink hostLink;
@@ -48,15 +48,11 @@ int main(int argc, char**argv)
   // Initialise devices
   for (PDeviceId i = 0; i < graph.numDevices; i++) {
     ASPState* dev = &graph.devices[i]->state;
-    if (i < 32*NUM_SOURCES) {
+    if (i < 32*N) {
       // This is a source node
       // By definition, a source node reaches itself
       dev->reaching[i >> 5] = 1 << (i & 0x1f);
-      dev->toReach = 32*NUM_SOURCES-1;
     }
-    else
-      dev->toReach = 32*NUM_SOURCES;
-    dev->fanIn = graph.fanIn(i);
   }
  
   // Write graph down to tinsel machine via HostLink
@@ -78,13 +74,15 @@ int main(int argc, char**argv)
   for (uint32_t i = 0; i < graph.numDevices; i++) {
     PMessage<None, ASPMessage> msg;
     hostLink.recvMsg(&msg, sizeof(msg));
-    // Stop timer
-    if (i == 0) gettimeofday(&finish, NULL);
-    sum += msg.payload.reaching[0];
+    if (i == 0) {
+      // Stop timer
+      gettimeofday(&finish, NULL);
+    }
+    sum += msg.payload.sum;
   }
 
   // Emit sum
-  printf("Sum of subset of shortest paths = %i\n", sum);
+  printf("Sum of subset of shortest paths = %u\n", sum);
 
   // Display time
   timersub(&finish, &start, &diff);
