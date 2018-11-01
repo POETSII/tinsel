@@ -1,4 +1,4 @@
-all: asp GenHypercube
+all: asp GenHypercube GenTree
 
 INC=../../../../include
 
@@ -8,5 +8,9 @@ asp: asp.cpp
 GenHypercube: GenHypercube.hs
 	ghc -O2 --make GenHypercube.hs
 
+GenTree: GenTree.hs
+	ghc -O2 --make GenTree.hs
+
+
 clean:
-	rm -f asp GenHypercube *.hi *.o
+	rm -f asp GenHypercube GenTree *.hi *.o
