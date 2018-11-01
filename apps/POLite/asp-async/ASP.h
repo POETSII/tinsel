@@ -68,7 +68,7 @@ struct ASPState { // : public InterruptibleState
 struct ASPDevice : PDevice<None, ASPState, None, ASPMessage> {
   using ThreadType = DefaultPThread<ASPDevice>;
 
-  inline void idle();
+  inline void idle(bool);
   inline void init();
   inline void recv(volatile ASPMessage *msg, None *);
   inline void send(volatile ASPMessage *msg);
@@ -76,7 +76,7 @@ struct ASPDevice : PDevice<None, ASPState, None, ASPMessage> {
 
 #ifdef TINSEL
 
-inline void ASPDevice::idle() {
+inline void ASPDevice::idle(bool) {
 #ifdef TINSEL_IDLE_SUPPORT 
 
   if(s->sent_result) {

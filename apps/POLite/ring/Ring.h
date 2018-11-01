@@ -25,9 +25,6 @@ struct RingDevice : PDevice<None, RingState, None, RingMessage> {
     *readyToSend = s->received > s->sent ? Pin(0) : No;
   }
 
-  // Called by POLite when system becomes idle
-  void idle() { return; }
-
   // Send handler
   inline void send(RingMessage* msg) {
     s->sent++;
@@ -43,6 +40,9 @@ struct RingDevice : PDevice<None, RingState, None, RingMessage> {
     else
       *readyToSend = s->received > s->sent ? Pin(0) : No;
   }
+
+  // Called by POLite when system becomes idle
+  void idle(bool stable) { return; }
 };
 
 #endif

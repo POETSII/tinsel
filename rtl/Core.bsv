@@ -1168,8 +1168,12 @@ module mkCore#(CoreId myId) (Core);
     method Bit#(1) incSent = incSentReg;
     method Bit#(1) incReceived = incRecvReg;
     method Bool active = mailbox.active;
+    method Bool vote = mailbox.vote;
     method Action idleDetectedStage1(Bool pulse);
       mailbox.idleDetectedStage1(pulse);
+    endmethod
+    method Action idleVoteStage1(Bool pulse);
+      mailbox.idleVoteStage1(pulse);
     endmethod
     method Action idleDetectedStage2(Bool pulse);
       mailbox.idleDetectedStage2(pulse);
