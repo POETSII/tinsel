@@ -57,10 +57,8 @@ int main(int argc, char**argv)
   for (PDeviceId i = 0; i < graph.numDevices; i++) {
     ASPState* dev = &graph.devices[i]->state;
     dev->id = i;
-    //dev->do_done = false;
-    //dev->numReached = 0;
+
     dev->toUpdateIdx = 0;
-    //dev->perf.update_slot_overflow = 0;
     dev->sent_result = false;
 
     for(auto& d : dev->distances) {
@@ -95,7 +93,7 @@ int main(int argc, char**argv)
   auto last_msg = start;
 
   int x = 0;
-  while(x < graph.numDevices) {
+  while(true) {
     PMessage<None, ASPMessage> msg;
     
     auto now = Clock::now();
@@ -140,14 +138,20 @@ int main(int argc, char**argv)
     totalSent += p.perf.send_dest_success;
 #endif
 
-    // std::cout << "src=" << p.src 
-    //           << "\tsend_host=" << p.perf.send_host_success 
-    //           << "\tsend_dest=" << p.perf.send_dest_success 
-    //           << "\ttotal_recv=" << p.perf.recv 
-    //           << "\tupdate_overflow=" << p.perf.update_slot_overflow 
-    //           << "\tval=" << p.result
-    //           << std::endl;
+    std::cout << "src=" << p.src 
+              << "\tsend_host=" << p.perf.send_host_success 
+              << "\tsend_dest=" << p.perf.send_dest_success 
+              << "\ttotal_recv=" << p.perf.recv 
+              << "\tupdate_overflow=" << p.perf.update_slot_overflow 
+              << "\tval=" << p.result
+              << std::endl;
   }
+
+#ifdef TINSEL_IDLE_SUPPORT
+  bool idle_support = true;
+#else
+  bool idle_support = false;
+#endif
 
   std::cout << "{" 
             << "\"" << "ns" << "\":" << NUM_SOURCES
@@ -155,7 +159,9 @@ int main(int argc, char**argv)
             << ",\"" << "y_len" << "\":" << TinselMeshYLen
             << ",\"" << "graph" << "\":\"" << argv[1] << "\""
             << ",\"" << "graph_size" << "\":" << graph.numDevices
+            << ",\"" << "idle_support" << "\":" << idle_support
             << ",\"" << "sum" << "\":" << sum
+            << ",\"" << "msgs" << "\":" << x
             << ",\"" << "time" << "\":" << static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(last_msg - start).count())
             << "}"
             << std::endl;
