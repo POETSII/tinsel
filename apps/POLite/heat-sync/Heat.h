@@ -23,7 +23,7 @@ struct HeatState {
   bool isConstant;
 };
 
-struct HeatDevice : PDevice<None, HeatState, None, HeatMessage> {
+struct HeatDevice : PDevice<HeatState, None, HeatMessage> {
 
   // Called once by POLite at start of execution
   inline void init() {

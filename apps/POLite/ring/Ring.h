@@ -18,7 +18,7 @@ struct RingState {
   uint32_t stopCount;
 };
 
-struct RingDevice : PDevice<None, RingState, None, RingMessage> {
+struct RingDevice : PDevice<RingState, None, RingMessage> {
 
   // Called once by POLite at start of execution
   void init() {

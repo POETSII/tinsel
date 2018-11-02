@@ -4,7 +4,6 @@
 
 typedef PThread<
           RingDevice,
-          None,         // Accumulator (small state)
           RingState,    // State
           None,         // Edge label
           RingMessage   // Message

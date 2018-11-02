@@ -27,7 +27,7 @@ int main(int argc, char**argv)
   HostLink hostLink;
 
   // Create POETS graph
-  PGraph<ASPDevice, None, ASPState, None, ASPMessage> graph;
+  PGraph<ASPDevice, ASPState, None, ASPMessage> graph;
 
   // Create nodes in POETS graph
   for (uint32_t i = 0; i < net.numNodes; i++) {

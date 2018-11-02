@@ -22,7 +22,7 @@
 
 // Number of mailbox slots to use for receive buffer
 #ifndef NUM_RECV_SLOTS
-#define NUM_RECV_SLOTS 6
+#define NUM_RECV_SLOTS 12
 #endif
 
 // Thread-local device id
@@ -55,14 +55,12 @@ struct None {};
 
 // Generic device structure
 // Type parameters:
-//   A - Accumulator (small, on-chip memory)
-//   S - State (larger, off-chip memory)
+//   S - State
 //   E - Edge label
 //   M - Message structure
-template <typename A, typename S, typename E, typename M> struct PDevice {
+template <typename S, typename E, typename M> struct PDevice {
   // State
   S* s;
-  A* acc;
   PPin* readyToSend;
   uint32_t numVertices;
 
@@ -76,7 +74,9 @@ template <typename A, typename S, typename E, typename M> struct PDevice {
 // Generic device state structure
 template <typename S> struct ALIGNED PState {
   // Pointer to base of neighbours arrays
-  PTR(void) neighboursBase;
+  uint16_t neighboursOffset;
+  // Ready-to-send status
+  PPin readyToSend;
   // Custom state
   S state;
 };
@@ -129,8 +129,7 @@ template <> struct PNeighbour<None> {
 
 // Generic thread structure
 template <typename DeviceType,
-          typename A, typename S,
-          typename E, typename M> struct PThread {
+          typename S, typename E, typename M> struct PThread {
 
   // Number of devices handled by thread
   PLocalDeviceId numDevices;
@@ -144,21 +143,7 @@ template <typename DeviceType,
   PTR(PLocalDeviceId) senders;
   // This array is accessed in a LIFO manner
   PTR(PLocalDeviceId) sendersTop;
-
   #ifdef TINSEL
-
-  // Get ready-to-send bit for given device id
-  inline PPin* readyToSend(PLocalDeviceId id) {
-    PPin* p = (PPin*) tinselSlot(NUM_RECV_SLOTS+1);
-    return &p[id];
-  }
-
-  // Get accumulator state for given device id
-  inline A* accum(PLocalDeviceId id) {
-    uint32_t offset = (numDevices * sizeof(PPin) + 3) / 4;
-    A* p = (A*) tinselSlot(NUM_RECV_SLOTS+1) + offset;
-    return &p[id];
-  }
 
   // Invoke device handlers
   void run() {
@@ -166,6 +151,9 @@ template <typename DeviceType,
     PNeighbour<E> empty;
     empty.destThread = invalidThreadId();
     neighbour = &empty;
+
+    // Base of all neighbours arrays on this thread
+    PNeighbour<E>* neighboursBase = (PNeighbour<E>*) tinselHeapBase();
 
     // Did last call to init handler or idle handler trigger any send?
     bool active = false;
@@ -175,8 +163,7 @@ template <typename DeviceType,
     for (uint32_t i = 0; i < numDevices; i++) {
       DeviceType dev;
       dev.s           = &devices[i].state;
-      dev.acc         = accum(i);
-      dev.readyToSend = readyToSend(i);
+      dev.readyToSend = &devices[i].readyToSend;
       dev.numVertices = numVertices;
       // Invoke the initialiser for each device
       dev.init();
@@ -203,8 +190,7 @@ template <typename DeviceType,
           PLocalDeviceId id = neighbour->devId;
           DeviceType dev;
           dev.s           = &devices[id].state;
-          dev.acc         = accum(id);
-          dev.readyToSend = readyToSend(id);
+          dev.readyToSend = &devices[id].readyToSend;
           dev.numVertices = numVertices;
           PPin oldReadyToSend = *dev.readyToSend;
           // Invoke receive handler
@@ -240,8 +226,7 @@ template <typename DeviceType,
           // Lookup device
           DeviceType dev;
           dev.s           = &devices[src].state;
-          dev.acc         = accum(src);
-          dev.readyToSend = readyToSend(src);
+          dev.readyToSend = &devices[src].readyToSend;
           dev.numVertices = numVertices;
           PPin pin        = *dev.readyToSend - 1;
           // Invoke send handler
@@ -250,8 +235,8 @@ template <typename DeviceType,
           // Reinsert sender, if it still wants to send
           if (*dev.readyToSend != No) sendersTop++;
           // Determine neighbours array for sender
-          neighbour = (PNeighbour<E>*) devices[src].neighboursBase
-                    + MAX_PIN_FANOUT * pin;
+          neighbour = (PNeighbour<E>*) &neighboursBase[
+            (devices[src].neighboursOffset + pin) * MAX_PIN_FANOUT];
         }
         else {
           // Go to sleep
@@ -266,8 +251,7 @@ template <typename DeviceType,
           for (uint32_t i = 0; i < numDevices; i++) {
             DeviceType dev;
             dev.s           = &devices[i].state;
-            dev.acc         = accum(i);
-            dev.readyToSend = readyToSend(i);
+            dev.readyToSend = &devices[i].readyToSend;
             dev.numVertices = numVertices;
             // Invoke the idle handler for each device
             dev.idle(idle > 1);
@@ -288,8 +272,7 @@ template <typename DeviceType,
         PLocalDeviceId id = m->devId;
         DeviceType dev;
         dev.s           = &devices[id].state;
-        dev.acc         = accum(id);
-        dev.readyToSend = readyToSend(id);
+        dev.readyToSend = &devices[id].readyToSend;
         dev.numVertices = numVertices;
         // Was it ready to send?
         PPin oldReadyToSend = *dev.readyToSend;

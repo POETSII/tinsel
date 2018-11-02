@@ -42,7 +42,7 @@ struct ASPState {
   uint32_t reaching2[NUM_SOURCES];
 };
 
-struct ASPDevice : PDevice<None, ASPState, None, ASPMessage> {
+struct ASPDevice : PDevice<ASPState, None, ASPMessage> {
   // Called once by POLite at start of execution
   void init() {
     // Setup first round of sends

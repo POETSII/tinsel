@@ -21,7 +21,7 @@ struct PageRankState {
    uint16_t iter;
 };
 
-struct PageRankDevice : PDevice<None, PageRankState, None, PageRankMessage> {
+struct PageRankDevice : PDevice<PageRankState, None, PageRankMessage> {
 
   // Called once by POLite at start of execution
   inline void init() { 
