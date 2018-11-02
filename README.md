@@ -887,7 +887,7 @@ ALMs, *58% of the DE5-Net*.
   `MeshYBits`              |       2 | Number of bits in mesh Y coordinate
   `MeshXLen`               |       3 | Length of X dimension
   `MeshYLen`               |       3 | Length of Y dimension
-
+  `EnablePerfCount`        |    True | Enable performance counters
 
 ## C. Tinsel Memory Map
 
@@ -943,6 +943,16 @@ separate memory regions (which they are not).
   `FCSR`       | 0x003  | RW  | Concatenation of FRM and FFlag
   `Cycle`      | 0xc00  | R   | 32-bit cycle counter
   `Flush`      | 0xc01  | W   | Cache line flush (line number, way)
+
+Optional performance-counter CSRs (when `EnablePerfCount` is `True`):
+
+  Name             | CSR    | R/W | Function
+  ---------------- | ------ | --- | --------
+  `PerfCount`      | 0xc07  | W   | Reset(0)/Start(1)/Stop(2) all counters
+  `MissCount`      | 0xc08  | R   | Cache miss count
+  `HitCount`       | 0xc09  | R   | Cache hit count
+  `WritebackCount` | 0xc0a  | R   | Cache writeback count
+  `CPUIdleCount`   | 0xc0b  | R   | CPU idle-cycle count
 
 ## E. Tinsel Address Structure
 
@@ -1026,6 +1036,27 @@ inline void* tinselHeapBase();
 
 // Return pointer to base of thread's SRAM partition
 inline void* tinselHeapBaseSRAM();
+
+// Reset performance counters
+INLINE void tinselPerfCountReset();
+
+// Start performance counters
+INLINE void tinselPerfCountStart();
+
+// Stop performance counters
+INLINE void tinselPerfCountStop();
+
+// Performance counter: get the cache miss count
+INLINE uint32_t tinselGetMissCount();
+
+// Performance counter: get the cache hit count
+INLINE uint32_t tinselGetHitCount();
+
+// Performance counter: get the cache writeback count
+INLINE uint32_t tinselGetWritebackCount();
+
+// Performance counter: get the CPU-idle count
+INLINE uint32_t tinselGetCPUIdleCount();
 ```
 
 ## G. HostLink API
