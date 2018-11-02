@@ -8,10 +8,10 @@
 // NUM_SOURCES is the number of sources to compute ASP for
 //#define NUM_SOURCES 32
 #define NUM_UPDATE_SLOTS NUM_SOURCES
-#define NUM_UPDATES 4
+#define NUM_UPDATES 10
 
-#define WITH_PERF
-#define TINSEL_IDLE_SUPPORT
+//#define WITH_PERF
+//#define TINSEL_IDLE_SUPPORT
 
 using DistanceType = uint8_t;
 using UpdateCountType = uint16_t;
@@ -42,7 +42,7 @@ struct ASPMessage {
 
   UPDATE_TYPE updates[NUM_UPDATES];
 
-#ifdef WITH_PERF
+#if WITH_PERF
   PerfCounters perf;
 #endif
 
@@ -60,7 +60,7 @@ struct ASPState { // : public InterruptibleState
   UpdateCountType toUpdateIdx;
 
   std::array<DistanceType, NUM_SOURCES> distances;
-#ifdef WITH_PERF
+#if WITH_PERF
   PerfCounters perf;
 #endif
 
@@ -75,10 +75,10 @@ struct ASPDevice : PDevice<None, ASPState, None, ASPMessage> {
   inline void send(volatile ASPMessage *msg);
 };
 
-#ifdef TINSEL
+#if TINSEL
 
 inline void ASPDevice::idle() {
-#ifdef TINSEL_IDLE_SUPPORT 
+#if TINSEL_IDLE_SUPPORT 
 
   if(s->sent_result) {
     *readyToSend = No;
@@ -101,7 +101,7 @@ inline void ASPDevice::init() {
   *readyToSend = Pin(0);
 }
 inline void ASPDevice::recv(volatile ASPMessage *msg, None *) {
-#ifdef WITH_PERF
+#if WITH_PERF
   s->perf.recv += msg->num_updates;
 #endif
 
@@ -130,7 +130,7 @@ inline void ASPDevice::recv(volatile ASPMessage *msg, None *) {
 
       if(!found) {
         if(s->toUpdateIdx == NUM_UPDATE_SLOTS) {
-#ifdef WITH_PERF          
+#if WITH_PERF          
           s->perf.update_slot_overflow++;
 #endif
         } else {
@@ -165,7 +165,7 @@ inline void ASPDevice::send(volatile ASPMessage *msg) {
       inserted_updates++;
     }
 
-#ifdef WITH_PERF
+#if WITH_PERF
     s->perf.send_dest_success += inserted_updates;
 #endif
     msg->num_updates = inserted_updates;
@@ -173,7 +173,7 @@ inline void ASPDevice::send(volatile ASPMessage *msg) {
     if(s->toUpdateIdx == 0) {
       // when there are no more updates to send, check whether to send to host
       
-#ifdef TINSEL_IDLE_SUPPORT
+#if TINSEL_IDLE_SUPPORT
       *readyToSend = No;
 #else
       bool found_unupdated = false;
@@ -204,7 +204,7 @@ inline void ASPDevice::send(volatile ASPMessage *msg) {
   if(*readyToSend == HostPin) {
     msg->result = s->result;
 
-#ifdef WITH_PERF
+#if WITH_PERF
     s->perf.send_host_success++;
     const_cast<PerfCounters&>(msg->perf) = s->perf;
 #endif
