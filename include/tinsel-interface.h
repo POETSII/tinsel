@@ -92,4 +92,25 @@ INLINE uint32_t tinselHostId()
 // Return pointer to base of thread's DRAM partition
 INLINE void* tinselHeapBase();
 
+// Reset performance counters
+INLINE void tinselPerfCountReset();
+
+// Start performance counters
+INLINE void tinselPerfCountStart();
+
+// Stop performance counters
+INLINE void tinselPerfCountStop();
+
+// Performance counter: get the cache miss count
+INLINE uint32_t tinselGetMissCount();
+
+// Performance counter: get the cache hit count
+INLINE uint32_t tinselGetHitCount();
+
+// Performance counter: get the cache writeback count
+INLINE uint32_t tinselGetWritebackCount();
+
+// Performance counter: get the CPU-idle count
+INLINE uint32_t tinselGetCPUIdleCount();
+
 #endif
