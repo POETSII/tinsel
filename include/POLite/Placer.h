@@ -269,6 +269,11 @@ struct Placer {
     // Initialise best cost
     savedCost = ~0;
 
+    if(numAttempts == 0) {
+      randomPlacement();
+      save();
+    }
+  
     for (uint32_t n = 0; n < numAttempts; n++) {
       randomPlacement();
       currentCost = cost();

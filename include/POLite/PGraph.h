@@ -23,7 +23,7 @@ template <typename ThreadType> class PGraph {
   using S = typename ThreadType::S;
   using E = typename ThreadType::E;
   using M = typename ThreadType::M;
-  
+
  private:
   // Align address to 2^n byte boundary
   inline uint32_t align(uint32_t n, uint32_t addr) {
@@ -283,7 +283,7 @@ template <typename ThreadType> class PGraph {
   }
 
   // Implement mapping to tinsel threads
-  void map() {
+  void map(const uint32_t placerEffort = 8) {
     // Release all mapping and heap structures
     releaseAll();
 
@@ -294,7 +294,6 @@ template <typename ThreadType> class PGraph {
     Placer boards(&graph, numBoardsX, numBoardsY);
 
     // Place subgraphs onto 2D mesh
-    const uint32_t placerEffort = 8;
     boards.place(placerEffort);
 
     // For each board

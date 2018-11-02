@@ -9,17 +9,26 @@
 #include <chrono>
 #include <iostream>
 #include <vector>
+#include <stdlib.h>     /* srand, rand */
+#include <time.h>       /* time */
 
 int main(int argc, char**argv)
 {
-  if (argc != 2) {
-    printf("Specify edges file\n");
+  srand (time(NULL));
+
+  
+  if (argc != 5) {
+    printf("Specify [edge_file] [board_x] [board_y] [placer_effort]\n");
     exit(EXIT_FAILURE);
   }
 
   // Read network
   EdgeList net;
   net.read(argv[1]);
+  auto board_x = std::atoi(argv[2]);
+  auto board_y = std::atoi(argv[3]);
+  uint32_t placer_effort = std::atoi(argv[4]);
+  
 
   // Print max fan-out
   auto maxFanOut = net.maxFanOut();
@@ -36,6 +45,7 @@ int main(int argc, char**argv)
 
   // Create POETS graph
   PGraph<DefaultPThread<ASPDevice>> graph;
+  graph.setNumBoards(board_x, board_y);
 
   // Create nodes in POETS graph
   for (uint32_t i = 0; i < net.numNodes; i++) {
@@ -51,7 +61,7 @@ int main(int argc, char**argv)
   }
 
   // Prepare mapping from graph to hardware
-  graph.map();
+  graph.map(placer_effort);
 
   // Initialise devices
   for (PDeviceId i = 0; i < graph.numDevices; i++) {
@@ -98,7 +108,7 @@ int main(int argc, char**argv)
     
     auto now = Clock::now();
     //if(now - start > std::chrono::seconds(5) or x >= graph.numDevices) {
-    if(now - start > std::chrono::milliseconds(3000)) {
+    if(now - start > std::chrono::seconds(6)) {
       break;
     }
 
@@ -109,7 +119,7 @@ int main(int argc, char**argv)
       auto& oldPayload = results[msg.payload.src];
       auto& newPayload = msg.payload;
       
-#ifdef WITH_PERF
+#if WITH_PERF
       int recv_diff = newPayload.perf.recv - oldPayload.perf.recv;
       int send_diff = newPayload.perf.send_dest_success - oldPayload.perf.send_dest_success;
       int result_diff = newPayload.result - oldPayload.result;
@@ -118,14 +128,14 @@ int main(int argc, char**argv)
       if(newPayload.send_time > oldPayload.send_time) {
         oldPayload = newPayload;
         //printf("i=%u size=%u src=%x result=%u new_ts=%u recv_diff=%i send_diff=%i result_diff=%i\n", x, results.size(), newPayload.src, newPayload.result, newPayload.send_time, recv_diff, send_diff, result_diff); // d0=%u d1=%u d2=%u
+        
+#if WITH_PERF       
         printf("i=%u size=%u src=%x result=%u new_ts=%u\n", x, results.size(), newPayload.src, newPayload.result, newPayload.send_time); // d0=%u d1=%u d2=%u
+#endif
         last_msg = now;
       }
     }
   }
-
-
-
   uint32_t sum = 0;
   uint32_t totalRecv = 0;
   uint32_t totalSent = 0;
@@ -133,11 +143,9 @@ int main(int argc, char**argv)
   for(auto& p : results) {
     sum += p.result;
 
-#ifdef WITH_PERF
+#if WITH_PERF
     totalRecv += p.perf.recv;
     totalSent += p.perf.send_dest_success;
-#endif
-
     std::cout << "src=" << p.src 
               << "\tsend_host=" << p.perf.send_host_success 
               << "\tsend_dest=" << p.perf.send_dest_success 
@@ -145,9 +153,10 @@ int main(int argc, char**argv)
               << "\tupdate_overflow=" << p.perf.update_slot_overflow 
               << "\tval=" << p.result
               << std::endl;
+#endif
   }
 
-#ifdef TINSEL_IDLE_SUPPORT
+#if TINSEL_IDLE_SUPPORT
   bool idle_support = true;
 #else
   bool idle_support = false;
@@ -155,13 +164,14 @@ int main(int argc, char**argv)
 
   std::cout << "{" 
             << "\"" << "ns" << "\":" << NUM_SOURCES
-            << ",\"" << "x_len" << "\":" << TinselMeshXLen
-            << ",\"" << "y_len" << "\":" << TinselMeshYLen
+            << ",\"" << "x_len" << "\":" << board_x
+            << ",\"" << "y_len" << "\":" << board_y
             << ",\"" << "graph" << "\":\"" << argv[1] << "\""
             << ",\"" << "graph_size" << "\":" << graph.numDevices
             << ",\"" << "idle_support" << "\":" << idle_support
             << ",\"" << "sum" << "\":" << sum
             << ",\"" << "msgs" << "\":" << x
+            << ",\"" << "placer_effort" << "\":" << placer_effort
             << ",\"" << "time" << "\":" << static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(last_msg - start).count())
             << "}"
             << std::endl;
