@@ -17,8 +17,7 @@ typedef NodeId PDeviceId;
 
 // POETS graph
 template <typename DeviceType,
-          typename A, typename S,
-          typename E, typename M> class PGraph {
+          typename S, typename E, typename M> class PGraph {
  private:
   // Align address to 2^n byte boundary
   inline uint32_t align(uint32_t n, uint32_t addr) {
@@ -112,7 +111,7 @@ template <typename DeviceType,
       uint32_t sizeDRAM = 0;
       // Add space for thread structure (stored in SRAM)
       sizeSRAM = cacheAlign(sizeSRAM +
-                              sizeof(PThread<DeviceType, A, S, E, M>));
+                              sizeof(PThread<DeviceType, S, E, M>));
       // Add space for edge lists (stored in DRAM)
       uint32_t numDevs = numDevicesOnThread[threadId];
       for (uint32_t devNum = 0; devNum < numDevs; devNum++) {
@@ -160,12 +159,14 @@ template <typename DeviceType,
       // Next pointers for each partition
       uint32_t nextDRAM = 0;
       uint32_t nextSRAM = 0;
+      // Next pointer for neighbours arrays
+      uint16_t nextNeighbours = 0;
       // Pointer to thread structure
-      PThread<DeviceType, A, S, E, M>* thread =
-        (PThread<DeviceType, A, S, E, M>*) &sram[threadId][nextSRAM];
+      PThread<DeviceType, S, E, M>* thread =
+        (PThread<DeviceType, S, E, M>*) &sram[threadId][nextSRAM];
       // Add space for thread structure
       nextSRAM = cacheAlign(nextSRAM +
-                   sizeof(PThread<DeviceType, A, S, E, M>));
+                   sizeof(PThread<DeviceType, S, E, M>));
       // Set number of devices on thread
       thread->numDevices = numDevicesOnThread[threadId];
       // Set number of devices in graph
@@ -189,7 +190,7 @@ template <typename DeviceType,
         // dev->localAddr = devNum;
 
         // Set tinsel address of neighbours arrays
-        dev->neighboursBase = dramBase[threadId] + nextDRAM;
+        dev->neighboursOffset = nextNeighbours;
         // Neighbour array
         PNeighbour<E>* edgeArray = (PNeighbour<E>*) &dram[threadId][nextDRAM];
         // Emit neighbours array for host pin
@@ -220,6 +221,7 @@ template <typename DeviceType,
         // Add space for edges
         nextDRAM = cacheAlign(nextDRAM + (numPins+1) *
                      MAX_PIN_FANOUT * sizeof(PDeviceAddr));
+        nextNeighbours += (numPins+1);
       }
       // At this point, check that next pointers line up with heap sizes
       if (nextSRAM != sramSize[threadId]) {
@@ -228,17 +230,6 @@ template <typename DeviceType,
       }
       if (nextDRAM != dramSize[threadId]) {
         printf("Error: dram partition size does not match pre-computed size\n");
-        exit(EXIT_FAILURE);
-      }
-      // Check that there sufficient space for readyToSend and accumulator
-      uint32_t accumSize = typeid(A) == typeid(None) ? 0 : sizeof(A);
-      uint32_t mailboxBytes =
-        wordAlign((1+NUM_RECV_SLOTS) * (1<<TinselLogBytesPerMsg) +
-                     numDevs) + numDevs * accumSize;
-      uint32_t maxMailboxBytes =
-        (1<<TinselLogMsgsPerThread) * (1<<TinselLogBytesPerMsg);
-      if (mailboxBytes >= maxMailboxBytes) {
-        printf("Error: mailbox scratchpad overflow\n");
         exit(EXIT_FAILURE);
       }
       // Set tinsel address of senders array

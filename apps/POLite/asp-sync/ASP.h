@@ -30,7 +30,7 @@ struct ASPState {
   uint8_t done;
 };
 
-struct ASPDevice : PDevice<None, ASPState, None, ASPMessage> {
+struct ASPDevice : PDevice<ASPState, None, ASPMessage> {
   // Called once by POLite at start of execution
   void init() {
     // Setup first round of sends

@@ -5,7 +5,6 @@
 
 typedef PThread<
           ASPDevice,
-          None,         // Accumulator (small state)
           ASPState,     // State
           None,         // Edge label
           ASPMessage    // Message

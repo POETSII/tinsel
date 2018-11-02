@@ -28,7 +28,7 @@ struct PageRankState {
   uint32_t numVertices;
 };
 
-struct PageRankDevice : PDevice<None, PageRankState, None, PageRankMessage> {
+struct PageRankDevice : PDevice<PageRankState, None, PageRankMessage> {
 
   // Called once by POLite at start of execution
   void init() {

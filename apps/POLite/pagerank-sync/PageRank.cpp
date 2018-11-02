@@ -5,7 +5,6 @@
 
 typedef PThread<
           PageRankDevice,
-          None,             // Accumulator (small state)
           PageRankState,    // State
           None,             // Edge label
           PageRankMessage   // Message
