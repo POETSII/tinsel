@@ -53,4 +53,4 @@ sim: Run.cpp $(HL)/sim/*.o
 
 .PHONY: clean
 clean:
-	rm -f *.o *.elf link.ld *.v run sim *.hi GenHypercube PC/asp stats.txt
+	rm -f *.o *.elf link.ld *.v run sim *.hi stats.txt

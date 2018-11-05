@@ -25,7 +25,10 @@
 #define NUM_RECV_SLOTS 12
 #endif
 
-// Dump performance stats first time we are idle and stable?
+// Dump performance stats?
+//   0: don't dump stats
+//   1: dump stats first time we are idle
+//   2: dump stats first time we are idle and stable
 #ifndef DUMP_STATS
 #define DUMP_STATS 0
 #endif
@@ -190,8 +193,10 @@ template <typename DeviceType,
     // Did last call to init handler or idle handler trigger any send?
     bool active = false;
 
-    // Have performance stats been dumped?
-    bool doStatDump = DUMP_STATS;
+    #if DUMP_STATS > 0
+      // Have performance stats been dumped?
+      bool doStatDump = DUMP_STATS;
+    #endif
 
     // Reset performance counters
     tinselPerfCountReset();
@@ -277,10 +282,17 @@ template <typename DeviceType,
         int idle = tinselIdle(!active);
         if (idle) {
           active = false;
+          #if DUMP_STATS == 1
+          if (doStatDump) {
+            dumpStats();
+            doStatDump = false;
+          }
+          #elif DUMP_STATS == 2
           if (doStatDump && idle > 1) {
             dumpStats();
             doStatDump = false;
           }
+          #endif
           for (uint32_t i = 0; i < numDevices; i++) {
             DeviceType dev = getDevice(i);
             // Invoke the idle handler for each device
