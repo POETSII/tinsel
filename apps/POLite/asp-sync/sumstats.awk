@@ -32,6 +32,6 @@ END {
   print "Miss rate (%): ", 100*(missCount/(hitCount+missCount))
   print "Hit rate (%): ", (100-missRate)
   bytes = cacheLineSize * (missCount + writebackCount)
-  print "Memory bandwidth (GBytes/s): ", ((1/time) * bytes)/1000000000
+  print "Off-chip memory (GBytes/s): ", ((1/time) * bytes)/1000000000
   print "CPU util (%): ", (1-(cpuIdleCount/cycleCount))*100
 }
