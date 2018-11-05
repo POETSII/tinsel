@@ -4,7 +4,7 @@
 #ifndef _ASP_H_
 #define _ASP_H_
 
-#define DUMP_STATS 2
+// #define DUMP_STATS 2
 
 // Lightweight POETS frontend
 #include <POLite.h>
