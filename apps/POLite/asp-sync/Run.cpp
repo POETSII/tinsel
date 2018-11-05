@@ -68,7 +68,7 @@ int main(int argc, char**argv)
   struct timeval start, finish, diff;
   gettimeofday(&start, NULL);
 
-  #if DUMP_STATS == 1
+  #if DUMP_STATS > 0
     // Open file for performance counters
     FILE* statsFile = fopen("stats.txt", "wt");
     if (statsFile == NULL) {
