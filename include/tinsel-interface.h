@@ -102,15 +102,15 @@ INLINE void tinselPerfCountStart();
 INLINE void tinselPerfCountStop();
 
 // Performance counter: get the cache miss count
-INLINE uint32_t tinselGetMissCount();
+INLINE uint32_t tinselMissCount();
 
 // Performance counter: get the cache hit count
-INLINE uint32_t tinselGetHitCount();
+INLINE uint32_t tinselHitCount();
 
 // Performance counter: get the cache writeback count
-INLINE uint32_t tinselGetWritebackCount();
+INLINE uint32_t tinselWritebackCount();
 
 // Performance counter: get the CPU-idle count
-INLINE uint32_t tinselGetCPUIdleCount();
+INLINE uint32_t tinselCPUIdleCount();
 
 #endif

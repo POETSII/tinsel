@@ -1038,25 +1038,25 @@ inline void* tinselHeapBase();
 inline void* tinselHeapBaseSRAM();
 
 // Reset performance counters
-INLINE void tinselPerfCountReset();
+inline void tinselPerfCountReset();
 
 // Start performance counters
-INLINE void tinselPerfCountStart();
+inline void tinselPerfCountStart();
 
 // Stop performance counters
-INLINE void tinselPerfCountStop();
+inline void tinselPerfCountStop();
 
 // Performance counter: get the cache miss count
-INLINE uint32_t tinselGetMissCount();
+inline uint32_t tinselMissCount();
 
 // Performance counter: get the cache hit count
-INLINE uint32_t tinselGetHitCount();
+inline uint32_t tinselHitCount();
 
 // Performance counter: get the cache writeback count
-INLINE uint32_t tinselGetWritebackCount();
+inline uint32_t tinselWritebackCount();
 
 // Performance counter: get the CPU-idle count
-INLINE uint32_t tinselGetCPUIdleCount();
+inline uint32_t tinselCPUIdleCount();
 ```
 
 ## G. HostLink API

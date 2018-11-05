@@ -5,6 +5,7 @@
 #include <EdgeList.h>
 #include <assert.h>
 #include <sys/time.h>
+#include <config.h>
 
 int main(int argc, char**argv)
 {
@@ -66,6 +67,19 @@ int main(int argc, char**argv)
   printf("Started\n");
   struct timeval start, finish, diff;
   gettimeofday(&start, NULL);
+
+  #if DUMP_STATS == 1
+    // Open file for performance counters
+    FILE* statsFile = fopen("stats.txt", "wt");
+    if (statsFile == NULL) {
+      printf("Error creating stats file\n");
+      exit(EXIT_FAILURE);
+    }
+    uint32_t numCaches = TinselMeshXLen * TinselMeshYLen *
+                           TinselDCachesPerDRAM * TinselDRAMsPerBoard;
+    hostLink.dumpStdOut(statsFile, numCaches);
+    fclose(statsFile);
+  #endif
 
   // Sum of all shortest paths
   uint32_t sum = 0;
