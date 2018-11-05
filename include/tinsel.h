@@ -223,7 +223,7 @@ INLINE void tinselPerfCountStop()
 }
 
 // Performance counter: get the cache miss count
-INLINE uint32_t tinselGetMissCount()
+INLINE uint32_t tinselMissCount()
 {
   uint32_t n;
   asm volatile ("csrrw %0, " CSR_MISSCOUNT ", zero" : "=r"(n));
@@ -231,7 +231,7 @@ INLINE uint32_t tinselGetMissCount()
 }
 
 // Performance counter: get the cache hit count
-INLINE uint32_t tinselGetHitCount()
+INLINE uint32_t tinselHitCount()
 {
   uint32_t n;
   asm volatile ("csrrw %0, " CSR_HITCOUNT ", zero" : "=r"(n));
@@ -239,7 +239,7 @@ INLINE uint32_t tinselGetHitCount()
 }
 
 // Performance counter: get the cache writeback count
-INLINE uint32_t tinselGetWritebackCount()
+INLINE uint32_t tinselWritebackCount()
 {
   uint32_t n;
   asm volatile ("csrrw %0, " CSR_WBCOUNT ", zero" : "=r"(n));
@@ -247,7 +247,7 @@ INLINE uint32_t tinselGetWritebackCount()
 }
 
 // Performance counter:: get the CPU-idle count
-INLINE uint32_t tinselGetCPUIdleCount()
+INLINE uint32_t tinselCPUIdleCount()
 {
   uint32_t n;
   asm volatile ("csrrw %0, " CSR_CPUIDLECOUNT ", zero" : "=r"(n));

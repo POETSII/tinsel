@@ -25,6 +25,11 @@
 #define NUM_RECV_SLOTS 12
 #endif
 
+// Dump performance stats first time we are idle and stable?
+#ifndef DUMP_STATS
+#define DUMP_STATS 0
+#endif
+
 // Thread-local device id
 typedef uint16_t PLocalDeviceId;
 
@@ -143,7 +148,34 @@ template <typename DeviceType,
   PTR(PLocalDeviceId) senders;
   // This array is accessed in a LIFO manner
   PTR(PLocalDeviceId) sendersTop;
+
   #ifdef TINSEL
+
+  // Helper function to construct a device
+  INLINE DeviceType getDevice(uint32_t id) {
+    DeviceType dev;
+    dev.s           = &devices[id].state;
+    dev.readyToSend = &devices[id].readyToSend;
+    dev.numVertices = numVertices;
+    return dev;
+  }
+
+  // Dump performance counter stats over UART
+  void dumpStats() {
+    // Only one thread on each cache reports performance counters
+    uint32_t me = tinselId();
+    uint32_t mask = (1 <<
+      (TinselLogThreadsPerCore + TinselLogCoresPerDCache)) - 1;
+    if ((me & mask) == 0) {
+      tinselPerfCountStop();
+      printf("C:%x,H:%x,M:%x,W:%x,I:%x\n",
+        tinselCycleCount(),
+        tinselHitCount(),
+        tinselMissCount(),
+        tinselWritebackCount(),
+        tinselCPUIdleCount());
+    }
+  }
 
   // Invoke device handlers
   void run() {
@@ -158,13 +190,16 @@ template <typename DeviceType,
     // Did last call to init handler or idle handler trigger any send?
     bool active = false;
 
+    // Have performance stats been dumped?
+    bool doStatDump = DUMP_STATS;
+
+    // Reset performance counters
+    tinselPerfCountReset();
+
     // Initialisation
     sendersTop = senders;
     for (uint32_t i = 0; i < numDevices; i++) {
-      DeviceType dev;
-      dev.s           = &devices[i].state;
-      dev.readyToSend = &devices[i].readyToSend;
-      dev.numVertices = numVertices;
+      DeviceType dev = getDevice(i);
       // Invoke the initialiser for each device
       dev.init();
       // Device ready to send?
@@ -188,10 +223,7 @@ template <typename DeviceType,
         if (neighbour->destThread == tinselId()) {
           // Lookup destination device
           PLocalDeviceId id = neighbour->devId;
-          DeviceType dev;
-          dev.s           = &devices[id].state;
-          dev.readyToSend = &devices[id].readyToSend;
-          dev.numVertices = numVertices;
+          DeviceType dev = getDevice(id);
           PPin oldReadyToSend = *dev.readyToSend;
           // Invoke receive handler
           PMessage<E,M>* m = (PMessage<E,M>*) tinselSlot(0);
@@ -224,11 +256,8 @@ template <typename DeviceType,
           // Start new multicast
           PLocalDeviceId src = *(--sendersTop);
           // Lookup device
-          DeviceType dev;
-          dev.s           = &devices[src].state;
-          dev.readyToSend = &devices[src].readyToSend;
-          dev.numVertices = numVertices;
-          PPin pin        = *dev.readyToSend - 1;
+          DeviceType dev = getDevice(src);
+          PPin pin = *dev.readyToSend - 1;
           // Invoke send handler
           PMessage<E,M>* m = (PMessage<E,M>*) tinselSlot(0);
           dev.send(&m->payload);
@@ -248,11 +277,12 @@ template <typename DeviceType,
         int idle = tinselIdle(!active);
         if (idle) {
           active = false;
+          if (doStatDump && idle > 1) {
+            dumpStats();
+            doStatDump = false;
+          }
           for (uint32_t i = 0; i < numDevices; i++) {
-            DeviceType dev;
-            dev.s           = &devices[i].state;
-            dev.readyToSend = &devices[i].readyToSend;
-            dev.numVertices = numVertices;
+            DeviceType dev = getDevice(i);
             // Invoke the idle handler for each device
             dev.idle(idle > 1);
             // Device ready to send?
@@ -270,10 +300,7 @@ template <typename DeviceType,
         PMessage<E,M> *m = (PMessage<E,M>*) tinselRecv();
         // Lookup destination device
         PLocalDeviceId id = m->devId;
-        DeviceType dev;
-        dev.s           = &devices[id].state;
-        dev.readyToSend = &devices[id].readyToSend;
-        dev.numVertices = numVertices;
+        DeviceType dev = getDevice(id);
         // Was it ready to send?
         PPin oldReadyToSend = *dev.readyToSend;
         // Invoke receive handler
