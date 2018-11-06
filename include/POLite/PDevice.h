@@ -181,18 +181,23 @@ template <typename DeviceType,
   // Dump performance counter stats over UART
   void dumpStats() {
     tinselPerfCountStop();
-    // Only one thread on each cache reports performance counters
     uint32_t me = tinselId();
-    uint32_t mask = (1 <<
+    // Per-cache performance counters
+    uint32_t cacheMask = (1 <<
       (TinselLogThreadsPerCore + TinselLogCoresPerDCache)) - 1;
-    if ((me & mask) == 0) {
-      printf("C:%x,H:%x,M:%x,W:%x,I:%x\n",
-        tinselCycleCount(),
+    if ((me & cacheMask) == 0) {
+      printf("H:%x,M:%x,W:%x\n",
         tinselHitCount(),
         tinselMissCount(),
-        tinselWritebackCount(),
-        tinselCPUIdleCount());
+        tinselWritebackCount());
     }
+    // Per-core performance counters
+    uint32_t coreMask = (1 << (TinselLogThreadsPerCore)) - 1;
+    if ((me & coreMask) == 0) {
+      printf("C:%x,I:%x\n",
+        tinselCycleCount(), tinselCPUIdleCount());
+    }
+    // Per-thread performance counters
     #ifdef POLITE_COUNT_MSGS
     printf("LS:%x,TS:%x,BS:%x\n", intraThreadSendCount,
              interThreadSendCount, interBoardSendCount);

@@ -4,7 +4,8 @@ BEGIN {
   hitCount = 0;
   writebackCount = 0;
   cpuIdleCount = 0;
-  lineCount = 0;
+  cacheCount = 0;
+  coreCount = 0;
   cacheLineSize = 32;
   intraThreadSendCount = 0;
   interThreadSendCount = 0;
@@ -13,19 +14,25 @@ BEGIN {
 }
 
 {
-  if (match($0, /(.*) C:(.*),H:(.*),M:(.*),W:(.*),I:(.*)/, fields)) {
-    c=strtonum("0x"fields[2]);
-    h=strtonum("0x"fields[3]);
-    m=strtonum("0x"fields[4]);
-    w=strtonum("0x"fields[5]);
-    i=strtonum("0x"fields[6]);
-    cycleCount = cycleCount + c;
+  # Cache hit/miss/writeback counts
+  if (match($0, /(.*) H:(.*),M:(.*),W:(.*)/, fields)) {
+    h=strtonum("0x"fields[2]);
+    m=strtonum("0x"fields[3]);
+    w=strtonum("0x"fields[4]);
     hitCount = hitCount + h;
     missCount = missCount + m;
     writebackCount = writebackCount + w;
-    cpuIdleCount = cpuIdleCount + i;
-    lineCount = lineCount+1;
+    cacheCount = cacheCount+1;
   }
+  # CPU cycle/idle counts
+  else if (match($0, /(.*) C:(.*),I:(.*)/, fields)) {
+    c=strtonum("0x"fields[2]);
+    i=strtonum("0x"fields[3]);
+    cycleCount = cycleCount + c;
+    cpuIdleCount = cpuIdleCount + i;
+    coreCount = coreCount+1;
+  }
+  # Per-thread message counts
   else if (match($0, /(.*) LS:(.*),TS:(.*),BS:(.*)/, fields)) {
     ls=strtonum("0x"fields[2]);
     ts=strtonum("0x"fields[3]);
@@ -37,7 +44,7 @@ BEGIN {
 }
 
 END {
-  time = (cycleCount/lineCount)/fmax
+  time = (cycleCount/coreCount)/fmax
   print "Time (s): ", time
   missRate = 100*(missCount/(hitCount+missCount))
   print "Miss rate (%): ", 100*(missCount/(hitCount+missCount))
