@@ -8,7 +8,8 @@
 #ifndef _ASP_H_
 #define _ASP_H_
 
-//#define DUMP_STATS 1
+//#define POLITE_DUMP_STATS 1
+//#define POLITE_COUNT_MSGS
 
 // Lightweight POETS frontend
 #include <POLite.h>
