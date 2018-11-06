@@ -457,8 +457,12 @@ inline void politeSaveStats(HostLink* hostLink, const char* filename) {
     printf("Error creating stats file\n");
     exit(EXIT_FAILURE);
   }
+  // Number of caches
   uint32_t numLines = TinselMeshXLen * TinselMeshYLen *
                         TinselDCachesPerDRAM * TinselDRAMsPerBoard;
+  // Add on number of cores
+  numLines += TinselMeshXLen * TinselMeshYLen * TinselCoresPerBoard;
+  // Add on number of threads
   #ifdef POLITE_COUNT_MSGS
   numLines += TinselMeshXLen * TinselMeshYLen * TinselThreadsPerBoard;
   #endif
