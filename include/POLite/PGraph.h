@@ -122,7 +122,7 @@ template <typename DeviceType,
         // Determine number of pins
         int32_t numPins = graph.maxPin(id) + 2;
         // Add space for neighbour arrays for each pin
-        sizeDRAM = cacheAlign(sizeDRAM + numPins * MAX_PIN_FANOUT
+        sizeDRAM = cacheAlign(sizeDRAM + numPins * POLITE_MAX_FANOUT
                                                  * sizeof(PNeighbour<E>));
       }
       // The total partition size including uninitialised portions
@@ -199,12 +199,12 @@ template <typename DeviceType,
         // Emit neigbours arrays for each application pin
         PinId numPins = graph.maxPin(id) + 1;
         for (uint32_t p = 0; p < numPins; p++) {
-          uint32_t base = (p+1) * MAX_PIN_FANOUT;
+          uint32_t base = (p+1) * POLITE_MAX_FANOUT;
           uint32_t offset = 0;
           // Find outgoing edges of current pin
           for (uint32_t i = 0; i < graph.outgoing->elems[id]->numElems; i++) {
             if (graph.pins->elems[id]->elems[i] == p) {
-              if (offset+1 >= MAX_PIN_FANOUT) {
+              if (offset+1 >= POLITE_MAX_FANOUT) {
                 printf("Error: pin fanout exceeds maximum\n");
                 exit(EXIT_FAILURE);
               }
@@ -220,7 +220,7 @@ template <typename DeviceType,
         }
         // Add space for edges
         nextDRAM = cacheAlign(nextDRAM + (numPins+1) *
-                     MAX_PIN_FANOUT * sizeof(PDeviceAddr));
+                     POLITE_MAX_FANOUT * sizeof(PDeviceAddr));
         nextNeighbours += (numPins+1);
       }
       // At this point, check that next pointers line up with heap sizes
@@ -447,5 +447,24 @@ template <typename DeviceType,
   }
 
 };
+
+// Read performance stats and store in file
+inline void politeSaveStats(HostLink* hostLink, const char* filename) {
+  #if POLITE_DUMP_STATS > 0
+  // Open file for performance counters
+  FILE* statsFile = fopen(filename, "wt");
+  if (statsFile == NULL) {
+    printf("Error creating stats file\n");
+    exit(EXIT_FAILURE);
+  }
+  uint32_t numLines = TinselMeshXLen * TinselMeshYLen *
+                        TinselDCachesPerDRAM * TinselDRAMsPerBoard;
+  #ifdef POLITE_COUNT_MSGS
+  numLines += TinselMeshXLen * TinselMeshYLen * TinselThreadsPerBoard;
+  #endif
+  hostLink->dumpStdOut(statsFile, numLines);
+  fclose(statsFile);
+  #endif
+}
 
 #endif

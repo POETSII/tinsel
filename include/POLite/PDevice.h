@@ -16,21 +16,21 @@
 #define ALIGNED __attribute__((aligned(1<<(TinselLogBytesPerLine-1))))
 
 // This is a static limit on the fan out of any pin
-#ifndef MAX_PIN_FANOUT
-#define MAX_PIN_FANOUT 64
+#ifndef POLITE_MAX_FANOUT
+#define POLITE_MAX_FANOUT 64
 #endif
 
 // Number of mailbox slots to use for receive buffer
-#ifndef NUM_RECV_SLOTS
-#define NUM_RECV_SLOTS 12
+#ifndef POLITE_RECV_SLOTS
+#define POLITE_RECV_SLOTS 12
 #endif
 
 // Dump performance stats?
 //   0: don't dump stats
 //   1: dump stats first time we are idle
 //   2: dump stats first time we are idle and stable
-#ifndef DUMP_STATS
-#define DUMP_STATS 0
+#ifndef POLITE_DUMP_STATS
+#define POLITE_DUMP_STATS 0
 #endif
 
 // Thread-local device id
@@ -135,6 +135,11 @@ template <> struct PNeighbour<None> {
   };
 };
 
+// Helper function: Get board id from a thread id
+inline uint32_t getBoardId(uint32_t t) {
+  return (t >> TinselLogThreadsPerBoard);
+}
+
 // Generic thread structure
 template <typename DeviceType,
           typename S, typename E, typename M> struct PThread {
@@ -152,6 +157,16 @@ template <typename DeviceType,
   // This array is accessed in a LIFO manner
   PTR(PLocalDeviceId) sendersTop;
 
+  // Count number of messages sent
+  #ifdef POLITE_COUNT_MSGS
+  // Total messages sent
+  uint32_t intraThreadSendCount;
+  // Total messages sent between threads
+  uint32_t interThreadSendCount;
+  // Messages sent between threads on different boards
+  uint32_t interBoardSendCount;
+  #endif
+
   #ifdef TINSEL
 
   // Helper function to construct a device
@@ -165,12 +180,12 @@ template <typename DeviceType,
 
   // Dump performance counter stats over UART
   void dumpStats() {
+    tinselPerfCountStop();
     // Only one thread on each cache reports performance counters
     uint32_t me = tinselId();
     uint32_t mask = (1 <<
       (TinselLogThreadsPerCore + TinselLogCoresPerDCache)) - 1;
     if ((me & mask) == 0) {
-      tinselPerfCountStop();
       printf("C:%x,H:%x,M:%x,W:%x,I:%x\n",
         tinselCycleCount(),
         tinselHitCount(),
@@ -178,6 +193,10 @@ template <typename DeviceType,
         tinselWritebackCount(),
         tinselCPUIdleCount());
     }
+    #ifdef POLITE_COUNT_MSGS
+    printf("LS:%x,TS:%x,BS:%x\n", intraThreadSendCount,
+             interThreadSendCount, interBoardSendCount);
+    #endif
   }
 
   // Invoke device handlers
@@ -193,9 +212,9 @@ template <typename DeviceType,
     // Did last call to init handler or idle handler trigger any send?
     bool active = false;
 
-    #if DUMP_STATS > 0
+    #if POLITE_DUMP_STATS > 0
       // Have performance stats been dumped?
-      bool doStatDump = DUMP_STATS;
+      bool doStatDump = POLITE_DUMP_STATS;
     #endif
 
     // Reset performance counters
@@ -219,7 +238,7 @@ template <typename DeviceType,
 
     // Allocate some slots for incoming messages
     // (Slot 0 is reserved for outgoing messages)
-    for (int i = 1; i <= NUM_RECV_SLOTS; i++) tinselAlloc(tinselSlot(i));
+    for (int i = 1; i <= POLITE_RECV_SLOTS; i++) tinselAlloc(tinselSlot(i));
 
     // Event loop
     while (1) {
@@ -238,6 +257,9 @@ template <typename DeviceType,
              *(sendersTop++) = id;
           // Move to next neighbour
           neighbour++;
+          #ifdef POLITE_COUNT_MSGS
+          intraThreadSendCount++;
+          #endif
         }
         else if (tinselCanSend()) {
           // Destination device is on another thread
@@ -250,6 +272,11 @@ template <typename DeviceType,
           tinselSend(neighbour->destThread, m);
           // Move to next neighbour
           neighbour++;
+          #ifdef POLITE_COUNT_MSGS
+          interThreadSendCount++;
+          if (getBoardId(neighbour->destThread) !=
+                getBoardId(tinselId())) interBoardSendCount++;
+          #endif
         }
         else {
           // Go to sleep
@@ -270,7 +297,7 @@ template <typename DeviceType,
           if (*dev.readyToSend != No) sendersTop++;
           // Determine neighbours array for sender
           neighbour = (PNeighbour<E>*) &neighboursBase[
-            (devices[src].neighboursOffset + pin) * MAX_PIN_FANOUT];
+            (devices[src].neighboursOffset + pin) * POLITE_MAX_FANOUT];
         }
         else {
           // Go to sleep
@@ -282,12 +309,12 @@ template <typename DeviceType,
         int idle = tinselIdle(!active);
         if (idle) {
           active = false;
-          #if DUMP_STATS == 1
+          #if POLITE_DUMP_STATS == 1
           if (doStatDump) {
             dumpStats();
             doStatDump = false;
           }
-          #elif DUMP_STATS == 2
+          #elif POLITE_DUMP_STATS == 2
           if (doStatDump && idle > 1) {
             dumpStats();
             doStatDump = false;
