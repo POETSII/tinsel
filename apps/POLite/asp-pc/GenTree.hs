@@ -6,7 +6,7 @@ type Graph = ([Vertex], [Edge])
 
 -- Size of balanced tree of depth d and arity n
 size :: Int -> Int -> Int
-size 0 n = 0
+size 0 n = 1
 size d n = 1 + n * size (d-1) n
 
 -- Balanced tree of depth d and arity n
@@ -14,8 +14,9 @@ tree :: Int -> Int -> Graph
 tree d n = (vs, es)
   where
     vs = [0 .. size d n - 1]
-    es = concat [ [(v, n*v+o) | o <- [1..n]]
-                | v <- vs ]
+    ws = [0 .. size (d-1) n - 1]
+    es = concat [ [(w, n*w+o) | o <- [1..n]]
+                | w <- ws ]
 
 render :: Graph -> IO ()
 render (vs, es) =
