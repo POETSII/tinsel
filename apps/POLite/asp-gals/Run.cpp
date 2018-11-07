@@ -1,4 +1,5 @@
 #include "ASP.h"
+#include "RandomSet.h"
 
 #include <HostLink.h>
 #include <POLite.h>
@@ -46,18 +47,24 @@ int main(int argc, char**argv)
   // Prepare mapping from graph to hardware
   graph.map();
 
+  // Create random set of source nodes
+  uint32_t numSources = NUM_SOURCES*32;
+  uint32_t sources[numSources];
+  randomSet(numSources, sources, graph.numDevices);
+
   // Initialise devices
   for (PDeviceId i = 0; i < graph.numDevices; i++) {
     ASPState* dev = &graph.devices[i]->state;
-    if (i < 32*NUM_SOURCES) {
-      // This is a source node
-      // By definition, a source node reaches itself
-      dev->reaching[i >> 5] = 1 << (i & 0x1f);
-      dev->toReach = 32*NUM_SOURCES-1;
-    }
-    else
-      dev->toReach = 32*NUM_SOURCES;
+    dev->toReach = numSources;
     dev->fanIn = graph.fanIn(i);
+  }
+
+  // By definition, a source node reaches itself
+  for (PDeviceId i = 0; i < numSources; i++) {
+    uint32_t src = sources[i];
+    ASPState* dev = &graph.devices[src]->state;
+    dev->reaching[i/32] |= 1 << (i%32);
+    dev->toReach--;
   }
  
   // Write graph down to tinsel machine via HostLink

@@ -1,3 +1,5 @@
+#include "RandomSet.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -79,14 +81,11 @@ void readGraph(const char* filename, bool undirected)
   fclose(fp);
 }
 
-// Compute sum of all shortest paths
-uint64_t ssp(uint32_t from, uint32_t to)
+// Compute sum of all shortest paths from given sources
+uint64_t ssp(uint32_t numSources, uint32_t* sources)
 {
   // Sum of distances
   uint64_t sum = 0;
-
-  // Number of nodes in vector
-  const int nodesInVector = to-from;
 
   // Initialise reaching vector for each node
   #pragma omp parallel for
@@ -96,9 +95,9 @@ uint64_t ssp(uint32_t from, uint32_t to)
       reachingNext[i][j] = 0;
     }
   }
-  for (int i = from; i < to; i++) {
-    int j = i-from;
-    reaching[i][j/64] = 1ul << (j%64);
+  for (int i = 0; i < numSources; i++) {
+    uint32_t src = sources[i];
+    reaching[src][i/64] |= 1ul << (i%64);
   }
 
   char changed[numNodes];
@@ -157,16 +156,17 @@ int main(int argc, char**argv)
   readGraph(argv[1], undirected);
   printf("Nodes: %u.  Edges: %u\n", numNodes, numEdges);
 
+  uint32_t numSources = 64*vectorSize;
+  assert(numSources < numNodes);
+  uint32_t sources[numSources];
+  randomSet(numSources, sources, numNodes);
+
   struct timeval start, finish, diff;
 
   uint64_t sum = 0;
   const int nodesPerVector = 64 * vectorSize;
   gettimeofday(&start, NULL);
-  for (int i = 0; i < numNodes; i+= nodesPerVector) {
-    int to = (i+nodesPerVector) > numNodes ? numNodes : (i+nodesPerVector);
-    sum += ssp(i, to);
-    break; /* Only do one iteration, for comparison with POLite version */
-  }
+  sum = ssp(numSources, sources);
   gettimeofday(&finish, NULL);
 
   printf("Sum of subset of shortest paths = %lu\n", sum);
