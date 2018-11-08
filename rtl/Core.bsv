@@ -50,7 +50,7 @@ import IdleDetector :: *;
 // FFlag       | 0x001  | RW  | Floating-point accrued exception flags
 // FRM         | 0x002  | RW  | Floating-point dynamic rounding mode
 // FCSR        | 0x003  | RW  | Concatenation of FRM and FFlag
-// Cycle       | 0xc00  | R   | 32-bit cycle counter
+// Cycle       | 0xc00  | R   | Cycle counter (lower 32 bits)
 // Flush       | 0xc01  | R   | Cache line flush
 //
 // Currently, only the CSRRW instruction is supported for accessing CSRs.
@@ -65,7 +65,9 @@ import IdleDetector :: *;
 // MissCount       | 0xc08  | R   | Cache miss count
 // HitCount        | 0xc09  | R   | Cache hit count
 // WritebackCount  | 0xc0a  | R   | Cache writeback count
-// CPUIdleCount    | 0xc0b  | R   | CPU idle-cycle count
+// CPUIdleCount    | 0xc0b  | R   | CPU idle-cycle count (lower 32 bits)
+// CPUIdleCountU   | 0xc0c  | R   | CPU idle-cycle count (upper 8 bits)
+// CycleU          | 0xc0d  | R   | Cycle counter (upper 8 bits)
 
 // ============================================================================
 // Types
@@ -121,7 +123,7 @@ typedef struct {
 
   `ifdef EnablePerfCount
   Bool isReadCount;
-  Bit#(2) perfCountId;
+  Bit#(3) perfCountId;
   `endif
 
   `ifdef SIMULATE
@@ -655,14 +657,17 @@ module mkCore#(CoreId myId) (Core);
 
   `ifdef EnablePerfCount
   // Counters
+  Reg#(Bit#(40)) cycleCount     <- mkConfigReg(0);
   Reg#(Bit#(32)) missCount      <- mkConfigReg(0);
   Reg#(Bit#(32)) hitCount       <- mkConfigReg(0);
   Reg#(Bit#(32)) writebackCount <- mkConfigReg(0);
-  Reg#(Bit#(32)) cpuIdleCount   <- mkConfigReg(0);
+  Reg#(Bit#(40)) cpuIdleCount   <- mkConfigReg(0);
 
   // Indexable vector of performance counters
-  Vector#(4, Bit#(32)) perfCounters =
-    vector(missCount, hitCount, writebackCount, cpuIdleCount);
+  Vector#(6, Bit#(32)) perfCounters =
+    vector(missCount, hitCount, writebackCount, cpuIdleCount[31:0],
+             zeroExtend(cpuIdleCount[39:32]),
+             zeroExtend(cycleCount[39:32]));
 
   // Increment wires
   Wire#(Bool) incMissCountWire      <- mkDWire(False);
@@ -688,9 +693,6 @@ module mkCore#(CoreId myId) (Core);
 
   // Cycle counter
   // -------------
-
-  // Cycle counter
-  Reg#(Bit#(32)) cycleCount <- mkConfigReg(0);
 
   // Update cycle counter
   rule updateCycleCounter;
@@ -1053,7 +1055,7 @@ module mkCore#(CoreId myId) (Core);
       | when(token.op.csr.isFFlag || token.op.csr.isFCSR, 
                zeroExtend(token.thread.fpFlags))
       | when(token.op.csr.isFRM, 0)
-      | when(token.op.csr.isCycle, cycleCount);
+      | when(token.op.csr.isCycle, cycleCount[31:0]);
     `ifdef EnablePerfCount
     res.csr = res.csr | when(token.op.csr.isReadCount,
                                perfCounters[token.op.csr.perfCountId]);

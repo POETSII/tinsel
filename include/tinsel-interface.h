@@ -113,4 +113,10 @@ INLINE uint32_t tinselWritebackCount();
 // Performance counter: get the CPU-idle count
 INLINE uint32_t tinselCPUIdleCount();
 
+// Performance counter: get the CPU-idle count (upper 8 bits)
+INLINE uint32_t tinselCPUIdleCountU();
+
+// Read cycle counter (upper 8 bits)
+INLINE uint32_t tinselCycleCountU();
+
 #endif

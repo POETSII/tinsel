@@ -1465,7 +1465,7 @@
   <parameter name="MEM_ADDR_WIDTH" value="20" />
   <parameter name="MEM_BURST_LENGTH" value="4" />
   <parameter name="MEM_CK_PHASE" value="0.0" />
-  <parameter name="MEM_CLK_FREQ" value="420.0" />
+  <parameter name="MEM_CLK_FREQ" value="450.0" />
   <parameter name="MEM_CONTROL_WIDTH" value="1" />
   <parameter name="MEM_CS_WIDTH" value="1" />
   <parameter name="MEM_DENALI_SOMA_FILE" value="qdrii.soma" />
@@ -1724,7 +1724,7 @@
   <parameter name="MEM_ADDR_WIDTH" value="20" />
   <parameter name="MEM_BURST_LENGTH" value="4" />
   <parameter name="MEM_CK_PHASE" value="0.0" />
-  <parameter name="MEM_CLK_FREQ" value="420.0" />
+  <parameter name="MEM_CLK_FREQ" value="450.0" />
   <parameter name="MEM_CONTROL_WIDTH" value="1" />
   <parameter name="MEM_CS_WIDTH" value="1" />
   <parameter name="MEM_DENALI_SOMA_FILE" value="qdrii.soma" />
@@ -1983,7 +1983,7 @@
   <parameter name="MEM_ADDR_WIDTH" value="20" />
   <parameter name="MEM_BURST_LENGTH" value="4" />
   <parameter name="MEM_CK_PHASE" value="0.0" />
-  <parameter name="MEM_CLK_FREQ" value="420.0" />
+  <parameter name="MEM_CLK_FREQ" value="450.0" />
   <parameter name="MEM_CONTROL_WIDTH" value="1" />
   <parameter name="MEM_CS_WIDTH" value="1" />
   <parameter name="MEM_DENALI_SOMA_FILE" value="qdrii.soma" />
@@ -2242,7 +2242,7 @@
   <parameter name="MEM_ADDR_WIDTH" value="20" />
   <parameter name="MEM_BURST_LENGTH" value="4" />
   <parameter name="MEM_CK_PHASE" value="0.0" />
-  <parameter name="MEM_CLK_FREQ" value="420.0" />
+  <parameter name="MEM_CLK_FREQ" value="450.0" />
   <parameter name="MEM_CONTROL_WIDTH" value="1" />
   <parameter name="MEM_CS_WIDTH" value="1" />
   <parameter name="MEM_DENALI_SOMA_FILE" value="qdrii.soma" />
