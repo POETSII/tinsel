@@ -941,7 +941,7 @@ separate memory regions (which they are not).
   `FFlag`      | 0x001  | RW  | Floating-point accrued exception flags
   `FRM`        | 0x002  | R   | Floating-point dynamic rounding mode
   `FCSR`       | 0x003  | RW  | Concatenation of FRM and FFlag
-  `Cycle`      | 0xc00  | R   | 32-bit cycle counter
+  `Cycle`      | 0xc00  | R   | Cycle counter (lower 32 bits)
   `Flush`      | 0xc01  | W   | Cache line flush (line number, way)
 
 Optional performance-counter CSRs (when `EnablePerfCount` is `True`):
@@ -952,7 +952,10 @@ Optional performance-counter CSRs (when `EnablePerfCount` is `True`):
   `MissCount`      | 0xc08  | R   | Cache miss count
   `HitCount`       | 0xc09  | R   | Cache hit count
   `WritebackCount` | 0xc0a  | R   | Cache writeback count
-  `CPUIdleCount`   | 0xc0b  | R   | CPU idle-cycle count
+  `CPUIdleCount`   | 0xc0b  | R   | CPU idle-cycle count (lower 32 bits)
+  `CPUIdleCountU`  | 0xc0c  | R   | CPU idle-cycle count (upper 8 bits)
+  `CycleU`         | 0xc0d  | R   | Cycle counter (upper 8 bits)
+
 
 ## E. Tinsel Address Structure
 
@@ -1057,6 +1060,13 @@ inline uint32_t tinselWritebackCount();
 
 // Performance counter: get the CPU-idle count
 inline uint32_t tinselCPUIdleCount();
+
+// Performance counter: get the CPU-idle count (upper 8 bits)
+inline uint32_t tinselCPUIdleCountU();
+
+// Read cycle counter (upper 8 bits)
+inline uint32_t tinselCycleCountU();
+
 ```
 
 ## G. HostLink API

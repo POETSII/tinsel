@@ -200,8 +200,9 @@ template <typename DeviceType,
     // Per-core performance counters
     uint32_t coreMask = (1 << (TinselLogThreadsPerCore)) - 1;
     if ((me & coreMask) == 0) {
-      printf("C:%x,I:%x\n",
-        tinselCycleCount(), tinselCPUIdleCount());
+      printf("C:%x %x,I:%x %x\n",
+        tinselCycleCountU(), tinselCycleCount(),
+        tinselCPUIdleCountU(), tinselCPUIdleCount());
     }
     // Per-thread performance counters
     #ifdef POLITE_COUNT_MSGS

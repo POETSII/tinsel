@@ -31,9 +31,13 @@ BEGIN {
         cacheCount = cacheCount+1;
       }
       # CPU cycle/idle counts
-      else if (match($0, /(.*) C:(.*),I:(.*)/, fields)) {
-        c=strtonum("0x"fields[2]);
-        i=strtonum("0x"fields[3]);
+      else if (match($0, /(.*) C:(.*) (.*),I:(.*) (.*)/, fields)) {
+        c1=strtonum("0x"fields[2]);
+        c0=strtonum("0x"fields[3]);
+        c = c1 * 4294967296 + c0
+        i1=strtonum("0x"fields[4]);
+        i0=strtonum("0x"fields[5]);
+        i = i1 * 4294967296 + i0
         cycleCount = cycleCount + c;
         cpuIdleCount = cpuIdleCount + i;
         coreCount = coreCount+1;
