@@ -201,3 +201,7 @@ Still - the sums do not match and until then there is little point comparing per
 ## Conclusion
 - it's very hard to reason about the cases in which POETS is programmed in a fully async fashion (eg. not GALS).
 Messages go missing, 
+
+
+{"ns":1,"x_len":1,"y_len":1,"graph":"edges_6_9.txt","graph_size":531441,"idle_support":0,"sum":12754584,"msgs":7456451,"time":5.68817e+06}
+{"ns":1,"x_len":1,"y_len":1,"graph":"edges_6_9.txt","graph_size":531441,"idle_support":1,"sum":12754584,"msgs":531441,"time":995782}

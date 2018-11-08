@@ -29,19 +29,19 @@ def run_command(args):
 RANDOM_ID = random.randint(0,1000)
 
 # Runtime params
-X_LEN = [1,2,3]
-Y_LEN = [1,2]
+X_LEN = [3] #[1,2,3]
+Y_LEN = [1] #[1,2]
 
 # Compile time params
 NUM_SOURCES = [1]#,4,16,64]
-IDLES = [0, 1] #[0,1]
-PLACE_EFFORT = [0, 8, 32]
+IDLES = [1]#[0, 1] #[0,1]
+PLACE_EFFORT = [0, 1, 2, 4, 8, 12, 16, 32, 48, 64, 128]
 
 #cube_sizes = [(4,4), (6,6), (6,9)]
 # cube_sizes = [(6,9)]
 # FILES = ["edges_{cx}_{cy}.txt" for cx, cy in cube_sizes]
 
-FILES = ["edges_2d_{i}.txt".format(i=i) for i in [32, 256]]
+FILES = ["edges_2d_{i}.txt".format(i=i) for i in [256]] # 256
 
 for ns, idle in itertools.product(NUM_SOURCES, IDLES):
     run_command("NUM_SOURCES={ns} TINSEL_IDLE_SUPPORT={idle} make all".format(**locals()))
