@@ -2,6 +2,7 @@
 #define _PDEVICE_H_
 
 #include <stdint.h>
+#include <stdlib.h>
 #include <typeinfo>
 
 #ifdef TINSEL
@@ -135,9 +136,14 @@ template <> struct PNeighbour<None> {
   };
 };
 
-// Helper function: Get board id from a thread id
-inline uint32_t getBoardId(uint32_t t) {
-  return (t >> TinselLogThreadsPerBoard);
+// Helper function: Count board hops between two threads
+inline uint32_t hopsBetween(uint32_t t0, uint32_t t1) {
+  uint32_t xmask = ((1<<TinselMeshXBits)-1);
+  int32_t y0 = t0 >> (TinselLogThreadsPerBoard + TinselMeshXBits);
+  int32_t x0 = (t0 >> TinselLogThreadsPerBoard) & xmask;
+  int32_t y1 = t1 >> (TinselLogThreadsPerBoard + TinselMeshXBits);
+  int32_t x1 = (t1 >> TinselLogThreadsPerBoard) & xmask;
+  return (abs(x0-x1) + abs(y0-y1));
 }
 
 // Generic thread structure
@@ -279,8 +285,8 @@ template <typename DeviceType,
           neighbour++;
           #ifdef POLITE_COUNT_MSGS
           interThreadSendCount++;
-          if (getBoardId(neighbour->destThread) !=
-                getBoardId(tinselId())) interBoardSendCount++;
+          interBoardSendCount +=
+            hopsBetween(neighbour->destThread, tinselId());
           #endif
         }
         else {
