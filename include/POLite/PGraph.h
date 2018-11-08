@@ -69,7 +69,7 @@ template <typename DeviceType,
   // Setter for number of boards
   void setNumBoards(uint32_t x, uint32_t y) {
     if (x > TinselMeshXLen || y > TinselMeshYLen) {
-      printf("Mapper: %x x %d boards requested, %d x %d available\n",
+      printf("Mapper: %d x %d boards requested, %d x %d available\n",
         numBoardsX, numBoardsY, TinselMeshXLen, TinselMeshYLen);
       exit(EXIT_FAILURE);
     }

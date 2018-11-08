@@ -30,6 +30,7 @@ int main(int argc, char**argv)
 
   // Create POETS graph
   PGraph<ASPDevice, ASPState, None, ASPMessage> graph;
+  graph.setNumBoards(3, 2);
 
   // Create nodes in POETS graph
   for (uint32_t i = 0; i < net.numNodes; i++) {
@@ -76,7 +77,7 @@ int main(int argc, char**argv)
   politeSaveStats(&hostLink, "stats.txt");
 
   // Sum of all shortest paths
-  uint32_t sum = 0;
+  uint64_t sum = 0;
 
   // Accumulate sum at each device
   for (uint32_t i = 0; i < graph.numDevices; i++) {
@@ -90,7 +91,7 @@ int main(int argc, char**argv)
   }
 
   // Emit sum
-  printf("Sum of subset of shortest paths = %u\n", sum);
+  printf("Sum of subset of shortest paths = %lu\n", sum);
 
   // Display time
   timersub(&finish, &start, &diff);

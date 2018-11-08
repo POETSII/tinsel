@@ -15,7 +15,7 @@
 #include <POLite.h>
 
 // NUM_SOURCES*32 is the number of sources to compute ASP for
-#define NUM_SOURCES 2
+#define NUM_SOURCES 14
 
 struct ASPMessage {
   // Time step of sender

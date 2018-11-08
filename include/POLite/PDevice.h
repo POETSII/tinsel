@@ -18,7 +18,7 @@
 
 // This is a static limit on the fan out of any pin
 #ifndef POLITE_MAX_FANOUT
-#define POLITE_MAX_FANOUT 64
+#define POLITE_MAX_FANOUT 128
 #endif
 
 // Number of mailbox slots to use for receive buffer

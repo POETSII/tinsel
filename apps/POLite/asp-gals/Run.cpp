@@ -57,6 +57,7 @@ int main(int argc, char**argv)
     ASPState* dev = &graph.devices[i]->state;
     dev->toReach = numSources;
     dev->fanIn = graph.fanIn(i);
+    assert(dev->fanIn > 0);
   }
 
   // By definition, a source node reaches itself
@@ -83,7 +84,7 @@ int main(int argc, char**argv)
   politeSaveStats(&hostLink, "stats.txt");
 
   // Sum of all shortest paths
-  uint32_t sum = 0;
+  uint64_t sum = 0;
 
   // Accumulate sum at each device
   for (uint32_t i = 0; i < graph.numDevices; i++) {
@@ -95,7 +96,7 @@ int main(int argc, char**argv)
   }
 
   // Emit sum
-  printf("Sum of subset of shortest paths = %i\n", sum);
+  printf("Sum of subset of shortest paths = %lu\n", sum);
 
   // Display time
   timersub(&finish, &start, &diff);

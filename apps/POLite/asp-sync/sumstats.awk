@@ -52,6 +52,7 @@ BEGIN {
 }
 
 END {
+  print "Assuming", (boardsX*boardsY), "boards: ", boardsX, "x", boardsY
   time = (cycleCount/coreCount)/fmax
   print "Time (s): ", time
   missRate = 100*(missCount/(hitCount+missCount))

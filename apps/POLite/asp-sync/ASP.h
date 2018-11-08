@@ -11,7 +11,7 @@
 #include <POLite.h>
 
 // Number of sources = N * 32
-#define N 2
+#define N 14
 
 struct ASPMessage {
   // Sum of path lengths reaching sender
