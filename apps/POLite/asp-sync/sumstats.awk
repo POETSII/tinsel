@@ -11,35 +11,43 @@ BEGIN {
   interThreadSendCount = 0;
   interBoardSendCount = 0;
   fmax = 250000000;
+  boardsX = 3;
+  boardsY = 4;
 }
 
 {
-  # Cache hit/miss/writeback counts
-  if (match($0, /(.*) H:(.*),M:(.*),W:(.*)/, fields)) {
-    h=strtonum("0x"fields[2]);
-    m=strtonum("0x"fields[3]);
-    w=strtonum("0x"fields[4]);
-    hitCount = hitCount + h;
-    missCount = missCount + m;
-    writebackCount = writebackCount + w;
-    cacheCount = cacheCount+1;
-  }
-  # CPU cycle/idle counts
-  else if (match($0, /(.*) C:(.*),I:(.*)/, fields)) {
-    c=strtonum("0x"fields[2]);
-    i=strtonum("0x"fields[3]);
-    cycleCount = cycleCount + c;
-    cpuIdleCount = cpuIdleCount + i;
-    coreCount = coreCount+1;
-  }
-  # Per-thread message counts
-  else if (match($0, /(.*) LS:(.*),TS:(.*),BS:(.*)/, fields)) {
-    ls=strtonum("0x"fields[2]);
-    ts=strtonum("0x"fields[3]);
-    bs=strtonum("0x"fields[4]);
-    intraThreadSendCount = intraThreadSendCount+ls;
-    interThreadSendCount = interThreadSendCount+ts;
-    interBoardSendCount = interBoardSendCount+bs;
+  if (match($0, /(.*):(.*):(.*):(.*): /, coords)) {
+    bx = strtonum(coords[1]);
+    by = strtonum(coords[2]);
+    if (bx < boardsX && by < boardsY) {
+      # Cache hit/miss/writeback counts
+      if (match($0, /(.*) H:(.*),M:(.*),W:(.*)/, fields)) {
+        h=strtonum("0x"fields[2]);
+        m=strtonum("0x"fields[3]);
+        w=strtonum("0x"fields[4]);
+        hitCount = hitCount + h;
+        missCount = missCount + m;
+        writebackCount = writebackCount + w;
+        cacheCount = cacheCount+1;
+      }
+      # CPU cycle/idle counts
+      else if (match($0, /(.*) C:(.*),I:(.*)/, fields)) {
+        c=strtonum("0x"fields[2]);
+        i=strtonum("0x"fields[3]);
+        cycleCount = cycleCount + c;
+        cpuIdleCount = cpuIdleCount + i;
+        coreCount = coreCount+1;
+      }
+      # Per-thread message counts
+      else if (match($0, /(.*) LS:(.*),TS:(.*),BS:(.*)/, fields)) {
+        ls=strtonum("0x"fields[2]);
+        ts=strtonum("0x"fields[3]);
+        bs=strtonum("0x"fields[4]);
+        intraThreadSendCount = intraThreadSendCount+ls;
+        interThreadSendCount = interThreadSendCount+ts;
+        interBoardSendCount = interBoardSendCount+bs;
+      }
+    }
   }
 }
 
