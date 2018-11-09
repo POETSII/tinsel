@@ -51,9 +51,10 @@ int main(int argc, char **argv)
   printf("Setting up devices..."); fflush(stdout);
   // Specify number of time steps to run on each device
   for (PDeviceId i = 0; i < graph.numDevices; i++) {
-    graph.devices[i]->state.numVertices = graph.numDevices;
-    graph.devices[i]->state.fanIn = graph.fanIn(i);
-    graph.devices[i]->state.fanOut = graph.fanOut(i);
+    // graph.devices[i]->state.numVertices = graph.numDevices;
+    // graph.devices[i]->state.fanIn = graph.fanIn(i);
+    // graph.devices[i]->state.fanOut = graph.fanOut(i);
+    graph.devices[i]->state.val = 3; //1 / static_cast<float>(graph.numDevices);
   }
   printf(" done\n");
 
@@ -63,7 +64,7 @@ int main(int argc, char **argv)
   printf(" done\n");
 
   // Load code and trigger execution
-  hostLink.boot("code.v", "data.v");
+  hostLink.boot("build/code.v", "build/data.v");
 
   // Global accumulated score
   float gscore = 0.0;
@@ -76,13 +77,23 @@ int main(int argc, char **argv)
 
   // Wait for response
   PMessage<None, PageRankMessage> msg;
-  for (uint32_t i = 0; i < graph.numDevices; i++) {
-    hostLink.recvMsg(&msg, sizeof(msg));
-    gscore += msg.payload.val;
-    if (i == 0) {
-      // Get finish time
-      gettimeofday(&finish, NULL);
+  while(true) {
+    // for (uint32_t i = 0; i < graph.numDevices; i++) {
+    //if (true or DEBUG_VERBOSITY > 1) {
+    hostLink.pollStdOut();
+    //}
+
+    if(hostLink.canRecv()) {
+      hostLink.recvMsg(&msg, sizeof(msg));
     }
+    
+    // if(hostlink.)
+
+    // gscore += msg.payload.val;
+    // if (i == 0) {
+    //   // Get finish time
+    //   gettimeofday(&finish, NULL);
+    // }
   }
  
   printf("Done\n");
