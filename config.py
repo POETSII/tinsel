@@ -115,13 +115,13 @@ p["MacLatency"] = 100
 p["MeshXBits"] = 2
 
 # Number of bits in mesh Y coord
-p["MeshYBits"] = 3
+p["MeshYBits"] = 2
 
 # Mesh X length
 p["MeshXLen"] = 3
 
 # Mesh Y length
-p["MeshYLen"] = 4
+p["MeshYLen"] = 2
 
 # Number of cores per FPU
 p["LogCoresPerFPU"] = 2
