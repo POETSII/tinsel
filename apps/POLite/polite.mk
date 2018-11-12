@@ -10,7 +10,7 @@ include $(TINSEL_ROOT)/globals.mk
 ALL_CFLAGS += 
 
 # Local compiler flags
-CFLAGS += $(RV_CFLAGS) $(ALL_CFLAGS) -std=c++17 -O2 -I $(INC)
+CFLAGS += $(RV_CFLAGS) $(ALL_CFLAGS) -std=c++17 -O3 -I $(INC)
 LDFLAGS += -melf32lriscv -G 0 
 
 BUILD=build

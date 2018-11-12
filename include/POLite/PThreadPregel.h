@@ -22,7 +22,6 @@ private:
   std::array<uint8_t, N> current_idx;
 };
 
-
 /*
 template <typename VertexValue, typename EdgeValue, typename MessageValue>
 class Vertex {
@@ -38,7 +37,11 @@ public:
 };
 */
 
-template <typename S, typename E, typename M> 
+constexpr bool EVENT_LOOP_DEBUG = false;
+
+template <typename DeviceType> struct PregelPThread;
+
+template <typename S, typename E, typename M, typename D>
 struct PregelVertex : public PDevice<None, S, E, M> {
   using Accumulator = None;
   using State = S;
@@ -48,30 +51,40 @@ struct PregelVertex : public PDevice<None, S, E, M> {
 public: // Extra device state (has to be constructed when required)
   int32_t superstep_;
   bool send_message = false;
+  bool send_message_host = false;
+  PregelPThread<D> *thread;
 
 public:
-  const S& GetValue() { return *this->s; };
-  S * MutableValue() { return this->s; };
+  const S &GetValue() { return *this->s; };
+  S *MutableValue() { return this->s; };
   int32_t superstep() const { return superstep_; };
-  void SendMessageToAllNeighbors(const M& msg) {
-    this->s->outgoing = msg;
-    this->send_message = true;
+  void SendMessageToAllNeighbors(const M &msg) {
+#ifdef TINSEL
+    thread->SendMessageTo(msg, this->deviceAddr.devId, Pin(0));
+#endif
+  };
+  void SendMessageToHost(const M &msg) {
+#ifdef TINSEL
+    thread->SendMessageTo(msg, this->deviceAddr.devId, HostPin);
+#endif
   };
   void VoteToHalt() {
+    if constexpr (EVENT_LOOP_DEBUG) {
+      printf("Voting to halt\n");
+    }
     this->s->halted = true;
   };
 
   // overridable methods
-  bool PreCompute(M * msg) { return false; };
-  void Compute() {};
+  bool PreCompute(const M *msg) { return false; };
+  void Compute(){};
 
-public: //TODO
+public: // TODO
   int32_t NumVertices() const { return 100; }
   int32_t GetOutEdgeIterator();
 };
 
-template <typename MessageType> 
-struct PregelState {
+template <typename MessageType> struct PregelState {
   using MessageBuffer = std::array<MessageType, 16>;
   using IncomingIterator = typename MessageBuffer::const_iterator;
 
@@ -79,22 +92,19 @@ struct PregelState {
     incoming[incoming_idx] = msg;
     incoming_idx++;
   }
-  void clear_incoming() { incoming_idx = 0; }
-  uint8_t num_incoming() const { return incoming_idx; };
-
-  IncomingIterator incoming_begin() const {
-    return incoming.cbegin();
+  void clear_incoming() { 
+    incoming_idx = 0; 
   }
-
+  uint8_t num_incoming() const { return incoming_idx; };
+  IncomingIterator incoming_begin() const { return incoming.cbegin(); }
   IncomingIterator incoming_end() const {
     return incoming.cbegin() + incoming_idx;
   }
 
   // this should become some reference to DRAM ideally rather than the current
   // Will need to modify the mapper to do that
-
   bool halted;
-  MessageType outgoing;
+  //MessageType outgoing;
   MessageBuffer incoming;
   uint8_t incoming_idx = 0;
 };
@@ -108,18 +118,44 @@ struct PregelPThread : public PThread<DeviceType> {
 
   using MessageType = PMessage<E, M>;
 
-  enum class PregelState { RECEIVE, PROCESS, SEND };
+  enum class PregelState { RECEIVE, PROCESS };
 
   INLINE DeviceType createDeviceStub(PLocalDeviceId i, uint32_t superstep) {
     DeviceType dev = PThread<DeviceType>::createDeviceStub(i);
     dev.superstep_ = superstep;
     dev.send_message = false;
+    dev.thread = this;
     return dev;
   }
 
+  INLINE void SendMessageTo(const M &msg, PLocalDeviceId src, PPin destinationPin);
+  INLINE void HandleCanRecv() {
+    if constexpr (EVENT_LOOP_DEBUG) {
+      printf("Receiving message\n");
+    }
+
+    // Receive message
+    MessageType *msg = (MessageType *)tinselRecv();
+
+    // Lookup destination device
+    DeviceType dev = this->createDeviceStub(msg->devId, superstep);
+    allDevicesHalted = false;
+    dev.s->halted = false;
+
+    bool precomputed = dev.PreCompute(&(msg->payload));
+    if (precomputed == false) {
+      dev.s->insert_incoming(msg->payload);
+    }
+    tinselAlloc(msg);
+  }
+
+  uint32_t superstep;
+  bool allDevicesHalted;
+
   void run() {
     // Init
-    this->sendersTop = this->senders;
+    this->sendersTop = nullptr;
+    this->senders = nullptr;
 
     // Empty neighbour array
     PNeighbour<E> empty;
@@ -136,128 +172,120 @@ struct PregelPThread : public PThread<DeviceType> {
     }
 
     PregelState ps = PregelState::RECEIVE;
-    uint32_t superstep = 0;
-    uint32_t haltCount = 0;
-    bool halted = false;
+    superstep = 0;
+
+    allDevicesHalted = false;
+    bool emittedHaltCallbacks = false;
 
     while (1) {
-      if (ps == PregelState::RECEIVE and tinselCanRecv()) {
-        printf("Receiving message\n");
-
-        // Receive message
-        MessageType *msg = (MessageType *)tinselRecv();
-
-        // Lookup destination device
-        DeviceType dev = this->createDeviceStub(msg->devId, superstep);
-
-        if(dev.s->halted) {
-          haltCount--;
-          dev.s->halted = false;
-        }
-        bool precomputed = dev.PreCompute(&(msg->payload));
-        if(precomputed == false) {
-          dev.s->insert_incoming(msg->payload);
-        }
-        tinselAlloc(msg);
-      } else if (ps == PregelState::PROCESS) {
-        printf("Processing messages\n");
-
-        for (uint32_t i = 0; i < this->numDevices; i++) {
-          DeviceType dev = this->createDeviceStub(i, superstep);
-          printf("Device=%x incoming=%x\n", i, dev.s->num_incoming());
-          if(dev.s->halted) {
-            continue;
-          }
-          dev.Compute();
-          dev.s->clear_incoming();
-
-          if(dev.send_message) {
-            *(this->sendersTop++) = i;
-          }
-
-          if(dev.s->halted) {
-            haltCount++;
-          }
-        }
-        superstep++;
-        ps = PregelState::SEND;
-      } else if (ps == PregelState::SEND) {
-
-        if (isValidThreadId(this->neighbour->destThread)) {
-          if (this->neighbour->destThread == tinselId()) {
-            printf("Doing actual local send\n");
-
-
-            // Destination device is on current thread, simply add to buffer
-            DeviceType target_dev = this->createDeviceStub(this->neighbour->devId, superstep);
-
-            // referring the the device that we are currently doing a multicast for
-            DeviceType source_dev = this->createDeviceStub(*(this->sendersTop+1), superstep);
-            target_dev.s->insert_incoming(source_dev.s->outgoing);
-            this->neighbour++;
-          } else if (tinselCanSend()) {
-            printf("Doing actual remote send\n");
-            
-            // Destination device is on another thread
-            PMessage<E, M> *m = (PMessage<E, M> *)tinselSlot(0);
-            m->devId = this->neighbour->devId;            
-            
-            tinselSend(this->neighbour->destThread, m);
-            this->neighbour++;
-          } else {
-            // Go to sleep
-            tinselWaitUntil(TINSEL_CAN_SEND);
-          }
-        } else if (this->sendersTop != this->senders) {
-          if (tinselCanSend()) {
-            printf("Starting a new multicast\n");
-
-            // Start new multicast
-            PLocalDeviceId src = *(--this->sendersTop);
-            // Lookup device
-            DeviceType dev = this->createDeviceStub(src, superstep);
-            PPin pin = 1;
-            
-            // Load the message and the neighbour array
-            PMessage<E, M>& m = *((PMessage<E, M> *)tinselSlot(0));
-            m.payload = dev.s->outgoing;
-            
-            this->neighbour = (PNeighbour<E> *)this->devices[src].neighboursBase +
-                              MAX_PIN_FANOUT * pin;
-          } else {
-            // Go to sleep
-            tinselWaitUntil(TINSEL_CAN_SEND);
-          }
-        } else {
-          printf("Done sending\n");
-
-          // must be done sending
-          // if everything has been sent, go back to receiving
-          ps = PregelState::RECEIVE;
-        }
+      if (tinselCanRecv()) {
+        HandleCanRecv();
       } else if (ps == PregelState::RECEIVE and tinselIdle()) {
-        // this can be fixed with the new tinsel API that Matt has been working on w.r.t. idle detection
+        // this can be fixed with the new tinsel API that Matt has been working
+        // on w.r.t. idle detection
 
-        if(haltCount == this->numDevices) {
-          if(halted == false) {
-            //printf("Are idle and haltCount == numDevices, halting\n");
-
-            // if everybody is halted and we are idle, notify the devices
-            for(int i = 0; i < this->numDevices; i++) {
-              DeviceType dev = this->createDeviceStub(i, superstep);
-              dev.Halt();
-            }
-            halted = true;
+        if (emittedHaltCallbacks) {
+        } else if (allDevicesHalted) {
+          // if everybody is halted and we are idle, notify the devices
+          for (int i = 0; i < this->numDevices; i++) {
+            DeviceType dev = this->createDeviceStub(i, superstep);
+            dev.Halt();
           }
+          emittedHaltCallbacks = true;
         } else {
-          printf("Moving from RECEIVE to PROCESS because idle\n");
-
+          // The devices do not want to halt but the system is idle - start
+          // processing
+          if constexpr (EVENT_LOOP_DEBUG) {
+            printf("Moving from RECEIVE to PROCESS because idle - numDev=%x\n",
+                   this->numDevices);
+          }
           // advance the state from
           ps = PregelState::PROCESS;
         }
+      } else if (ps == PregelState::PROCESS) {
+        if constexpr (EVENT_LOOP_DEBUG) {
+          printf("Processing messages for ss=%x\n", superstep);
+        }
+
+        allDevicesHalted = true;
+
+        for (uint32_t i = 0; i < this->numDevices; i++) {
+          DeviceType dev = this->createDeviceStub(i, superstep);
+          if constexpr (EVENT_LOOP_DEBUG) {
+            printf("Device=%x incoming=%x\n", i, dev.s->num_incoming());
+          }
+          if (dev.s->halted) {
+            continue;
+          }
+
+          dev.Compute();
+          dev.s->clear_incoming();
+
+          if (!dev.s->halted) {
+            allDevicesHalted = false;
+          }
+        }
+        superstep++;
+        ps = PregelState::RECEIVE;
       } else {
         tinselWaitUntil(TINSEL_CAN_RECV);
       }
-    } 
+    }
   }
 };
+
+#ifdef TINSEL
+
+template <typename DeviceType>
+void PregelPThread<DeviceType>::SendMessageTo(const M &msg, PLocalDeviceId src,
+                                              PPin destinationPin) {
+  auto *nb = static_cast<PNeighbour<E> *>(this->devices[src].neighboursBase) +
+             MAX_PIN_FANOUT * (destinationPin - 1);
+
+  // Lookup device
+  DeviceType source_dev = this->createDeviceStub(src, superstep);
+
+  // Load the message and the neighbour array
+  auto m = static_cast<volatile PMessage<E, M> *>(tinselSlot(0));
+  m->payload = msg;
+
+  while (isValidThreadId(nb->destThread)) {
+    if (this->neighbour->destThread == tinselId()) {
+      if constexpr (EVENT_LOOP_DEBUG) {
+        printf("Doing actual local send\n");
+      }
+
+      // Destination device is on current thread, simply add to buffer
+      DeviceType target_dev = this->createDeviceStub(nb->devId, superstep);
+
+      bool precomputed = target_dev.PreCompute(&msg);
+      if (precomputed == false) {
+        target_dev.s->insert_incoming(msg);
+      }
+      nb++;
+    } else if (tinselCanSend()) {
+      if constexpr (EVENT_LOOP_DEBUG) {
+        printf("Doing actual remote send\n");
+      }
+
+      // Destination device is on another thread
+      m->devId = nb->devId;
+      tinselSend(nb->destThread, m);
+      nb++;
+    } else if (tinselCanRecv()) {
+      // In order to prevent deadlocks, we have to handle all messages that we
+      // can receive
+      HandleCanRecv();
+    } else {
+      if constexpr (EVENT_LOOP_DEBUG) {
+        printf("Waiting for TINSEL_CAN_SEND | TINSEL_CAN_RECV\n");
+      }
+      tinselWaitUntil(TINSEL_CAN_SEND | TINSEL_CAN_RECV);
+    }
+  }
+
+  if constexpr (EVENT_LOOP_DEBUG) {
+    printf("Finished send\n");
+  }
+}
+#endif
