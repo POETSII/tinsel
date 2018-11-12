@@ -91,8 +91,11 @@ int main(int argc, char **argv)
       hostLink.recvMsg(&msg, sizeof(msg));
       //printf("Received message num=%u with val=%u %f\n", x, msg.payload.val, msg.payload.val);
       x++;
-      if(x == graph.numDevices) {
+      if(x == 1) {
         gettimeofday(&finish, NULL);
+      }
+
+      if(x == graph.numDevices) {
         break;
       }
     }
