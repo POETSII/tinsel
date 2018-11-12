@@ -5,45 +5,30 @@
 
 #include <array>
 
-//#define MAX_FAN_IN 16
-
-// using RING_TYPE = float;
-// enum UpdatePropagation { ONLY_TRIGGER, ALWAYS };
-
 // compile time settings
 constexpr int DEBUG_VERBOSITY = 1;
-// constexpr UpdatePropagation prop = ONLY_TRIGGER;
+constexpr bool USE_PRECOMPUTE = true;
+constexpr bool DEVICE_DEBUG = false;
 
-
-//using PageRankMessage = float;
-
-
-using ScoreType = int;
+using ScoreType = float;
 
 struct PageRankMessage {
-  // Time step
-  uint16_t t;
+  PageRankMessage() {}
+  PageRankMessage(ScoreType v) : val(v) {}
+  volatile PageRankMessage& operator=(const PageRankMessage& o) volatile {
+    val = o.val;
+    return *this;
+  }
+
   // Page rank score for sender at time step t
   ScoreType val;
 };
 
 struct PageRankState : public PregelState<PageRankMessage> {
   ScoreType val;
-  
-  // // Current time step of device
-  // uint16_t t;
-  // // Count messages sent and received
-  // uint16_t sent;
-  // uint16_t received, receivedNext;
-  // // Current temperature of device
-  // float acc, accNext;
-  // // Score for the current timestep
-  // float score;
-  // // Fan-in and fan-out for this vertex
-  // uint16_t fanIn, fanOut;
-  // // Total number of vertices in the graph
-  // uint32_t numVertices;
-
+  ScoreType sum;
+  uint16_t fanOut;
+  uint32_t numVertices;
 };
 
 // class PageRankVertex : public Vertex<double, void, double> {
@@ -64,43 +49,67 @@ struct PageRankState : public PregelState<PageRankMessage> {
 //   }
 // };
 
-struct PageRankDevice : public PregelVertex<PageRankState, None, PageRankMessage> {
+struct PageRankDevice : public PregelVertex<PageRankState, None, PageRankMessage, PageRankDevice> {
   using ThreadType = PregelPThread<PageRankDevice>;
 
-  void Halt() {
-    printf("Halting\n");
+  uint32_t NumVertices() const {
+    return this->s->numVertices;
+  }
+  uint16_t GetOutEdgeIteratorSize() const {
+    return this->s->fanOut;
   }
 
-  bool PreCompute(PageRankMessage * msg) {
-    if (superstep() >= 1) {
-      ScoreType pre = GetValue().val;
-      MutableValue()->val += msg->val; // 0.15 / NumVertices() + 0.85 *
-      printf("PreCompute ss=%x pre=%x val=%x\n", superstep(), pre, GetValue().val);
 
+  void Halt() {
+    PageRankMessage m {GetValue().val};
+
+    if constexpr (DEVICE_DEBUG) {
+      printf("SendMessageToHost ss=%x val=%x\n", superstep(), m.val);
     }
-    return true;
+    SendMessageToHost(m);
+  }
+
+  void PreComputeImpl(const PageRankMessage * msg) {
+    if (superstep() >= 1) {
+      MutableValue()->sum += msg->val;
+      if constexpr (DEVICE_DEBUG) {
+        printf("PreCompute ss=%x val=%x\n", superstep(), GetValue().val);
+      }
+    }
+  }
+
+  bool PreCompute(const PageRankMessage * msg) {
+    if constexpr (USE_PRECOMPUTE) {
+      PreComputeImpl(msg);
+      return true;
+    } else {
+      return false;
+    }
   }
 
   void Compute() {
-    printf("Computing ss=%x val=%x\n", superstep(), GetValue().val);
+    if constexpr (DEVICE_DEBUG) { 
+      printf("Computing ss=%x val=%x\n", superstep(), GetValue().val);
+    }
 
-    // if (superstep() >= 1) {
-    //   ScoreType sum = 0;
-    //   for(auto it = s->incoming_begin(); it != s->incoming_end(); ++it) {
-    //     printf("Receiving message ss=%x val=%x\n", superstep(), it->val);    
-    //     sum += it->val;
-    //   }
-    //   MutableValue()->val += sum; // 0.15 / NumVertices() + 0.85 *
-    // }
+    if constexpr (!USE_PRECOMPUTE) {
+      for(auto it = s->incoming_begin(); it != s->incoming_end(); ++it) {
+        PreComputeImpl(&(*it));
+      }
+    }
 
-    if (superstep() < 2) {
-      //const int32_t n = 1; // TODO GetOutEdgeIterator().size();
-      PageRankMessage m;
-      m.val = GetValue().val;
+    if (superstep() >= 1) {
+      MutableValue()->val = 0.15 / NumVertices() + 0.85 * GetValue().sum;
+      MutableValue()->sum = 0;
+    }
+
+    if (superstep() < 300) {
+      PageRankMessage m {GetValue().val / GetOutEdgeIteratorSize()};
       SendMessageToAllNeighbors(m);
-      printf("SendMessageToAllNeighbors ss=%x val=%x\n", superstep(), (int)m.val);
-
-
+      
+      if constexpr (DEVICE_DEBUG) {   
+        printf("SendMessageToAllNeighbors ss=%x val=%x\n", superstep(), m.val);
+      }
     } else {
       VoteToHalt();
     }
