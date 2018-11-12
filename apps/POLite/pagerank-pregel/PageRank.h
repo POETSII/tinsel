@@ -92,18 +92,22 @@ struct PageRankDevice : public PregelVertex<PageRankState, None, PageRankMessage
       printf("Computing ss=%x val=%x\n", superstep(), GetValue().val);
     }
 
+#ifdef INCOMING_STORAGE
     if constexpr (!USE_PRECOMPUTE) {
+      // This could be a coroutine/generator, which would make the PreCompute unnecessary
+      // It would make the step of local deliveries significantly more difficult
       for(auto it = s->incoming_begin(); it != s->incoming_end(); ++it) {
         PreComputeImpl(&(*it));
       }
     }
+#endif
 
     if (superstep() >= 1) {
       MutableValue()->val = 0.15 / NumVertices() + 0.85 * GetValue().sum;
       MutableValue()->sum = 0;
     }
 
-    if (superstep() < 300) {
+    if (superstep() < 1000) {
       PageRankMessage m {GetValue().val / GetOutEdgeIteratorSize()};
       SendMessageToAllNeighbors(m);
       

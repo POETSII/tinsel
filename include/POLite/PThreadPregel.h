@@ -85,9 +85,14 @@ public: // TODO
 };
 
 template <typename MessageType> struct PregelState {
-  using MessageBuffer = std::array<MessageType, 16>;
+  bool halted;
+  
+  // this should become some reference to DRAM ideally rather than the current
+  // Will need to modify the mapper to do that
+  using MessageBuffer = std::array<MessageType, 0>;
   using IncomingIterator = typename MessageBuffer::const_iterator;
 
+#ifdef INCOMING_STORAGE
   void insert_incoming(const MessageType &msg) {
     incoming[incoming_idx] = msg;
     incoming_idx++;
@@ -100,13 +105,12 @@ template <typename MessageType> struct PregelState {
   IncomingIterator incoming_end() const {
     return incoming.cbegin() + incoming_idx;
   }
-
-  // this should become some reference to DRAM ideally rather than the current
-  // Will need to modify the mapper to do that
-  bool halted;
-  //MessageType outgoing;
   MessageBuffer incoming;
-  uint8_t incoming_idx = 0;
+  uint8_t incoming_idx = 0; 
+#else
+  void insert_incoming(const MessageType &msg){}
+  void clear_incoming() {}
+#endif
 };
 
 template <typename DeviceType>
@@ -153,15 +157,6 @@ struct PregelPThread : public PThread<DeviceType> {
   bool allDevicesHalted;
 
   void run() {
-    // Init
-    this->sendersTop = nullptr;
-    this->senders = nullptr;
-
-    // Empty neighbour array
-    PNeighbour<E> empty;
-    empty.destThread = invalidThreadId();
-    this->neighbour = &empty;
-
     // Set number of flits per message
     tinselSetLen((sizeof(MessageType) - 1) >> TinselLogBytesPerFlit);
 
@@ -188,7 +183,7 @@ struct PregelPThread : public PThread<DeviceType> {
         } else if (allDevicesHalted) {
           // if everybody is halted and we are idle, notify the devices
           for (int i = 0; i < this->numDevices; i++) {
-            DeviceType dev = this->createDeviceStub(i, superstep);
+            DeviceType dev = createDeviceStub(i, superstep);
             dev.Halt();
           }
           emittedHaltCallbacks = true;
@@ -210,7 +205,7 @@ struct PregelPThread : public PThread<DeviceType> {
         allDevicesHalted = true;
 
         for (uint32_t i = 0; i < this->numDevices; i++) {
-          DeviceType dev = this->createDeviceStub(i, superstep);
+          DeviceType dev = createDeviceStub(i, superstep);
           if constexpr (EVENT_LOOP_DEBUG) {
             printf("Device=%x incoming=%x\n", i, dev.s->num_incoming());
           }
@@ -242,21 +237,18 @@ void PregelPThread<DeviceType>::SendMessageTo(const M &msg, PLocalDeviceId src,
   auto *nb = static_cast<PNeighbour<E> *>(this->devices[src].neighboursBase) +
              MAX_PIN_FANOUT * (destinationPin - 1);
 
-  // Lookup device
-  DeviceType source_dev = this->createDeviceStub(src, superstep);
-
   // Load the message and the neighbour array
   auto m = static_cast<volatile PMessage<E, M> *>(tinselSlot(0));
   m->payload = msg;
 
   while (isValidThreadId(nb->destThread)) {
-    if (this->neighbour->destThread == tinselId()) {
+    if (nb->destThread == tinselId()) {
       if constexpr (EVENT_LOOP_DEBUG) {
         printf("Doing actual local send\n");
       }
 
       // Destination device is on current thread, simply add to buffer
-      DeviceType target_dev = this->createDeviceStub(nb->devId, superstep);
+      DeviceType target_dev = createDeviceStub(nb->devId, superstep);
 
       bool precomputed = target_dev.PreCompute(&msg);
       if (precomputed == false) {
