@@ -412,12 +412,15 @@ int main(int argc, char* argv[])
     csrs[2*CSR_EN] = 0;
     while (csrs[2*CSR_INFLIGHT] != 0);
     csrs[2*CSR_RESET] = 1;
-    usleep(1000000);
+    usleep(500000);
     csrs[2*CSR_ADDR_RX_A] = addrRxA;
     csrs[2*CSR_ADDR_RX_B] = addrRxB;
     csrs[2*CSR_ADDR_TX_A] = addrTxA;
     csrs[2*CSR_ADDR_TX_B] = addrTxB;
     csrs[2*CSR_EN] = 1;
+
+    // Power up FPGAs
+    powerEnable(1);
 
     // Reset state
     txInit(&txState, conn, csrs, txA, txB);
@@ -439,6 +442,7 @@ int main(int argc, char* argv[])
 
     // Power down FPGAs
     powerEnable(0);
+    usleep(1500000);
   }
 
   return 0;

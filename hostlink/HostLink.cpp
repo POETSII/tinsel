@@ -86,9 +86,8 @@ HostLink::HostLink()
   // Power up mesh boards
   #ifndef SIMULATE
   sleep(1);
-  powerup();
-  sleep(1);
   waitForFPGAs(numBoards);
+  sleep(1);
   #endif
 
   // Create a DebugLink (UART) for each board
@@ -550,8 +549,9 @@ void HostLink::store(uint32_t meshX, uint32_t meshY,
 }
 
 // Redirect UART StdOut to given file
+// Increment line count when appropriate
 // Returns false when no data has been emitted
-bool HostLink::pollStdOut(FILE* outFile)
+bool HostLink::pollStdOut(FILE* outFile, uint32_t* lineCount)
 {
   bool got = false;
   for (int x = 0; x < TinselMeshXLen; x++) {
@@ -566,6 +566,7 @@ bool HostLink::pollStdOut(FILE* outFile)
         // Update line buffer & display on newline or buffer-full
         int len = lineBufferLen[x][y][c][t];
         if (byte == '\n' || len == MaxLineLen-1) {
+          if (lineCount != NULL) (*lineCount)++;
           lineBuffer[x][y][c][t][len] = '\0';
           fprintf(outFile, "%d:%d:%d:%d: %s\n", x, y, c, t,
             lineBuffer[x][y][c][t]);
@@ -582,11 +583,17 @@ bool HostLink::pollStdOut(FILE* outFile)
   return got;
 }
 
+// Receive StdOut byte streams and append to file (non-blocking)
+bool HostLink::pollStdOut(FILE* outFile)
+{
+  return pollStdOut(outFile, NULL);
+}
+
 // Redirect UART StdOut to stdout
 // Returns false when no data has been emitted
 bool HostLink::pollStdOut()
 {
-  pollStdOut(stdout);
+  return pollStdOut(stdout);
 }
 
 // Redirect UART StdOut to given file (blocking function, never terminates)
@@ -594,6 +601,16 @@ void HostLink::dumpStdOut(FILE* outFile)
 {
   for (;;) {
     bool ok = pollStdOut(outFile);
+    if (!ok) usleep(10000);
+  }
+}
+
+// Receive lines from StdOut byte streams and append to file (blocking)
+void HostLink::dumpStdOut(FILE* outFile, uint32_t lines)
+{
+  uint32_t count = 0;
+  while (count < lines) {
+    bool ok = pollStdOut(outFile, &count);
     if (!ok) usleep(10000);
   }
 }

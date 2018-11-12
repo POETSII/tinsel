@@ -530,13 +530,36 @@ typedef enum {TINSEL_CAN_SEND = 1, TINSEL_CAN_RECV = 2} TinselWakeupCond;
 inline void tinselWaitUntil(TinselWakeupCond cond);
 ```
 
-Finally, a quick note on the design.  One of the main goals of the
-mailbox is to support efficient software multicasting: when a message
-is received, it can be forwarded on to multiple destinations without
-having to serialise the message contents into and out of the 32-bit
-core.  The mailbox scratchpad has a flit-sized port on the network
-side, providing much more efficient access to messages than is
-possible from the core.
+One of the main goals of the mailbox is to support efficient software
+multicasting: when a message is received, it can be forwarded on to
+multiple destinations without having to serialise the message contents
+into and out of the 32-bit core.  The mailbox scratchpad has a
+flit-sized port on the network side, providing much more efficient
+access to messages than is possible from the core.
+
+Tinsel also provides a function 
+
+```c++
+  int tinselIdle(bool vote);
+```
+
+which blocks until either
+
+  1. a message is available to receive, or
+
+  2. all threads in the entire system are blocked on a call to
+     `tinselIdle()` and there are no undelivered messages in the system.
+
+The function returns zero in the former case and non-zero in the
+latter.  A return value of 1 denotes a non-unanamous vote, i.e. not
+all callers voted true, and a return value > 1 denotes a unanamous
+vote, i.e. all callers voted true.  This feature allows efficient
+termination detection in asynchronous applications and efficient
+barrier synchronisation in synchronous applications.  The voting
+mechanism additionally allows termination to be detected in
+synchronous applications, e.g. all threads in the system are stable
+since the last time step.  For more details, see the original feature
+proposal: [PIP 13](doc/PIP-0013-idle-detection.md).
 
 A summary of synthesis-time parameters introduced in this section:
 
@@ -830,8 +853,9 @@ The default Tinsel configuration on a single DE5-Net board contains:
   * 16 floating-point units
   * 2D network-on-chip
   * two DDR3 DRAM controllers
-  * four QDRII++ SRAM controllers
+  * four QDRII+ SRAM controllers
   * four 10Gbps reliable links
+  * one termination/idle detector
   * a JTAG UART
 
 The clock frequency is 250MHz and the resource utilisation is 135K
@@ -863,7 +887,7 @@ ALMs, *58% of the DE5-Net*.
   `MeshYBits`              |       2 | Number of bits in mesh Y coordinate
   `MeshXLen`               |       3 | Length of X dimension
   `MeshYLen`               |       3 | Length of Y dimension
-
+  `EnablePerfCount`        |    True | Enable performance counters
 
 ## C. Tinsel Memory Map
 
@@ -917,8 +941,21 @@ separate memory regions (which they are not).
   `FFlag`      | 0x001  | RW  | Floating-point accrued exception flags
   `FRM`        | 0x002  | R   | Floating-point dynamic rounding mode
   `FCSR`       | 0x003  | RW  | Concatenation of FRM and FFlag
-  `Cycle`      | 0xc00  | R   | 32-bit cycle counter
+  `Cycle`      | 0xc00  | R   | Cycle counter (lower 32 bits)
   `Flush`      | 0xc01  | W   | Cache line flush (line number, way)
+
+Optional performance-counter CSRs (when `EnablePerfCount` is `True`):
+
+  Name             | CSR    | R/W | Function
+  ---------------- | ------ | --- | --------
+  `PerfCount`      | 0xc07  | W   | Reset(0)/Start(1)/Stop(2) all counters
+  `MissCount`      | 0xc08  | R   | Cache miss count
+  `HitCount`       | 0xc09  | R   | Cache hit count
+  `WritebackCount` | 0xc0a  | R   | Cache writeback count
+  `CPUIdleCount`   | 0xc0b  | R   | CPU idle-cycle count (lower 32 bits)
+  `CPUIdleCountU`  | 0xc0c  | R   | CPU idle-cycle count (upper 8 bits)
+  `CycleU`         | 0xc0d  | R   | Cycle counter (upper 8 bits)
+
 
 ## E. Tinsel Address Structure
 
@@ -1002,6 +1039,34 @@ inline void* tinselHeapBase();
 
 // Return pointer to base of thread's SRAM partition
 inline void* tinselHeapBaseSRAM();
+
+// Reset performance counters
+inline void tinselPerfCountReset();
+
+// Start performance counters
+inline void tinselPerfCountStart();
+
+// Stop performance counters
+inline void tinselPerfCountStop();
+
+// Performance counter: get the cache miss count
+inline uint32_t tinselMissCount();
+
+// Performance counter: get the cache hit count
+inline uint32_t tinselHitCount();
+
+// Performance counter: get the cache writeback count
+inline uint32_t tinselWritebackCount();
+
+// Performance counter: get the CPU-idle count
+inline uint32_t tinselCPUIdleCount();
+
+// Performance counter: get the CPU-idle count (upper 8 bits)
+inline uint32_t tinselCPUIdleCountU();
+
+// Read cycle counter (upper 8 bits)
+inline uint32_t tinselCycleCountU();
+
 ```
 
 ## G. HostLink API

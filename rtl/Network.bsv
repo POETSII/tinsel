@@ -20,6 +20,7 @@ import ReliableLink :: *;
 import Mac          :: *;
 import Socket       :: *;
 import Util         :: *;
+import IdleDetector :: *;
 
 // =============================================================================
 // Mesh Router
@@ -282,7 +283,8 @@ endinterface
 module mkMailboxMesh#(
          BoardId boardId,
          Vector#(`MailboxMeshYLen,
-           Vector#(`MailboxMeshXLen, MailboxNet)) mailboxes)
+           Vector#(`MailboxMeshXLen, MailboxNet)) mailboxes,
+         IdleDetector idle)
        (ExtNetwork);
 
   // Create off-board links
@@ -313,9 +315,23 @@ module mkMailboxMesh#(
   // Connect mailboxes
   for (Integer y = 0; y < `MailboxMeshYLen; y=y+1)
     for (Integer x = 0; x < `MailboxMeshXLen; x=x+1) begin
-      connectDirect(mailboxes[y][x].flitOut, routers[y][x].fromMailbox);
-      connectUsing(mkUGShiftQueue1(QueueOptFmax),
-                     routers[y][x].toMailbox, mailboxes[y][x].flitIn);
+      // Mailbox (0,0) is special (connects to idle detector)
+      if (x == 0 && y == 0) begin
+        // Connect mailbox to router via idle-detector
+        connectDirect(mailboxes[y][x].flitOut, idle.mboxFlitIn);
+        connectUsing(mkUGShiftQueue1(QueueOptFmax),
+                       idle.netFlitOut, routers[y][x].fromMailbox);
+ 
+        // Connect router to mailbox via idle-detector
+        connectUsing(mkUGShiftQueue1(QueueOptFmax),
+                       routers[y][x].toMailbox, idle.netFlitIn);
+        connectUsing(mkUGShiftQueue1(QueueOptFmax),
+                       idle.mboxFlitOut, mailboxes[y][x].flitIn);
+      end else begin
+        connectDirect(mailboxes[y][x].flitOut, routers[y][x].fromMailbox);
+        connectUsing(mkUGShiftQueue1(QueueOptFmax),
+                       routers[y][x].toMailbox, mailboxes[y][x].flitIn);
+      end
     end
 
   // Connect routers horizontally

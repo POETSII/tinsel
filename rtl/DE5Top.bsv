@@ -4,22 +4,23 @@ package DE5Top;
 // Imports
 // ============================================================================
 
-import Core       :: *;
-import DCache     :: *;
-import Globals    :: *;
-import DRAM       :: *;
-import Interface  :: *;
-import Queue      :: *;
-import Vector     :: *;
-import Mailbox    :: *;
-import Network    :: *;
-import DebugLink  :: *;
-import JtagUart   :: *;
-import Mac        :: *;
-import FPU        :: *;
-import InstrMem   :: *;
-import NarrowSRAM :: *;
-import OffChipRAM :: *;
+import Core         :: *;
+import DCache       :: *;
+import Globals      :: *;
+import DRAM         :: *;
+import Interface    :: *;
+import Queue        :: *;
+import Vector       :: *;
+import Mailbox      :: *;
+import Network      :: *;
+import DebugLink    :: *;
+import JtagUart     :: *;
+import Mac          :: *;
+import FPU          :: *;
+import InstrMem     :: *;
+import NarrowSRAM   :: *;
+import OffChipRAM   :: *;
+import IdleDetector :: *;
 
 // ============================================================================
 // Interface
@@ -135,6 +136,13 @@ module de5Top (DE5Top);
     connectCoresToFPU(map(fpuClient, cs), fpus[i]);
   end
 
+  // Create idle-detector
+  IdleDetector idle <- mkIdleDetector(boardId);
+
+  // Connect cores to idle-detector
+  function idleClient(core) = core.idleClient;
+  connectCoresToIdleDetector(map(idleClient, vecOfCores), idle);
+
   // Create mailboxes
   Vector#(`MailboxMeshYLen,
     Vector#(`MailboxMeshXLen, Mailbox)) mailboxes =
@@ -157,8 +165,10 @@ module de5Top (DE5Top);
 
   // Create mesh of mailboxes
   function MailboxNet mailboxNet(Mailbox mbox) = mbox.net;
-  ExtNetwork net <- mkMailboxMesh(boardId,
-                      map(map(mailboxNet), mailboxes));
+  ExtNetwork net <- mkMailboxMesh(
+                      boardId,
+                      map(map(mailboxNet), mailboxes),
+                      idle);
 
   // Create DebugLink interface
   function DebugLinkClient getDebugLinkClient(Core core) = core.debugLinkClient;

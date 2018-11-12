@@ -1,12 +1,18 @@
+#include "Ring.h"
 #include <tinsel.h>
 #include <POLite.h>
-#include "Ring.h"
+
+typedef PThread<
+          RingDevice,
+          RingState,    // State
+          None,         // Edge label
+          RingMessage   // Message
+        > RingThread;
 
 int main()
 {
   // Point thread structure at base of thread's heap
-  PThread<RingDevice, RingMessage>* thread =
-    (PThread<RingDevice, RingMessage>*) tinselHeapBaseSRAM();
+  RingThread* thread = (RingThread*) tinselHeapBaseSRAM();
   
   // Invoke interpreter
   thread->run();
