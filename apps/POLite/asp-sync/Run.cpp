@@ -1,9 +1,12 @@
+#include "ASP.h"
+#include "RandomSet.h"
+
 #include <HostLink.h>
 #include <POLite.h>
+#include <EdgeList.h>
 #include <assert.h>
 #include <sys/time.h>
-#include "ASP.h"
-#include "Network.h"
+#include <config.h>
 
 int main(int argc, char**argv)
 {
@@ -13,20 +16,21 @@ int main(int argc, char**argv)
   }
 
   // Read network
-  Network net;
+  EdgeList net;
   net.read(argv[1]);
 
   // Print max fan-out
   printf("Max fan-out = %d\n", net.maxFanOut());
 
   // Check that parameters make sense
-  assert(32*NUM_SOURCES <= net.numNodes);
+  assert(32*N <= net.numNodes);
 
   // Connection to tinsel machine
   HostLink hostLink;
 
   // Create POETS graph
-  PGraph<ASPDevice, ASPMessage> graph;
+  PGraph<ASPDevice, ASPState, None, ASPMessage> graph;
+  graph.setNumBoards(3, 2);
 
   // Create nodes in POETS graph
   for (uint32_t i = 0; i < net.numNodes; i++) {
@@ -44,17 +48,17 @@ int main(int argc, char**argv)
   // Prepare mapping from graph to hardware
   graph.map();
 
+  // Create random set of source nodes
+  uint32_t numSources = N*32;
+  uint32_t sources[numSources];
+  randomSet(numSources, sources, graph.numDevices);
+
   // Initialise devices
-  for (PDeviceId i = 0; i < graph.numDevices; i++) {
-    ASPDevice* dev = graph.devices[i];
-    if (i < 32*NUM_SOURCES) {
-      // This is a source node
-      // By definition, a source node reaches itself
-      dev->reaching[i >> 5] = 1 << (i & 0x1f);
-      dev->toReach = 32*NUM_SOURCES-1;
-    }
-    else
-      dev->toReach = 32*NUM_SOURCES;
+  for (PDeviceId i = 0; i < numSources; i++) {
+    // By definition, a source node reaches itself
+    uint32_t src = sources[i];
+    ASPState* dev = &graph.devices[src]->state;
+    dev->reaching[i/32] |= 1 << (i%32);
   }
  
   // Write graph down to tinsel machine via HostLink
@@ -69,21 +73,25 @@ int main(int argc, char**argv)
   struct timeval start, finish, diff;
   gettimeofday(&start, NULL);
 
+  // Consume performance stats
+  politeSaveStats(&hostLink, "stats.txt");
+
   // Sum of all shortest paths
-  uint32_t sum = 0;
+  uint64_t sum = 0;
 
   // Accumulate sum at each device
   for (uint32_t i = 0; i < graph.numDevices; i++) {
-    ASPMessage msg;
-    hostLink.recvMsg(&msg, sizeof(ASPMessage));
-    sum += msg.reaching[0];
+    PMessage<None, ASPMessage> msg;
+    hostLink.recvMsg(&msg, sizeof(msg));
+    if (i == 0) {
+      // Stop timer
+      gettimeofday(&finish, NULL);
+    }
+    sum += msg.payload.sum;
   }
 
-  // Stop timer
-  gettimeofday(&finish, NULL);
-
   // Emit sum
-  printf("Sum of subset of shortest paths = %i\n", sum);
+  printf("Sum of subset of shortest paths = %lu\n", sum);
 
   // Display time
   timersub(&finish, &start, &diff);

@@ -227,8 +227,8 @@ module Golden_top(
 );
 
 wire clk_50mhz = OSC_50_B7A;
-wire rst_50mhz = 0;
-wire rst_50mhz_n = 1;
+wire rst_50mhz = ~CPU_RESET_n;
+wire rst_50mhz_n = CPU_RESET_n;
 
 wire clk_156mhz;
 wire phy_pll_locked;
@@ -259,9 +259,6 @@ wire [7:0] ts_out;
 wire ts_done;
 wire ts_enable;
 wire ts_clear;
-
-assign LED[3:0] = {ddr3_local_init_done, ddr3_local_cal_success,
-                   ddr3_2_local_init_done, ddr3_2_local_cal_success};
 
 wire si570_scl_i;
 wire si570_scl_o;
@@ -598,15 +595,34 @@ temp_display temp_display_inst (
 );
 
 // Reset SRAMs
-reg [7:0] rst_sram_b_count = 0;
+reg [31:0] rst_sram_b_count = 0;
 always @(posedge OSC_50_B4A) begin
-  if (rst_sram_b_count == 255) rst_sram_b_n <= 1;
-  else rst_sram_b_count <= rst_sram_b_count + 1;
+  if ((qdr_a_status_local_cal_fail) ||
+      (qdr_b_status_local_cal_fail) ||
+      (qdr_c_status_local_cal_fail)) begin
+    rst_sram_b_n <= 0;
+    rst_sram_b_count <= 0;
+  end else begin
+    if (rst_sram_b_count == 1000000) rst_sram_b_n <= 1;
+    else rst_sram_b_count <= rst_sram_b_count + 1;
+  end
 end
-reg [7:0] rst_sram_d_count = 0;
+reg [31:0] rst_sram_d_count = 0;
 always @(posedge OSC_50_B8D) begin
-  if (rst_sram_d_count == 255) rst_sram_d_n <= 1;
-  else rst_sram_d_count <= rst_sram_d_count + 1;
+  if (qdr_d_status_local_cal_fail) begin
+    rst_sram_d_n <= 0;
+    rst_sram_d_count <= 0;
+  end else begin
+    if (rst_sram_d_count == 1000000) rst_sram_d_n <= 1;
+    else rst_sram_d_count <= rst_sram_d_count + 1;
+  end
 end
+
+assign LED[3:0] = {
+  qdr_a_status_local_cal_success,
+  qdr_b_status_local_cal_success,
+  qdr_c_status_local_cal_success,
+  qdr_d_status_local_cal_success
+};
 
 endmodule 

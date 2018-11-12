@@ -26,8 +26,17 @@
 #define CSR_CYCLE       "0xc00"
 #define CSR_FLUSH       "0xc01"
 
+// Performance counter CSRs
+#define CSR_PERFCOUNT     "0xc07"
+#define CSR_MISSCOUNT     "0xc08"
+#define CSR_HITCOUNT      "0xc09"
+#define CSR_WBCOUNT       "0xc0a"
+#define CSR_CPUIDLECOUNT  "0xc0b"
+#define CSR_CPUIDLECOUNTU "0xc0c"
+#define CSR_CYCLEU        "0xc0d"
+
 // Get globally unique thread id of caller
-INLINE int tinselId()
+INLINE uint32_t tinselId()
 {
   int id;
   asm ("csrrw %0, " CSR_HART_ID ", zero" : "=r"(id));
@@ -166,6 +175,15 @@ INLINE TinselWakeupCond operator|(TinselWakeupCond a, TinselWakeupCond b)
 }
 #endif
 
+// Suspend thread until message arrives or all threads globally are idle
+INLINE int tinselIdle(int vote)
+{
+  int result;
+  int cond = vote ? 0b1110 : 0b0110;
+  asm volatile("csrrw %0, " CSR_WAIT_UNTIL ", %1" : "=r"(result) : "r"(cond));
+  return (result >> 2);
+}
+
 // Return pointer to base of thread's DRAM partition
 INLINE void* tinselHeapBase()
 {
@@ -186,6 +204,72 @@ INLINE void* tinselHeapBaseSRAM()
   uint32_t addr = (1 << TinselLogBytesPerSRAM)
                 + (partId << TinselLogBytesPerSRAMPartition);
   return (void*) addr;
+}
+
+// Reset performance counters
+INLINE void tinselPerfCountReset()
+{
+  asm volatile("csrrw zero, " CSR_PERFCOUNT ", %0" : : "r"(0));
+}
+
+// Start performance counters
+INLINE void tinselPerfCountStart()
+{
+  asm volatile("csrrw zero, " CSR_PERFCOUNT ", %0" : : "r"(1));
+}
+
+// Stop performance counters
+INLINE void tinselPerfCountStop()
+{
+  asm volatile("csrrw zero, " CSR_PERFCOUNT ", %0" : : "r"(2));
+}
+
+// Performance counter: get the cache miss count
+INLINE uint32_t tinselMissCount()
+{
+  uint32_t n;
+  asm volatile ("csrrw %0, " CSR_MISSCOUNT ", zero" : "=r"(n));
+  return n;
+}
+
+// Performance counter: get the cache hit count
+INLINE uint32_t tinselHitCount()
+{
+  uint32_t n;
+  asm volatile ("csrrw %0, " CSR_HITCOUNT ", zero" : "=r"(n));
+  return n;
+}
+
+// Performance counter: get the cache writeback count
+INLINE uint32_t tinselWritebackCount()
+{
+  uint32_t n;
+  asm volatile ("csrrw %0, " CSR_WBCOUNT ", zero" : "=r"(n));
+  return n;
+}
+
+// Performance counter:: get the CPU-idle count
+INLINE uint32_t tinselCPUIdleCount()
+{
+  uint32_t n;
+  asm volatile ("csrrw %0, " CSR_CPUIDLECOUNT ", zero" : "=r"(n));
+  return n;
+}
+
+// Performance counter: get the CPU-idle count (upper 8 bits)
+INLINE uint32_t tinselCPUIdleCountU()
+{
+  uint32_t n;
+  asm volatile ("csrrw %0, " CSR_CPUIDLECOUNTU ", zero" : "=r"(n));
+  return n;
+}
+
+// Read cycle counter (upper 8 bits)
+INLINE uint32_t tinselCycleCountU()
+{
+  uint32_t n;
+  asm volatile ("csrrw %0, " CSR_CYCLEU ", zero" : "=r"(n));
+  return n;
 }
 
 #endif
