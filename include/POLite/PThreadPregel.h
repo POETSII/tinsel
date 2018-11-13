@@ -38,6 +38,7 @@ public:
 */
 
 constexpr bool EVENT_LOOP_DEBUG = false;
+using GraphSizeType = float;
 
 template <typename DeviceType> struct PregelPThread;
 
@@ -50,8 +51,6 @@ struct PregelVertex : public PDevice<None, S, E, M> {
 
 public: // Extra device state (has to be constructed when required)
   int32_t superstep_;
-  bool send_message = false;
-  bool send_message_host = false;
   PregelPThread<D> *thread;
 
 public:
@@ -75,18 +74,23 @@ public:
     this->s->halted = true;
   };
 
+  GraphSizeType NumVertices() const {
+    return this->s->numVertices;
+  }
+  GraphSizeType GetOutEdgeIteratorSize() const {
+    return this->s->fanOut;
+  }
+
   // overridable methods
   bool PreCompute(const M *msg) { return false; };
   void Compute(){};
-
-public: // TODO
-  int32_t NumVertices() const { return 100; }
-  int32_t GetOutEdgeIterator();
 };
 
 template <typename MessageType> struct PregelState {
+  GraphSizeType fanOut;
+  GraphSizeType numVertices;
   bool halted;
-  
+
   // this should become some reference to DRAM ideally rather than the current
   // Will need to modify the mapper to do that
   using MessageBuffer = std::array<MessageType, 0>;
@@ -127,12 +131,11 @@ struct PregelPThread : public PThread<DeviceType> {
   INLINE DeviceType createDeviceStub(PLocalDeviceId i, uint32_t superstep) {
     DeviceType dev = PThread<DeviceType>::createDeviceStub(i);
     dev.superstep_ = superstep;
-    dev.send_message = false;
     dev.thread = this;
     return dev;
   }
 
-  INLINE void SendMessageTo(const M &msg, PLocalDeviceId src, PPin destinationPin);
+  void SendMessageTo(const M &msg, PLocalDeviceId src, PPin destinationPin);
   INLINE void HandleCanRecv() {
     if constexpr (EVENT_LOOP_DEBUG) {
       printf("Receiving message\n");
@@ -146,10 +149,11 @@ struct PregelPThread : public PThread<DeviceType> {
     allDevicesHalted = false;
     dev.s->halted = false;
 
-    bool precomputed = dev.PreCompute(&(msg->payload));
-    if (precomputed == false) {
-      dev.s->insert_incoming(msg->payload);
-    }
+    // bool precomputed = dev.PreCompute(&(msg->payload));
+    // if (precomputed == false) {
+    //   dev.s->insert_incoming(msg->payload);
+    // }
+    dev.PreCompute(&(msg->payload));
     tinselAlloc(msg);
   }
 

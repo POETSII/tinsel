@@ -3,10 +3,7 @@
 #include <POLite.h>
 #include <POLite/PThreadPregel.h>
 
-#include <array>
-
 // compile time settings
-constexpr int DEBUG_VERBOSITY = 1;
 constexpr bool USE_PRECOMPUTE = true;
 constexpr bool DEVICE_DEBUG = false;
 
@@ -25,10 +22,10 @@ struct PageRankMessage {
 };
 
 struct PageRankState : public PregelState<PageRankMessage> {
+  uint16_t superStepsToRun;
+  
   ScoreType val;
   ScoreType sum;
-  uint16_t fanOut;
-  uint32_t numVertices;
 };
 
 // class PageRankVertex : public Vertex<double, void, double> {
@@ -51,14 +48,6 @@ struct PageRankState : public PregelState<PageRankMessage> {
 
 struct PageRankDevice : public PregelVertex<PageRankState, None, PageRankMessage, PageRankDevice> {
   using ThreadType = PregelPThread<PageRankDevice>;
-
-  uint32_t NumVertices() const {
-    return this->s->numVertices;
-  }
-  uint16_t GetOutEdgeIteratorSize() const {
-    return this->s->fanOut;
-  }
-
 
   void Halt() {
     PageRankMessage m {GetValue().val};
@@ -95,7 +84,10 @@ struct PageRankDevice : public PregelVertex<PageRankState, None, PageRankMessage
 #ifdef INCOMING_STORAGE
     if constexpr (!USE_PRECOMPUTE) {
       // This could be a coroutine/generator, which would make the PreCompute unnecessary
-      // It would make the step of local deliveries significantly more difficult
+      // It would make the step of local deliveries significantly more difficult as then you would have
+      // 2 separate Compute methods running simultaneously. 
+      
+      //You could simply push the local deliveries into memory and have the iterator know about these. 
       for(auto it = s->incoming_begin(); it != s->incoming_end(); ++it) {
         PreComputeImpl(&(*it));
       }
@@ -107,7 +99,7 @@ struct PageRankDevice : public PregelVertex<PageRankState, None, PageRankMessage
       MutableValue()->sum = 0;
     }
 
-    if (superstep() < 1000) {
+    if (superstep() < s->superStepsToRun) {
       PageRankMessage m {GetValue().val / GetOutEdgeIteratorSize()};
       SendMessageToAllNeighbors(m);
       
