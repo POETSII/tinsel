@@ -10,26 +10,27 @@
 int main(int argc, char **argv)
 {
   // Read in the example edge list and create data structure
-  if (argc != 2) {
-    printf("Specify edge file\n");
+  if (argc != 5) {
+    printf("Specify [edge_file] [board_x] [board_y] [placer_effort]\n");
     exit(EXIT_FAILURE);
   }
-
-  // Connection to tinsel machine
-  HostLink hostLink;
-
-  // Create POETS graph
-  PGraph<PageRankDevice::ThreadType> graph;
 
   // Load in the edge list file
   printf("Loading in the graph..."); fflush(stdout);
   EdgeList net;
   net.read(argv[1]);
+  auto board_x = std::atoi(argv[2]);
+  auto board_y = std::atoi(argv[3]);
+  uint32_t placer_effort = std::atoi(argv[4]);
   printf(" done\n");
 
   // Print max fan-out
   printf("Max fan-out = %d\n", net.maxFanOut());
-  
+
+  // Create POETS graph
+  PGraph<PageRankDevice::ThreadType> graph;
+  graph.setNumBoards(board_x, board_y);
+
   // Create nodes in POETS graph
   for (uint32_t i = 0; i < net.numNodes; i++) {
     PDeviceId id = graph.newDevice();
@@ -53,12 +54,17 @@ int main(int argc, char **argv)
   for (PDeviceId i = 0; i < graph.numDevices; i++) {
 
     graph.devices[i]->state.numVertices = graph.numDevices;
-    // graph.devices[i]->state.fanIn = graph.fanIn(i);
     graph.devices[i]->state.fanOut = graph.fanOut(i);
     graph.devices[i]->state.halted = false;
+
+    graph.devices[i]->state.superStepsToRun = 30;
+    graph.devices[i]->state.sum = 0;
     graph.devices[i]->state.val = 1 / static_cast<float>(graph.numDevices);
   }
   printf(" done\n");
+
+  // Connection to tinsel machine
+  HostLink hostLink;
 
   // Write graph down to tinsel machine via HostLink
   printf("Loading the graph..."); fflush(stdout);
@@ -77,10 +83,6 @@ int main(int argc, char **argv)
   gettimeofday(&start, NULL);
   hostLink.go();
 
-  // for (uint32_t i = 0; i < graph.numDevices; i++) {
-  //if (true or DEBUG_VERBOSITY > 1) {
-  //}
-
   int x = 0;
   // Wait for response
   PMessage<None, PageRankMessage> msg;
@@ -91,6 +93,8 @@ int main(int argc, char **argv)
       hostLink.recvMsg(&msg, sizeof(msg));
       //printf("Received message num=%u with val=%u %f\n", x, msg.payload.val, msg.payload.val);
       x++;
+      gscore += msg.payload.val;
+
       if(x == 1) {
         gettimeofday(&finish, NULL);
       }
