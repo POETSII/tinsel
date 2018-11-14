@@ -23,13 +23,14 @@ int main(int argc, char**argv)
   printf("Max fan-out = %d\n", net.maxFanOut());
 
   // Check that parameters make sense
-  assert(32*NUM_SOURCES <= net.numNodes);
+  assert(32*N <= net.numNodes);
 
   // Connection to tinsel machine
   HostLink hostLink;
 
   // Create POETS graph
   PGraph<ASPDevice, ASPState, None, ASPMessage> graph;
+  graph.setNumBoards(3, 2);
 
   // Create nodes in POETS graph
   for (uint32_t i = 0; i < net.numNodes; i++) {
@@ -48,24 +49,16 @@ int main(int argc, char**argv)
   graph.map();
 
   // Create random set of source nodes
-  uint32_t numSources = NUM_SOURCES*32;
+  uint32_t numSources = N*32;
   uint32_t sources[numSources];
   randomSet(numSources, sources, graph.numDevices);
 
   // Initialise devices
-  for (PDeviceId i = 0; i < graph.numDevices; i++) {
-    ASPState* dev = &graph.devices[i]->state;
-    dev->toReach = numSources;
-    dev->fanIn = graph.fanIn(i);
-    assert(dev->fanIn > 0);
-  }
-
-  // By definition, a source node reaches itself
   for (PDeviceId i = 0; i < numSources; i++) {
+    // By definition, a source node reaches itself
     uint32_t src = sources[i];
     ASPState* dev = &graph.devices[src]->state;
     dev->reaching[i/32] |= 1 << (i%32);
-    dev->toReach--;
   }
  
   // Write graph down to tinsel machine via HostLink
@@ -90,9 +83,11 @@ int main(int argc, char**argv)
   for (uint32_t i = 0; i < graph.numDevices; i++) {
     PMessage<None, ASPMessage> msg;
     hostLink.recvMsg(&msg, sizeof(msg));
-    // Stop timer
-    if (i == 0) gettimeofday(&finish, NULL);
-    sum += msg.payload.reaching[0];
+    if (i == 0) {
+      // Stop timer
+      gettimeofday(&finish, NULL);
+    }
+    sum += msg.payload.sum;
   }
 
   // Emit sum

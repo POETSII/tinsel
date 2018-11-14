@@ -217,6 +217,11 @@ interface DCache;
   interface BOut#(DCacheResp) respOut;
   interface In#(DRAMResp)     respIn;
   interface BOut#(DRAMReq)    reqOut;
+
+  // For performance counters
+  method Bool incHitCount;
+  method Bool incMissCount;
+  method Bool incWritebackCount;
 endinterface
 
 // ============================================================================
@@ -264,6 +269,11 @@ module mkDCache#(DCacheId myId) (DCache);
   Reg#(DCacheToken) hitUnitInput       <- mkVReg;
   Reg#(DCacheReq)   feedbackReq        <- mkConfigRegU;
   Reg#(Bool)        feedbackTrigger    <- mkDReg(False);
+
+  // For performance counters
+  Reg#(Bool) incHitCountReg <- mkDReg(False);
+  Reg#(Bool) incMissCountReg <- mkDReg(False);
+  Reg#(Bool) incWritebackCountReg <- mkDReg(False);
 
   // Line access unit
   // ----------------
@@ -359,6 +369,7 @@ module mkDCache#(DCacheId myId) (DCache);
       dataMem.putB(token.req.cmd.isStore,
                    wordIndex(token.req.id, token.req.addr, token.matchingWay),
                    token.req.data, token.req.byteEn);
+      incHitCountReg <= True;
     end else begin
       // Put miss requests into miss queue
       myAssert(missQueue.notFull, "DCache: miss queue full");
@@ -368,6 +379,8 @@ module mkDCache#(DCacheId myId) (DCache);
       miss.evictTag = token.evictTag;
       miss.evictDirty = token.evictDirty;
       missQueue.enq(miss);
+      incMissCountReg <= True;
+      incWritebackCountReg <= token.evictDirty;
     end
     // Trigger next stage
     dataLookup3Input <= token;
@@ -549,6 +562,11 @@ module mkDCache#(DCacheId myId) (DCache);
     method Bool valid = respQueue.canDeq;
     method DCacheResp value = respQueue.dataOut;
   endinterface
+
+  method Bool incHitCount = incHitCountReg;
+  method Bool incMissCount = incMissCountReg;
+  method Bool incWritebackCount = incWritebackCountReg;
+
 endmodule
 
 // ============================================================================
@@ -558,6 +576,16 @@ endmodule
 interface DCacheClient;
   interface Out#(DCacheReq) dcacheReqOut;
   interface In#(DCacheResp) dcacheRespIn;
+
+  // Performance counter inputs
+  (* always_ready, always_enabled *)
+  method Action incMissCount(Bool inc);
+
+  (* always_ready, always_enabled *)
+  method Action incHitCount(Bool inc);
+
+  (* always_ready, always_enabled *)
+  method Action incWritebackCount(Bool inc);
 endinterface
 
 // ============================================================================
@@ -584,6 +612,18 @@ module connectCoresToDCache#(
                       mkUGShiftQueue1(QueueOptFmax),
                       map(getDCacheRespIn, clients));
   connectDirect(dcache.respOut, dcacheResps);
+
+  // Connect performance-counter wires
+  rule connectPerfCountWires;
+    clients[0].incMissCount(dcache.incMissCount);
+    clients[0].incHitCount(dcache.incHitCount);
+    clients[0].incWritebackCount(dcache.incWritebackCount);
+    for (Integer i = 1; i < `CoresPerDCache; i=i+1) begin
+      clients[i].incMissCount(False);
+      clients[i].incHitCount(False);
+      clients[i].incWritebackCount(False);
+    end
+  endrule
 
 endmodule
 
@@ -626,6 +666,10 @@ module mkDummyDCache (DCache);
   interface BOut respOut = respOutNull;
   interface In   respIn  = respInNull;
   interface BOut reqOut  = memReqNull;
+
+  method Bool incHitCount = False;
+  method Bool incMissCount = False;
+  method Bool incWritebackCount = False;
 
 endmodule
 

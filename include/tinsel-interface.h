@@ -73,7 +73,7 @@ typedef enum {TINSEL_CAN_SEND = 1, TINSEL_CAN_RECV = 2} TinselWakeupCond;
 INLINE void tinselWaitUntil(TinselWakeupCond cond);
 
 // Suspend thread until message arrives or all threads globally are idle
-INLINE int tinselIdle();
+INLINE int tinselIdle(int);
 
 #ifdef __cplusplus
 INLINE TinselWakeupCond operator|(TinselWakeupCond a, TinselWakeupCond b);
@@ -91,5 +91,32 @@ INLINE uint32_t tinselHostId()
 
 // Return pointer to base of thread's DRAM partition
 INLINE void* tinselHeapBase();
+
+// Reset performance counters
+INLINE void tinselPerfCountReset();
+
+// Start performance counters
+INLINE void tinselPerfCountStart();
+
+// Stop performance counters
+INLINE void tinselPerfCountStop();
+
+// Performance counter: get the cache miss count
+INLINE uint32_t tinselMissCount();
+
+// Performance counter: get the cache hit count
+INLINE uint32_t tinselHitCount();
+
+// Performance counter: get the cache writeback count
+INLINE uint32_t tinselWritebackCount();
+
+// Performance counter: get the CPU-idle count
+INLINE uint32_t tinselCPUIdleCount();
+
+// Performance counter: get the CPU-idle count (upper 8 bits)
+INLINE uint32_t tinselCPUIdleCountU();
+
+// Read cycle counter (upper 8 bits)
+INLINE uint32_t tinselCycleCountU();
 
 #endif

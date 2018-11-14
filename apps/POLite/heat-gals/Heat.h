@@ -29,7 +29,7 @@ struct HeatState {
   bool isConstant;
 };
 
-struct HeatDevice : PDevice<None, HeatState, None, HeatMessage> {
+struct HeatDevice : PDevice<HeatState, None, HeatMessage> {
 
   // Called once by POLite at start of execution
   void init() {
@@ -80,7 +80,7 @@ struct HeatDevice : PDevice<None, HeatState, None, HeatMessage> {
   }
 
   // Called by POLite when system becomes idle
-  inline void idle() { return; }
+  inline void idle(bool vote) { return; }
 };
 
 #endif

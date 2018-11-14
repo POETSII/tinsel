@@ -75,7 +75,7 @@ template <typename ThreadType> class PGraph {
   // Setter for number of boards
   void setNumBoards(uint32_t x, uint32_t y) {
     if (x > TinselMeshXLen || y > TinselMeshYLen) {
-      printf("Mapper: %x x %d boards requested, %d x %d available\n",
+      printf("Mapper: %d x %d boards requested, %d x %d available\n",
         numBoardsX, numBoardsY, TinselMeshXLen, TinselMeshYLen);
       exit(EXIT_FAILURE);
     }
@@ -117,6 +117,7 @@ template <typename ThreadType> class PGraph {
       uint32_t sizeDRAM = 0;
       // Add space for thread structure (stored in SRAM)
       sizeSRAM = cacheAlign(sizeSRAM + sizeof(ThreadType));
+
       // Add space for edge lists (stored in DRAM)
       uint32_t numDevs = numDevicesOnThread[threadId];
       for (uint32_t devNum = 0; devNum < numDevs; devNum++) {
@@ -127,7 +128,7 @@ template <typename ThreadType> class PGraph {
         // Determine number of pins
         int32_t numPins = graph.maxPin(id) + 2;
         // Add space for neighbour arrays for each pin
-        sizeDRAM = cacheAlign(sizeDRAM + numPins * MAX_PIN_FANOUT
+        sizeDRAM = cacheAlign(sizeDRAM + numPins * POLITE_MAX_FANOUT
                                                  * sizeof(PNeighbour<E>));
       }
       // The total partition size including uninitialised portions
@@ -164,7 +165,10 @@ template <typename ThreadType> class PGraph {
       // Next pointers for each partition
       uint32_t nextDRAM = 0;
       uint32_t nextSRAM = 0;
+      // Next pointer for neighbours arrays
+      uint16_t nextNeighbours = 0;
       // Pointer to thread structure
+
       ThreadType* thread = (ThreadType*) &sram[threadId][nextSRAM];
       // Add space for thread structure
       nextSRAM = cacheAlign(nextSRAM + sizeof(ThreadType));
@@ -192,7 +196,7 @@ template <typename ThreadType> class PGraph {
         // dev->localAddr = devNum;
 
         // Set tinsel address of neighbours arrays
-        dev->neighboursBase = dramBase[threadId] + nextDRAM;
+        dev->neighboursOffset = nextNeighbours;
         // Neighbour array
         PNeighbour<E>* edgeArray = (PNeighbour<E>*) &dram[threadId][nextDRAM];
         // Emit neighbours array for host pin
@@ -201,12 +205,12 @@ template <typename ThreadType> class PGraph {
         // Emit neigbours arrays for each application pin
         PinId numPins = graph.maxPin(id) + 1;
         for (uint32_t p = 0; p < numPins; p++) {
-          uint32_t base = (p+1) * MAX_PIN_FANOUT;
+          uint32_t base = (p+1) * POLITE_MAX_FANOUT;
           uint32_t offset = 0;
           // Find outgoing edges of current pin
           for (uint32_t i = 0; i < graph.outgoing->elems[id]->numElems; i++) {
             if (graph.pins->elems[id]->elems[i] == p) {
-              if (offset+1 >= MAX_PIN_FANOUT) {
+              if (offset+1 >= POLITE_MAX_FANOUT) {
                 printf("Error: pin fanout exceeds maximum\n");
                 exit(EXIT_FAILURE);
               }
@@ -219,13 +223,14 @@ template <typename ThreadType> class PGraph {
             }
           }
           // also set the rest of the edge array to invalid for when we want to add edges
-          for(uint32_t i = base+offset; i < (p+2) * MAX_PIN_FANOUT; i++) {
+          for(uint32_t i = base+offset; i < (p+2) * POLITE_MAX_FANOUT; i++) {
             edgeArray[i].destThread = invalidThreadId(); // Terminator
           }
         }
         // Add space for edges
         nextDRAM = cacheAlign(nextDRAM + (numPins+1) *
-                     MAX_PIN_FANOUT * sizeof(PDeviceAddr));
+                     POLITE_MAX_FANOUT * sizeof(PDeviceAddr));
+        nextNeighbours += (numPins+1);
       }
       // At this point, check that next pointers line up with heap sizes
       if (nextSRAM != sramSize[threadId]) {
@@ -234,17 +239,6 @@ template <typename ThreadType> class PGraph {
       }
       if (nextDRAM != dramSize[threadId]) {
         printf("Error: dram partition size does not match pre-computed size\n");
-        exit(EXIT_FAILURE);
-      }
-      // Check that there sufficient space for readyToSend and accumulator
-      uint32_t accumSize = typeid(A) == typeid(None) ? 0 : sizeof(A);
-      uint32_t mailboxBytes =
-        wordAlign((1+NUM_RECV_SLOTS) * (1<<TinselLogBytesPerMsg) +
-                     numDevs) + numDevs * accumSize;
-      uint32_t maxMailboxBytes =
-        (1<<TinselLogMsgsPerThread) * (1<<TinselLogBytesPerMsg);
-      if (mailboxBytes >= maxMailboxBytes) {
-        printf("Error: mailbox scratchpad overflow\n");
         exit(EXIT_FAILURE);
       }
       // Set tinsel address of senders array
@@ -460,5 +454,28 @@ template <typename ThreadType> class PGraph {
     return graph.fanOut(id);
   }
 };
+
+// Read performance stats and store in file
+inline void politeSaveStats(HostLink* hostLink, const char* filename) {
+  #if POLITE_DUMP_STATS > 0
+  // Open file for performance counters
+  FILE* statsFile = fopen(filename, "wt");
+  if (statsFile == NULL) {
+    printf("Error creating stats file\n");
+    exit(EXIT_FAILURE);
+  }
+  // Number of caches
+  uint32_t numLines = TinselMeshXLen * TinselMeshYLen *
+                        TinselDCachesPerDRAM * TinselDRAMsPerBoard;
+  // Add on number of cores
+  numLines += TinselMeshXLen * TinselMeshYLen * TinselCoresPerBoard;
+  // Add on number of threads
+  #ifdef POLITE_COUNT_MSGS
+  numLines += TinselMeshXLen * TinselMeshYLen * TinselThreadsPerBoard;
+  #endif
+  hostLink->dumpStdOut(statsFile, numLines);
+  fclose(statsFile);
+  #endif
+}
 
 #endif

@@ -44,4 +44,4 @@ main = do
   let dims = read d :: Int
   let size = read n :: Int
   let g = hypercube dims size
-  render size (hypercube dims size)
+  render size g

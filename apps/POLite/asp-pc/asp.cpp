@@ -1,3 +1,5 @@
+#include "RandomSet.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -18,9 +20,9 @@ uint64_t** reaching;
 uint64_t** reachingNext;
 
 // Number of 64-bit words in reaching vector
-const uint64_t vectorSize = 7;
+const uint64_t vectorSize = 1;
 
-void readGraph(const char* filename)
+void readGraph(const char* filename, bool undirected)
 {
   // Read edges
   FILE* fp = fopen(filename, "rt");
@@ -49,6 +51,7 @@ void readGraph(const char* filename)
     uint32_t src, dst;
     ret = fscanf(fp, "%d %d", &src, &dst);
     count[src]++;
+    if (undirected) count[dst]++;
   }
 
   // Create mapping from node id to neighbours
@@ -62,6 +65,7 @@ void readGraph(const char* filename)
     uint32_t src, dst;
     ret = fscanf(fp, "%d %d", &src, &dst);
     neighbours[src][count[src]--] = dst;
+    if (undirected) neighbours[dst][count[dst]--] = src;
   }
 
   // Create mapping from node id to bit vector of reaching nodes
@@ -77,27 +81,28 @@ void readGraph(const char* filename)
   fclose(fp);
 }
 
-// Compute sum of all shortest paths
-uint64_t ssp(uint32_t from, uint32_t to)
+// Compute sum of all shortest paths from given sources
+uint64_t ssp(uint32_t numSources, uint32_t* sources)
 {
   // Sum of distances
   uint64_t sum = 0;
 
-  // Number of nodes in vector
-  const int nodesInVector = to-from;
-
   // Initialise reaching vector for each node
+  #pragma omp parallel for
   for (int i = 0; i < numNodes; i++) {
     for (int j = 0; j < vectorSize; j++) {
       reaching[i][j] = 0;
       reachingNext[i][j] = 0;
     }
   }
-  for (int i = from; i < to; i++) {
-    int j = i-from;
-    reaching[i][j/64] = 1ul << (j%64);
-    reachingNext[i][j/64] = 1ul << (j%64);
+  for (int i = 0; i < numSources; i++) {
+    uint32_t src = sources[i];
+    reaching[src][i/64] |= 1ul << (i%64);
   }
+
+  char changed[numNodes];
+  #pragma omp parallel for
+  for (int i = 0; i < numNodes; i++) changed[i] = 1;
 
   // Distance increases on each iteration
   uint32_t dist = 1;
@@ -105,32 +110,34 @@ uint64_t ssp(uint32_t from, uint32_t to)
   int done = 0;
   while (! done) {
     // For each node
+    #pragma omp parallel for
     for (int i = 0; i < numNodes; i++) {
       // For each neighbour
       uint32_t numNeighbours = neighbours[i][0];
       for (int j = 1; j <= numNeighbours; j++) {
         uint32_t n = neighbours[i][j];
+        if (!changed[n]) continue;
         // For each chunk
         for (int k = 0; k < vectorSize; k++)
-          reachingNext[i][k] = reachingNext[i][k] | reaching[n][k];
-      }
-      // Update sums
-      for (int k = 0; k < vectorSize; k++) {
-        uint64_t diff = reachingNext[i][k] & ~reaching[i][k];
-        uint32_t n = __builtin_popcountll(diff);
-        sum += n * dist;
+          reachingNext[i][k] |= reaching[n][k];
       }
     }
 
     // For each node, update reaching vector
     done = 1;
+    #pragma omp parallel for reduction(&&: done) reduction(+: sum)
     for (int i = 0; i < numNodes; i++) {
       uint32_t n = 0;
+      changed[i] = 0;
       for (int k = 0; k < vectorSize; k++) {
-        reaching[i][k] = reachingNext[i][k];
-        n += __builtin_popcountll(reaching[i][k]);
+        uint64_t diff = reachingNext[i][k] & ~reaching[i][k];
+        done = done && diff == 0;
+        if (diff) changed[i] = 1;
+        uint32_t n = __builtin_popcountll(diff);
+        sum += n * dist;
+        reaching[i][k] |= reachingNext[i][k];
+        reachingNext[i][k] = 0;
       }
-      if (n != nodesInVector) done = 0;
     }
 
     dist++;
@@ -139,84 +146,27 @@ uint64_t ssp(uint32_t from, uint32_t to)
   return sum;
 }
 
-// Cluster nodes that are near to each other
-void cluster()
-{
-  const int nodesPerVector = 64 * vectorSize;
-
-  // Queue of nodes
-  int front = 0;
-  int back = 0;
-  uint32_t* nodes = (uint32_t*) calloc(numNodes, sizeof(uint32_t));
-
-  // Record which nodes have been visited
-  uint8_t* visited = calloc(numNodes, sizeof(uint8_t));
-
-  for (int i = 0; i < numNodes; i++) {
-    if (visited[i]) continue;
-
-    front = back;
-    nodes[back++] = i;
-    visited[i] = 1;
-    int clusterCount = 1;
-
-    while (front < back && clusterCount < nodesPerVector) {
-      uint32_t numNeighbours = neighbours[front][0];
-      for (int j = 1; j <= numNeighbours; j++) {
-        uint32_t n = neighbours[front][j];
-        if (!visited[n]) {
-          nodes[back++] = n;
-          visited[n] = 1;
-          clusterCount++;
-          if (clusterCount == nodesPerVector) break;
-        }
-      }
-      front++;
-    }
-
-  }
-
-  uint32_t* mapping = (uint32_t*) calloc(numNodes, sizeof(uint32_t));
-  for (int i = 0; i < numNodes; i++)
-    mapping[nodes[i]] = i;
-
-  // Apply new node ordering to edge list
-  uint32_t** newNeighbours = (uint32_t**) calloc(numNodes, sizeof(uint32_t*));
-  for (int i = 0; i < numNodes; i++) {
-    int j = nodes[i];
-    newNeighbours[i] = (uint32_t*)
-      calloc(neighbours[j][0]+1, sizeof(uint32_t));
-    newNeighbours[i][0] = neighbours[j][0];
-    for (int k = 1; k <= neighbours[j][0]; k++)
-      newNeighbours[i][k] = mapping[neighbours[j][k]];
-  }
-
-  // Use new neighbours array
-  neighbours = newNeighbours;
-
-  free(nodes);
-}
-
 int main(int argc, char**argv)
 {
   if (argc != 2) {
     printf("Specify edges file\n");
     exit(EXIT_FAILURE);
   }
-  readGraph(argv[1]);
+  bool undirected = false;
+  readGraph(argv[1], undirected);
+  printf("Nodes: %u.  Edges: %u\n", numNodes, numEdges);
 
-  //cluster();
+  uint32_t numSources = 64*vectorSize;
+  assert(numSources < numNodes);
+  uint32_t sources[numSources];
+  randomSet(numSources, sources, numNodes);
 
   struct timeval start, finish, diff;
 
   uint64_t sum = 0;
   const int nodesPerVector = 64 * vectorSize;
   gettimeofday(&start, NULL);
-  for (int i = 0; i < numNodes; i+= nodesPerVector) {
-    int to = (i+nodesPerVector) > numNodes ? numNodes : (i+nodesPerVector);
-    sum += ssp(i, to);
-    break; /* Only do one iteration, for comparison with POLite version */
-  }
+  sum = ssp(numSources, sources);
   gettimeofday(&finish, NULL);
 
   printf("Sum of subset of shortest paths = %lu\n", sum);

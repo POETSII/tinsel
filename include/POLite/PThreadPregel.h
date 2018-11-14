@@ -74,12 +74,8 @@ public:
     this->s->halted = true;
   };
 
-  GraphSizeType NumVertices() const {
-    return this->s->numVertices;
-  }
-  GraphSizeType GetOutEdgeIteratorSize() const {
-    return this->s->fanOut;
-  }
+  GraphSizeType NumVertices() const { return this->s->numVertices; }
+  GraphSizeType GetOutEdgeIteratorSize() const { return this->s->fanOut; }
 
   // overridable methods
   bool PreCompute(const M *msg) { return false; };
@@ -101,18 +97,16 @@ template <typename MessageType> struct PregelState {
     incoming[incoming_idx] = msg;
     incoming_idx++;
   }
-  void clear_incoming() { 
-    incoming_idx = 0; 
-  }
+  void clear_incoming() { incoming_idx = 0; }
   uint8_t num_incoming() const { return incoming_idx; };
   IncomingIterator incoming_begin() const { return incoming.cbegin(); }
   IncomingIterator incoming_end() const {
     return incoming.cbegin() + incoming_idx;
   }
   MessageBuffer incoming;
-  uint8_t incoming_idx = 0; 
+  uint8_t incoming_idx = 0;
 #else
-  void insert_incoming(const MessageType &msg){}
+  void insert_incoming(const MessageType &msg) {}
   void clear_incoming() {}
 #endif
 };
@@ -166,7 +160,7 @@ struct PregelPThread : public PThread<DeviceType> {
 
     // Allocate some slots for incoming messages
     // (Slot 0 is reserved for outgoing messages)
-    for (int i = 1; i <= NUM_RECV_SLOTS; i++) {
+    for (int i = 1; i <= POLITE_RECV_SLOTS; i++) {
       tinselAlloc(tinselSlot(i));
     }
 
@@ -179,7 +173,7 @@ struct PregelPThread : public PThread<DeviceType> {
     while (1) {
       if (tinselCanRecv()) {
         HandleCanRecv();
-      } else if (ps == PregelState::RECEIVE and tinselIdle()) {
+      } else if (ps == PregelState::RECEIVE and tinselIdle(false)) {
         // this can be fixed with the new tinsel API that Matt has been working
         // on w.r.t. idle detection
 
@@ -238,8 +232,9 @@ struct PregelPThread : public PThread<DeviceType> {
 template <typename DeviceType>
 void PregelPThread<DeviceType>::SendMessageTo(const M &msg, PLocalDeviceId src,
                                               PPin destinationPin) {
-  auto *nb = static_cast<PNeighbour<E> *>(this->devices[src].neighboursBase) +
-             MAX_PIN_FANOUT * (destinationPin - 1);
+
+  PNeighbour<E>* neighboursBase = (PNeighbour<E>*) tinselHeapBase();
+  auto *nb = neighboursBase + (this->devices[src].neighboursOffset + destinationPin) * POLITE_MAX_FANOUT;
 
   // Load the message and the neighbour array
   auto m = static_cast<volatile PMessage<E, M> *>(tinselSlot(0));

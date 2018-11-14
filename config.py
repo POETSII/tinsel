@@ -150,6 +150,9 @@ p["SRAMLatency"] = 8
 p["SRAMLogMaxInFlight"] = 5
 p["SRAMStoreLatency"] = 2
 
+# Enable performance counters
+p["EnablePerfCount"] = True
+
 #==============================================================================
 # Derived Parameters
 #==============================================================================

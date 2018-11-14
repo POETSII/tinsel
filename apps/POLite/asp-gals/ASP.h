@@ -8,6 +8,9 @@
 #ifndef _ASP_H_
 #define _ASP_H_
 
+//#define POLITE_DUMP_STATS 1
+//#define POLITE_COUNT_MSGS
+
 // Lightweight POETS frontend
 #include <POLite.h>
 
@@ -42,7 +45,7 @@ struct ASPState {
   uint32_t reaching2[NUM_SOURCES];
 };
 
-struct ASPDevice : PDevice<None, ASPState, None, ASPMessage> {
+struct ASPDevice : PDevice<ASPState, None, ASPMessage> {
   // Called once by POLite at start of execution
   void init() {
     // Setup first round of sends
@@ -52,7 +55,7 @@ struct ASPDevice : PDevice<None, ASPState, None, ASPMessage> {
   // We call this on every state change
   void step() {
     // Finished execution?
-    if (s->done) { *readyToSend = s->done == 2 ? No : HostPin; return; }
+    if (s->done) { *readyToSend = No; }
     // Ready to send?
     if (s->sent == 0)
       *readyToSend = Pin(0);
@@ -61,7 +64,6 @@ struct ASPDevice : PDevice<None, ASPState, None, ASPMessage> {
       // Check for completion
       if (s->toReach == 0) {
         s->done = 1;
-        *readyToSend = HostPin;
       }
       else if (s->received == s->fanIn) {
         // Proceed to next time step
@@ -94,8 +96,8 @@ struct ASPDevice : PDevice<None, ASPState, None, ASPMessage> {
   inline void send(ASPMessage* msg) {
     if (s->done) {
       msg->reaching[0] = s->sum;
-      s->done = 2;
-    } else {
+    }
+    else {
       msg->time = s->time;
       for (uint32_t i = 0; i < NUM_SOURCES; i++)
         msg->reaching[i] = s->reaching[i];
@@ -120,7 +122,10 @@ struct ASPDevice : PDevice<None, ASPState, None, ASPMessage> {
   }
 
   // Called by POLite when system becomes idle
-  inline void idle() { return; }
+  inline void idle(bool stable) {
+    *readyToSend = s->done == 1 ? HostPin : No;
+    s->done = 2;
+  }
 };
 
 #endif

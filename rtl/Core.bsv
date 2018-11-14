@@ -50,10 +50,24 @@ import IdleDetector :: *;
 // FFlag       | 0x001  | RW  | Floating-point accrued exception flags
 // FRM         | 0x002  | RW  | Floating-point dynamic rounding mode
 // FCSR        | 0x003  | RW  | Concatenation of FRM and FFlag
-// Cycle       | 0xc00  | R   | 32-bit cycle counter
+// Cycle       | 0xc00  | R   | Cycle counter (lower 32 bits)
 // Flush       | 0xc01  | R   | Cache line flush
-
+//
 // Currently, only the CSRRW instruction is supported for accessing CSRs.
+
+// ============================================================================
+// Performance Counter CSRs (Optional)
+// ============================================================================
+
+// Name            | CSR    | R/W | Function
+// --------------- | ------ | --- | --------
+// PerfCount       | 0xc07  | W   | Reset(0)/Start(1)/Stop(2) all counters
+// MissCount       | 0xc08  | R   | Cache miss count
+// HitCount        | 0xc09  | R   | Cache hit count
+// WritebackCount  | 0xc0a  | R   | Cache writeback count
+// CPUIdleCount    | 0xc0b  | R   | CPU idle-cycle count (lower 32 bits)
+// CPUIdleCountU   | 0xc0c  | R   | CPU idle-cycle count (upper 8 bits)
+// CycleU          | 0xc0d  | R   | Cycle counter (upper 8 bits)
 
 // ============================================================================
 // Types
@@ -95,16 +109,23 @@ typedef struct {
 
 // Decoded CSR
 typedef struct {
-  Bool isInstrAddr;   Bool isInstr;
-  Bool isAlloc;       Bool isCanSend;
-  Bool isHartId;      Bool isCanRecv;
-  Bool isSendLen;     Bool isSendPtr;
-  Bool isSend;        Bool isRecv;
-  Bool isWaitUntil;   Bool isFromUart;
-  Bool isToUart;      Bool isNewThread;
-  Bool isKillThread;  Bool isFFlag;
-  Bool isFRM;         Bool isFCSR;
-  Bool isCycle;       Bool isFlush;
+  Bool isInstrAddr;    Bool isInstr;
+  Bool isAlloc;        Bool isCanSend;
+  Bool isHartId;       Bool isCanRecv;
+  Bool isSendLen;      Bool isSendPtr;
+  Bool isSend;         Bool isRecv;
+  Bool isWaitUntil;    Bool isFromUart;
+  Bool isToUart;       Bool isNewThread;
+  Bool isKillThread;   Bool isFFlag;
+  Bool isFRM;          Bool isFCSR;
+  Bool isCycle;        Bool isFlush;
+  Bool isPerfCount;
+
+  `ifdef EnablePerfCount
+  Bool isReadCount;
+  Bit#(3) perfCountId;
+  `endif
+
   `ifdef SIMULATE
   Bool isEmit;
   `endif
@@ -335,6 +356,12 @@ function Op decodeOp(Bit#(32) instr);
   ret.csr.isCycle        = ret.isCSR && csrIndex == 'h30;
   // Cache line flush CSR
   ret.csr.isFlush        = ret.isCSR && csrIndex == 'h31;
+  // Performance counter CSRs
+  ret.csr.isPerfCount    = ret.isCSR && csrIndex == 'h37;
+  `ifdef EnablePerfCount
+  ret.csr.isReadCount    = ret.isCSR && (csrIndex & ~7) == 'h38;
+  ret.csr.perfCountId    = truncate(csrIndex);
+  `endif
   // Floating-point operations
   ret.isFPMAdd = instr[6:4] == 3'b100;
   ret.isFPAdd  = instr[6:4] == 3'b101 && instr[31:28] == 4'b0000;
@@ -611,15 +638,68 @@ module mkCore#(CoreId myId) (Core);
   Reg#(Bool)          writebackFire      <- mkDReg(False);
   Reg#(PipelineToken) writebackInput     <- mkRegU;
  
+  // Performance counters
+  // --------------------
+
+  // Control wires for performance counters
+  PulseWire perfCountReset <- mkPulseWire;
+  PulseWire perfCountStart <- mkPulseWire;
+  PulseWire perfCountStop  <- mkPulseWire;
+
+  // Are the performance counters enabled
+  Reg#(Bool) perfCountEnabled <- mkReg(True);
+
+  // Update the enabled register
+  rule updatePerfCountEnabled;
+    if (perfCountStart) perfCountEnabled <= True;
+    else if (perfCountStop) perfCountEnabled <= False;
+  endrule
+
+  `ifdef EnablePerfCount
+  // Counters
+  Reg#(Bit#(40)) cycleCount     <- mkConfigReg(0);
+  Reg#(Bit#(32)) missCount      <- mkConfigReg(0);
+  Reg#(Bit#(32)) hitCount       <- mkConfigReg(0);
+  Reg#(Bit#(32)) writebackCount <- mkConfigReg(0);
+  Reg#(Bit#(40)) cpuIdleCount   <- mkConfigReg(0);
+
+  // Indexable vector of performance counters
+  Vector#(6, Bit#(32)) perfCounters =
+    vector(missCount, hitCount, writebackCount, cpuIdleCount[31:0],
+             zeroExtend(cpuIdleCount[39:32]),
+             zeroExtend(cycleCount[39:32]));
+
+  // Increment wires
+  Wire#(Bool) incMissCountWire      <- mkDWire(False);
+  Wire#(Bool) incHitCountWire       <- mkDWire(False);
+  Wire#(Bool) incWritebackCountWire <- mkDWire(False);
+  Wire#(Bool) incCPUIdleCountWire   <- mkDWire(False);
+
+  // Update performance counters
+  rule updatePerfCounters;
+    if (perfCountReset) begin
+      missCount      <= 0;
+      hitCount       <= 0;
+      writebackCount <= 0;
+      cpuIdleCount   <= 0;
+    end else if (perfCountEnabled) begin
+      if (incMissCountWire) missCount <= missCount+1;
+      if (incHitCountWire) hitCount <= hitCount+1;
+      if (incWritebackCountWire) writebackCount <= writebackCount+1;
+      if (incCPUIdleCountWire) cpuIdleCount <= cpuIdleCount+1;
+    end
+  endrule
+  `endif
+
   // Cycle counter
   // -------------
 
-  // Cycle counter
-  Reg#(Bit#(32)) cycleCounter <- mkConfigReg(0);
-
   // Update cycle counter
   rule updateCycleCounter;
-    cycleCounter <= cycleCounter + 1;
+    if (perfCountReset)
+      cycleCount <= 0;
+    else if (perfCountEnabled)
+      cycleCount <= cycleCount + 1;
   endrule
 
   // Resume queue arbiter
@@ -669,6 +749,13 @@ module mkCore#(CoreId myId) (Core);
       fetch1Fire <= True;
     end
   endrule
+
+  // Count number of times there's no instruction to run
+  `ifdef EnablePerfCount
+  rule schedule2 (! (runQueue.canDeq || resumeQueue.canDeq));
+    incCPUIdleCountWire <= True;
+  endrule
+  `endif
 
   // Fetch stage
   // -----------
@@ -771,6 +858,14 @@ module mkCore#(CoreId myId) (Core);
       // Stall pipeline because instruction write will happen on next cycle
       stall <= True;
     end
+    // Control performance counters
+    `ifdef EnablePerfCount
+    if (token.op.csr.isPerfCount) begin
+      if (token.valA[1:0] == 0) perfCountReset.send;
+      else if (token.valA[1:0] == 1) perfCountStart.send;
+      else if (token.valA[1:0] == 2) perfCountStop.send;
+    end
+    `endif
     // Emit char to console (simulation only)
     `ifdef SIMULATE
     if (token.op.csr.isEmit) begin
@@ -960,7 +1055,11 @@ module mkCore#(CoreId myId) (Core);
       | when(token.op.csr.isFFlag || token.op.csr.isFCSR, 
                zeroExtend(token.thread.fpFlags))
       | when(token.op.csr.isFRM, 0)
-      | when(token.op.csr.isCycle, cycleCounter);
+      | when(token.op.csr.isCycle, cycleCount[31:0]);
+    `ifdef EnablePerfCount
+    res.csr = res.csr | when(token.op.csr.isReadCount,
+                               perfCounters[token.op.csr.perfCountId]);
+    `endif
     // Floating-point CSR write
     if (token.op.csr.isFFlag || token.op.csr.isFCSR) begin
       token.thread.fpFlags = truncate(token.valA);
@@ -1137,6 +1236,18 @@ module mkCore#(CoreId myId) (Core);
   interface DCacheClient dcacheClient;
     interface Out dcacheReqOut = dcacheReq.out;
     interface In  dcacheRespIn = dcacheResp.in;
+
+    method Action incMissCount(Bool inc);
+      if (inc) incMissCountWire <= True;
+    endmethod
+
+    method Action incHitCount(Bool inc);
+      if (inc) incHitCountWire <= True;
+    endmethod
+
+    method Action incWritebackCount(Bool inc);
+      if (inc) incWritebackCountWire <= True;
+    endmethod
   endinterface
 
   interface MailboxClient mailboxClient = mailbox.client;
@@ -1168,8 +1279,12 @@ module mkCore#(CoreId myId) (Core);
     method Bit#(1) incSent = incSentReg;
     method Bit#(1) incReceived = incRecvReg;
     method Bool active = mailbox.active;
+    method Bool vote = mailbox.vote;
     method Action idleDetectedStage1(Bool pulse);
       mailbox.idleDetectedStage1(pulse);
+    endmethod
+    method Action idleVoteStage1(Bool pulse);
+      mailbox.idleVoteStage1(pulse);
     endmethod
     method Action idleDetectedStage2(Bool pulse);
       mailbox.idleDetectedStage2(pulse);

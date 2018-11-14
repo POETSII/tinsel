@@ -15,7 +15,7 @@ int main()
   HostLink hostLink;
 
   // Create POETS graph
-  PGraph<HeatDevice, None, HeatState, None, HeatMessage> graph;
+  PGraph<HeatDevice, HeatState, None, HeatMessage> graph;
 
   // Create 2D mesh of devices
   PDeviceId mesh[height][width];

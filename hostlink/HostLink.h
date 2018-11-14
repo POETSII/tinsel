@@ -126,11 +126,19 @@ class HostLink {
   // Receive StdOut byte streams and append to file (non-blocking)
   bool pollStdOut(FILE* outFile);
 
+  // Receive StdOut byte streams and append to file (non-blocking)
+  // and increment line count
+  bool pollStdOut(FILE* outFile, uint32_t* lineCount);
+
   // Receive StdOut byte streams and display on stdout (non-blocking)
   bool pollStdOut();
 
   // Receive StdOut byte streams and append to file (non-terminating)
   void dumpStdOut(FILE* outFile);
+
+  // Receive a number of lines from StdOut byte streams
+  // and append to file (blocking)
+  void dumpStdOut(FILE* outFile, uint32_t lines);
 
   // Receive StdOut byte streams and display on stdout (non-terminating)
   void dumpStdOut();
