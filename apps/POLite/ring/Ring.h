@@ -18,15 +18,12 @@ struct RingState {
   uint32_t stopCount;
 };
 
-struct RingDevice : PDevice<None, RingState, None, RingMessage> {
+struct RingDevice : PDevice<RingState, None, RingMessage> {
 
   // Called once by POLite at start of execution
   void init() {
     *readyToSend = s->received > s->sent ? Pin(0) : No;
   }
-
-  // Called by POLite when system becomes idle
-  void idle() { return; }
 
   // Send handler
   inline void send(RingMessage* msg) {
@@ -43,6 +40,9 @@ struct RingDevice : PDevice<None, RingState, None, RingMessage> {
     else
       *readyToSend = s->received > s->sent ? Pin(0) : No;
   }
+
+  // Called by POLite when system becomes idle
+  void idle(bool stable) { return; }
 };
 
 #endif

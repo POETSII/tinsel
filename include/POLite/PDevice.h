@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <stdlib.h>
 #include <typeinfo>
 
 #ifdef TINSEL
@@ -15,13 +16,21 @@
 #define ALIGNED __attribute__((aligned(1 << (TinselLogBytesPerLine - 1))))
 
 // This is a static limit on the fan out of any pin
-#ifndef MAX_PIN_FANOUT
-#define MAX_PIN_FANOUT 32
+#ifndef POLITE_MAX_FANOUT
+#define POLITE_MAX_FANOUT 128
 #endif
 
 // Number of mailbox slots to use for receive buffer
-#ifndef NUM_RECV_SLOTS
-#define NUM_RECV_SLOTS 6
+#ifndef POLITE_RECV_SLOTS
+#define POLITE_RECV_SLOTS 12
+#endif
+
+// Dump performance stats?
+//   0: don't dump stats
+//   1: dump stats first time we are idle
+//   2: dump stats first time we are idle and stable
+#ifndef POLITE_DUMP_STATS
+#define POLITE_DUMP_STATS 0
 #endif
 
 // Thread-local device id
@@ -71,8 +80,7 @@ struct None {};
 
 // Generic device structure
 // Type parameters:
-//   A - Accumulator (small, on-chip memory)
-//   S - State (larger, off-chip memory)
+//   S - State
 //   E - Edge label
 //   M - Message structure
 template <typename A, typename S, typename E, typename M> struct PDevice {
@@ -83,22 +91,24 @@ template <typename A, typename S, typename E, typename M> struct PDevice {
 
   // State
   S *s;
-  A *acc;
+  //A *acc;
   PPin *readyToSend;
   uint32_t numVertices;
   PDeviceAddr deviceAddr;
 
   // Handlers
   void init();
-  void send(volatile M *msg);
-  void recv(M *msg, E *edge);
-  void idle();
+  void send(volatile M* msg);
+  void recv(M* msg, E* edge);
+  void idle(bool vote);
 };
 
 // Generic device state structure
 template <typename S> struct ALIGNED PState {
   // Pointer to base of neighbours arrays
-  PTR(void) neighboursBase;
+  uint16_t neighboursOffset;
+  // Ready-to-send status
+  PPin readyToSend;
   // Custom state
   S state;
 };
@@ -149,6 +159,16 @@ template <> struct PNeighbour<None> {
   };
 };
 
+// Helper function: Count board hops between two threads
+inline uint32_t hopsBetween(uint32_t t0, uint32_t t1) {
+  uint32_t xmask = ((1<<TinselMeshXBits)-1);
+  int32_t y0 = t0 >> (TinselLogThreadsPerBoard + TinselMeshXBits);
+  int32_t x0 = (t0 >> TinselLogThreadsPerBoard) & xmask;
+  int32_t y1 = t1 >> (TinselLogThreadsPerBoard + TinselMeshXBits);
+  int32_t x1 = (t1 >> TinselLogThreadsPerBoard) & xmask;
+  return (abs(x0-x1) + abs(y0-y1));
+}
+
 // Generic thread structure
 template <typename DeviceType> struct PThread {
   using A = typename DeviceType::Accumulator;
@@ -171,23 +191,60 @@ template <typename DeviceType> struct PThread {
   // This array is accessed in a LIFO manner
   PTR(PLocalDeviceId) sendersTop;
 
+  // Count number of messages sent
+  #ifdef POLITE_COUNT_MSGS
+  // Total messages sent
+  uint32_t intraThreadSendCount;
+  // Total messages sent between threads
+  uint32_t interThreadSendCount;
+  // Messages sent between threads on different boards
+  uint32_t interBoardSendCount;
+  #endif
+
+  // Dump performance counter stats over UART
+  void dumpStats() {
+    tinselPerfCountStop();
+    uint32_t me = tinselId();
+    // Per-cache performance counters
+    uint32_t cacheMask = (1 <<
+      (TinselLogThreadsPerCore + TinselLogCoresPerDCache)) - 1;
+    if ((me & cacheMask) == 0) {
+      printf("H:%x,M:%x,W:%x\n",
+        tinselHitCount(),
+        tinselMissCount(),
+        tinselWritebackCount());
+    }
+    // Per-core performance counters
+    uint32_t coreMask = (1 << (TinselLogThreadsPerCore)) - 1;
+    if ((me & coreMask) == 0) {
+      printf("C:%x %x,I:%x %x\n",
+        tinselCycleCountU(), tinselCycleCount(),
+        tinselCPUIdleCountU(), tinselCPUIdleCount());
+    }
+    // Per-thread performance counters
+    #ifdef POLITE_COUNT_MSGS
+    printf("LS:%x,TS:%x,BS:%x\n", intraThreadSendCount,
+             interThreadSendCount, interBoardSendCount);
+    #endif
+  }
+
 #ifdef TINSEL
   INLINE PPin *readyToSend(PLocalDeviceId id) {
-    PPin *p = (PPin *)tinselSlot(NUM_RECV_SLOTS + 1);
+    PPin *p = (PPin *)tinselSlot(POLITE_RECV_SLOTS + 1);
     return &p[id];
   }
 
   // Get accumulator state for given device id
   INLINE A *accum(PLocalDeviceId id) {
     uint32_t offset = (this->numDevices * sizeof(PPin) + 3) / 4;
-    A *p = (A *)tinselSlot(NUM_RECV_SLOTS + 1) + offset;
+    A *p = (A *)tinselSlot(POLITE_RECV_SLOTS + 1) + offset;
     return &p[id];
   }
 
   INLINE DeviceType createDeviceStub(PLocalDeviceId i) {
     DeviceType dev;
     dev.s = &(this->devices[i].state);
-    dev.acc = this->accum(i);
+    //dev.acc = this->accum(i);
     dev.readyToSend = this->readyToSend(i);
     dev.numVertices = this->numVertices;
     dev.deviceAddr.threadId = this->threadId;
@@ -197,9 +254,9 @@ template <typename DeviceType> struct PThread {
 
   bool addEdge(PLocalDeviceId localsource, uint16_t pin, PDeviceAddr target) {
     PState<S> &dev = this->devices[localsource];
-    PNeighbour<E>* pinEdgeArray = (PNeighbour<E>*) dev.neighboursBase + ((pin+1) * MAX_PIN_FANOUT);
+    PNeighbour<E>* pinEdgeArray = (PNeighbour<E>*) dev.neighboursBase + ((pin+1) * POLITE_MAX_FANOUT);
 
-    for(uint32_t i = 0; i < MAX_PIN_FANOUT - 1; i++) {
+    for(uint32_t i = 0; i < POLITE_MAX_FANOUT - 1; i++) {
       PNeighbour<E>& n = pinEdgeArray[i];
       if(isValidThreadId(n.destThread)) {
         continue;
@@ -218,10 +275,10 @@ template <typename DeviceType> struct PThread {
 
   bool removeEdge(PLocalDeviceId localsource, uint16_t pin, PDeviceAddr target) {
     PState<S> &dev = this->devices[localsource];
-    PNeighbour<E>* pinEdgeArray = (PNeighbour<E>*) dev.neighboursBase + ((pin+1) * MAX_PIN_FANOUT);
+    PNeighbour<E>* pinEdgeArray = (PNeighbour<E>*) dev.neighboursBase + ((pin+1) * POLITE_MAX_FANOUT);
 
     bool found = false;
-    for(uint32_t i = 0; i < MAX_PIN_FANOUT - 1; i++) {
+    for(uint32_t i = 0; i < POLITE_MAX_FANOUT - 1; i++) {
       PNeighbour<E>& n = pinEdgeArray[i];
       PNeighbour<E>& next = pinEdgeArray[i+1];
       

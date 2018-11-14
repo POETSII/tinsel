@@ -5,7 +5,6 @@
 
 typedef PThread<
           HeatDevice,
-          None,         // Accumulator (small state)
           HeatState,    // State
           None,         // Edge label
           HeatMessage   // Message

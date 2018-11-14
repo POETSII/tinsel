@@ -19,7 +19,7 @@ int main(int argc, char **argv)
   HostLink hostLink;
 
   // Create POETS graph
-  PGraph<PageRankDevice, None, PageRankState, None, PageRankMessage> graph;
+  PGraph<PageRankDevice, PageRankState, None, PageRankMessage> graph;
 
   // Load in the edge list file
   printf("Loading in the graph..."); fflush(stdout);
