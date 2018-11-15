@@ -159,6 +159,15 @@ p["EnablePerfCount"] = True
 
 # (These should not be modified.)
 
+# The number of 32-bit instructions that fit in a core's instruction memory
+p["InstrsPerCore"] = 2**p["LogInstrsPerCore"]
+
+# Number of sets per thread in set-associative data cache
+p["DCacheSetsPerThread"] = 2**p["DCacheLogSetsPerThread"]
+
+# Number of ways per set in set-associative data cache
+p["DCacheNumWays"] = 2**p["DCacheLogNumWays"]
+
 # Log of number of 32-bit words per data cache line
 p["LogWordsPerLine"] = p["LogWordsPerBeat"]+p["LogBeatsPerLine"]
 
@@ -213,6 +222,9 @@ p["LogWordsPerMsg"] = p["LogWordsPerFlit"] + p["LogMaxFlitsPerMsg"]
 
 # Bytes per message
 p["LogBytesPerMsg"] = p["LogWordsPerMsg"] + 2
+
+# Space available per thread in mailbox scratchpad
+p["MsgSlotsPerThread"] = 2**p["LogMsgsPerThread"]
 
 # Number of bytes per message
 p["LogBytesPerMsg"] = p["LogWordsPerMsg"] + 2
