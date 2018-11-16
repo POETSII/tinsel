@@ -12,7 +12,17 @@ const int YLen = 3000;
 const int NumVertices = 600000;
 
 // Distance threshold for connectivity
-const int Radius = 14;
+// A value of n means a manhatten distance of 2n
+const int Dist = 14;
+
+// Probality of adding an edge to a vertex that's within distance
+const double Chance = 1.0;
+
+bool chance()
+{
+  double x = ((double) rand()) / RAND_MAX;
+  return x <= Chance;
+}
 
 // Edges
 struct Edge { int src, dst; };
@@ -43,6 +53,7 @@ int main()
   }
 
   // For each vertex, find a default neighbour
+  // (This will be used to ensure graphs are fully connected)
   int* def = new int [NumVertices];
   int last = -1;
   for (int y = 0; y < YLen; y++) {
@@ -63,23 +74,24 @@ int main()
     for (int x = 0; x < XLen; x++) {
       int src = space[y][x];
       if (src >= 0) {
-        int top = std::max(0, y-Radius);
-        int bottom = std::min(YLen-1, y+Radius);
-        int left = std::max(0, x-Radius);
-        int right = std::min(XLen-1, x+Radius);
+        int top = std::max(0, y-Dist);
+        int bottom = std::min(YLen-1, y+Dist);
+        int left = std::max(0, x-Dist);
+        int right = std::min(XLen-1, x+Dist);
         bool connected = false;
         for (int b = top; b <= bottom; b++) {
           for (int a = left; a <= right; a++) {
             int dst = space[b][a];
-            if (dst >= 0 && src != dst) {
-              Edge edge = { src, dst };
-              edges.push_back(edge);
-              if (b < y) connected = true;
+            if (chance()) {
+              if (dst >= 0 && src != dst) {
+                Edge edge = { src, dst };
+                edges.push_back(edge);
+                if (b < y) connected = true;
+              }
             }
           }
         }
         if (!connected) {
-          //fprintf(stderr, "def[%d] = %d\n", src, def[src]);
           Edge edge1 = { src, def[src] };
           Edge edge2 = { def[src], src };
           edges.push_back(edge1);

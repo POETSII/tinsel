@@ -1,4 +1,4 @@
-all: asp GenHypercube GenTree
+all: asp GenHypercube GenTree GenGeoGraph
 
 INC=../../../../include
 
@@ -11,6 +11,8 @@ GenHypercube: GenHypercube.hs
 GenTree: GenTree.hs
 	ghc -O2 --make GenTree.hs
 
+GenGeoGraph: GenGeoGraph.cpp
+	g++ -O2 -lstdc++ GenGeoGraph.cpp -o GenGeoGraph
 
 clean:
-	rm -f asp GenHypercube GenTree *.hi *.o
+	rm -f asp GenHypercube GenTree GenGeoGraph *.hi *.o
