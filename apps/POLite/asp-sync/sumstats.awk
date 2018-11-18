@@ -12,7 +12,7 @@ BEGIN {
   interBoardSendCount = 0;
   fmax = 250000000;
   boardsX = 3;
-  boardsY = 4;
+  boardsY = 2;
 }
 
 {

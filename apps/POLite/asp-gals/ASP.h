@@ -8,7 +8,7 @@
 #ifndef _ASP_H_
 #define _ASP_H_
 
-//#define POLITE_DUMP_STATS 1
+//#define POLITE_DUMP_STATS
 //#define POLITE_COUNT_MSGS
 
 // Lightweight POETS frontend
@@ -93,16 +93,11 @@ struct ASPDevice : PDevice<ASPState, None, ASPMessage> {
   }
 
   // Send handler
-  inline void send(ASPMessage* msg) {
-    if (s->done) {
-      msg->reaching[0] = s->sum;
-    }
-    else {
-      msg->time = s->time;
-      for (uint32_t i = 0; i < NUM_SOURCES; i++)
-        msg->reaching[i] = s->reaching[i];
-      s->sent = 1;
-    }
+  inline void send(volatile ASPMessage* msg) {
+    msg->time = s->time;
+    for (uint32_t i = 0; i < NUM_SOURCES; i++)
+      msg->reaching[i] = s->reaching[i];
+    s->sent = 1;
     step();
   }
 
@@ -122,9 +117,14 @@ struct ASPDevice : PDevice<ASPState, None, ASPMessage> {
   }
 
   // Called by POLite when system becomes idle
-  inline void idle(bool stable) {
-    *readyToSend = s->done == 1 ? HostPin : No;
-    s->done = 2;
+  inline void idle() {
+    *readyToSend = No;
+  }
+
+  // Optionally send message to host on termination
+  inline bool sendToHost(volatile ASPMessage* msg) {
+    msg->reaching[0] = s->sum;
+    return true;
   }
 };
 

@@ -49,13 +49,12 @@ struct HeatDevice : PDevice<HeatState, None, HeatMessage> {
       s->received = s->receivedNext;
       s->accNext = s->receivedNext = 0;
       s->sent = 0;
-      // On final time step, send to host
-      *readyToSend = s->time == 0 ? HostPin : Pin(0);
+      *readyToSend = s->time == 0 ? No : Pin(0);
     }
   }
 
   // Send handler
-  inline void send(HeatMessage* msg) {
+  inline void send(volatile HeatMessage* msg) {
     msg->time = s->time;
     msg->val = s->val;
     msg->from = s->id;
@@ -80,7 +79,14 @@ struct HeatDevice : PDevice<HeatState, None, HeatMessage> {
   }
 
   // Called by POLite when system becomes idle
-  inline void idle(bool vote) { return; }
+  inline void idle() { *readyToSend = No; }
+
+  // Optionally send message to host on termination
+  inline bool sendToHost(volatile HeatMessage* msg) {
+    msg->val = s->val;
+    msg->from = s->id;
+    return true;
+  }
 };
 
 #endif

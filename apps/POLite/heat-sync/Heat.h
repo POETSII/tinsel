@@ -31,7 +31,7 @@ struct HeatDevice : PDevice<HeatState, None, HeatMessage> {
   }
 
   // Send handler
-  inline void send(HeatMessage* msg) {
+  inline void send(volatile HeatMessage* msg) {
     msg->from = s->id;
     msg->time = s->time;
     msg->val = s->val;
@@ -44,14 +44,24 @@ struct HeatDevice : PDevice<HeatState, None, HeatMessage> {
   }
 
   // Called by POLite when system becomes idle
-  inline void idle(bool stable) {
+  inline void idle() {
     // Execution complete?
-    if (s->time == 0) return;
+    if (s->time == 0) {
+      *readyToSend = No;
+    }
+    else {
+      s->time--;
+      if (!s->isConstant) s->val = s->acc >> 2;
+      s->acc = 0;
+      *readyToSend = Pin(0);
+    }
+  }
 
-    s->time--;
-    if (!s->isConstant) s->val = s->acc >> 2;
-    s->acc = 0;
-    *readyToSend = s->time == 0 ? HostPin : Pin(0);
+  // Optionally send message to host on termination
+  inline bool sendToHost(volatile HeatMessage* msg) {
+    msg->from = s->id;
+    msg->val = s->val;
+    return true;
   }
 };
 
