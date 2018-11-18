@@ -18,21 +18,17 @@
 
 // This is a static limit on the fan out of any pin
 #ifndef POLITE_MAX_FANOUT
-#define POLITE_MAX_FANOUT 128
+#define POLITE_MAX_FANOUT 256
 #endif
 
 // Number of mailbox slots to use for receive buffer
 #ifndef POLITE_RECV_SLOTS
-#define POLITE_RECV_SLOTS 12
+#define POLITE_RECV_SLOTS 14
 #endif
 
-// Dump performance stats?
-//   0: don't dump stats
-//   1: dump stats first time we are idle
-//   2: dump stats first time we are idle and stable
-#ifndef POLITE_DUMP_STATS
-#define POLITE_DUMP_STATS 0
-#endif
+// Macros for performance stats
+//   POLITE_DUMP_STATS - dump performance stats on termination
+//   POLITE_COUNT_MSGS - include message counts of performance stats
 
 // Thread-local device id
 typedef uint16_t PLocalDeviceId;
@@ -72,12 +68,14 @@ template <typename S, typename E, typename M> struct PDevice {
   S* s;
   PPin* readyToSend;
   uint32_t numVertices;
+  uint16_t time;
 
   // Handlers
   void init();
   void send(volatile M* msg);
   void recv(M* msg, E* edge);
-  void idle(bool vote);
+  void idle();
+  bool sendToHost(volatile M* msg);
 };
 
 // Generic device state structure
@@ -152,6 +150,8 @@ template <typename DeviceType,
 
   // Number of devices handled by thread
   PLocalDeviceId numDevices;
+  // Number of times idle handler has been called
+  uint16_t time;
   // Number of devices in graph
   uint32_t numVertices;
   // Current neighbour in multicast
@@ -181,6 +181,7 @@ template <typename DeviceType,
     dev.s           = &devices[id].state;
     dev.readyToSend = &devices[id].readyToSend;
     dev.numVertices = numVertices;
+    dev.time        = time;
     return dev;
   }
 
@@ -223,11 +224,6 @@ template <typename DeviceType,
 
     // Did last call to init handler or idle handler trigger any send?
     bool active = false;
-
-    #if POLITE_DUMP_STATS > 0
-      // Have performance stats been dumped?
-      bool doStatDump = POLITE_DUMP_STATS;
-    #endif
 
     // Reset performance counters
     tinselPerfCountReset();
@@ -282,13 +278,13 @@ template <typename DeviceType,
             m->edge = neighbour->edge;
           // Send message
           tinselSend(neighbour->destThread, m);
-          // Move to next neighbour
-          neighbour++;
           #ifdef POLITE_COUNT_MSGS
           interThreadSendCount++;
           interBoardSendCount +=
             hopsBetween(neighbour->destThread, tinselId());
           #endif
+          // Move to next neighbour
+          neighbour++;
         }
         else {
           // Go to sleep
@@ -319,29 +315,21 @@ template <typename DeviceType,
       else {
         // Idle detection
         int idle = tinselIdle(!active);
-        if (idle) {
+        if (idle > 1)
+          break;
+        else if (idle) {
           active = false;
-          #if POLITE_DUMP_STATS == 1
-          if (doStatDump) {
-            dumpStats();
-            doStatDump = false;
-          }
-          #elif POLITE_DUMP_STATS == 2
-          if (doStatDump && idle > 1) {
-            dumpStats();
-            doStatDump = false;
-          }
-          #endif
           for (uint32_t i = 0; i < numDevices; i++) {
             DeviceType dev = getDevice(i);
             // Invoke the idle handler for each device
-            dev.idle(idle > 1);
+            dev.idle();
             // Device ready to send?
             if (*dev.readyToSend != No) {
               active = true;
               *(sendersTop++) = i;
             }
           }
+          time++;
         }
       }
 
@@ -363,6 +351,22 @@ template <typename DeviceType,
           *(sendersTop++) = id;
       }
     }
+
+    // Termination
+    #ifdef POLITE_DUMP_STATS
+      dumpStats();
+    #endif
+
+    // Invoke sendToHost handler for each device
+    for (uint32_t i = 0; i < numDevices; i++) {
+      DeviceType dev = getDevice(i);
+      tinselWaitUntil(TINSEL_CAN_SEND);
+      PMessage<E,M>* m = (PMessage<E,M>*) tinselSlot(0);
+      if (dev.sendToHost(&m->payload)) tinselSend(tinselHostId(), m);
+    }
+
+    // Sleep
+    tinselWaitUntil(TINSEL_CAN_RECV); while (1);
   }
 
   #endif

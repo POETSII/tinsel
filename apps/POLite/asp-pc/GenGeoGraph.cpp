@@ -13,10 +13,10 @@ const int NumVertices = 600000;
 
 // Distance threshold for connectivity
 // A value of n means a manhatten distance of 2n
-const int Dist = 14;
+const int Dist = 40;
 
 // Probality of adding an edge to a vertex that's within distance
-const double Chance = 1.0;
+const double Chance = 0.125;
 
 bool chance()
 {
@@ -24,18 +24,14 @@ bool chance()
   return x <= Chance;
 }
 
-// Edges
-struct Edge { int src, dst; };
-
 int main()
 {
+  int numEdges = 0;
+
   // Create 2D array for geometric space
   int** space = new int* [YLen];
   for (int y = 0; y < YLen; y++)
     space[y] = new int [XLen];
-
-  // Edge list
-  std::vector<Edge> edges;
 
   // Initialise space
   for (int y = 0; y < XLen; y++)
@@ -84,30 +80,25 @@ int main()
             int dst = space[b][a];
             if (chance()) {
               if (dst >= 0 && src != dst) {
-                Edge edge = { src, dst };
-                edges.push_back(edge);
+                printf("%d %d\n", src, dst);
+                printf("%d %d\n", dst, src);
+                numEdges+=2;
                 if (b < y) connected = true;
               }
             }
           }
         }
         if (!connected) {
-          Edge edge1 = { src, def[src] };
-          Edge edge2 = { def[src], src };
-          edges.push_back(edge1);
-          edges.push_back(edge2);
+          printf("%d %d\n", src, def[src]);
+          printf("%d %d\n", def[src], src);
+          numEdges += 2;
         }
       }
     }
   }
 
   fprintf(stderr, "Vertices: %u\n", NumVertices);
-  fprintf(stderr, "Edges: %lu\n", edges.size());
-
-  for (int i = 0; i < edges.size(); i++) {
-    Edge e = edges[i];
-    printf("%d %d\n", e.src, e.dst);
-  }
+  fprintf(stderr, "Edges: %d\n", numEdges);
 
   return 0;
 }

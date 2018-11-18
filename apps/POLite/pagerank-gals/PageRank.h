@@ -44,18 +44,13 @@ struct PageRankDevice : PDevice<PageRankState, None, PageRankMessage> {
     // Proceed to next time step?
     if (s->sent && s->received == s->fanIn) {
       s->score = 0.15/s->numVertices + 0.85*s->acc;
-      if(s->t < NUM_ITERATIONS-1) {
+      if (s->t < NUM_ITERATIONS) {
         s->acc = s->accNext;
         s->received = s->receivedNext;
         s->accNext = s->receivedNext = 0;
         s->sent = 0;
         s->t++;
         *readyToSend = Pin(0);
-      }
-      else if (s->t == NUM_ITERATIONS-1) {
-        *readyToSend = No;
-        s->sent = 0;
-        s->t++;
       }
       else {
         *readyToSend = No;
@@ -64,11 +59,8 @@ struct PageRankDevice : PDevice<PageRankState, None, PageRankMessage> {
   }
 
   // Send handler
-  inline void send(PageRankMessage* msg) {
-    if (s->t > NUM_ITERATIONS)
-      msg->val = s->score;
-    else
-      msg->val = s->score/s->fanOut;
+  inline void send(volatile PageRankMessage* msg) {
+    msg->val = s->score/s->fanOut;
     msg->t = s->t;
     s->sent = 1;
     *readyToSend = No;
@@ -91,13 +83,14 @@ struct PageRankDevice : PDevice<PageRankState, None, PageRankMessage> {
   }
 
   // Called by POLite when system becomes idle
-  inline void idle(bool stable) {
-    if (s->t == NUM_ITERATIONS) {
-      s->t++;
-      *readyToSend = HostPin;
-    }
-    else
-      *readyToSend = No;
+  inline void idle() {
+    *readyToSend = No;
+  }
+
+  // Optionally send message to host on termination
+  inline bool sendToHost(volatile PageRankMessage* msg) {
+    msg->val = s->score;
+    return true;
   }
 };
 

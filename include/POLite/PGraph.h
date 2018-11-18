@@ -450,7 +450,7 @@ template <typename DeviceType,
 
 // Read performance stats and store in file
 inline void politeSaveStats(HostLink* hostLink, const char* filename) {
-  #if POLITE_DUMP_STATS > 0
+  #ifdef POLITE_DUMP_STATS
   // Open file for performance counters
   FILE* statsFile = fopen(filename, "wt");
   if (statsFile == NULL) {

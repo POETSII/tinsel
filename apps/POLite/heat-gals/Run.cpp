@@ -7,9 +7,9 @@
 int main()
 {
   // Parameters
-  const uint32_t width  = 8;
-  const uint32_t height = 8;
-  const uint32_t time   = 2;
+  const uint32_t width  = 256;
+  const uint32_t height = 256;
+  const uint32_t time   = 100;
 
   // Connection to tinsel machine
   HostLink hostLink;

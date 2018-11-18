@@ -32,7 +32,7 @@ struct PageRankDevice : PDevice<PageRankState, None, PageRankMessage> {
   }
 
   // Called by POLite when system becomes idle
-  inline void idle(bool stable) {
+  inline void idle() {
     // Calculate the score for this iter
     s->score = 0.15/numVertices + 0.85*s->sum;
     // Clear the accumulator
@@ -41,21 +41,14 @@ struct PageRankDevice : PDevice<PageRankState, None, PageRankMessage> {
       s->iter++;
       *readyToSend = Pin(0);
     }
-    else if (s->iter == NUM_ITERATIONS) {
-      s->iter++;
-      *readyToSend = HostPin;
-    }
     else {
       *readyToSend = No;
     }
   }
 
   // Send handler
-  inline void send(PageRankMessage* msg) {
-    if (s->iter == (NUM_ITERATIONS+1))
-      msg->val = s->score;
-    else
-      msg->val = s->score/s->fanOut;
+  inline void send(volatile PageRankMessage* msg) {
+    msg->val = s->score/s->fanOut;
     *readyToSend=No;
   }
 
@@ -64,6 +57,11 @@ struct PageRankDevice : PDevice<PageRankState, None, PageRankMessage> {
     s->sum += msg->val;
   }
 
+  // Optionally send message to host on termination
+  inline bool sendToHost(volatile PageRankMessage* msg) {
+    msg->val = s->score;
+    return true;
+  }
 };
 
 #endif

@@ -25,7 +25,6 @@ clean:
 	make -C apps/linktest clean
 	make -C apps/multiprog clean
 	make -C apps/sync clean
-	make -C apps/POLite/ring clean
 	make -C apps/POLite/heat-gals clean
 	make -C apps/POLite/heat-sync clean
 	make -C apps/POLite/asp-gals clean

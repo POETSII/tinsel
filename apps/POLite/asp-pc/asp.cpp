@@ -31,13 +31,17 @@ void readGraph(const char* filename, bool undirected)
     exit(EXIT_FAILURE);
   }
 
+  // Note: we use a "pull" algorithm (rather than "push") to
+  // avoid parallel writes to the same address, hence we reverse
+  // the direction of the edges here.
+
   // Count number of nodes and edges
   numEdges = 0;
   numNodes = 0;
   int ret;
   while (1) {
     uint32_t src, dst;
-    ret = fscanf(fp, "%d %d", &src, &dst);
+    ret = fscanf(fp, "%d %d", &dst, &src);
     if (ret == EOF) break;
     numEdges++;
     numNodes = src >= numNodes ? src+1 : numNodes;
@@ -49,7 +53,7 @@ void readGraph(const char* filename, bool undirected)
   uint32_t* count = (uint32_t*) calloc(numNodes, sizeof(uint32_t));
   for (int i = 0; i < numEdges; i++) {
     uint32_t src, dst;
-    ret = fscanf(fp, "%d %d", &src, &dst);
+    ret = fscanf(fp, "%d %d", &dst, &src);
     count[src]++;
     if (undirected) count[dst]++;
   }
@@ -63,7 +67,7 @@ void readGraph(const char* filename, bool undirected)
   }
   for (int i = 0; i < numEdges; i++) {
     uint32_t src, dst;
-    ret = fscanf(fp, "%d %d", &src, &dst);
+    ret = fscanf(fp, "%d %d", &dst, &src);
     neighbours[src][count[src]--] = dst;
     if (undirected) neighbours[dst][count[dst]--] = src;
   }
