@@ -315,9 +315,10 @@ template <typename DeviceType,
       else {
         // Idle detection
         int idle = tinselIdle(!active);
-        if (idle > 1)
-          break;
-        else if (idle) {
+        //if (idle > 1){
+        //  break;
+	//} else if (idle) {
+	if(idle){
           active = false;
           for (uint32_t i = 0; i < numDevices; i++) {
             DeviceType dev = getDevice(i);
