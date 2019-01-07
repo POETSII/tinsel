@@ -32,5 +32,6 @@ clean:
 	make -C apps/POLite/asp-pc clean
 	make -C apps/POLite/pagerank-sync clean
 	make -C apps/POLite/pagerank-gals clean
+	make -C apps/POLite/sssp-async clean
 	make -C bin clean
 	make -C tests clean

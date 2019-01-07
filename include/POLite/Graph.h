@@ -8,7 +8,7 @@
 typedef uint32_t NodeId;
 typedef int32_t PinId;
 typedef uint32_t NodeLabel;
-typedef uint32_t EdgeLabel;
+typedef int32_t EdgeLabel; // TODO: generalise
 
 struct Graph {
   // Incoming and outgoing edges

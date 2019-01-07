@@ -40,7 +40,7 @@ struct PageRankDevice : PDevice<PageRankState, None, PageRankMessage> {
   }
 
   // We call this on every state change
-  inline void step() {
+  inline void change() {
     // Proceed to next time step?
     if (s->sent && s->received == s->fanIn) {
       s->score = 0.15/s->numVertices + 0.85*s->acc;
@@ -64,7 +64,7 @@ struct PageRankDevice : PDevice<PageRankState, None, PageRankMessage> {
     msg->t = s->t;
     s->sent = 1;
     *readyToSend = No;
-    step();
+    change();
   }
 
   // Receive handler
@@ -73,7 +73,7 @@ struct PageRankDevice : PDevice<PageRankState, None, PageRankMessage> {
       // Receive temperature for this time step
       s->acc += msg->val;
       s->received++;
-      step();
+      change();
     }
     else {
       // Receive temperature for next time step
