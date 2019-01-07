@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 #include <stdlib.h>
-#include <typeinfo>
+#include <type_traits>
 
 #ifdef TINSEL
   #include <tinsel.h>
@@ -274,7 +274,7 @@ template <typename DeviceType,
           PMessage<E,M>* m = (PMessage<E,M>*) tinselSlot(0);
           // Copy neighbour edge info into message
           m->devId = neighbour->devId;
-          if (typeid(E) != typeid(None))
+          if (! std::is_same<E, None>::value)
             m->edge = neighbour->edge;
           // Send message
           tinselSend(neighbour->destThread, m);

@@ -3,6 +3,7 @@
 
 #include <stdlib.h>
 #include <stdint.h>
+#include <string.h>
 #include <math.h>
 #include <HostLink.h>
 #include <config.h>
@@ -10,7 +11,7 @@
 #include <POLite/Seq.h>
 #include <POLite/Graph.h>
 #include <POLite/Placer.h>
-#include <typeinfo>
+#include <type_traits>
 
 // Nodes of a POETS graph are devices
 typedef NodeId PDeviceId;
@@ -86,6 +87,11 @@ template <typename DeviceType,
   // Add a connection between devices
   inline void addEdge(PDeviceId from, PinId pin, PDeviceId to) {
     graph.addEdge(from, pin, to);
+  }
+
+  // Add labelled edge using given output pin
+  void addLabelledEdge(EdgeLabel label, PDeviceId x, PinId pin, PDeviceId y) {
+    graph.addLabelledEdge(label, x, pin, y);
   }
 
   // Allocate SRAM and DRAM partitions
@@ -212,7 +218,15 @@ template <typename DeviceType,
                 graph.outgoing->elems[id]->elems[i]];
               edgeArray[base+offset].destThread = addr.threadId;
               edgeArray[base+offset].devId = addr.devId;
-              // TODO: insert edge label here (if E != None)
+              // Edge label
+              if (! std::is_same<E, None>::value) {
+                if (i >= graph.edgeLabels->elems[id]->numElems) {
+                  printf("Edge weight not specified\n");
+                  exit(EXIT_FAILURE);
+                }
+                memcpy(&edgeArray[base+offset].edge,
+                  &graph.edgeLabels->elems[id]->elems[i], sizeof(E));
+              }
               offset++;
             }
           }
@@ -220,7 +234,7 @@ template <typename DeviceType,
         }
         // Add space for edges
         nextDRAM = cacheAlign(nextDRAM + (numPins+1) *
-                     POLITE_MAX_FANOUT * sizeof(PDeviceAddr));
+                     POLITE_MAX_FANOUT * sizeof(PNeighbour<E>));
         nextNeighbours += (numPins+1);
       }
       // At this point, check that next pointers line up with heap sizes
