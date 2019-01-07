@@ -53,7 +53,7 @@ struct ASPDevice : PDevice<ASPState, None, ASPMessage> {
   }
 
   // We call this on every state change
-  void step() {
+  void change() {
     // Finished execution?
     if (s->done) { *readyToSend = No; }
     // Ready to send?
@@ -98,7 +98,7 @@ struct ASPDevice : PDevice<ASPState, None, ASPMessage> {
     for (uint32_t i = 0; i < NUM_SOURCES; i++)
       msg->reaching[i] = s->reaching[i];
     s->sent = 1;
-    step();
+    change();
   }
 
   // Receive handler
@@ -107,7 +107,7 @@ struct ASPDevice : PDevice<ASPState, None, ASPMessage> {
       for (uint32_t i = 0; i < NUM_SOURCES; i++)
         s->reaching1[i] |= msg->reaching[i];
       s->received++;
-      step();
+      change();
     }
     else {
       for (uint32_t i = 0; i < NUM_SOURCES; i++)
@@ -117,12 +117,12 @@ struct ASPDevice : PDevice<ASPState, None, ASPMessage> {
   }
 
   // Called by POLite when system becomes idle
-  inline void idle() {
+  inline void step() {
     *readyToSend = No;
   }
 
   // Optionally send message to host on termination
-  inline bool sendToHost(volatile ASPMessage* msg) {
+  inline bool finish(volatile ASPMessage* msg) {
     msg->reaching[0] = s->sum;
     return true;
   }

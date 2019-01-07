@@ -49,7 +49,7 @@ struct ASPDevice : PDevice<ASPState, None, ASPMessage> {
   }
 
   // Called by POLite on idle event
-  inline void idle() {
+  inline void step() {
     // Fold in new reaching nodes
     bool changed = false;
     for (uint32_t i = 0; i < N; i++) {
@@ -69,7 +69,7 @@ struct ASPDevice : PDevice<ASPState, None, ASPMessage> {
   }
 
   // Optionally send message to host on termination
-  inline bool sendToHost(volatile ASPMessage* msg) {
+  inline bool finish(volatile ASPMessage* msg) {
     msg->sum = s->sum;
     return true;
   }
