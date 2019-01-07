@@ -44,7 +44,7 @@ struct HeatDevice : PDevice<HeatState, None, HeatMessage> {
   }
 
   // Called by POLite when system becomes idle
-  inline void idle() {
+  inline void step() {
     // Execution complete?
     if (s->time == 0) {
       *readyToSend = No;
@@ -58,7 +58,7 @@ struct HeatDevice : PDevice<HeatState, None, HeatMessage> {
   }
 
   // Optionally send message to host on termination
-  inline bool sendToHost(volatile HeatMessage* msg) {
+  inline bool finish(volatile HeatMessage* msg) {
     msg->from = s->id;
     msg->val = s->val;
     return true;

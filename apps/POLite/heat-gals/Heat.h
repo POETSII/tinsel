@@ -37,7 +37,7 @@ struct HeatDevice : PDevice<HeatState, None, HeatMessage> {
   }
 
   // We call this on every state change
-  inline void step() {
+  inline void change() {
     // Execution complete?
     if (s->time == 0) return;
 
@@ -60,7 +60,7 @@ struct HeatDevice : PDevice<HeatState, None, HeatMessage> {
     msg->from = s->id;
     s->sent = 1;
     *readyToSend = No;
-    step();
+    change();
   }
 
   // Receive handler
@@ -69,7 +69,7 @@ struct HeatDevice : PDevice<HeatState, None, HeatMessage> {
       // Receive temperature for this time step
       s->acc += msg->val;
       s->received++;
-      step();
+      change();
     }
     else {
       // Receive temperature for next time step
@@ -79,10 +79,10 @@ struct HeatDevice : PDevice<HeatState, None, HeatMessage> {
   }
 
   // Called by POLite when system becomes idle
-  inline void idle() { *readyToSend = No; }
+  inline void step() { *readyToSend = No; }
 
   // Optionally send message to host on termination
-  inline bool sendToHost(volatile HeatMessage* msg) {
+  inline bool finish(volatile HeatMessage* msg) {
     msg->val = s->val;
     msg->from = s->id;
     return true;

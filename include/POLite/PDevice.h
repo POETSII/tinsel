@@ -74,8 +74,8 @@ template <typename S, typename E, typename M> struct PDevice {
   void init();
   void send(volatile M* msg);
   void recv(M* msg, E* edge);
-  void idle();
-  bool sendToHost(volatile M* msg);
+  void step();
+  bool finish(volatile M* msg);
 };
 
 // Generic device state structure
@@ -150,7 +150,7 @@ template <typename DeviceType,
 
   // Number of devices handled by thread
   PLocalDeviceId numDevices;
-  // Number of times idle handler has been called
+  // Number of times step handler has been called
   uint16_t time;
   // Number of devices in graph
   uint32_t numVertices;
@@ -222,7 +222,7 @@ template <typename DeviceType,
     // Base of all neighbours arrays on this thread
     PNeighbour<E>* neighboursBase = (PNeighbour<E>*) tinselHeapBase();
 
-    // Did last call to init handler or idle handler trigger any send?
+    // Did last call to init handler or step handler trigger any send?
     bool active = false;
 
     // Reset performance counters
@@ -321,8 +321,8 @@ template <typename DeviceType,
           active = false;
           for (uint32_t i = 0; i < numDevices; i++) {
             DeviceType dev = getDevice(i);
-            // Invoke the idle handler for each device
-            dev.idle();
+            // Invoke the step handler for each device
+            dev.step();
             // Device ready to send?
             if (*dev.readyToSend != No) {
               active = true;
@@ -357,12 +357,12 @@ template <typename DeviceType,
       dumpStats();
     #endif
 
-    // Invoke sendToHost handler for each device
+    // Invoke finish handler for each device
     for (uint32_t i = 0; i < numDevices; i++) {
       DeviceType dev = getDevice(i);
       tinselWaitUntil(TINSEL_CAN_SEND);
       PMessage<E,M>* m = (PMessage<E,M>*) tinselSlot(0);
-      if (dev.sendToHost(&m->payload)) tinselSend(tinselHostId(), m);
+      if (dev.finish(&m->payload)) tinselSend(tinselHostId(), m);
     }
 
     // Sleep
