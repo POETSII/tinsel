@@ -144,11 +144,10 @@ for our own purposes, resulting in very little overhead on the wire.
 
 A prototype POETS hardware system is currently under construction and,
 when complete, will consist of around 50 DE5-Net FPGA boards connected
-by numerous high-speed serial links in a 3D mesh topology.  Each group
-of 7-10 FPGAs will reside in a separate *POETs box*.  One FPGA in each
-box will serve as a *PCI Express bridge board* that connects a modern
-PC to the remaining FPGA *worker boards*, with the worker boards
-running Tinsel by default.
+in a 3D mesh topology.  Each group of 7 FPGAs will reside in a
+separate *POETs box*.  One FPGA in each box will serve as a *PCI
+Express bridge board* that connects a modern PC to the remaining FPGA
+*worker boards*, with the worker boards running Tinsel by default.
 
 ### 1.5 Structure
 
@@ -161,37 +160,35 @@ numbers of component parts shown may vary.
 A Tinsel tile consists of four Tinsel cores sharing a mailbox, an FPU,
 and a data cache.
  
-<img align="center" src="doc/tile.png" width="80%">
+<img align="center" src="doc/figures/tile.png">
 
-#### Tinsel Slice
+#### Tinsel FPGA
 
 Each FPGA contains two *Tinsel Slices*, with each slice comprising
 eight tiles connected to one 4GB DDR3 DIMM and two 8MB QDRII+ SRAMs.
-All tiles are connected together via a 2D NoC.  At the edges of the
-NoC are the inter-FPGA links, with the north and south edges using
-SFP+ connectors, and the east and west edges using PCIe lanes.  Note
-that the number of inter-FPGAs links at each edge is illustrative.
+All tiles are connected together via a routers to form a 2D NoC.  At
+the edges of the NoC are the inter-FPGA links.
 
-<img align="center" src="doc/fpga.png" width="80%">
+<img align="center" src="doc/figures/fpga.png">
+
+#### FPGA Triplet
+
+An FPGA triplet consists of three worker FPGAs connected in a ring via
+a PCIe backplane.  Each FPGA has a further four pluggable inter-FPGA
+links via SFP+ cables.  A power module attached to each FPGA allows
+inidividual software-controlled power-switching of the FPGAs from the
+host PC.  Each FPGA is also connected to the host PC via a 4MB/s USB
+serial link.
+
+<img align="center" src="doc/figures/triplet.png">
 
 #### POETS box
 
-A POETS box comprises of a modern PC, a PCIe FPGA bridge board
-connecting the PC to the worker FPGAs, and three FPGA-triplets.  Each
-FPGA triplet consists of three worker FPGAs connected in a ring via a
-PCIe backplane.  Each FPGA has a further four inter-FPGA links via
-SFP+ cables.  A power monitor between the PC and each FPGA allows
-inidividual software-controlled power-switching of the FPGAs from the
-PC.  Each FPGA is also connected to the PC via a 4MB/s USB serial
-link.
+A POETS box comprises a modern PC with a disk, a NIC, a PCIe FPGA
+bridge board connecting the PC to the worker FPGAs via SFP+, and two
+FPGA-triplets.
 
-<img align="center" src="doc/box.png" width="80%">
-
-(Above we see three PCIe backplanes per box, giving a 3x3 arragement
-of worker FPGAs. Due to thermal issues, we are currently using only
-two FPGAs per backplane, giving a 3x2 arrangement, and we are moving
-towards a design with two PCIe backplanes per box, which will
-eventually give a 2x3 arrangement.)
+<img align="center" src="doc/figures/box.png">
 
 ## 2. Tinsel Core
 
