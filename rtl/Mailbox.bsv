@@ -645,10 +645,11 @@ interface MailboxClientUnit;
 
   // Suspend thread until event(s)
   method Action sleep(ThreadId id, WakeEvent e);
-  // Guard on above method
-  method Bool canSleep;
   // Port used to indicate when a thread should be woken
   interface Out#(ThreadEventPair) wakeup;
+
+  // Goes high when idle release phase (stage 1) in progress
+  method Bool idleReleaseInProgress;
 
   // Tinsel core's interface to the mailbox
   interface MailboxClient client;
@@ -665,6 +666,8 @@ interface MailboxClientUnit;
   method Action idleDetectedStage2(Bool pulse);
   method Bool idleStage1Ack;
 endinterface
+
+import "BDPI" function Bit#(32) getBoardId();
 
 module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
   // Ports
@@ -889,7 +892,7 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
     unread.get;
   endmethod
 
-  method Bool canSend = canSendReg2 && !idleDetected;
+  method Bool canSend = canSendReg2;
 
   method Action send(ThreadId id, MsgLen len,
                        NetAddr dest, MailboxThreadMsgAddr addr);
@@ -916,7 +919,7 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
     sleepThread <= ThreadEventPair { id: id, wakeEvent: e };
   endmethod
 
-  method Bool canSleep = !idleDetected;
+  method Bool idleReleaseInProgress = idleDetected;
 
   method Bool active = numIdleWaiters.notFull;
 
