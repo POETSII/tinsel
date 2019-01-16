@@ -26,19 +26,15 @@ interface ArrayOfSet#(type logNumSets, type logSetSize);
   // Try to remove any item from the set at the given array index
   method Action tryGet(Bit#(logNumSets) index);
   // Can an item be successfully removed? (Is the set non-empty?)
-  // (Valid on 2nd cycle after call to "tryGet")
+  // (Valid on the cycle after call to "tryGet")
   method Bool canGet;
   // Remove item
-  // (Must only be called on 2nd cycle after call to "tryGet")
+  // (Only call when canGet is true)
   method Action get;
   // The item removed
-  // (Valid on 3rd cycle after call to "tryGet")
+  // (Valid on the cycle after call to "get")
   method Bit#(logSetSize) itemOut;
 endinterface
-
-// TIMING CONSTRAINT: when the "get" method is called, a subsequent
-// call to "tryGet" with the same index should not occur until the 2nd
-// cycle after the call to "get".
 
 // =============================================================================
 // Implementation
@@ -51,6 +47,7 @@ module mkArrayOfSet (ArrayOfSet#(logNumSets, logSetSize))
   // a 1-bit write-port and a (2**logSetSize)-bit read-port.
   BlockRamOpts arrayMemOpts = defaultBlockRamOpts;
   arrayMemOpts.readDuringWrite = OldData;
+  arrayMemOpts.registerDataOut = False;
   BlockRamTrueMixed#(
     // Read port
     Bit#(logNumSets), Bit#(TExp#(logSetSize)),
@@ -59,43 +56,37 @@ module mkArrayOfSet (ArrayOfSet#(logNumSets, logSetSize))
       mkBlockRamTrueMixedOpts(arrayMemOpts);
 
   // Read pipeline state
-  Reg#(Bit#(logNumSets)) readStage1Input <- mkVReg;
-  Reg#(Bit#(logNumSets)) readStage2Input <- mkVReg;
-
-  // Update stage state
-  Reg#(Bool) doClearBit  <- mkDReg(False);
+  Reg#(Bool) readStage1Fire <- mkDReg(False);
+  Reg#(Bit#(logNumSets)) readStage1Input <- mkConfigRegU;
   Reg#(Bit#(logSetSize)) getItemReg <- mkConfigRegU;
-  Reg#(Bit#(logNumSets)) clearIndexReg <- mkConfigRegU;
 
   // Wires
   Wire#(Bool) canGetWire <- mkDWire(False);
+  Wire#(Bool) doGetWire <- mkDWire(False);
   Wire#(Bool) doSetBit <- mkDWire(False);
   Wire#(Bit#(logNumSets)) setIndexWire <- mkDWire(?);
   Wire#(Bit#(logSetSize)) setItemWire  <- mkDWire(?);
+  Wire#(Bit#(logSetSize)) getItemWire <- mkDWire(?);
 
   // Rules
   // =====
 
-  rule readStage1;
-    // Trigger next stage
-    readStage2Input <= readStage1Input;
-  endrule
-
-  rule readStage2;
-    let index = readStage2Input;
+  rule readStage1 (readStage1Fire);
+    let index = readStage1Input;
     // Output of arrayMem available
     let set = arrayMem.dataOutA;
     let item = countZerosLSB(set);
-    // If the set is non-empty, then the "get" can be called
+    // If the set is non-empty, then an item will be removed
     if (set != 0) canGetWire <= True;
     // Inputs to update stage
-    getItemReg <= pack(item)[valueOf(logSetSize)-1:0];
-    clearIndexReg <= index;
+    let itemIndex = pack(item)[valueOf(logSetSize)-1:0];
+    getItemWire <= itemIndex;
+    getItemReg <= itemIndex;
   endrule
 
   rule updateStage;
-    if (doClearBit)
-      arrayMem.putB(True, {clearIndexReg, getItemReg}, 0);
+    if (doGetWire)
+      arrayMem.putB(True, {readStage1Input, getItemWire}, 0);
     else if (doSetBit) begin
       arrayMem.putB(True, {setIndexWire, setItemWire}, 1);
     end
@@ -110,18 +101,24 @@ module mkArrayOfSet (ArrayOfSet#(logNumSets, logSetSize))
     setItemWire  <= item;
   endmethod
 
-  method Bool canPut = !doClearBit;
+  method Bool canPut = !doGetWire;
 
   method Action tryGet(Bit#(logNumSets) index);
-    arrayMem.putA(False, index, ?);
-    readStage1Input <= index;
-  endmethod
-
-  method Action get;
-    doClearBit <= True;
+    // Are we currently writing to the index in question?
+    Bool hazard = doGetWire && readStage1Input == index;
+    // Only attempt tryGet if there's no hazard
+    if (!hazard) begin
+      arrayMem.putA(False, index, ?);
+      readStage1Input <= index;
+      readStage1Fire <= True;
+    end
   endmethod
 
   method Bool canGet = canGetWire;
+
+  method Action get;
+    doGetWire <= True;
+  endmethod
 
   method Bit#(logSetSize) itemOut = getItemReg;
 

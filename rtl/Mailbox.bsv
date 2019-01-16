@@ -303,88 +303,67 @@ module mkMailbox (Mailbox);
   // ============
 
   // State
-  Reg#(Bit#(2))      recvState      <- mkConfigReg(0);
+  Reg#(Bit#(1))      recvState      <- mkConfigReg(0);
   Reg#(Flit)         flitBuffer     <- mkConfigRegU;
-  Reg#(Flit)         receive3Input  <- mkVReg;
   Reg#(MsgLen)       recvFlitCount  <- mkConfigReg(0);
-  Reg#(ReceiveAlert) receive4Input  <- mkVReg;
+  Reg#(ReceiveAlert) receive3Input  <- mkVReg;
 
   // Keep track of the number of in-flight flits being received
   Count#(TAdd#(`LogAlertBufferLen, 1)) inFlightRecvs <-
     mkCount(2 ** `LogAlertBufferLen);
 
-  // Argument passed to the call of "statusMem.get" on previous
-  // clock cycle, if there was one
-  Reg#(Maybe#(Bit#(`LogThreadsPerMailbox))) prevGet <-
-    mkDReg(Invalid);
-
   // Are we processing the first flit of a message?
   Reg#(Bool) firstFlit <- mkConfigReg(True);
 
-  // Inputs to receive stage 3
-  Reg#(Bool) receive3Fire <- mkDReg(False);
-  Reg#(Bool) receive3FirstFlit <- mkConfigRegU;
+  // Inputs to receive stage 2
+  Reg#(Bool) receive2Fire <- mkDReg(False);
+  Reg#(Bool) receive2FirstFlit <- mkConfigRegU;
 
   // The index in the scratchpad that the message is being written to
   Reg#(Bit#(`LogMsgsPerThread)) destIndex <- mkConfigRegU;
 
   rule receive0 (recvState == 0);
-    let flit = flitInPort.value;
-    flitBuffer <= flit;
-    // The stall condition ensures that "statusMem.get" and
-    // "statusMem.tryGet" are not called with the same argument
-    // within two consecutive cycles (see ArrayOfSet.bsv)
-    Bool stall = prevGet == Valid(truncate(pack(flit.dest)));
     // Try to consume an incoming flit
     if (flitInPort.canGet && inFlightRecvs.notFull) begin
+      let flit = flitInPort.value;
+      flitBuffer <= flit;
+      flitInPort.get;
+      recvState <= 1;
       if (firstFlit) begin
-        if (!stall) begin
-          flitInPort.get;
-          inFlightRecvs.inc;
-          statusMem.tryGet(truncate(pack(flit.dest)));
-          recvState <= 1;
-        end
-      end else begin
-        flitInPort.get;
-        recvState <= 2;
+        inFlightRecvs.inc;
+        statusMem.tryGet(truncate(pack(flit.dest)));
       end
     end
   endrule
 
   rule receive1 (recvState == 1);
-    recvState <= 2;
-  endrule
-
-  rule receive2 (recvState == 2);
     Bool retry = False;
     if (firstFlit) begin
       // Do we have somewhere to put the incoming message?
       if (statusMem.canGet) begin
         statusMem.get;
-        prevGet <= Valid(truncate(pack(flitBuffer.dest)));
         recvState <= 0;
       end else begin
         // If not, retry the lookup
         statusMem.tryGet(truncate(pack(flitBuffer.dest)));
-        recvState <= 1;
         retry = True;
       end
     end else
       recvState <= 0;
     if (!retry) begin
-      // Trigger receive stage 3
-      receive3Fire <= True;
-      receive3FirstFlit <= firstFlit;
+      // Trigger receive stage 2
+      receive2Fire <= True;
+      receive2FirstFlit <= firstFlit;
       // We may have finished processing this message,
       // in which case reset firstFlit back to True
       firstFlit <= !flitBuffer.notFinalFlit;
     end
   endrule
 
-  rule receive3 (receive3Fire);
+  rule receive2 (receive2Fire);
     let flit = flitBuffer;
-    let index = receive3FirstFlit ? statusMem.itemOut : destIndex;
-    if (receive3FirstFlit) destIndex <= statusMem.itemOut;
+    let index = receive2FirstFlit ? statusMem.itemOut : destIndex;
+    if (receive2FirstFlit) destIndex <= statusMem.itemOut;
     // Update scratchpad
     flitWriteWire      <= True;
     flitWriteIndexWire <= { truncate(pack(flit.dest)), index, recvFlitCount };
@@ -396,13 +375,13 @@ module mkMailbox (Mailbox);
       ReceiveAlert alert;
       alert.id = truncate(pack(flit.dest));
       alert.index = index;
-      receive4Input <= alert;
+      receive3Input <= alert;
     end else
       recvFlitCount <= recvFlitCount+1;
   endrule
 
-  rule receive4;
-    ReceiveAlert alert = receive4Input;
+  rule receive3;
+    ReceiveAlert alert = receive3Input;
     // Issue response
     myAssert(alertBuffer.notFull, "Mailbox: alertBuffer overflow");
     alertBuffer.enq(alert);
@@ -631,16 +610,16 @@ interface MailboxClientUnit;
   // Prepare for mailbox access by given thread
   method Action prepare(ThreadId id);
   // Is a send/receive possible on prepared thread?
-  // (Valid on 2nd cycle after call to "prepare")
+  // (Valid on the cycle after call to "prepare")
   method Bool canSend;
   method Bool canRecv;
   // Trigger send/receive
-  // (Must only be called on 2nd cycle after call to "prepare")
+  // (Must only be called on the cycle after call to "prepare")
   method Action recv;
   method Action send(ThreadId id, MsgLen len,
                        NetAddr dest, MailboxThreadMsgAddr addr);
   // Scratchpad address of message received
-  // (Valid on 2nd cycle after call to "recv")
+  // (Valid on the cycle after call to "recv")
   method Bit#(32) recvAddr;
 
   // Suspend thread until event(s)
@@ -752,14 +731,12 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
   Wire#(ThreadId) prepareId <- mkDWire(?);
 
   // Flag indicating whether client thread can send
-  Reg#(Bool) canSendReg1 <- mkConfigReg(False);
-  Reg#(Bool) canSendReg2 <- mkConfigReg(False);
+  Reg#(Bool) canSendReg <- mkConfigReg(False);
 
   rule statusUnit;
     ThreadId id = doPrepare ? prepareId : sleepQueue.dataOut.id;
     unread.tryGet(id);
-    canSendReg1 <= canThreadSend[id].value;
-    canSendReg2 <= canSendReg1;
+    canSendReg <= canThreadSend[id].value;
   endrule
 
   // Sleep unit
@@ -832,8 +809,8 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
   Reg#(WakeEvent) eventMatchReg <- mkRegU;
 
   // State machine control
-  Reg#(Bit#(2)) wakeupState <- mkReg(0);
-  Reg#(Bool) wakeup2Fire <- mkDReg(False);
+  Reg#(Bit#(1)) wakeupState <- mkReg(0);
+  Reg#(Bool) wakeup1Fire <- mkDReg(False);
 
   rule wakeup0 (!doPrepare && wakeupState == 0 &&
                   sleepQueue.canPeek && sleepQueue.canDeq);
@@ -841,21 +818,17 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
     sleepQueue.deq;
     wakeupReg <= thread;
     wakeupState <= 1;
+    wakeup1Fire <= True;
   endrule
 
   rule wakeup1 (wakeupState == 1);
-    wakeupState <= 2;
-    wakeup2Fire <= True;
-  endrule
-
-  rule wakeup2 (wakeupState == 2);
     // Select only the bits of the event that match
     let eventMatchNow = wakeupReg.wakeEvent &
           {pack(idleStage1Reg && voteStage1Reg),
            pack(idleStage1Reg),
            pack(unread.canGet),
-           pack(canSendReg2)};
-    let eventMatch = wakeup2Fire ? eventMatchNow : eventMatchReg;
+           pack(canSendReg)};
+    let eventMatch = wakeup1Fire ? eventMatchNow : eventMatchReg;
     eventMatchReg <= eventMatch;
     // Should a wakeup be sent?
     Bool wakeupCond = eventMatch != 0;
@@ -892,11 +865,11 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
     unread.get;
   endmethod
 
-  method Bool canSend = canSendReg2;
+  method Bool canSend = canSendReg;
 
   method Action send(ThreadId id, MsgLen len,
                        NetAddr dest, MailboxThreadMsgAddr addr);
-    myAssert(canSendReg2, "MailboxClientUnit: send violation");
+    myAssert(canSendReg, "MailboxClientUnit: send violation");
     // Construct transmit request
     TransmitReq req;
     req.id = {truncate(myId), id};
