@@ -195,6 +195,7 @@ typedef struct {
   Bool canRecv;            // Mailbox can receive
   Bool retry;              // Instruction needs retried later
   Bit#(1) destRegFile;     // Write result to int (0) or float (1) reg file?
+  Bool idleRelease;        // Idle release phase: messaging currently disabled
 } PipelineToken deriving (Bits);
 
 // For each suspended thread, we have the following info
@@ -789,8 +790,13 @@ module mkCore#(CoreId myId) (Core);
     regFileA.read({token.thread.id, rfA, regA});
     regFileB.read({token.thread.id, rfB, regB});
     // Prepare mailbox operation
-    if (isCSROp(token.instr))
-      mailbox.prepare(token.thread.id);
+    token.idleRelease = False;
+    if (isCSROp(token.instr)) begin
+      if (mailbox.idleReleaseInProgress)
+        token.idleRelease = True;
+      else
+        mailbox.prepare(token.thread.id);
+    end
     // Trigger next stage
     decode1Input <= token;
   endrule
@@ -831,10 +837,15 @@ module mkCore#(CoreId myId) (Core);
     token.jumpBase = token.op.isJumpReg ?
                        truncate(token.valA) : token.thread.pc;
     // Mailbox send
+    token.retry = False;
     if (mailbox.canSend && token.op.csr.isSend) begin
-      mailbox.send(token.thread.id, token.thread.msgLen,
-                     unpack(truncate(token.valA)), token.thread.msgPtr);
-      incSentReg <= 1;
+      if (token.idleRelease)
+        token.retry = True;
+      else begin
+        mailbox.send(token.thread.id, token.thread.msgLen,
+                       unpack(truncate(token.valA)), token.thread.msgPtr);
+        incSentReg <= 1;
+      end
     end
     // Mailbox receive
     if (mailbox.canRecv && token.op.csr.isRecv) begin
@@ -850,8 +861,8 @@ module mkCore#(CoreId myId) (Core);
     // Mailbox scratchpad access
     token.isScratchpadAccess = token.memAddr[31:`LogOffChipRAMBaseAddr] == 0;
     // Mailbox can-send / can-recv
-    token.canSend = mailbox.canSend;
-    token.canRecv = mailbox.canRecv;
+    token.canSend = !token.idleRelease && mailbox.canSend;
+    token.canRecv = !token.idleRelease && mailbox.canRecv;
     // Address for write-port of instrMem
     if (token.op.csr.isInstrAddr) begin
       token.thread.instrWriteIndex = truncate(token.valA);
@@ -906,7 +917,7 @@ module mkCore#(CoreId myId) (Core);
       instrMemWriteData <= token.valA;
     end
     // Load or store: send request to data cache or scratchpad
-    Bool retry = False;
+    Bool retry = token.retry;
     Bool suspend = False;
     if (token.op.isLoad || token.op.isStore || token.op.csr.isFlush) begin
       // Determine data to write and assoicated byte-enables
@@ -963,7 +974,7 @@ module mkCore#(CoreId myId) (Core);
     end
     // WaitUntil CSR
     if (token.op.csr.isWaitUntil) begin
-      if (mailbox.canSleep) begin
+      if (!token.idleRelease) begin
         mailbox.sleep(token.thread.id, truncate(token.valA));
         suspend = True;
       end else
