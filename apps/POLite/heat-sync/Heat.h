@@ -44,16 +44,18 @@ struct HeatDevice : PDevice<HeatState, None, HeatMessage> {
   }
 
   // Called by POLite when system becomes idle
-  inline void step() {
+  inline bool step() {
     // Execution complete?
     if (s->time == 0) {
       *readyToSend = No;
+      return false;
     }
     else {
       s->time--;
       if (!s->isConstant) s->val = s->acc >> 2;
       s->acc = 0;
       *readyToSend = Pin(0);
+      return true;
     }
   }
 

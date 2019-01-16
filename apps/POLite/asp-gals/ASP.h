@@ -117,8 +117,9 @@ struct ASPDevice : PDevice<ASPState, None, ASPMessage> {
   }
 
   // Called by POLite when system becomes idle
-  inline void step() {
+  inline bool step() {
     *readyToSend = No;
+    return false;
   }
 
   // Optionally send message to host on termination

@@ -83,8 +83,9 @@ struct PageRankDevice : PDevice<PageRankState, None, PageRankMessage> {
   }
 
   // Called by POLite when system becomes idle
-  inline void step() {
+  inline bool step() {
     *readyToSend = No;
+    return false;
   }
 
   // Optionally send message to host on termination
