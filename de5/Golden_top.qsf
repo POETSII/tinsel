@@ -2265,6 +2265,7 @@ set_global_assignment -name VERILOG_FILE ../rtl/mkCore.v
 set_global_assignment -name VERILOG_FILE ../rtl/mkFPU.v
 set_global_assignment -name VERILOG_FILE ../rtl/mkDCache.v
 set_global_assignment -name VERILOG_FILE ../rtl/AlteraBlockRam.v
+set_global_assignment -name VERILOG_FILE ../rtl/SizedFIFO.v
 set_global_assignment -name QIP_FILE S5_DDR3_QSYS/synthesis/S5_DDR3_QSYS.qip
 set_global_assignment -name SDC_FILE Golden_top.sdc
 set_global_assignment -name VERILOG_FILE Golden_top.v
