@@ -399,7 +399,7 @@ module mkReliableLinkCore#(Mac mac) (ReliableLink);
       receiveBuffer.deq;
       receiveCount.dec;
     endmethod
-    method Bool valid = receiveBuffer.canDeq && receiveBuffer.canPeek;
+    method Bool valid = receiveBuffer.canDeq;
     method Bit#(64) value = receiveBuffer.dataOut;
   endinterface
 

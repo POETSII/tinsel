@@ -697,9 +697,7 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
 
   rule transmit;
     // Send transmit requests
-    if (transmitQueue.canDeq &&
-          transmitQueue.canPeek &&
-            transmitPort.canPut) begin
+    if (transmitQueue.canDeq && transmitPort.canPut) begin
       TransmitReq req = transmitQueue.dataOut;
       transmitQueue.deq;
       transmitPort.put(req);
@@ -835,8 +833,7 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
   Reg#(Bit#(2)) wakeupState <- mkReg(0);
   Reg#(Bool) wakeup2Fire <- mkDReg(False);
 
-  rule wakeup0 (!doPrepare && wakeupState == 0 &&
-                  sleepQueue.canPeek && sleepQueue.canDeq);
+  rule wakeup0 (!doPrepare && wakeupState == 0 && sleepQueue.canDeq);
     let thread = sleepQueue.dataOut;
     sleepQueue.deq;
     wakeupReg <= thread;

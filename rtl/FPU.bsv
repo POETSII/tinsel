@@ -167,7 +167,7 @@ module mkFPU (FPU);
       respBuffer.deq;
       inflightCount.dec;
     endmethod
-    method Bool valid = respBuffer.canDeq && respBuffer.canPeek;
+    method Bool valid = respBuffer.canDeq;
     method FPUResp value = respBuffer.dataOut;
   endinterface
 
