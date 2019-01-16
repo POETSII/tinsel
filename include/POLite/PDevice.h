@@ -74,7 +74,7 @@ template <typename S, typename E, typename M> struct PDevice {
   void init();
   void send(volatile M* msg);
   void recv(M* msg, E* edge);
-  void step();
+  bool step();
   bool finish(volatile M* msg);
 };
 
@@ -322,10 +322,9 @@ template <typename DeviceType,
           for (uint32_t i = 0; i < numDevices; i++) {
             DeviceType dev = getDevice(i);
             // Invoke the step handler for each device
-            dev.step();
+            active = dev.step() || active;
             // Device ready to send?
             if (*dev.readyToSend != No) {
-              active = true;
               *(sendersTop++) = i;
             }
           }

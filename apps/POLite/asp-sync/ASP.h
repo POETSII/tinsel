@@ -49,7 +49,7 @@ struct ASPDevice : PDevice<ASPState, None, ASPMessage> {
   }
 
   // Called by POLite on idle event
-  inline void step() {
+  inline bool step() {
     // Fold in new reaching nodes
     bool changed = false;
     for (uint32_t i = 0; i < N; i++) {
@@ -64,8 +64,15 @@ struct ASPDevice : PDevice<ASPState, None, ASPMessage> {
       }
       s->newReaching[i] = 0;
     }
-    // Start new time step
-    *readyToSend = changed ? Pin(0) : No;
+    // Start new time step?
+    if (changed) {
+      *readyToSend = Pin(0);
+      return true;
+    }
+    else {
+      *readyToSend = No;
+      return false;
+    }
   }
 
   // Optionally send message to host on termination

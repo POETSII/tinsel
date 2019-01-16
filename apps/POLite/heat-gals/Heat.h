@@ -79,7 +79,7 @@ struct HeatDevice : PDevice<HeatState, None, HeatMessage> {
   }
 
   // Called by POLite when system becomes idle
-  inline void step() { *readyToSend = No; }
+  inline bool step() { *readyToSend = No; return false; }
 
   // Optionally send message to host on termination
   inline bool finish(volatile HeatMessage* msg) {
