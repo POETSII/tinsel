@@ -18,6 +18,9 @@ const int Dist = 40;
 // Probality of adding an edge to a vertex that's within distance
 const double Chance = 0.125;
 
+// Number of neighbours chosen completely at random for a vertex
+const double RandConns = 0;
+
 bool chance()
 {
   double x = ((double) rand()) / RAND_MAX;
@@ -61,6 +64,25 @@ int main()
           def[last] = v;
         }
         last = v;
+      }
+    }
+  }
+
+  // Some completely random connections
+  for (int y = 0; y < YLen; y++) {
+    for (int x = 0; x < XLen; x++) {
+      int src = space[y][x];
+      if (src >= 0) {
+        for (int i = 0; i < RandConns; i++) {
+          double chance = ((double) rand()) / RAND_MAX;
+          double d = chance * (NumVertices-1);
+          int dst = (int) d;
+          if (src != dst) {
+            printf("%d %d\n", src, dst);
+            printf("%d %d\n", dst, src);
+            numEdges+=2;
+          }
+        }
       }
     }
   }

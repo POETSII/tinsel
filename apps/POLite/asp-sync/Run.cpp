@@ -30,7 +30,7 @@ int main(int argc, char**argv)
 
   // Create POETS graph
   PGraph<ASPDevice, ASPState, None, ASPMessage> graph;
-  graph.setNumBoards(2, 3);
+  graph.setNumBoards(3, 2);
 
   // Create nodes in POETS graph
   for (uint32_t i = 0; i < net.numNodes; i++) {
