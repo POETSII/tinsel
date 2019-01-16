@@ -588,11 +588,7 @@ module mkCore#(CoreId myId) (Core);
   InPort#(FPUResp)        fromFPUPort       <- mkInPort;
 
   // Queue of runnable threads
-  QueueInit runQueueInit;
-  runQueueInit.size = 1;
-  runQueueInit.file = Invalid;
-  SizedQueue#(`LogThreadsPerCore, ThreadState) runQueue <-
-    mkUGSizedQueueInit(runQueueInit);
+  SizedQueue#(`LogThreadsPerCore, ThreadState) runQueue <- mkUGSizedQueue;
 
   // Queue of suspended threads pending resumption
   SizedQueue#(`LogThreadsPerCore, ThreadState) resumeQueue <- mkUGSizedQueue;
@@ -630,8 +626,7 @@ module mkCore#(CoreId myId) (Core);
                  mailbox.wakeup, wakeupPort.in);
 
   // Pipeline stages
-  Reg#(Bool)          fetch1Fire         <- mkDReg(False);
-  Reg#(PipelineToken) fetch2Input        <- mkVReg;
+  Reg#(PipelineToken) fetch1Input        <- mkVReg;
   Reg#(PipelineToken) decode1Input       <- mkVReg;
   Reg#(PipelineToken) execute1Input      <- mkVReg;
   Reg#(PipelineToken) execute2Input      <- mkVReg;
@@ -717,9 +712,13 @@ module mkCore#(CoreId myId) (Core);
 
   // These wires are from the execute stage
   PulseWire newThreadEnqWire <- mkPulseWire;
-  Wire#(ThreadId) newThreadIdWire <- mkDWire(?);
+  Wire#(ThreadId) newThreadIdWire <- mkDWire(0);
 
-  rule resumeQueueEnq (resumeWire || newThreadEnqWire);
+  // On initialisation, thread 0 is inserted into the queue
+  Reg#(Bool) init <- mkReg(True);
+
+  rule resumeQueueEnq (init || resumeWire || newThreadEnqWire);
+    init <= False;
     ThreadState newThread = ?;
     newThread.pc = 0;
     newThread.id = newThreadIdWire;
@@ -739,16 +738,22 @@ module mkCore#(CoreId myId) (Core);
   Reg#(Bool) prevFromRunQueue <- mkReg(False);
 
   rule schedule1 (!stall && (runQueue.canDeq || resumeQueue.canDeq));
+    ThreadState thread = ?;
     // Take next thread from runQueue or resumeQueue using fair merge
     if (resumeQueue.canDeq && (prevFromRunQueue || !runQueue.canDeq)) begin
       resumeQueue.deq;
+      thread = resumeQueue.dataOut;
       prevFromRunQueue <= False;
-      fetch1Fire <= True;
     end else if (runQueue.canDeq) begin
       runQueue.deq;
+      thread = runQueue.dataOut;
       prevFromRunQueue <= True;
-      fetch1Fire <= True;
     end
+    instrMemReadAddr <= truncateLSB(thread.pc);
+    // Trigger next stage
+    PipelineToken token = ?;
+    token.thread = thread;
+    fetch1Input <= token;
   endrule
 
   // Count number of times there's no instruction to run
@@ -761,21 +766,8 @@ module mkCore#(CoreId myId) (Core);
   // Fetch stage
   // -----------
 
-  rule fetch1 (fetch1Fire);
-    // Obtain scheduled thread
-    ThreadState next = prevFromRunQueue ? runQueue.dataOut
-                                        : resumeQueue.dataOut;
-    // Create a pipeline token to hold new instruction
-    PipelineToken token = ?;
-    token.thread = next;
-    // Use thread's PC to fetch instruction
-    instrMemReadAddr <= truncateLSB(next.pc);
-    // Trigger second fetch sub-stage
-    fetch2Input  <= token;
-  endrule
-
-  rule fetch2;
-    PipelineToken token = fetch2Input;
+  rule fetch1;
+    PipelineToken token = fetch1Input;
     // Register instruction memory outputs
     token.instr = instrMemReadData;
     // Does result go to integer or floating-point register file?
@@ -1143,7 +1135,7 @@ module mkCore#(CoreId myId) (Core);
       runQueue.enq(token.thread);
     end 
     // Try to service a request from the writeback queue
-    if (writebackQueue.canPeek && writebackQueue.canDeq) begin
+    if (writebackQueue.canDeq) begin
       Writeback wb = writebackQueue.dataOut;
       // Can the thread be resumed?
       Bool resume = False;

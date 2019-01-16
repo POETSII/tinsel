@@ -440,7 +440,7 @@ module mkDCache#(DCacheId myId) (DCache);
     lineWriteIndexWire <= beatIndex(resp.info.beat, resp.info.req.id,
                             resp.info.req.addr, resp.info.way);
     // Ready to consume flush queue?
-    if (flushQueue.canDeq && flushQueue.canPeek) begin
+    if (flushQueue.canDeq) begin
       flush.req.cmd.isFlush = False;
       flush.req.cmd.isFlushResp = True;
       flushQueue.deq;
@@ -501,7 +501,7 @@ module mkDCache#(DCacheId myId) (DCache);
     memReq.burst = isLoad ? `BeatsPerLine : 1;
     // Are we going to send a memory request to the next stage?
     Bool sendMemReq = False;
-    if (missQueue.canPeek && missQueue.canDeq && memReqQueue.notFull) begin
+    if (missQueue.canDeq && memReqQueue.notFull) begin
       if (missUnitState == 0) begin
         // Are we ready to request the new line?
         if (isLoad) begin

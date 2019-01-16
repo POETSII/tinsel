@@ -507,7 +507,7 @@ module mkPCIeStream (PCIeStream);
   interface In streamIn = inPort.in;
   interface BOut streamOut;
     method Action get = action outBuffer.deq; outBufferLen.dec; endaction;
-    method Bool valid = outBuffer.canPeek && outBuffer.canDeq;
+    method Bool valid = outBuffer.canDeq;
     method Bit#(128) value = outBuffer.dataOut;
   endinterface
 

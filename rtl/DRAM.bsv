@@ -329,8 +329,7 @@ module mkDRAM#(t id) (DRAM);
       respBuffer.deq;
       inFlightCount.dec;
     endmethod
-    method Bool valid = inFlight.canPeek && inFlight.canDeq &&
-                           respBuffer.canPeek && respBuffer.canDeq;
+    method Bool valid = inFlight.canDeq && respBuffer.canDeq;
     method DRAMResp value;
       DRAMResp resp;
       resp.id = inFlight.dataOut.id;

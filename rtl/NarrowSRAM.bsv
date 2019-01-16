@@ -359,8 +359,7 @@ module mkSRAM#(t id) (SRAM);
       inFlightCount.dec;
     endmethod
     method Bool valid =
-      respBuffer.canPeek && respBuffer.canDeq &&
-          inFlight.canPeek && inFlight.canDeq;
+      respBuffer.canDeq && inFlight.canDeq;
     method SRAMResp value;
       SRAMResp resp;
       resp.id = inFlight.dataOut.id;
