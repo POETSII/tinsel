@@ -277,8 +277,8 @@ module mkMailbox (Mailbox);
   // There is a conflict between the transmit and receive pipelines:
   // "receive" needs to write a message to the scratchpad while
   // "transmit" needs to read a message.  The message access unit
-  // resolves this conflict: read takes priorty over write and the
-  // write wire must only be asserted when the read wire is low.
+  // resolves this conflict: receive takes priorty over transmit and
+  // the read wire must only be asserted when the write wire is low.
 
   // Control wires for modifying messages in scratchpad
   Wire#(Bool) flitReadWire  <- mkDWire(False);
@@ -326,10 +326,10 @@ module mkMailbox (Mailbox);
   // Stage 1 only invoked on first flit of each messages
   rule receive0and1;
     Bool consumeFlit = False;
+    let flit = flitInPort.value;
     if (recvState == 0) begin
       // Try to consume an incoming flit
       if (flitInPort.canGet && inFlightRecvs.notFull) begin
-        let flit = flitInPort.value;
         if (firstFlit) begin
           recvState <= 1;
           statusMem.tryGet(truncate(pack(flit.dest)));
@@ -348,14 +348,14 @@ module mkMailbox (Mailbox);
     end
     if (consumeFlit) begin
       // Consume flit
-      flitBuffer <= flitInPort.value;
+      flitBuffer <= flit;
       flitInPort.get;
       // Trigger receive stage 2
       receive2Fire <= True;
       receive2FirstFlit <= firstFlit;
       // We may have finished processing this message,
       // in which case reset firstFlit back to True
-      firstFlit <= !flitBuffer.notFinalFlit;
+      firstFlit <= !flit.notFinalFlit;
     end
   endrule
 
@@ -407,6 +407,10 @@ module mkMailbox (Mailbox);
   // Transmit flit-buffer
   SizedQueue#(`LogTransmitBufferLen, Flit) transmitBuffer <-
     mkUGShiftQueue(QueueOptFmax);
+
+  // How many final flits does transmit buffer contain?
+  Count#(TAdd#(`LogTransmitBufferLen, 1)) transmitFinalFlits <-
+    mkCount(2 ** `LogTransmitBufferLen);
 
   // Track number of in-flight requests
   Count#(TAdd#(`LogTransmitBufferLen, 1)) inFlightTransmits <-
@@ -470,6 +474,7 @@ module mkMailbox (Mailbox);
                     , notFinalFlit: token.notFinalFlit
                     , isIdleToken:  False };
     transmitBuffer.enq(flit);
+    if (!token.notFinalFlit) transmitFinalFlits.inc;
   endrule
   
   // Scratchpad interface
@@ -556,8 +561,10 @@ module mkMailbox (Mailbox);
       method Action get;
         transmitBuffer.deq;
         inFlightTransmits.dec;
+        if (!transmitBuffer.dataOut.notFinalFlit) transmitFinalFlits.dec;
       endmethod
-      method Bool valid = transmitBuffer.canDeq;
+      method Bool valid = transmitBuffer.canDeq &&
+                            transmitFinalFlits.value != 0;
       method Flit value = transmitBuffer.dataOut;
     endinterface
   endinterface
@@ -734,9 +741,12 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
   // Flag indicating whether client thread can send
   Reg#(Bool) canSendReg <- mkConfigReg(False);
 
+  // Is CPU currently calling recv()?
+  Wire#(Bool) recvCalled <- mkDWire(False);
+
   rule statusUnit;
     ThreadId id = doPrepare ? prepareId : sleepQueue.dataOut.id;
-    unread.tryGet(id);
+    if (doPrepare || !recvCalled) unread.tryGet(id);
     canSendReg <= canThreadSend[id].value;
   endrule
 
@@ -813,7 +823,7 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
   Reg#(Bit#(1)) wakeupState <- mkReg(0);
   Reg#(Bool) wakeup1Fire <- mkDReg(False);
 
-  rule wakeup0 (!doPrepare && wakeupState == 0 &&
+  rule wakeup0 (!doPrepare && !recvCalled && wakeupState == 0 &&
                   sleepQueue.canPeek && sleepQueue.canDeq);
     let thread = sleepQueue.dataOut;
     sleepQueue.deq;
@@ -864,6 +874,7 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
   method Action recv;
     myAssert(unread.canGet, "MailboxClientUnit: recv violation");
     unread.get;
+    recvCalled <= True;
   endmethod
 
   method Bool canSend = canSendReg;
