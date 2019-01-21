@@ -24,6 +24,7 @@ interface ArrayOfSet#(type logNumSets, type logSetSize);
   // Guard for above method
   method Bool canPut;
   // Try to remove any item from the set at the given array index
+  // (Don't call get with same index at same time)
   method Action tryGet(Bit#(logNumSets) index);
   // Can an item be successfully removed? (Is the set non-empty?)
   // (Valid on the cycle after call to "tryGet")
@@ -105,13 +106,10 @@ module mkArrayOfSet (ArrayOfSet#(logNumSets, logSetSize))
 
   method Action tryGet(Bit#(logNumSets) index);
     // Are we currently writing to the index in question?
-    Bool hazard = doGetWire && readStage1Input == index;
-    // Only attempt tryGet if there's no hazard
-    if (!hazard) begin
-      arrayMem.putA(False, index, ?);
-      readStage1Input <= index;
-      readStage1Fire <= True;
-    end
+    // Bool hazard = doGetWire && readStage1Input == index;
+    arrayMem.putA(False, index, ?);
+    readStage1Input <= index;
+    readStage1Fire <= True;
   endmethod
 
   method Bool canGet = canGetWire;
