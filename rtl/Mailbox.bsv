@@ -322,35 +322,34 @@ module mkMailbox (Mailbox);
   // The index in the scratchpad that the message is being written to
   Reg#(Bit#(`LogMsgsPerThread)) destIndex <- mkConfigRegU;
 
-  rule receive0 (recvState == 0);
-    // Try to consume an incoming flit
-    if (flitInPort.canGet && inFlightRecvs.notFull) begin
-      let flit = flitInPort.value;
-      flitBuffer <= flit;
-      flitInPort.get;
-      recvState <= 1;
-      if (firstFlit) begin
-        inFlightRecvs.inc;
-        statusMem.tryGet(truncate(pack(flit.dest)));
+  // Stages 0 and 1
+  // Stage 1 only invoked on first flit of each messages
+  rule receive0and1;
+    Bool consumeFlit = False;
+    if (recvState == 0) begin
+      // Try to consume an incoming flit
+      if (flitInPort.canGet && inFlightRecvs.notFull) begin
+        let flit = flitInPort.value;
+        if (firstFlit) begin
+          recvState <= 1;
+          statusMem.tryGet(truncate(pack(flit.dest)));
+        end else begin
+          consumeFlit = True;
+        end
       end
-    end
-  endrule
-
-  rule receive1 (recvState == 1);
-    Bool retry = False;
-    if (firstFlit) begin
+    end else if (recvState == 1) begin
       // Do we have somewhere to put the incoming message?
       if (statusMem.canGet) begin
         statusMem.get;
-        recvState <= 0;
-      end else begin
-        // If not, retry the lookup
-        statusMem.tryGet(truncate(pack(flitBuffer.dest)));
-        retry = True;
+        inFlightRecvs.inc;
+        consumeFlit = True;
       end
-    end else
       recvState <= 0;
-    if (!retry) begin
+    end
+    if (consumeFlit) begin
+      // Consume flit
+      flitBuffer <= flitInPort.value;
+      flitInPort.get;
       // Trigger receive stage 2
       receive2Fire <= True;
       receive2FirstFlit <= firstFlit;
@@ -360,6 +359,7 @@ module mkMailbox (Mailbox);
     end
   endrule
 
+  // Stage 2
   rule receive2 (receive2Fire);
     let flit = flitBuffer;
     let index = receive2FirstFlit ? statusMem.itemOut : destIndex;
@@ -380,6 +380,7 @@ module mkMailbox (Mailbox);
       recvFlitCount <= recvFlitCount+1;
   endrule
 
+  // Stage 3
   rule receive3;
     ReceiveAlert alert = receive3Input;
     // Issue response
