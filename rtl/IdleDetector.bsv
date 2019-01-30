@@ -98,7 +98,7 @@ interface IdleDetector;
   interface Out#(Flit) mboxFlitOut;
 endinterface
 
-module mkIdleDetector#(BoardId me) (IdleDetector);
+module mkIdleDetector (IdleDetector);
 
   // Ports  
   InPort#(Flit) netInPort <- mkInPort;
