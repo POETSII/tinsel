@@ -116,6 +116,9 @@ module de5BridgeTop (DE5BridgeTop);
   // Has board been enumerated over JTAG yet?
   Reg#(Bool) enumerated <- mkConfigReg(False);
 
+  // Is the idle detected enabled
+  Reg#(Bool) idleDetectedEnabled <- mkConfigReg(False);
+
   // Connect PCIe stream and 10G link
   // --------------------------------
 
@@ -191,7 +194,7 @@ module de5BridgeTop (DE5BridgeTop);
 
   // Enable idle detector
   rule enabler;
-    detector.enabled(enumerated);
+    detector.enabled(idleDetectorEnabled);
   endrule
 
   // In simulation, display start-up message
@@ -211,17 +214,33 @@ module de5BridgeTop (DE5BridgeTop);
   // query command to distinguish this bridge board from a worker board,
   // which returns non-zero.
 
+  // On the 2nd query command, enable the idle detector.
+  // This is to allow the ids of all boards to be set before
+  // enabling the idle detector.
+
+  Reg#(Bit#(8)) boardIdWithinBox <- mkConfigReg(0);
   Reg#(Bit#(2)) uartState <- mkConfigReg(0);
 
   rule uartReceive (fromJtag.canGet && uartState == 0);
     fromJtag.get;
-    enumerated <= True;
     uartState <= 1;
   endrule
 
-  rule uartRespond (toJtag.canPut && uartState != 0);
+  rule uartReceive (fromJtag.canGet && uartState == 1);
+    fromJtag.get;
+    enumerated <= True;
+    if (enumerated) idleDetectorEnbabled <= True;
+    uartState <= 2;
+  endrule
+
+  rule uartRespond (toJtag.canPut && uartState == 2);
     toJtag.put(0);
-    uartState <= uartState == 1 ? 2 : 0;
+    uartState <= 3;
+  endrule
+
+  rule uartRespond (toJtag.canPut && uartState == 3);
+    toJtag.put(0);
+    uartState <= 0;
   endrule
 
   `ifndef SIMULATE

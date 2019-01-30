@@ -112,16 +112,22 @@ p["LinkTimeout"] = 1024
 p["MacLatency"] = 100
 
 # Number of bits in mesh X coord
-p["MeshXBits"] = 2
+p["MeshXBits"] = 3
 
 # Number of bits in mesh Y coord
-p["MeshYBits"] = 2
+p["MeshYBits"] = 3
 
-# Mesh X length
-p["MeshXLen"] = 3
+# Number of bits in mesh X coord within a box
+p["MeshXBitsWithinBox"] = 2
 
-# Mesh Y length
-p["MeshYLen"] = 2
+# Number of bits in mesh Y coord within a box
+p["MeshYBitsWithinBox"] = 2
+
+# Mesh X length within a box
+p["MeshXLenWithinBox"] = 3
+
+# Mesh Y length within a box
+p["MeshYLenWithinBox"] = 2
 
 # Number of cores per FPU
 p["LogCoresPerFPU"] = 2

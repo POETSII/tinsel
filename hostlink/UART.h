@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include "JtagAtlantic.h"
 
+// Non-blocking connection to JTAG UART
 class UART {
   #ifdef SIMULATE
   int sock;
@@ -22,14 +23,11 @@ class UART {
   void open(int instId);
 
   // Send bytes over UART
-  void put(void* buffer, int numBytes);
+  int write(char* data, int numBytes);
 
   // Receive bytes over UART
-  void get(void* buffer, int numBytes);
+  int read(char* data, int numBytes);
 
-  // Is a byte available for reading?
-  bool canGet();
-  
   // Flush writes
   void flush();
 

@@ -16,8 +16,8 @@ while read -r EXPORT; do
   eval $EXPORT
 done <<< `python ../config.py envs`
 
-MESH_MAX_X=$((2 ** $MeshXBits))
-MESH_MAX_Y=$((2 ** $MeshYBits))
+MESH_MAX_X=$((2 ** $MeshXBitsWithinBox))
+MESH_MAX_Y=$((2 ** $MeshYBitsWithinBox))
 echo "Max mesh dimensions: $MESH_MAX_X x $MESH_MAX_Y"
 
 MESH_X=$MeshXLen
