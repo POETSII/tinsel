@@ -111,16 +111,16 @@ p["LinkTimeout"] = 1024
 # Latency of 10G MAC in cycles (simulation only)
 p["MacLatency"] = 100
 
-# Number of bits in mesh X coord
+# Number of bits in mesh X coord (board id)
 p["MeshXBits"] = 3
 
-# Number of bits in mesh Y coord
+# Number of bits in mesh Y coord (board id)
 p["MeshYBits"] = 3
 
-# Number of bits in mesh X coord within a box
+# Number of bits in mesh X coord within a box (DIP switches)
 p["MeshXBitsWithinBox"] = 2
 
-# Number of bits in mesh Y coord within a box
+# Number of bits in mesh Y coord within a box (DIP switches)
 p["MeshYBitsWithinBox"] = 2
 
 # Mesh X length within a box

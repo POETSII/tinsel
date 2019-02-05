@@ -1,47 +1,79 @@
-#include "UART.h"
-#include "ByteQueue.h"
+#ifndef _UART_BUFFER_H_
+#define _UART_BUFFER_H_
 
-// I/O buffer for sending and receiving packets
+#include <stdint.h>
+#include <unistd.h>
+#include "UART.h"
+#include "Queue.h"
+
+#define UART_BUFFER_SIZE 4096
+
+// Buffered I/O over JTAG UART
 struct UARTBuffer {
   UART* uart;
-  ByteQueue* inQueue;
-  ByteQueue* outQueue;
+  Queue<uint8_t>* in;
+  Queue<uint8_t>* out;
 
-// TODO
-
-  UARTBuffer(UART* u, int n) {
+  UARTBuffer() {
+    uart = new UART;
+    in = new Queue<uint8_t> (UART_BUFFER_SIZE);
+    out = new Queue<uint8_t> (UART_BUFFER_SIZE);
   }
 
-  void progress() {
-    if (outBack > outFront) {
-      int ret = uart->write(&bytesOut[outFront], outBack - outFront);
-    }
-
-    if (nbytesOut > 0) {
-      int ret = uart->write(&bytesOut[nbytesOut], nbytesOut);
-      if (ret > 0) {
-        bytesOut += ret;
-        if bytesOut
+  // Serve the UART, i.e. fill and release I/O buffers
+  inline void serve() {
+    uint8_t buffer[128];
+    bool progress = true;
+    while (progress) {
+      progress = false;
+      // Queue -> UART
+      if (out->size > 0) {
+        int bytes = out->size < sizeof(buffer) ? out->size : sizeof(buffer);
+        for (int i = 0; i < bytes; i++) buffer[i] = out->index(i);
+        int n = uart->write((char*) buffer, bytes);
+        if (n > 0) {
+          out->drop(n);
+          progress = true;
+        }
+      }
+      // UART -> QUEUE
+      if (in->space() > sizeof(buffer)) {
+        int n = uart->read((char*) buffer, sizeof(buffer));
+        for (int i = 0; i < n; i++) in->enq(buffer[i]);
+        if (n > 0) progress = true;
       }
     }
-  };
-
-  bool canPut() {
-    if (nbytesOut < size) return true;
-
-    uart->write();
-  };
-  void put(char byte) {
-    bytesOut[nbytesOut] = byte;
-    nbytesOut++
   }
 
-  bool canGet() { return bytesIn == sizeof(BoardCtrlPkt); }
-  void get() {
+  inline bool canPut() {
+    return out->canEnq();
+  };
+  inline void put(char byte) {
+    out->enq(byte);
   }
 
-  ~PktBuffer() {
-    delete [] bytesIn;
-    delete [] bytesOut;
+  inline bool canGet() {
+    return in->canDeq();
+  }
+  inline uint8_t get() {
+    return in->deq();
+  }
+  inline uint8_t peek() {
+    return in->first();
+  }
+
+  void flush() {
+    while (out->size > 0) {
+      serve();
+      usleep(100);
+    }
+  }
+
+  ~UARTBuffer() {
+    delete [] in;
+    delete [] out;
+    delete uart;
   }
 };
+
+#endif

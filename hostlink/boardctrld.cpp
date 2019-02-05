@@ -3,23 +3,27 @@
 // Board Control Daemon
 // ====================
 //
-// Control FPGAs, and communicate with each FPGA JTAG via a TCP socket.
+// Control FPGAs, and communicate with each FPGA JTAG UART, via a TCP socket.
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/mman.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <sys/socket.h>
-#include <sys/un.h>
 #include <sys/ioctl.h>
+#include <sys/file.h>
+#include <netinet/in.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <stdint.h>
 #include <assert.h>
 #include <poll.h>
 #include <errno.h>
+#include <config.h>
+#include "UARTBuffer.h"
 #include "UART.h"
 #include "PowerLink.h"
 #include "boardctrld.h"
@@ -44,8 +48,8 @@ int createListener()
   }
 
   // Bind socket
-  struct sockaddr_in sockAddr;
-  memset(&sockAddr, 0, sizeof(struct sockaddr_un));
+  sockaddr_in sockAddr;
+  memset(&sockAddr, 0, sizeof(sockaddr_in));
 	sockAddr.sin_family = AF_INET;
 	sockAddr.sin_addr.s_addr = htonl(INADDR_ANY);
 	sockAddr.sin_port = htons(TCP_PORT);
@@ -66,96 +70,73 @@ int createListener()
   return sock;
 }
 
-// Buffer for sending and receiving packets
-struct UARTBuffer {
-  UART* uart;
-  int size;
-  int nbytesIn, nbytesOut;
-  char* bytesIn;
-  char* bytesOut;
+// Check if connection is alive
+bool alive(int conn)
+{
+  char buf;
+  return send(conn, &buf, 0, 0) == 0;
+}
 
-  PktBuffer(UART* u, int n) {
-    size = n;
-    uart = u;
-    bytesIn = new char [n];
-    bytesOut = new char [n];
-    nbytesIn = nbytesOut = 0;
-  }
+// Can receive from connection?
+bool canRecv(int conn)
+{
+  struct pollfd fd; fd.fd = conn; fd.events = POLLIN;
+  int ret = poll(&fd, 1, 0);
+  return (fd.revents & POLLIN);
+}
 
-  void progress() {
-    if (nbytesOut > 0) {
-      int ret = uart->write(&bytesOut[nbytesOut], nbytesOut);
-      if (ret > 0) {
-        bytesOut += ret;
-        if bytesOut
-      }
-    }
-  };
+// Can send on connection?
+bool canSend(int conn)
+{
+  struct pollfd fd; fd.fd = conn; fd.events = POLLOUT;
+  int ret = poll(&fd, 1, 0);
+  return (fd.revents & POLLOUT);
+}
 
-  bool canPut() {
-    if (nbytesOut < size) return true;
-
-    uart->write();
-  };
-  void put(char byte) {
-    bytesOut[nbytesOut] = byte;
-    nbytesOut++
-  }
-
-  bool canGet() { return bytesIn == sizeof(BoardCtrlPkt); }
-  void get() {
-  }
-
-  ~PktBuffer() {
-    delete [] bytesIn;
-    delete [] bytesOut;
-  }
-};
-
-// Receive a packet over the connection
+// Receive a packet over the TCP connection
 int getPacket(int fd, BoardCtrlPkt* pkt)
 {
-  char* buf = &pkt;
-  int numBytes = sizeof(BoardCtrlPkt);
-  int got = 0;
-  while (numBytes > 0) {
-    int ret = read(fd, &buf[got], numBytes);
-    if (ret <= 0)
-      return 0;
-    else {
-      got += ret;
-      numBytes -= ret;
+  if (canRecv(fd)) {
+    char* buf = (char*) pkt;
+    int numBytes = sizeof(BoardCtrlPkt);
+    int got = 0;
+    while (numBytes > 0) {
+      int ret = read(fd, &buf[got], numBytes);
+      if (ret < 0)
+        return ret;
+      else {
+        got += ret;
+        numBytes -= ret;
+      }
     }
+    return 1;
   }
-  return 1;
+  return 0;
 }
 
-// Send a packet over the connection
+// Send a packet over the TCP connection
 int putPacket(int fd, BoardCtrlPkt* pkt)
 {
-  char* buf = &pkt;
-  int numBytes = sizeof(BoardCtrlPkt);
-  int sent = 0;
-  while (numBytes > 0) {
-    int ret = read(fd, &buf[sent], numBytes);
-    if (ret <= 0)
-      return 0;
-    else {
-      sent += ret;
-      numBytes -= ret;
+  if (canSend(fd)) {
+    char* buf = (char*) pkt;
+    int numBytes = sizeof(BoardCtrlPkt);
+    int sent = 0;
+    while (numBytes > 0) {
+      int ret = write(fd, &buf[sent], numBytes);
+      if (ret < 0)
+        return ret;
+      else {
+        sent += ret;
+        numBytes -= ret;
+      }
     }
+    return 1;
   }
-  return 1;
+  return 0;
 }
 
-int server(int conn)
+void server(int conn, int numBoards, UARTBuffer* uartLinks)
 {
-  // Determine number of boards
-  int numBoards = TinselMeshXLenWithinBox * TinselMeshYLenWithinBox + 1;
-
-  // Create a UART link to each board
-  UART* uartLinks = new UART [numBoards];
-
   // Open each UART
   #ifdef SIMULATE
     // Worker boards
@@ -163,12 +144,12 @@ int server(int conn)
     for (int y = 0; y < TinselMeshYLenWithinBox; y++)
       for (int x = 0; x < TinselMeshXLenWithinBox; x++) {
         int boardId = (y<<TinselMeshXBitsWithinBox) + x;
-        uartLinks[count++].open(boardId);
+        uartLinks[count++].uart->open(boardId);
       }
     // Host board
-    uartLinks[count++].open(-1);
+    uartLinks[count++].uart->open(-1);
   #else
-    for (int i = 0; i < numBoards; i++) uartLinks[i].open(i+1);
+    for (int i = 0; i < numBoards; i++) uartLinks[i].uart->open(i+1);
   #endif
 
   // Packet buffer for sending and receiving
@@ -178,34 +159,65 @@ int server(int conn)
   pkt.linkId = 0;
   pkt.channel = CtrlChannel;
   pkt.payload = 0;
-  if (! putPacket(conn, &pkt)) return 0;
+  while (1) {
+    int n = putPacket(conn, &pkt);
+    if (n < 0) return;
+    if (n > 0) break;
+  }
 
-  // Can we send or receive over the socket?
-  struct pollfd fd; fd.fd = s->client; fd.events = POLLIN | POLLOUT;
-  int ret = poll(&fd, 1, -1);
-  if (ret < 0)
-    return 0;
-  else {
-    if (fd.revents & POLLIN) {
-      if (getPacket(conn, &pkt)) {
+  // Serve UARTs every 'serveCount' iterations of event loop
+  int serveMax = 32;
+  int serveCount = 0;
+
+  // Event loop
+  while (1) {
+    bool didPut = false;
+    bool didGet = false;
+
+    // Can we write to all UART buffers?
+    bool allCanPut = true;
+    for (int i = 0; i < numBoards; i++)
+      allCanPut = allCanPut && uartLinks[i].canPut();
+
+    // If so, try to receive a network packet and forward to UART
+    if (allCanPut) {
+      int ok = getPacket(conn, &pkt);
+      if (ok < 0) return;
+      if (ok > 0) {
         assert(pkt.channel == UartChannel);
         uartLinks[pkt.linkId].put(pkt.payload);
+        didPut = true;
       }
-      else
-        return 0;
     }
-    else if (fd.revents & POLLOUT) {
-      bool sent = false;
-      for (int i = 0; i < numBoards; i++) {
-        if (uartLinks[i].canGet()) {
-          pkt.linkId = i;
-          pkt.channel = UartChannel;
-          uartLinks[i].get(&pkt.payload, 1);
-          if (!putPacket(conn, &pkt)) return 0;
-          sent = true;
+
+    // Try to read from each UART, and forward to network
+    for (int i = 0; i < numBoards; i++) {
+      if (uartLinks[i].canGet()) {
+        pkt.linkId = i;
+        pkt.channel = UartChannel;
+        pkt.payload = uartLinks[i].peek();
+        int ok = putPacket(conn, &pkt);
+        if (ok < 0) return;
+        if (ok > 0) {
+          uartLinks[i].get();
+          didGet = true;
         }
       }
-      if (!sent) usleep(1000);
+    }
+
+    // Sleep for a while if no progress made
+    bool didSleep = false;
+    if (!didPut && !didGet) {
+      usleep(100);
+      didSleep = true;
+    }
+
+    // Make progress on each UART buffer
+    serveCount++;
+    if (didSleep || serveCount >= serveMax) {
+      if (!alive(conn)) return;
+      for (int i = 0; i < numBoards; i++) uartLinks[i].serve();
+      serveCount = 0;
     }
   }
 }
@@ -215,6 +227,13 @@ int main(int argc, char* argv[])
   // Ignore SIGPIPE
   signal(SIGPIPE, SIG_IGN);
 
+  // JTAG UARTs
+  UARTBuffer* uartLinks;
+
+  // Determine number of boards
+  int numBoards = TinselMeshXLenWithinBox * TinselMeshYLenWithinBox + 1;
+
+  // Listen on TCP port
   int sock = createListener();
 
   while (1) {
@@ -226,11 +245,15 @@ int main(int argc, char* argv[])
     }
 
     // Open lock file
-    int lockFile = open("/tmp/HostLink.lock", O_CREAT, 0444);
+    int lockFile = open("/tmp/boardctrld.lock", O_CREAT, 0444);
     if (lockFile == -1) return -1;
 
     // Acquire lock
-    if (flock(lockFile, LOCK_EX | LOCK_NB) != 0) return -1;
+    if (flock(lockFile, LOCK_EX | LOCK_NB) != 0) {
+      close(lockFile);
+      close(conn);
+      continue;
+    }
 
     // Power up worker boards
     #ifndef SIMULATE
@@ -240,14 +263,23 @@ int main(int argc, char* argv[])
     sleep(1);
     #endif
 
+     // Create a UART link to each board
+    uartLinks = new UARTBuffer [numBoards];
+
     // Invoke server to handle connection
-    server(conn);
+    server(conn, numBoards, uartLinks);
 
     // Finished
     close(conn);
 
+    // Free UART links
+    delete [] uartLinks;
+
     // Power down worker boards
+    #ifndef SIMULATE
     powerEnable(0);
+    usleep(1500000);
+    #endif
   }
 
   return 0;
