@@ -26,7 +26,9 @@
 #include "UARTBuffer.h"
 #include "UART.h"
 #include "PowerLink.h"
-#include "boardctrld.h"
+#include "BoardCtrl.h"
+#include "SocketUtils.h"
+#include "DebugLinkFormat.h"
 
 // Constants
 // ---------
@@ -70,71 +72,6 @@ int createListener()
   return sock;
 }
 
-// Check if connection is alive
-bool alive(int conn)
-{
-  char buf;
-  return send(conn, &buf, 0, 0) == 0;
-}
-
-// Can receive from connection?
-bool canRecv(int conn)
-{
-  struct pollfd fd; fd.fd = conn; fd.events = POLLIN;
-  int ret = poll(&fd, 1, 0);
-  return (fd.revents & POLLIN);
-}
-
-// Can send on connection?
-bool canSend(int conn)
-{
-  struct pollfd fd; fd.fd = conn; fd.events = POLLOUT;
-  int ret = poll(&fd, 1, 0);
-  return (fd.revents & POLLOUT);
-}
-
-// Receive a packet over the TCP connection
-int getPacket(int fd, BoardCtrlPkt* pkt)
-{
-  if (canRecv(fd)) {
-    char* buf = (char*) pkt;
-    int numBytes = sizeof(BoardCtrlPkt);
-    int got = 0;
-    while (numBytes > 0) {
-      int ret = read(fd, &buf[got], numBytes);
-      if (ret < 0)
-        return ret;
-      else {
-        got += ret;
-        numBytes -= ret;
-      }
-    }
-    return 1;
-  }
-  return 0;
-}
-
-// Send a packet over the TCP connection
-int putPacket(int fd, BoardCtrlPkt* pkt)
-{
-  if (canSend(fd)) {
-    char* buf = (char*) pkt;
-    int numBytes = sizeof(BoardCtrlPkt);
-    int sent = 0;
-    while (numBytes > 0) {
-      int ret = write(fd, &buf[sent], numBytes);
-      if (ret < 0)
-        return ret;
-      else {
-        sent += ret;
-        numBytes -= ret;
-      }
-    }
-    return 1;
-  }
-  return 0;
-}
-
 void server(int conn, int numBoards, UARTBuffer* uartLinks)
 {
   // Open each UART
@@ -157,10 +94,9 @@ void server(int conn, int numBoards, UARTBuffer* uartLinks)
 
   // Send initial packet to indicate that all boards are up
   pkt.linkId = 0;
-  pkt.channel = CtrlChannel;
-  pkt.payload = 0;
+  pkt.payload[0] = DEBUGLINK_READY;
   while (1) {
-    int n = putPacket(conn, &pkt);
+    int n = socketPut(conn, (char*) &pkt, sizeof(BoardCtrlPkt));
     if (n < 0) return;
     if (n > 0) break;
   }
@@ -174,33 +110,38 @@ void server(int conn, int numBoards, UARTBuffer* uartLinks)
     bool didPut = false;
     bool didGet = false;
 
-    // Can we write to all UART buffers?
+    // Can we write a DebugLink packet to all UART buffers?
     bool allCanPut = true;
     for (int i = 0; i < numBoards; i++)
-      allCanPut = allCanPut && uartLinks[i].canPut();
+      allCanPut = allCanPut && uartLinks[i].canPut(DEBUGLINK_MAX_PKT_BYTES);
 
     // If so, try to receive a network packet and forward to UART
     if (allCanPut) {
-      int ok = getPacket(conn, &pkt);
+      int ok = socketGet(conn, (char*) &pkt, sizeof(BoardCtrlPkt));
       if (ok < 0) return;
       if (ok > 0) {
-        assert(pkt.channel == UartChannel);
-        uartLinks[pkt.linkId].put(pkt.payload);
+        int numBytes = toDebugLinkSize(pkt.payload[0]);
+        for (int i = 0; i < numBytes; i++)
+          uartLinks[pkt.linkId].put(pkt.payload[i]);
         didPut = true;
       }
     }
 
     // Try to read from each UART, and forward to network
     for (int i = 0; i < numBoards; i++) {
-      if (uartLinks[i].canGet()) {
+      if (uartLinks[i].canGet(1)) {
         pkt.linkId = i;
-        pkt.channel = UartChannel;
-        pkt.payload = uartLinks[i].peek();
-        int ok = putPacket(conn, &pkt);
-        if (ok < 0) return;
-        if (ok > 0) {
-          uartLinks[i].get();
-          didGet = true;
+        uint8_t cmd = uartLinks[i].peek();
+        uint8_t numBytes = fromDebugLinkSize(cmd);
+        if (uartLinks[i].canGet(numBytes)) {
+          for (int j = 0; j < numBytes; j++)
+            pkt.payload[j] = uartLinks[i].peekAt(j);
+          int ok = socketPut(conn, (char*) &pkt, sizeof(BoardCtrlPkt));
+          if (ok < 0) return;
+          if (ok > 0) {
+            for (int j = 0; j < numBytes; j++) uartLinks[i].get();
+            didGet = true;
+          }
         }
       }
     }
@@ -215,7 +156,7 @@ void server(int conn, int numBoards, UARTBuffer* uartLinks)
     // Make progress on each UART buffer
     serveCount++;
     if (didSleep || serveCount >= serveMax) {
-      if (!alive(conn)) return;
+      if (!socketAlive(conn)) return;
       for (int i = 0; i < numBoards; i++) uartLinks[i].serve();
       serveCount = 0;
     }

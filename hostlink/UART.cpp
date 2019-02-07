@@ -64,14 +64,18 @@ void UART::open(int instId)
 int UART::write(char* data, int numBytes)
 {
   if (sock == -1) sock = openSocket(instanceId);
-  return write(sock, (void*) data, numBytes);
+  int ret = send(sock, (void*) data, numBytes, 0);
+  if (ret == EAGAIN || ret == EWOULDBLOCK) return 0;
+  return ret;
 }
 
 // Read bytes over UART
 int UART::read(void* data, int numBytes)
 {
   if (sock == -1) sock = openSocket(instanceId);
-  return read(sock, (void*) ptr, numBytes);
+  int ret = recv(sock, (void*) ptr, numBytes, 0);
+  if (ret == EAGAIN || ret == EWOULDBLOCK) return 0;
+  return ret;
 }
 
 // Flush writes

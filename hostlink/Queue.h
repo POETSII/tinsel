@@ -3,6 +3,8 @@
 #ifndef _QUEUE_H_
 #define _QUEUE_H_
 
+#include <assert.h>
+
 template <typename T> struct Queue {
   int capacity;
   int front, back;
@@ -15,6 +17,10 @@ template <typename T> struct Queue {
     size = 0;
   }
 
+  inline int space() {
+    return (capacity-1-size);
+  }
+
   inline T first() {
     return data[front];
   }
@@ -24,12 +30,14 @@ template <typename T> struct Queue {
   }
 
   inline void enq(T elem) {
+    assert(space() > 0);
     data[back] = elem;
     back++;
     size++;
   }
 
   inline T deq() {
+    assert(size > 0);
     T elem = data[front];
     front++;
     size--;
@@ -39,10 +47,6 @@ template <typename T> struct Queue {
   inline void drop(int n) {
     front = (front+n) % capacity;
     size = size - n;
-  }
-
-  inline int space() {
-    return (capacity-1-size);
   }
 
   inline bool canEnq() {

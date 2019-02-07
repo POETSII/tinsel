@@ -45,21 +45,24 @@ struct UARTBuffer {
     }
   }
 
-  inline bool canPut() {
-    return out->canEnq();
+  inline bool canPut(int n) {
+    return out->space() >= n;
   };
   inline void put(char byte) {
     out->enq(byte);
   }
 
-  inline bool canGet() {
-    return in->canDeq();
+  inline bool canGet(int n) {
+    return in->size >= n;
   }
   inline uint8_t get() {
     return in->deq();
   }
   inline uint8_t peek() {
     return in->first();
+  }
+  inline uint8_t peekAt(int i) {
+    return in->index(i);
   }
 
   void flush() {

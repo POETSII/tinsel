@@ -11,15 +11,15 @@ CPPFLAGS = -I$(INC) -O2
 .PHONY: all
 all: DebugLink.o HostLink.o MemFileReader.o UART.o pciestreamd \
      sim/DebugLink.o sim/HostLink.o sim/MemFileReader.o sim/UART.o \
-     udsock
+     SocketUtils.o sim/SocketUtils.o udsock
 
 pciestreamd: pciestreamd.cpp 
 	g++ -O2 pciestreamd.cpp -o pciestreamd
 
 boardctrld: boardctrld.cpp PowerLink.o JtagAtlantic.h \
             $(INC)/config.h UART.h Queue.h UARTBuffer.h \
-	          UART.o
-	g++ -std=c++98 -O2 boardctrld.cpp UART.o PowerLink.o \
+	          UART.o SocketUtils.o DebugLinkFormat.h BoardCtrl.h
+	g++ -std=c++98 -O2 boardctrld.cpp UART.o PowerLink.o SocketUtils.o \
     -I $(INC) -o boardctrld \
 	  -ljtag_atlantic -ljtag_client -L $(QUARTUS_ROOTDIR)/linux64/ \
 	  -Wl,-rpath,$(QUARTUS_ROOTDIR)/linux64
@@ -29,7 +29,8 @@ udsock: udsock.c
 
 # HostLink dependencies
 DEPS = $(INC)/config.h $(INC)/boot.h \
-       DebugLink.h HostLink.h MemFileReader.h
+       DebugLink.h HostLink.h MemFileReader.h \
+       DebugLinkFormat.h BoardCtrl.h
 
 sim/%.o: %.cpp $(DEPS)
 	mkdir -p sim
