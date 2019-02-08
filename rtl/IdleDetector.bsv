@@ -9,12 +9,10 @@
 //   2. all threads are blocked on a call to tinselIdle() and there
 //      are no undelivered messages in the system.
 //
-// The function returns zero in the former case and non-zero in the latter.
-// A return value of 1 denotes a non-unanamous vote, i.e. not all callers
-// voted true, and a return value > 1 denotes a unanamous vote,
-// i.e. all callers voted true.  The voting mechanism allows a
-// global condition to be established, e.g. every thread in the system
-// agreeing to halt.
+// The function returns zero in the former case and non-zero in the
+// latter.  A return value value > 1 denotes that all all callers
+// voted true.  The voting mechanism allows a global condition to be
+// established, e.g. every thread in the system agreeing to halt.
 //
 // The implementation below is based on Safra's termination detection
 // algorithm (EWD998).
@@ -398,7 +396,11 @@ interface IdleDetectMaster;
   method Action decCount;
 
   (* always_ready, always_enabled *)
-  method Action enabled(Bool en);
+  method Action enabled(
+    Bool en,
+    Bit#(`MeshXBits) xLen,
+    Bit#(`MeshYBits) yLen,
+    Bit#(TAdd#(`MeshXBits, MeshYBits)) numBoards);
 endinterface
 
 module mkIdleDetectMaster (IdleDetectMaster);
@@ -424,8 +426,13 @@ module mkIdleDetectMaster (IdleDetectMaster);
   Reg#(Bool) localBlack <- mkConfigReg(False);
   PulseWire localBlackReset <- mkPulseWire;
 
-  // Enabled
+  // Is idle-detection currently enabled?
   Wire#(Bool) enableWire <- mkBypassWire;
+
+  // X and Y dimensions of the board mesh
+  Wire#(Bit#(`MeshXBits)) meshXLen <- mkBypassWire;
+  Wire#(Bit#(`MeshYBits)) meshYLen <- mkBypassWire;
+  Wire#(Bit#(TAdd#(``MeshXBits, `MeshYBits))) meshBoards <- mkBypassWire;
 
   // Update local message count
   rule updateLocalCount;
@@ -497,9 +504,9 @@ module mkIdleDetectMaster (IdleDetectMaster);
         flitOutPort.put(flit);
 
         // Move to next board
-        if (boardX == fromInteger(`MeshXLen-1)) begin
+        if (boardX == (meshXLen-1)) begin
           boardX <= 0;
-          if (boardY == fromInteger(`MeshYLen-1)) begin
+          if (boardY == (meshYLen-1)) begin
             boardY <= 0;
             probeSentNew = True;
           end else
@@ -513,7 +520,7 @@ module mkIdleDetectMaster (IdleDetectMaster);
     if (flitInPort.canGet) begin
       flitInPort.get;
       token = unpack(truncate(flitInPort.value.payload));
-      if (respCount == fromInteger(`MeshXLen * `MeshYLen - 1)) begin
+      if (respCount == (meshBoards-1)) begin
         respCount <= 0;
         probeSentNew = False;
         if (state == 0) begin
@@ -555,8 +562,16 @@ module mkIdleDetectMaster (IdleDetectMaster);
     disableHostMsgsWire || disableHostMsgsReg;
   method Action incCount = incWire.send;
   method Action decCount = decWire.send;
-  method Action enabled(Bool en);
+  method Action enabled(
+      Bool en,
+      Bit#(`MeshXBits) xLen,
+      Bit#(`MeshYBits) yLen,
+      Bit#(TAdd#(`MeshXBits, MeshYBits)) yLen);
+
     enableWire <= en;
+    meshXLen <= xLen;
+    meshYLen <= yLen;
+    meshBoards <= numBoards;
   endmethod
 
 endmodule

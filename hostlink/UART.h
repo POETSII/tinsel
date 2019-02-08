@@ -6,7 +6,8 @@
 #include <stdint.h>
 #include "JtagAtlantic.h"
 
-// Non-blocking connection to JTAG UART
+// Non-blocking connection to JTAG UART.  This class abstracts over
+// whether tinsel is running in simulation or on FPGA.
 class UART {
   #ifdef SIMULATE
   int sock;
