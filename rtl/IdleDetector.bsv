@@ -188,7 +188,7 @@ module mkIdleDetector (IdleDetector);
     outFlit.isIdleToken = True;
     outFlit.dest =
       NetAddr {
-        board: BoardId { y: `MeshYLen , x: 0 },
+        board: BoardId { y: -1, x: 0 },
         core: 0,
         thread: 0
       };
@@ -400,7 +400,7 @@ interface IdleDetectMaster;
     Bool en,
     Bit#(`MeshXBits) xLen,
     Bit#(`MeshYBits) yLen,
-    Bit#(TAdd#(`MeshXBits, MeshYBits)) numBoards);
+    Bit#(TAdd#(`MeshXBits, `MeshYBits)) numBoards);
 endinterface
 
 module mkIdleDetectMaster (IdleDetectMaster);
@@ -432,7 +432,7 @@ module mkIdleDetectMaster (IdleDetectMaster);
   // X and Y dimensions of the board mesh
   Wire#(Bit#(`MeshXBits)) meshXLen <- mkBypassWire;
   Wire#(Bit#(`MeshYBits)) meshYLen <- mkBypassWire;
-  Wire#(Bit#(TAdd#(``MeshXBits, `MeshYBits))) meshBoards <- mkBypassWire;
+  Wire#(Bit#(TAdd#(`MeshXBits, `MeshYBits))) meshBoards <- mkBypassWire;
 
   // Update local message count
   rule updateLocalCount;
@@ -566,7 +566,7 @@ module mkIdleDetectMaster (IdleDetectMaster);
       Bool en,
       Bit#(`MeshXBits) xLen,
       Bit#(`MeshYBits) yLen,
-      Bit#(TAdd#(`MeshXBits, MeshYBits)) yLen);
+      Bit#(TAdd#(`MeshXBits, `MeshYBits)) numBoards);
 
     enableWire <= en;
     meshXLen <= xLen;

@@ -183,7 +183,7 @@ interface DebugLink;
   interface JtagUartAvalon jtagAvalon;
   `endif
   (* always_ready, always_enabled *)
-  BoardId getBoardId();
+  method BoardId getBoardId();
 endinterface
 
 module mkDebugLink#(
@@ -200,7 +200,7 @@ module mkDebugLink#(
 
   // The board id will be distributed across the chip,
   // so let's use a shift register to help timing
-  Vector#(4, BoardId) boardIdVec <- replicateM(mkReg(unpack(0)));
+  Vector#(4, Reg#(BoardId)) boardIdVec <- replicateM(mkReg(unpack(0)));
 
   // Ports
   InPort#(Bit#(8)) fromJtag <- mkInPort;
@@ -355,7 +355,7 @@ module mkDebugLink#(
   interface jtagAvalon = uart.jtagAvalon;
   `endif
 
-  BoardId getBoardId() = boardIdVec[0];
+  method BoardId getBoardId() = boardIdVec[0];
 
 endmodule
 

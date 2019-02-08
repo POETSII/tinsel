@@ -195,11 +195,14 @@ module de5BridgeTop (DE5BridgeTop);
   // Dimensions of the board mesh (received over the UART)
   Reg#(Bit#(`MeshXBits)) meshXLen <- mkConfigReg(0);
   Reg#(Bit#(`MeshYBits)) meshYLen <- mkConfigReg(0);
-  Reg#(Bit#(TAdd#(`MeshXBits, `MeshYBits))) meshYLen <- mkConfigReg(0);
+  Reg#(Bit#(TAdd#(`MeshXBits, `MeshYBits))) meshBoards <- mkConfigReg(0);
 
-  // Enable idle detector
+  // Is idle-detection currently enabled
+  Reg#(Bool) idleDetectorEnabled <- mkConfigReg(False);
+
+  // Pass idle-detector options to idle-detector
   rule enabler;
-    detector.enabled(idleDetectorEnabled, meshXLen, meshYLen);
+    detector.enabled(idleDetectorEnabled, meshXLen, meshYLen, meshBoards);
   endrule
 
   // In simulation, display start-up message
@@ -229,16 +232,16 @@ module de5BridgeTop (DE5BridgeTop);
   Reg#(Bit#(8)) boardIdWithinBox <- mkConfigReg(0);
   Reg#(Bit#(2)) uartState <- mkConfigReg(0);
 
-  rule uartReceive (fromJtag.canGet && uartState == 0);
+  rule uartReceive0 (fromJtag.canGet && uartState == 0);
     fromJtag.get;
     uartState <= 1;
   endrule
 
-  rule uartReceive (fromJtag.canGet && uartState == 1);
+  rule uartReceive1 (fromJtag.canGet && uartState == 1);
     fromJtag.get;
     enumerated <= True;
     if (enumerated) begin
-      idleDetectorEnbabled <= True;
+      idleDetectorEnabled <= True;
       Bit#(`MeshXBits) xLen = truncate(fromJtag.value[3:0]);
       Bit#(`MeshYBits) yLen = truncate(fromJtag.value[7:4]);
       meshYLen <= yLen;
@@ -248,12 +251,12 @@ module de5BridgeTop (DE5BridgeTop);
     uartState <= 2;
   endrule
 
-  rule uartRespond (toJtag.canPut && uartState == 2);
+  rule uartRespond0 (toJtag.canPut && uartState == 2);
     toJtag.put(0);
     uartState <= 3;
   endrule
 
-  rule uartRespond (toJtag.canPut && uartState == 3);
+  rule uartRespond1 (toJtag.canPut && uartState == 3);
     toJtag.put(0);
     uartState <= 0;
   endrule

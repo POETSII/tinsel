@@ -8,19 +8,22 @@ endif
 # Local compiler flags
 CPPFLAGS = -I$(INC) -O2
 
+# HostLink directory
+HL = $(TINSEL_ROOT)/hostlink
+
 .PHONY: all
 all: DebugLink.o HostLink.o MemFileReader.o UART.o pciestreamd \
      sim/DebugLink.o sim/HostLink.o sim/MemFileReader.o sim/UART.o \
      SocketUtils.o sim/SocketUtils.o udsock
 
 pciestreamd: pciestreamd.cpp 
-	g++ -O2 pciestreamd.cpp -o pciestreamd
+	g++ -I $(HL) -O2 pciestreamd.cpp -o pciestreamd
 
 boardctrld: boardctrld.cpp PowerLink.o JtagAtlantic.h \
             $(INC)/config.h UART.h Queue.h UARTBuffer.h \
 	          UART.o SocketUtils.o DebugLinkFormat.h BoardCtrl.h
 	g++ -std=c++98 -O2 boardctrld.cpp UART.o PowerLink.o SocketUtils.o \
-    -I $(INC) -o boardctrld \
+    -I $(INC) -I $(HL) -o boardctrld \
 	  -ljtag_atlantic -ljtag_client -L $(QUARTUS_ROOTDIR)/linux64/ \
 	  -Wl,-rpath,$(QUARTUS_ROOTDIR)/linux64
 
@@ -34,10 +37,10 @@ DEPS = $(INC)/config.h $(INC)/boot.h \
 
 sim/%.o: %.cpp $(DEPS)
 	mkdir -p sim
-	g++ -DSIMULATE -o $@ $(CPPFLAGS) -c $<
+	g++ -I $(HL) -DSIMULATE -o $@ $(CPPFLAGS) -c $<
 
 %.o: %.cpp $(DEPS)
-	g++ -o $@ $(CPPFLAGS) -c $<
+	g++ -I $(HL) -o $@ $(CPPFLAGS) -c $<
 
 $(INC)/config.h: $(TINSEL_ROOT)/config.py
 	make -C $(INC)

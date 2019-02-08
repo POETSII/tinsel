@@ -39,12 +39,17 @@ static int openSocket(int instId)
     return -1;
   }
 
-  ret = fcntl(sock, F_SETFL, fcntl(socketfd, F_GETFL, 0) | O_NONBLOCK);
-  if (ret < 0){
+  ret = fcntl(sock, F_GETFL, 0);
+  if (ret < 0) {
     perror("fcntl");
     return -1;
   }
 
+  ret = fcntl(sock, F_SETFL, ret | O_NONBLOCK);
+  if (ret < 0) {
+    perror("fcntl");
+    return -1;
+  }
   return sock;
 }
 
@@ -61,16 +66,16 @@ void UART::open(int instId)
 }
 
 // Send bytes over UART
-int UART::write(char* data, int numBytes)
+int UART::write(char* ptr, int numBytes)
 {
   if (sock == -1) sock = openSocket(instanceId);
-  int ret = send(sock, (void*) data, numBytes, 0);
+  int ret = send(sock, (void*) ptr, numBytes, 0);
   if (ret == EAGAIN || ret == EWOULDBLOCK) return 0;
   return ret;
 }
 
 // Read bytes over UART
-int UART::read(void* data, int numBytes)
+int UART::read(char* ptr, int numBytes)
 {
   if (sock == -1) sock = openSocket(instanceId);
   int ret = recv(sock, (void*) ptr, numBytes, 0);

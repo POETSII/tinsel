@@ -35,7 +35,7 @@ struct BoxConfig {
       fprintf(stderr, "BoxConfig: all rows must be the same length!\n");
       exit(EXIT_FAILURE);
     }
-    rows.push_back(row);
+    rows.insert(rows.begin(), row);
   }
 
   void requireNonEmpty() {
@@ -60,7 +60,7 @@ struct BoxConfig {
   // Determine name of the master box (the top-left box)
   const char* master() {
     requireNonEmpty();
-    return rows[0][0];
+    return rows[lenY()-1][0];
   }
 };
 
