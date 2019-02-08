@@ -11,7 +11,7 @@ if [ ! -e "$UDSOCK" ]; then
   exit
 fi
 
-BOARDCTRLD="../hostlink/boardctrld"
+BOARDCTRLD="../hostlink/sim/boardctrld"
 if [ ! -e "$BOARDCTRLD" ]; then
   echo 'Cannot find boardctrld'
   exit
@@ -56,6 +56,8 @@ SOUTH_ID_BASE=8
 EAST_ID_BASE=12
 WEST_ID_BASE=16
 
+PIDS=""
+
 # Start boardctrld
 echo "Starting boardctrld"
 $BOARDCTRLD &
@@ -78,7 +80,6 @@ echo "Lauching bridge board simulator at position ($HOST_X, $HOST_Y)" \
 BOARD_ID=$HOST_ID ./de5BridgeTop &
 PIDS="$PIDS $!"
 
-PIDS=""
 # Create horizontal links
 for Y in $(seq 0 $LAST_Y); do
   for X in $(seq 0 $LAST_X); do

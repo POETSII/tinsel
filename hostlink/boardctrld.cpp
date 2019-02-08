@@ -204,7 +204,7 @@ int main(int argc, char* argv[])
     sleep(1);
     #endif
 
-     // Create a UART link to each board
+    // Create a UART link to each board
     uartLinks = new UARTBuffer [numBoards];
 
     // Invoke server to handle connection
