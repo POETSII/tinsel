@@ -23,8 +23,8 @@
 #include <poll.h>
 #include <errno.h>
 #include <config.h>
-#include "UARTBuffer.h"
-#include "UART.h"
+#include "jtag/UARTBuffer.h"
+#include "jtag/UART.h"
 #include "PowerLink.h"
 #include "BoardCtrl.h"
 #include "SocketUtils.h"

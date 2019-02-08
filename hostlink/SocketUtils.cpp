@@ -124,7 +124,7 @@ int socketConnectTCP(const char* hostname, int port)
 }
 
 // Read exactly numBytes from socket, blocking
-void socketGetBlocking(int fd, char* buf, int numBytes)
+void socketBlockingGet(int fd, char* buf, int numBytes)
 {
   int got = 0;
   while (numBytes > 0) {
@@ -142,7 +142,7 @@ void socketGetBlocking(int fd, char* buf, int numBytes)
 }
 
 // Either send exactly numBytes to a socket, blocking
-void socketPutBlocking(int fd, char* buf, int numBytes)
+void socketBlockingPut(int fd, char* buf, int numBytes)
 {
   int sent = 0;
   while (numBytes > 0) {
