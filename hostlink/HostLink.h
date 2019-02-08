@@ -14,15 +14,9 @@
 #define PCIESTREAM      "pciestream"
 #define PCIESTREAM_SIM  "tinsel.b-1.1"
 
-// Power down the mesh boards
-void powerdown();
-
-// Power up the mesh boards
-void powerup();
-
 class HostLink {
-  // JTAG UART connections
-  DebugLink* debugLinks;
+  // DebugLink (access to FPGAs via their JTAG UARTs)
+  DebugLink* debugLink;
 
   // Lock file for acquring exclusive access to PCIeStream
   int lockFile;
@@ -31,36 +25,31 @@ class HostLink {
   int pcieLink;
 
   // Line buffers for JTAG UART StdOut
-  char lineBuffer[TinselMeshXLen][TinselMeshYLen]
-                 [TinselCoresPerBoard][TinselThreadsPerCore]
-                 [MaxLineLen];
-  int lineBufferLen[TinselMeshXLen][TinselMeshYLen]
-                   [TinselCoresPerBoard][TinselThreadsPerCore];
+  // Max line length defined by MaxLineLen
+  // Indexed by (board X, board Y, core, thread)
+  char***** lineBuffer;
+  int**** lineBufferLen;
+
+  // Internal constructor
+  constructor(BoxConfig* boxConfig);
  public:
 
-  // Constructor
+  // Dimensions of board mesh
+  int meshXLen;
+  int meshYLen;
+
+  // Constructors
   HostLink();
+  HostLink(BoxConfig* boxConfig);
 
   // Destructor
   ~HostLink();
  
-  // Debug links
-  // -----------
-
-  // Link to the bridge board (opened by constructor)
-  DebugLink* bridgeBoard;
-
-  // Links to the mesh boards (opened by constructor)
-  DebugLink* mesh[TinselMeshXLen][TinselMeshYLen];
-
   // Send and receive messages over PCIe
   // -----------------------------------
 
-  // Send a message (blocking)
-  void send(uint32_t dest, uint32_t numFlits, void* msg);
-
-  // Can send a message without blocking?
-  bool canSend();
+  // Send a message (blocking by default)
+  bool send(uint32_t dest, uint32_t numFlits, void* msg, bool block = true);
 
   // Receive a flit (blocking)
   void recv(void* flit);

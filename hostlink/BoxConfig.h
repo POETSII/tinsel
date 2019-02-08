@@ -57,10 +57,10 @@ struct BoxConfig {
     return rows.size();
   }
 
-  // Determine name of the master box (the top-right box)
+  // Determine name of the master box (the top-left box)
   const char* master() {
     requireNonEmpty();
-    return rows[lenY()-1][lenX()-1];
+    return rows[0][0];
   }
 };
 

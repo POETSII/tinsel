@@ -65,14 +65,16 @@ DebugLink::DebugLink(BoxConfig* config)
   hostname[sizeof(hostname)-1] = '\0';
 
   // Make sure we are running on the master box
-  // (the top-right box in the user-supplied box configuration)
-  if (strcmp(hostname, boxConfig->master())) {
-    fprintf(stderr,
-      "This box is not the master box in the specified box config\n");
-    fprintf(stderr,
-      "This box is '%s'. The specified master box is '%s'\n",
-        hostname, boxConfig->master());
-    exit(EXIT_FAILURE);
+  // (the top-left box in the user-supplied box configuration)
+  if (strcmp(boxConfig->master(), "localhost")) {
+    if (strcmp(hostname, boxConfig->master())) {
+      fprintf(stderr,
+        "This box is not the master box in the specified box config\n");
+      fprintf(stderr,
+        "This box is '%s'. The specified master box is '%s'\n",
+          hostname, boxConfig->master());
+      exit(EXIT_FAILURE);
+    }
   }
 
   // Dimensions of the global board mesh
@@ -85,12 +87,18 @@ DebugLink::DebugLink(BoxConfig* config)
     conn[y] = new int [boxMeshXLen];
 
   bridge = new int* [boxMeshYLen];
-  for (int y = 0; y < boxMeshYLen; y++)
+  for (int y = 0; y < boxMeshYLen; y++) {
     bridge[y] = new int [boxMeshXLen];
+    for (int x = 0; x < meshXLen; x++)
+      bridge[y][x] = -1;
+  }
 
   boxX = new int* [meshYLen];
-  for (int y = 0; y < meshYLen; y++)
+  for (int y = 0; y < meshYLen; y++) {
     boxX[y] = new int [meshXLen];
+    for (int x = 0; x < meshXLen; x++)
+      boxX[y][x] = -1;
+  }
 
   boxY = new int* [meshYLen];
   for (int y = 0; y < meshYLen; y++)
@@ -148,6 +156,10 @@ DebugLink::DebugLink(BoxConfig* config)
       getPacket(x, y, &pkt);
       assert(pkt.payload[0] == DEBUGLINK_QUERY_OUT);
       if (pkt.payload[1] == 0) {
+        if (bridge[y][x] != -1) {
+          fprintf(stderr, "Too many bridge boards detected on box %s\n",
+            boxConfig->rows[y][x]);
+        }
         // It's a bridge board, let's remember its link id
         bridge[y][x] = pkt.linkId;
       }
@@ -161,6 +173,7 @@ DebugLink::DebugLink(BoxConfig* config)
         // Full X and Y coordinates on the global board mesh
         int fullX = x*TinselMeshYLenWithinBox + subX;
         int fullY = y*TinselMeshYLenWithinBox + subY;
+        assert(boxX[fullY][fullX] == -1);
         // Populate bidirectional mappings
         boardX[y][x][pkt.linkId] = fullX;
         boardY[y][x][pkt.linkId] = fullY;
@@ -173,10 +186,8 @@ DebugLink::DebugLink(BoxConfig* config)
   // Query the bridge board on the master box a second time to
   // enable idle-detection (only now do all the boards know their
   // full coordinates in the mesh).
-  int top = boxConfig->lenY()-1;
-  int right = boxConfig->lenX()-1;
   pkt.payload[0] = DEBUGLINK_QUERY_IN;
-  pkt.linkId = bridge[top][right];
+  pkt.linkId = bridge[0][0];
   putPacket(x, y, &pkt);
   // Get response
   getPacket(x, y, &pkt)
@@ -271,5 +282,43 @@ bool DebugLink::canGet()
 // Destructor
 DebugLink::~DebugLink()
 {
-  // TODO
+  // Close connections
+  for (int y = 0; y < boxMeshYLen; y++)
+    for (int x = 0; x < boxMeshXLen; x++)
+      close(conn[y][x]);
+
+  // Deallocate member structures
+  for (int y = 0; y < boxMeshYLen; y++)
+    delete [] conn[y];
+  delete [] conn;
+
+  for (int y = 0; y < boxMeshYLen; y++)
+    delete [] bridge[y];
+  delete [] bridge;
+
+  for (int y = 0; y < meshYLen; y++)
+    delete [] boxX[y];
+  delete [] boxX;
+
+  for (int y = 0; y < meshYLen; y++)
+    delete [] boxY[y];
+  delete [] boxY;
+
+  for (int y = 0; y < meshYLen; y++)
+    delete [] linkId[y];
+  delete [] linkId;
+
+  for (int y = 0; y < boxMeshYLen; y++) {
+    for (int x = 0; x < boxMeshXLen; x++)
+      delete [] boardX[y][x];
+    delete [] boardX[y];
+  }
+  delete [] boardX;
+
+  for (int y = 0; y < boxMeshYLen; y++) {
+    for (int x = 0; x < boxMeshXLen; x++)
+      delete [] boardY[y][x];
+    delete [] boardY[y];
+  }
+  delete [] boardY;
 }

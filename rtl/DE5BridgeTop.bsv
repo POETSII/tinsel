@@ -192,9 +192,14 @@ module de5BridgeTop (DE5BridgeTop);
     end
   endrule
 
+  // Dimensions of the board mesh (received over the UART)
+  Reg#(Bit#(`MeshXBits)) meshXLen <- mkConfigReg(0);
+  Reg#(Bit#(`MeshYBits)) meshYLen <- mkConfigReg(0);
+  Reg#(Bit#(TAdd#(`MeshXBits, `MeshYBits))) meshYLen <- mkConfigReg(0);
+
   // Enable idle detector
   rule enabler;
-    detector.enabled(idleDetectorEnabled);
+    detector.enabled(idleDetectorEnabled, meshXLen, meshYLen);
   endrule
 
   // In simulation, display start-up message
@@ -217,6 +222,9 @@ module de5BridgeTop (DE5BridgeTop);
   // On the 2nd query command, enable the idle detector.
   // This is to allow the ids of all boards to be set before
   // enabling the idle detector.
+  //
+  // The parameter byte of the second query command contains
+  // the dimensions of the board mesh: Y = byte[7:4], X = byte[3:0].
 
   Reg#(Bit#(8)) boardIdWithinBox <- mkConfigReg(0);
   Reg#(Bit#(2)) uartState <- mkConfigReg(0);
@@ -229,7 +237,14 @@ module de5BridgeTop (DE5BridgeTop);
   rule uartReceive (fromJtag.canGet && uartState == 1);
     fromJtag.get;
     enumerated <= True;
-    if (enumerated) idleDetectorEnbabled <= True;
+    if (enumerated) begin
+      idleDetectorEnbabled <= True;
+      Bit#(`MeshXBits) xLen = truncate(fromJtag.value[3:0]);
+      Bit#(`MeshYBits) yLen = truncate(fromJtag.value[7:4]);
+      meshYLen <= yLen;
+      meshXLen <= xLen;
+      meshBoards <= zeroExtend(xLen) * zeroExtend(yLen);
+    end
     uartState <= 2;
   endrule
 

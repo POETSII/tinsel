@@ -122,3 +122,38 @@ int socketConnectTCP(const char* hostname, int port)
 
   return sock;
 }
+
+// Read exactly numBytes from socket, blocking
+void socketGetBlocking(int fd, char* buf, int numBytes)
+{
+  int got = 0;
+  while (numBytes > 0) {
+    int ret = recv(fd, &buf[got], numBytes, 0);
+    if (ret < 0) {
+      fprintf(stderr, "Error reading from socket\n");
+      exit(EXIT_FAILURE); 
+    }
+    else {
+      got += ret;
+      numBytes -= ret;
+    }
+  }
+  return;
+}
+
+// Either send exactly numBytes to a socket, blocking
+void socketPutBlocking(int fd, char* buf, int numBytes)
+{
+  int sent = 0;
+  while (numBytes > 0) {
+    ret = send(fd, &buf[sent], numBytes, 0);
+    if (ret < 0) {
+      fprintf(stderr, "Error writing to socket\n");
+      exit(EXIT_FAILURE); 
+    }
+    else {
+      sent += ret;
+      numBytes -= ret;
+    }
+  }
+}
