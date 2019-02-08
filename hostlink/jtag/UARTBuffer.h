@@ -73,8 +73,8 @@ struct UARTBuffer {
   }
 
   ~UARTBuffer() {
-    delete [] in;
-    delete [] out;
+    delete in;
+    delete out;
     delete uart;
   }
 };
