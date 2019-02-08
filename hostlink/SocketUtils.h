@@ -26,7 +26,7 @@ int socketPut(int fd, char* buf, int numBytes);
 void socketBlockingGet(int fd, char* buf, int numBytes);
 
 // Either send exactly numBytes to a socket, blocking
-int socketBlockingPut(int fd, char* buf, int numBytes);
+void socketBlockingPut(int fd, char* buf, int numBytes);
 
 // Create TCP connection to given host/port
 int socketConnectTCP(const char* hostname, int port);

@@ -233,6 +233,12 @@ bool HostLink::send(uint32_t dest, uint32_t numFlits, void* payload, bool block)
   }
 }
 
+// Try to send a message (non-blocking, returns true on success)
+bool HostLink::trySend(uint32_t dest, uint32_t numFlits, void* msg)
+{
+  return send(dest, numFlits, msg, false);
+}
+
 // Receive a flit via PCIe (blocking)
 void HostLink::recv(void* flit)
 {
