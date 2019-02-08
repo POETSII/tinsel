@@ -1,9 +1,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <string.h>
+#include <assert.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+
 #include <config.h>
-#include "DebugLink.h"
-#include "SocketUtils.h"
+#include <DebugLink.h>
+#include <SocketUtils.h>
 
 // Helper: blocking receive of a BoardCtrlPkt
 void DebugLink::getPacket(int x, int y, BoardCtrlPkt* pkt)
@@ -16,7 +22,7 @@ void DebugLink::getPacket(int x, int y, BoardCtrlPkt* pkt)
     if (ret < 0) {
       fprintf(stderr, "Connection to box '%s' failed ",
         boxConfig->rows[y][x]);
-      fprintf(stderr, "(box may already be in use)\n",
+      fprintf(stderr, "(box may already be in use)\n");
       exit(EXIT_FAILURE);
     }
     else {
@@ -33,11 +39,11 @@ void DebugLink::putPacket(int x, int y, BoardCtrlPkt* pkt)
   char* buf = (char*) pkt;
   int numBytes = sizeof(BoardCtrlPkt);
   while (numBytes > 0) {
-    ret = send(conn[y][x], &buf[sent], numBytes, 0);
+    int ret = send(conn[y][x], &buf[sent], numBytes, 0);
     if (ret < 0) {
       fprintf(stderr, "Connection to box '%s' failed ",
         boxConfig->rows[y][x]);
-      fprintf(stderr, "(box may already be in use)\n",
+      fprintf(stderr, "(box may already be in use)\n");
       exit(EXIT_FAILURE);
     }
     else {
@@ -136,7 +142,7 @@ DebugLink::DebugLink(BoxConfig* config)
     }
 
   // Send queries
-  pky.payload[0] = DEBUGLINK_QUERY_IN;
+  pkt.payload[0] = DEBUGLINK_QUERY_IN;
   for (int y = 0; y < boxMeshYLen; y++)
     for (int x = 0; x < boxMeshXLen; x++) {
       int offsetX = x * TinselMeshXLenWithinBox;
@@ -166,8 +172,8 @@ DebugLink::DebugLink(BoxConfig* config)
       else {
         // It's a worker board, let's work out its mesh coordinates
         int id = pkt.payload[1] - 1;
-        int subX = cmd & ((1 << TinselMeshXBitsWithinBox) - 1);
-        int subY = cmd >> TinselMeshXBitsWithinBox;
+        int subX = id & ((1 << TinselMeshXBitsWithinBox) - 1);
+        int subY = id >> TinselMeshXBitsWithinBox;
         assert(subX < TinselMeshXLenWithinBox);
         assert(subY < TinselMeshYLenWithinBox);
         // Full X and Y coordinates on the global board mesh
@@ -187,16 +193,16 @@ DebugLink::DebugLink(BoxConfig* config)
   // enable idle-detection (only now do all the boards know their
   // full coordinates in the mesh).
   pkt.payload[0] = DEBUGLINK_QUERY_IN;
-  pkt.linkId = bridge[0][0];
-  putPacket(x, y, &pkt);
+  pkt.linkId = bridge[boxMeshYLen-1][0];
+  putPacket(boxMeshYLen-1, 0, &pkt);
   // Get response
-  getPacket(x, y, &pkt)
-  assert(pkt->payload[0] == DEBUGLINK_QUERY_OUT);
+  getPacket(boxMeshYLen-1, 0, &pkt);
+  assert(pkt.payload[0] == DEBUGLINK_QUERY_OUT);
 }
 
 // On given board, set destination core and thread
 void DebugLink::setDest(uint32_t boardX, uint32_t boardY,
-                  uint32_t coreId, uint32_t threadId);
+                  uint32_t coreId, uint32_t threadId)
 {
   BoardCtrlPkt pkt;
   pkt.linkId = linkId[boardY][boardX];
@@ -212,7 +218,7 @@ void DebugLink::setDest(uint32_t boardX, uint32_t boardY,
 
 // On given board, set destinations to core-local thread id on every core
 void DebugLink::setBroadcastDest(
-       uint32_t boardX, uint32_t boardY, uint32_t threadId);
+       uint32_t boardX, uint32_t boardY, uint32_t threadId)
 {
   BoardCtrlPkt pkt;
   pkt.linkId = linkId[boardY][boardX];
@@ -227,7 +233,7 @@ void DebugLink::setBroadcastDest(
 }
 
 // On given board, send byte to destination thread (StdIn)
-void DebugLink::put(uint32_t boardX, uint32_t boardY, uint8_t byte);
+void DebugLink::put(uint32_t boardX, uint32_t boardY, uint8_t byte)
 {
   BoardCtrlPkt pkt;
   pkt.linkId = linkId[boardY][boardX];
@@ -248,7 +254,7 @@ void DebugLink::get(uint32_t* brdX, uint32_t* brdY,
     // Consider boxes fairly between calls to get()
     if (socketCanGet(conn[y][x])) {
       getPacket(x, y, &pkt);
-      if (cmd[0] != DEBUGLINK_STD_OUT) {
+      if (pkt.payload[0] != DEBUGLINK_STD_OUT) {
         fprintf(stderr, "DebugLink: unexpected response (not StdOut)\n");
         exit(EXIT_FAILURE);
       }
@@ -256,7 +262,7 @@ void DebugLink::get(uint32_t* brdX, uint32_t* brdY,
       *brdY = boardY[y][x][pkt.linkId];
       *coreId = (uint32_t) pkt.payload[2];
       *threadId = (uint32_t) pkt.payload[1];
-      *byte = pky.payload[3];
+      *byte = pkt.payload[3];
       done = true;
     }
     // Try next box

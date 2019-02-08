@@ -11,6 +11,13 @@ if [ ! -e "$UDSOCK" ]; then
   exit
 fi
 
+BOARDCTRLD="../hostlink/boardctrld"
+if [ ! -e "$BOARDCTRLD" ]; then
+  echo 'Cannot find boardctrld'
+  exit
+fi
+
+
 # Load config parameters
 while read -r EXPORT; do
   eval $EXPORT
@@ -20,8 +27,9 @@ MESH_MAX_X=$((2 ** $MeshXBitsWithinBox))
 MESH_MAX_Y=$((2 ** $MeshYBitsWithinBox))
 echo "Max mesh dimensions: $MESH_MAX_X x $MESH_MAX_Y"
 
-MESH_X=$MeshXLen
-MESH_Y=$MeshYLen
+# Currently limited to one box in simulation
+MESH_X=$MeshXLenWithinBox
+MESH_Y=$MeshYLenWithinBox
 echo "Using mesh dimensions: $MESH_X x $MESH_Y"
 
 HOST_X=0
@@ -47,6 +55,11 @@ NORTH_ID_BASE=4
 SOUTH_ID_BASE=8
 EAST_ID_BASE=12
 WEST_ID_BASE=16
+
+# Start boardctrld
+echo "Starting boardctrld"
+$BOARDCTRLD &
+PIDS="$PIDS $!"
 
 # Run one simulator per board
 for X in $(seq 0 $LAST_X); do

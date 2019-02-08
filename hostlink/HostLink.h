@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <config.h>
-#include "DebugLink.h"
+#include <DebugLink.h>
 
 // Max line length for line-buffered UART StdOut capture
 #define MaxLineLen 128
@@ -31,7 +31,7 @@ class HostLink {
   int**** lineBufferLen;
 
   // Internal constructor
-  constructor(BoxConfig* boxConfig);
+  void constructor(BoxConfig* boxConfig);
  public:
 
   // Dimensions of board mesh
@@ -50,6 +50,9 @@ class HostLink {
 
   // Send a message (blocking by default)
   bool send(uint32_t dest, uint32_t numFlits, void* msg, bool block = true);
+
+  // Try to send a message (non-blocking, returns true on success)
+  bool trySend(uint32_t dest, uint32_t numFlits, void* msg);
 
   // Receive a flit (blocking)
   void recv(void* flit);

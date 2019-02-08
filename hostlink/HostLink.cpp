@@ -2,7 +2,7 @@
 #include "DebugLink.h"
 #include "MemFileReader.h"
 #include "PowerLink.h"
-#include "SocketUtil.h"
+#include "SocketUtils.h"
 
 #include <boot.h>
 #include <ctype.h>
@@ -56,7 +56,7 @@ static int connectToPCIeStream(const char* socketPath)
 }
 
 // Internal constructor
-void HostLink::construct(BoxConfig* boxConfig)
+void HostLink::constructor(BoxConfig* boxConfig)
 {
   // Open lock file
   lockFile = open("/tmp/HostLink.lock", O_CREAT, 0444);
@@ -225,11 +225,11 @@ bool HostLink::send(uint32_t dest, uint32_t numFlits, void* payload, bool block)
 
   // Write to the socket
   if (block) {
-    socketBlockingPut(pcieLink, buffer, totalBytes);
+    socketBlockingPut(pcieLink, (char*) buffer, totalBytes);
     return true;
   }
   else {
-    return socketPut(pcieLink, buffer, totalBytes) == 1;
+    return socketPut(pcieLink, (char*) buffer, totalBytes) == 1;
   }
 }
 

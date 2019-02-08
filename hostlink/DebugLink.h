@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include "BoxConfig.h"
+#include "BoardCtrl.h"
 #include "DebugLinkFormat.h"
 
 class DebugLink {

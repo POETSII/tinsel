@@ -114,7 +114,7 @@ int socketConnectTCP(const char* hostname, int port)
   }
 
   // Connect to host
-  if (connect(sock, (sockaddr*) &sockAddr, sizeof(sockAddr)) {
+  if (connect(sock, (sockaddr*) &sockAddr, sizeof(sockAddr))) {
     fprintf(stderr, "Can't connect to host '%s' on port '%d'\n",
       hostname, port);
     exit(EXIT_FAILURE);
@@ -146,7 +146,7 @@ void socketPutBlocking(int fd, char* buf, int numBytes)
 {
   int sent = 0;
   while (numBytes > 0) {
-    ret = send(fd, &buf[sent], numBytes, 0);
+    int ret = send(fd, &buf[sent], numBytes, 0);
     if (ret < 0) {
       fprintf(stderr, "Error writing to socket\n");
       exit(EXIT_FAILURE); 
