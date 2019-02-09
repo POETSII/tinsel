@@ -159,35 +159,37 @@ DebugLink::DebugLink(BoxConfig* config)
   // Receive query responses
   for (int y = 0; y < boxMeshYLen; y++)
     for (int x = 0; x < boxMeshXLen; x++) {
-      getPacket(x, y, &pkt);
-      assert(pkt.payload[0] == DEBUGLINK_QUERY_OUT);
-      if (pkt.payload[1] == 0) {
-        if (bridge[y][x] != -1) {
-          fprintf(stderr, "Too many bridge boards detected on box %s\n",
-            boxConfig->rows[y][x]);
+      for (int b = 0; b < TinselBoardsPerBox; b++) {
+        getPacket(x, y, &pkt);
+        assert(pkt.payload[0] == DEBUGLINK_QUERY_OUT);
+        if (pkt.payload[1] == 0) {
+          if (bridge[y][x] != -1) {
+            fprintf(stderr, "Too many bridge boards detected on box %s\n",
+              boxConfig->rows[y][x]);
+          }
+          // It's a bridge board, let's remember its link id
+          bridge[y][x] = pkt.linkId;
         }
-        // It's a bridge board, let's remember its link id
-        bridge[y][x] = pkt.linkId;
+        else {
+          // It's a worker board, let's work out its mesh coordinates
+          int id = pkt.payload[1] - 1;
+          int subX = id & ((1 << TinselMeshXBitsWithinBox) - 1);
+          int subY = id >> TinselMeshXBitsWithinBox;
+          assert(subX < TinselMeshXLenWithinBox);
+          assert(subY < TinselMeshYLenWithinBox);
+          // Full X and Y coordinates on the global board mesh
+          int fullX = x*TinselMeshXLenWithinBox + subX;
+          int fullY = y*TinselMeshYLenWithinBox + subY;
+          assert(boxX[fullY][fullX] == -1);
+          // Populate bidirectional mappings
+          boardX[y][x][pkt.linkId] = fullX;
+          boardY[y][x][pkt.linkId] = fullY;
+          boxX[fullY][fullX] = x;
+          boxY[fullY][fullX] = y;
+          linkId[fullY][fullX] = pkt.linkId;
+        }
       }
-      else {
-        // It's a worker board, let's work out its mesh coordinates
-        int id = pkt.payload[1] - 1;
-        int subX = id & ((1 << TinselMeshXBitsWithinBox) - 1);
-        int subY = id >> TinselMeshXBitsWithinBox;
-        assert(subX < TinselMeshXLenWithinBox);
-        assert(subY < TinselMeshYLenWithinBox);
-        // Full X and Y coordinates on the global board mesh
-        int fullX = x*TinselMeshYLenWithinBox + subX;
-        int fullY = y*TinselMeshYLenWithinBox + subY;
-        assert(boxX[fullY][fullX] == -1);
-        // Populate bidirectional mappings
-        boardX[y][x][pkt.linkId] = fullX;
-        boardY[y][x][pkt.linkId] = fullY;
-        boxX[fullY][fullX] = x;
-        boxY[fullY][fullX] = y;
-        linkId[fullY][fullX] = pkt.linkId;
-      }
-    }
+  }
 
   // Query the bridge board on the master box a second time to
   // enable idle-detection (only now do all the boards know their
