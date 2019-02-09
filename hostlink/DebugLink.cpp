@@ -193,10 +193,11 @@ DebugLink::DebugLink(BoxConfig* config)
   // enable idle-detection (only now do all the boards know their
   // full coordinates in the mesh).
   pkt.payload[0] = DEBUGLINK_QUERY_IN;
+  pkt.payload[1] = (boxMeshYLen << 4) | boxMeshXLen;
   pkt.linkId = bridge[boxMeshYLen-1][0];
-  putPacket(boxMeshYLen-1, 0, &pkt);
+  putPacket(0, boxMeshYLen-1, &pkt);
   // Get response
-  getPacket(boxMeshYLen-1, 0, &pkt);
+  getPacket(0, boxMeshYLen-1, &pkt);
   assert(pkt.payload[0] == DEBUGLINK_QUERY_OUT);
 }
 
