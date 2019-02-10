@@ -22,7 +22,7 @@ inline int toDebugLinkSize(uint8_t cmd)
     case DEBUGLINK_SET_DEST: return 3;
     case DEBUGLINK_STD_IN: return 2;
     default:
-      fprintf(stderr, "toDebugLinkSize: unexpected command\n");
+      fprintf(stderr, "toDebugLinkSize: unexpected command %d\n", cmd);
       exit(EXIT_FAILURE);
   }
 }
@@ -35,7 +35,7 @@ inline int fromDebugLinkSize(uint8_t cmd)
     case DEBUGLINK_STD_OUT: return 4;
     case DEBUGLINK_READY: return 1;
     default:
-      fprintf(stderr, "fromDebugLinkSize: unexpected command\n");
+      fprintf(stderr, "fromDebugLinkSize: unexpected command %d\n", cmd);
       exit(EXIT_FAILURE);
   }
 }

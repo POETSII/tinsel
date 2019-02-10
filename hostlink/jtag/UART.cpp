@@ -70,7 +70,9 @@ int UART::write(char* ptr, int numBytes)
 {
   if (sock == -1) sock = openSocket(instanceId);
   int ret = send(sock, (void*) ptr, numBytes, 0);
-  if (ret == EAGAIN || ret == EWOULDBLOCK) return 0;
+  if (ret < 0) {
+    if (errno == EAGAIN || errno == EWOULDBLOCK) return 0;
+  }
   return ret;
 }
 
@@ -79,7 +81,9 @@ int UART::read(char* ptr, int numBytes)
 {
   if (sock == -1) sock = openSocket(instanceId);
   int ret = recv(sock, (void*) ptr, numBytes, 0);
-  if (ret == EAGAIN || ret == EWOULDBLOCK) return 0;
+  if (ret < 0) {
+    if (errno == EAGAIN || errno == EWOULDBLOCK) return 0;
+  }
   return ret;
 }
 

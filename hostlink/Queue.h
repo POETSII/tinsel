@@ -32,19 +32,20 @@ template <typename T> struct Queue {
   inline void enq(T elem) {
     assert(space() > 0);
     data[back] = elem;
-    back++;
+    back = (back+1) % capacity;
     size++;
   }
 
   inline T deq() {
     assert(size > 0);
     T elem = data[front];
-    front++;
+    front = (front+1) % capacity;
     size--;
     return elem;
   }
 
   inline void drop(int n) {
+    assert(size >= n);
     front = (front+n) % capacity;
     size = size - n;
   }

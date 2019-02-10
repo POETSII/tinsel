@@ -6,7 +6,7 @@
 #include "UART.h"
 #include "Queue.h"
 
-#define UART_BUFFER_SIZE 4096
+#define UART_BUFFER_SIZE 4095
 
 // Buffered I/O over JTAG UART
 struct UARTBuffer {

@@ -68,10 +68,10 @@ int socketPut(int fd, char* buf, int numBytes)
   int sent = 0;
   // Try non-blocking send
   int ret = send(fd, &buf[sent], numBytes, MSG_DONTWAIT);
-  if (ret == EAGAIN || ret == EWOULDBLOCK)
-    return 0;
-  else if (ret < 0)
+  if (ret < 0) {
+    if (errno == EAGAIN || errno == EWOULDBLOCK) return 0;
     return ret;
+  }
   else if (ret != numBytes) {
     // Partial send, not expected to happen in our use cases
     // But if it does, resort to blocking send
