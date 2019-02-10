@@ -200,7 +200,7 @@ module mkDebugLink#(
 
   // The board id will be distributed across the chip,
   // so let's use a shift register to help timing
-  Vector#(4, Reg#(BoardId)) boardIdVec <- replicateM(mkReg(unpack(0)));
+  Vector#(3, Reg#(BoardId)) boardIdVec <- replicateM(mkReg(unpack(0)));
 
   // Ports
   InPort#(Bit#(8)) fromJtag <- mkInPort;
@@ -247,8 +247,8 @@ module mkDebugLink#(
 
   rule distributeBoardId;
     // Put board id through shift register to improve timing
-    boardIdVec[3] <= boardId;
-    for (Integer i = 0; i < 3; i=i+1)
+    boardIdVec[2] <= boardId;
+    for (Integer i = 0; i < 2; i=i+1)
       boardIdVec[i] <= boardIdVec[i+1];
   endrule
 

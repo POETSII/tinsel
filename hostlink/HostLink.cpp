@@ -113,7 +113,7 @@ void HostLink::constructor(BoxConfig* boxConfig)
       for (int c = 0; c < TinselCoresPerBoard; c++) {
         lineBufferLen[x][y][c] = new int [TinselThreadsPerCore];
         for (int t = 0; t < TinselThreadsPerCore; t++)
-          lineBuffer[x][y][c][t] = 0;
+          lineBufferLen[x][y][c][t] = 0;
       }
     }
   }
