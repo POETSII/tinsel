@@ -49,8 +49,7 @@ $(HL)/%.o:
 
 $(BUILD)/run: $(RUN_CPP) $(RUN_H) $(HL)/*.o
 	g++ -std=c++11 -O2 -I $(INC) -I $(HL) -o $(BUILD)/run $(RUN_CPP) $(HL)/*.o \
-	  -ljtag_atlantic -ljtag_client -L $(QUARTUS_ROOTDIR)/linux64/ \
-	  -Wl,-rpath,$(QUARTUS_ROOTDIR)/linux64 -lmetis -fno-exceptions
+	  -lmetis -fno-exceptions
 
 $(BUILD)/sim: $(RUN_CPP) $(RUN_H) $(HL)/sim/*.o
 	g++ -O2 -I $(INC) -I $(HL) -o $(BUILD)/sim $(RUN_CPP) $(HL)/sim/*.o \
