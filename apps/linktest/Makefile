@@ -17,9 +17,7 @@ $(HL)/%.o:
 	make -C $(HL)
 
 run: run.cpp $(HL)/*.o
-	g++ -O2 -I $(INC) -I $(HL) -o run run.cpp $(HL)/*.o \
-          -ljtag_atlantic -ljtag_client -L $(QUARTUS_ROOTDIR)/linux64/ \
-          -Wl,-rpath,$(QUARTUS_ROOTDIR)/linux64
+	g++ -O2 -I $(INC) -I $(HL) -o run run.cpp $(HL)/*.o
 
 sim: run.cpp $(HL)/sim/*.o
 	g++ -O2 -I $(INC) -I $(HL) -o sim run.cpp $(HL)/sim/*.o

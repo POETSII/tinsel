@@ -2,6 +2,11 @@
 
 entry:
 
+# Give time for board id to settle (Board id passes through multi-stage
+# buffer to help synthesis tools distirbute it across the chip)
+nop
+nop
+
 # Take bottom log(ThreadsPerDRAM) bits of hardware thread id
 li a1, TinselThreadsPerDRAM-1
 csrrw a0, 0xf14, zero
