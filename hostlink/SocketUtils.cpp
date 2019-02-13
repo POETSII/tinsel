@@ -49,8 +49,8 @@ int socketGet(int fd, char* buf, int numBytes)
     int got = 0;
     while (numBytes > 0) {
       int ret = recv(fd, &buf[got], numBytes, 0);
-      if (ret < 0)
-        return ret;
+      if (ret <= 0)
+        return -1;
       else {
         got += ret;
         numBytes -= ret;
@@ -72,6 +72,9 @@ int socketPut(int fd, char* buf, int numBytes)
     if (errno == EAGAIN || errno == EWOULDBLOCK) return 0;
     return ret;
   }
+  else if (ret == 0) {
+    return 0;
+  }
   else if (ret != numBytes) {
     // Partial send, not expected to happen in our use cases
     // But if it does, resort to blocking send
@@ -79,8 +82,8 @@ int socketPut(int fd, char* buf, int numBytes)
     numBytes -= ret;
     while (numBytes > 0) {
       ret = send(fd, &buf[sent], numBytes, 0);
-      if (ret < 0)
-        return ret;
+      if (ret <= 0)
+        return -1;
       else {
         sent += ret;
         numBytes -= ret;

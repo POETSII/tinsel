@@ -165,7 +165,7 @@ void server(int conn, int numBoards, UARTBuffer* uartLinks)
     // Make progress on each UART buffer
     serveCount++;
     if (didSleep || serveCount >= serveMax) {
-      if (!socketAlive(conn)) return;
+      //if (!socketAlive(conn)) return;
       for (int i = 0; i < numBoards; i++) uartLinks[i].serve();
       serveCount = 0;
     }
