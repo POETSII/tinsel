@@ -49,13 +49,22 @@ int createListener()
     exit(EXIT_FAILURE);
   }
 
+  // Set reuse-address socket option
+  int reuseAddr = 1;
+  int ret = setsockopt(sock, SOL_SOCKET, SO_REUSEADDR,
+                         &reuseAddr, sizeof(reuseAddr));
+  if (ret < 0) {
+    perror("setsockopt[SO_REUSEADDR]");
+    exit(EXIT_FAILURE);
+  }
+
   // Bind socket
   sockaddr_in sockAddr;
   memset(&sockAddr, 0, sizeof(sockaddr_in));
 	sockAddr.sin_family = AF_INET;
 	sockAddr.sin_addr.s_addr = htonl(INADDR_ANY);
 	sockAddr.sin_port = htons(TCP_PORT);
-  int ret = bind(sock, (const struct sockaddr *) &sockAddr,
+  ret = bind(sock, (const struct sockaddr *) &sockAddr,
                    sizeof(struct sockaddr_in));
   if (ret == -1) {
     perror("boardctrld: bind");
@@ -63,7 +72,7 @@ int createListener()
   }
 
   // Listen for connections
-  ret = listen(sock, 0);
+  ret = listen(sock, 1);
   if (ret == -1) {
     perror("boardctrld: listen");
     exit(EXIT_FAILURE);
@@ -185,17 +194,6 @@ int main(int argc, char* argv[])
       exit(EXIT_FAILURE);
     }
 
-    // Open lock file
-    int lockFile = open("/tmp/boardctrld.lock", O_CREAT, 0444);
-    if (lockFile == -1) return -1;
-
-    // Acquire lock
-    if (flock(lockFile, LOCK_EX | LOCK_NB) != 0) {
-      close(lockFile);
-      close(conn);
-      continue;
-    }
-
     // Power up worker boards
     #ifndef SIMULATE
     powerEnable(1);
@@ -204,17 +202,26 @@ int main(int argc, char* argv[])
     sleep(1);
     #endif
 
-    // Create a UART link to each board
-    uartLinks = new UARTBuffer [numBoards];
+    // Fork a process to handle connection
+    // (This is only needed to avoid a bug in jtagatlantic in which
+    // UARTs cannot be reopened by the same process.)
+    int pid = fork();
+    if (pid == 0) {
+      // Create a UART link to each board
+      uartLinks = new UARTBuffer [numBoards];
 
-    // Invoke server to handle connection
-    server(conn, numBoards, uartLinks);
+      // Invoke server to handle connection
+      server(conn, numBoards, uartLinks);
 
-    // Finished
-    close(conn);
+      // Finished
+      close(conn);
 
-    // Free UART links
-    delete [] uartLinks;
+      // Close UARTs
+      delete [] uartLinks;
+
+      return 0;
+    }
+    waitpid(pid, NULL, 0);
 
     // Power down worker boards
     #ifndef SIMULATE
