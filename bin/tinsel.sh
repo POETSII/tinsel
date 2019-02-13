@@ -1,7 +1,6 @@
 #!/bin/bash
 
 TINSEL_ROOT=/local/tinsel
-QUARTUS_PGM=/local/ecad/altera/17.0/quartus/bin/quartus_pgm
 
 if [ "$UID" != "0" ]; then
   echo "This script must be run as root"
@@ -20,15 +19,30 @@ function stop {
   echo "Terminating pciestreamd"
   killall -q -9 pciestreamd
   sleep 1
+
+  # If boardctrld is alive, kill it
+  echo "Terminating boardctrld"
+  killall -q -9 boardctrld
+  sleep 1
 }
 
 function start {
-
   stop
   echo "Starting tinsel service"
 
-  # Load PCIeStream Daemon kernel module
-  modprobe dmabuffer
+  # Try to load PCIeStream Daemon kernel module
+  if [[ $(lsmod | grep dmabuffer) ]]; then
+    echo "Kernel module 'dmabuffer' already loaded"
+  else
+    if modprobe dmabuffer; then
+      # Rebuild kernel module and try again
+      dkms build dmabuffer -v 1.0
+      dkms install dmabuffer -v 1.0
+      modprobe dmabuffer
+    else
+      echo "Loaded kernel module 'dmabuffer'"
+    fi  
+  fi
 
   # Determine bridge board's PCIe BAR
   BAR=$(lspci -d 1172:0de5 -v   | \
@@ -42,12 +56,15 @@ function start {
   # Start the PCIeStream Daemon
   echo "Starting pciestreamd (BAR=$BAR)"
   $TINSEL_ROOT/hostlink/pciestreamd $BAR 2>&1 > /tmp/pciestreamd.log &
+
+  # Start the Board Control Daemon
+  echo "Starting boardctrld"
+  $TINSEL_ROOT/hostlink/boardctrld 2>&1 > /tmp/boardctrld.log &
 }
 
 case $1 in
   start)
     start
-    echo "Start done"
   ;;
 
   stop)

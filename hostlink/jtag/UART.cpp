@@ -96,7 +96,16 @@ void UART::flush()
 // Close UART
 void UART::close()
 {
-  if (sock != -1) ::close(sock);
+  if (sock != -1) {
+    ::close(sock);
+    sock = -1;
+  }
+}
+
+// Destructor
+UART::~UART()
+{
+  close();
 }
 
 #else
@@ -149,7 +158,17 @@ void UART::flush()
 // Close UART
 void UART::close()
 {
-  if (jtag != NULL) jtagatlantic_close(jtag);
+  if (jtag != NULL) {
+    jtagatlantic_close(jtag);
+    jtag = NULL;
+    instanceId = -1;
+  }
+}
+
+// Destructor
+UART::~UART()
+{
+  close();
 }
 
 #endif

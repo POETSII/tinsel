@@ -34,6 +34,9 @@ class UART {
 
   // Close UART
   void close();
+
+  // Destructor
+  ~UART();
 };
 
 #endif

@@ -162,6 +162,7 @@ DebugLink::DebugLink(BoxConfig* config)
       for (int b = 0; b < TinselBoardsPerBox; b++) {
         getPacket(x, y, &pkt);
         assert(pkt.payload[0] == DEBUGLINK_QUERY_OUT);
+printf("GOT payload %d\n", pkt.payload[1]);
         if (pkt.payload[1] == 0) {
           if (bridge[y][x] != -1) {
             fprintf(stderr, "Too many bridge boards detected on box %s\n",
