@@ -198,10 +198,6 @@ module mkDebugLink#(
   // an overall board id.
   Reg#(BoardId) boardId <- mkReg(unpack(0));
 
-  // The board id will be distributed across the chip,
-  // so let's use a shift register to help timing
-  Vector#(3, Reg#(BoardId)) boardIdVec <- replicateM(mkReg(unpack(0)));
-
   // Ports
   InPort#(Bit#(8)) fromJtag <- mkInPort;
   OutPort#(Bit#(8)) toJtag <- mkOutPort;
@@ -243,13 +239,6 @@ module mkDebugLink#(
     id.y = truncate(boardOffset[7:4] + zeroExtend(boardIdWithinBox[3:2]));
     id.x = truncate(boardOffset[3:0] + zeroExtend(boardIdWithinBox[1:0]));
     boardId <= id;
-  endrule
-
-  rule distributeBoardId;
-    // Put board id through shift register to improve timing
-    boardIdVec[2] <= boardId;
-    for (Integer i = 0; i < 2; i=i+1)
-      boardIdVec[i] <= boardIdVec[i+1];
   endrule
 
   // Receive commands over UART
@@ -317,7 +306,7 @@ module mkDebugLink#(
       sendState <= 1;
     end else begin
       // Send QueryOut payload
-      toJtag.put(1 + zeroExtend(pack(boardId)));
+      toJtag.put(1 + zeroExtend(pack(boardIdWithinBox)));
       sendState <= 0;
       respondQuery <= False;
     end
@@ -355,7 +344,7 @@ module mkDebugLink#(
   interface jtagAvalon = uart.jtagAvalon;
   `endif
 
-  method BoardId getBoardId() = boardIdVec[0];
+  method BoardId getBoardId() = boardId;
 
 endmodule
 
