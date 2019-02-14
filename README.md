@@ -27,7 +27,7 @@ Released on 10 Sep 2018 and maintained in the
 Released on 8 Jan 2019 and maintained in the
 [tinsel-0.5 branch](https://github.com/POETSII/tinsel/tree/tinsel-0.5).
 (Hardware idle-detection.)
-* v0.6: Under development in the master branch.
+* v0.6: Under development in the master branch. (Multibox.)
 
 ## Contents
 
@@ -62,14 +62,14 @@ commodity devices such as CPUs and GPUs.
 Despite their potential, FPGA-based systems face challenges. Low-level
 hardware description languages and long synthesis times are major
 barriers to productivity for application developers. An attractive
-approach for the [POETS Project](https://poets-project.org/about) is
-therefore to provide a soft-core overlay architecture on top of the
-FPGA logic that can be programmed quickly and easily using standard
-software languages and tools. While this overlay is not customised to
-a particular POETS *application*, it is at least customised to the
-POETS *application domain*. This is a natural first step because
-higher levels of customisation are more ambitious and would, in any
-case, reuse components and ideas from the overlay.
+approach for the [POETS Project](https://poets-project.org/about)
+(distributed vertex-centric computing) is therefore to provide a
+soft-core overlay architecture on top of the FPGA logic that can be
+programmed quickly and easily using standard software languages and
+tools. While this overlay is not customised to a particular POETS
+*application*, it is at least customised to the POETS *application
+domain*.  The aim is to support irregular applications that have heavy
+communication and memory demands, but only modest compute requrements.
 
 In the remainder of this section we give an overview of our soft-core
 overlay architecture for POETS, called *Tinsel*.
@@ -130,7 +130,14 @@ with just two instructions, which is useful to implement efficient
 multicasting in software.  A single mailbox can be shared between
 several cores, reducing the size of the on-chip network needed connect
 the mailboxes together.
- 
+
+We have found that automatic termination detection can significantly
+simplify application development in pure message-passing systems such
+as Tinsel.  Therefore, Tinsel provides an efficient distributed
+termination-detection primitive in hardware which, as well as
+detecting convergence in asynchronous applications, can be used to
+advance time in synchronous ones. 
+
 Fundamental to POETS is the ability to scale the hardware to an
 arbitrary number of cores, and hence we must exploit multiple FPGAs.
 The inter-board serial communication links available on modern FPGAs
@@ -147,11 +154,12 @@ for our own purposes, resulting in very little overhead on the wire.
 ### 1.4 POETS Hardware
 
 A prototype POETS hardware system is currently under construction and,
-when complete, will consist of around 50 DE5-Net FPGA boards connected
-in a 3D mesh topology.  Each group of 7 FPGAs will reside in a
+when complete, will consist of at 40-60 DE5-Net FPGA boards connected
+in a 2D or 3D mesh topology.  Each group of 7 FPGAs will reside in a
 separate *POETs box*.  One FPGA in each box will serve as a *PCI
 Express bridge board* that connects a modern PC to the remaining FPGA
-*worker boards*, with the worker boards running Tinsel by default.
+*worker boards*, with the remaining 6 worker boards running Tinsel by
+default.
 
 ### 1.5 Structure
 
@@ -594,7 +602,7 @@ It is more efficient to send messages between threads that share a
 mailbox than between threads on different mailboxes.  This is because,
 in the former case, flits are simply copied from one part of a
 scratchpad to another using a wide, flit-sized, read/write port.  Such
-messages do not occupy any bandwidth on the bidirectional bus
+messages do not occupy any bandwidth on the bidirectional NoC
 connecting the mailboxes.
 
 It is also more efficient to send messages between threads on
@@ -603,14 +611,20 @@ distant mailboxes.  This is because, in the former case, the message
 spends less time on the network, consuming less bandwidth.
 
 The mailbox network extends across multiple FPGA boards arranged in a
-*2D mesh* of size `MeshXLen` x `MeshYLen`.
+*2D mesh*, of maximum size `2^MeshXBits` x `2^MeshYBits`.
 
   Parameter      | Default | Description
   -------------- | ------- | -----------
-  `MeshXBits`    |       2 | Number of bits in mesh X coordinate
-  `MeshYBits`    |       2 | Number of bits in mesh Y coordinate
-  `MeshXLen`     |       3 | Length of X dimension
-  `MeshYLen`     |       3 | Length of Y dimension
+  `MeshXBits`    |       3 | Number of bits in mesh X coordinate
+  `MeshYBits`    |       3 | Number of bits in mesh Y coordinate
+
+The full board mesh is comprised of multiple smaller meshes (of size
+`MeshXLenWithinBox` x `MeshYLenWithinBox`) running on each POETS box. 
+
+  Parameter           | Default | Description
+  ------------------- | ------- | -----------
+  `MeshXLenWithinBox` |       3 | Boards in X dimension within box
+  `MeshYLenWithinBox` |       2 | Boards in Y dimension within box
 
 A *globally unique thread id*, as returned by `tinselId()`, has the
 following structure from MSB to LSB.
@@ -638,43 +652,69 @@ purposes, resulting in very little overhead on the wire.
 FPGA boards communicate with a *host PC*.  It comprises three main
 communication channels:
 
-* An FPGA *bridge board* that connects to the host PC via PCI
-Express and to the FPGA mesh via a 10Gbps reliable link.  Using this
-high-bandwidth channel (around 1GB/s), the host PC can efficiently
-send messages to any Tinsel thread and vice-versa.
+* An FPGA *bridge board* that connects the host PC inside a POETS box
+(PCI Express) to the FPGA mesh (SFP+).  Using this high-bandwidth
+channel (10Gbps), the host PC can efficiently send messages to any
+Tinsel thread and vice-versa.
 
-* A set of *debug links* connecting the host PC to each FPGA via
-separate USB UART cables.  These low-bandwidth connections (around
-4MB/s each) are virtualised to provide every hardware thread with
-`stdin` and `stdout` byte streams.  They are intended for
-debugging and can be used to implement functions such as `printf` and
-`getchar`.
+* A set of *debug links* connecting the host PC inside a POETS box to
+each worker FPGA board via separate USB UART cables.  These
+low-bandwidth connections (around 4MB/s each) are virtualised to
+provide every hardware thread with `stdin` and `stdout` byte streams.
+They are intended for debugging and can be used to implement functions
+such as `printf` and `getchar`.
 
-* A set of *power links* connecting the host PC to each FPGA's
-*power management module* via separate USB UART cables.  These
-connections can be used to power-on/power-off each FPGA and to monitor
-power consumption and temperature.
+* A set of *power links* connecting the host PC inside a POETS box to
+each FPGA's *power management module* via separate USB UART cables.
+These connections can be used to power-on/power-off each FPGA and to
+monitor power consumption, temperature, and fan tachometer.
 
-A Tinsel application typically consists of two programs: one which runs on the
-RISC-V cores, linked against the [Tinsel API](#f-tinsel-api), and the other
-which runs on the host PC, linked against the [HostLink API](#g-hostlink-api).
-The HostLink API is implemented as a C++ class called `HostLink`.  The
-constructor for this class first carries out a reset of the hardware: (1) all
-of the mesh FPGAs are powered down; (2) a soft-reset of the bridge board is
-performed; and (3) all of the mesh FPGAs are powered up.  On power-up the FPGAs
-are automatically programmed using the Tinsel bit-file residing in flash
-memory, and are ready to be used within a few seconds, as soon as the
-`HostLink` constructor returns.
+HostLink supports multiple POETS boxes, but requires that one of these
+boxes is designated as the **master box**.  Currently, all messages
+are injected/extracted to/from the FPGA network via the master box's
+bridge board.
 
-Methods for sending and receiving messages on the host PC are as
-follows.
+A Tinsel application typically consists of two programs: one which
+runs on the RISC-V cores, linked against the [Tinsel
+API](#f-tinsel-api), and the other which runs on the host PC of the
+master box, linked against the [HostLink API](#g-hostlink-api).  The
+HostLink API is implemented as a C++ class called `HostLink`.  The
+constructor for this class first powers up all the worker FPGAs (which
+are by default powered down).  On power-up the FPGAs are automatically
+programmed using the Tinsel bit-file residing in flash memory, and are
+ready to be used within a few seconds, as soon as the `HostLink`
+constructor returns.
+
+The `HostLink` constructor is overloaded:
+
+```cpp
+HostLink::HostLink();
+HostLink::HostLink(BoxConfig* boxConfig);
+```
+
+If it is called without any arguments, then it assumes that a single
+box `localhost` is to be used.  Alternatively, if it is passed a *box
+configuration* then mulitple boxes can be used.  To illustrate, we can
+create a 2x3 mesh of boxes as follows:
+
+```cpp
+// Sample 2x3 box configuration with byron as
+// the master and fielding as the mesh origin
+BoxConfig config;
+config.addRow("byron", "coleridge");
+config.addRow("defoe", "eliot");
+config.addRow("fielding", "goethe");
+```
+
+HostLink methods for sending and receiving messages on the host PC are
+as follows.
 
 ```cpp
 // Send a message (blocking)
-void HostLink::send(uint32_t destAddr, uint32_t numFlits, void* msg);
+bool HostLink::send(uint32_t dest, uint32_t numFlits, void* msg);
 
-// Can send a message without blocking?
-bool HostLink::canSend();
+// Try to send a message (non-blocking, returns true on success)
+bool HostLink::trySend(uint32_t dest, uint32_t numFlits, void* msg);
 
 // Receive a flit (blocking)
 void HostLink::recv(void* flit);
@@ -683,7 +723,6 @@ void HostLink::recv(void* flit);
 bool HostLink::canRecv();
 
 // Receive a message (blocking), given size of message in bytes
-// Any bytes beyond numBytes up to the next flit boundary will be ignored
 void HostLink::recvMsg(void* msg, uint32_t numBytes);
 ```
 
@@ -710,10 +749,15 @@ For low-level details, see the comments at
 the top of [PCIeStream.bsv](/rtl/PCIeStream.bsv) and
 [DE5BridgeTop.bsv](/rtl/DE5BridgeTop.bsv).
 
-The following helper functions are provided for constructing and
-deconstructing addresses (globally unique thread ids).
+The following member variables and helper functions are provided for
+constructing and deconstructing addresses (globally unique thread
+ids).
 
 ```cpp
+// Dimensions of the board mesh
+int HostLink::meshXLen;
+int HostLink::meshYLen;
+
 // Address construction
 uint32_t HostLink::toAddr(uint32_t meshX, uint32_t meshY,
                           uint32_t coreId, uint32_t threadId);
@@ -723,70 +767,60 @@ void HostLink::fromAddr(uint32_t addr, uint32_t* meshX, uint32_t* meshY,
                                        uint32_t* coreId, uint32_t* threadId);
 ```
 
-To send a message from a Tinsel thread to the host PC, the thread
-needs to know the address of the host PC.  A suitable address depends
-on how the bridge board is connected to the FPGA mesh, and we provide
-the following Tinsel API function to abstract over this detail.
+To send a message from a Tinsel thread to the host PC (on the master
+box), the thread needs to know the address of the host PC.  A suitable
+address depends on how the bridge board is connected to the FPGA mesh,
+and we provide the following Tinsel API function to abstract over this
+detail.
 
 ```c
 // Get globally unique thread id of the host PC
 inline uint32_t tinselHostId()
 ```
 
-The following `HostLink` member variables are used to access the
-individual debug links to each FPGA and the bridge board.
+The following HostLink member variable is used to access the
+debug links to each FPGA on the system.
 
 ```cpp
-// Debug link to the bridge board (initialised by HostLink constructor)
-DebugLink* bridgeBoard;
-
-// Debug links to the mesh boards (initialised by HostLink constructor)
-DebugLink* mesh[TinselMeshXLen][TinselMeshYLen];
+// DebugLink (access to FPGAs via their JTAG UARTs)
+HostLink::DebugLink* debugLink;
 ```
 
-The `DebugLink` class provides several methods on these links.  One
-such method allows querying of a board to determine its unique
-identifier, i.e.  its X and Y coordinates in the mesh.
+To send bytes to a thread's input stream over DebugLink, one first
+needs to set the destination address.
 
 ```cpp
-// Put query request
-void DebugLink::putQuery();
+// On given board, set destination core and thread
+void DebugLink::setDest(uint32_t boardX, uint32_t boardY,
+                          uint32_t coreId, uint32_t threadId);
 
-// Get query response, including board id
-bool DebugLink::getQuery(uint32_t* boardId);
-```
-
-The board id returned by ``getQuery`` is either 0, denoting the bridge
-board, or 1+*b* denoting a mesh board with identifier *b*.  To send
-bytes to a thread's input stream, one first needs to set the
-destination address.
-
-```cpp
-// Set destination core and thread
-void DebugLink::setDest(uint32_t coreId, uint32_t threadId);
-
-// Set destinations to given thread id on every core
-void DebugLink::setBroadcastDest(uint32_t threadId);
+// On given board, set destinations to core-local thread id on every core
+void DebugLink::setBroadcastDest(
+                  int32_t boardX, uint32_t boardY, uint32_t threadId);
 ```
 
 After that, bytes can be sent and received using the functions:
 
 ```cpp
-// Send byte to destination thread (StdIn)
-void DebugLink::put(uint8_t byte);
+// On given board, send byte to destination thread (StdIn)
+void DebugLink::put(uint32_t boardX, uint32_t boardY, uint8_t byte);
 
 // Receive byte (StdOut)
-void DebugLink::get(uint32_t* coreId, uint32_t* threadId, uint8_t* byte);
+void DebugLink::get(uint32_t* boardX, uint32_t* boardY,
+                      uint32_t* coreId, uint32_t* threadId, uint8_t* byte);
 
 // Is a data available for reading?
 bool DebugLink::canGet();
 ```
 
-For low-level details about the DebugLink protocol, see the comments
-at the top of [DebugLink.bsv](/rtl/DebugLink.bsv).
+These methods for sending a receiving bytes via DebugLink work by
+connecting to a [Board Control Daemon](hostlink/boardctrld.cpp)
+running on each POETS box.  For low-level details about the DebugLink
+protocol, see the comments at the top of
+[DebugLink.bsv](/rtl/DebugLink.bsv).
 
 On the FPGA side, the following CSRs can be used to send and receive
-bytes over the debug link.
+bytes over DebugLink.
 
   Name        | CSR    | R/W | Function
   ----------- | ------ | --- | --------
@@ -884,10 +918,10 @@ ALMs, *58% of the DE5-Net*.
   `LogMaxFlitsPerMsg`      |       2 | Max number of flits in a message
   `LogMsgsPerThread`       |       4 | Number of slots per thread in scratchpad
   `LogMailboxesPerBoard`   |       4 | Number of mailboxes per FPGA board
-  `MeshXBits`              |       2 | Number of bits in mesh X coordinate
-  `MeshYBits`              |       2 | Number of bits in mesh Y coordinate
-  `MeshXLen`               |       3 | Length of X dimension
-  `MeshYLen`               |       3 | Length of Y dimension
+  `MeshXBits`              |       3 | Number of bits in mesh X coordinate
+  `MeshYBits`              |       3 | Number of bits in mesh Y coordinate
+  `MeshXLenWithinBox`      |       3 | Boards in X dimension within box
+  `MeshYLenWithinBox`      |       2 | Boards in Y dimension within box
   `EnablePerfCount`        |    True | Enable performance counters
 
 ## C. Tinsel Memory Map
@@ -1080,23 +1114,29 @@ details see [HostLink.h](/hostlink/HostLink.h) and
 class HostLink {
  public:
 
+  // Dimensions of board mesh
+  // (Set by the HostLink constructor)
+  int meshXLen;
+  int meshYLen;
+
+  // Constructors
+  HostLink();
+  HostLink(BoxConfig* boxConfig);
+
   // Debug links
   // -----------
 
-  // Link to the bridge board (opened by constructor)
-  DebugLink* bridgeBoard;
-
-  // Links to the mesh boards (opened by constructor)
-  DebugLink* mesh[TinselMeshXLen][TinselMeshYLen];
+  // Access to FPGAs via their JTAG UARTs
+  DebugLink* debugLink;
 
   // Send and receive messages over PCIe
   // -----------------------------------
 
-  // Send a message (blocking)
-  void send(uint32_t dest, uint32_t numFlits, void* msg);
+  // Send a message (blocking by default)
+  bool send(uint32_t dest, uint32_t numFlits, void* msg, bool block = true);
 
-  // Can send a message without blocking?
-  bool canSend();
+  // Try to send a message (non-blocking, returns true on success)
+  bool trySend(uint32_t dest, uint32_t numFlits, void* msg);
 
   // Receive a flit (blocking)
   void recv(void* flit);
@@ -1163,35 +1203,25 @@ class HostLink {
 class DebugLink {
  public:
 
-  // Open UART with given instance id
-  void open(int instId);
+  // Constructor
+  DebugLink(BoxConfig* config);
 
-  // Put query request
-  void putQuery();
+  // On given board, set destination core and thread
+  void setDest(uint32_t boardX, uint32_t boardY,
+                 uint32_t coreId, uint32_t threadId);
 
-  // Get query response, including board id
-  bool getQuery(uint32_t* boardId);
+  // On given board, set destinations to core-local thread id on every core
+  void setBroadcastDest(uint32_t boardX, uint32_t boardY, uint32_t threadId);
 
-  // Set destination core and thread
-  void setDest(uint32_t coreId, uint32_t threadId);
-
-  // Set destinations to core-local thread id on every core
-  void setBroadcastDest(uint32_t threadId);
-
-  // Send byte to destination thread (StdIn)
-  void put(uint8_t byte);
+  // On given board, send byte to destination thread (StdIn)
+  void put(uint32_t boardX, uint32_t boardY, uint8_t byte);
 
   // Receive byte (StdOut)
-  void get(uint32_t* coreId, uint32_t* threadId, uint8_t* byte);
+  void get(uint32_t* boardX, uint32_t* boardY,
+             uint32_t* coreId, uint32_t* threadId, uint8_t* byte);
 
   // Is a data available for reading?
   bool canGet();
-  
-  // Flush writes
-  void flush();
-
-  // Close UART
-  void close();
 };
 ```
 

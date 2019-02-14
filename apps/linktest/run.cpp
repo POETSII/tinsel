@@ -17,11 +17,11 @@ int main()
 
   // Send a ping between every pair of cores
   uint32_t count = 0;
-  for (int x1 = 0; x1 < TinselMeshXLen; x1++)
-    for (int y1 = 0; y1 < TinselMeshYLen; y1++)
+  for (int x1 = 0; x1 < TinselMeshXLenWithinBox; x1++)
+    for (int y1 = 0; y1 < TinselMeshYLenWithinBox; y1++)
       for (int i1 = 0; i1 < (1 << TinselLogCoresPerBoard); i1++)
-        for (int x2 = 0; x2 < TinselMeshXLen; x2++)
-          for (int y2 = 0; y2 < TinselMeshYLen; y2++)
+        for (int x2 = 0; x2 < TinselMeshXLenWithinBox; x2++)
+          for (int y2 = 0; y2 < TinselMeshYLenWithinBox; y2++)
             for (int i2 = 0; i2 < (1 << TinselLogCoresPerBoard); i2++) {
               uint32_t dest = hostLink.toAddr(x1, y1, i1, 0);
               uint32_t resp[4];

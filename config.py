@@ -111,17 +111,23 @@ p["LinkTimeout"] = 1024
 # Latency of 10G MAC in cycles (simulation only)
 p["MacLatency"] = 100
 
-# Number of bits in mesh X coord
-p["MeshXBits"] = 2
+# Number of bits in mesh X coord (board id)
+p["MeshXBits"] = 3
 
-# Number of bits in mesh Y coord
-p["MeshYBits"] = 2
+# Number of bits in mesh Y coord (board id)
+p["MeshYBits"] = 3
 
-# Mesh X length
-p["MeshXLen"] = 3
+# Number of bits in mesh X coord within a box (DIP switches)
+p["MeshXBitsWithinBox"] = 2
 
-# Mesh Y length
-p["MeshYLen"] = 2
+# Number of bits in mesh Y coord within a box (DIP switches)
+p["MeshYBitsWithinBox"] = 2
+
+# Mesh X length within a box
+p["MeshXLenWithinBox"] = 3
+
+# Mesh Y length within a box
+p["MeshYLenWithinBox"] = 2
 
 # Number of cores per FPU
 p["LogCoresPerFPU"] = 2
@@ -325,6 +331,9 @@ p["LogBytesPerSRAMPartition"] = p["LogBytesPerSRAM"] - p["LogThreadsPerSRAM"]
 # DRAM base and length
 p["DRAMBase"] = 3 * (2 ** p["LogBytesPerSRAM"])
 p["DRAMGlobalsLength"] = 2 ** (p["LogBytesPerDRAM"] - 1) - p["DRAMBase"]
+
+# Number of FPGA boards per box (including bridge board)
+p["BoardsPerBox"] = p["MeshXLenWithinBox"] * p["MeshYLenWithinBox"] + 1
 
 #==============================================================================
 # Main 
