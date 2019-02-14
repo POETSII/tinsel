@@ -74,13 +74,6 @@ void HostLink::constructor(BoxConfig* boxConfig)
   // Ignore SIGPIPE
   signal(SIGPIPE, SIG_IGN);
 
-  // Create DebugLink
-  debugLink = new DebugLink(boxConfig);
-
-  // Set board mesh dimensions
-  meshXLen = debugLink->meshXLen;
-  meshYLen = debugLink->meshYLen;
-
   #ifdef SIMULATE
     // Connect to simulator
     pcieLink = connectToPCIeStream(PCIESTREAM_SIM);
@@ -88,6 +81,13 @@ void HostLink::constructor(BoxConfig* boxConfig)
     // Connect to pciestreamd
     pcieLink = connectToPCIeStream(PCIESTREAM);
   #endif
+
+  // Create DebugLink
+  debugLink = new DebugLink(boxConfig);
+
+  // Set board mesh dimensions
+  meshXLen = debugLink->meshXLen;
+  meshYLen = debugLink->meshYLen;
 
   // Allocate line buffers
   lineBuffer = new char**** [meshXLen];
@@ -354,11 +354,13 @@ void HostLink::boot(const char* codeFilename, const char* dataFilename)
         uint32_t dest = toAddr(x, y, i, 0);
         req.cmd = StartCmd;
         req.args[0] = (1<<TinselLogThreadsPerCore)-1;
-        while (! trySend(dest, 1, &req)) {
+        while (1) {
+          bool ok = trySend(dest, 1, &req);
           if (canRecv()) {
             recv(flit);
             started++;
           }
+          if (ok) break;
         }
       }
     }

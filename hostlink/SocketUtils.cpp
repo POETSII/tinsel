@@ -144,7 +144,7 @@ void socketBlockingGet(int fd, char* buf, int numBytes)
   return;
 }
 
-// Either send exactly numBytes to a socket, blocking
+// Send exactly numBytes to a socket, blocking
 void socketBlockingPut(int fd, char* buf, int numBytes)
 {
   int sent = 0;
