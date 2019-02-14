@@ -45,8 +45,8 @@ uint32_t randAddr(uint32_t* state)
   
   uint32_t x, y, c, t;
   fromAddr(addr, &x, &y, &c, &t);
-  return toAddr(min(x, TinselMeshXLen-1),
-                min(y, TinselMeshYLen-1), c, t);
+  return toAddr(min(x, TinselMeshXLenWithinBox-1),
+                min(y, TinselMeshYLenWithinBox-1), c, t);
 }
 
 int main()

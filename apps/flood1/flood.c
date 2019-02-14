@@ -58,8 +58,8 @@ int main()
 
   // Send loop
   for (uint32_t i = 0; i < N; i++) {
-    for (uint32_t x = 0; x < TinselMeshXLen; x++) {
-      for (uint32_t y = 0; y < TinselMeshYLen; y++) {
+    for (uint32_t x = 0; x < TinselMeshXLenWithinBox; x++) {
+      for (uint32_t y = 0; y < TinselMeshYLenWithinBox; y++) {
         if (x != myX || y != myY) {
           uint32_t dest = toAddr(x, y, myCore, myThread);
 
@@ -77,7 +77,8 @@ int main()
   }
   
   // Number of messages expected at each thread
-  uint32_t expected = ((TinselMeshXLen * TinselMeshYLen) - 1) * N;
+  uint32_t expected =
+    ((TinselMeshXLenWithinBox * TinselMeshYLenWithinBox) - 1) * N;
 
   // Keep receiving
   while (got < expected) {
