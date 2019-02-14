@@ -8,8 +8,8 @@
 #define Y_LOCAL_LEN (1 << (TinselLogThreadsPerBoard >> 1))
 
 // And there is a 2D mesh of boards
-// Assumption 1: X_BOARDS <= TinselMeshXLen
-// Assumption 2: Y_BOARDS <= TinselMeshYLen
+// Assumption 1: X_BOARDS <= TinselMeshXLenWithinBox
+// Assumption 2: Y_BOARDS <= TinselMeshYLenWithinBox
 #define X_BOARDS 1
 #define Y_BOARDS 1
 
