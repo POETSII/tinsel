@@ -2,6 +2,8 @@
 #include "DebugLink.h"
 #include "MemFileReader.h"
 #include "PowerLink.h"
+#include "SocketUtils.h"
+
 #include <boot.h>
 #include <ctype.h>
 #include <sys/types.h>
@@ -53,8 +55,8 @@ static int connectToPCIeStream(const char* socketPath)
   return sock;
 }
 
-// Constructor
-HostLink::HostLink()
+// Internal constructor
+void HostLink::constructor(BoxConfig* boxConfig)
 {
   // Open lock file
   lockFile = open("/tmp/HostLink.lock", O_CREAT, 0444);
@@ -69,9 +71,6 @@ HostLink::HostLink()
     exit(EXIT_FAILURE);
   }
 
-  // Determine number of boards
-  int numBoards = TinselMeshXLen * TinselMeshYLen + 1;
-
   // Ignore SIGPIPE
   signal(SIGPIPE, SIG_IGN);
 
@@ -83,114 +82,88 @@ HostLink::HostLink()
     pcieLink = connectToPCIeStream(PCIESTREAM);
   #endif
 
-  // Power up mesh boards
-  #ifndef SIMULATE
-  sleep(1);
-  waitForFPGAs(numBoards);
-  sleep(1);
-  #endif
+  // Create DebugLink
+  debugLink = new DebugLink(boxConfig);
 
-  // Create a DebugLink (UART) for each board
-  debugLinks = new DebugLink [numBoards];
+  // Set board mesh dimensions
+  meshXLen = debugLink->meshXLen;
+  meshYLen = debugLink->meshYLen;
 
-  // Initialise line buffers
-  for (int x = 0; x < TinselMeshXLen; x++)
-    for (int y = 0; y < TinselMeshYLen; y++)
-      for (int c = 0; c < TinselCoresPerBoard; c++)
-        for (int t = 0; t < TinselThreadsPerCore; t++)
-          lineBufferLen[x][y][c][t] = 0;
-
-  // Open each UART
-  #ifdef SIMULATE
-    // Worker boards
-    int count = 0;
-    for (int y = 0; y < TinselMeshYLen; y++)
-      for (int x = 0; x < TinselMeshXLen; x++) {
-        int boardId = (y<<TinselMeshXBits) + x;
-        debugLinks[count++].open(boardId);
+  // Allocate line buffers
+  lineBuffer = new char**** [meshXLen];
+  for (int x = 0; x < meshXLen; x++) {
+    lineBuffer[x] = new char*** [meshYLen];
+    for (int y = 0; y < meshYLen; y++) {
+      lineBuffer[x][y] = new char** [TinselCoresPerBoard];
+      for (int c = 0; c < TinselCoresPerBoard; c++) {
+        lineBuffer[x][y][c] = new char* [TinselThreadsPerCore];
+        for (int t = 0; t < TinselThreadsPerCore; t++) {
+          lineBuffer[x][y][c][t] = new char [MaxLineLen];
+        }
       }
-    // Host board
-    debugLinks[count++].open(-1);
-  #else
-    for (int i = 0; i < numBoards; i++) debugLinks[i].open(i+1);
-  #endif
-
-  // Initialise debug links
-  bridgeBoard = NULL;
-  for (int x = 0; x < TinselMeshXLen; x++)
-    for (int y = 0; y < TinselMeshYLen; y++)
-      mesh[x][y] = NULL;
-
-  // Send query requests
-  for (int i = 0; i < numBoards; i++)
-    debugLinks[i].putQuery();
-
-  // Get responses
-  for (int i = 0; i < numBoards; i++) {
-    uint32_t boardId;
-    bool isHostBoard = !debugLinks[i].getQuery(&boardId);
-    if (isHostBoard) {
-      if (bridgeBoard != NULL) {
-        fprintf(stderr, "Too many bridge boards detected\n");
-        exit(EXIT_FAILURE);
-      }
-      bridgeBoard = &debugLinks[i];
-    }
-    else {
-      uint32_t x = boardId % (1 << TinselMeshXBits);
-      uint32_t y = boardId >> TinselMeshXBits;
-      if (x >= TinselMeshXLen) {
-        fprintf(stderr, "Mesh X dimension out of range: %d\n", x);
-        exit(EXIT_FAILURE);
-      }
-      if (y >= TinselMeshYLen) {
-        fprintf(stderr, "Mesh Y dimension out of range: %d\n", y);
-        exit(EXIT_FAILURE);
-      }
-      if (mesh[x][y] != NULL) {
-        fprintf(stderr, "Non-unique board id: %d\n", boardId);
-        exit(EXIT_FAILURE);
-      }
-      mesh[x][y] = &debugLinks[i];
     }
   }
+
+  // Allocate and initialise line buffer lengths
+  lineBufferLen = new int*** [meshXLen];
+  for (int x = 0; x < meshXLen; x++) {
+    lineBufferLen[x] = new int** [meshYLen];
+    for (int y = 0; y < meshYLen; y++) {
+      lineBufferLen[x][y] = new int* [TinselCoresPerBoard];
+      for (int c = 0; c < TinselCoresPerBoard; c++) {
+        lineBufferLen[x][y][c] = new int [TinselThreadsPerCore];
+        for (int t = 0; t < TinselThreadsPerCore; t++)
+          lineBufferLen[x][y][c][t] = 0;
+      }
+    }
+  }
+}
+
+HostLink::HostLink()
+{
+  // Default box configuration: a 1x1 box mesh containing "localhost"
+  BoxConfig config;
+  config.addRow("localhost");
+  constructor(&config);
+}
+
+HostLink::HostLink(BoxConfig* config)
+{
+  constructor(config);
 }
 
 // Destructor
 HostLink::~HostLink()
 {
-  // Close debug link to the bridge board
-  bridgeBoard->close();
-  // Close debug links to the mesh boards
-  for (int x = 0; x < TinselMeshXLen; x++)
-    for (int y = 0; y < TinselMeshYLen; y++)
-      mesh[x][y]->close();
-  delete [] debugLinks;
-  // Close connections to the PCIe stream daemon
+  // Free line buffers
+  for (int x = 0; x < meshXLen; x++) {
+    for (int y = 0; y < meshYLen; y++) {
+      for (int c = 0; c < TinselCoresPerBoard; c++) {
+        for (int t = 0; t < TinselThreadsPerCore; t++)
+          delete [] lineBuffer[x][y][c][t];
+        delete [] lineBuffer[x][y][c];
+        delete [] lineBufferLen[x][y][c];
+      }
+      delete [] lineBuffer[x][y];
+      delete [] lineBufferLen[x][y];
+    }
+    delete [] lineBuffer[x];
+    delete [] lineBufferLen[x];
+  }
+  delete [] lineBuffer;
+  delete [] lineBufferLen;
+
+  // Close debug link
+  delete debugLink;
+
+  // Close connection to the PCIe stream daemon
   close(pcieLink);
+
   // Release HostLink lock
   if (flock(lockFile, LOCK_UN) != 0) {
     perror("Failed to release HostLink lock");
   }
   close(lockFile);
-}
-
-// Power up the mesh boards
-void powerup()
-{
-  #ifndef SIMULATE
-  // Disable power to the mesh boards
-  powerEnable(1);
-  #endif
-}
-
-// Powerdown the mesh boards
-void powerdown()
-{
-  #ifndef SIMULATE
-  // Disable power to the mesh boards
-  powerEnable(0);
-  #endif
 }
 
 // Address construction
@@ -221,8 +194,8 @@ void HostLink::fromAddr(uint32_t addr, uint32_t* meshX, uint32_t* meshY,
   *meshY = addr;
 }
 
-// Inject a message via PCIe (blocking)
-void HostLink::send(uint32_t dest, uint32_t numFlits, void* payload)
+// Inject a message via PCIe (blocking by default)
+bool HostLink::send(uint32_t dest, uint32_t numFlits, void* payload, bool block)
 {
   // Ensure that MaxFlitsPerMsg is not violated
   assert(numFlits > 0 && numFlits <= TinselMaxFlitsPerMsg);
@@ -250,23 +223,20 @@ void HostLink::send(uint32_t dest, uint32_t numFlits, void* payload)
   // Total bytes to send, including header
   int totalBytes = 16+payloadBytes;
 
-  // We assume that totalBytes is less than PIPE_BUF bytes,
-  // and write() will not send fewer PIPE_BUF bytes.
-  int ret = write(pcieLink, buffer, totalBytes);
-  if (ret != totalBytes) {
-    fprintf(stderr, "Error writing to PCIeStream: totalBytes = %d, "
-                    "PIPE_BUF=%d, ret=%d.\n", totalBytes, PIPE_BUF, ret);
-    exit(EXIT_FAILURE);
+  // Write to the socket
+  if (block) {
+    socketBlockingPut(pcieLink, (char*) buffer, totalBytes);
+    return true;
+  }
+  else {
+    return socketPut(pcieLink, (char*) buffer, totalBytes) == 1;
   }
 }
 
-// Can send a message without blocking?
-bool HostLink::canSend()
+// Try to send a message (non-blocking, returns true on success)
+bool HostLink::trySend(uint32_t dest, uint32_t numFlits, void* msg)
 {
-  pollfd pfd;
-  pfd.fd = pcieLink;
-  pfd.events = POLLOUT;
-  return poll(&pfd, 1, 0) > 0;
+  return send(dest, numFlits, msg, false);
 }
 
 // Receive a flit via PCIe (blocking)
@@ -274,15 +244,7 @@ void HostLink::recv(void* flit)
 {
   int numBytes = 1 << TinselLogBytesPerFlit;
   uint8_t* ptr = (uint8_t*) flit;
-  while (numBytes > 0) {
-    int n = read(pcieLink, (char*) ptr, numBytes);
-    if (n <= 0) {
-      fprintf(stderr, "Error reading from PCIeStream\n");
-      exit(EXIT_FAILURE);
-    }
-    ptr += n;
-    numBytes -= n;
-  }
+  socketBlockingGet(pcieLink, (char*) ptr, numBytes);
 }
 
 // Receive a message (blocking), given size of message in bytes
@@ -296,35 +258,17 @@ void HostLink::recvMsg(void* msg, uint32_t numBytes)
 
   // Fill message
   uint8_t* ptr = (uint8_t*) msg;
-  while (numBytes > 0) {
-    int n = read(pcieLink, (char*) ptr, numBytes);
-    if (n <= 0) {
-      fprintf(stderr, "Error reading from PCIeStream\n");
-      exit(EXIT_FAILURE);
-    }
-    ptr += n;
-    numBytes -= n;
-  }
+  socketBlockingGet(pcieLink, (char*) ptr, numBytes);
 
   // Discard padding bytes
-  while (paddingBytes > 0) {
-    uint8_t padding[1 << TinselLogBytesPerFlit];
-    int n = read(pcieLink, (char*) padding, paddingBytes);
-    if (n <= 0) {
-      fprintf(stderr, "Error reading from PCIeStream\n");
-      exit(EXIT_FAILURE);
-    }
-    paddingBytes -= n;
-  }
+  uint8_t padding[1 << TinselLogBytesPerFlit];
+  socketBlockingGet(pcieLink, (char*) padding, paddingBytes);
 }
 
 // Can receive a flit without blocking?
 bool HostLink::canRecv()
 {
-  pollfd pfd;
-  pfd.fd = pcieLink;
-  pfd.events = POLLIN;
-  return poll(&pfd, 1, 0) > 0;
+  return socketCanGet(pcieLink);
 }
 
 // Load application code and data onto the mesh
@@ -338,7 +282,7 @@ void HostLink::boot(const char* codeFilename, const char* dataFilename)
 
   // Total number of cores
   const uint32_t numCores =
-    (TinselMeshXLen*TinselMeshYLen) << TinselLogCoresPerBoard;
+    (meshXLen*meshYLen) << TinselLogCoresPerBoard;
 
   // Step 1: load code into instruction memory
   // -----------------------------------------
@@ -347,8 +291,8 @@ void HostLink::boot(const char* codeFilename, const char* dataFilename)
   uint32_t addr, word;
   while (code.getWord(&addr, &word)) {
     // Send instruction to each core
-    for (int x = 0; x < TinselMeshXLen; x++) {
-      for (int y = 0; y < TinselMeshYLen; y++) {
+    for (int x = 0; x < meshXLen; x++) {
+      for (int y = 0; y < meshYLen; y++) {
         for (int i = 0; i < (1 << TinselLogCoresPerBoard); i++) {
           uint32_t dest = toAddr(x, y, i, 0);
           if (addr != addrReg) {
@@ -377,8 +321,8 @@ void HostLink::boot(const char* codeFilename, const char* dataFilename)
   // Write data to DRAMs
   addrReg = 0xffffffff;
   while (data.getWord(&addr, &word)) {
-    for (int x = 0; x < TinselMeshXLen; x++) {
-      for (int y = 0; y < TinselMeshYLen; y++) {
+    for (int x = 0; x < meshXLen; x++) {
+      for (int y = 0; y < meshYLen; y++) {
         for (int i = 0; i < TinselDRAMsPerBoard; i++) {
           // Use one core to initialise each DRAM
           uint32_t dest = toAddr(x, y, coresPerDRAM * i, 0);
@@ -404,19 +348,20 @@ void HostLink::boot(const char* codeFilename, const char* dataFilename)
   // Send start command
   uint32_t started = 0;
   uint8_t flit[4 << TinselLogWordsPerFlit];
-  for (int x = 0; x < TinselMeshXLen; x++) {
-    for (int y = 0; y < TinselMeshYLen; y++) {
+  for (int x = 0; x < meshXLen; x++) {
+    for (int y = 0; y < meshYLen; y++) {
       for (int i = 0; i < (1 << TinselLogCoresPerBoard); i++) {
-        while (!canSend()) {
+        uint32_t dest = toAddr(x, y, i, 0);
+        req.cmd = StartCmd;
+        req.args[0] = (1<<TinselLogThreadsPerCore)-1;
+        while (1) {
+          bool ok = trySend(dest, 1, &req);
           if (canRecv()) {
             recv(flit);
             started++;
           }
+          if (ok) break;
         }
-        uint32_t dest = toAddr(x, y, i, 0);
-        req.cmd = StartCmd;
-        req.args[0] = (1<<TinselLogThreadsPerCore)-1;
-        send(dest, 1, &req);
       }
     }
   }
@@ -431,10 +376,10 @@ void HostLink::boot(const char* codeFilename, const char* dataFilename)
 // Trigger to start application execution
 void HostLink::go()
 {
-  for (int x = 0; x < TinselMeshXLen; x++) {
-    for (int y = 0; y < TinselMeshYLen; y++) {
-      mesh[x][y]->setBroadcastDest(0);
-      mesh[x][y]->put(0);
+  for (int x = 0; x < meshXLen; x++) {
+    for (int y = 0; y < meshYLen; y++) {
+      debugLink->setBroadcastDest(x, y, 0);
+      debugLink->put(x, y, 0);
     }
   }
 }
@@ -516,8 +461,8 @@ void HostLink::startOne(uint32_t meshX, uint32_t meshY,
 // Trigger application execution on all started threads on given core
 void HostLink::goOne(uint32_t meshX, uint32_t meshY, uint32_t coreId)
 {
-  mesh[meshX][meshY]->setDest(coreId, 0);
-  mesh[meshX][meshY]->put(0);
+  debugLink->setDest(meshX, meshY, coreId, 0);
+  debugLink->put(meshX, meshY, 0);
 }
 
 // Set address for remote memory access on given board via given core
@@ -554,32 +499,27 @@ void HostLink::store(uint32_t meshX, uint32_t meshY,
 bool HostLink::pollStdOut(FILE* outFile, uint32_t* lineCount)
 {
   bool got = false;
-  for (int x = 0; x < TinselMeshXLen; x++) {
-    for (int y = 0; y < TinselMeshYLen; y++) {
-      if (mesh[x][y]->canGet()) {
-        // Receive byte
-        uint8_t byte;
-        uint32_t c, t;
-        mesh[x][y]->get(&c, &t, &byte);
-        got = true;
+  while (debugLink->canGet()) {
+    // Receive byte
+    uint8_t byte;
+    uint32_t x, y, c, t;
+    debugLink->get(&x, &y, &c, &t, &byte);
+    got = true;
 
-        // Update line buffer & display on newline or buffer-full
-        int len = lineBufferLen[x][y][c][t];
-        if (byte == '\n' || len == MaxLineLen-1) {
-          if (lineCount != NULL) (*lineCount)++;
-          lineBuffer[x][y][c][t][len] = '\0';
-          fprintf(outFile, "%d:%d:%d:%d: %s\n", x, y, c, t,
-            lineBuffer[x][y][c][t]);
-          lineBufferLen[x][y][c][t] = len = 0;
-        }
-        if (byte != '\n') {
-          lineBuffer[x][y][c][t][len] = byte;
-          lineBufferLen[x][y][c][t]++;
-        }
-      }
+    // Update line buffer & display on newline or buffer-full
+    int len = lineBufferLen[x][y][c][t];
+    if (byte == '\n' || len == MaxLineLen-1) {
+      if (lineCount != NULL) (*lineCount)++;
+      lineBuffer[x][y][c][t][len] = '\0';
+      fprintf(outFile, "%d:%d:%d:%d: %s\n", x, y, c, t,
+        lineBuffer[x][y][c][t]);
+      lineBufferLen[x][y][c][t] = len = 0;
+    }
+    if (byte != '\n') {
+      lineBuffer[x][y][c][t][len] = byte;
+      lineBufferLen[x][y][c][t]++;
     }
   }
-
   return got;
 }
 

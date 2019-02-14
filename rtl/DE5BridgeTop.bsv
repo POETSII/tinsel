@@ -116,6 +116,9 @@ module de5BridgeTop (DE5BridgeTop);
   // Has board been enumerated over JTAG yet?
   Reg#(Bool) enumerated <- mkConfigReg(False);
 
+  // Is the idle detected enabled
+  Reg#(Bool) idleDetectedEnabled <- mkConfigReg(False);
+
   // Connect PCIe stream and 10G link
   // --------------------------------
 
@@ -189,9 +192,17 @@ module de5BridgeTop (DE5BridgeTop);
     end
   endrule
 
-  // Enable idle detector
+  // Dimensions of the board mesh (received over the UART)
+  Reg#(Bit#(`MeshXBits)) meshXLen <- mkConfigReg(0);
+  Reg#(Bit#(`MeshYBits)) meshYLen <- mkConfigReg(0);
+  Reg#(Bit#(TAdd#(`MeshXBits, `MeshYBits))) meshBoards <- mkConfigReg(0);
+
+  // Is idle-detection currently enabled
+  Reg#(Bool) idleDetectorEnabled <- mkConfigReg(False);
+
+  // Pass idle-detector options to idle-detector
   rule enabler;
-    detector.enabled(enumerated);
+    detector.enabled(idleDetectorEnabled, meshXLen, meshYLen, meshBoards);
   endrule
 
   // In simulation, display start-up message
@@ -211,17 +222,43 @@ module de5BridgeTop (DE5BridgeTop);
   // query command to distinguish this bridge board from a worker board,
   // which returns non-zero.
 
+  // On the 2nd query command, enable the idle detector.
+  // This is to allow the ids of all boards to be set before
+  // enabling the idle detector.
+  //
+  // The parameter byte of the second query command contains
+  // the dimensions of the board mesh: Y = byte[7:4], X = byte[3:0].
+
+  Reg#(Bit#(8)) boardIdWithinBox <- mkConfigReg(0);
   Reg#(Bit#(2)) uartState <- mkConfigReg(0);
 
-  rule uartReceive (fromJtag.canGet && uartState == 0);
+  rule uartReceive0 (fromJtag.canGet && uartState == 0);
     fromJtag.get;
-    enumerated <= True;
     uartState <= 1;
   endrule
 
-  rule uartRespond (toJtag.canPut && uartState != 0);
+  rule uartReceive1 (fromJtag.canGet && uartState == 1);
+    fromJtag.get;
+    enumerated <= True;
+    if (enumerated) begin
+      idleDetectorEnabled <= True;
+      Bit#(`MeshXBits) xLen = truncate(fromJtag.value[3:0]);
+      Bit#(`MeshYBits) yLen = truncate(fromJtag.value[7:4]);
+      meshYLen <= yLen;
+      meshXLen <= xLen;
+      meshBoards <= zeroExtend(xLen) * zeroExtend(yLen);
+    end
+    uartState <= 2;
+  endrule
+
+  rule uartRespond0 (toJtag.canPut && uartState == 2);
     toJtag.put(0);
-    uartState <= uartState == 1 ? 2 : 0;
+    uartState <= 3;
+  endrule
+
+  rule uartRespond1 (toJtag.canPut && uartState == 3);
+    toJtag.put(0);
+    uartState <= 0;
   endrule
 
   `ifndef SIMULATE

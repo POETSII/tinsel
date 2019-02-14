@@ -2,11 +2,9 @@
 
 entry:
 
-# Get hardware thread id
-csrrw a0, 0xf14, zero
-
-# Take bottom log(ThreadsPerDRAM) bits
+# Take bottom log(ThreadsPerDRAM) bits of hardware thread id
 li a1, TinselThreadsPerDRAM-1
+csrrw a0, 0xf14, zero
 and a0, a0, a1
 
 # Set stack pointer to DRAM_TOP - (id * DRAM partition size) - 32

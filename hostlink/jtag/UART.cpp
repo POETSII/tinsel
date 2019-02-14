@@ -39,6 +39,17 @@ static int openSocket(int instId)
     return -1;
   }
 
+  ret = fcntl(sock, F_GETFL, 0);
+  if (ret < 0) {
+    perror("fcntl");
+    return -1;
+  }
+
+  ret = fcntl(sock, F_SETFL, ret | O_NONBLOCK);
+  if (ret < 0) {
+    perror("fcntl");
+    return -1;
+  }
   return sock;
 }
 
@@ -55,45 +66,25 @@ void UART::open(int instId)
 }
 
 // Send bytes over UART
-void UART::put(void* buffer, int numBytes)
+int UART::write(char* ptr, int numBytes)
 {
   if (sock == -1) sock = openSocket(instanceId);
-  uint8_t* ptr = (uint8_t*) buffer;
-  while (numBytes > 0) {
-    int n = write(sock, (void*) ptr, numBytes);
-    if (n <= 0) {
-      fprintf(stderr, "Error writing to UART %i\n", instanceId);
-      exit(EXIT_FAILURE);
-    }
-    ptr += n;
-    numBytes -= n;
+  int ret = send(sock, (void*) ptr, numBytes, 0);
+  if (ret < 0) {
+    if (errno == EAGAIN || errno == EWOULDBLOCK) return 0;
   }
+  return ret;
 }
 
-// Is a byte available for reading?
-bool UART::canGet()
+// Read bytes over UART
+int UART::read(char* ptr, int numBytes)
 {
   if (sock == -1) sock = openSocket(instanceId);
-  pollfd pfd;
-  pfd.fd = sock;
-  pfd.events = POLLIN;
-  return poll(&pfd, 1, 0);
-}
-
-// Receive bytes over UART
-void UART::get(void* buffer, int numBytes)
-{
-  if (sock == -1) sock = openSocket(instanceId);
-  uint8_t* ptr = (uint8_t*) buffer;
-  while (numBytes > 0) {
-    int n = read(sock, (void*) ptr, numBytes);
-    if (n <= 0) {
-      fprintf(stderr, "Error reading UART %i\n", instanceId);
-      exit(EXIT_FAILURE);
-    }
-    ptr += n;
-    numBytes -= n;
+  int ret = recv(sock, (void*) ptr, numBytes, 0);
+  if (ret < 0) {
+    if (errno == EAGAIN || errno == EWOULDBLOCK) return 0;
   }
+  return ret;
 }
 
 // Flush writes
@@ -105,7 +96,16 @@ void UART::flush()
 // Close UART
 void UART::close()
 {
-  if (sock != -1) ::close(sock);
+  if (sock != -1) {
+    ::close(sock);
+    sock = -1;
+  }
+}
+
+// Destructor
+UART::~UART()
+{
+  close();
 }
 
 #else
@@ -138,39 +138,15 @@ void UART::open(int instId)
 }
 
 // Send bytes over UART
-void UART::put(void* buffer, int numBytes)
+int UART::write(char* data, int numBytes)
 {
-  uint8_t* ptr = (uint8_t*) buffer;
-  while (numBytes > 0) {
-    int n = jtagatlantic_write(jtag, (char*) ptr, numBytes);
-    if (n < 0) {
-      fprintf(stderr, "Error writing to JTAG UART\n");
-      exit(EXIT_FAILURE);
-    }
-    ptr += n;
-    numBytes -= n;
-  }
-}
-
-// Is a byte available for reading?
-bool UART::canGet()
-{
-  return jtagatlantic_bytes_available(jtag) > 0;
+  return jtagatlantic_write(jtag, (char*) data, numBytes);
 }
 
 // Receive bytes over UART
-void UART::get(void* buffer, int numBytes)
+int UART::read(char* data, int numBytes)
 {
-  uint8_t* ptr = (uint8_t*) buffer;
-  while (numBytes > 0) {
-    int n = jtagatlantic_read(jtag, (char*) ptr, numBytes);
-    if (n < 0) {
-      fprintf(stderr, "Error reading from JTAG UART\n");
-      exit(EXIT_FAILURE);
-    }
-    ptr += n;
-    numBytes -= n;
-  }
+  return jtagatlantic_read(jtag, (char*) data, numBytes);
 }
 
 // Flush writes
@@ -182,7 +158,17 @@ void UART::flush()
 // Close UART
 void UART::close()
 {
-  if (jtag != NULL) jtagatlantic_close(jtag);
+  if (jtag != NULL) {
+    jtagatlantic_close(jtag);
+    jtag = NULL;
+    instanceId = -1;
+  }
+}
+
+// Destructor
+UART::~UART()
+{
+  close();
 }
 
 #endif
