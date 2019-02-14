@@ -25,9 +25,9 @@ Released on 10 Sep 2018 and maintained in the
 (2D NoC plus off-chip SRAMs.)
 * [v0.5](https://github.com/POETSII/tinsel/releases/tag/v0.5):
 Released on 8 Jan 2019 and maintained in the
-[tinsel-0.5 branch](https://github.com/POETSII/tinsel/tree/tinsel-0.5).
+[tinsel-0.5.1 branch](https://github.com/POETSII/tinsel/tree/tinsel-0.5.1).
 (Hardware idle-detection.)
-* v0.6: Under development in the master branch. (Multibox.)
+* v0.6: Under development in the master branch. (Multi-box.)
 
 ## Contents
 
