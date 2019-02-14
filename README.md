@@ -679,8 +679,8 @@ runs on the RISC-V cores, linked against the [Tinsel
 API](#f-tinsel-api), and the other which runs on the host PC of the
 master box, linked against the [HostLink API](#g-hostlink-api).  The
 HostLink API is implemented as a C++ class called `HostLink`.  The
-constructor for this class first turns on all the worker FPGAs (which
-are by default turned off).  On power-up the FPGAs are automatically
+constructor for this class first powers up all the worker FPGAs (which
+are by default powered down).  On power-up the FPGAs are automatically
 programmed using the Tinsel bit-file residing in flash memory, and are
 ready to be used within a few seconds, as soon as the `HostLink`
 constructor returns.
@@ -688,8 +688,8 @@ constructor returns.
 The `HostLink` constructor is overloaded:
 
 ```cpp
-HostLink();
-HostLink(BoxConfig* boxConfig);
+HostLink::HostLink();
+HostLink::HostLink(BoxConfig* boxConfig);
 ```
 
 If it is called without any arguments, then it assumes that a single
@@ -778,12 +778,12 @@ detail.
 inline uint32_t tinselHostId()
 ```
 
-The following `HostLink` member variable is used to access the
+The following HostLink member variable is used to access the
 debug links to each FPGA on the system.
 
 ```cpp
 // DebugLink (access to FPGAs via their JTAG UARTs)
-DebugLink* debugLink;
+HostLink::DebugLink* debugLink;
 ```
 
 To send bytes to a thread's input stream over DebugLink, one first
@@ -820,7 +820,7 @@ protocol, see the comments at the top of
 [DebugLink.bsv](/rtl/DebugLink.bsv).
 
 On the FPGA side, the following CSRs can be used to send and receive
-bytes over the debug link.
+bytes over DebugLink.
 
   Name        | CSR    | R/W | Function
   ----------- | ------ | --- | --------
