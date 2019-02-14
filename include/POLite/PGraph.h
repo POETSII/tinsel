@@ -6,6 +6,7 @@
 #include <string.h>
 #include <math.h>
 #include <HostLink.h>
+#include <BoxConfig.h>
 #include <config.h>
 #include <POLite.h>
 #include <POLite/Seq.h>
@@ -37,9 +38,32 @@ template <typename DeviceType,
   // Helper function
   inline uint32_t min(uint32_t x, uint32_t y) { return x < y ? x : y; }
 
+  // Number of FPGA boards available
+  uint32_t meshLenX;
+  uint32_t meshLenY;
+
   // Number of FPGA boards to use
   uint32_t numBoardsX;
   uint32_t numBoardsY;
+
+  // Generic constructor
+  void constructor(uint32_t lenX, uint32_t lenY) {
+    meshLenX = lenX;
+    meshLenY = lenY;
+    numBoardsX = meshLenX;
+    numBoardsY = meshLenY;
+    numDevices = 0;
+    devices = NULL;
+    toDeviceAddr = NULL;
+    numDevicesOnThread = NULL;
+    fromDeviceAddr = NULL;
+    sram = NULL;
+    sramSize = NULL;
+    sramBase = NULL;
+    dram = NULL;
+    dramSize = NULL;
+    dramBase = NULL;
+  }
 
  public:
   // Number of devices
@@ -67,11 +91,11 @@ template <typename DeviceType,
   uint32_t* sramSize;   uint32_t* dramSize;
   uint32_t* sramBase;   uint32_t* dramBase;
 
-  // Setter for number of boards
+  // Setter for number of boards to use
   void setNumBoards(uint32_t x, uint32_t y) {
-    if (x > TinselMeshXLen || y > TinselMeshYLen) {
+    if (x > meshLenX || y > meshLenY) {
       printf("Mapper: %d x %d boards requested, %d x %d available\n",
-        numBoardsX, numBoardsY, TinselMeshXLen, TinselMeshYLen);
+        numBoardsX, numBoardsY, meshLenX, meshLenY);
       exit(EXIT_FAILURE);
     }
     numBoardsX = x;
@@ -354,19 +378,13 @@ template <typename DeviceType,
 
   // Constructor
   PGraph() {
-    numBoardsX = TinselMeshXLen;
-    numBoardsY = TinselMeshYLen;
-    numDevices = 0;
-    devices = NULL;
-    toDeviceAddr = NULL;
-    numDevicesOnThread = NULL;
-    fromDeviceAddr = NULL;
-    sram = NULL;
-    sramSize = NULL;
-    sramBase = NULL;
-    dram = NULL;
-    dramSize = NULL;
-    dramBase = NULL;
+    // By default, assume one box
+    constructor(TinselMeshXLenWithinBox, TinselMeshYLenWithinBox);
+  }
+  PGraph(BoxConfig* config) {
+    int x = config->lenX() * TinselMeshXLenWithinBox; 
+    int y = config->lenY() * TinselMeshYLenWithinBox;
+    constructor(x, y);
   }
 
   // Deconstructor
@@ -388,18 +406,18 @@ template <typename DeviceType,
 
     // Number of threads completed by each core
     uint32_t*** threadCount = (uint32_t***)
-      calloc(TinselMeshXLen, sizeof(uint32_t**));
-    for (uint32_t x = 0; x < TinselMeshXLen; x++) {
+      calloc(meshLenX, sizeof(uint32_t**));
+    for (uint32_t x = 0; x < meshLenX; x++) {
       threadCount[x] = (uint32_t**)
-        calloc(TinselMeshYLen, sizeof(uint32_t*));
-      for (uint32_t y = 0; y < TinselMeshYLen; y++)
+        calloc(meshLenY, sizeof(uint32_t*));
+      for (uint32_t y = 0; y < meshLenY; y++)
         threadCount[x][y] = (uint32_t*)
           calloc(TinselCoresPerBoard, sizeof(uint32_t));
     }
 
     // Initialise write addresses
-    for (int x = 0; x < TinselMeshXLen; x++)
-      for (int y = 0; y < TinselMeshYLen; y++)
+    for (int x = 0; x < meshLenX; x++)
+      for (int y = 0; y < meshLenY; y++)
         for (int c = 0; c < TinselCoresPerBoard; c++)
           hostLink->setAddr(x, y, c, heapBase[hostLink->toAddr(x, y, c, 0)]);
 
@@ -407,8 +425,8 @@ template <typename DeviceType,
     uint32_t done = false;
     while (! done) {
       done = true;
-      for (int x = 0; x < TinselMeshXLen; x++) {
-        for (int y = 0; y < TinselMeshYLen; y++) {
+      for (int x = 0; x < meshLenX; x++) {
+        for (int y = 0; y < meshLenY; y++) {
           for (int c = 0; c < TinselCoresPerBoard; c++) {
             uint32_t t = threadCount[x][y][c];
             if (t < TinselThreadsPerCore) {
@@ -434,8 +452,8 @@ template <typename DeviceType,
 
     // Release memory
     free(writeCount);
-    for (uint32_t x = 0; x < TinselMeshXLen; x++) {
-      for (uint32_t y = 0; y < TinselMeshYLen; y++)
+    for (uint32_t x = 0; x < meshLenX; x++) {
+      for (uint32_t y = 0; y < meshLenY; y++)
         free(threadCount[x][y]);
       free(threadCount[x]);
     }
@@ -472,13 +490,13 @@ inline void politeSaveStats(HostLink* hostLink, const char* filename) {
     exit(EXIT_FAILURE);
   }
   // Number of caches
-  uint32_t numLines = TinselMeshXLen * TinselMeshYLen *
+  uint32_t numLines = meshLenX * meshLenY *
                         TinselDCachesPerDRAM * TinselDRAMsPerBoard;
   // Add on number of cores
-  numLines += TinselMeshXLen * TinselMeshYLen * TinselCoresPerBoard;
+  numLines += meshLenX * meshLenY * TinselCoresPerBoard;
   // Add on number of threads
   #ifdef POLITE_COUNT_MSGS
-  numLines += TinselMeshXLen * TinselMeshYLen * TinselThreadsPerBoard;
+  numLines += meshLenX * meshLenY * TinselThreadsPerBoard;
   #endif
   hostLink->dumpStdOut(statsFile, numLines);
   fclose(statsFile);
