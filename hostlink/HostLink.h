@@ -15,9 +15,6 @@
 #define PCIESTREAM_SIM  "tinsel.b-1.1"
 
 class HostLink {
-  // DebugLink (access to FPGAs via their JTAG UARTs)
-  DebugLink* debugLink;
-
   // Lock file for acquring exclusive access to PCIeStream
   int lockFile;
 
@@ -33,7 +30,6 @@ class HostLink {
   // Internal constructor
   void constructor(BoxConfig* boxConfig);
  public:
-
   // Dimensions of board mesh
   int meshXLen;
   int meshYLen;
@@ -45,6 +41,12 @@ class HostLink {
   // Destructor
   ~HostLink();
  
+  // Debug links
+  // -----------
+
+  // DebugLink (access to FPGAs via their JTAG UARTs)
+  DebugLink* debugLink;
+
   // Send and receive messages over PCIe
   // -----------------------------------
 
