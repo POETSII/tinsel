@@ -35,12 +35,12 @@ function start {
     echo "Kernel module 'dmabuffer' already loaded"
   else
     if modprobe dmabuffer; then
+      echo "Loaded kernel module 'dmabuffer'"
+    else
       # Rebuild kernel module and try again
       dkms build dmabuffer -v 1.0
       dkms install dmabuffer -v 1.0
       modprobe dmabuffer
-    else
-      echo "Loaded kernel module 'dmabuffer'"
     fi  
   fi
 
