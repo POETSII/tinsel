@@ -303,9 +303,9 @@ module mkMailbox (Mailbox);
   // ============
 
   // State
-  Reg#(Bit#(2))      recvState      <- mkConfigReg(0);
-  Reg#(Flit)         flitBuffer     <- mkConfigRegU;
-  Reg#(Flit)         receive3Input  <- mkVReg;
+  Reg#(Bit#(1))      recvState      <- mkConfigReg(0);
+  Reg#(Flit)         flitBuffer2    <- mkConfigRegU;
+  Reg#(Flit)         flitBuffer3    <- mkConfigRegU;
   Reg#(MsgLen)       recvFlitCount  <- mkConfigReg(0);
   Reg#(ReceiveAlert) receive4Input  <- mkVReg;
 
@@ -313,76 +313,80 @@ module mkMailbox (Mailbox);
   Count#(TAdd#(`LogAlertBufferLen, 1)) inFlightRecvs <-
     mkCount(2 ** `LogAlertBufferLen);
 
-  // Argument passed to the call of "statusMem.get" on previous
-  // clock cycle, if there was one
-  Reg#(Maybe#(Bit#(`LogThreadsPerMailbox))) prevGet <-
-    mkDReg(Invalid);
-
   // Are we processing the first flit of a message?
   Reg#(Bool) firstFlit <- mkConfigReg(True);
+
+  // Inputs to receive stage 2
+  Reg#(Bool) receive2Fire <- mkDReg(False);
+  Reg#(Bool) receive2FirstFlit <- mkConfigRegU;
 
   // Inputs to receive stage 3
   Reg#(Bool) receive3Fire <- mkDReg(False);
   Reg#(Bool) receive3FirstFlit <- mkConfigRegU;
 
+  // Receive pipeline stall registers
+  Reg#(Maybe#(Bit#(`LogThreadsPerMailbox))) recvStall1 <- mkDReg(Invalid);
+  Reg#(Maybe#(Bit#(`LogThreadsPerMailbox))) recvStall2 <- mkDReg(Invalid);
+
   // The index in the scratchpad that the message is being written to
   Reg#(Bit#(`LogMsgsPerThread)) destIndex <- mkConfigRegU;
 
-  rule receive0 (recvState == 0);
+  // Stages 0 and 1
+  // Stage 1 only invoked on first flit of each messages
+  rule receive0and1;
+    Bool consumeFlit = False;
     let flit = flitInPort.value;
-    flitBuffer <= flit;
-    // The stall condition ensures that "statusMem.get" and
-    // "statusMem.tryGet" are not called with the same argument
-    // within two consecutive cycles (see ArrayOfSet.bsv)
-    Bool stall = prevGet == Valid(truncate(pack(flit.dest)));
-    // Try to consume an incoming flit
-    if (flitInPort.canGet && inFlightRecvs.notFull) begin
-      if (firstFlit) begin
-        if (!stall) begin
-          flitInPort.get;
-          inFlightRecvs.inc;
-          statusMem.tryGet(truncate(pack(flit.dest)));
-          recvState <= 1;
+    if (recvState == 0) begin
+      // Try to consume an incoming flit
+      if (flitInPort.canGet && inFlightRecvs.notFull) begin
+        if (firstFlit) begin
+          // Stall condition
+          Bool stall = recvStall1 == Valid(truncate(pack(flit.dest)))
+                    || recvStall2 == Valid(truncate(pack(flit.dest)));
+          if (!stall) begin
+            recvState <= 1;
+            statusMem.tryGet(truncate(pack(flit.dest)));
+          end
+        end else begin
+          consumeFlit = True;
         end
-      end else begin
-        flitInPort.get;
-        recvState <= 2;
       end
-    end
-  endrule
-
-  rule receive1 (recvState == 1);
-    recvState <= 2;
-  endrule
-
-  rule receive2 (recvState == 2);
-    Bool retry = False;
-    if (firstFlit) begin
+    end else if (recvState == 1) begin
       // Do we have somewhere to put the incoming message?
-      if (statusMem.canGet) begin
-        statusMem.get;
-        prevGet <= Valid(truncate(pack(flitBuffer.dest)));
-        recvState <= 0;
-      end else begin
-        // If not, retry the lookup
-        statusMem.tryGet(truncate(pack(flitBuffer.dest)));
-        recvState <= 1;
-        retry = True;
+      if (statusMem.canGetEarly) begin
+        inFlightRecvs.inc;
+        consumeFlit = True;
+        recvStall1 <= Valid(truncate(pack(flit.dest)));
       end
-    end else
       recvState <= 0;
-    if (!retry) begin
-      // Trigger receive stage 3
-      receive3Fire <= True;
-      receive3FirstFlit <= firstFlit;
+    end
+    if (consumeFlit) begin
+      // Consume flit
+      flitInPort.get;
+      // Trigger receive stage 2
+      receive2Fire <= True;
       // We may have finished processing this message,
       // in which case reset firstFlit back to True
-      firstFlit <= !flitBuffer.notFinalFlit;
+      firstFlit <= !flit.notFinalFlit;
     end
+    flitBuffer2 <= flit;
+    receive2FirstFlit <= firstFlit;
   endrule
 
+  // Stage 2
+  rule receive2 (receive2Fire);
+    if (receive2FirstFlit) begin
+      recvStall2 <= Valid(truncate(pack(flitBuffer2.dest)));
+      statusMem.get;
+    end
+    flitBuffer3 <= flitBuffer2;
+    receive3FirstFlit <= receive2FirstFlit;
+    receive3Fire <= True;
+  endrule
+
+  // Stage 3
   rule receive3 (receive3Fire);
-    let flit = flitBuffer;
+    let flit = flitBuffer3;
     let index = receive3FirstFlit ? statusMem.itemOut : destIndex;
     if (receive3FirstFlit) destIndex <= statusMem.itemOut;
     // Update scratchpad
@@ -401,6 +405,7 @@ module mkMailbox (Mailbox);
       recvFlitCount <= recvFlitCount+1;
   endrule
 
+  // Stage 4
   rule receive4;
     ReceiveAlert alert = receive4Input;
     // Issue response
