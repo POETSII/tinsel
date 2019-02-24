@@ -102,7 +102,7 @@ for X in $(seq 0 $LAST_X); do
     A=$(fromCoords $X $Y)
     B=$(fromCoords $X $(($Y+1)))
     if [ $(($Y+1)) -lt $MESH_Y ]; then
-      for I in $(seq 1 $NumNorthSouthLinks); do
+      for I in $(seq 1 1); do
         N=$(($NORTH_ID_BASE + $I - 1))
         S=$(($SOUTH_ID_BASE + $I - 1))
         $UDSOCK join "@tinsel.b$A.$N" "@tinsel.b$B.$S" &
