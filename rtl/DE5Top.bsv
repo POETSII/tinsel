@@ -37,10 +37,10 @@ import "BDPI" function Bit#(32) getBoardId();
 interface DE5Top;
   interface Vector#(`DRAMsPerBoard, DRAMExtIfc) dramIfcs;
   interface Vector#(`SRAMsPerBoard, SRAMExtIfc) sramIfcs;
-  interface Vector#(`NumNorthSouthLinks, AvalonMac) northMac;
-  interface Vector#(`NumNorthSouthLinks, AvalonMac) southMac;
-  interface Vector#(`NumEastWestLinks, AvalonMac) eastMac;
-  interface Vector#(`NumEastWestLinks, AvalonMac) westMac;
+  interface Vector#(1, AvalonMac) northMac;
+  interface Vector#(1, AvalonMac) southMac;
+  interface Vector#(1, AvalonMac) eastMac;
+  interface Vector#(1, AvalonMac) westMac;
   interface JtagUartAvalon jtagIfc;
   (* always_ready, always_enabled *)
   method Action setBoardId(Bit#(4) id);
