@@ -273,10 +273,10 @@ endmodule
 interface ExtNetwork;
 `ifndef SIMULATE
   // Avalon interfaces to 10G MACs
-  interface Vector#(`NumNorthSouthLinks, AvalonMac) north;
-  interface Vector#(`NumNorthSouthLinks, AvalonMac) south;
-  interface Vector#(`NumEastWestLinks, AvalonMac) east;
-  interface Vector#(`NumEastWestLinks, AvalonMac) west;
+  interface Vector#(1, AvalonMac) north;
+  interface Vector#(1, AvalonMac) south;
+  interface Vector#(1, AvalonMac) east;
+  interface Vector#(1, AvalonMac) west;
 `endif
 endinterface
 
@@ -288,13 +288,13 @@ module mkMailboxMesh#(
        (ExtNetwork);
 
   // Create off-board links
-  Vector#(`NumNorthSouthLinks, BoardLink) northLink <-
+  Vector#(1, BoardLink) northLink <-
     mapM(mkBoardLink, northSocket);
-  Vector#(`NumNorthSouthLinks, BoardLink) southLink <-
+  Vector#(1, BoardLink) southLink <-
     mapM(mkBoardLink, southSocket);
-  Vector#(`NumEastWestLinks, BoardLink) eastLink <-
+  Vector#(1, BoardLink) eastLink <-
     mapM(mkBoardLink, eastSocket);
-  Vector#(`NumEastWestLinks, BoardLink) westLink <-
+  Vector#(1, BoardLink) westLink <-
     mapM(mkBoardLink, westSocket);
 
   // Create mailbox routers
@@ -369,12 +369,16 @@ module mkMailboxMesh#(
 
   // Connect the outgoing links
   function In#(Flit) getFlitIn(BoardLink link) = link.flitIn;
-  reduceConnect(mkFlitMerger,
-    topOutList, List::map(getFlitIn, toList(northLink)));
+  reduceConnect(mkFlitMerger, topOutList,
+    List::map(getFlitIn, toList(northLink)));
   
   // Connect the incoming links
   function Out#(Flit) getFlitOut(BoardLink link) = link.flitOut;
-  expandConnect(List::map(getFlitOut, toList(northLink)), topInList);
+  function Bit#(`MailboxMeshXBits) getX(NetAddr addr) = getMailboxId(addr).x;
+  FlitSplitter#(`MailboxMeshXBits) northSplitter <- mkFlitSplitter(getX);
+  connectUsing(mkUGShiftQueue1(QueueOptFmax),
+                 northLink[0].flitOut, northSplitter.inFlit);
+  expandConnect(toList(northSplitter.outFlits), topInList);
 
   // Connect south links
   // -------------------
@@ -390,9 +394,12 @@ module mkMailboxMesh#(
   // Connect the outgoing links
   reduceConnect(mkFlitMerger, botOutList,
     List::map(getFlitIn, toList(southLink)));
-  
+ 
   // Connect the incoming links
-  expandConnect(List::map(getFlitOut, toList(southLink)), botInList);
+  FlitSplitter#(`MailboxMeshXBits) southSplitter <- mkFlitSplitter(getX);
+  connectUsing(mkUGShiftQueue1(QueueOptFmax),
+                 southLink[0].flitOut, southSplitter.inFlit);
+  expandConnect(toList(southSplitter.outFlits), botInList);
 
   // Connect east links
   // ------------------
@@ -410,7 +417,11 @@ module mkMailboxMesh#(
     rightOutList, List::map(getFlitIn, toList(eastLink)));
   
   // Connect the incoming links
-  expandConnect(List::map(getFlitOut, toList(eastLink)), rightInList);
+  function Bit#(`MailboxMeshYBits) getY(NetAddr addr) = getMailboxId(addr).y;
+  FlitSplitter#(`MailboxMeshYBits) eastSplitter <- mkFlitSplitter(getY);
+  connectUsing(mkUGShiftQueue1(QueueOptFmax),
+                 eastLink[0].flitOut, eastSplitter.inFlit);
+  expandConnect(toList(eastSplitter.outFlits), rightInList);
 
   // Connect west links
   // ------------------
@@ -428,7 +439,10 @@ module mkMailboxMesh#(
     leftOutList, List::map(getFlitIn, toList(westLink)));
   
   // Connect the incoming links
-  expandConnect(List::map(getFlitOut, toList(westLink)), leftInList);
+  FlitSplitter#(`MailboxMeshYBits) westSplitter <- mkFlitSplitter(getY);
+  connectUsing(mkUGShiftQueue1(QueueOptFmax),
+                 westLink[0].flitOut, westSplitter.inFlit);
+  expandConnect(toList(westSplitter.outFlits), leftInList);
 
 `ifndef SIMULATE
   function AvalonMac getMac(BoardLink link) = link.avalonMac;
@@ -484,6 +498,43 @@ module mkFlitMerger#(Out#(Flit) left, Out#(Flit) right) (Out#(Flit));
 
   // Interface
   return outPort.out;
+
+endmodule
+
+// =============================================================================
+// Flit splitter
+// =============================================================================
+
+interface FlitSplitter#(numeric type logN);
+  interface In#(Flit) inFlit;
+  interface Vector#(TExp#(logN), Out#(Flit)) outFlits;
+endinterface
+
+// Split a stream of flits into N streams, using a function that maps
+// an input flit to one of the output streams.
+module mkFlitSplitter#(
+           function Bit#(logN) split(NetAddr addr)
+         )
+         (FlitSplitter#(logN));
+
+  // Input port
+  InPort#(Flit) inPort <- mkInPort;
+
+  // Create output port for each output stream
+  Vector#(TExp#(logN), OutPort#(Flit)) outPorts <- replicateM(mkOutPort);
+
+  // Split stream
+  rule split (inPort.canGet);
+    OutPort#(Flit) out = outPorts[split(inPort.value.dest)];
+    if (out.canPut) begin
+      inPort.get;
+      out.put(inPort.value);
+    end
+  endrule
+
+  function Out#(Flit) getOut(OutPort#(Flit) p) = p.out;
+  interface inFlit = inPort.in;
+  interface outFlits = map(getOut, outPorts);
 
 endmodule
 
