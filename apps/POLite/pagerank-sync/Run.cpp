@@ -72,6 +72,9 @@ int main(int argc, char **argv)
   gettimeofday(&start, NULL);
   hostLink.go();
 
+  // Consume performance stats
+  politeSaveStats(&hostLink, "stats.txt");
+
   // Wait for response
   PMessage<None, PageRankMessage> msg;
   for (uint32_t i = 0; i < graph.numDevices; i++) {

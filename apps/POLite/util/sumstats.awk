@@ -1,3 +1,5 @@
+#!/usr/bin/awk -f
+
 BEGIN {
   cycleCount = 0;
   missCount = 0;
@@ -10,9 +12,11 @@ BEGIN {
   intraThreadSendCount = 0;
   interThreadSendCount = 0;
   interBoardSendCount = 0;
-  fmax = 250000000;
-  boardsX = 3;
-  boardsY = 2;
+  fmax = 245000000;
+  if (boardsX == "" || boardsY == "") {
+    boardsX = 3;
+    boardsY = 2;
+  }
 }
 
 {

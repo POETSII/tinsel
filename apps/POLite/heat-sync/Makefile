@@ -3,4 +3,4 @@ APP_HDR = Heat.h
 RUN_CPP = Run.cpp Colours.cpp
 RUN_H = Colours.h
 
-include ../build-util/polite.mk
+include ../util/polite.mk

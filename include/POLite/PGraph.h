@@ -383,8 +383,8 @@ template <typename DeviceType,
   PGraph() {
     BoxConfig config;
     defaultBoxConfig(&config);
-    int x = config->lenX() * TinselMeshXLenWithinBox; 
-    int y = config->lenY() * TinselMeshYLenWithinBox;
+    int x = config.lenX() * TinselMeshXLenWithinBox; 
+    int y = config.lenY() * TinselMeshYLenWithinBox;
     constructor(x, y);
   }
   PGraph(BoxConfig* config) {
@@ -495,6 +495,8 @@ inline void politeSaveStats(HostLink* hostLink, const char* filename) {
     printf("Error creating stats file\n");
     exit(EXIT_FAILURE);
   }
+  uint32_t meshLenX = hostLink->meshXLen;
+  uint32_t meshLenY = hostLink->meshYLen;
   // Number of caches
   uint32_t numLines = meshLenX * meshLenY *
                         TinselDCachesPerDRAM * TinselDRAMsPerBoard;

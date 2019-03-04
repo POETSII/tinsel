@@ -33,13 +33,13 @@ $(BUILD)/app.elf: $(APP_CPP) $(APP_HDR) $(BUILD)/link.ld $(INC)/config.h \
 	$(RV_LD) $(LDFLAGS) -T $(BUILD)/link.ld -o $(BUILD)/app.elf $(BUILD)/entry.o $(BUILD)/app.o $(LIB)/lib.o
 
 $(BUILD)/entry.o: builddir
-	$(RV_CPPC) $(CFLAGS) -Wall -c -o $(BUILD)/entry.o $(TINSEL_ROOT)/apps/POLite/build-util/entry.S
+	$(RV_CPPC) $(CFLAGS) -Wall -c -o $(BUILD)/entry.o $(TINSEL_ROOT)/apps/POLite/util/entry.S
 
 $(LIB)/lib.o:
 	make -C $(LIB)
 
-$(BUILD)/link.ld: builddir $(TINSEL_ROOT)/apps/POLite/build-util/genld.sh
-	$(TINSEL_ROOT)/apps/POLite/build-util/genld.sh > $(BUILD)/link.ld
+$(BUILD)/link.ld: builddir $(TINSEL_ROOT)/apps/POLite/util/genld.sh
+	$(TINSEL_ROOT)/apps/POLite/util/genld.sh > $(BUILD)/link.ld
 
 $(INC)/config.h: $(TINSEL_ROOT)/config.py
 	make -C $(INC)

@@ -99,7 +99,7 @@ int socketConnectTCP(const char* hostname, int port)
   // Resolve hostname
   hostent* hostInfo = gethostbyname2(hostname, AF_INET);
   if (hostInfo == NULL) {
-    fprintf(stderr, "Can't result host name '%s'\n", hostname);
+    fprintf(stderr, "Can't resolve host name '%s'\n", hostname);
     exit(EXIT_FAILURE);
   }
 

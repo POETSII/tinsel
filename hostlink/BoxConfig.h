@@ -55,15 +55,17 @@ struct BoxConfig {
         // Ignore whitespace
         while (isspace(*p)) p++;
         char* word = p;
-        while (isalnum(*p)) p++;
+        while (isalnum(*p) || *p == '.') p++;
         bool endOfLine = *p == '\0';
         *p = '\0';
         int len = strlen(word);
-        char* buffer = new char [len];
-        strcpy(buffer, word);
-        // Add word to box config
-        row.push_back(buffer);
-        words.push_back(buffer);
+        if (len > 0) {
+          char* buffer = new char [len];
+          strcpy(buffer, word);
+          // Add word to box config
+          row.push_back(buffer);
+          words.push_back(buffer);
+        }
         if (endOfLine) break;
         p++;
       }
