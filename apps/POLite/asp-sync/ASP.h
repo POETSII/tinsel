@@ -4,14 +4,14 @@
 #ifndef _ASP_H_
 #define _ASP_H_
 
-//#define POLITE_DUMP_STATS
-//#define POLITE_COUNT_MSGS
+#define POLITE_DUMP_STATS
+#define POLITE_COUNT_MSGS
 
 // Synch frontend
 #include <POLite.h>
 
 // Number of sources = N * 32
-#define N 14
+#define N 2
 
 struct ASPMessage {
   // Sum of path lengths reaching sender
