@@ -123,7 +123,7 @@ HostLink::HostLink()
 {
   // Default box configuration: a 1x1 box mesh containing "localhost"
   BoxConfig config;
-  config.addRow("localhost");
+  defaultBoxConfig(&config);
   constructor(&config);
 }
 
