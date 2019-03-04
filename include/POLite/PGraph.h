@@ -50,8 +50,11 @@ template <typename DeviceType,
   void constructor(uint32_t lenX, uint32_t lenY) {
     meshLenX = lenX;
     meshLenY = lenY;
-    numBoardsX = meshLenX;
-    numBoardsY = meshLenY;
+    char* str = getenv("POLITE_BOARDS_X");
+    int nx = str ? atoi(str) : meshLenX;
+    str = getenv("POLITE_BOARDS_Y");
+    int ny = str ? atoi(str) : meshLenY;
+    setNumBoards(nx, ny);
     numDevices = 0;
     devices = NULL;
     toDeviceAddr = NULL;
@@ -378,8 +381,11 @@ template <typename DeviceType,
 
   // Constructor
   PGraph() {
-    // By default, assume one box
-    constructor(TinselMeshXLenWithinBox, TinselMeshYLenWithinBox);
+    BoxConfig config;
+    defaultBoxConfig(&config);
+    int x = config->lenX() * TinselMeshXLenWithinBox; 
+    int y = config->lenY() * TinselMeshYLenWithinBox;
+    constructor(x, y);
   }
   PGraph(BoxConfig* config) {
     int x = config->lenX() * TinselMeshXLenWithinBox; 
