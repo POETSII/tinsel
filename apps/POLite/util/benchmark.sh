@@ -12,8 +12,8 @@ RESULTS_ROOT=$(pwd)/results/
 BENCHMARKS="pagerank-sync"
 
 # Vary number of boards used
-XBOARDS="1"
-YBOARDS="1"
+XBOARDS="1 2 3"
+YBOARDS="1 2"
 
 # Location of conf file, specifying boxes to use
 CONF=$(pwd)/boxconf.txt
@@ -45,7 +45,7 @@ for B in $BENCHMARKS; do
       cd $BENCHMARKS_ROOT/$B/build/
       R=$(TINSEL_BOX_CONFIG=$CONF \
           POLITE_BOARDS_X=$X \
-          POLITE_BOARDS_T=$T \
+          POLITE_BOARDS_Y=$Y \
           ./run $1)
       popd
       # Compute stats
@@ -58,6 +58,7 @@ for B in $BENCHMARKS; do
                | cut -d' ' -f 4)
       let N="$X*$Y"
       echo "$N $TIME" >> $RESULTS_ROOT/$G/$B.txt
+      sleep 3
     done
   done
 done
