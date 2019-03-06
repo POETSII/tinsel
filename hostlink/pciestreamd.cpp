@@ -421,7 +421,7 @@ int main(int argc, char* argv[])
     csrs[2*CSR_EN] = 1;
 
     // Power up FPGAs
-    powerEnable(1);
+    //powerEnable(1);
 
     // Reset state
     txInit(&txState, conn, csrs, txA, txB);
