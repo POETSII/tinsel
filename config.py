@@ -1,3 +1,5 @@
+#!/usr/bin/env python2
+
 # This file controls the parameters for the circuit generator
 
 import sys
