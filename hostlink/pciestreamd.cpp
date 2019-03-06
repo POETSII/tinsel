@@ -20,7 +20,6 @@
 #include <assert.h>
 #include <poll.h>
 #include <errno.h>
-#include "PowerLink.h"
 
 // Constants
 // ---------
@@ -77,9 +76,6 @@ void swap(volatile char** p, volatile char** q)
 // Check if connection is alive
 int alive(int sock)
 {
-  //char buf;
-  //int ret = recv(sock, &buf, 1, MSG_PEEK | MSG_DONTWAIT);
-  //int closed = ret == 0 || (ret == -1 && errno != EAGAIN);
   char buf;
   return send(sock, &buf, 0, 0) == 0;
 }
@@ -401,6 +397,11 @@ int main(int argc, char* argv[])
   RxState rxState;
 
   for (;;) {
+    // Reset and disable PCIeStream hardware
+    csrs[2*CSR_EN] = 0;
+    while (csrs[2*CSR_INFLIGHT] != 0);
+    csrs[2*CSR_RESET] = 1;
+
     // Accept connection
     int conn = accept(sock, NULL, NULL);
     if (conn == -1) {
@@ -408,7 +409,7 @@ int main(int argc, char* argv[])
       exit(EXIT_FAILURE);
     }
 
-    // Reset PCIeStream hardware
+    // Reset and enable PCIeStream hardware
     csrs[2*CSR_EN] = 0;
     while (csrs[2*CSR_INFLIGHT] != 0);
     csrs[2*CSR_RESET] = 1;
@@ -439,10 +440,6 @@ int main(int argc, char* argv[])
     }
 
     close(conn);
-
-    // Power down FPGAs
-    powerEnable(0);
-    usleep(1500000);
   }
 
   return 0;

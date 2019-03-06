@@ -4,47 +4,68 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
-#include "UART.h"
-
-// CoreLink commands
-#define DEBUGLINK_QUERY_IN  0
-#define DEBUGLINK_QUERY_OUT 0
-#define DEBUGLINK_SET_DEST  1
-#define DEBUGLINK_STD_IN    2
-#define DEBUGLINK_STD_OUT   2
+#include "BoxConfig.h"
+#include "BoardCtrl.h"
+#include "DebugLinkFormat.h"
 
 class DebugLink {
-  UART uart;
+
+  // Box configuration
+  BoxConfig* boxConfig;
+
+  // Mapping from (box Y, box X) to TCP connection
+  int** conn;
+
+  // Mapping from global (board Y, board X) to (box X, box Y, link id)
+  int** boxX;
+  int** boxY;
+  int** linkId;
+ 
+  // Mapping from (box Y, box X, link id) to global (board X, board Y)
+  int*** boardX;
+  int*** boardY;
+
+  // Mapping from (box Y, box X) to link id of the bridge board
+  int** bridge;
+ 
+  // For fairness between boxes in reading bytes from DebugLink
+  int get_tryNextX;
+  int get_tryNextY;
+
+  // Helper: blocking send/receive of a BoardCtrlPkt
+  void getPacket(int x, int y, BoardCtrlPkt* pkt);
+  void putPacket(int x, int y, BoardCtrlPkt* pkt);
  public:
-  // Open UART with given instance id
-  void open(int instId);
+  // Length of box mesh in X and Y dimension
+  int boxMeshXLen;
+  int boxMeshYLen;
 
-  // Put query request
-  void putQuery();
+  // Length of board mesh in X and Y dimension
+  int meshXLen;
+  int meshYLen;
 
-  // Get query response, including board id
-  bool getQuery(uint32_t* boardId);
+  // Constructor
+  DebugLink(BoxConfig* config);
 
-  // Set destination core and thread
-  void setDest(uint32_t coreId, uint32_t threadId);
+  // On given board, set destination core and thread
+  void setDest(uint32_t boardX, uint32_t boardY,
+                 uint32_t coreId, uint32_t threadId);
 
-  // Set destinations to core-local thread id on every core
-  void setBroadcastDest(uint32_t threadId);
+  // On given board, set destinations to core-local thread id on every core
+  void setBroadcastDest(uint32_t boardX, uint32_t boardY, uint32_t threadId);
 
-  // Send byte to destination thread (StdIn)
-  void put(uint8_t byte);
+  // On given board, send byte to destination thread (StdIn)
+  void put(uint32_t boardX, uint32_t boardY, uint8_t byte);
 
   // Receive byte (StdOut)
-  void get(uint32_t* coreId, uint32_t* threadId, uint8_t* byte);
+  void get(uint32_t* boardX, uint32_t* boardY,
+             uint32_t* coreId, uint32_t* threadId, uint8_t* byte);
 
   // Is a data available for reading?
   bool canGet();
-  
-  // Flush writes
-  void flush();
 
-  // Close UART
-  void close();
+  // Destructor
+  ~DebugLink();
 };
 
 #endif

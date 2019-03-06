@@ -81,7 +81,7 @@ int main()
         tinselCacheFlush();
         // Send response
         tinselWaitUntil(TINSEL_CAN_SEND);
-        msgOut[0] = me;
+        msgOut[0] = tinselId();
         tinselSend(hostId, msgOut);
         // Wait for trigger
         while ((tinselUartTryGet() & 0x100) == 0);
@@ -103,7 +103,7 @@ int main()
         }
         else {
           // If number of hops is zero
-          msgOut[0] = me;
+          msgOut[0] = tinselId();
           tinselSend(hostId, msgOut);
         }
       }
