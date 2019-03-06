@@ -39,10 +39,10 @@ import "BDPI" function Bit#(32) getBoardId();
 interface DE5Top;
   interface Vector#(`DRAMsPerBoard, DRAMExtIfc) dramIfcs;
   interface Vector#(`SRAMsPerBoard, SRAMExtIfc) sramIfcs;
-  interface Vector#(`NumNorthSouthLinks, AvalonMac) northMac;
-  interface Vector#(`NumNorthSouthLinks, AvalonMac) southMac;
-  interface Vector#(`NumEastWestLinks, AvalonMac) eastMac;
-  interface Vector#(`NumEastWestLinks, AvalonMac) westMac;
+  interface Vector#(1, AvalonMac) northMac;
+  interface Vector#(1, AvalonMac) southMac;
+  interface Vector#(1, AvalonMac) eastMac;
+  interface Vector#(1, AvalonMac) westMac;
   interface JtagUartAvalon jtagIfc;
   (* always_ready, always_enabled *)
   method Action setBoardId(BoardId id);
@@ -80,13 +80,13 @@ module de5Top (DE5Top);
   connectDirect(rams[1].respOut, respInB.in);
 
   // Create inter-FPGA links
-  Vector#(`NumNorthSouthLinks, BoardLink) northLink <-
+  Vector#(1, BoardLink) northLink <-
     mapM(mkBoardLink, northSocket);
-  Vector#(`NumNorthSouthLinks, BoardLink) southLink <-
+  Vector#(1, BoardLink) southLink <-
     mapM(mkBoardLink, southSocket);
-  Vector#(`NumEastWestLinks, BoardLink) eastLink <-
+  Vector#(1, BoardLink) eastLink <-
     mapM(mkBoardLink, eastSocket);
-  Vector#(`NumEastWestLinks, BoardLink) westLink <-
+  Vector#(1, BoardLink) westLink <-
     mapM(mkBoardLink, westSocket);
 
   // Create JTAG UART instance
