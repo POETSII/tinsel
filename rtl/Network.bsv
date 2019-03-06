@@ -266,6 +266,141 @@ module mkBoardLink#(SocketId id) (BoardLink);
 endmodule
 
 // =============================================================================
+// Inter-board router (NoC bypass)
+// =============================================================================
+//
+// A BoardRotuer is a wrapper around a board link that allows NoC
+// bypass, i.e. the forwarding of a flit directly to another board
+// link without having to pass through the NoC.
+
+interface BoardRouter;
+`ifndef SIMULATE
+  // Avalon interface to 10G MAC
+  interface AvalonMac avalonMac;
+`endif
+  // Flits to be sent to another board
+  interface In#(Flit) flitIn;
+  // Flits received from another board
+  interface Out#(Flit) flitOut;  // To NoC
+  interface Out#(Flit) leftOut;  // To another board link
+  interface Out#(Flit) rightOut; // To another board link
+  interface Out#(Flit) upOut;    // To another board link
+  // Board id
+  (* always_ready, always_enabled *)
+  method Action setBoardId(BoardId id);
+  // Performance monitor
+  method Bit#(32) numTimeouts;
+endinterface
+
+module mkNorthSouthBoardRouter#(SocketId sockId) (BoardRouter);
+
+  // Board id
+  Wire#(BoardId) b <- mkDWire(?);
+
+  // Create inter-board link
+  BoardLink link <- mkBoardLink(sockId);
+
+  // Ports
+  InPort#(Flit)  fromLink     <- mkInPort;
+  OutPort#(Flit) flitOutPort  <- mkOutPort;
+  OutPort#(Flit) leftOutPort  <- mkOutPort;
+  OutPort#(Flit) rightOutPort <- mkOutPort;
+  OutPort#(Flit) upOutPort    <- mkOutPort;
+
+  connectUsing(mkUGShiftQueue1(QueueOptFmax), link.flitOut, fromLink.in);
+
+  rule route (fromLink.canGet);
+    Flit flitIn = fromLink.value;
+    if (flitIn.dest.board.x < b.x) begin
+      if (leftOutPort.canPut) begin
+        fromLink.get;
+        leftOutPort.put(flitIn);
+      end
+    end else if (flitIn.dest.board.x > b.x) begin
+      if (rightOutPort.canPut) begin
+        fromLink.get;
+        rightOutPort.put(flitIn);
+      end
+    end else if (flitIn.dest.board.y != b.y) begin
+      if (upOutPort.canPut) begin
+        fromLink.get;
+        upOutPort.put(flitIn);
+      end
+    end else if (flitOutPort.canPut) begin
+      fromLink.get;
+      flitOutPort.put(flitIn);
+    end
+  endrule
+
+  interface In  flitIn   = link.flitIn;
+  interface Out flitOut  = flitOutPort.out;
+  interface Out leftOut  = leftOutPort.out;
+  interface Out rightOut = rightOutPort.out;
+  interface Out upOut    = upOutPort.out;
+
+  method Action setBoardId(BoardId id);
+    b <= id;
+  endmethod
+
+  // Performance monitor
+  method Bit#(32) numTimeouts = link.numTimeouts;
+endmodule
+
+module mkEastWestBoardRouter#(SocketId sockId) (BoardRouter);
+
+  // Board id
+  Wire#(BoardId) b <- mkDWire(?);
+
+  // Create inter-board link
+  BoardLink link <- mkBoardLink(sockId);
+
+  // Ports
+  InPort#(Flit)  fromLink     <- mkInPort;
+  OutPort#(Flit) flitOutPort  <- mkOutPort;
+  OutPort#(Flit) leftOutPort  <- mkOutPort;
+  OutPort#(Flit) rightOutPort <- mkOutPort;
+  OutPort#(Flit) upOutPort    <- mkOutPort;
+
+  connectUsing(mkUGShiftQueue1(QueueOptFmax), link.flitOut, fromLink.in);
+
+  rule route (fromLink.canGet);
+    Flit flitIn = fromLink.value;
+    if (flitIn.dest.board.x != b.x) begin
+      if (upOutPort.canPut) begin
+        fromLink.get;
+        upOutPort.put(flitIn);
+      end
+    end else if (flitIn.dest.board.y < b.y) begin
+      if (rightOutPort.canPut) begin
+        fromLink.get;
+        rightOutPort.put(flitIn);
+      end
+    end else if (flitIn.dest.board.y > b.y) begin
+      if (leftOutPort.canPut) begin
+        fromLink.get;
+        leftOutPort.put(flitIn);
+      end
+    end else if (flitOutPort.canPut) begin
+      fromLink.get;
+      flitOutPort.put(flitIn);
+    end
+  endrule
+
+  interface In  flitIn   = link.flitIn;
+  interface Out flitOut  = flitOutPort.out;
+  interface Out leftOut  = leftOutPort.out;
+  interface Out rightOut = rightOutPort.out;
+  interface Out upOut    = upOutPort.out;
+
+  method Action setBoardId(BoardId id);
+    b <= id;
+  endmethod
+
+  // Performance monitor
+  method Bit#(32) numTimeouts = link.numTimeouts;
+endmodule
+
+// =============================================================================
 // Mailbox Mesh
 // =============================================================================
 
@@ -273,10 +408,10 @@ endmodule
 interface ExtNetwork;
 `ifndef SIMULATE
   // Avalon interfaces to 10G MACs
-  interface Vector#(`NumNorthSouthLinks, AvalonMac) north;
-  interface Vector#(`NumNorthSouthLinks, AvalonMac) south;
-  interface Vector#(`NumEastWestLinks, AvalonMac) east;
-  interface Vector#(`NumEastWestLinks, AvalonMac) west;
+  interface Vector#(1, AvalonMac) north;
+  interface Vector#(1, AvalonMac) south;
+  interface Vector#(1, AvalonMac) east;
+  interface Vector#(1, AvalonMac) west;
 `endif
 endinterface
 
@@ -288,14 +423,21 @@ module mkMailboxMesh#(
        (ExtNetwork);
 
   // Create off-board links
-  Vector#(`NumNorthSouthLinks, BoardLink) northLink <-
-    mapM(mkBoardLink, northSocket);
-  Vector#(`NumNorthSouthLinks, BoardLink) southLink <-
-    mapM(mkBoardLink, southSocket);
-  Vector#(`NumEastWestLinks, BoardLink) eastLink <-
-    mapM(mkBoardLink, eastSocket);
-  Vector#(`NumEastWestLinks, BoardLink) westLink <-
-    mapM(mkBoardLink, westSocket);
+  Vector#(1, BoardRouter) northLink <-
+    mapM(mkNorthSouthBoardRouter, northSocket);
+  Vector#(1, BoardRouter) southLink <-
+    mapM(mkNorthSouthBoardRouter, southSocket);
+  Vector#(1, BoardRouter) eastLink <-
+    mapM(mkEastWestBoardRouter, eastSocket);
+  Vector#(1, BoardRouter) westLink <-
+    mapM(mkEastWestBoardRouter, westSocket);
+
+  rule setBoardLinkId;
+    southLink[0].setBoardId(boardId);
+    northLink[0].setBoardId(boardId);
+    eastLink[0].setBoardId(boardId);
+    westLink[0].setBoardId(boardId);
+  endrule
 
   // Create mailbox routers
   Vector#(`MailboxMeshYLen,
@@ -367,13 +509,18 @@ module mkMailboxMesh#(
     topInList = Cons(routers[`MailboxMeshYLen-1][x].topIn, topInList);
   end
 
+  // Add outputs from other board routers
+  topOutList = Cons(southLink[0].upOut,
+                 Cons(eastLink[0].leftOut,
+                   Cons(westLink[0].leftOut, topOutList)));
+
   // Connect the outgoing links
-  function In#(Flit) getFlitIn(BoardLink link) = link.flitIn;
+  function In#(Flit) getFlitIn(BoardRouter link) = link.flitIn;
   reduceConnect(mkFlitMerger,
     topOutList, List::map(getFlitIn, toList(northLink)));
-  
+
   // Connect the incoming links
-  function Out#(Flit) getFlitOut(BoardLink link) = link.flitOut;
+  function Out#(Flit) getFlitOut(BoardRouter link) = link.flitOut;
   expandConnect(List::map(getFlitOut, toList(northLink)), topInList);
 
   // Connect south links
@@ -386,6 +533,11 @@ module mkMailboxMesh#(
     botOutList = Cons(routers[0][x].bottomOut, botOutList);
     botInList = Cons(routers[0][x].bottomIn, botInList);
   end
+
+  // Add outputs from other board routers
+  botOutList = Cons(northLink[0].upOut,
+                 Cons(eastLink[0].rightOut,
+                   Cons(westLink[0].rightOut, botOutList)));
 
   // Connect the outgoing links
   reduceConnect(mkFlitMerger, botOutList,
@@ -405,6 +557,11 @@ module mkMailboxMesh#(
     rightInList = Cons(routers[y][`MailboxMeshXLen-1].rightIn, rightInList);
   end
 
+  // Add outputs from other board routers
+  rightOutList = Cons(westLink[0].upOut,
+                   Cons(northLink[0].rightOut,
+                     Cons(southLink[0].rightOut, rightOutList)));
+
   // Connect the outgoing links
   reduceConnect(mkFlitMerger,
     rightOutList, List::map(getFlitIn, toList(eastLink)));
@@ -422,6 +579,11 @@ module mkMailboxMesh#(
     leftOutList = Cons(routers[y][0].leftOut, leftOutList);
     leftInList = Cons(routers[y][0].leftIn, leftInList);
   end
+
+  // Add outputs from other board routers
+  leftOutList = Cons(eastLink[0].upOut,
+                  Cons(northLink[0].leftOut,
+                    Cons(southLink[0].leftOut, leftOutList)));
 
   // Connect the outgoing links
   reduceConnect(mkFlitMerger,

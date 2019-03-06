@@ -132,14 +132,6 @@ p["MeshYLenWithinBox"] = 2
 # Number of cores per FPU
 p["LogCoresPerFPU"] = 2
 
-# Number of inter-FPGA links on north edge
-# Number of inter-FPGA links on south edge
-p["LogNorthSouthLinks"] = 0
-
-# Number of inter-FPGA links on east edge
-# Number of inter-FPGA links on west edge
-p["LogEastWestLinks"] = 0
-
 # Latencies of arithmetic megafunctions
 p["IntMultLatency"] = 3
 p["FPMultLatency"] = 11
@@ -312,10 +304,6 @@ p["FPUOpMaxLatency"] = max(
   , p["FPConvertLatency"]
   , p["FPCompareLatency"]
   ])
-
-# Number of inter-FPGA links
-p["NumNorthSouthLinks"] = 2 ** p["LogNorthSouthLinks"]
-p["NumEastWestLinks"] = 2 ** p["LogEastWestLinks"]
 
 # SRAM parameters
 p["BytesPerSRAMBeat"] = 2 ** p["LogBytesPerSRAMBeat"]
