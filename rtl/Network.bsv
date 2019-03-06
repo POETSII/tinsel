@@ -332,6 +332,10 @@ module mkNorthSouthBoardRouter#(SocketId sockId) (BoardRouter);
     end
   endrule
 
+  `ifndef SIMULATE
+  interface AvalonMac avalonMac = link.avalonMac;
+  `endif
+
   interface In  flitIn   = link.flitIn;
   interface Out flitOut  = flitOutPort.out;
   interface Out leftOut  = leftOutPort.out;
@@ -385,6 +389,10 @@ module mkEastWestBoardRouter#(SocketId sockId) (BoardRouter);
       flitOutPort.put(flitIn);
     end
   endrule
+
+  `ifndef SIMULATE
+  interface AvalonMac avalonMac = link.avalonMac;
+  `endif
 
   interface In  flitIn   = link.flitIn;
   interface Out flitOut  = flitOutPort.out;
@@ -480,10 +488,10 @@ module mkMailboxMesh#(
   for (Integer y = 0; y < `MailboxMeshYLen; y=y+1)
     for (Integer x = 0; x < `MailboxMeshXLen-1; x=x+1) begin
       // Left to right direction
-      connectUsing(mkUGShiftQueue1(QueueOptFmax),
+      connectUsing(mkUGQueue,
                      routers[y][x].rightOut, routers[y][x+1].leftIn);
       // Right to left direction
-      connectUsing(mkUGShiftQueue1(QueueOptFmax),
+      connectUsing(mkUGQueue,
                      routers[y][x+1].leftOut, routers[y][x].rightIn);
   end
 
@@ -491,10 +499,10 @@ module mkMailboxMesh#(
   for (Integer y = 0; y < `MailboxMeshYLen-1; y=y+1)
     for (Integer x = 0; x < `MailboxMeshXLen; x=x+1) begin
       // Top to bottom direction
-      connectUsing(mkUGShiftQueue1(QueueOptFmax),
+      connectUsing(mkUGQueue,
                      routers[y][x].topOut, routers[y+1][x].bottomIn);
       // Bottom to top direction
-      connectUsing(mkUGShiftQueue1(QueueOptFmax),
+      connectUsing(mkUGQueue,
                      routers[y+1][x].bottomOut, routers[y][x].topIn);
   end
 
@@ -593,7 +601,7 @@ module mkMailboxMesh#(
   expandConnect(List::map(getFlitOut, toList(westLink)), leftInList);
 
 `ifndef SIMULATE
-  function AvalonMac getMac(BoardLink link) = link.avalonMac;
+  function AvalonMac getMac(BoardRouter link) = link.avalonMac;
   interface north = Vector::map(getMac, northLink);
   interface south = Vector::map(getMac, southLink);
   interface east = Vector::map(getMac, eastLink);
