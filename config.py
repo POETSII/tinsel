@@ -338,7 +338,7 @@ p["DRAMGlobalsLength"] = 2 ** (p["LogBytesPerDRAM"] - 1) - p["DRAMBase"]
 p["BoardsPerBox"] = p["MeshXLenWithinBox"] * p["MeshYLenWithinBox"] + 1
 
 #==============================================================================
-# Main 
+# Main
 #==============================================================================
 
 if len(sys.argv) > 1:
