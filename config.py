@@ -344,7 +344,7 @@ p["BoardsPerBox"] = p["MeshXLenWithinBox"] * p["MeshYLenWithinBox"] + 1
 if len(sys.argv) > 1:
   mode = sys.argv[1]
 else:
-  print "Usage: config.py <defs|envs|cpp>"
+  print("Usage: config.py <defs|envs|cpp>")
   sys.exit(-1)
 
 if mode == "defs":
