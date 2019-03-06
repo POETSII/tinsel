@@ -11,7 +11,7 @@ int main()
   hostLink.go();
 
   uint32_t totalThreads =
-    TinselMeshXLen * TinselMeshYLen * TinselThreadsPerBoard;
+    TinselMeshXLenWithinBox * TinselMeshYLenWithinBox * TinselThreadsPerBoard;
 
   printf("Waiting for responses from %d threads\n", totalThreads);
   uint32_t resp[4];

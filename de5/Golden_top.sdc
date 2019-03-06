@@ -25,6 +25,16 @@ create_clock -period "30.303 ns" -name {altera_reserved_tck} [get_ports {altera_
 set_clock_groups -asynchronous -group {altera_reserved_tck}
 
 #**************************************************************
+# False paths
+#**************************************************************
+
+# The board id register distributes over the entire chip, but is
+# essentially stable the whole time.  It changes only once
+# (during initialisation), and has a very long period (many clock
+# cycles) before it needs to stabilise.
+set_false_path -from [get_keepers {S5_DDR3_QSYS:u0|de5Top:de5top_0|debugLink_boardId*}] 
+
+#**************************************************************
 # Create Generated Clock
 #**************************************************************
 derive_pll_clocks

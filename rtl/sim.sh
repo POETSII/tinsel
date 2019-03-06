@@ -11,17 +11,25 @@ if [ ! -e "$UDSOCK" ]; then
   exit
 fi
 
+BOARDCTRLD="../hostlink/sim/boardctrld"
+if [ ! -e "$BOARDCTRLD" ]; then
+  echo 'Cannot find boardctrld'
+  exit
+fi
+
+
 # Load config parameters
 while read -r EXPORT; do
   eval $EXPORT
 done <<< `python ../config.py envs`
 
-MESH_MAX_X=$((2 ** $MeshXBits))
-MESH_MAX_Y=$((2 ** $MeshYBits))
+MESH_MAX_X=$((2 ** $MeshXBitsWithinBox))
+MESH_MAX_Y=$((2 ** $MeshYBitsWithinBox))
 echo "Max mesh dimensions: $MESH_MAX_X x $MESH_MAX_Y"
 
-MESH_X=$MeshXLen
-MESH_Y=$MeshYLen
+# Currently limited to one box in simulation
+MESH_X=$MeshXLenWithinBox
+MESH_Y=$MeshYLenWithinBox
 echo "Using mesh dimensions: $MESH_X x $MESH_Y"
 
 HOST_X=0
@@ -48,6 +56,13 @@ SOUTH_ID_BASE=8
 EAST_ID_BASE=12
 WEST_ID_BASE=16
 
+PIDS=""
+
+# Start boardctrld
+echo "Starting boardctrld"
+$BOARDCTRLD &
+PIDS="$PIDS $!"
+
 # Run one simulator per board
 for X in $(seq 0 $LAST_X); do
   for Y in $(seq 0 $LAST_Y); do
@@ -65,7 +80,6 @@ echo "Lauching bridge board simulator at position ($HOST_X, $HOST_Y)" \
 BOARD_ID=$HOST_ID ./de5BridgeTop &
 PIDS="$PIDS $!"
 
-PIDS=""
 # Create horizontal links
 for Y in $(seq 0 $LAST_Y); do
   for X in $(seq 0 $LAST_X); do

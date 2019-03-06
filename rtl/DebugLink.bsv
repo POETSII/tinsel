@@ -12,10 +12,12 @@ package DebugLink;
 // Commands sent from the host PC to DebugLink typically consist of a
 // few bytes over the JTAG UART.
 //
-//   QueryIn: tag (1 byte)
-//   ---------------------
+//   QueryIn: tag (1 byte), board offset (1 byte)
+//   --------------------------------------------
 //
-//   DebugLink responds with a QueryOut (see below).
+//   Sets the X offset (offset[3:0]) and the Y offset (offset[7:4])
+//   of the board id (to support multiple boxes).
+//   Responds with a QueryOut (see below).
 //
 //   SetDest: tag (1 byte), thread id (1 byte), core id (1 byte)
 //   -----------------------------------------------------------
@@ -180,11 +182,21 @@ interface DebugLink;
   `ifndef SIMULATE
   interface JtagUartAvalon jtagAvalon;
   `endif
+  (* always_ready, always_enabled *)
+  method BoardId getBoardId();
 endinterface
 
 module mkDebugLink#(
-    BoardId boardId,
+    Bit#(4) boardIdWithinBox,
     Vector#(n, DebugLinkClient) cores) (DebugLink);
+
+  // The board offset (in a multi-box setup) received via DebugLink
+  Reg#(Bit#(8)) boardOffset <- mkReg(0);
+
+  // The board id combines the Y offset, received via DebugLink,
+  // with the box-local board id (set via DIP switches) to give
+  // an overall board id.
+  Reg#(BoardId) boardId <- mkReg(unpack(0));
 
   // Ports
   InPort#(Bit#(8)) fromJtag <- mkInPort;
@@ -219,6 +231,16 @@ module mkDebugLink#(
   // Connect DebugLink to bus
   connectUsing(mkUGShiftQueue1(QueueOptFmax), toBusPort.out, bus[0].busIn);
 
+  // Board id shift register
+  // -----------------------
+
+  rule setBoardId;
+    BoardId id;
+    id.y = truncate(boardOffset[7:4] + zeroExtend(boardIdWithinBox[3:2]));
+    id.x = truncate(boardOffset[3:0] + zeroExtend(boardIdWithinBox[1:0]));
+    boardId <= id;
+  endrule
+
   // Receive commands over UART
   // --------------------------
 
@@ -242,13 +264,13 @@ module mkDebugLink#(
     if (recvState == 0) begin
       DebugLinkCmd cmd = truncate(fromJtag.value);
       recvCmd <= cmd;
-      if (cmd == cmdQueryIn) begin
-        respondQuery <= True;
-      end else begin
-        recvState <= 1;
-      end
+      recvState <= 1;
     end else if (recvState == 1) begin
-      if (recvCmd == cmdSetDest) begin
+      if (recvCmd == cmdQueryIn) begin
+        respondQuery <= True;
+        boardOffset <= fromJtag.value;
+        recvState <= 0;
+      end else if (recvCmd == cmdSetDest) begin
         recvDestThread <= fromJtag.value;
         recvState <= 2;
       end else if (recvCmd == cmdStdIn) begin
@@ -284,7 +306,7 @@ module mkDebugLink#(
       sendState <= 1;
     end else begin
       // Send QueryOut payload
-      toJtag.put(1 + zeroExtend(pack(boardId)));
+      toJtag.put(1 + zeroExtend(pack(boardIdWithinBox)));
       sendState <= 0;
       respondQuery <= False;
     end
@@ -321,6 +343,8 @@ module mkDebugLink#(
   `ifndef SIMULATE
   interface jtagAvalon = uart.jtagAvalon;
   `endif
+
+  method BoardId getBoardId() = boardId;
 
 endmodule
 

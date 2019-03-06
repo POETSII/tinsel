@@ -1,4 +1,5 @@
-KERNEL_SRC_DIR  ?= /lib/modules/$(shell uname -r)/build
+KVER ?= $(shell uname -r)
+KERNEL_SRC_DIR  ?= /lib/modules/$(KVER)/build
 
 obj-m := dmabuffer.o
 

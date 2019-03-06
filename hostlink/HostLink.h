@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <config.h>
-#include "DebugLink.h"
+#include <DebugLink.h>
 
 // Max line length for line-buffered UART StdOut capture
 #define MaxLineLen 128
@@ -14,16 +14,7 @@
 #define PCIESTREAM      "pciestream"
 #define PCIESTREAM_SIM  "tinsel.b-1.1"
 
-// Power down the mesh boards
-void powerdown();
-
-// Power up the mesh boards
-void powerup();
-
 class HostLink {
-  // JTAG UART connections
-  DebugLink* debugLinks;
-
   // Lock file for acquring exclusive access to PCIeStream
   int lockFile;
 
@@ -31,15 +22,21 @@ class HostLink {
   int pcieLink;
 
   // Line buffers for JTAG UART StdOut
-  char lineBuffer[TinselMeshXLen][TinselMeshYLen]
-                 [TinselCoresPerBoard][TinselThreadsPerCore]
-                 [MaxLineLen];
-  int lineBufferLen[TinselMeshXLen][TinselMeshYLen]
-                   [TinselCoresPerBoard][TinselThreadsPerCore];
- public:
+  // Max line length defined by MaxLineLen
+  // Indexed by (board X, board Y, core, thread)
+  char***** lineBuffer;
+  int**** lineBufferLen;
 
-  // Constructor
+  // Internal constructor
+  void constructor(BoxConfig* boxConfig);
+ public:
+  // Dimensions of board mesh
+  int meshXLen;
+  int meshYLen;
+
+  // Constructors
   HostLink();
+  HostLink(BoxConfig* boxConfig);
 
   // Destructor
   ~HostLink();
@@ -47,20 +44,17 @@ class HostLink {
   // Debug links
   // -----------
 
-  // Link to the bridge board (opened by constructor)
-  DebugLink* bridgeBoard;
-
-  // Links to the mesh boards (opened by constructor)
-  DebugLink* mesh[TinselMeshXLen][TinselMeshYLen];
+  // DebugLink (access to FPGAs via their JTAG UARTs)
+  DebugLink* debugLink;
 
   // Send and receive messages over PCIe
   // -----------------------------------
 
-  // Send a message (blocking)
-  void send(uint32_t dest, uint32_t numFlits, void* msg);
+  // Send a message (blocking by default)
+  bool send(uint32_t dest, uint32_t numFlits, void* msg, bool block = true);
 
-  // Can send a message without blocking?
-  bool canSend();
+  // Try to send a message (non-blocking, returns true on success)
+  bool trySend(uint32_t dest, uint32_t numFlits, void* msg);
 
   // Receive a flit (blocking)
   void recv(void* flit);
@@ -126,11 +120,19 @@ class HostLink {
   // Receive StdOut byte streams and append to file (non-blocking)
   bool pollStdOut(FILE* outFile);
 
+  // Receive StdOut byte streams and append to file (non-blocking)
+  // and increment line count
+  bool pollStdOut(FILE* outFile, uint32_t* lineCount);
+
   // Receive StdOut byte streams and display on stdout (non-blocking)
   bool pollStdOut();
 
   // Receive StdOut byte streams and append to file (non-terminating)
   void dumpStdOut(FILE* outFile);
+
+  // Receive a number of lines from StdOut byte streams
+  // and append to file (blocking)
+  void dumpStdOut(FILE* outFile, uint32_t lines);
 
   // Receive StdOut byte streams and display on stdout (non-terminating)
   void dumpStdOut();
