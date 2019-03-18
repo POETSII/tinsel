@@ -13,7 +13,7 @@ int main()
   printf("Waiting for response\n");
   uint32_t resp[4];
   hostLink.recv(resp);
-  printf("Got response\n");
+  printf("Cycles = %u\n", resp[0]);
 
   return 0;
 }
