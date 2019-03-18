@@ -32,11 +32,13 @@ Released on 8 Jan 2019 and maintained in the
 ## Contents
 
 * [1. Overview](#1-tinsel-overview)
-* [2. Tinsel Core](#2-tinsel-core)
-* [3. Tinsel Cache](#3-tinsel-cache)
-* [4. Tinsel Mailbox](#4-tinsel-mailbox)
-* [5. Tinsel Network](#5-tinsel-network)
-* [6. Tinsel HostLink](#6-tinsel-hostlink)
+* [2. POETS Hardware](#2-poets-hardware)
+* [3. Tinsel Core](#3-tinsel-core)
+* [4. Tinsel Cache](#4-tinsel-cache)
+* [5. Tinsel Mailbox](#5-tinsel-mailbox)
+* [6. Tinsel Network](#6-tinsel-network)
+* [7. Tinsel HostLink](#7-tinsel-hostlink)
+* [8. POLite API](#8-polite-api)
 
 ## Appendices
 
@@ -151,21 +153,19 @@ inter-board communication.  And since we are using the links
 point-to-point, almost all of the Ethernet packet fields can be used
 for our own purposes, resulting in very little overhead on the wire.
 
-### 1.4 POETS Hardware
+### 2. POETS Hardware
 
 A prototype POETS hardware system is currently under construction and,
-when complete, will consist of at 40-60 DE5-Net FPGA boards connected
-in a 2D or 3D mesh topology.  Each group of 7 FPGAs will reside in a
-separate *POETs box*.  One FPGA in each box will serve as a *PCI
-Express bridge board* that connects a modern PC to the remaining FPGA
-*worker boards*, with the remaining 6 worker boards running Tinsel by
-default.
-
-### 1.5 Structure
+when complete, will consist of at 56 DE5-Net FPGA boards connected in
+a 2D or 3D mesh topology.  Each group of 7 FPGAs will reside in a
+separate *POETs box* (8 boxes in total).  One FPGA in each box will
+serve as a *PCI Express bridge board* that connects a modern PC to the
+remaining FPGA *worker boards*, with the remaining 6 worker boards
+running Tinsel by default.
 
 The following diagrams are *illustrative* of a Tinsel system running
-on a POETS box.  The system is highly-parameterised, so the actual
-numbers of component parts shown may vary.
+on the POETS cluster.  The system is highly-parameterised, so the
+actual numbers of component parts shown may vary.
 
 #### Tinsel Tile
 
@@ -194,6 +194,42 @@ serial link.
 
 <img align="center" src="doc/figures/triplet.png">
 
+#### Power module
+
+Low-cost FPGA evaluation boards are typically designed for desktop
+usage, but our cluster will reside in a server room, introducing a
+number of remote management requirements that the DE5-Net doesn't
+cater for:
+
+1. *Fan monitoring*.  In a large cluster, fan failure will be
+fairly common, causing FPGAs to overheat and become unusable.  The DE5
+is not able to monitor its own fan, so failure detection and shutdown
+must be done externally.
+
+2. *Power measurement*.  One of the main attractions of FPGAs
+in the datacentre is superior performance-per-watt compared to
+conventional servers.  The ability to remotely measure
+DE5 power consumption is therefore important for development purposes.
+
+3. *Power switching*.  Reprogramming FPGAs over USB is slow,
+and often unnecessary when an overlay is stored in flash memory.  The
+ability to remotely power-switch FPGAs therefore allows fast
+reprogramming of the overlay, and hence a fast hard-reset capability.
+It also allows the FPGAs to be powered up as and when required, saving
+energy and reducing fan wear.
+
+To provide these features, we have developed a per-FPGA
+*power module*:
+
+<img align="center" src="doc/figures/powerboard.jpg">
+
+It comprises an ARM-microcontroller-based Cypress PSoC 5, extended
+with a custom power and fan management shield.  We have also extended
+the PSoC with a custom FE1.1s-based USB hub, so that the two USB
+connections to the ARM (debug and UART), and the one to the FPGA
+(JTAG), are all exposed by a single port on the power module, reducing
+cabling and improving air flow.
+
 #### POETS box
 
 A POETS box comprises a modern PC with a disk, a NIC, a PCIe FPGA
@@ -202,7 +238,15 @@ FPGA-triplets.
 
 <img align="center" src="doc/figures/box.png">
 
-## 2. Tinsel Core
+#### POETS cluster
+
+A multi-box POETS cluster is collection of POETS boxes, with FPGAs
+from different boxes connected via SFP+.  For example, here is a
+of photo of our first two-box cluster.
+
+<img align="center" src="doc/figures/twobox.jpg">
+
+## 3. Tinsel Core
 
 Tinsel Core is a *customised* 32-bit *multi-threaded* processor
 implementing a [subset](#h-missing-rv32imf-features) of the RV32IMF
@@ -300,7 +344,7 @@ A summary of synthesis-time parameters introduced in this section:
   `SharedInstrMem`    |    True | Is each instruction memory shared by 2 cores?
   `LogCoresPerFPU`    |       2 | Number of cores sharing a floating-point unit
 
-## 3. Tinsel Cache
+## 4. Tinsel Cache
 
 The [DE5-Net](http://de5-net.terasic.com) contains two off-chip DDR3
 DRAMs, each capable of performing two 64-bit memory operations on
@@ -400,7 +444,7 @@ structure of each cache.
   `DCacheLogSetsPerThread` |       3 | Associative sets per thread
   `LogBeatsPerDRAM`        |      26 | Size of DRAM
 
-## 4. Tinsel Mailbox
+## 5. Tinsel Mailbox
 
 The *mailbox* is a component used by threads to send and receive
 messages.  A single mailbox serves multiple threads, defined by
@@ -579,7 +623,7 @@ A summary of synthesis-time parameters introduced in this section:
   `LogMaxFlitsPerMsg`      |       2 | Max number of flits in a message
   `LogMsgsPerThread`       |       4 | Number of slots per thread in scratchpad
 
-## 5. Tinsel Network
+## 6. Tinsel Network
 
 The number of mailboxes on each FPGA board is goverened by the
 parameter `LogMailboxesPerBoard`.
@@ -646,7 +690,7 @@ communication.  And since we are using the links point-to-point,
 almost all of the ethernet header fields can be used for our own
 purposes, resulting in very little overhead on the wire.
 
-## 6. Tinsel HostLink
+## 7. Tinsel HostLink
 
 *HostLink* is the means by which Tinsel cores running on a mesh of
 FPGA boards communicate with a *host PC*.  It comprises three main
@@ -876,6 +920,204 @@ not be called.  When the application returns from `main()`, all but
 one thread on each core are killed and the remaining threads reenter
 the boot loader.
 
+## 8. POLite API
+
+POLite is a layer of abstraction that takes care of mapping arbitrary
+task graphs onto the Tinsel overlay, completely hiding architectural
+details.  As the name suggests, this is only a lightweight frontend
+providing basic features; there are multiple other frontends (similar
+to but more elaborate than POLite) being developed on the POETS project.
+
+Behaviours of tasks in the task graph are specified as event handlers
+that update the state of the task when a particular event occurs, e.g.
+when an incoming message is available, or the network is ready to send
+a new message, or termination is detected.  It fits very much into the
+vertex-centric paradigm popularised by Google's Pregel, but aims to
+support asynchronous applications in addition to synchronous ones.
+
+**Vertex behaviour**. In a POLite application, vertex behaviour is
+defined by inheriting from the `PVertex` class:
+
+```c++
+template <typename S, typename E, typename M>
+  struct PVertex {
+    // Vertex state
+    S* s;
+    PPin* readyToSend;
+
+    // Event handlers
+    void init();
+    void send(M* msg);
+    void recv(M* msg, E* edge);
+    bool step();
+    bool finish(M* msg);
+  };
+```
+
+It is parameterised by the vertex state type `S`, the edge weight type
+`E`, and the message type `M`.  Each vertex has access to local state
+`s`, and a `readyToSend` field whose value is one of:
+
+  * `No`: the vertex doesn't want to send.
+  * `Pin(p)`: the vertex wants to send on pin `p`.
+  * `HostPin`: the vertex wants to send to the host.
+
+A *pin* is an array of outgoing edges, and sending a message on a pin
+means sending a message along all edges in the array.  A vertex can
+have multiple pins, and the number is expected to vary from
+application to application.  Vertices should initialise `*readyToSend`
+in the `init` handler, which runs once for every vertex when the
+application starts.  After that, the other event handlers come into
+play.
+
+**Send handler**. Any vertex indicating that it wishes to send will
+eventually have its `send` handler called, unless another handler
+(called before the `send` handler has had chance to run) updates
+`*readyToSend` to `No`.  When called, the `send` handler is provided
+with a message buffer, to which the outgoing message should be
+written.  The destination is deduced from the value of `*readyToSend`
+immediately *before* the `send` handler is called.
+
+**Receive handler**. A message arriving at a vertex causes the `recv`
+handler of the vertex to be called with a pointer to the message and a
+pointer to the weight associated with the incoming edge along which
+the message has arrived.  The edge weight is passed to the `recv`
+handler rather than the `send` handler because it is associated with a
+particular edge, not a pin capturing multiple edges.  For unweighted
+graphs, the edge weight type can be declared as `PEmpty` and ignored.
+
+**Step handler**.  The `step` handler is called whenever: (1)
+no vertex in graph wishes to send, and (2) there are no messages
+in-flight.  It returns a boolean, indicating whether or not the
+vertex wishes to continue executing.  Typically, an asynchronous
+application will simply return false, while a synchronous one will do
+some compute for the time step, perhaps requesting to send again, and
+will return true if it wishes to start a new time step.
+
+**Finish handler**.  If the conditions for calling the `step`
+handler are met, but the previous call of the `step` handler
+returned false on every vertex,
+then the `finish` handler is called.  The key
+point here is that the
+`finish` handler can only be invoked when all vertices in the
+entire graph do not wish to continue.  At this stage, each vertex may
+optionally send a message to the host by writing to the provided
+buffer and returning `true`
+
+**SSSP example**.  To illustrate the `PVertex` class, here is an
+asynchronous POLite solution to the single-source shortest paths
+problem:
+
+```c++
+// Vertex state
+struct SSSPState {
+  // Is this the source vertex?
+  bool isSource;
+  // The shortest known distance to this vertex
+  int dist;
+};
+
+// Vertex behaviour
+struct SSSPVertex : PVertex<SSSPState,int,int> {
+  void init() {
+    *readyToSend = s->isSource ? Pin(0) : No;
+  }
+  void send(int* msg) {
+    *msg = s->dist;
+    *readyToSend = No;
+  }
+  void recv(int* dist, int* weight) {
+    int newDist = *dist + *weight;
+    if (newDist < s->dist) {
+      s->dist = newDist;
+      *readyToSend = Pin(0);
+    }
+  }
+  bool step() { return false; }
+  bool finish(int* msg) {
+    *msg = s->dist;
+    return true;
+  }
+};
+```
+
+Each vertex maintains an `int` representing the shortest known path to
+it (initially the largest positive integer), and a read-only `bool`
+indicating whether or not it is the source vertex.  When the
+application starts, only the source vertex requests to send, but this
+triggers further iterative sending until the shortest paths to the all
+vertices have been determined.  Finally, when the vertex states have
+stabilised, the `finish` handler is called to send the results back to
+the host.  In this example, a single pin (pin 0) on each vertex is
+sufficient to solve the problem.
+
+**The host**. So far, we have looked at using POLite to describe the
+behaviour of vertices running on the Tinsel overlay.  An equally
+important part of a POLite application is to describe the behaviour of
+the *host*, i.e. the program that handles the command-and-control side
+of the application, and runs on the x86 servers in our cluster.
+POLite provides a number of features to define host behaviour in a
+simple, architecture-agnostic manner, outlined below.
+
+**Graph construction**.  POLite provides a `PGraph` type,
+
+```c++
+template <typename S, typename M, typename E>
+  class PGraph;
+```
+
+parameterised by the same types as the `PVertex` type, with operations
+for adding vertices, pins, edges, and edge weights.  Using these
+operations, an application can prepare an arbitrary graph to be mapped
+onto the Tinsel overlay.  The initial state of each vertex can also be
+specified using this data structure.
+
+**Graph mapping**. The POLite mapper takes a `PGraph` and decides which
+vertices will run on which Tinsel threads.  It employs an hierarchical
+graph partitioning scheme using the standard METIS tool: first the
+graph is partitioned between FPGA boards, then each FPGA's subgraph is
+partitioned between tiles, and finally each tile's subgraph is
+partitioned between threads.  In each case, we ask METIS to minimise
+to minimise the edge cut, i.e.  the number of edges that cross
+partitions.  METIS supports quite general load balancing constraints,
+which in future could be used to balance the amount of work performed
+by each thread.
+
+After mapping, POLite writes the graph into cluster memory and
+triggers execution.  By default, vertex states are written into the
+off-chip QDRII+ SRAMs, and edge lists are written in the DDR3 DRAMs.
+The motivation for this is twofold: (1) for graph processing
+applications, we expect the number of edges to be 100-1000 times
+greater than the number of vertices, and (2) the vertex data has a
+quite random access pattern that may benefit from being stored in
+SRAM.  Once the application is up and running, the host and the graph
+vertices can continue to communicate: any vertex can send messages to
+the host via the `HostPin` or the `finish` handler, and the host can
+send messages to any vertex.
+
+**Softswitch**. Central to POLite is an event loop running on each
+Tinsel thread, which we call **the softswitch** as it effectively
+context-switches between vertices mapped to the same thread.  The
+softswitch has four main responsibilities: (1) to maintain a queue of
+vertices wanting to send; (2) to implement multicast sends over a pin
+by sending over each edge associated with that pin; (3) to pass
+messages efficiently between vertices running on the same thread and
+on different threads; and (4) to invoke the vertex handlers when
+required, to meet the semantics of the POLite library.
+
+**Limitations**. POLite provides several important features of the
+vertex-centric paradigm, but there are some limitations:
+
+1. *Static graphs*.  One of the features of the Pregel
+framework is the ability for vertices to add and remove vertices
+and edges at runtime. %Currently, POLite only supports static graphs.
+
+2. *Flat multicast*.  Multicasting is currently implemented by sending
+directly to each destination one-at-a-time.  For large fan-outs, a
+hierarchical multicast (where messages get forked at intermediate
+stages along the way to the destinations) could reduce communication
+costs.
+
 ## A. DE5-Net Synthesis Report
 
 The default Tinsel configuration on a single DE5-Net board contains:
@@ -893,8 +1135,11 @@ The default Tinsel configuration on a single DE5-Net board contains:
   * one termination/idle detector
   * a JTAG UART
 
-The clock frequency is 250MHz and the resource utilisation is 135K
-ALMs, *58% of the DE5-Net*.
+The clock frequency is 250MHz and the resource utilisation is *61% of
+the DE5-Net*.
+
+A Tinsel configuration similar to the one above but with 128 cores
+(2048 threads in total) clocks at 210MHz and uses 88% of the DE5-Net.
 
 ## B. Tinsel Parameters
 
