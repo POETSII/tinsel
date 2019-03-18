@@ -23,7 +23,7 @@
 
 // Number of mailbox slots to use for receive buffer
 #ifndef POLITE_RECV_SLOTS
-#define POLITE_RECV_SLOTS 14
+#define POLITE_RECV_SLOTS 15
 #endif
 
 // Macros for performance stats

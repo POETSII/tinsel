@@ -30,7 +30,6 @@ int main(int argc, char**argv)
 
   // Create POETS graph
   PGraph<ASPDevice, ASPState, None, ASPMessage> graph;
-  graph.setNumBoards(3, 2);
 
   // Create nodes in POETS graph
   for (uint32_t i = 0; i < net.numNodes; i++) {
@@ -48,10 +47,11 @@ int main(int argc, char**argv)
   // Prepare mapping from graph to hardware
   graph.map();
 
-  // Create random set of source nodes
+  // Create set of source nodes
   uint32_t numSources = N*32;
   uint32_t sources[numSources];
-  randomSet(numSources, sources, graph.numDevices);
+  //randomSet(numSources, sources, graph.numDevices);
+  for (int i = 0; i < numSources; i++) sources[i] = i;
 
   // Initialise devices
   for (PDeviceId i = 0; i < numSources; i++) {
