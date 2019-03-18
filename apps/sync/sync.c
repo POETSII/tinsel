@@ -12,14 +12,16 @@ int main()
   volatile int* msgIn = tinselSlot(0);
   volatile int* msgOut = tinselSlot(1);
 
-  for (int i = 0; i < 3; i++) {
+  uint32_t startTime = tinselCycleCount();
+  for (int i = 0; i < 40000; i++) {
     int r = tinselIdle(0);
     tinselEmit(r);
   }
+  uint32_t endTime = tinselCycleCount();
 
   if (me == 0) {
     tinselWaitUntil(TINSEL_CAN_SEND);
-    msgOut[0] = 100;
+    msgOut[0] = endTime - startTime;
     tinselSend(host, msgOut);
   }
 
