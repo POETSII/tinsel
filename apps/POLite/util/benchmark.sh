@@ -9,11 +9,11 @@ BENCHMARKS_ROOT=$(pwd)/../
 RESULTS_ROOT=$(pwd)/results/
 
 # Benchmarks to use
-BENCHMARKS="pagerank-sync"
+BENCHMARKS="pagerank-sync asp-sync"
 
 # Vary number of boards used
-XBOARDS="1 2 3"
-YBOARDS="1 2"
+XBOARDS="3"
+YBOARDS="1 2 3 4"
 
 # Location of conf file, specifying boxes to use
 CONF=$(pwd)/boxconf.txt
@@ -43,6 +43,7 @@ for B in $BENCHMARKS; do
       pushd .
       # Run application
       cd $BENCHMARKS_ROOT/$B/build/
+      rm -f stats.txt
       R=$(TINSEL_BOX_CONFIG=$CONF \
           POLITE_BOARDS_X=$X \
           POLITE_BOARDS_Y=$Y \
