@@ -5,21 +5,24 @@
 #include <stdio.h>
 
 // X and Y lengths of geometric space
-const int XLen = 3000;
-const int YLen = 3000;
+const int XLen = 4000;
+const int YLen = 4000;
 
 // Number of vertices
-const int NumVertices = 600000;
+const int NumVertices = 2000000;
 
 // Distance threshold for connectivity
 // A value of n means a manhatten distance of 2n
-const int Dist = 40;
+const int Dist = 31;
 
 // Probality of adding an edge to a vertex that's within distance
-const double Chance = 0.125;
+const double Chance = 0.1;
 
 // Number of neighbours chosen completely at random for a vertex
-const double RandConns = 0;
+const double RandConns = 2;
+
+// Random seed
+const int seed = 0;
 
 bool chance()
 {
@@ -29,6 +32,8 @@ bool chance()
 
 int main()
 {
+  srand(seed);
+
   int numEdges = 0;
 
   // Create 2D array for geometric space
