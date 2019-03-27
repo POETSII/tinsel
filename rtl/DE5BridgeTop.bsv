@@ -60,8 +60,9 @@ interface DE5BridgeTop;
   interface PCIeHostBus pcieHostBus;
   // Interface to host over a JTAG UART
   interface JtagUartAvalon jtagAvalon;
-  // Connection to FPGA cluster
-  interface AvalonMac mac;
+  // Connections to FPGA cluster
+  interface AvalonMac macA;
+  interface AvalonMac macB;
   // Reset request
   (* always_enabled, always_ready *)
   method Bool resetReq;
@@ -78,7 +79,8 @@ module de5BridgeTop (DE5BridgeTop);
   // Ports
   OutPort#(Bit#(128)) toPCIe <- mkOutPort;
   InPort#(Bit#(128)) fromPCIe <- mkInPort;
-  OutPort#(Flit) toLink <- mkOutPort;
+  OutPort#(Flit) toLinkA <- mkOutPort;
+  OutPort#(Flit) toLinkB <- mkOutPort;
   InPort#(Flit) fromLink <- mkInPort;
   OutPort#(Bit#(8)) toJtag <- mkOutPort;
   InPort#(Bit#(8)) fromJtag <- mkInPort;
@@ -92,12 +94,13 @@ module de5BridgeTop (DE5BridgeTop);
   connectUsing(mkUGShiftQueue1(QueueOptFmax), toJtag.out, uart.jtagIn);
   connectUsing(mkUGShiftQueue1(QueueOptFmax), uart.jtagOut, fromJtag.in);
 
-  // Create off-board link
-  BoardLink link <- mkBoardLink(northSocket[0]);
+  // Create off-board links
+  BoardLink linkA <- mkBoardLink(northSocket[0]);
+  BoardLink linkB <- mkBoardLink(southSocket[0]);
 
-  // Connect ports to off-board link
-  connectUsing(mkUGQueue, toLink.out, link.flitIn);
-  connectUsing(mkUGQueue, link.flitOut, fromLink.in);
+  // Connect ports to off-board links
+  connectUsing(mkUGQueue, toLinkA.out, linkA.flitIn);
+  connectUsing(mkUGQueue, toLinkB.out, linkB.flitIn);
 
   // Create PCIeStream instance
   PCIeStream pcie <- mkPCIeStream;
@@ -119,6 +122,32 @@ module de5BridgeTop (DE5BridgeTop);
   // Is the idle detected enabled
   Reg#(Bool) idleDetectedEnabled <- mkConfigReg(False);
 
+  // Merge off-board input streams
+  // -----------------------------
+
+  // Merge two input inter-board input streams into one
+  let mergeOut <- mkFlitMerger(linkA.flitOut, linkB.flitOut);
+  connectUsing(mkUGQueue, mergeOut, fromLink.in);
+
+  // Split off-board output stream
+  // -----------------------------
+
+  // Link output buffer (this is the stream to split)
+  Queue#(Flit) linkOutBuffer <- mkUGQueue;
+
+  rule split (linkOutBuffer.notEmpty);
+    Flit flit = linkOutBuffer.dataOut;
+    // If board Y coord is odd, emit on higher link
+    if (flit.dest.board.y[0] == 1 && toLinkA.canPut) begin
+      linkOutBuffer.deq;
+      toLinkA.put(flit);
+    // If board Y coord is even, emit on lower link
+    end else if (flit.dest.board.y[0] == 0 && toLinkB.canPut) begin
+      linkOutBuffer.deq;
+      toLinkB.put(flit);
+    end
+  endrule
+
   // Connect PCIe stream and 10G link
   // --------------------------------
 
@@ -132,8 +161,8 @@ module de5BridgeTop (DE5BridgeTop);
 
   rule toLink0 (toLinkState == 0);
     if (fromDetector.canGet) begin
-      if (toLink.canPut) begin
-        toLink.put(fromDetector.value);
+      if (linkOutBuffer.notFull) begin
+        linkOutBuffer.enq(fromDetector.value);
         fromDetector.get;
       end
     end else begin
@@ -152,7 +181,7 @@ module de5BridgeTop (DE5BridgeTop);
     if (flitCount == 0 && detector.disableHostMsgs) begin
       // Hold off sending
     end else begin
-      if (fromPCIe.canGet && toLink.canPut) begin
+      if (fromPCIe.canGet && linkOutBuffer.notFull) begin
         Flit flit;
         flit.dest = unpack(truncate(fromPCIeDA));
         flit.payload = fromPCIe.value;
@@ -168,7 +197,7 @@ module de5BridgeTop (DE5BridgeTop);
             messageCount <= messageCount+1;
         end else
           flitCount <= flitCount+1;
-        toLink.put(flit);
+        linkOutBuffer.enq(flit);
         fromPCIe.get;
         if (flitCount == 0) detector.incCount;
       end
@@ -265,7 +294,8 @@ module de5BridgeTop (DE5BridgeTop);
   interface controlBAR = pcie.external.controlBAR;
   interface pcieHostBus = pcie.external.hostBus;
   method Bool resetReq = pcie.external.resetReq;
-  interface mac = link.avalonMac;
+  interface macA = linkA.avalonMac;
+  interface macB = linkB.avalonMac;
   interface jtagAvalon = uart.jtagAvalon;
   `endif
 
