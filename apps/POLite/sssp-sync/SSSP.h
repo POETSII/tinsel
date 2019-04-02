@@ -10,6 +10,8 @@
 struct SSSPState {
   // Is this the source vertex?
   bool isSource;
+  // Has distance to this vertex changed?
+  bool changed;
   // The shortest known distance to this vertex
   int32_t dist;
 };
@@ -27,10 +29,18 @@ struct SSSPDevice : PDevice<SSSPState,int32_t,int32_t> {
     int32_t newDist = *dist + *weight;
     if (newDist < s->dist) {
       s->dist = newDist;
-      *readyToSend = Pin(0);
+      s->changed = true;
     }
   }
-  inline bool step() { return false; }
+  inline bool step() {
+    if (s->changed) {
+      s->changed = false;
+      *readyToSend = Pin(0);
+      return true;
+    }
+    else
+      return false;
+  }
   inline bool finish(int32_t* msg) {
     *msg = s->dist;
     return true;
