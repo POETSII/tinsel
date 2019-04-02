@@ -2,10 +2,7 @@
 
 int main()
 {
-  BoxConfig config;
-  config.addRow("byron");
-  //config.addRow("eliot");
-  HostLink hostLink(&config);
+  HostLink hostLink();
 
   printf("Booting\n");
   hostLink.boot("code.v", "data.v");

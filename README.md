@@ -733,22 +733,14 @@ The `HostLink` constructor is overloaded:
 
 ```cpp
 HostLink::HostLink();
-HostLink::HostLink(BoxConfig* boxConfig);
+HostLink::HostLink(uint32_t numBoxesX, uint32_t numBoxesY);
 ```
 
 If it is called without any arguments, then it assumes that a single
-box `localhost` is to be used.  Alternatively, if it is passed a *box
-configuration* then mulitple boxes can be used.  To illustrate, we can
-create a 2x3 mesh of boxes as follows:
-
-```cpp
-// Sample 2x3 box configuration with byron as
-// the master and fielding as the mesh origin
-BoxConfig config;
-config.addRow("byron", "coleridge");
-config.addRow("defoe", "eliot");
-config.addRow("fielding", "goethe");
-```
+box is to be used.  Alternatively, the user may request multiple
+boxes by specifying the width and height of the box sub-mesh they
+wish to use.  (The box from which the application is started is
+considered as the origin of this sub-mesh.)
 
 HostLink methods for sending and receiving messages on the host PC are
 as follows.
@@ -1366,7 +1358,7 @@ class HostLink {
 
   // Constructors
   HostLink();
-  HostLink(BoxConfig* boxConfig);
+  HostLink(uint32_t numBoxesX, uint32_t numBoxesY);
 
   // Debug links
   // -----------
@@ -1449,7 +1441,7 @@ class DebugLink {
  public:
 
   // Constructor
-  DebugLink(BoxConfig* config);
+  DebugLink(uint32_t numBoxesX, uint32_t numBoxesY);
 
   // On given board, set destination core and thread
   void setDest(uint32_t boardX, uint32_t boardY,

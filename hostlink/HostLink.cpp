@@ -56,8 +56,13 @@ static int connectToPCIeStream(const char* socketPath)
 }
 
 // Internal constructor
-void HostLink::constructor(BoxConfig* boxConfig)
+void HostLink::constructor(uint32_t numBoxesX, uint32_t numBoxesY)
 {
+  if (numBoxesX > TinselBoxMeshXLen || numBoxesY > TinselBoxMeshYLen) {
+    fprintf(stderr, "Number of boxes requested exceeds those available\n");
+    exit(EXIT_FAILURE);
+  }
+
   // Open lock file
   lockFile = open("/tmp/HostLink.lock", O_CREAT, 0444);
   if (lockFile == -1) {
@@ -83,7 +88,7 @@ void HostLink::constructor(BoxConfig* boxConfig)
   #endif
 
   // Create DebugLink
-  debugLink = new DebugLink(boxConfig);
+  debugLink = new DebugLink(numBoxesX, numBoxesY);
 
   // Set board mesh dimensions
   meshXLen = debugLink->meshXLen;
@@ -121,14 +126,12 @@ void HostLink::constructor(BoxConfig* boxConfig)
 
 HostLink::HostLink()
 {
-  BoxConfig config;
-  defaultBoxConfig(&config);
-  constructor(&config);
+  constructor(1, 1);
 }
 
-HostLink::HostLink(BoxConfig* config)
+HostLink::HostLink(uint32_t numBoxesX, uint32_t numBoxesY)
 {
-  constructor(config);
+  constructor(numBoxesX, numBoxesY);
 }
 
 // Destructor

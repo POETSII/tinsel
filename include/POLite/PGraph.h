@@ -6,7 +6,6 @@
 #include <string.h>
 #include <math.h>
 #include <HostLink.h>
-#include <BoxConfig.h>
 #include <config.h>
 #include <POLite.h>
 #include <POLite/Seq.h>
@@ -381,15 +380,13 @@ template <typename DeviceType,
 
   // Constructor
   PGraph() {
-    BoxConfig config;
-    defaultBoxConfig(&config);
-    int x = config.lenX() * TinselMeshXLenWithinBox; 
-    int y = config.lenY() * TinselMeshYLenWithinBox;
+    int x = TinselMeshXLenWithinBox; 
+    int y = TinselMeshYLenWithinBox;
     constructor(x, y);
   }
-  PGraph(BoxConfig* config) {
-    int x = config->lenX() * TinselMeshXLenWithinBox; 
-    int y = config->lenY() * TinselMeshYLenWithinBox;
+  PGraph(uint32_t numBoxesX, uint32_t numBoxesY) {
+    int x = numBoxesX * TinselMeshXLenWithinBox; 
+    int y = numBoxesY * TinselMeshYLenWithinBox;
     constructor(x, y);
   }
 
