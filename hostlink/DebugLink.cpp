@@ -6,10 +6,15 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <ctype.h>
 
 #include <config.h>
 #include <DebugLink.h>
 #include <SocketUtils.h>
+
+// Names of boxes in box mesh
+static const char* boxMesh[][TinselBoxMeshYLen] =
+  TinselBoxMesh;
 
 // Helper: blocking receive of a BoardCtrlPkt
 void DebugLink::getPacket(int x, int y, BoardCtrlPkt* pkt)
@@ -21,7 +26,7 @@ void DebugLink::getPacket(int x, int y, BoardCtrlPkt* pkt)
     int ret = recv(conn[y][x], &buf[got], numBytes, 0);
     if (ret < 0) {
       fprintf(stderr, "Connection to box '%s' failed ",
-        boxConfig->rows[y][x]);
+        boxMesh[thisBoxY+y][thisBoxX+x]);
       fprintf(stderr, "(box may already be in use)\n");
       exit(EXIT_FAILURE);
     }
@@ -42,7 +47,7 @@ void DebugLink::putPacket(int x, int y, BoardCtrlPkt* pkt)
     int ret = send(conn[y][x], &buf[sent], numBytes, 0);
     if (ret < 0) {
       fprintf(stderr, "Connection to box '%s' failed ",
-        boxConfig->rows[y][x]);
+        boxMesh[thisBoxY+y][thisBoxX+x]);
       fprintf(stderr, "(box may already be in use)\n");
       exit(EXIT_FAILURE);
     }
@@ -54,11 +59,10 @@ void DebugLink::putPacket(int x, int y, BoardCtrlPkt* pkt)
 }
 
 // Constructor
-DebugLink::DebugLink(BoxConfig* config)
+DebugLink::DebugLink(uint32_t numBoxesX, uint32_t numBoxesY)
 {
-  boxMeshXLen = config->lenX();
-  boxMeshYLen = config->lenY();
-  boxConfig = config;
+  boxMeshXLen = numBoxesX;
+  boxMeshYLen = numBoxesY;
   get_tryNextX = 0;
   get_tryNextY = 0;
 
@@ -70,17 +74,42 @@ DebugLink::DebugLink(BoxConfig* config)
   }
   hostname[sizeof(hostname)-1] = '\0';
 
-  // Make sure we are running on the master box
-  // (the top-left box in the user-supplied box configuration)
-  if (strcmp(boxConfig->master(), "localhost")) {
-    if (strcmp(hostname, boxConfig->master())) {
-      fprintf(stderr,
-        "This box is not the master box in the specified box config\n");
-      fprintf(stderr,
-        "This box is '%s'. The specified master box is '%s'\n",
-          hostname, boxConfig->master());
-      exit(EXIT_FAILURE);
+  // Preprocess hostname (make lower case, drop domain name)
+  for (int i = 0; i < strlen(hostname); i++) {
+    if (hostname[i] == '.') {
+      hostname[i] = '\0';
+      break;
     }
+    hostname[i] = tolower(hostname[i]);
+  }
+
+  // Ensure the requested submesh size is valid from this box
+  thisBoxX = -1;
+  thisBoxY = -1;
+  for (int j = 0; j < TinselBoxMeshYLen; j++) {
+    for (int i = 0; i < TinselBoxMeshXLen; i++) {
+      if (strcmp(boxMesh[j][i], hostname) == 0) {
+        thisBoxX = i;
+        thisBoxY = j;
+      }
+    }
+  }
+  if (thisBoxX == -1 || thisBoxY == -1) {
+    fprintf(stderr, "Box '%s' not recognised as a POETS box\n", hostname);
+    exit(EXIT_FAILURE);
+  }
+  if (thisBoxX > 0) {
+    fprintf(stderr, "This machine (the origin of the box sub-mesh) "
+                    "must have a box X coordinate of 0\n"
+                    "But is has a box X coordinate of %i\n", thisBoxX);
+    exit(EXIT_FAILURE);
+  }
+  if ((thisBoxX+numBoxesX-1) >= TinselBoxMeshXLen ||
+      (thisBoxY+numBoxesY-1) >= TinselBoxMeshYLen) {
+    fprintf(stderr, "Requested box sub-mesh of size %ix%i "
+                    "is not valid from box %s\n",
+                    numBoxesX, numBoxesY, hostname);
+    exit(EXIT_FAILURE);
   }
 
   // Dimensions of the global board mesh
@@ -131,7 +160,7 @@ DebugLink::DebugLink(BoxConfig* config)
   // Connect to boardctrld on each box
   for (int y = 0; y < boxMeshYLen; y++)
     for (int x = 0; x < boxMeshXLen; x++)
-      conn[y][x] = socketConnectTCP(boxConfig->rows[y][x], 10101);
+      conn[y][x] = socketConnectTCP(boxMesh[thisBoxY+y][thisBoxX+x], 10101);
 
   // Receive ready packets from each box
   BoardCtrlPkt pkt;
@@ -165,7 +194,7 @@ DebugLink::DebugLink(BoxConfig* config)
         if (pkt.payload[1] == 0) {
           if (bridge[y][x] != -1) {
             fprintf(stderr, "Too many bridge boards detected on box %s\n",
-              boxConfig->rows[y][x]);
+              boxMesh[thisBoxX+y][thisBoxY+x]);
           }
           // It's a bridge board, let's remember its link id
           bridge[y][x] = pkt.linkId;

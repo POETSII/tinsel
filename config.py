@@ -18,9 +18,6 @@ p = {}
 # The Altera device family being targetted
 p["DeviceFamily"] = quoted("Stratix V")
 
-# FPGA board being targetted
-p["TargetBoard"] = quoted("DE5")
-
 # The number of hardware threads per core
 p["LogThreadsPerCore"] = 4
 
@@ -158,6 +155,14 @@ p["SRAMStoreLatency"] = 2
 
 # Enable performance counters
 p["EnablePerfCount"] = True
+
+# Box mesh
+p["BoxMeshXLen"] = 1
+p["BoxMeshYLen"] = 2
+p["BoxMesh"] = ('{'
+    '{"byron"},'
+    '{"eliot"}'
+  '}')
 
 #==============================================================================
 # Derived Parameters

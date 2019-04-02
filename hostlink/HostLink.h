@@ -28,7 +28,7 @@ class HostLink {
   int**** lineBufferLen;
 
   // Internal constructor
-  void constructor(BoxConfig* boxConfig);
+  void constructor(uint32_t numBoxesX, uint32_t numBoxesY);
  public:
   // Dimensions of board mesh
   int meshXLen;
@@ -36,7 +36,7 @@ class HostLink {
 
   // Constructors
   HostLink();
-  HostLink(BoxConfig* boxConfig);
+  HostLink(uint32_t numBoxesX, uint32_t numBoxesY);
 
   // Destructor
   ~HostLink();
