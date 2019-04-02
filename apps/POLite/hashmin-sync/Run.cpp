@@ -1,4 +1,4 @@
-#include "SSSP.h"
+#include "HashMin.h"
 
 #include <HostLink.h>
 #include <POLite.h>
@@ -26,7 +26,7 @@ int main(int argc, char**argv)
   HostLink hostLink;
 
   // Create POETS graph
-  PGraph<SSSPDevice, SSSPState, int32_t, int32_t> graph;
+  PGraph<HashMinDevice, HashMinState, None, int32_t> graph;
 
   // Create nodes in POETS graph
   for (uint32_t i = 0; i < net.numNodes; i++) {
@@ -38,7 +38,7 @@ int main(int argc, char**argv)
   for (uint32_t i = 0; i < net.numNodes; i++) {
     uint32_t numNeighbours = net.neighbours[i][0];
     for (uint32_t j = 0; j < numNeighbours; j++)
-      graph.addLabelledEdge(1, i, 0, net.neighbours[i][j+1]);
+      graph.addEdge(i, 0, net.neighbours[i][j+1]);
   }
 
   // Prepare mapping from graph to hardware
@@ -46,13 +46,9 @@ int main(int argc, char**argv)
 
   // Initialise devices
   for (PDeviceId i = 0; i < graph.numDevices; i++) {
-    graph.devices[i]->state.dist = 0x7fffffff;
+    graph.devices[i]->state.min = i;
   }
 
-  // Set source vertex
-  graph.devices[2]->state.isSource = true;
-  graph.devices[2]->state.dist = 0;
- 
   // Write graph down to tinsel machine via HostLink
   graph.write(&hostLink);
 
@@ -72,7 +68,7 @@ int main(int argc, char**argv)
   // Receive final distance to each vertex
   for (uint32_t i = 0; i < graph.numDevices; i++) {
     // Receive message
-    PMessage<int32_t, int32_t> msg;
+    PMessage<None, int32_t> msg;
     hostLink.recvMsg(&msg, sizeof(msg));
     if (i == 0) gettimeofday(&finish, NULL);
     // Accumulate
@@ -80,7 +76,7 @@ int main(int argc, char**argv)
   }
 
   // Emit result
-  printf("Sum of distances = %ld\n", sum);
+  printf("Sum = %ld\n", sum);
 
   // Display time
   timersub(&finish, &start, &diff);
