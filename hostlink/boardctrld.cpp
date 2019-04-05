@@ -183,16 +183,19 @@ int main(int argc, char* argv[])
   // Determine number of boards
   int numBoards = TinselMeshXLenWithinBox * TinselMeshYLenWithinBox + 1;
 
-  // Listen on TCP port
-  int sock = createListener();
-
   while (1) {
+    // Listen on TCP port
+    int sock = createListener();
+
     // Accept connection
     int conn = accept(sock, NULL, NULL);
     if (conn == -1) {
       perror("boardctrld: accept");
       exit(EXIT_FAILURE);
     }
+
+    // Prevent new connections while busy
+    close(sock);
 
     // Power up worker boards
     #ifndef SIMULATE
