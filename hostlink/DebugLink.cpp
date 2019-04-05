@@ -174,11 +174,19 @@ DebugLink::DebugLink(uint32_t numBoxesX, uint32_t numBoxesY)
   pkt.payload[0] = DEBUGLINK_QUERY_IN;
   for (int y = 0; y < boxMeshYLen; y++)
     for (int x = 0; x < boxMeshXLen; x++) {
+      // Determine offset for each board in box
       int offsetX = x * TinselMeshXLenWithinBox;
       int offsetY = y * TinselMeshYLenWithinBox;
       assert(offsetX < 16);
       assert(offsetY < 16);
       pkt.payload[1] = (offsetY << 4) | offsetX;
+      // Sandbox this application from others running on the cluster
+      pkt.payload[2] = 0;
+      if (y == boxMeshYLen-1) pkt.payload[2] |= 1;
+      if (y == 0) pkt.payload[2] |= 2;
+      if (thisBoxX == 0 && boxMeshXLen == 1) pkt.payload[2] |= 4;
+      if (thisBoxX == 1 && boxMeshXLen == 1) pkt.payload[2] |= 8;
+      // Send commands to each board
       for (int b = 0; b < TinselBoardsPerBox; b++) {
         pkt.linkId = b;
         putPacket(x, y, &pkt);

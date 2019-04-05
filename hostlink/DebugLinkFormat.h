@@ -18,7 +18,7 @@
 inline int toDebugLinkSize(uint8_t cmd)
 {
   switch (cmd) {
-    case DEBUGLINK_QUERY_IN: return 2;
+    case DEBUGLINK_QUERY_IN: return 3;
     case DEBUGLINK_SET_DEST: return 3;
     case DEBUGLINK_STD_IN: return 2;
     default:

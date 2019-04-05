@@ -164,6 +164,7 @@ module de5Top (DE5Top);
   function MailboxNet mailboxNet(Mailbox mbox) = mbox.net;
   ExtNetwork net <- mkMailboxMesh(
                       debugLink.getBoardId(),
+                      debugLink.linkEnable,
                       map(map(mailboxNet), mailboxes),
                       idle);
 
