@@ -12,11 +12,16 @@ package DebugLink;
 // Commands sent from the host PC to DebugLink typically consist of a
 // few bytes over the JTAG UART.
 //
-//   QueryIn: tag (1 byte), board offset (1 byte)
-//   --------------------------------------------
+//   QueryIn: tag (1 byte), board offset (1 byte), edge disable (1 byte)
+//   -------------------------------------------------------------------
 //
 //   Sets the X offset (offset[3:0]) and the Y offset (offset[7:4])
 //   of the board id (to support multiple boxes).
+//   Disable the specified inter-FPGA links:
+//     * disable[0]: disable links on north side of box
+//     * disable[1]: disable links on south side of box
+//     * disable[2]: disable links on east side of box
+//     * disable[3]: disable links on west side of box
 //   Responds with a QueryOut (see below).
 //
 //   SetDest: tag (1 byte), thread id (1 byte), core id (1 byte)
@@ -182,8 +187,12 @@ interface DebugLink;
   `ifndef SIMULATE
   interface JtagUartAvalon jtagAvalon;
   `endif
+  // Get board id via DebugLink
   (* always_ready, always_enabled *)
   method BoardId getBoardId();
+  // Optionally disable each inter-FPGA link via DebugLink
+  (* always_ready, always_enabled *)
+  method Vector#(4, Bool) linkEnable;
 endinterface
 
 module mkDebugLink#(
@@ -197,6 +206,10 @@ module mkDebugLink#(
   // with the box-local board id (set via DIP switches) to give
   // an overall board id.
   Reg#(BoardId) boardId <- mkReg(unpack(0));
+
+  // An enable line for each inter-FPGA link on the board
+  // (Initially, all disabled)
+  Reg#(Vector#(4, Bool)) linkEnableReg <- mkConfigReg(replicate(False));
 
   // Ports
   InPort#(Bit#(8)) fromJtag <- mkInPort;
@@ -267,9 +280,8 @@ module mkDebugLink#(
       recvState <= 1;
     end else if (recvState == 1) begin
       if (recvCmd == cmdQueryIn) begin
-        respondQuery <= True;
         boardOffset <= fromJtag.value;
-        recvState <= 0;
+        recvState <= 2;
       end else if (recvCmd == cmdSetDest) begin
         recvDestThread <= fromJtag.value;
         recvState <= 2;
@@ -284,8 +296,28 @@ module mkDebugLink#(
         recvState <= 0;
       end
     end else if (recvState == 2) begin
-      recvDestCore <= fromJtag.value;
-      recvState <= 0;
+      if (recvCmd == cmdQueryIn) begin
+        Bit#(4) edgeEn = truncate(fromJtag.value);
+        Vector#(4, Bool) linkEn = replicate(True);
+        // Disable north link?
+        Bit#(2) y = boardIdWithinBox[3:2];
+        Bit#(2) x = boardIdWithinBox[1:0];
+        if (y == fromInteger(`MeshYLenWithinBox-1) &&
+              edgeEn[0] == 1) linkEn[0] = False;
+        // Disable south link?
+         if (y == 0 && edgeEn[1] == 1) linkEn[1] = False;
+        // Disable east link?
+        if (x == fromInteger(`MeshXLenWithinBox-1) &&
+              edgeEn[2] == 1) linkEn[2] = False;
+        // Disable west link?
+        if (x == 0 && edgeEn[3] == 1) linkEn[3] = False;
+        linkEnableReg <= linkEn;
+        respondQuery <= True;
+        recvState <= 0;
+      end else begin
+        recvDestCore <= fromJtag.value;
+        recvState <= 0;
+      end
     end
   endrule
 
@@ -345,6 +377,7 @@ module mkDebugLink#(
   `endif
 
   method BoardId getBoardId() = boardId;
+  method Vector#(4, Bool) linkEnable = linkEnableReg;
 
 endmodule
 

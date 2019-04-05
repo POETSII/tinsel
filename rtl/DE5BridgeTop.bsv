@@ -95,8 +95,8 @@ module de5BridgeTop (DE5BridgeTop);
   connectUsing(mkUGShiftQueue1(QueueOptFmax), uart.jtagOut, fromJtag.in);
 
   // Create off-board links
-  BoardLink linkA <- mkBoardLink(northSocket[0]);
-  BoardLink linkB <- mkBoardLink(southSocket[0]);
+  BoardLink linkA <- mkBoardLink(True, northSocket[0]);
+  BoardLink linkB <- mkBoardLink(True, southSocket[0]);
 
   // Connect ports to off-board links
   connectUsing(mkUGQueue, toLinkA.out, linkA.flitIn);
@@ -259,7 +259,7 @@ module de5BridgeTop (DE5BridgeTop);
   // the dimensions of the board mesh: Y = byte[7:4], X = byte[3:0].
 
   Reg#(Bit#(8)) boardIdWithinBox <- mkConfigReg(0);
-  Reg#(Bit#(2)) uartState <- mkConfigReg(0);
+  Reg#(Bit#(3)) uartState <- mkConfigReg(0);
 
   rule uartReceive0 (fromJtag.canGet && uartState == 0);
     fromJtag.get;
@@ -280,12 +280,17 @@ module de5BridgeTop (DE5BridgeTop);
     uartState <= 2;
   endrule
 
-  rule uartRespond0 (toJtag.canPut && uartState == 2);
-    toJtag.put(0);
+  rule uartReceive2 (fromJtag.canGet && uartState == 2);
+    fromJtag.get;
     uartState <= 3;
   endrule
 
-  rule uartRespond1 (toJtag.canPut && uartState == 3);
+  rule uartRespond0 (toJtag.canPut && uartState == 3);
+    toJtag.put(0);
+    uartState <= 4;
+  endrule
+
+  rule uartRespond1 (toJtag.canPut && uartState == 4);
     toJtag.put(0);
     uartState <= 0;
   endrule
