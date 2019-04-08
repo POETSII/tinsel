@@ -144,14 +144,15 @@ module mkMeshRouter#(MailboxId m) (MeshRouter);
 
   // Routing function
   function Route route(NetAddr addr);
-    if      (addr.board.x < b.x)         return Left;
-    else if (addr.board.x > b.x)         return Right;
-    else if (addr.board.y < b.y)         return Down;
-    else if (addr.board.y > b.y)         return Up;
-    else if (getMailboxId(addr).x < m.x) return Left;
-    else if (getMailboxId(addr).x > m.x) return Right;
+         if (addr.board.y < b.y) return Down;
+    else if (addr.board.y > b.y) return Up;
+    else if (addr.host.valid) return addr.host.value == 0 ? Left : Right;
+    else if (addr.board.x < b.x) return Left;
+    else if (addr.board.x > b.x) return Right;
     else if (getMailboxId(addr).y < m.y) return Down;
     else if (getMailboxId(addr).y > m.y) return Up;
+    else if (getMailboxId(addr).x < m.x) return Left;
+    else if (getMailboxId(addr).x > m.x) return Right;
     else return Mailbox;
   endfunction
 
@@ -234,7 +235,9 @@ interface BoardLink;
   method Bit#(32) numTimeouts;
 endinterface
 
-module mkBoardLink#(SocketId id) (BoardLink);
+// Inter FPGA link with explicit enable line. (Can be useful to
+// disable links for sandboxing in multi-box environments.)
+module mkBoardLink#(Bool en, SocketId id) (BoardLink);
   
   // 64-bit link
   `ifdef SIMULATE
@@ -250,8 +253,8 @@ module mkBoardLink#(SocketId id) (BoardLink);
   Deserialiser#(Bit#(64), PaddedFlit) des <- mkDeserialiser;
 
   // Connections
-  connectUsing(mkUGQueue, ser.serialOut, link.streamIn);
-  connectDirect(link.streamOut, des.serialIn);
+  connectUsing(mkUGQueue, enableOut(en, ser.serialOut), link.streamIn);
+  connectDirect(enableBOut(en, link.streamOut), des.serialIn);
 
   let unpaddedFlitIn  <- onIn(padFlit, ser.parallelIn);
   let unpaddedFlitOut <- onOut(unpadFlit, des.parallelOut);
@@ -282,6 +285,7 @@ endinterface
 
 module mkMailboxMesh#(
          BoardId boardId,
+         Vector#(4, Bool) linkEnable,
          Vector#(`MailboxMeshYLen,
            Vector#(`MailboxMeshXLen, MailboxNet)) mailboxes,
          IdleDetector idle)
@@ -289,13 +293,13 @@ module mkMailboxMesh#(
 
   // Create off-board links
   Vector#(`NumNorthSouthLinks, BoardLink) northLink <-
-    mapM(mkBoardLink, northSocket);
+    mapM(mkBoardLink(linkEnable[0]), northSocket);
   Vector#(`NumNorthSouthLinks, BoardLink) southLink <-
-    mapM(mkBoardLink, southSocket);
+    mapM(mkBoardLink(linkEnable[1]), southSocket);
   Vector#(`NumEastWestLinks, BoardLink) eastLink <-
-    mapM(mkBoardLink, eastSocket);
+    mapM(mkBoardLink(linkEnable[2]), eastSocket);
   Vector#(`NumEastWestLinks, BoardLink) westLink <-
-    mapM(mkBoardLink, westSocket);
+    mapM(mkBoardLink(linkEnable[3]), westSocket);
 
   // Create mailbox routers
   Vector#(`MailboxMeshYLen,

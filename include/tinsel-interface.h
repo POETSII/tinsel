@@ -79,14 +79,12 @@ INLINE int tinselIdle();
 INLINE TinselWakeupCond operator|(TinselWakeupCond a, TinselWakeupCond b);
 #endif
 
-// Get globally unique thread id of host
-// (Host board has X coordinate of 0 and Y coordinate on mesh rim)
+// Get address of master host
+// (Master host is accessible via mesh origin)
 INLINE uint32_t tinselHostId()
 {
-  return ((1<<TinselMeshYBits)-1) <<
-             (TinselMeshXBits +
-                TinselLogCoresPerBoard +
-                  TinselLogThreadsPerCore);
+  return 1 << (1 + TinselMeshYBits + TinselMeshXBits +
+                     TinselLogCoresPerBoard + TinselLogThreadsPerCore);
 }
 
 // Return pointer to base of thread's DRAM partition

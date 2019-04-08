@@ -218,6 +218,22 @@ module mkNullBOut (BOut#(t));
   method t value = ?;
 endmodule
 
+// Optionally disable an Out interface
+function Out#(t) enableOut(Bool en, Out#(t) out) =
+  interface Out
+    method Action tryGet = out.tryGet;
+    method Bool valid = en && out.valid;
+    method t value = out.value;
+  endinterface;
+
+// Optionally disable a BOut interface
+function BOut#(t) enableBOut(Bool en, BOut#(t) out) =
+  interface BOut
+    method Action get = out.get;
+    method Bool valid = en && out.valid;
+    method t value = out.value;
+  endinterface;
+
 // =============================================================================
 // Merge unit
 // =============================================================================
