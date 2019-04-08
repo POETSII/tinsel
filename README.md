@@ -808,15 +808,23 @@ void HostLink::fromAddr(uint32_t addr, uint32_t* meshX, uint32_t* meshY,
                                        uint32_t* coreId, uint32_t* threadId);
 ```
 
-To send a message from a Tinsel thread to the host PC (on the master
-box), the thread needs to know the address of the host PC.  A suitable
-address depends on how the bridge board is connected to the FPGA mesh,
-and we provide the following Tinsel API function to abstract over this
-detail.
+To send a message from a Tinsel thread to a host PC, we need an
+address for the host PC, which can be obtained using the following API
+calls.
 
 ```c
-// Get globally unique thread id of the host PC
-inline uint32_t tinselHostId()
+// Get address of the master host PC
+// (That is, the PC from which the application was started)
+uint32_t tinselHostId();
+
+// Get address of any specified host PC
+// (The Y coordinate specifies the row of the FPGA mesh that the
+// host is connected to, and the X coordinate specifies whether it is
+// the host on the left or the right of that row.)
+uint32_t tinselBridgeId(uint32_t x, uint32_t y);
+
+// Get address of host PC in same box as calling thread.
+uint32_t tinselMyBridgeId()
 ```
 
 The following HostLink member variable is used to access the
@@ -1308,8 +1316,28 @@ inline void tinselKillThread();
 // Emit word to console (simulation only)
 inline void tinselEmit(uint32_t x);
 
-// Get the globally unique thread id of the host PC
+// Get address of the host PC
 inline uint32_t tinselHostId();
+
+// Get address of any specified host
+// (This Y coordinate specifies the row of the FPGA mesh that the
+// host is connected to, and the X coordinate specifies whether it is
+// the host on the left or the right of that row.)
+inline uint32_t tinselBridgeId(uint32_t x, uint32_t y)
+{
+  uint32_t me = tinselId();
+  uint32_t yAddr = y << (TinselMeshXBits + TinselLogCoresPerBoard +
+                           TinselLogThreadsPerCore);
+  uint32_t xAddr = (me >> (TinselLogCoresPerBoard + TinselLogThreadsPerCore))
+                 & ((1 << TinselMeshXBits)-1);
+  uint32_t bridge = (x == 0 ? 2 : 3) <<
+    (TinselMeshYBits + TinselMeshXBits + TinselLogCoresPerBoard +
+       TinselLogThreadsPerCore);
+  return xAddr | yAddr | bridge;
+}
+
+// Get address of host in same box as calling thread
+inline uint32_t tinselMyBridgeId()
 
 // Return pointer to base of thread's DRAM partition
 inline void* tinselHeapBase();
