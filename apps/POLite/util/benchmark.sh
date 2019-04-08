@@ -11,18 +11,13 @@ RESULTS_ROOT=$(pwd)/results/
 # Benchmarks to use
 BENCHMARKS="pagerank-sync asp-sync"
 
+# Number of boxes to use
+XBOXES=1
+YBOXES=2
+
 # Vary number of boards used
 XBOARDS="3"
 YBOARDS="1 2 3 4"
-
-# Location of conf file, specifying boxes to use
-CONF=$(pwd)/boxconf.txt
-
-if [ ! -f $CONF ]; then
-  echo "Can't find box configuration"
-  echo "(I looked here: $CONF)"
-  exit -1
-fi
 
 if [ "$1" = "" ]; then
   echo "Usage: benchmark.sh graph.txt"
@@ -31,6 +26,7 @@ fi
 
 for B in $BENCHMARKS; do
   # Build application
+  make -C $BENCHMARKS_ROOT/$B/ clean
   make -C $BENCHMARKS_ROOT/$B/
   # Graph name
   G=$(basename $1 .txt)
@@ -44,9 +40,10 @@ for B in $BENCHMARKS; do
       # Run application
       cd $BENCHMARKS_ROOT/$B/build/
       rm -f stats.txt
-      R=$(TINSEL_BOX_CONFIG=$CONF \
-          POLITE_BOARDS_X=$X \
+      R=$(POLITE_BOARDS_X=$X \
           POLITE_BOARDS_Y=$Y \
+          HOSTLINK_BOXES_X=$XBOXES \
+          HOSTLINK_BOXES_Y=$YBOXES \
           ./run $1)
       popd
       # Compute stats

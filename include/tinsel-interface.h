@@ -87,35 +87,6 @@ INLINE uint32_t tinselHostId()
                      TinselLogCoresPerBoard + TinselLogThreadsPerCore);
 }
 
-// Get address of any specified host
-// (This Y coordinate specifies the row of the FPGA mesh that the
-// host is connected to, and the X coordinate specifies whether it is
-// the host on the left or the right of that row.)
-INLINE uint32_t tinselBridgeId(uint32_t x, uint32_t y)
-{
-  uint32_t me = tinselId();
-  uint32_t yAddr = y << (TinselMeshXBits + TinselLogCoresPerBoard +
-                           TinselLogThreadsPerCore);
-  uint32_t xAddr = (me >> (TinselLogCoresPerBoard + TinselLogThreadsPerCore))
-                 & ((1 << TinselMeshXBits)-1);
-  uint32_t bridge = (x == 0 ? 2 : 3) <<
-    (TinselMeshYBits + TinselMeshXBits + TinselLogCoresPerBoard +
-       TinselLogThreadsPerCore);
-  return xAddr | yAddr | bridge;
-}
-
-// Get address of host in same box as calling thread
-INLINE uint32_t tinselMyBridgeId()
-{
-  uint32_t me = tinselId();
-  uint32_t xAddr = (me >> (TinselLogCoresPerBoard + TinselLogThreadsPerCore))
-                 & ((1 << TinselMeshXBits)-1);
-  uint32_t bridge = (xAddr < TinselMeshXLenWithinBox ? 2 : 3) <<
-    (TinselMeshYBits + TinselMeshXBits + TinselLogCoresPerBoard +
-       TinselLogThreadsPerCore);
-  return (me | bridge);
-}
-
 // Return pointer to base of thread's DRAM partition
 INLINE void* tinselHeapBase();
 
