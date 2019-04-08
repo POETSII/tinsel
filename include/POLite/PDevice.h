@@ -34,17 +34,27 @@
 typedef uint16_t PLocalDeviceId;
 
 // Thread id
-typedef uint16_t PThreadId;
+typedef uint32_t PThreadId;
 
 // Device address
-struct PDeviceAddr {
-  PThreadId threadId;
-  PLocalDeviceId devId;
-};
+// Bits 17->0: thread id
+// Bit 18: invalid address
+// Bits 31->20: thread-local device id
+typedef uint32_t PDeviceAddr;
 
-// In some cases we use the MSB of this to mean "invalid thread"
-inline bool isValidThreadId(PThreadId id) { return !(id >> 15); }
-inline PThreadId invalidThreadId() { return 0x8000; }
+// Device address constructors
+inline PDeviceAddr invalidDeviceAddr() { return 0x40000; }
+inline PDeviceAddr makeDeviceAddr(PThreadId t, PLocalDeviceId d) {
+  return (d << 19) | t;
+}
+
+// Device address deconstructors
+inline bool isValidDeviceAddr(PDeviceAddr addr) { return !(addr & 0x40000); }
+inline PThreadId getThreadId(PDeviceAddr addr) { return addr & 0x3ffff; }
+inline PLocalDeviceId getLocalDeviceId(PDeviceAddr addr) { return addr >> 19; }
+
+// What's the max allowed local device address?
+inline uint32_t maxLocalDeviceId() { return 4096; }
 
 // Pins
 //   No      - means 'not ready to send'
@@ -113,10 +123,8 @@ template <typename M> struct PMessage<None, M> {
 // Component type of neighbours array
 // For labelleled edges
 template <typename E> struct PNeighbour {
-  // Destination thread
-  PThreadId destThread;
-  // Target device on receiving thread
-  PLocalDeviceId devId;
+  // Destination thread and device
+  PDeviceAddr destAddr;
   // Edge info
   E edge;
 };
@@ -124,11 +132,9 @@ template <typename E> struct PNeighbour {
 // Component type of neighbours array
 // For unlabelleled
 template <> struct PNeighbour<None> {
-  // Destination thread
-  PThreadId destThread;
   union {
-    // Target device on receiving thread
-    PLocalDeviceId devId;
+    // Destination thread and device
+    PDeviceAddr destAddr;
     // Unused
     None edge;
   };
@@ -216,7 +222,7 @@ template <typename DeviceType,
   void run() {
     // Empty neighbour array
     PNeighbour<E> empty;
-    empty.destThread = invalidThreadId();
+    empty.destAddr = invalidDeviceAddr();
     neighbour = &empty;
 
     // Base of all neighbours arrays on this thread
@@ -251,10 +257,11 @@ template <typename DeviceType,
     // Event loop
     while (1) {
       // Step 1: try to send
-      if (isValidThreadId(neighbour->destThread)) {
-        if (neighbour->destThread == tinselId()) {
+      if (isValidDeviceAddr(neighbour->destAddr)) {
+        PThreadId destThread = getThreadId(neighbour->destAddr);
+        if (destThread == tinselId()) {
           // Lookup destination device
-          PLocalDeviceId id = neighbour->devId;
+          PLocalDeviceId id = getLocalDeviceId(neighbour->destAddr);
           DeviceType dev = getDevice(id);
           PPin oldReadyToSend = *dev.readyToSend;
           // Invoke receive handler
@@ -273,15 +280,16 @@ template <typename DeviceType,
           // Destination device is on another thread
           PMessage<E,M>* m = (PMessage<E,M>*) tinselSlot(0);
           // Copy neighbour edge info into message
-          m->devId = neighbour->devId;
+          m->devId = getLocalDeviceId(neighbour->destAddr);
           if (! std::is_same<E, None>::value)
             m->edge = neighbour->edge;
           // Send message
-          tinselSend(neighbour->destThread, m);
+          PThreadId destThread = getThreadId(neighbour->destAddr);
+          tinselSend(destThread, m);
           #ifdef POLITE_COUNT_MSGS
           interThreadSendCount++;
           interBoardSendCount +=
-            hopsBetween(neighbour->destThread, tinselId());
+            hopsBetween(destThread, tinselId());
           #endif
           // Move to next neighbour
           neighbour++;

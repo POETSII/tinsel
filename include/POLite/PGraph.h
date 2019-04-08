@@ -226,8 +226,8 @@ template <typename DeviceType,
         // Neighbour array
         PNeighbour<E>* edgeArray = (PNeighbour<E>*) &dram[threadId][nextDRAM];
         // Emit neighbours array for host pin
-        edgeArray[0].destThread = tinselHostId();
-        edgeArray[1].destThread = invalidThreadId(); // Terminator
+        edgeArray[0].destAddr = makeDeviceAddr(tinselHostId(), 0);
+        edgeArray[1].destAddr = invalidDeviceAddr(); // Terminator
         // Emit neigbours arrays for each application pin
         PinId numPins = graph.maxPin(id) + 1;
         for (uint32_t p = 0; p < numPins; p++) {
@@ -242,8 +242,7 @@ template <typename DeviceType,
               }
               PDeviceAddr addr = toDeviceAddr[
                 graph.outgoing->elems[id]->elems[i]];
-              edgeArray[base+offset].destThread = addr.threadId;
-              edgeArray[base+offset].devId = addr.devId;
+              edgeArray[base+offset].destAddr = addr;
               // Edge label
               if (! std::is_same<E, None>::value) {
                 if (i >= graph.edgeLabels->elems[id]->numElems) {
@@ -256,7 +255,7 @@ template <typename DeviceType,
               offset++;
             }
           }
-          edgeArray[base+offset].destThread = invalidThreadId(); // Terminator
+          edgeArray[base+offset].destAddr = invalidDeviceAddr(); // Terminator
         }
         // Add space for edges
         nextDRAM = cacheAlign(nextDRAM + (numPins+1) *
@@ -361,10 +360,10 @@ template <typename DeviceType,
                 fromDeviceAddr[threadId][devNum] = g->labels->elems[devNum];
   
               // Populate toDeviceAddr mapping
+              assert(numDevs < maxLocalDeviceId());
               for (uint32_t devNum = 0; devNum < numDevs; devNum++) {
-                PDeviceAddr devAddr;
-                devAddr.threadId = threadId;
-                devAddr.devId = devNum;
+                PDeviceAddr devAddr =
+                  makeDeviceAddr(threadId, devNum);
                 toDeviceAddr[g->labels->elems[devNum]] = devAddr;
               }
             }
@@ -380,8 +379,12 @@ template <typename DeviceType,
 
   // Constructor
   PGraph() {
-    int x = TinselMeshXLenWithinBox; 
-    int y = TinselMeshYLenWithinBox;
+    char* str = getenv("HOSTLINK_BOXES_X");
+    int x = str ? atoi(str) : 1;
+    x = x * TinselMeshXLenWithinBox;
+    str = getenv("HOSTLINK_BOXES_Y");
+    int y = str ? atoi(str) : 1;
+    y = y * TinselMeshYLenWithinBox;
     constructor(x, y);
   }
   PGraph(uint32_t numBoxesX, uint32_t numBoxesY) {

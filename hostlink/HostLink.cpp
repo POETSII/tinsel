@@ -126,7 +126,11 @@ void HostLink::constructor(uint32_t numBoxesX, uint32_t numBoxesY)
 
 HostLink::HostLink()
 {
-  constructor(1, 1);
+  char* str = getenv("HOSTLINK_BOXES_X");
+  int x = str ? atoi(str) : 1;
+  str = getenv("HOSTLINK_BOXES_Y");
+  int y = str ? atoi(str) : 1;
+  constructor(x, y);
 }
 
 HostLink::HostLink(uint32_t numBoxesX, uint32_t numBoxesY)
