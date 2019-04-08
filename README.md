@@ -246,6 +246,11 @@ of photo of our first two-box cluster.
 
 <img align="center" src="doc/figures/twobox.jpg">
 
+The complete 8 box DE5-Net POETS has the following structure, with
+each green box representing a different POETS box.
+
+<img align="center" src="doc/figures/box-mesh.png">
+
 ## 3. Tinsel Core
 
 Tinsel Core is a *customised* 32-bit *multi-threaded* processor
