@@ -1,5 +1,7 @@
 package Globals;
 
+import Util :: *;
+
 // Core-local thread id
 typedef Bit#(`LogThreadsPerCore) ThreadId;
 
@@ -13,11 +15,16 @@ typedef struct {
 } BoardId deriving (Eq, Bits);
 
 // Network address
+// Note: If 'host' bit is valid, then once the message reaches the
+// destionation board, it is routed either left or right depending
+// the contents of the host bit.  This is to support bridge boards
+// connected at the east/west rims of the FPGA mesh.
 typedef struct {
+  Option#(Bit#(1)) host;
   BoardId board;
   CoreId core;
   ThreadId thread;
-} NetAddr deriving (Bits, Eq);
+} NetAddr deriving (Bits);
 
 // Mailbox id
 typedef struct {

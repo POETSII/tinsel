@@ -4,14 +4,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
-#include "BoxConfig.h"
 #include "BoardCtrl.h"
 #include "DebugLinkFormat.h"
 
 class DebugLink {
 
-  // Box configuration
-  BoxConfig* boxConfig;
+  // Location of this box with full box mesh
+  int thisBoxX;
+  int thisBoxY;
 
   // Mapping from (box Y, box X) to TCP connection
   int** conn;
@@ -45,7 +45,7 @@ class DebugLink {
   int meshYLen;
 
   // Constructor
-  DebugLink(BoxConfig* config);
+  DebugLink(uint32_t numBoxesX, uint32_t numBoxesY);
 
   // On given board, set destination core and thread
   void setDest(uint32_t boardX, uint32_t boardY,

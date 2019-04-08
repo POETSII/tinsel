@@ -32,9 +32,12 @@ MESH_X=$MeshXLenWithinBox
 MESH_Y=$MeshYLenWithinBox
 echo "Using mesh dimensions: $MESH_X x $MESH_Y"
 
-HOST_X=0
-HOST_Y=$(($MESH_Y))
-echo "Connecting bridge board at location ($HOST_X, $HOST_Y)"
+HOST0_X=0
+HOST0_Y=0
+HOST1_X=0
+HOST1_Y=1
+echo "Connecting bridge board at location ($HOST0_X, $HOST0_Y)"
+echo "Connecting bridge board at location ($HOST1_X, $HOST1_Y)"
 
 # Check dimensions
 if [ $MESH_X -gt $MESH_MAX_X ] || [ $MESH_Y -gt $MESH_MAX_Y ] ; then
@@ -75,8 +78,7 @@ done
 
 # Run bridge board
 HOST_ID=-1
-echo "Lauching bridge board simulator at position ($HOST_X, $HOST_Y)" \
-     "with board id $HOST_ID"
+echo "Lauching bridge board simulator with board id $HOST_ID"
 BOARD_ID=$HOST_ID ./de5BridgeTop &
 PIDS="$PIDS $!"
 
@@ -113,9 +115,13 @@ for X in $(seq 0 $LAST_X); do
 done
 
 # Connect bridge board to mesh
-ENTRY_ID=$(fromCoords 0 $(($MESH_Y-1)))
-$UDSOCK join "@tinsel.b$ENTRY_ID.$NORTH_ID_BASE" \
+ENTRY1_ID=$(fromCoords $HOST1_X $HOST1_Y)
+$UDSOCK join "@tinsel.b$ENTRY1_ID.$WEST_ID_BASE" \
              "@tinsel.b$HOST_ID.$NORTH_ID_BASE" &
+PIDS="$PIDS $!"
+ENTRY0_ID=$(fromCoords $HOST0_X $HOST0_Y)
+$UDSOCK join "@tinsel.b$ENTRY0_ID.$WEST_ID_BASE" \
+             "@tinsel.b$HOST_ID.$SOUTH_ID_BASE" &
 PIDS="$PIDS $!"
 
 # On CTRL-C, call quit()
