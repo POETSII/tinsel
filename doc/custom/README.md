@@ -103,6 +103,17 @@ p["LogDCachesPerDRAM"] = 1
 p["UseCustomAccelerator"] = True
 ```
 
+If your planning to run Tinsel on a single-board machine, such as
+`zitura`, then make sure to specify this too:
+
+```
+# Mesh X length within a box
+p["MeshXLenWithinBox"] = 1
+ 
+# Mesh Y length within a box
+p["MeshYLenWithinBox"] = 1
+```
+
 **Step 2**. We've knocked up a sample accelerator for testing
 purposes: [ExampleAccelerator.sv](ExampleAccelerator.sv).  This
 accelerator repeatedly receives a flit and sends it to the address
