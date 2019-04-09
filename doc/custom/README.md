@@ -41,6 +41,11 @@ module ExternalTinselAccelerator
 endmodule
 ```
 
+Note the use of Verilog macros such as `TinselMeshXBits` and
+`TinselMeshXBits`.  These can be generated automatically by running
+[config.py](https://github.com/POETSII/tinsel/blob/master/config.py)
+with the `vpp` option (which stands for Verilog pre-processor).
+
 ## Flit format
 
 Here is the flit format, as a SystemVerilog structure:
