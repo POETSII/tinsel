@@ -19,7 +19,10 @@ typedef struct {
 // destionation board, it is routed either left or right depending
 // the contents of the host bit.  This is to support bridge boards
 // connected at the east/west rims of the FPGA mesh.
+// The 'acc' bit means message is routed to a custom accelerator rather
+// than a mailbox.
 typedef struct {
+  Bool acc;
   Option#(Bit#(1)) host;
   BoardId board;
   CoreId core;
