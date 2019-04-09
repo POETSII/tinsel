@@ -33,8 +33,8 @@ module ExternalTinselAccelerator
   );
 
   // Compile-time NoC coordinates of this accelerator
-  parameter TILE_X;
-  parameter TILE_Y;
+  parameter TILE_X = 0;
+  parameter TILE_Y = 0;
 
   // Module body here
   // ...
@@ -51,7 +51,7 @@ with the `vpp` option (which stands for Verilog pre-processor).
 Here is the flit format, as a SystemVerilog structure:
 
 ```sv
-typedef struct {
+typedef struct packed {
   // Destination address
   NetAddr dest;
   // Payload
@@ -85,3 +85,46 @@ typedef struct packed {
 
 ## Full example
 
+**Step 1**.  Modify `config.py` to your requirements.  For example,
+if we want a 2x2 mesh of tiles, i.e. 4 Tinsel tiles and 4
+accelerators, then we would choose the following parameters.
+
+```
+# Number of bits in mailbox mesh X coord
+p["MailboxMeshXBits"] = 1
+ 
+# Number of bits in mailbox mesh Y coord
+p["MailboxMeshYBits"] = 1
+
+# Log of number of caches per DRAM port
+p["LogDCachesPerDRAM"] = 1
+
+# Enable custom accelerators (experimental feature)
+p["UseCustomAccelerator"] = True
+```
+
+**Step 2**. We've knocked up a sample accelerator for testing
+purposes: [ExampleAccelerator.sv](ExampleAccelerator.sv).  This
+accelerator repeatedly receives a flit and sends it to the address
+specified in the first word of the flit's payload.
+
+**Step 3**. Update `de5/Golden_top.qsf` to specify location of the
+custom accelerator.  For example, add the line
+
+```
+set_global_assignment -name SYSTEMVERILOG_FILE ../doc/custom/ExampleAccelerator.sv
+```
+
+to use the sample accelerator.
+
+**Step 4**. Use the `config.py` script to generate Verilog macros
+containin all the Tinsel parameters.  Make sure the generated file is
+in the same directory as your accelerator.
+
+```
+python config.py vpp > config.v
+```
+
+**Step 5**.  Build the Quartus project.  In the `de5` subdirectory,
+simply type `make one` to do a single build, or `make` to do multiple
+builds with different seeds (good if timing is tight).
