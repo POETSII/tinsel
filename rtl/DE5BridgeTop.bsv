@@ -41,6 +41,7 @@ import ConfigReg    :: *;
 import JtagUart     :: *;
 import DebugLink    :: *;
 import IdleDetector :: *;
+import FlitMerger   :: *;
 
 // ============================================================================
 // Interface

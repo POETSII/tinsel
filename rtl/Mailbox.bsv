@@ -97,6 +97,7 @@ import ConfigReg    :: *;
 import Util         :: *;
 import Globals      :: *;
 import DReg         :: *;
+import FlitMerger   :: *;
 
 // =============================================================================
 // Types
@@ -1023,5 +1024,165 @@ module connectCoresToMailbox#(
                     map(rxAlertIn, clients));
   connectDirect(server.rxAlertOut, rxAlerts);
 endmodule
+
+// =============================================================================
+// Custom accelerators
+// =============================================================================
+
+// An optional custom accelerator sits alongside each mailbox in the
+// design. We provide a module mkMailboxAcc with same interface as a
+// Mailbox which also implicitly interfaces to an externally defined
+// custom accelerator module written in Verilog:
+//
+//   +--------- mkMailboxAcc -----------+
+//   | +-----------+  +---------------+ |
+//   | | mkMailbox |  | mkAccelerator | |
+//   | +-----------+  +---------------+ |
+//   +----------------------------------+
+//
+// Outgoing packets from the accelerator and the mailbox are merged
+// into a single stream.  Incoming packets from the network are routed
+// either to the mailbox or the accelerator depending on the
+// accelerator bit in the network address.
+//
+// This is the bare minimum needed to support custom accelerators.
+// Note that termination detection is not yet supported in the
+// presence of custom accelerators.
+
+interface TinselAccelerator;
+  method Action put(Flit flit);
+  method Bool canPut;
+  method Action get;
+  method Bool canGet;
+  method Flit data;
+  (* always_ready, always_enabled *)
+  method Action setBoardId(Bit#(`MeshXBits) boardX, Bit#(`MeshYBits) boardY);
+endinterface
+
+import "BVI" ExternalTinselAccelerator =
+  module mkTinselAccelerator#(
+           BoardId boardId, Integer tileX, Integer tileY) (TinselAccelerator);
+
+    parameter TILE_X = tileX;
+    parameter TILY_Y = tileY;
+
+    method put(in_data) enable (in_valid);
+    method in_ready canPut;
+
+    method get() enable (out_ready);
+    method out_valid canGet;
+    method out_data data;
+
+    method setBoardId (board_x, board_y) enable ((*inhigh*) en);
+
+    default_clock clk(clk);
+    default_reset rst(rst_n);
+
+    schedule (data, canGet, canPut, setBoardId, get) CF
+             (data, canGet, canPut, put);
+    schedule (setBoardId) CF (get);
+    schedule (setBoardId) C (setBoardId);
+    schedule (put) C (put);
+    schedule (get) C (get);
+  endmodule
+
+// ========================
+// Mailbox with accelerator
+// ========================
+
+`ifndef UseCustomAccelerator
+
+module mkMailboxAcc#(BoardId boardId, Integer tileX, Integer tileY) (Mailbox);
+  Mailbox mbox <- mkMailbox;
+  return mbox;
+endmodule
+
+`else
+
+module mkMailboxAcc#(BoardId boardId, Integer tileX, Integer tileY) (Mailbox);
+  // Instantiate standard mailbox
+  Mailbox mbox <- mkMailbox;
+
+  // Instantiate custom accelerator
+  TinselAccelerator acc <- mkTinselAccelerator(boardId, tileX, tileY);
+
+  // Set board id
+  rule setBoardId;
+    acc.setBoardId(boardId.x, boardId.y);
+  endrule
+
+  // Feed input to mailbox or accelerator
+  // ------------------------------------
+
+  InPort#(Flit) inPort <- mkInPort;
+  OutPort#(Flit) toMailbox <- mkOutPort;
+
+  // Connect to mailbox
+  connectUsing(mkUGShiftQueue1(QueueOptFmax),
+    toMailbox.out, mbox.net.flitIn);
+
+  // To accelerator
+  rule connectToAcc (inPort.canGet && inPort.value.dest.acc);
+    acc.put(inPort.value);
+    inPort.get;
+  endrule
+
+  // To mailbox
+  rule connectToMailbox (inPort.canGet && toMailbox.canPut &&
+                           !inPort.value.dest.acc);
+    toMailbox.put(inPort.value);
+    inPort.get;
+  endrule
+
+  // Consume output from mailbox or accelerator
+  // ------------------------------------------
+
+  // Accelerator output
+  Queue1#(Flit) accOutQueue <- mkUGShiftQueue1(QueueOptFmax);
+  OutPort#(Flit) accOutPort <- mkOutPort;
+
+  rule fillAccOutQueue (acc.canGet && accOutQueue.notFull);
+    acc.get;
+    accOutQueue.enq(acc.data);
+  endrule
+
+  rule writeToAccOutPort (accOutPort.canPut && accOutQueue.canDeq);
+    accOutQueue.deq;
+    accOutPort.put(accOutQueue.dataOut);
+  endrule
+
+  // Mailbox output
+  Out#(Flit) mboxOut <- convertBOutToOut(mbox.net.flitOut);
+
+  // Overall output
+  Out#(Flit) out <- mkFlitMerger(mboxOut, accOutPort.out);
+  Queue1#(Flit) outQueue <- mkUGShiftQueue1(QueueOptFmax);
+
+  rule fillOutQueue (outQueue.notFull);
+    out.tryGet;
+    if (out.valid) outQueue.enq(out.value);
+  endrule
+
+  interface In   spadReqIn   = mbox.spadReqIn;
+  interface BOut spadRespOut = mbox.spadRespOut;
+  interface In   txReqIn     = mbox.txReqIn;
+  interface BOut txRespOut   = mbox.txRespOut;
+  interface In   allocReqIn  = mbox.allocReqIn;
+  interface BOut rxAlertOut  = mbox.rxAlertOut;
+
+  interface MailboxNet net;
+    interface In flitIn = inPort.in;
+    interface BOut flitOut;
+      method Action get;
+        outQueue.deq;
+      endmethod
+      method Bool valid = outQueue.canDeq;
+      method Flit value = outQueue.dataOut;
+    endinterface
+  endinterface
+
+endmodule
+
+`endif
 
 endpackage

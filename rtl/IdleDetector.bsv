@@ -188,6 +188,7 @@ module mkIdleDetector (IdleDetector);
     outFlit.isIdleToken = True;
     outFlit.dest =
       NetAddr {
+        acc: False,
         host: option(True, 0),
         board: BoardId { y: 0, x: 0 },
         core: 0,
@@ -486,6 +487,7 @@ module mkIdleDetectMaster (IdleDetectMaster);
     Flit flit;
     flit.dest =
       NetAddr {
+        acc: False,
         host: option(False, 0),
         board: BoardId { y: boardY, x: boardX },
         core: 0,
