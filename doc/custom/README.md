@@ -22,12 +22,12 @@ module ExternalTinselAccelerator
   , input wire [`TinselMeshYBits-1:0] board_y
 
     // Stream of flits coming in
-  , input Flit in_data
+  , input wire [$bits(Flit)-1:0] in_data
   , input wire in_valid
   , output wire in_ready
 
     // Stream of flits going out
-  , output Flit out_data
+  , output wire [$bits(Flit)-1:0] out_data
   , output wire out_valid
   , input wire out_ready
   );

@@ -1122,7 +1122,7 @@ module mkMailboxAcc#(BoardId boardId, Integer tileX, Integer tileY) (Mailbox);
     toMailbox.out, mbox.net.flitIn);
 
   // To accelerator
-  rule connectToAcc (inPort.canGet && inPort.value.dest.acc);
+  rule connectToAcc (inPort.canGet && inPort.value.dest.acc && acc.canPut);
     acc.put(inPort.value);
     inPort.get;
   endrule
