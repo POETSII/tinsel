@@ -1,3 +1,5 @@
+`include "config.v"
+
 // Example accelerator which consumes a flit, and then sends it to the
 // address specified in the first word of the flit's payload.
 
@@ -13,7 +15,7 @@ typedef struct packed {
   logic [`TinselLogThreadsPerCore-1:0] threadId;
 } NetAddr;
 
-typedef struct {
+typedef struct packed {
   // Destination address
   NetAddr dest;
   // Payload
@@ -46,18 +48,18 @@ module ExternalTinselAccelerator
   );
 
   // Compile-time NoC coordinates of this accelerator
-  parameter TILE_X;
-  parameter TILE_Y;
+  parameter TILE_X = 0;
+  parameter TILE_Y = 0;
 
   // Input flit queue
   reg inQueueFull = 0;
-  reg Flit inQueueData;
+  Flit inQueueData;
 
   assign in_ready = !inQueueFull;
 
   // Output flit queue
   reg outQueueFull = 0;
-  reg Flit outQueueData;
+  Flit outQueueData;
 
   assign out_valid = outQueueFull;
 
@@ -79,7 +81,7 @@ module ExternalTinselAccelerator
       if (inQueueFull && !outQueueFull) begin
         outQueueFull <= 1;
         outQueueData <= '{
-            dest: inQueueData.payload[31:0]
+            dest: inQueueData.payload[$bits(NetAddr)-1:0]
           , payload: inQueueData.payload
           , notFinalFlit: 0
           , isIdleToken: 0
