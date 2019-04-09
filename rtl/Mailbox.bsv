@@ -1064,7 +1064,7 @@ import "BVI" ExternalTinselAccelerator =
            BoardId boardId, Integer tileX, Integer tileY) (TinselAccelerator);
 
     parameter TILE_X = tileX;
-    parameter TILY_Y = tileY;
+    parameter TILE_Y = tileY;
 
     method put(in_data) enable (in_valid);
     method in_ready canPut;
