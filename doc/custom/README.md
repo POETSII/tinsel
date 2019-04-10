@@ -168,7 +168,7 @@ into your home directory on Zitura.  Then, on Zitura:
 /local/tinsel/bin/fpga-power.sh off    # Turn worker FPGA off
 ```
 
-Users of Zitura are expected to coordinate with each another when
+Users of Zitura are expected to coordinate with one another when
 doing a reflash.  For example, announcing that you are doing a reflash
 on the POETS slack group (channel `#zitura`) would help avoid clashes
 and confusion.
