@@ -79,7 +79,7 @@ typedef struct packed {
   logic [`TinselMeshYBits-1:0] boardY;
   logic [`TinselMeshXBits-1:0] boardX;
   logic [`TinselMailboxMeshYBits-1:0] tileY;
-  logic [`TinselMailboxMeshYBits-1:0] tileX;
+  logic [`TinselMailboxMeshXBits-1:0] tileX;
   logic [`TinselLogCoresPerMailbox-1:0] coreId;
   logic [`TinselLogThreadsPerCore-1:0] threadId;
 } NetAddr;
