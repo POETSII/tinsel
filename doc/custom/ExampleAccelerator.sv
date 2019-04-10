@@ -65,7 +65,7 @@ module ExternalTinselAccelerator
 
   // State machine
   always @(negedge clk) begin
-    if (rst_n == 1) begin
+    if (rst_n == 0) begin
       inQueueFull <= 0;
       outQueueFull <= 0;
     end else begin
