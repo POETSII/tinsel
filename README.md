@@ -174,6 +174,9 @@ and a data cache.
  
 <img align="center" src="doc/figures/tile.png">
 
+Note that there is also experimental support for [custom
+accelerators](doc/custom) in tiles.
+
 #### Tinsel FPGA
 
 Each FPGA contains two *Tinsel Slices*, with each slice comprising
@@ -182,9 +185,6 @@ All tiles are connected together via a routers to form a 2D NoC.  At
 the edges of the NoC are the inter-FPGA links.
 
 <img align="center" src="doc/figures/fpga.png">
-
-Note that there is also experimental support for [custom
-accelerators](doc/custom) in tiles.
 
 #### FPGA Triplet
 
