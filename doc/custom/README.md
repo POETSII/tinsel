@@ -186,5 +186,8 @@ make
 You should see the following output:
 
 ```
-
+Booting
+Starting
+Waiting for message from accelerator
+Got it: 8000
 ```
