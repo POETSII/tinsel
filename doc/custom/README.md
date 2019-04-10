@@ -83,6 +83,17 @@ typedef struct packed {
 } NetAddr;
 ```
 
+## Tinsel API extensions
+
+The following Tinsel API function is provided for obtaining the
+address of a specified custom accelerator.
+
+```c++
+inline uint32_t tinselAccId(
+         uint32_t boardX, uint32_t boardY,
+           uint32_t tileX, uint32_t tileY);
+```
+
 ## Full example
 
 **Step 1**.  Modify `config.py` to your requirements.  For example,

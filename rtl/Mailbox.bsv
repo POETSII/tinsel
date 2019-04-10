@@ -1157,11 +1157,7 @@ module mkMailboxAcc#(BoardId boardId, Integer tileX, Integer tileY) (Mailbox);
   // Overall output
   Out#(Flit) out <- mkFlitMerger(mboxOut, accOutPort.out);
   Queue1#(Flit) outQueue <- mkUGShiftQueue1(QueueOptFmax);
-
-  rule fillOutQueue (outQueue.notFull);
-    out.tryGet;
-    if (out.valid) outQueue.enq(out.value);
-  endrule
+  connectToQueue(out, outQueue);
 
   interface In   spadReqIn   = mbox.spadReqIn;
   interface BOut spadRespOut = mbox.spadRespOut;
