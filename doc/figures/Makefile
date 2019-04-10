@@ -1,4 +1,4 @@
-all: tile.png fpga.png triplet.png box.png
+all: tile.png fpga.png triplet.png box.png custom.png
 
 %.png: %.tex
 	pdflatex -shell-escape $<

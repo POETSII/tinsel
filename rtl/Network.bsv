@@ -21,6 +21,7 @@ import Mac          :: *;
 import Socket       :: *;
 import Util         :: *;
 import IdleDetector :: *;
+import FlitMerger   :: *;
 
 // =============================================================================
 // Mesh Router
@@ -441,53 +442,6 @@ module mkMailboxMesh#(
   interface east = Vector::map(getMac, eastLink);
   interface west = Vector::map(getMac, westLink);
 `endif
-
-endmodule
-
-// =============================================================================
-// Flit merger
-// =============================================================================
-
-// Fair merge two flit ports
-module mkFlitMerger#(Out#(Flit) left, Out#(Flit) right) (Out#(Flit));
-
-  // Ports
-  InPort#(Flit) leftIn <- mkInPort;
-  InPort#(Flit) rightIn <- mkInPort;
-  OutPort#(Flit) outPort <- mkOutPort;
-
-  connectUsing(mkUGShiftQueue1(QueueOptFmax), left, leftIn.in);
-  connectUsing(mkUGShiftQueue1(QueueOptFmax), right, rightIn.in);
-
-  // State
-  Reg#(Bool) prevChoiceWasLeft <- mkReg(False);
-  Reg#(RouteLock) lock <- mkReg(Unlocked);
-
-  // Rules
-  rule merge (outPort.canPut);
-    Bool chooseRight = 
-      lock == FromRight ||
-        (lock == Unlocked &&
-           rightIn.canGet &&
-             (!leftIn.canGet || prevChoiceWasLeft));
-    // Consume input
-    if (chooseRight) begin
-      if (rightIn.canGet) begin
-        rightIn.get;
-        outPort.put(rightIn.value);
-        lock <= rightIn.value.notFinalFlit ? FromRight : Unlocked;
-        prevChoiceWasLeft <= False;
-      end
-    end else if (leftIn.canGet) begin
-      leftIn.get;
-      outPort.put(leftIn.value);
-      lock <= leftIn.value.notFinalFlit ? FromLeft : Unlocked;
-      prevChoiceWasLeft <= True;
-    end
-  endrule
-
-  // Interface
-  return outPort.out;
 
 endmodule
 
