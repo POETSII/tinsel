@@ -191,3 +191,9 @@ Starting
 Waiting for message from accelerator
 Got it: 8000
 ```
+
+## Future plans
+
+Currently, custom accelerators break the idle-detection feature.  If
+you would like me to fix this, please ask, as is should be fairly
+straightforward to do.
