@@ -62,6 +62,7 @@ module ExternalTinselAccelerator
   Flit outQueueData;
 
   assign out_valid = outQueueFull;
+  assign out_data = outQueueData;
 
   // State machine
   always @(negedge clk) begin
