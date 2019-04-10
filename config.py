@@ -165,7 +165,7 @@ p["BoxMesh"] = ('{'
   '}')
 
 # Enable custom accelerators (experimental feature)
-p["UseCustomAccelerator"] = True
+p["UseCustomAccelerator"] = False
 
 #==============================================================================
 # Derived Parameters
