@@ -60,11 +60,14 @@
 
   \node[draw=red!50, fill=red!50] (custom) at (12,7) {\scriptsize{custom}\\[-1mm]\scriptsize{accelerator}};
 
-  \node[text=black,fill=none] (noc) at (12,4)
+  \coordinate[] (junc) at (12,4.3) {};
+
+  \node[text=black,fill=none] (noc) at (15,4)
     {\footnotesize{NoC}\\[-1mm]
      \footnotesize{router}};
 
-  \draw[arrows=<->,>=stealth] (custom) to (noc);
+  \draw[arrows=<-,>=stealth] (custom) to (junc);
+  \draw[arrows=->,>=stealth] (junc) to ([yshift=3mm]noc.west);
 
   \draw[arrows=<->,>=stealth] (mbox) to (noc);
 
