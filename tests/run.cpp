@@ -35,9 +35,9 @@ int runOne(HostLink* hostLink, const char* test)
   hostLink->goOne(0, 0, 0);
 
   // Get test result
-  uint32_t coreId, threadId;
+  uint32_t coreId, threadId, boardX, boardY;
   uint8_t byte;
-  hostLink->mesh[0][0]->get(&coreId, &threadId, &byte);
+  hostLink->debugLink->get(&boardX, &boardY, &coreId, &threadId, &byte);
 
   return byte;
 }

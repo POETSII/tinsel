@@ -146,7 +146,7 @@ module de5Top (DE5Top);
       Vector::replicate(newVector());
   for (Integer y = 0; y < `MailboxMeshYLen; y=y+1)
     for (Integer x = 0; x < `MailboxMeshXLen; x=x+1)
-      mailboxes[y][x] <- mkMailbox;
+      mailboxes[y][x] <- mkMailboxAcc(debugLink.getBoardId(), x, y);
 
   // Connect cores to mailboxes
   for (Integer y = 0; y < `MailboxMeshYLen; y=y+1)

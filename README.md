@@ -1362,6 +1362,17 @@ inline uint32_t tinselCPUIdleCountU();
 // Read cycle counter (upper 8 bits)
 inline uint32_t tinselCycleCountU();
 
+// Address construction
+inline uint32_t tinselToAddr(
+         uint32_t boardX, uint32_t boardY,
+           uint32_t tileX, uint32_t tileY,
+             uint32_t coreId, uint32_t threadId);
+
+// Address deconstruction
+inline void tinselFromAddr(uint32_t addr,
+         uint32_t* boardX, uint32_t* boardY,
+           uint32_t* tileX, uint32_t* tileY,
+             uint32_t* coreId, uint32_t* threadId);
 ```
 
 ## G. HostLink API

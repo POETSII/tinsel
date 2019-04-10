@@ -164,6 +164,9 @@ p["BoxMesh"] = ('{'
     '{"eliot"}'
   '}')
 
+# Enable custom accelerators (experimental feature)
+p["UseCustomAccelerator"] = False
+
 #==============================================================================
 # Derived Parameters
 #==============================================================================
@@ -227,6 +230,9 @@ p["WordsPerFlit"] = 2**p["LogWordsPerFlit"]
 
 # Bytes per flit
 p["LogBytesPerFlit"] = p["LogWordsPerFlit"] + 2
+
+# Bits per flit
+p["BitsPerFlit"] = p["WordsPerFlit"] * 32
 
 # Words per message
 p["LogWordsPerMsg"] = p["LogWordsPerFlit"] + p["LogMaxFlitsPerMsg"]
@@ -347,7 +353,7 @@ p["BoardsPerBox"] = p["MeshXLenWithinBox"] * p["MeshYLenWithinBox"] + 1
 if len(sys.argv) > 1:
   mode = sys.argv[1]
 else:
-  print "Usage: config.py <defs|envs|cpp>"
+  print "Usage: config.py <defs|envs|cpp|vpp>"
   sys.exit(-1)
 
 if mode == "defs":
@@ -362,3 +368,6 @@ elif mode == "envs":
 elif mode == "cpp":
   for var in p:
     print("#define Tinsel" + var + " " + str(p[var]))
+elif mode == "vpp":
+  for var in p:
+    print("`define Tinsel" + var + " " + str(p[var]))
