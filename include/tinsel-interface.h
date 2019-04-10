@@ -117,4 +117,59 @@ INLINE uint32_t tinselCPUIdleCountU();
 // Read cycle counter (upper 8 bits)
 INLINE uint32_t tinselCycleCountU();
 
+// Address construction
+INLINE uint32_t tinselToAddr(
+         uint32_t boardX, uint32_t boardY,
+           uint32_t tileX, uint32_t tileY,
+             uint32_t coreId, uint32_t threadId)
+{
+  uint32_t addr;
+  addr = boardY;
+  addr = (addr << TinselMeshXBits) | boardX;
+  addr = (addr << TinselMailboxMeshYBits) | tileY;
+  addr = (addr << TinselMailboxMeshXBits) | tileX;
+  addr = (addr << TinselLogCoresPerMailbox) | coreId;
+  addr = (addr << TinselLogThreadsPerCore) | threadId;
+  return addr;
+}
+
+// Address deconstruction
+INLINE void tinselFromAddr(uint32_t addr,
+         uint32_t* boardX, uint32_t* boardY,
+           uint32_t* tileX, uint32_t* tileY,
+             uint32_t* coreId, uint32_t* threadId)
+{
+  *threadId = addr & ((1 << TinselLogThreadsPerCore) - 1);
+  addr >>= TinselLogThreadsPerCore;
+
+  *coreId = addr & ((1 << TinselLogCoresPerMailbox) - 1);
+  addr >>= TinselLogCoresPerMailbox;
+
+  *tileX = addr & ((1 << TinselMailboxMeshXBits) - 1);
+  addr >>= TinselMailboxMeshXBits;
+
+  *tileY = addr & ((1 << TinselMailboxMeshYBits) - 1);
+  addr >>= TinselMailboxMeshYBits;
+
+  *tileX = addr & ((1 << TinselMeshXBits) - 1);
+  addr >>= TinselMeshXBits;
+
+  *tileY = addr & ((1 << TinselMeshYBits) - 1);
+}
+
+// Get address of specified custom accelerator
+INLINE uint32_t tinselAccId(
+         uint32_t boardX, uint32_t boardY,
+           uint32_t tileX, uint32_t tileY)
+{
+  uint32_t addr;
+  addr = 0x4;
+  addr = (addr << TinselMeshYBits) | boardY;
+  addr = (addr << TinselMeshXBits) | boardX;
+  addr = (addr << TinselMailboxMeshYBits) | tileY;
+  addr = (addr << TinselMailboxMeshXBits) | tileX;
+  addr = addr << (TinselLogCoresPerMailbox+TinselLogThreadsPerCore);
+  return addr;
+}
+
 #endif

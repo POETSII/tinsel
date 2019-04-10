@@ -174,6 +174,19 @@ module connectUsing#(
   endrule
 endmodule
 
+// Connect an Out interface to queue.
+module connectToQueue#(Out#(t) out, SizedQueue#(n, t) q) (Empty)
+  provisos (Bits#(t, twidth));
+
+  rule connection1a;
+    if (q.notFull) out.tryGet;
+  endrule
+
+  rule connection1b;
+    if (out.valid) q.enq(out.value);
+  endrule
+endmodule
+
 // =============================================================================
 // Helper functions on In and Out interfaces
 // =============================================================================
