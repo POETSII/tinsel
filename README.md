@@ -183,6 +183,9 @@ the edges of the NoC are the inter-FPGA links.
 
 <img align="center" src="doc/figures/fpga.png">
 
+Note that there is also experimental support for [custom
+accelerators](doc/custom) in tiles.
+
 #### FPGA Triplet
 
 An FPGA triplet consists of three worker FPGAs connected in a ring via
