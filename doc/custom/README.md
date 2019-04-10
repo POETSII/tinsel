@@ -2,9 +2,11 @@
 
 Tinsel supports external custom accelerators written in Verilog or
 SystemVerilog when the `UseCustomAccelerators` configuration option is
-set.  With this option, each mailbox in the standard Tinsel design
-becomes a *mailbox plus accelerator*, with the mailbox and accelerator
-sharing the connections to the mesh router.
+set.  With this option, each tile in the Tinsel overlay
+now includes a custom accelerator.  The mailbox and the custom
+accelerator share connections to the NoC router.
+
+<img align="center" src="custom.png">
 
 ## Custom accelerator interface
 
@@ -42,7 +44,7 @@ endmodule
 ```
 
 Note the use of Verilog macros such as `TinselMeshXBits` and
-`TinselMeshXBits`.  These can be generated automatically by running
+`TinselMeshYBits`.  These can be generated automatically by running
 [config.py](https://github.com/POETSII/tinsel/blob/master/config.py)
 with the `vpp` option (which stands for Verilog pre-processor).
 
@@ -86,7 +88,7 @@ typedef struct packed {
 ## Tinsel API extensions
 
 The following Tinsel API function is provided for obtaining the
-address of a specified custom accelerator.
+address of a specified custom accelerator from software land.
 
 ```c++
 inline uint32_t tinselAccId(
@@ -94,13 +96,13 @@ inline uint32_t tinselAccId(
            uint32_t tileX, uint32_t tileY);
 ```
 
-## Full example
+## Full walkthrough
 
 **Step 1**.  Modify `config.py` to your requirements.  For example,
 if we want a 2x2 mesh of tiles, i.e. 4 Tinsel tiles and 4
 accelerators, then we would choose the following parameters.
 
-```
+```py
 # Number of bits in mailbox mesh X coord
 p["MailboxMeshXBits"] = 1
  
@@ -117,7 +119,7 @@ p["UseCustomAccelerator"] = True
 If your planning to run Tinsel on a single-board machine, such as
 `zitura`, then make sure to specify this too:
 
-```
+```py
 # Mesh X length within a box
 p["MeshXLenWithinBox"] = 1
  
@@ -127,8 +129,8 @@ p["MeshYLenWithinBox"] = 1
 
 **Step 2**. We've knocked up a sample accelerator for testing
 purposes: [ExampleAccelerator.sv](ExampleAccelerator.sv).  This
-accelerator repeatedly receives a flit and sends it to the address
-specified in the first word of the flit's payload.
+accelerator receives any flit and sends it to the address specified in
+the first word of the flit's payload.
 
 **Step 3**. Update `de5/Golden_top.qsf` to specify location of the
 custom accelerator.  For example, add the line
@@ -140,8 +142,8 @@ set_global_assignment -name SYSTEMVERILOG_FILE ../doc/custom/ExampleAccelerator.
 to use the sample accelerator.
 
 **Step 4**. Use the `config.py` script to generate Verilog macros
-containin all the Tinsel parameters.  Make sure the generated file is
-in the same directory as your accelerator.
+containing all the Tinsel parameters.  Make sure the generated file is
+in the same directory as any file that includes it.
 
 ```
 python config.py vpp > config.v
