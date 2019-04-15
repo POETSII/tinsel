@@ -79,3 +79,4 @@ clean:
 	rm -rf test-mem-log
 	rm -rf test-mailbox-log
 	rm -rf test-array-of-queue-log
+	rm -f vpi_wrapper_getBoardId.c
