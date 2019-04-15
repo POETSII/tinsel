@@ -2268,7 +2268,6 @@ set_global_assignment -name VERILOG_FILE ../rtl/AlteraBlockRam.v
 set_global_assignment -name QIP_FILE S5_DDR3_QSYS/synthesis/S5_DDR3_QSYS.qip
 set_global_assignment -name SDC_FILE Golden_top.sdc
 set_global_assignment -name VERILOG_FILE Golden_top.v
-set_global_assignment -name SYSTEMVERILOG_FILE ../doc/custom/ExampleAccelerator.sv
 set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
 
 set_instance_assignment -name INPUT_TERMINATION "PARALLEL 50 OHM WITH CALIBRATION" -to QDRIIA_CQ_p -tag __S5_DDR3_QSYS_qdr_a_p0
