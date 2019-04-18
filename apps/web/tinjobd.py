@@ -91,7 +91,7 @@ while 1:
       f = open(str(jobId) + ".c", "w")
       f.write(job[jobId])
       f.close()
-      runProc = subprocess.Popen("make APP=" + str(jobId),
+      runProc = subprocess.Popen("timeout 20s make APP=" + str(jobId),
                   shell=True)
       state = runState
     elif state == runState and runProc.poll() is not None:
