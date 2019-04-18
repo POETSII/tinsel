@@ -151,10 +151,10 @@ INLINE void tinselFromAddr(uint32_t addr,
   *tileY = addr & ((1 << TinselMailboxMeshYBits) - 1);
   addr >>= TinselMailboxMeshYBits;
 
-  *tileX = addr & ((1 << TinselMeshXBits) - 1);
+  *boardX = addr & ((1 << TinselMeshXBits) - 1);
   addr >>= TinselMeshXBits;
 
-  *tileY = addr & ((1 << TinselMeshYBits) - 1);
+  *boardY = addr & ((1 << TinselMeshYBits) - 1);
 }
 
 // Get address of specified custom accelerator

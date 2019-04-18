@@ -27,6 +27,7 @@ clean:
 	make -C apps/linktest clean
 	make -C apps/multiprog clean
 	make -C apps/sync clean
+	make -C apps/web clean
 	make -C apps/exchange clean
 	make -C apps/POLite/heat-gals clean
 	make -C apps/POLite/heat-sync clean
