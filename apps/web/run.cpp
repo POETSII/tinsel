@@ -4,6 +4,7 @@
 #include <assert.h>
 #include <sys/time.h>
 #include <HostLink.h>
+#include "boxes.h"
 
 // Magnification factor when displaying heat map
 const int MAG = 4;
@@ -79,7 +80,7 @@ int heat[] = {
 
 int main()
 {
-  HostLink hostLink;
+  HostLink hostLink(USE_BOXES_X,USE_BOXES_Y);
 
   // Load application
   hostLink.boot("code.v", "data.v");
@@ -88,8 +89,8 @@ int main()
   hostLink.go();
 
   // 2D grid
-  int NX = 96;
-  int NY = 64;
+  int NX = USE_BOXES_X*96;
+  int NY = USE_BOXES_Y*64;
   int grid[NY][NX];
 
   // Initialise 2D grid
