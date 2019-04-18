@@ -2,6 +2,7 @@
 #define _GRID_H_
 
 #include <tinsel.h>
+#include "boxes.h"
 
 // Direction
 typedef enum {N, S, E, W} Dir;
@@ -74,7 +75,7 @@ INLINE int south()
   int me = tinselId();
   int x  = getX(me);
   int y  = getY(me);
-  return y == 63 ? -1 : fromXY(x, y+1);
+  return y == (64*USE_BOXES_Y)-1 ? -1 : fromXY(x, y+1);
 }
 
 // East neighbour
@@ -83,7 +84,7 @@ INLINE int east()
   int me = tinselId();
   int x  = getX(me);
   int y  = getY(me);
-  return x == 95 ? -1 : fromXY(x+1, y);
+  return x == (96*USE_BOXES_X)-1 ? -1 : fromXY(x+1, y);
 }
 
 // West neighbour
