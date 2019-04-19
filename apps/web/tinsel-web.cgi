@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
 import cgi
 import cgitb
@@ -33,7 +33,7 @@ def receive(sock, n):
 def autoResubmit(jobId, time, count):
   dots = "." * (3*count)
   print ("<p><b>Please wait" + dots + "</b></p>")
-  print "<p>(Its takes 60s to program the FPGA)</p>"
+  print "<p>(It takes about 10s to power-up the FPGAs)</p>"
   print ('<input type="hidden" name="resubmitCount" value="' +
             str(count+1) + '">')
   print ('<input type="hidden" name="inprogress" value="' + str(jobId) + '">')
@@ -47,16 +47,16 @@ form = cgi.FieldStorage()
 # Override example from form
 example = "simple"
 if "example" in form:
-  validExamples = ["simple", "border", "stripes", "mandelbrot", "heat"]
+  validExamples = ["simple", "border", "mandelbrot", "chain", "heat"]
   if form.getvalue("example") in validExamples:
     example = form.getvalue("example")
 
 print """
 <html>
-<head><title>Tinsel Web</title></head>
+<head><title>POETS Web</title></head>
 <body>
 
-<h1>Tinsel Web</h1>
+<h1>POETS Web</h1>
 
 <form id="myForm" method="post">
 """
@@ -146,8 +146,8 @@ def exampleOption(val, text):
 
 exampleOption("simple"     , "Simple")
 exampleOption("border"     , "Border")
-exampleOption("stripes"    , "Stripes")
 exampleOption("mandelbrot" , "Mandelbrot")
+exampleOption("chain"      , "Chain")
 exampleOption("heat"       , "Heat Diffusion")
 
 print """

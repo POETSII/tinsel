@@ -16,6 +16,9 @@ INLINE Dir opposite(Dir d)
   return E;
 }
 
+INLINE int getWidth() { return 96 * USE_BOXES_X; }
+INLINE int getHeight() { return 64 * USE_BOXES_Y; }
+
 // Get X coord of thread in grid
 INLINE int getX(int addr)
 {
