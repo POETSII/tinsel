@@ -49,8 +49,6 @@ int main(int argc, char* argv[])
 
   int sock1 = -1;
   int sock2 = -1;
-  int in    = -1;
-  int out   = -1;
 
   if (argc < 3) usage();
 

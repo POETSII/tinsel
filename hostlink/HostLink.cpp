@@ -493,7 +493,7 @@ void HostLink::store(uint32_t meshX, uint32_t meshY,
     uint32_t sendWords = numWords > 15 ? 15 : numWords;
     numWords = numWords - sendWords;
     req.numArgs = sendWords;
-    for (int i = 0; i < sendWords; i++) req.args[i] = data[i];
+    for (uint32_t i = 0; i < sendWords; i++) req.args[i] = data[i];
     uint32_t numFlits = 1 + (sendWords >> 2);
     send(toAddr(meshX, meshY, coreId, 0), numFlits, &req);
   }

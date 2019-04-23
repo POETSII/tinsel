@@ -29,7 +29,7 @@ bool socketAlive(int conn)
 bool socketCanGet(int conn)
 {
   struct pollfd fd; fd.fd = conn; fd.events = POLLIN;
-  int ret = poll(&fd, 1, 0);
+  poll(&fd, 1, 0);
   return (fd.revents & POLLIN);
 }
 
@@ -37,7 +37,7 @@ bool socketCanGet(int conn)
 bool socketCanPut(int conn)
 {
   struct pollfd fd; fd.fd = conn; fd.events = POLLOUT;
-  int ret = poll(&fd, 1, 0);
+  poll(&fd, 1, 0);
   return (fd.revents & POLLOUT);
 }
 
