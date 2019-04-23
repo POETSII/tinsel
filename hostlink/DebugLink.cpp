@@ -75,7 +75,7 @@ DebugLink::DebugLink(uint32_t numBoxesX, uint32_t numBoxesY)
   hostname[sizeof(hostname)-1] = '\0';
 
   // Preprocess hostname (make lower case, drop domain name)
-  for (int i = 0; i < strlen(hostname); i++) {
+  for (unsigned i = 0; i < strlen(hostname); i++) {
     if (hostname[i] == '.') {
       hostname[i] = '\0';
       break;

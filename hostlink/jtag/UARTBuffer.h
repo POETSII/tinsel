@@ -28,7 +28,7 @@ struct UARTBuffer {
       progress = false;
       // Queue -> UART
       if (out->size > 0) {
-        int bytes = out->size < sizeof(buffer) ? out->size : sizeof(buffer);
+        int bytes = (unsigned)out->size < sizeof(buffer) ? out->size : sizeof(buffer);
         for (int i = 0; i < bytes; i++) buffer[i] = out->index(i);
         int n = uart->write((char*) buffer, bytes);
         if (n > 0) {
@@ -37,7 +37,7 @@ struct UARTBuffer {
         }
       }
       // UART -> QUEUE
-      if (in->space() > sizeof(buffer)) {
+      if ((unsigned)in->space() > sizeof(buffer)) {
         int n = uart->read((char*) buffer, sizeof(buffer));
         for (int i = 0; i < n; i++) in->enq(buffer[i]);
         if (n > 0) progress = true;
