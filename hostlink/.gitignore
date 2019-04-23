@@ -1,0 +1,6 @@
+*.o
+boardctrld
+pciestreamd
+sim/
+udsock
+
