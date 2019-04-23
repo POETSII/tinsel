@@ -6,7 +6,7 @@ ifndef QUARTUS_ROOTDIR
 endif
 
 # Local compiler flags
-CPPFLAGS = -I$(INC) -O2
+CPPFLAGS = -I$(INC) -O2 -Wall
 
 # HostLink directory
 HL = $(TINSEL_ROOT)/hostlink
@@ -18,24 +18,24 @@ all: DebugLink.o HostLink.o MemFileReader.o jtag/UART.o pciestreamd \
      sim/boardctrld
 
 pciestreamd: pciestreamd.cpp 
-	g++ -I $(HL) -O2 pciestreamd.cpp -o pciestreamd
+	g++ -Wall -I $(HL) -O2 pciestreamd.cpp -o pciestreamd
 
 boardctrld: boardctrld.cpp PowerLink.o JtagAtlantic.h \
             $(INC)/config.h jtag/UART.h Queue.h jtag/UARTBuffer.h \
             jtag/UART.o SocketUtils.o DebugLinkFormat.h BoardCtrl.h
-	g++ -std=c++98 -O2 boardctrld.cpp jtag/UART.o PowerLink.o SocketUtils.o \
-    -I $(INC) -I $(HL) -o boardctrld \
+	g++ -std=c++98 boardctrld.cpp jtag/UART.o PowerLink.o SocketUtils.o \
+	  $(CPPFLAGS) -I $(HL) -o boardctrld \
 	  -ljtag_atlantic -ljtag_client -L $(QUARTUS_ROOTDIR)/linux64/ \
 	  -Wl,-rpath,$(QUARTUS_ROOTDIR)/linux64
 
 sim/boardctrld: boardctrld.cpp sim/PowerLink.o JtagAtlantic.h \
                 $(INC)/config.h jtag/UART.h Queue.h jtag/UARTBuffer.h \
                 sim/UART.o sim/SocketUtils.o DebugLinkFormat.h BoardCtrl.h
-	g++ -DSIMULATE -std=c++98 -O2 boardctrld.cpp sim/UART.o \
-	  PowerLink.o SocketUtils.o -I $(INC) -I $(HL) -o sim/boardctrld
+	g++ -DSIMULATE -std=c++98 boardctrld.cpp sim/UART.o \
+	  PowerLink.o SocketUtils.o $(CPPFLAGS) -I $(HL) -o sim/boardctrld
 
 udsock: udsock.c
-	gcc -O2 udsock.c -o udsock
+	gcc -Wall -O2 udsock.c -o udsock
 
 # HostLink dependencies
 DEPS = $(INC)/config.h $(INC)/boot.h \
