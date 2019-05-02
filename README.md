@@ -94,9 +94,6 @@ demands, but only modest compute requrements.  The main features are:
   * **Custom accelerators**. Groups of Tinsel cores called tiles can
     include custom accelerators written in SystemVerilog.
 
-We first present the POETS hardware on which Tinsel runs, and then the
-Tinsel overlay itself.
-
 ## 2. Hardware
 
 A prototype POETS hardware system is currently under construction and,
