@@ -29,7 +29,7 @@ Released on 8 Jan 2019 and maintained in the
 (Hardware idle-detection.)
 * [v0.6](https://github.com/POETSII/tinsel/releases/tag/v0.6):
 Released on 11 Apr 2019 and maintained in the master branch.
-(Multi-box.)
+(Multi-box cluster.)
 
 ## Contents
 
@@ -55,119 +55,60 @@ Released on 11 Apr 2019 and maintained in the master branch.
 
 ## 1. Overview
 
-Efficient communication and low power consumption are two key goals in
-the construction of scalable computer systems. Potentially, both can
-be achieved using commodity FPGA development boards. These boards
-combine state-of-the-art networking facilities with reconfigurable
-logic which, when customised to a particular application or
-application domain, can offer better performance-per-watt than other
-commodity devices such as CPUs and GPUs.
+On the [POETS Project](https://poets-project.org/about), we are
+looking at ways to support high-level programming of FPGA clusters,
+particularly for problems that involve large numbers of small
+processes communicating by message passing, such as graph algorithms,
+spiking neural networks, and particle simulation.  Our first attempt
+is based around a soft-core overlay architecture called Tinsel.  The
+main features of Tinsel are:
 
-Despite their potential, FPGA-based systems face challenges. Low-level
-hardware description languages and long synthesis times are major
-barriers to productivity for application developers. An attractive
-approach for the [POETS Project](https://poets-project.org/about)
-(distributed vertex-centric computing) is therefore to provide a
-soft-core overlay architecture on top of the FPGA logic that can be
-programmed quickly and easily using standard software languages and
-tools. While this overlay is not customised to a particular POETS
-*application*, it is at least customised to the POETS *application
-domain*.  The aim is to support irregular applications that have heavy
-communication and memory demands, but only modest compute requrements.
+  * **Multithreading**.  A critical aspect of the design
+    is to tolerate latency as cleanly as possible.  This includes the
+    latencies arising from: (1) floating-point on Stratix V FPGAs
+    (tens of cycles); (2) off-chip memories; and (3) sharing of
+    resources between cores (such as caches, mailboxes, and FPUs),
+    allowing the balance between compute, memory, and communication
+    resources to be customised on a per-application basis.
 
-In the remainder of this section we give an overview of our soft-core
-overlay architecture for POETS, called *Tinsel*.
+  * **Caches**.  To keep the programming model simple, we have opted
+    to use data caches to optimise access to off-chip memory rather
+    than DMA. 
 
-### 1.1 Compute Subsystem
+  * **Message-passing**. Although there is a requirement to support a
+    large amount of memory, it is not necessary to provide the
+    illusion of a single shared memory space: message-passing is intended
+    to be the primary communication mechanism.  Tinsel provides custom
+    instructions for sending and receiving messages (up to 512 bits
+    in size) between any two threads in the cluster.
 
-Simulation of the physical world, and large-scale graph analytics, are
-two of the main target application domains for POETS technology, and
-this leads to two important requirements on the POETS hardware:
-floating-point support (for physics calculations) and off-chip
-memories (for storing large graphs). On FPGA, both floating-point
-operations and off-chip memory accesses are known to introduce
-significant latency into the system. A critical aspect of the design
-is therefore to tolerate this latency as cleanly as possible.
+  * **Hardware termination detection**.  This significantly simplifies
+    application development in pure message-passing systems.
+    It automatically detects convergence in asynchronous applications,
+    and can be used to advance time in synchronous ones. 
 
-In response, we have developed a custom multithreaded processor called
-Tinsel -- a 32-bit RISC-V floating-point-enabled processor supporting
-up to 32 threads per core. Multithreading allows the processor to stay
-busy even when some threads are blocked on the result of a latent
-operation.  Multithreading also tolerates the latency of arbitration
-logic, allowing efficient sharing of large components such as FPUs and
-caches between cores.
+  * **Host communication**. Tinsel threads communicate with x86
+    machines distributed throughout the FPGA cluster, for command and
+    control, via PCI Express and USB.
 
-At most one instruction per thread is allowed in the core's pipeline
-at any time, eliminating all control and data hazards.  This leads to
-a small, simple, high-frequency design that is able to execute one
-instruction per cycle provided there are sufficient parallel threads,
-which we expect to be the case for POETS.  Custom instructions are
-provided for sending and receiving messages between threads running on
-the same core or different cores.  
+  * **Custom accelerators**. Groups of Tinsel cores called tiles can
+    include custom accelerators written in SystemVerilog.
 
-### 1.2 Memory Subsystem
-
-Although there is a requirement to support a large amount of memory,
-it is not necessary to provide the illusion of a single shared memory
-space: message-passing is intended to be the primary communication
-mechanism.
-
-To keep the programming model simple, we have opted to use data caches
-to optimise access to off-chip memory rather than DMA.  The Tinsel
-cache can serve requests at full-throughput (one per cycle) and a
-typical RISC workload will access data memory once every four
-instructions, so a cache can usefully be shared by up to four cores.
-Provided that threads typically access all the words of cache line
-before it is evicted, a single DDR3 DRAM can satisfy around 32 cores.
-
-### 1.3 Communication Subsystem
-
-Tinsel provides custom instructions for sending and receiving messages
-(up to 512 bits in size) between any two threads in the system.  One
-of the challenges in supporting such large messages is the amount of
-serialisation/deserialisation required to get a message into/out-of a
-32-bit core.  Our solution is to use a dual-ported memory-mapped
-mailbox with a 32-bit port connected to the core and a much wider port
-connected to the on-chip network.  The mailbox stores both incoming
-and outgoing messages.  A message can be forwarded (received and sent)
-with just two instructions, which is useful to implement efficient
-multicasting in software.  A single mailbox can be shared between
-several cores, reducing the size of the on-chip network needed connect
-the mailboxes together.
-
-We have found that automatic termination detection can significantly
-simplify application development in pure message-passing systems such
-as Tinsel.  Therefore, Tinsel provides an efficient distributed
-termination-detection primitive in hardware which, as well as
-detecting convergence in asynchronous applications, can be used to
-advance time in synchronous ones. 
-
-Fundamental to POETS is the ability to scale the hardware to an
-arbitrary number of cores, and hence we must exploit multiple FPGAs.
-The inter-board serial communication links available on modern FPGAs
-are both numerous and fast but, like all serial links, some errors are
-to be expected.  Therefore, on top of a raw link we place a 10Gbps
-Ethernet MAC, which automatically detects and drops packets containing
-CRC errors.  On top of the MAC we place our own window-based
-reliability layer that retransmits dropped packets.  The use of
-Ethernet allows us to use mostly standard (and free) IP cores for
-inter-board communication.  And since we are using the links
-point-to-point, almost all of the Ethernet packet fields can be used
-for our own purposes, resulting in very little overhead on the wire.
+We will first introduce the POETS hardware on which Tinsel runs, and
+then the Tinsel overlay itself.
 
 ### 2. POETS Hardware
 
 A prototype POETS hardware system is currently under construction and,
 when complete, will consist of at 56 DE5-Net FPGA boards connected in
 a 2D or 3D mesh topology.  Each group of 7 FPGAs will reside in a
-separate *POETs box* (8 boxes in total).  One FPGA in each box will
-serve as a *PCI Express bridge board* that connects a modern PC to the
-remaining FPGA *worker boards*, with the remaining 6 worker boards
-running Tinsel by default.
+separate *POETS box*, and there will be 8 boxes in total.  One FPGA in
+each box will serve as a *PCI Express bridge board* that connects a
+modern PC to the remaining FPGA *worker boards*.
 
 The following diagrams are *illustrative* of a Tinsel system running
 on the POETS cluster.  The system is highly-parameterised, so the
-actual numbers of component parts shown may vary.
+actual numbers of component parts shown will vary.
 
 #### Tinsel Tile
 
