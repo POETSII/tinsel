@@ -34,7 +34,7 @@ Released on 11 Apr 2019 and maintained in the master branch.
 ## Contents
 
 * [1. Overview](#1-tinsel-overview)
-* [2. POETS Hardware](#2-poets-hardware)
+* [2. Hardware](#2-hardware)
 * [3. Tinsel Core](#3-tinsel-core)
 * [4. Tinsel Cache](#4-tinsel-cache)
 * [5. Tinsel Mailbox](#5-tinsel-mailbox)
@@ -97,7 +97,7 @@ demands, but only modest compute requrements.  The main features are:
 We first present the POETS hardware on which Tinsel runs, and then the
 Tinsel overlay itself.
 
-### 2. POETS Hardware
+## 2. Hardware
 
 A prototype POETS hardware system is currently under construction and,
 when complete, will consist of at 56 DE5-Net FPGA boards connected in
