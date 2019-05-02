@@ -66,8 +66,9 @@ demands, but only modest compute requrements.  The main features are:
   * **Multithreading**.  A critical aspect of the design
     is to tolerate latency as cleanly as possible.  This includes the
     latencies arising from: (1) floating-point on Stratix V FPGAs
-    (tens of cycles); (2) off-chip memories; and (3) sharing of
-    resources between cores (such as caches, mailboxes, and FPUs).
+    (tens of cycles); (2) off-chip memories; (3) deep pipelines,
+    keeping the Fmax high; and (3) sharing of resources between cores
+    (such as caches, mailboxes, and FPUs).
     Resource sharing allows the balance between compute, memory,
     and communication to be adjusted on a per-application basis.
 
