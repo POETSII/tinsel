@@ -67,9 +67,9 @@ demands, but only modest compute requrements.  The main features are:
     is to tolerate latency as cleanly as possible.  This includes the
     latencies arising from: (1) floating-point on Stratix V FPGAs
     (tens of cycles); (2) off-chip memories; and (3) sharing of
-    resources between cores (such as caches, mailboxes, and FPUs),
-    allowing the balance between compute, memory, and communication
-    resources to be adjusted on a per-application basis.
+    resources between cores (such as caches, mailboxes, and FPUs).
+    Resource sharing allows the balance between compute, memory,
+    and communication to be adjusted on a per-application basis.
 
   * **Caches**.  To keep the programming model simple, we have opted
     to use data caches to optimise access to off-chip memory rather
@@ -79,8 +79,8 @@ demands, but only modest compute requrements.  The main features are:
     large amount of memory, it is not necessary to provide the
     illusion of a single shared memory space: message-passing is intended
     to be the primary communication mechanism.  Tinsel provides custom
-    instructions for sending and receiving messages (up to 512 bits
-    in size) between any two threads in the cluster.
+    instructions for sending and receiving messages 
+    between any two threads in the cluster.
 
   * **Hardware termination detection**.  This significantly simplifies
     application development in pure message-passing systems.
@@ -94,8 +94,8 @@ demands, but only modest compute requrements.  The main features are:
   * **Custom accelerators**. Groups of Tinsel cores called tiles can
     include custom accelerators written in SystemVerilog.
 
-We will first present the POETS hardware on which Tinsel runs, and
-then the Tinsel overlay itself.
+We first present the POETS hardware on which Tinsel runs, and then the
+Tinsel overlay itself.
 
 ### 2. POETS Hardware
 
@@ -104,9 +104,9 @@ when complete, will consist of at 56 DE5-Net FPGA boards connected in
 a 2D or 3D mesh topology.  Each group of 7 FPGAs will reside in a
 separate *POETS box*, and there will be 8 boxes in total.  One FPGA in
 each box will serve as a *PCI Express bridge board* that connects a
-modern PC to the remaining FPGA *worker boards*.
+modern PC to the remaining six FPGA *worker boards*.
 
-The following diagrams are *illustrative* of a Tinsel system running
+The following diagrams are illustrative of a Tinsel system running
 on the POETS cluster.  The system is highly-parameterised, so the
 actual numbers of component parts shown will vary.
 
