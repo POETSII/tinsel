@@ -56,12 +56,12 @@ Released on 11 Apr 2019 and maintained in the master branch.
 ## 1. Overview
 
 On the [POETS Project](https://poets-project.org/about), we are
-looking at ways to support high-level programming of FPGA clusters,
-particularly for problems that involve large numbers of small
-processes communicating by message passing, such as graph algorithms,
-spiking neural networks, and particle simulation.  Our first attempt
-is based around a soft-core overlay architecture called Tinsel.  The
-main features of Tinsel are:
+looking at ways to accelerate applications that can be expressed as
+large numbers of small processes communicating by message-passing.
+Our first attempt is based around a soft-core overlay architecture
+called Tinsel running on an FPGA cluster.  Tinsel aims to support
+irregular applications that have heavy memory and communication
+demands, but only modest compute requrements.  The main features are:
 
   * **Multithreading**.  A critical aspect of the design
     is to tolerate latency as cleanly as possible.  This includes the
@@ -69,7 +69,7 @@ main features of Tinsel are:
     (tens of cycles); (2) off-chip memories; and (3) sharing of
     resources between cores (such as caches, mailboxes, and FPUs),
     allowing the balance between compute, memory, and communication
-    resources to be customised on a per-application basis.
+    resources to be adjusted on a per-application basis.
 
   * **Caches**.  To keep the programming model simple, we have opted
     to use data caches to optimise access to off-chip memory rather
@@ -94,7 +94,7 @@ main features of Tinsel are:
   * **Custom accelerators**. Groups of Tinsel cores called tiles can
     include custom accelerators written in SystemVerilog.
 
-We will first introduce the POETS hardware on which Tinsel runs, and
+We will first present the POETS hardware on which Tinsel runs, and
 then the Tinsel overlay itself.
 
 ### 2. POETS Hardware
