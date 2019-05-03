@@ -65,12 +65,12 @@ demands, but only modest compute requrements.  The main features are:
 
   * **Multithreading**.  A critical aspect of the design
     is to tolerate latency as cleanly as possible.  This includes the
-    latencies arising from: (1) floating-point on Stratix V FPGAs
-    (tens of cycles); (2) off-chip memories; (3) deep pipelines,
-    keeping the Fmax high; and (4) sharing of resources between cores
+    latencies arising from: floating-point on Stratix V FPGAs
+    (tens of cycles); off-chip memories; deep pipelines
+    (keeping Fmax high); and sharing of resources between cores
     (such as caches, mailboxes, and FPUs).
     Resource sharing allows the balance between compute, memory,
-    and communication to be adjusted on a per-application basis.
+    and communication resources to be adjusted on a per-application basis.
 
   * **Caches**.  To keep the programming model simple, we have opted
     to use data caches to optimise access to off-chip memory rather
@@ -115,7 +115,7 @@ and a data cache.
  
 <img align="center" src="doc/figures/tile.png">
 
-Note that there is also experimental support for [custom
+There is also experimental support for [custom
 accelerators](doc/custom) in tiles.
 
 #### Tinsel FPGA
