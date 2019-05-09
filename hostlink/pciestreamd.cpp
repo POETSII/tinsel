@@ -397,10 +397,8 @@ int main(int argc, char* argv[])
   RxState rxState;
 
   for (;;) {
-    // Reset and disable PCIeStream hardware
+    // Disable PCIeStream hardware
     csrs[2*CSR_EN] = 0;
-    while (csrs[2*CSR_INFLIGHT] != 0);
-    csrs[2*CSR_RESET] = 1;
 
     // Accept connection
     int conn = accept(sock, NULL, NULL);

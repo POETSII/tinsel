@@ -231,7 +231,7 @@ DebugLink::DebugLink(uint32_t numBoxesX, uint32_t numBoxesY)
   // Query the bridge board on the master box a second time to
   // enable idle-detection (only now do all the boards know their
   // full coordinates in the mesh).
-  pkt.payload[0] = DEBUGLINK_QUERY_IN;
+  pkt.payload[0] = DEBUGLINK_EN_IDLE;
   pkt.payload[1] = (meshYLen << 4) | meshXLen;
   pkt.linkId = bridge[0][0];
   putPacket(0, 0, &pkt);

@@ -131,6 +131,8 @@ interface PCIeStream;
   // Interface to application logic
   interface In#(Bit#(128)) streamIn;
   interface BOut#(Bit#(128)) streamOut;
+  // Has the stream been enabled by the host?
+  method Bool en;
 endinterface
 
 // =============================================================================
@@ -510,6 +512,7 @@ module mkPCIeStream (PCIeStream);
     method Bool valid = outBuffer.canPeek && outBuffer.canDeq;
     method Bit#(128) value = outBuffer.dataOut;
   endinterface
+  method Bool en = enabled;
 
 endmodule
 
@@ -546,6 +549,7 @@ module mkPCIeStream (PCIeStream);
     method Bool valid = outQueue.canDeq;
     method Bit#(128) value = outQueue.dataOut;
   endinterface
+  method Bool en = True;
 
 endmodule
 
