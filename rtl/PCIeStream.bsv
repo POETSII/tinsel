@@ -455,7 +455,8 @@ module mkPCIeStream (PCIeStream);
           10: begin
                 Bool inflight = pendingReads.value != 0 ||
                                   pendingFlushes.canDeq ||
-                                    burstInProgress;
+                                    burstInProgress ||
+                                      hostReqs.notEmpty;
                 ctrlReadData <= zeroExtend(pack(inflight));
               end
           11: if (write) begin
