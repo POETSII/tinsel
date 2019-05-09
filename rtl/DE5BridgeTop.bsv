@@ -95,16 +95,17 @@ module de5BridgeTop (DE5BridgeTop);
   connectUsing(mkUGShiftQueue1(QueueOptFmax), toJtag.out, uart.jtagIn);
   connectUsing(mkUGShiftQueue1(QueueOptFmax), uart.jtagOut, fromJtag.in);
 
+  // Create PCIeStream instance
+  PCIeStream pcie <- mkPCIeStream;
+
   // Create off-board links
-  BoardLink linkA <- mkBoardLink(True, northSocket[0]);
-  BoardLink linkB <- mkBoardLink(True, southSocket[0]);
+  Reg#(Bool) enableLinks <- mkConfigReg(False);
+  BoardLink linkA <- mkBoardLink(pcie.en, northSocket[0]);
+  BoardLink linkB <- mkBoardLink(pcie.en, southSocket[0]);
 
   // Connect ports to off-board links
   connectUsing(mkUGQueue, toLinkA.out, linkA.flitIn);
   connectUsing(mkUGQueue, toLinkB.out, linkB.flitIn);
-
-  // Create PCIeStream instance
-  PCIeStream pcie <- mkPCIeStream;
 
   // Connect ports to PCIeStream
   connectUsing(mkUGQueue, toPCIe.out, pcie.streamIn);
@@ -116,9 +117,6 @@ module de5BridgeTop (DE5BridgeTop);
   // Connect ports to idle detect master
   connectUsing(mkUGQueue, toDetector.out, detector.flitIn);
   connectUsing(mkUGQueue, detector.flitOut, fromDetector.in);
-
-  // Has board been enumerated over JTAG yet?
-  Reg#(Bool) enumerated <- mkConfigReg(False);
 
   // Is the idle detected enabled
   Reg#(Bool) idleDetectedEnabled <- mkConfigReg(False);
@@ -261,16 +259,17 @@ module de5BridgeTop (DE5BridgeTop);
 
   Reg#(Bit#(8)) boardIdWithinBox <- mkConfigReg(0);
   Reg#(Bit#(3)) uartState <- mkConfigReg(0);
+  Reg#(Bit#(8)) cmd <- mkConfigRegU;
 
   rule uartReceive0 (fromJtag.canGet && uartState == 0);
     fromJtag.get;
     uartState <= 1;
+    cmd <= fromJtag.value;
   endrule
 
   rule uartReceive1 (fromJtag.canGet && uartState == 1);
     fromJtag.get;
-    enumerated <= True;
-    if (enumerated) begin
+    if (cmd != 0) begin
       idleDetectorEnabled <= True;
       Bit#(`MeshXBits) xLen = truncate(fromJtag.value[3:0]);
       Bit#(`MeshYBits) yLen = truncate(fromJtag.value[7:4]);
