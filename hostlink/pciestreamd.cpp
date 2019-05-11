@@ -401,6 +401,7 @@ int main(int argc, char* argv[])
     csrs[2*CSR_EN] = 0;
     while (csrs[2*CSR_INFLIGHT] != 0);
     csrs[2*CSR_RESET] = 1;
+    usleep(500000);
 
     // Accept connection
     int conn = accept(sock, NULL, NULL);
