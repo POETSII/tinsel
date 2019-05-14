@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: BSD-2-Clause
 all: tile.png fpga.png triplet.png box.png custom.png
 
 %.png: %.tex

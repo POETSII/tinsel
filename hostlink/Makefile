@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: BSD-2-Clause
 TINSEL_ROOT = ..
 include $(TINSEL_ROOT)/globals.mk
 
