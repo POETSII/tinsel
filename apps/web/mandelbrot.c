@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BSD-2-Clause
 // Plot the Mandelbrot set
 
 #include <tinsel.h>

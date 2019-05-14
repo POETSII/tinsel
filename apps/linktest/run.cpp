@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BSD-2-Clause
 // Simple non-pipelined connectivity test using boot loader
 // Check that every core can send a message to every other core
 

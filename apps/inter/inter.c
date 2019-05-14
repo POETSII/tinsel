@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BSD-2-Clause
 // Benchmark the inter-FPGA bandwidth
 
 #include <tinsel.h>

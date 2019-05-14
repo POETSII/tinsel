@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BSD-2-Clause
 #include <stdarg.h>
 #include <tinsel.h>
 #include <io.h>

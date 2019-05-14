@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BSD-2-Clause
 #ifndef _BOARD_CTRL_H_
 #define _BOARD_CTRL_H_
 

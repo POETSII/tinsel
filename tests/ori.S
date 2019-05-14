@@ -1,4 +1,4 @@
-# See LICENSE for license details.
+# See LICENSE.testsuite for license details
 
 #*****************************************************************************
 # ori.S

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BSD-2-Clause
 #ifndef _POWER_LINK_H_
 #define _POWER_LINK_H_
 

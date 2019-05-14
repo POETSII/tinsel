@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BSD-2-Clause
 // Create a single off-chip RAM interface allowing access to a DRAM
 // and two SRAMs.
 //

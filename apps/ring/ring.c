@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BSD-2-Clause
 #include <tinsel.h>
 
 #define RING_LENGTH 1024

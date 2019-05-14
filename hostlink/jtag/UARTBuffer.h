@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BSD-2-Clause
 #ifndef _UART_BUFFER_H_
 #define _UART_BUFFER_H_
 
@@ -28,7 +29,8 @@ struct UARTBuffer {
       progress = false;
       // Queue -> UART
       if (out->size > 0) {
-        int bytes = (unsigned)out->size < sizeof(buffer) ? out->size : sizeof(buffer);
+        int bytes = (unsigned)out->size < sizeof(buffer) ?
+                      out->size : sizeof(buffer);
         for (int i = 0; i < bytes; i++) buffer[i] = out->index(i);
         int n = uart->write((char*) buffer, bytes);
         if (n > 0) {

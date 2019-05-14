@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BSD-2-Clause
 // Simulate heat diffusion with a grid of threads.
 
 #include <tinsel.h>

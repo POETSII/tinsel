@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BSD-2-Clause
 #ifndef _TINSEL_INTERFACE_H_
 #define _TINSEL_INTERFACE_H_
 

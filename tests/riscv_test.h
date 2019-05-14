@@ -1,4 +1,4 @@
-// See LICENSE for license details.
+// See LICENSE.testsuite for license details.
 
 #ifndef _ENV_PHYSICAL_SINGLE_CORE_H
 #define _ENV_PHYSICAL_SINGLE_CORE_H

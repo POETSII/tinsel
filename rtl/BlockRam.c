@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BSD-2-Clause
 // Copyright (c) Matthew Naylor
 
 // Routines for simulating mixed-width multi-port block Rams.

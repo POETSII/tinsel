@@ -1,4 +1,5 @@
 #!/usr/bin/python
+# SPDX-License-Identifier: BSD-2-Clause
 
 # Send job to Tinsel Job Daemon
 # =============================

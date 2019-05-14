@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BSD-2-Clause
 // Respond to ping command by incrementing received value by 1
 
 #include <tinsel.h>

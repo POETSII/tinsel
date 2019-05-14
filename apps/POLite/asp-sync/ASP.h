@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BSD-2-Clause
 // Multi-source shortest paths on an unweighted graph
 // Can be used to compute an estimate of the average shortest path
 

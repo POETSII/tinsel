@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BSD-2-Clause
 // Sequence data type
 
 #ifndef _SEQ_H_

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: BSD-2-Clause
+
 # Tinsel root
 TINSEL_ROOT=../../..
 

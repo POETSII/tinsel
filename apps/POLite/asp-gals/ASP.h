@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BSD-2-Clause
 // Compute the average shortest path in a POETS style:
 //   * Every node maintains bit vector of nodes that reach it
 //   * On each time step, the bit vector is transferred to the neighbours

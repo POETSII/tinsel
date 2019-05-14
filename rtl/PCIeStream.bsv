@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BSD-2-Clause
 // Copyright (c) Matthew Naylor
 //
 // This module provides a bidirectional host<->FPGA stream abstraction

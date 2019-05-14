@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BSD-2-Clause
 #ifndef _PLACER_H_
 #define _PLACER_H_
 

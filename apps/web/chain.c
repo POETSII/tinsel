@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BSD-2-Clause
 // Create a chain comprising the grid of threads in raster scan order.
 // Each thread in the chain receives a colour from the previous
 // thread, inverts it, and sends it to the next to produce a series of

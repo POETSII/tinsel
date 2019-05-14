@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BSD-2-Clause
 #ifndef _RANDOM_SET_H_
 #define _RANDOM_SET_H_
 

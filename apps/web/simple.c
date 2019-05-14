@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BSD-2-Clause
 // Each thread in a 2D grid emits its X coordinate
 
 #include <tinsel.h>

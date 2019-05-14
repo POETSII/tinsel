@@ -1,4 +1,5 @@
 #!/bin/bash
+# SPDX-License-Identifier: BSD-2-Clause
 
 VENDOR_ID="04b4"
 PRODUCT_ID="f139"

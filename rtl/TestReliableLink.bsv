@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BSD-2-Clause
 package TestReliableLink;
 
 // This simple loopback test: (1) waits for a character on the JTAG

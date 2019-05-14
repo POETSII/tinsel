@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BSD-2-Clause
 // Simulate heat diffusion on an X_LEN x Y_LEN grid of threads.
 // Each thread handles an 8x8 subgrid of cells.
 

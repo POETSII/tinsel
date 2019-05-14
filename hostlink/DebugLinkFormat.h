@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BSD-2-Clause
 #ifndef _DEBUGLINK_FORMAT_H_
 #define _DEBUGLINK_FORMAT_H_
 

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BSD-2-Clause
 // Wrap an SRAM (narrow data) in a WideSRAM (wide data) interface so
 // that SRAMs can easily be mapped into the address space alongside
 // DRAMs.  Also make sure that loads can't overtake stores (since

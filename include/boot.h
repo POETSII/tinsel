@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BSD-2-Clause
 #ifndef _BOOT_H_
 #define _BOOT_H_
 

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BSD-2-Clause
 // This header file is shared by the tinsel program and the host PC program
 
 #ifndef _HEAT_H_

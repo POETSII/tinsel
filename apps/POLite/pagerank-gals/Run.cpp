@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BSD-2-Clause
 #include "PageRank.h"
 
 #include <HostLink.h>

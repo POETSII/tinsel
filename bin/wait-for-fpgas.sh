@@ -1,4 +1,5 @@
 #!/bin/bash
+# SPDX-License-Identifier: BSD-2-Clause
 
 # Wait until N FPGAs are visible via 'jtagconfig'
 

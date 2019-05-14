@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BSD-2-Clause
 #ifndef _MEMFILEREADER_H_
 #define _MEMFILEREADER_H_
 

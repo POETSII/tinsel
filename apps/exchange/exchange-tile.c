@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BSD-2-Clause
 // Benchmark the inter-tile bandwidth
 // Each tile sends messages to neighbouring tiles
 

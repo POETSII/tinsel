@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BSD-2-Clause
 // This module implements a "bridge board", i.e. an FPGA board that acts
 // as a proxy between a host PC (connected over PCIe) and an FPGA
 // mesh (connected via a 10G link).

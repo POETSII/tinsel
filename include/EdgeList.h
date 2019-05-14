@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BSD-2-Clause
 #ifndef _NETWORK_H_
 #define _NETWORK_H_
 

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BSD-2-Clause
 #ifndef _HOSTLINK_H_
 #define _HOSTLINK_H_
 

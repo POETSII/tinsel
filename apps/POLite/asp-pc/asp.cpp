@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BSD-2-Clause
 #include "RandomSet.h"
 
 #include <stdio.h>

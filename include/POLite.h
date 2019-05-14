@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BSD-2-Clause
 #ifndef _POLITE_H_
 #define _POLITE_H_
 

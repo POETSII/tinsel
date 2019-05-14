@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BSD-2-Clause
 #ifndef _PGRAPH_H_
 #define _PGRAPH_H_
 

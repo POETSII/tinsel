@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BSD-2-Clause
 // This module supports the Tinsel API function
 //
 //   uint32_t tinselIdle(bool vote);

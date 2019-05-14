@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# SPDX-License-Identifier: BSD-2-Clause
 
 import cgi
 import cgitb

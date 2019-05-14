@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: BSD-2-Clause
 all: asp GenHypercube GenTree GenGeoGraph
 
 INC=../../../../include

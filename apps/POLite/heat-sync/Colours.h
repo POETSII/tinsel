@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BSD-2-Clause
 #ifndef _COLOURS_H_
 #define _COLOURS_H_
 

@@ -1,4 +1,5 @@
 #!/usr/bin/awk -f
+# SPDX-License-Identifier: BSD-2-Clause
 
 BEGIN {
   cycleCount = 0;

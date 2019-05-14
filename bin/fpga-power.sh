@@ -1,4 +1,5 @@
 #!/bin/bash
+# SPDX-License-Identifier: BSD-2-Clause
 
 if [ "$1" != "off" -a "$1" != "on" ]; then
   echo "Usage: $0 (on|off)"

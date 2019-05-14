@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BSD-2-Clause
 #ifndef _PDEVICE_H_
 #define _PDEVICE_H_
 

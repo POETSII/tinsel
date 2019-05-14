@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BSD-2-Clause
 package Mac;
 
 // Wrapper for Altera 10G Ethernet MAC.

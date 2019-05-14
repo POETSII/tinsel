@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BSD-2-Clause
 #ifndef _TINSEL_EXTRA_H_
 #define _TINSEL_EXTRA_H_
 

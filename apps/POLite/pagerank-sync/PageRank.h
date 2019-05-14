@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BSD-2-Clause
 #ifndef _PAGERANK_H_
 #define _PAGERANK_H_
 

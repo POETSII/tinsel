@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BSD-2-Clause
 #ifndef _SOCKET_UTILS_H_
 #define _SOCKET_UTILS_H_
 

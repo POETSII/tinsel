@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BSD-2-Clause
 // Memory files in "verilog" format, produced by objcopy, have the
 // following structure:
 //

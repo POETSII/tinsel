@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BSD-2-Clause
 package DCacheTypes;
 
 // Unique identifier per data cache

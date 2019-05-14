@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BSD-2-Clause
 // Command-line utilities for UNIX Domain Sockets
 
 #include <stdio.h>

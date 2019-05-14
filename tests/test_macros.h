@@ -1,4 +1,4 @@
-// See LICENSE for license details.
+// See LICENSE.testsuite for license details.
 
 #ifndef __TEST_MACROS_SCALAR_H
 #define __TEST_MACROS_SCALAR_H

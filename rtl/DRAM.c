@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BSD-2-Clause
 // Copyright (c) Matthew Naylor
 
 // This module provides 4GB of RAM to BlueSim for simulating DRAM.  It

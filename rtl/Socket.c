@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BSD-2-Clause
 // This module gives the BSV simulator access to UNIX domain sockets
 
 #include <stdio.h>

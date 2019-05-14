@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BSD-2-Clause
 package FPUOps;
 
 // This package provides the following FPU operations:

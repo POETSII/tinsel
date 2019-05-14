@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BSD-2-Clause
 #include <stdint.h>
 
 // 256 x RGB colours representing heat intensities

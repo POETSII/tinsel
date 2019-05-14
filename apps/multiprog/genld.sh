@@ -1,4 +1,5 @@
 #!/bin/bash
+# SPDX-License-Identifier: BSD-2-Clause
 
 # Load config parameters
 while read -r EXPORT; do

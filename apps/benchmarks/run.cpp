@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BSD-2-Clause
 #include <HostLink.h>
 #include "benchmarks.h"
 

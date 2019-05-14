@@ -1,4 +1,5 @@
 #!/bin/bash
+# SPDX-License-Identifier: BSD-2-Clause
 
 if [ -z "$CONFIG" ]; then
   echo "Please set CONFIG variable to point to config.py"

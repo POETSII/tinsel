@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BSD-2-Clause
 // Benchmark the inter-FPGA bandwidth
 // Each tile sends messages to neighbouring FPGAs
 

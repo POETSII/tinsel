@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BSD-2-Clause
 #ifndef _HashMin_H_
 #define _HashMin_H_
 

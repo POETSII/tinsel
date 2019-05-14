@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BSD-2-Clause
 #include "SSSP.h"
 
 #include <HostLink.h>

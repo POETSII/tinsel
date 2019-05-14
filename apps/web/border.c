@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BSD-2-Clause
 // Threads on border emit different colour than interior threads
 
 #include <tinsel.h>

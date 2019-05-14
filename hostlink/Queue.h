@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BSD-2-Clause
 // Simple queue implementation (circular buffer)
 
 #ifndef _QUEUE_H_
