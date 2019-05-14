@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: BSD-2-Clause
+
 # Common directories
 INC = $(realpath $(TINSEL_ROOT)/include)
 LIB = $(realpath $(TINSEL_ROOT)/lib)
