@@ -3,7 +3,7 @@
 Tinsel is a [RISC-V](https://riscv.org/)-based manythread
 message-passing architecture designed for FPGA clusters.  It is being
 developed as part of the [POETS
-Project](https://poets-project.org/about) (Partially Ordered Event
+Project](https://poets-project.org/about) (Partial Ordered Event
 Triggered Systems).  This manual describes the Tinsel architecture and
 associated APIs.  If you're a POETS Partner, you can access a
 machine running Tinsel in the
@@ -190,10 +190,13 @@ of photo of our first two-box cluster.
 
 <img align="center" src="doc/figures/twobox.jpg">
 
-The complete 8 box DE5-Net POETS has the following structure, with
-each green box representing a different POETS box.
+The complete 8-box DE5-Net POETS cluster has the following 2D
+structure, although may be generalised to 3D in future.
 
 <img align="center" src="doc/figures/box-mesh.png">
+
+There are also plans to develop a modern version of the cluster using
+Stratix 10 devices.
 
 ## 3. Tinsel Core
 
@@ -553,15 +556,13 @@ which blocks until either
      `tinselIdle()` and there are no undelivered messages in the system.
 
 The function returns zero in the former case and non-zero in the
-latter.  A return value of 1 denotes a non-unanamous vote, i.e. not
-all callers voted true, and a return value > 1 denotes a unanamous
-vote, i.e. all callers voted true.  This feature allows efficient
-termination detection in asynchronous applications and efficient
-barrier synchronisation in synchronous applications.  The voting
-mechanism additionally allows termination to be detected in
-synchronous applications, e.g. all threads in the system are stable
-since the last time step.  For more details, see the original feature
-proposal: [PIP 13](doc/PIP-0013-idle-detection.md).
+latter.  A return value > 1 means that all callers voted true.  This
+feature allows efficient termination detection in asynchronous
+applications and efficient barrier synchronisation in synchronous
+applications.  The voting mechanism additionally allows termination to
+be detected in synchronous applications, e.g. all threads in the
+system are stable since the last time step.  For more details, see the
+original feature proposal: [PIP 13](doc/PIP-0013-idle-detection.md).
 
 A summary of synthesis-time parameters introduced in this section:
 
@@ -1055,17 +1056,14 @@ on different threads; and (4) to invoke the vertex handlers when
 required, to meet the semantics of the POLite library.
 
 **Limitations**. POLite provides several important features of the
-vertex-centric paradigm, but there are some limitations:
-
-1. *Static graphs*.  One of the features of the Pregel
-framework is the ability for vertices to add and remove vertices
-and edges at runtime. %Currently, POLite only supports static graphs.
-
-2. *Flat multicast*.  Multicasting is currently implemented by sending
-directly to each destination one-at-a-time.  For large fan-outs, a
-hierarchical multicast (where messages get forked at intermediate
-stages along the way to the destinations) could reduce communication
-costs.
+vertex-centric paradigm, but there are some limitations: (1) One of
+the features of the Pregel framework is the ability for vertices to
+add and remove vertices and edges at runtime -- but currently, POLite
+only supports static graphs; (2)  Multicasting is currently
+implemented by sending directly to each destination one-at-a-time.
+For large fan-outs, a hierarchical multicast (where messages get
+forked at intermediate stages along the way to the destinations) could
+reduce communication costs.
 
 ## A. DE5-Net Synthesis Report
 
