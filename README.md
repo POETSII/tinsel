@@ -34,7 +34,7 @@ Released on 11 Apr 2019 and maintained in the master branch.
 ## Contents
 
 * [1. Overview](#1-tinsel-overview)
-* [2. Hardware](#2-hardware)
+* [2. High-Level Structure](#2-high-level-structure)
 * [3. Tinsel Core](#3-tinsel-core)
 * [4. Tinsel Cache](#4-tinsel-cache)
 * [5. Tinsel Mailbox](#5-tinsel-mailbox)
@@ -58,7 +58,7 @@ Released on 11 Apr 2019 and maintained in the master branch.
 On the [POETS Project](https://poets-project.org/about), we are
 looking at ways to accelerate applications that can be expressed as
 large numbers of small processes communicating by message-passing.
-Our first attempt is based around a soft-core overlay architecture
+Our first attempt is based around a manythread RISC-V architecture
 called Tinsel running on an FPGA cluster.  Tinsel aims to support
 irregular applications that have heavy memory and communication
 demands, but only modest compute requrements.  The main features are:
@@ -95,14 +95,15 @@ demands, but only modest compute requrements.  The main features are:
   * **Custom accelerators**. Groups of Tinsel cores called tiles can
     include custom accelerators written in SystemVerilog.
 
-## 2. Hardware
+## 2. High-Level Structure
 
-A prototype POETS hardware system is currently under construction and,
-when complete, will consist of at 56 DE5-Net FPGA boards connected in
-a 2D or 3D mesh topology.  Each group of 7 FPGAs will reside in a
-separate *POETS box*, and there will be 8 boxes in total.  One FPGA in
-each box will serve as a *PCI Express bridge board* that connects a
-modern PC to the remaining six FPGA *worker boards*.
+A prototype POETS hardware architecture is under construction,
+consisting of 56 DE5-Net FPGA boards connected in a 2D mesh topology
+(higher dimensions are supported but have not yet been explored).
+Each group of 7 FPGAs resides in a separate *POETS box*, and there are
+8 boxes in total.  One FPGA in each box serves as a *PCI Express
+bridge board* connecting a modern PC to the remaining six FPGA *worker
+boards*.
 
 The following diagrams are illustrative of a Tinsel system running
 on the POETS cluster.  The system is highly-parameterised, so the
@@ -110,8 +111,8 @@ actual numbers of component parts shown will vary.
 
 #### Tinsel Tile
 
-A Tinsel tile consists of four Tinsel cores sharing a mailbox, an FPU,
-and a data cache.
+A Tinsel tile typically consists of four Tinsel cores sharing a
+mailbox, an FPU, and a data cache.
  
 <img align="center" src="doc/figures/tile.png">
 
@@ -120,10 +121,10 @@ accelerators](doc/custom) in tiles.
 
 #### Tinsel FPGA
 
-Each FPGA contains two *Tinsel Slices*, with each slice comprising
-eight tiles connected to one 4GB DDR3 DIMM and two 8MB QDRII+ SRAMs.
-All tiles are connected together via a routers to form a 2D NoC.  At
-the edges of the NoC are the inter-FPGA links.
+Each FPGA contains two *Tinsel Slices*, with each slice typically
+comprising eight tiles connected to one 4GB DDR3 DIMM and two 8MB
+QDRII+ SRAMs.  All tiles are connected together via a routers to form
+a 2D NoC.  At the edges of the NoC are the inter-FPGA links.
 
 <img align="center" src="doc/figures/fpga.png">
 
@@ -140,30 +141,12 @@ serial link.
 
 #### Power module
 
-Low-cost FPGA evaluation boards are typically designed for desktop
-usage, but our cluster will reside in a server room, introducing a
-number of remote management requirements that the DE5-Net doesn't
-cater for:
-
-1. *Fan monitoring*.  In a large cluster, fan failure will be
-fairly common, causing FPGAs to overheat and become unusable.  The DE5
-is not able to monitor its own fan, so failure detection and shutdown
-must be done externally.
-
-2. *Power measurement*.  One of the main attractions of FPGAs
-in the datacentre is superior performance-per-watt compared to
-conventional servers.  The ability to remotely measure
-DE5 power consumption is therefore important for development purposes.
-
-3. *Power switching*.  Reprogramming FPGAs over USB is slow,
-and often unnecessary when an overlay is stored in flash memory.  The
-ability to remotely power-switch FPGAs therefore allows fast
-reprogramming of the overlay, and hence a fast hard-reset capability.
-It also allows the FPGAs to be powered up as and when required, saving
-energy and reducing fan wear.
-
-To provide these features, we have developed a per-FPGA
-*power module*:
+As our cluster resides in a server room, there are a number of
+remote-management requirements, e.g. *fan monitoring*, *power
+measurement*, and *power switching*.  In particular, the ability to
+remotely power-switch FPGAs allows fast reprogramming of the overlay,
+and hence a fast hard-reset capability.  To meet these requirements,
+we have developed a per-FPGA *power module*:
 
 <img align="center" src="doc/figures/powerboard.jpg">
 
