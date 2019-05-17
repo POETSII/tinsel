@@ -1,6 +1,3 @@
-This repo is no longer maintained.  It holds the state of the Tinsel
-repo before rewriting history in preparation for going public.
-
 # Tinsel 0.6.1
 
 Tinsel is a [RISC-V](https://riscv.org/)-based manythread
@@ -14,23 +11,23 @@ machine running Tinsel in the
 
 ## Release Log
 
-* [v0.2](https://github.com/POETSII/tinsel-old/releases/tag/v0.2):
+* [v0.2](https://github.com/POETSII/tinsel/releases/tag/v0.2):
 Released on 12 Apr 2017 and maintained in the
-[tinsel-0.2 branch](https://github.com/POETSII/tinsel-old/tree/tinsel-0.2).
+[tinsel-0.2 branch](https://github.com/POETSII/tinsel/tree/tinsel-0.2).
 (First single-board release.)
-* [v0.3](https://github.com/POETSII/tinsel-old/releases/tag/v0.3):
+* [v0.3](https://github.com/POETSII/tinsel/releases/tag/v0.3):
 Released on 11 Jun 2018 and maintained in the
-[tinsel-0.3.1 branch](https://github.com/POETSII/tinsel-old/tree/tinsel-0.3.1).
+[tinsel-0.3.1 branch](https://github.com/POETSII/tinsel/tree/tinsel-0.3.1).
 (Multi-board plus PCIe host-link.)
-* [v0.4](https://github.com/POETSII/tinsel-old/releases/tag/v0.4):
+* [v0.4](https://github.com/POETSII/tinsel/releases/tag/v0.4):
 Released on 10 Sep 2018 and maintained in the
-[tinsel-0.4.1 branch](https://github.com/POETSII/tinsel-old/tree/tinsel-0.4.1).
+[tinsel-0.4.1 branch](https://github.com/POETSII/tinsel/tree/tinsel-0.4.1).
 (2D NoC plus off-chip SRAMs.)
-* [v0.5](https://github.com/POETSII/tinsel-old/releases/tag/v0.5):
+* [v0.5](https://github.com/POETSII/tinsel/releases/tag/v0.5):
 Released on 8 Jan 2019 and maintained in the
-[tinsel-0.5.1 branch](https://github.com/POETSII/tinsel-old/tree/tinsel-0.5.1).
+[tinsel-0.5.1 branch](https://github.com/POETSII/tinsel/tree/tinsel-0.5.1).
 (Hardware idle-detection.)
-* [v0.6](https://github.com/POETSII/tinsel-old/releases/tag/v0.6):
+* [v0.6](https://github.com/POETSII/tinsel/releases/tag/v0.6):
 Released on 11 Apr 2019 and maintained in the master branch.
 (Multi-box cluster.)
 
