@@ -165,6 +165,8 @@ template <typename DeviceType,
   PTR(PNeighbour<E>) neighbour;
   // Pointer to array of device states
   PTR(PState<S>) devices;
+  // Pointer to base of neighours array
+  PTR(PNeighbour<E>) neighboursBase;
   // Array of local device ids are ready to send
   PTR(PLocalDeviceId) senders;
   // This array is accessed in a LIFO manner
@@ -225,9 +227,6 @@ template <typename DeviceType,
     PNeighbour<E> empty;
     empty.destAddr = invalidDeviceAddr();
     neighbour = &empty;
-
-    // Base of all neighbours arrays on this thread
-    PNeighbour<E>* neighboursBase = (PNeighbour<E>*) tinselHeapBase();
 
     // Did last call to init handler or step handler trigger any send?
     bool active = false;
