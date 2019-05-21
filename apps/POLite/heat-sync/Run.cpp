@@ -4,13 +4,14 @@
 
 #include <HostLink.h>
 #include <POLite.h>
+#include <sys/time.h>
 
 int main()
 {
   // Parameters
   const uint32_t width  = 256;
   const uint32_t height = 256;
-  const uint32_t time   = 100;
+  const uint32_t time   = 1000;
 
   // Connection to tinsel machine
   HostLink hostLink;
@@ -75,6 +76,10 @@ int main()
   hostLink.go();
   printf("Starting\n");
 
+  // Start timer
+  struct timeval start, finish, diff;
+  gettimeofday(&start, NULL);
+
   // Allocate array to contain final value of each device
   uint32_t pixels[graph.numDevices];
 
@@ -83,18 +88,30 @@ int main()
     // Receive message
     PMessage<None, HeatMessage> msg;
     hostLink.recvMsg(&msg, sizeof(msg));
+    if (i == 0) gettimeofday(&finish, NULL);
     // Save final value
     pixels[msg.payload.from] = msg.payload.val;
   }
 
+  // Display time
+  timersub(&finish, &start, &diff);
+  double duration = (double) diff.tv_sec + (double) diff.tv_usec / 1000000.0;
+  printf("Time = %lf\n", duration);
+
   // Emit image
-  printf("P3\n%d %d\n255\n", width, height);
+  FILE* fp = fopen("out.ppm", "wt");
+  if (fp == NULL) {
+    printf("Can't open output file for writing\n");
+    return -1;
+  }
+  fprintf(fp, "P3\n%d %d\n255\n", width, height);
   for (uint32_t y = 0; y < height; y++)
     for (uint32_t x = 0; x < width; x++) {
       uint32_t val = (pixels[mesh[y][x]] >> 16) & 0xff;
-      printf("%d %d %d\n",
+      fprintf(fp, "%d %d %d\n",
         colours[val*3], colours[val*3+1], colours[val*3+2]);
     }
+  fclose(fp);
 
   return 0;
 }
