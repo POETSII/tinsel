@@ -14,7 +14,7 @@
 #include <SocketUtils.h>
 
 // Names of boxes in box mesh
-static const char* boxMesh[][TinselBoxMeshYLen] =
+static const char* boxMesh[][TinselBoxMeshXLen] =
   TinselBoxMesh;
 
 // Helper: blocking receive of a BoardCtrlPkt
