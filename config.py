@@ -353,6 +353,17 @@ p["BoardsPerBox"] = p["MeshXLenWithinBox"] * p["MeshYLenWithinBox"] + 1
 # Main 
 #==============================================================================
 
+def to_cpp_string(convertee):
+  """Returns a string of convertee appropriate for cpp output. Mostly just for
+  converting booleans."""
+  if convertee is True:
+    return "true"
+  elif convertee is False:
+    return "false"
+  else:
+    return str(convertee)
+
+
 if len(sys.argv) > 1:
   mode = sys.argv[1]
 else:
@@ -370,7 +381,7 @@ elif mode == "envs":
     print("export " + var + "=" + str(p[var]))
 elif mode == "cpp":
   for var in p:
-    print("#define Tinsel" + var + " " + str(p[var]))
+    print("#define Tinsel" + var + " " + to_cpp_string(p[var]))
 elif mode == "vpp":
   for var in p:
     print("`define Tinsel" + var + " " + str(p[var]))
