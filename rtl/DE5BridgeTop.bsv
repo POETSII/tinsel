@@ -158,6 +158,7 @@ module de5BridgeTop (DE5BridgeTop);
 
   Reg#(Bit#(32)) messageCount  <- mkConfigReg(0);
   Reg#(Bit#(8))  flitCount     <- mkConfigReg(0);
+  Reg#(Bool)     hostInjectInProgress <- mkConfigReg(False);
 
   rule toLink0 (toLinkState == 0);
     if (fromDetector.canGet) begin
@@ -166,7 +167,10 @@ module de5BridgeTop (DE5BridgeTop);
         fromDetector.get;
       end
     end else begin
-      if (fromPCIe.canGet) begin
+      if (hostInjectInProgress)
+        toLinkState <= 1;
+      else if (fromPCIe.canGet) begin
+        hostInjectInProgress <= True;
         Bit#(128) data = fromPCIe.value;
         fromPCIeDA <= data[31:0];
         fromPCIeNM <= data[63:32];
@@ -180,6 +184,7 @@ module de5BridgeTop (DE5BridgeTop);
   rule toLink1 (toLinkState == 1);
     if (flitCount == 0 && detector.disableHostMsgs) begin
       // Hold off sending
+      toLinkState <= 0;
     end else begin
       if (fromPCIe.canGet && linkOutBuffer.notFull) begin
         Flit flit;
@@ -193,6 +198,7 @@ module de5BridgeTop (DE5BridgeTop);
           if (messageCount == fromPCIeNM) begin
             messageCount <= 0;
             toLinkState <= 0;
+            hostInjectInProgress <= False;
           end else
             messageCount <= messageCount+1;
         end else
