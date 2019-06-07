@@ -228,8 +228,8 @@ template <typename DeviceType,
     empty.destAddr = invalidDeviceAddr();
     neighbour = &empty;
 
-    // Did last call to init handler or step handler trigger any send?
-    bool active = false;
+    // Did last call to step handler request a new time step?
+    bool active = true;
 
     // Reset performance counters
     tinselPerfCountReset();
@@ -243,7 +243,6 @@ template <typename DeviceType,
       // Device ready to send?
       if (*dev.readyToSend != No) {
         *(sendersTop++) = i;
-        active = true;
       }
     }
 
