@@ -31,6 +31,7 @@ struct PingDevice : PDevice<PingState, None, PingMessage> {
   inline void send(volatile PingMessage* msg) {
     // Put received value back in message (+1) for host to check
     msg->test = s->test;
+    *readyToSend = No;
   }
 
   // Receive handler
