@@ -1005,7 +1005,7 @@ type itself.  For example, to declare a graph for the SSSP example, we
 write:
 
 ```c++
-PGraph<SSSPDevice, SSSPState, int, int> graph;
+PGraph<SSSPVertex, SSSPState, int, int> graph;
 ```
 
 `PGraph` has operations for adding vertices, pins, edges, and edge
