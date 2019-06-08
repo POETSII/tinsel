@@ -997,15 +997,21 @@ simple, architecture-agnostic manner, outlined below.
 **Graph construction**.  POLite provides a `PGraph` type,
 
 ```c++
-template <typename S, typename M, typename E>
-  class PGraph;
+template <typename V, typename S, typename M, typename E> class PGraph;
 ```
 
-parameterised by the same types as the `PVertex` type, with operations
-for adding vertices, pins, edges, and edge weights.  Using these
-operations, an application can prepare an arbitrary graph to be mapped
-onto the Tinsel overlay.  The initial state of each vertex can also be
-specified using this data structure.
+parameterised by the same types as the `PVertex` type, plus the vertex
+type itself.  For example, to declare a graph for the SSSP example, we
+write:
+
+```c++
+PGraph<SSSPDevice, SSSPState, int, int> graph;
+```
+
+`PGraph` has operations for adding vertices, pins, edges, and edge
+weights.  Using these operations, an application can prepare an
+arbitrary graph to be mapped onto the Tinsel overlay.  The initial
+state of each vertex can also be specified using this data structure.
 
 **Graph mapping**. The POLite mapper takes a `PGraph` and decides which
 vertices will run on which Tinsel threads.  It employs an hierarchical
