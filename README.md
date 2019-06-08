@@ -984,6 +984,8 @@ stabilised, the `finish` handler is called to send the results back to
 the host.  In this example, a single pin (pin 0) on each vertex is
 sufficient to solve the problem.
 
+For more POLite examples, see [here](apps/POLite).
+
 **The host**. So far, we have looked at using POLite to describe the
 behaviour of vertices running on the Tinsel overlay.  An equally
 important part of a POLite application is to describe the behaviour of

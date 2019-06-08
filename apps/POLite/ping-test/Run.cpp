@@ -29,24 +29,22 @@ int main(int argc, char**argv)
   hostLink.boot("code.v", "data.v");
   hostLink.go();
 
-  // Timer
   printf("Ping started\n");
 
   // Consume performance stats
-  politeSaveStats(&hostLink, "stats.txt");
+  //politeSaveStats(&hostLink, "stats.txt");
 
   int test = 0;
   int deviceAddr = graph.toDeviceAddr[id];
   printf("deviceAddr = %d\n", deviceAddr);
   while (test < 100) {
+    // Send ping
     PMessage<None, PingMessage> sendMsg;
-    printf("Size of msg = %lu\n", sizeof(sendMsg));
     sendMsg.payload.test = test;
     hostLink.send(deviceAddr, 1, &sendMsg);
     printf("Sent %d to device\n", sendMsg.payload.test);
 
-
-    while (!(hostLink.canRecv())) {};
+    // Receive pong
     PMessage<None, PingMessage> recvMsg;
     hostLink.recvMsg(&recvMsg, sizeof(recvMsg));
     printf("Received %d from device\n", recvMsg.payload.test);
