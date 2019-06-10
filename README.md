@@ -1027,14 +1027,11 @@ by each thread.
 After mapping, POLite writes the graph into cluster memory and
 triggers execution.  By default, vertex states are written into the
 off-chip QDRII+ SRAMs, and edge lists are written in the DDR3 DRAMs.
-The motivation for this is twofold: (1) for graph processing
-applications, we expect the number of edges to be 100-1000 times
-greater than the number of vertices, and (2) the vertex data has a
-quite random access pattern that may benefit from being stored in
-SRAM.  Once the application is up and running, the host and the graph
-vertices can continue to communicate: any vertex can send messages to
-the host via the `HostPin` or the `finish` handler, and the host can
-send messages to any vertex.
+This behaviour can be inverted by setting `graph.mapVerticesToDRAM` to
+`true`.  Once the application is up and running, the host and the
+graph vertices can continue to communicate: any vertex can send
+messages to the host via the `HostPin` or the `finish` handler, and
+the host can send messages to any vertex.
 
 **Softswitch**. Central to POLite is an event loop running on each
 Tinsel thread, which we call **the softswitch** as it effectively
@@ -1047,14 +1044,14 @@ on different threads; and (4) to invoke the vertex handlers when
 required, to meet the semantics of the POLite library.
 
 **Limitations**. POLite provides several important features of the
-vertex-centric paradigm, but there are some limitations: (1) One of
-the features of the Pregel framework is the ability for vertices to
-add and remove vertices and edges at runtime -- but currently, POLite
-only supports static graphs; (2)  Multicasting is currently
-implemented by sending directly to each destination one-at-a-time.
-For large fan-outs, a hierarchical multicast (where messages get
-forked at intermediate stages along the way to the destinations) could
-reduce communication costs.
+vertex-centric paradigm, but there are some limitations. One of the
+features of the Pregel framework is the ability for vertices to add
+and remove vertices and edges at runtime -- but currently, POLite only
+supports static graphs.  Multicasting is currently implemented by
+sending directly to each destination one-at-a-time.  For large
+fan-outs, a hierarchical multicast (where messages get forked at
+intermediate stages along the way to the destinations) could reduce
+communication costs significantly.
 
 ## A. DE5-Net Synthesis Report
 
@@ -1076,7 +1073,7 @@ The default Tinsel configuration on a single DE5-Net board contains:
 The clock frequency is 250MHz and the resource utilisation is *61% of
 the DE5-Net*.
 
-A Tinsel configuration similar to the one above but with 128 cores
+A Tinsel configuration similar to the one above but with **128 cores**
 (2048 threads in total) clocks at 210MHz and uses 88% of the DE5-Net.
 
 ## B. Tinsel Parameters
