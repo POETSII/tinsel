@@ -749,9 +749,13 @@ uint32_t tinselHostId();
 // (The Y coordinate specifies the row of the FPGA mesh that the
 // host is connected to, and the X coordinate specifies whether it is
 // the host on the left or the right of that row.)
+// (Note that the return value is a relative address: it may differ
+// depending on which thread it is called)
 uint32_t tinselBridgeId(uint32_t x, uint32_t y);
 
 // Get address of host PC in same box as calling thread.
+// (Note that the return value is a relative address: it may differ
+// depending on which thread it is called)
 uint32_t tinselMyBridgeId();
 ```
 
