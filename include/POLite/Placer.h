@@ -99,7 +99,10 @@ struct Placer {
     METIS_SetDefaultOptions(options);
 
     // Invoke partitioner
-    int ret = METIS_PartGraphKway(
+    // Note: METIS_PartGraphKway gives poor results when the number of
+    // vertices is close to the number of partitions, so we use
+    // METIS_PartGraphRecursive.
+    int ret = METIS_PartGraphRecursive(
       &nvtxs, &nconn, xadj, adjncy,
       NULL, NULL, NULL, &nparts, NULL, NULL, options, &objval, parts);
 
@@ -133,14 +136,6 @@ struct Placer {
     // Add edges to subgraphs
     for (uint32_t i = 0; i < graph->incoming->numElems; i++) {
       PartitionId p = partitions[i];
-      // Incoming edges
-      Seq<NodeId>* in = graph->incoming->elems[i];
-      for (uint32_t j = 0; j < in->numElems; j++) {
-        NodeId neighbour = in->elems[j];
-        if (partitions[neighbour] == p)
-          subgraphs[p].addEdge(mappedTo[neighbour], mappedTo[i]);
-      }
-      // Outgoing edges
       Seq<NodeId>* out = graph->outgoing->elems[i];
       for (uint32_t j = 0; j < out->numElems; j++) {
         NodeId neighbour = out->elems[j];
