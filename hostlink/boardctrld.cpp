@@ -217,15 +217,13 @@ int main(int argc, char* argv[])
       // Invoke server to handle connection
       server(conn, numBoards, uartLinks);
 
-      // Finished
-      close(conn);
-
       // Close UARTs
       delete [] uartLinks;
 
       return 0;
     }
     waitpid(pid, NULL, 0);
+    close(conn);
 
     // Power down worker boards
     #ifndef SIMULATE
