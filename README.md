@@ -375,8 +375,8 @@ structure of each cache.
   `LogDCachesPerDRAM`      |       3 | Caches per DRAM
   `DCacheLogWordsPerBeat`  |       3 | Number of 32-bit words per beat
   `DCacheLogBeatsPerLine`  |       0 | Beats per cache line
-  `DCacheLogNumWays`       |       2 | Cache lines in each associative set
-  `DCacheLogSetsPerThread` |       3 | Associative sets per thread
+  `DCacheLogNumWays`       |       3 | Cache lines in each associative set
+  `DCacheLogSetsPerThread` |       2 | Associative sets per thread
   `LogBeatsPerDRAM`        |      26 | Size of DRAM
 
 ## 5. Tinsel Mailbox
@@ -1092,8 +1092,8 @@ A Tinsel configuration similar to the one above but with **128 cores**
   `LogDCachesPerDRAM`      |       3 | Caches per DRAM
   `DCacheLogWordsPerBeat`  |       3 | Number of 32-bit words per beat
   `DCacheLogBeatsPerLine`  |       0 | Beats per cache line
-  `DCacheLogNumWays`       |       2 | Cache lines in each associative set
-  `DCacheLogSetsPerThread` |       3 | Associative sets per thread
+  `DCacheLogNumWays`       |       3 | Cache lines in each associative set
+  `DCacheLogSetsPerThread` |       2 | Associative sets per thread
   `LogBeatsPerDRAM`        |      26 | Size of DRAM
   `SRAMAddrWidth`          |      20 | Address width of each off-chip SRAM
   `LogBytesPerSRAMBeat`    |       3 | Data width of each off-chip SRAM
