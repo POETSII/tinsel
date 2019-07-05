@@ -188,20 +188,17 @@ int main()
   for (int i = 0; i < 4; i++) msgOut[i] = tinselSlot(i);
 
   // Messages received from neighbours
-  volatile Msg* msgIn[4];
-  for (int i = 0; i < 4; i++) {
-    msgIn[i] = tinselSlot(i+4);
-    if (neighbour[i] >= 0) tinselAlloc(msgIn[i]);
-  }
+  Msg msgIn[4];
 
   // Buffer for messages received from neighbours
   // (At most two edges from the same neighbour can await processing
   // at any time, hence the need for this buffer)
-  volatile Msg* msgInBuffer[4];
-  for (int i = 0; i < 4; i++) {
-    msgInBuffer[i] = 0;
-    tinselAlloc(tinselSlot(i+8));
-  }
+  Msg msgInBuffer[4];
+  uint8_t msgInBufferValid[4];
+  for (int i = 0; i < 4; i++) msgInBufferValid[i] = 0;
+
+  // Receive buffer
+  for (int i = 0; i < 4; i++) tinselAlloc(tinselSlot(4+i));
 
   // Zero initial subgrid
   for (int i = 0; i < 8; i++)
@@ -216,22 +213,22 @@ int main()
   // Apply heat at north edge
   if (neighbour[N] < 0)
     for (int i = 0; i < 8; i++)
-      msgIn[N]->temp[i] = FixedPoint(255, 0);
+      msgIn[N].temp[i] = FixedPoint(255, 0);
 
   // Apply heat at west edge
   if (neighbour[W] < 0)
     for (int i = 0; i < 8; i++)
-      msgIn[W]->temp[i] = FixedPoint(255, 0);
+      msgIn[W].temp[i] = FixedPoint(255, 0);
 
   // Apply cool at south edge
   if (neighbour[S] < 0)
     for (int i = 0; i < 8; i++)
-      msgIn[S]->temp[i] = FixedPoint(40, 0);
+      msgIn[S].temp[i] = FixedPoint(40, 0);
 
   // Apply cool at east edge
   if (neighbour[E] < 0)
     for (int i = 0; i < 8; i++)
-      msgIn[E]->temp[i] = FixedPoint(40, 0);
+      msgIn[E].temp[i] = FixedPoint(40, 0);
 
   // Messages will be comprised of 3 flits
   tinselSetLen(2);
@@ -273,13 +270,15 @@ int main()
         volatile Msg* msg = tinselRecv();
         if (msg->time == t) {
           // For current time step
-          msgIn[msg->from] = msg;
+          msgIn[msg->from] = *msg;
           received++;
         }
         else {
           // For next time step
-          msgInBuffer[msg->from] = msg;
+          msgInBuffer[msg->from] = *msg;
+          msgInBufferValid[msg->from] = 1;
         }
+        tinselAlloc(msg);
       }
     }
 
@@ -287,10 +286,10 @@ int main()
     for (int y = 0; y < 8; y++) {
       for (int x = 0; x < 8; x++) {
         // Determine neighbourhood samples
-        int n = y == 0 ? msgIn[N]->temp[x] : subgrid[y-1][x];
-        int s = y == 7 ? msgIn[S]->temp[x] : subgrid[y+1][x];
-        int e = x == 7 ? msgIn[E]->temp[y] : subgrid[y][x+1];
-        int w = x == 0 ? msgIn[W]->temp[y] : subgrid[y][x-1];
+        int n = y == 0 ? msgIn[N].temp[x] : subgrid[y-1][x];
+        int s = y == 7 ? msgIn[S].temp[x] : subgrid[y+1][x];
+        int e = x == 7 ? msgIn[E].temp[y] : subgrid[y][x+1];
+        int w = x == 0 ? msgIn[W].temp[y] : subgrid[y][x-1];
         // New temperature
         newSubgrid[y][x] = subgrid[y][x] - (subgrid[y][x] - ((n+s+e+w) >> 2));
         // Update output edges (to be sent to neighbours)
@@ -301,18 +300,12 @@ int main()
       }
     }
 
-    // Reallocate space for used messages
-    for (int i = 0; i < numNeighbours; i++) {
-      Dir d = neighbourList[i];
-      tinselAlloc(msgIn[d]);
-    }
-
     // Recognise any buffered edges
     received = 0;
     for (int i = 0; i < 4; i++)
-      if (msgInBuffer[i] != 0) {
+      if (msgInBufferValid[i]) {
         msgIn[i] = msgInBuffer[i];
-        msgInBuffer[i] = 0;
+        msgInBufferValid[i] = 0;
         received++;
       }
 
