@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: BSD-2-Clause
-// Simulate heat diffusion on an X_LEN x Y_LEN grid of threads.
+// Simulate heat diffusion on 2D grid of threads.
 // Each thread handles an 8x8 subgrid of cells.
 
 #include <tinsel.h>
+#include <grid2d.h>
 #include "heat.h"
 
 // 32-bit fixed-point number in 16.16 format
@@ -16,83 +17,6 @@ typedef enum {N=0, S=1, E=2, W=3} Dir;
 
 // Given a direction, return opposite direction
 inline Dir opposite(Dir d) { return d^1; }
-
-// Mapping subgrids to threads and back
-// ------------------------------------
-
-// A thread with board-local thread id T gets mapped to a subgrid of
-// the heat surface with coords X and Y where X is the even bits of T
-// and Y is the odd bits of T.  These board-local X and Y coords are
-// then combined with the board's X and Y mesh coords to give the
-// final subgrid coords.  This scheme keeps neighbouring subgrids near
-// to each other in the hardware.
-
-// Obtain the board-local id and the mesh X and Y coords of the board
-void fromId(uint32_t* local, uint32_t* meshX, uint32_t* meshY)
-{
-  uint32_t me = tinselId();
-  *local = me % (1 << TinselLogThreadsPerBoard);
-  *meshX = (me >> TinselLogThreadsPerBoard) % (1 << TinselMeshXBits);
-  *meshY = me >> (TinselLogThreadsPerBoard + TinselMeshXBits);
-} 
-
-// Inverse of the above function
-uint32_t toId(uint32_t local, uint32_t meshX, uint32_t meshY)
-{
-  return local
-       | (meshX << TinselLogThreadsPerBoard)
-       | (meshY << (TinselLogThreadsPerBoard + TinselMeshXBits));
-}
-
-// Return bits at even-numbered indexes
-uint32_t evens(uint32_t in)
-{
-  uint32_t out = 0;
-  for (int i = 0; i < 16; i++) {
-    out = out | ((in&1) << i);
-    in >>= 2;
-  }
-  return out;
-}
-
-// Return bits at odd-numbered indexes
-uint32_t odds(uint32_t in)
-{
-  return evens(in >> 1);
-}
-
-// Determine X and Y coords of thread's subgrid
-void myXY(uint32_t* x, uint32_t* y)
-{
-  uint32_t local, meshX, meshY;
-  fromId(&local, &meshX, &meshY);
-  *x = evens(local) + (meshX * X_LOCAL_LEN);
-  *y = odds(local) + (meshY * Y_LOCAL_LEN);
-}
-
-// Partial inverse of evens
-uint32_t unevens(uint32_t in)
-{
-  uint32_t out = 0;
-  for (int i = 0; i < 16; i++) {
-    out = out | ((in&1) << (2*i));
-    in >>= 1;
-  }
-  return out;
-}
-
-// Partial inverse of odds
-uint32_t unodds(uint32_t in)
-{
-  return unevens(in) << 1;
-}
-
-// Determine thread id from subgrid X and Y coords
-uint32_t fromXY(uint32_t x, uint32_t y)
-{
-  return toId(unevens(x%X_LOCAL_LEN) |
-              unodds(y%Y_LOCAL_LEN), x/X_LOCAL_LEN, y/Y_LOCAL_LEN);
-}
 
 // Message format
 // --------------
@@ -116,7 +40,7 @@ void emitGrid(int (*subgrid)[8])
   tinselSetLen(0);
   // Determine X and Y position of thread
   uint32_t xPos, yPos;
-  myXY(&xPos, &yPos);
+  gridToPos(tinselId(), &xPos, &yPos);
   // Determine X and Y pixel coordinates
   uint32_t x = xPos * 8;
   uint32_t y = yPos * 8;
@@ -158,20 +82,20 @@ int main()
   // ----------------
 
   uint32_t xPos, yPos;
-  myXY(&xPos, &yPos);
+  gridToPos(tinselId(), &xPos, &yPos);
 
-  // Suspend threads that are not being used
-  if (xPos >= X_LEN || yPos >= Y_LEN) tinselWaitUntil(TINSEL_CAN_RECV);
+  uint32_t xLen, yLen;
+  gridDims(X_BOXES, Y_BOXES, &xLen, &yLen);
 
   // Neighbours
   // ----------
 
   // The thread to the north, south, east, and west
   int neighbour[4];
-  neighbour[N] = yPos == 0       ? -1 : fromXY(xPos, yPos-1);
-  neighbour[S] = yPos == Y_LEN-1 ? -1 : fromXY(xPos, yPos+1);
-  neighbour[E] = xPos == X_LEN-1 ? -1 : fromXY(xPos+1, yPos);
-  neighbour[W] = xPos == 0       ? -1 : fromXY(xPos-1, yPos);
+  neighbour[N] = yPos == 0      ? -1 : gridFromPos(xPos, yPos-1);
+  neighbour[S] = yPos == yLen-1 ? -1 : gridFromPos(xPos, yPos+1);
+  neighbour[E] = xPos == xLen-1 ? -1 : gridFromPos(xPos+1, yPos);
+  neighbour[W] = xPos == 0      ? -1 : gridFromPos(xPos-1, yPos);
 
   // List containing each neighbour
   // (Only the first numNeighbours elements are valid)

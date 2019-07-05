@@ -5,6 +5,7 @@
 #include <assert.h>
 #include <sys/time.h>
 #include <HostLink.h>
+#include <grid2d.h>
 #include "heat.h"
 
 // Magnification factor when displaying heat map
@@ -93,9 +94,13 @@ int main()
   // Start application
   hostLink.go();
 
+  // Grid dimensions
+  uint32_t xLen, yLen;
+  gridDims(X_BOXES, Y_BOXES, &xLen, &yLen);
+
   // 2D grid
-  int NX = X_LEN*8;
-  int NY = Y_LEN*8;
+  int NX = xLen*8;
+  int NY = yLen*8;
   int grid[NY][NX];
 
   // Initialise 2D grid
@@ -105,7 +110,7 @@ int main()
 
   for (int n = 0; n < 1; n++) {
     // Fill 2D grid
-    for (int i = 0; i < 8*X_LEN*Y_LEN; i++) {
+    for (int i = 0; i < 8*xLen*yLen; i++) {
       HostMsg msg;
       hostLink.recv(&msg);
       for (int j = 0; j < 8; j++)
