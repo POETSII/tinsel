@@ -123,7 +123,7 @@ void emitGrid(int (*subgrid)[8])
   // Host id
   uint32_t hostId = tinselHostId();
   // Message to be sent to the host
-  volatile HostMsg* msg = tinselSlot(15);
+  volatile HostMsg* msg = tinselSlot(7);
   // Send subgrid to host
   for (int i = 0; i < 8; i++) {
     tinselWaitUntil(TINSEL_CAN_SEND);
@@ -198,7 +198,7 @@ int main()
   for (int i = 0; i < 4; i++) msgInBufferValid[i] = 0;
 
   // Receive buffer
-  for (int i = 0; i < 4; i++) tinselAlloc(tinselSlot(4+i));
+  for (int i = 0; i < 3; i++) tinselAlloc(tinselSlot(4+i));
 
   // Zero initial subgrid
   for (int i = 0; i < 8; i++)
