@@ -218,6 +218,11 @@ template <typename DeviceType,
 
   // Initialise partitions
   void initialisePartitions() {
+    // Check that POLITE_MAX_FANOUT is a mulitple of cache line size
+    if ((POLITE_MAX_FANOUT % (1<<TinselLogBytesPerLine)) != 0) {
+      printf("Error: POLITE_MAX_FANOUT must be multiple of cache line size\n");
+      exit(EXIT_FAILURE);
+    }
     for (uint32_t threadId = 0; threadId < TinselMaxThreads; threadId++) {
       // Next pointers for each partition
       uint32_t nextEMem = 0;
