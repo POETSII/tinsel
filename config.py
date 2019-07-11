@@ -22,7 +22,7 @@ p = {}
 p["DeviceFamily"] = quoted("Stratix V")
 
 # The number of hardware threads per core
-p["LogThreadsPerCore"] = 4
+p["LogThreadsPerCore"] = 5
 
 # The number of 32-bit instructions that fit in a core's instruction memory
 p["LogInstrsPerCore"] = 11
@@ -43,7 +43,7 @@ p["LogWordsPerBeat"] = 3
 p["LogBeatsPerLine"] = 0
 
 # Log of number of sets per thread in set-associative data cache
-p["DCacheLogSetsPerThread"] = 2
+p["DCacheLogSetsPerThread"] = 1
 
 # Log of number of ways per set in set-associative data cache
 p["DCacheLogNumWays"] = 3
@@ -70,7 +70,7 @@ p["LogWordsPerFlit"] = 2
 p["LogMaxFlitsPerMsg"] = 2
 
 # Space available per thread in mailbox scratchpad
-p["LogMsgsPerThread"] = 4
+p["LogMsgsPerThread"] = 3
 
 # Number of cores sharing a mailbox
 p["LogCoresPerMailbox"] = 2
@@ -91,7 +91,7 @@ p["MailboxMeshYLen"] = 2 ** p["MailboxMeshYBits"]
 p["LogMailboxesPerBoard"] = p["MailboxMeshXBits"] + p["MailboxMeshYBits"]
 
 # Maximum size of boot loader (in bytes)
-p["MaxBootImageBytes"] = 576
+p["MaxBootImageBytes"] = 800
 
 # Size of transmit buffer in a reliable link
 p["LogTransmitBufferSize"] = 10
@@ -161,10 +161,9 @@ p["EnablePerfCount"] = True
 
 # Box mesh
 p["BoxMeshXLen"] = 1
-p["BoxMeshYLen"] = 2
+p["BoxMeshYLen"] = 1
 p["BoxMesh"] = ('{'
-    '{"byron"},'
-    '{"eliot"}'
+    '{"heaney"}'
   '}')
 
 # Enable custom accelerators (experimental feature)
