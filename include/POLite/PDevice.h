@@ -44,18 +44,18 @@ typedef uint32_t PThreadId;
 typedef uint32_t PDeviceAddr;
 
 // Device address constructors
-inline PDeviceAddr invalidDeviceAddr() { return 0x40000; }
+inline PDeviceAddr invalidDeviceAddr() { return 0x80000; }
 inline PDeviceAddr makeDeviceAddr(PThreadId t, PLocalDeviceId d) {
-  return (d << 19) | t;
+  return (d << 20) | t;
 }
 
 // Device address deconstructors
-inline bool isValidDeviceAddr(PDeviceAddr addr) { return !(addr & 0x40000); }
-inline PThreadId getThreadId(PDeviceAddr addr) { return addr & 0x3ffff; }
-inline PLocalDeviceId getLocalDeviceId(PDeviceAddr addr) { return addr >> 19; }
+inline bool isValidDeviceAddr(PDeviceAddr addr) { return !(addr & 0x80000); }
+inline PThreadId getThreadId(PDeviceAddr addr) { return addr & 0x7ffff; }
+inline PLocalDeviceId getLocalDeviceId(PDeviceAddr addr) { return addr >> 20; }
 
 // What's the max allowed local device address?
-inline uint32_t maxLocalDeviceId() { return 4096; }
+inline uint32_t maxLocalDeviceId() { return 2048; }
 
 // Pins
 //   No      - means 'not ready to send'

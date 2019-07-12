@@ -11,7 +11,6 @@
 #include <POLite.h>
 
 struct PingMessage {
-  // Number to confirm message being transferred is not corrupted
   uint32_t test;
 };
 
