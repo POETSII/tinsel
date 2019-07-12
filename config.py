@@ -60,9 +60,6 @@ p["DRAMLatency"] = 20
 # Size of each DRAM
 p["LogBeatsPerDRAM"] = 26
 
-# Size of DRAM partition on each thread
-p["LogBytesPerDRAMPartition"] = 21
-
 # Size of internal flit payload
 p["LogWordsPerFlit"] = 2
 
@@ -282,6 +279,10 @@ p["LogThreadsPerDRAM"] = (p["LogThreadsPerCore"] +
                             p["LogCoresPerDCache"] +
                               p["LogDCachesPerDRAM"])
 p["ThreadsPerDRAM"] = 2 ** p["LogThreadsPerDRAM"]
+
+# Size of DRAM partition on each thread
+p["LogBytesPerDRAMPartition"] = (
+  p["LogBeatsPerDRAM"]-1 + p["LogWordsPerBeat"]+2 - p["LogThreadsPerDRAM"])
 
 # Number of threads per board
 p["LogThreadsPerBoard"] = p["LogThreadsPerDRAM"] + p["LogDRAMsPerBoard"]
