@@ -40,8 +40,9 @@ int main(int argc, char**argv)
   while (test < 100) {
     // Send ping
     PMessage<None, PingMessage> sendMsg;
+    sendMsg.devId = getLocalDeviceId(deviceAddr);
     sendMsg.payload.test = test;
-    hostLink.send(deviceAddr, 1, &sendMsg);
+    hostLink.send(getThreadId(deviceAddr), 1, &sendMsg);
     printf("Sent %d to device\n", sendMsg.payload.test);
 
     // Receive pong
