@@ -371,6 +371,9 @@ else:
   print "Usage: config.py <defs|envs|cpp|vpp>"
   sys.exit(-1)
 
+# The BoxMesh parameter is only meant for cpp mode
+if (mode != "cpp"): del p["BoxMesh"]
+
 if mode == "defs":
   for var in p:
     if isinstance(p[var], bool):
