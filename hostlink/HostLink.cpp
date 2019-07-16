@@ -207,12 +207,8 @@ bool HostLink::send(uint32_t dest, uint32_t numFlits, void* payload, bool block)
   // Ensure that MaxFlitsPerMsg is not violated
   assert(numFlits > 0 && numFlits <= TinselMaxFlitsPerMsg);
 
-  // We assume that message flits are 128 bits
-  // (Because PCIeStream currently has this assumption)
-  assert(TinselLogBytesPerFlit == 4);
-
   // Message buffer
-  uint32_t buffer[4*(TinselMaxFlitsPerMsg+1)];
+  uint32_t buffer[TinselWordsPerFlit * (TinselMaxFlitsPerMsg+1)];
 
   // Fill in the message header
   // (See DE5BridgeTop.bsv for details)
@@ -222,13 +218,13 @@ bool HostLink::send(uint32_t dest, uint32_t numFlits, void* payload, bool block)
   buffer[3] = 0;
 
   // Bytes in payload
-  int payloadBytes = numFlits*16;
+  int payloadBytes = numFlits << TinselLogBytesPerFlit;
 
   // Fill in message payload
-  memcpy(&buffer[4], payload, payloadBytes);
+  memcpy(&buffer[TinselWordsPerFlit], payload, payloadBytes);
 
   // Total bytes to send, including header
-  int totalBytes = 16+payloadBytes;
+  int totalBytes = (1<<TinselLogBytesPerFlit) + payloadBytes;
 
   // Write to the socket
   if (block) {
@@ -495,7 +491,7 @@ void HostLink::store(uint32_t meshX, uint32_t meshY,
     numWords = numWords - sendWords;
     req.numArgs = sendWords;
     for (uint32_t i = 0; i < sendWords; i++) req.args[i] = data[i];
-    uint32_t numFlits = 1 + (sendWords >> 2);
+    uint32_t numFlits = 1 + (sendWords >> TinselLogWordsPerFlit);
     send(toAddr(meshX, meshY, coreId, 0), numFlits, &req);
   }
 }

@@ -11,7 +11,7 @@ int main()
   hostLink.go();
 
   printf("Sending ping\n");
-  uint32_t ping[4];
+  uint32_t ping[8];
   ping[0] = 100;
   hostLink.send(0, 1, ping);
 

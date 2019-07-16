@@ -61,10 +61,10 @@ p["DRAMLatency"] = 20
 p["LogBeatsPerDRAM"] = 26
 
 # Size of internal flit payload
-p["LogWordsPerFlit"] = 2
+p["LogWordsPerFlit"] = 3
 
 # Max flits per message
-p["LogMaxFlitsPerMsg"] = 2
+p["LogMaxFlitsPerMsg"] = 1
 
 # Space available per thread in mailbox scratchpad
 p["LogMsgsPerThread"] = 4

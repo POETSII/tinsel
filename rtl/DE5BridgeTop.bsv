@@ -12,15 +12,12 @@
 //   1. DA: Destination address (4 bytes)
 //   2. NM: Number of messages that follow minus one (4 bytes)
 //   3. FM: Number of flit payloads per message minus one (1 byte)
-//   4. Padding (7 bytes)
+//   4. Padding (until end of flit)
 //   5. (NM+1)*(FM+1) flit payloads ((NM+1)*(FM+1)*BytesPerFlit bytes)
 //   6. Goto step 1
 //
 // The format of the data stream in the FPGA->PC direction is simply
 // raw flit payloads.
-//
-// This module assumes that BytesPerFlit is 16.  This restriction
-// should be removed in future, if necessary.
 
 package DE5BridgeTop;
 
@@ -79,8 +76,8 @@ endinterface
 module de5BridgeTop (DE5BridgeTop);
 
   // Ports
-  OutPort#(Bit#(128)) toPCIe <- mkOutPort;
-  InPort#(Bit#(128)) fromPCIe <- mkInPort;
+  OutPort#(FlitPayload) toPCIe <- mkOutPort;
+  InPort#(FlitPayload) fromPCIe <- mkInPort;
   OutPort#(Flit) toLinkA <- mkOutPort;
   OutPort#(Flit) toLinkB <- mkOutPort;
   InPort#(Flit) fromLink <- mkInPort;
@@ -108,9 +105,13 @@ module de5BridgeTop (DE5BridgeTop);
   connectUsing(mkUGQueue, toLinkA.out, linkA.flitIn);
   connectUsing(mkUGQueue, toLinkB.out, linkB.flitIn);
 
-  // Connect ports to PCIeStream
-  connectUsing(mkUGQueue, toPCIe.out, pcie.streamIn);
-  connectDirect(pcie.streamOut, fromPCIe.in);
+  // Connect to PCIe stream via serialiser/deserialiser
+  Serialiser#(FlitPayload, Bit#(128)) ser <- mkSerialiser;
+  Deserialiser#(Bit#(128), FlitPayload) des <- mkDeserialiser;
+  connectUsing(mkUGQueue, ser.serialOut, pcie.streamIn);
+  connectDirect(pcie.streamOut, des.serialIn);
+  connectUsing(mkUGQueue, toPCIe.out, ser.parallelIn);
+  connectUsing(mkUGQueue, des.parallelOut, fromPCIe.in);
 
   // Create idle detector master
   IdleDetectMaster detector <- mkIdleDetectMaster;
@@ -171,7 +172,7 @@ module de5BridgeTop (DE5BridgeTop);
         toLinkState <= 1;
       else if (fromPCIe.canGet) begin
         hostInjectInProgress <= True;
-        Bit#(128) data = fromPCIe.value;
+        FlitPayload data = fromPCIe.value;
         fromPCIeDA <= data[31:0];
         fromPCIeNM <= data[63:32];
         fromPCIeFM <= data[95:88];
