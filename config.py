@@ -158,10 +158,9 @@ p["EnablePerfCount"] = True
 
 # Box mesh
 p["BoxMeshXLen"] = 1
-p["BoxMeshYLen"] = 2
+p["BoxMeshYLen"] = 1
 p["BoxMesh"] = ('{'
-    '{"byron"},'
-    '{"eliot"}'
+    '{"defoe"}'
   '}')
 
 # Enable custom accelerators (experimental feature)

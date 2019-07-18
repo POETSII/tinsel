@@ -133,8 +133,8 @@ void emitGrid(int (*subgrid)[8])
       msg->temps[j] = (subgrid[i][j] >> 16);
     tinselSend(hostId, msg);
   }
-  // Restore message size of 3 flits
-  tinselSetLen(2);
+  // Restore message size of 2 flits
+  tinselSetLen(1);
 }
 
 // Top-level
@@ -233,8 +233,8 @@ int main()
     for (int i = 0; i < 8; i++)
       msgIn[E]->temp[i] = FixedPoint(40, 0);
 
-  // Messages will be comprised of 3 flits
-  tinselSetLen(2);
+  // Messages will be comprised of 2 flits
+  tinselSetLen(1);
 
   // Simulation
   // ----------

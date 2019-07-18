@@ -11,8 +11,8 @@
 // And there is a 2D mesh of boards
 // Assumption 1: X_BOARDS <= TinselMeshXLenWithinBox
 // Assumption 2: Y_BOARDS <= TinselMeshYLenWithinBox
-#define X_BOARDS 1
-#define Y_BOARDS 1
+#define X_BOARDS 3
+#define Y_BOARDS 2
 
 // In all, the program uses an X_LEN * Y_LEN grid of threads
 #define X_LEN (X_LOCAL_LEN*X_BOARDS)
@@ -23,6 +23,7 @@ typedef struct {
   uint32_t padding;
   uint16_t x, y;
   uint8_t temps[8];
+  uint8_t endPadding[16];
 } HostMsg;
 
 #endif
