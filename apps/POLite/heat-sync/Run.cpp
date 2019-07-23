@@ -81,7 +81,7 @@ int main()
   gettimeofday(&start, NULL);
 
   // Allocate array to contain final value of each device
-  uint32_t pixels[graph.numDevices];
+  uint32_t* pixels = new uint32_t [graph.numDevices];
 
   // Receive final value of each device
   for (uint32_t i = 0; i < graph.numDevices; i++) {
