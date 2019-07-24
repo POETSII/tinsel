@@ -95,6 +95,9 @@ demands, but only modest compute requrements.  The main features are:
   * **Custom accelerators**. Groups of Tinsel cores called tiles can
     include custom accelerators written in SystemVerilog.
 
+For futher background, see our [FPL 2019 paper](doc/fpl-2019-paper.pdf)
+about Tinsel.
+
 ## 2. High-Level Structure
 
 A prototype POETS hardware architecture is under construction,
