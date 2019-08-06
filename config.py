@@ -157,11 +157,13 @@ p["SRAMStoreLatency"] = 2
 p["EnablePerfCount"] = True
 
 # Box mesh
-p["BoxMeshXLen"] = 1
-p["BoxMeshYLen"] = 2
+p["BoxMeshXLen"] = 2
+p["BoxMeshYLen"] = 4
 p["BoxMesh"] = ('{'
-    '{"byron"},'
-    '{"eliot"}'
+    '{"byron",    "coleridge"},'
+    '{"defoe",    "eliot"},'
+    '{"fielding", "goethe"},'
+    '{"heaney",   "ibsen"}'
   '}')
 
 # Enable custom accelerators (experimental feature)

@@ -5,9 +5,10 @@ message-passing architecture designed for FPGA clusters.  It is being
 developed as part of the [POETS
 Project](https://poets-project.org/about) (Partial Ordered Event
 Triggered Systems).  This manual describes the Tinsel architecture and
-associated APIs.  If you're a POETS Partner, you can access a
-machine running Tinsel in the
-[POETS Cloud](https://github.com/POETSII/poets-cloud).
+associated APIs.  If you're a POETS Partner, you can access a machine
+running Tinsel in the [POETS
+Cloud](https://github.com/POETSII/poets-cloud).  Further background
+can be found in our [FPL 2019 paper](doc/fpl-2019-paper.pdf).
 
 ## Release Log
 
@@ -61,7 +62,7 @@ large numbers of small processes communicating by message-passing.
 Our first attempt is based around a manythread RISC-V architecture
 called Tinsel running on an FPGA cluster.  Tinsel aims to support
 irregular applications that have heavy memory and communication
-demands, but only modest compute requrements.  The main features are:
+demands, but fairly modest compute requrements.  The main features are:
 
   * **Multithreading**.  A critical aspect of the design
     is to tolerate latency as cleanly as possible.  This includes the
@@ -69,12 +70,10 @@ demands, but only modest compute requrements.  The main features are:
     (tens of cycles); off-chip memories; deep pipelines
     (keeping Fmax high); and sharing of resources between cores
     (such as caches, mailboxes, and FPUs).
-    Resource sharing allows the balance between compute, memory,
-    and communication resources to be adjusted on a per-application basis.
 
   * **Caches**.  To keep the programming model simple, we have opted
-    to use data caches to optimise access to off-chip memory rather
-    than DMA. 
+    to use thread-partitioned data caches to optimise access to
+    off-chip memory rather than DMA. 
 
   * **Message-passing**. Although there is a requirement to support a
     large amount of memory, it is not necessary to provide the
@@ -95,18 +94,17 @@ demands, but only modest compute requrements.  The main features are:
   * **Custom accelerators**. Groups of Tinsel cores called tiles can
     include custom accelerators written in SystemVerilog.
 
-For futher background, see our [FPL 2019 paper](doc/fpl-2019-paper.pdf)
-about Tinsel.
+This repository also includes a prototype high-level vertex-centric
+programming API for Tinsel, called [POLite](#8-polite-api).
 
 ## 2. High-Level Structure
 
-A prototype POETS hardware architecture is under construction,
+A prototype POETS hardware architecture has been constructed,
 consisting of 56 DE5-Net FPGA boards connected in a 2D mesh topology
-(higher dimensions are supported but have not yet been explored).
-Each group of 7 FPGAs resides in a separate *POETS box*, and there are
-8 boxes in total.  One FPGA in each box serves as a *PCI Express
-bridge board* connecting a modern PC to the remaining six FPGA *worker
-boards*.
+(with the possibility of moving to 3D in future).  Each group of 7
+FPGAs resides in a separate *POETS box*, and there are 8 boxes in
+total.  One FPGA in each box serves as a *PCI Express bridge board*
+connecting a modern PC to the remaining six FPGA *worker boards*.
 
 The following diagrams are illustrative of a Tinsel system running
 on the POETS cluster.  The system is highly-parameterised, so the
@@ -147,9 +145,9 @@ serial link.
 As our cluster resides in a server room, there are a number of
 remote-management requirements, e.g. *fan monitoring*, *power
 measurement*, and *power switching*.  In particular, the ability to
-remotely power-switch FPGAs allows fast reprogramming of the overlay,
-and hence a fast hard-reset capability.  To meet these requirements,
-we have developed a per-FPGA *power module*:
+remotely power-switch FPGAs allows fast reprogramming of the overlay
+from flash, and hence a fast hard-reset capability.  To meet these
+requirements, we have developed a per-FPGA *power module*:
 
 <img align="center" src="doc/figures/powerboard.jpg">
 
@@ -177,7 +175,8 @@ of photo of our first two-box cluster.
 <img align="center" src="doc/figures/twobox.jpg">
 
 The complete 8-box DE5-Net POETS cluster has the following 2D
-structure, although may be generalised to 3D in future.
+structure (it doesn't yet exploit the PCIe backplanes which permit a
+3D structure).
 
 <img align="center" src="doc/figures/box-mesh.png">
 
