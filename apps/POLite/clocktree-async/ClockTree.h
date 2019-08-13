@@ -10,8 +10,11 @@
 #define PIN_ACK 1
 
 struct ClockTreeMessage {
-  // Unused
-  uint32_t unused;
+  // Report execution time to host
+  uint32_t cycleCount;
+  // Count number of vertices seen
+  // (To check correctness)
+  uint32_t vertexCount;
 };
 
 struct ClockTreeState {
@@ -22,14 +25,21 @@ struct ClockTreeState {
   bool waitingForAck;
   // Count of number of acks received
   uint32_t ackCount;
+  // Counter number of vertices
+  uint32_t vertexCount;
 };
 
 struct ClockTreeDevice : PDevice<ClockTreeState, None, ClockTreeMessage>
 {
   // Called once by POLite at start of execution
   inline void init() {
-    if (s->isRoot)
+    s->vertexCount = 1;
+    if (s->isRoot) {
+      #ifdef TINSEL
+        tinselPerfCountReset();
+      #endif
       *readyToSend = Pin(PIN_TICK);
+    }
     else
       *readyToSend = No;
   }
@@ -37,21 +47,25 @@ struct ClockTreeDevice : PDevice<ClockTreeState, None, ClockTreeMessage>
   // Send handler
   inline void send(volatile ClockTreeMessage* msg) {
     s->waitingForAck = !s->waitingForAck;
+    msg->vertexCount = s->vertexCount;
     *readyToSend = No;
+    #ifdef TINSEL
+      msg->cycleCount = tinselCycleCount();
+    #endif
   }
 
   // Receive handler
   inline void recv(ClockTreeMessage* msg, None* edge) {
-    if (s->isRoot)
-      *readyToSend = HostPin;
-    else if (s->isLeaf)
+    if (s->isLeaf) {
       *readyToSend = Pin(PIN_ACK);
+    }
     else if (s->waitingForAck) {
-        s->ackCount--;
-        if (s->ackCount == 0)
-          *readyToSend = Pin(PIN_ACK);
-        else
-          *readyToSend = No;
+      s->vertexCount += msg->vertexCount;
+      s->ackCount--;
+      if (s->ackCount == 0)
+        *readyToSend = s->isRoot ? HostPin : Pin(PIN_ACK);
+      else
+        *readyToSend = No;
     }
     else
       *readyToSend = Pin(PIN_TICK);

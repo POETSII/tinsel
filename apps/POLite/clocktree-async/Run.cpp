@@ -35,6 +35,7 @@ int main(int argc, char** argv)
   // Number of devices in tree
   int numDevices = size(d, b);
   int numDevicesInterior = size(d-1, b);
+  printf("Devices: %d\n", numDevices);
 
   // Create tree of devices
   PDeviceId* tree = new PDeviceId [numDevices];
@@ -79,6 +80,12 @@ int main(int argc, char** argv)
   PMessage<None, ClockTreeMessage> msg;
   hostLink.recvMsg(&msg, sizeof(msg));
   gettimeofday(&finish, NULL);
+
+  // Display leaf count
+  printf("Vertex count = %u\n", msg.payload.vertexCount);
+
+  // Display cycle count
+  printf("Cycles = %u\n", msg.payload.cycleCount);
 
   // Display time
   timersub(&finish, &start, &diff);
