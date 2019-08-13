@@ -40,5 +40,6 @@ clean:
 	make -C apps/POLite/pagerank-gals clean
 	make -C apps/POLite/sssp-async clean
 	make -C apps/POLite/ping-test clean
+	make -C apps/POLite/clocktree-async clean
 	make -C bin clean
 	make -C tests clean
