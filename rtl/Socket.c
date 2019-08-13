@@ -169,7 +169,7 @@ void socketGetN(unsigned int* result, int id, int nbytes)
     FD_ZERO(&fds);
     FD_SET(conn[id], &fds);
     while (count < nbytes) {
-      int res = select(1, &fds, NULL, NULL, NULL);
+      int res = select(conn[id]+1, &fds, NULL, NULL, NULL);
       assert(res >= 0);
       res = read(conn[id], &bytes[count], nbytes-count);
       assert(res >= 0);
@@ -204,7 +204,7 @@ uint8_t socketPutN(int id, int nbytes, unsigned int* data)
     FD_ZERO(&fds);
     FD_SET(conn[id], &fds);
     while (count < nbytes) {
-      int res = select(1, &fds, NULL, NULL, NULL);
+      int res = select(conn[id]+1, NULL, &fds, NULL, NULL);
       assert(res >= 0);
       res = write(conn[id], &bytes[count], nbytes-count);
       assert(res >= 0);

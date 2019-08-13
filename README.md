@@ -5,10 +5,10 @@ message-passing architecture designed for FPGA clusters.  It is being
 developed as part of the [POETS
 Project](https://poets-project.org/about) (Partial Ordered Event
 Triggered Systems).  This manual describes the Tinsel architecture and
-associated APIs.  If you're a POETS Partner, you can access a machine
-running Tinsel in the [POETS
-Cloud](https://github.com/POETSII/poets-cloud).  Further background
-can be found in our [FPL 2019 paper](doc/fpl-2019-paper.pdf).
+associated APIs.  Further background can be found in our [FPL 2019
+paper](doc/fpl-2019-paper.pdf).  If you're a POETS Partner, you can
+access a machine running Tinsel in the [POETS
+Cloud](https://github.com/POETSII/poets-cloud).  
 
 ## Release Log
 
@@ -298,7 +298,7 @@ and DRAM.
 The [DE5-Net](http://de5-net.terasic.com) also contains four off-chip
 QDRII+ SRAMs, each with a capacity of 8MB and capable of performing a
 64-bit read and a 64-bit write on every cycle of a 225MHz clock.  One
-DRAM and two SRAMS are mapped into the cached address space of each
+DRAM and two SRAMs are mapped into the cached address space of each
 thread (see [Tinsel Memory Map](#c-tinsel-memory-map)).
 
 The cache line size must be larger than or equal to the DRAM data bus
@@ -338,9 +338,9 @@ The cache is an *N*-way *set-associative write-back* cache with a
 policy.  It is designed to serve one or more highly-threaded cores,
 where high throughput and high Fmax are more important than low
 latency.  It employs a hash function that appends the thread id and
-some number of address bits.  This means that cache lines are *not
-shared* between threads and, consequently, there is no aliasing
-between threads.
+some number of address bits, i.e. the cache is partitioned by thread
+id.  This means that cache lines are *not shared* between threads and,
+consequently, there is no aliasing between threads.
 
 The cache pipeline is *hazard-free*: at most one request per thread
 is present in the pipeline at any time which, combined with the
@@ -348,6 +348,12 @@ no-sharing property above, implies that in-flight requests always
 operate on different lines, simplifying the implementation.  To allow
 cores to meet this assumption, store responses are issued in addition
 to load responses.
+
+With large numbers of threads per core, each thread's cache partition
+ends up being very small. Software therefore must take care to keep
+the working set down to avoid thrashing. The justification for this is
+that "devices" in the POETS model, although numerous, are intended to
+be small.
 
 A *cache flush* function is provided that evicts all cache lines
 owned by the calling thread.
