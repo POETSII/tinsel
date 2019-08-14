@@ -40,7 +40,7 @@ typedef uint32_t PThreadId;
 // Device address
 // Bits 17->0: thread id
 // Bit 18: invalid address
-// Bits 31->20: thread-local device id
+// Bits 31->19: thread-local device id
 typedef uint32_t PDeviceAddr;
 
 // Device address constructors
@@ -55,7 +55,7 @@ inline PThreadId getThreadId(PDeviceAddr addr) { return addr & 0x3ffff; }
 inline PLocalDeviceId getLocalDeviceId(PDeviceAddr addr) { return addr >> 19; }
 
 // What's the max allowed local device address?
-inline uint32_t maxLocalDeviceId() { return 4096; }
+inline uint32_t maxLocalDeviceId() { return 8192; }
 
 // Pins
 //   No      - means 'not ready to send'

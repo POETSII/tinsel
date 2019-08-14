@@ -67,6 +67,7 @@ template <typename DeviceType,
     edgeMemSize = NULL;
     edgeMemBase = NULL;
     mapVerticesToDRAM = false;
+    mapEdgesToDRAM = true;
   }
 
  public:
@@ -91,13 +92,14 @@ template <typename DeviceType,
 
   // Each thread's vertex mem and edge mem partitions
   // (Not valid until the mapper is called)
-  uint8_t** vertexMem;       uint8_t** edgeMem;
-  uint32_t* vertexMemSize;   uint32_t* edgeMemSize;
-  uint32_t* vertexMemBase;   uint32_t* edgeMemBase;
+  uint8_t** vertexMem;      uint8_t** edgeMem;     uint8_t** threadMem;
+  uint32_t* vertexMemSize;  uint32_t* edgeMemSize; uint32_t* threadMemSize;
+  uint32_t* vertexMemBase;  uint32_t* edgeMemBase; uint32_t* threadMemBase;
 
-  // If this is true, map vertices to DRAM and edges to SRAM
-  // Otherwise, map edges to DRAM and vertices to SRAM
+  // Where to map vertices and edges
+  // (If false, map to SRAM instead)
   bool mapVerticesToDRAM;
+  bool mapEdgesToDRAM;
 
   // Setter for number of boards to use
   void setNumBoards(uint32_t x, uint32_t y) {
@@ -140,6 +142,9 @@ template <typename DeviceType,
     edgeMem = (uint8_t**) calloc(TinselMaxThreads, sizeof(uint8_t*));
     edgeMemSize = (uint32_t*) calloc(TinselMaxThreads, sizeof(uint32_t));
     edgeMemBase = (uint32_t*) calloc(TinselMaxThreads, sizeof(uint32_t));
+    threadMem = (uint8_t**) calloc(TinselMaxThreads, sizeof(uint8_t*));
+    threadMemSize = (uint32_t*) calloc(TinselMaxThreads, sizeof(uint32_t));
+    threadMemBase = (uint32_t*) calloc(TinselMaxThreads, sizeof(uint32_t));
     // Compute partition sizes for each thread
     for (uint32_t threadId = 0; threadId < TinselMaxThreads; threadId++) {
       // This variable is used to count the size of the *initialised*
@@ -147,13 +152,10 @@ template <typename DeviceType,
       // uninitialised portions.
       uint32_t sizeVMem = 0;
       uint32_t sizeEMem = 0;
-      // Add space for thread structure (stored in SRAM)
-      uint32_t sizeThread = sizeof(PThread<DeviceType, S, E, M>);
-      if (mapVerticesToDRAM)
-        sizeEMem = cacheAlign(sizeEMem + sizeThread);
-      else
-        sizeVMem = cacheAlign(sizeVMem + sizeThread);
-      // Add space for edge lists (stored in DRAM)
+      uint32_t sizeTMem = 0;
+      // Add space for thread structure (always stored in SRAM)
+      sizeTMem = cacheAlign(sizeof(PThread<DeviceType, S, E, M>));
+      // Add space for edge lists
       uint32_t numDevs = numDevicesOnThread[threadId];
       for (uint32_t devNum = 0; devNum < numDevs; devNum++) {
         // Add space for device
@@ -170,48 +172,54 @@ template <typename DeviceType,
       uint32_t totalSizeVMem = sizeVMem + sizeof(PLocalDeviceId) * numDevs;
       uint32_t totalSizeEMem = sizeEMem;
       // Check that total size is reasonable
-      if (mapVerticesToDRAM) {
-        if (totalSizeVMem > maxDRAMSize) {
-          printf("Error: max DRAM partition size exceeded\n");
-          exit(EXIT_FAILURE);
-        }
-        if (totalSizeEMem > maxSRAMSize) {
-          printf("Error: max SRAM partition size exceeded\n");
-          exit(EXIT_FAILURE);
-        }
+      uint32_t totalSizeSRAM = sizeTMem;
+      uint32_t totalSizeDRAM = 0;
+      if (mapVerticesToDRAM)
+        totalSizeDRAM += totalSizeVMem;
+      else
+        totalSizeSRAM += totalSizeVMem;
+      if (mapEdgesToDRAM)
+        totalSizeDRAM += totalSizeEMem;
+      else
+        totalSizeSRAM += totalSizeEMem;
+      if (totalSizeDRAM > maxDRAMSize) {
+        printf("Error: max DRAM partition size exceeded\n");
+        exit(EXIT_FAILURE);
       }
-      else {
-        if (totalSizeVMem > maxSRAMSize) {
-          printf("Error: max SRAM partition size exceeded\n");
-          exit(EXIT_FAILURE);
-        }
-        if (totalSizeEMem > maxDRAMSize) {
-          printf("Error: max DRAM partition size exceeded\n");
-          exit(EXIT_FAILURE);
-        }
+      if (totalSizeSRAM > maxSRAMSize) {
+        printf("Error: max SRAM partition size exceeded\n");
+        exit(EXIT_FAILURE);
       }
       // Allocate space for the initialised portion of the partition
       vertexMem[threadId] = (uint8_t*) calloc(sizeVMem, 1);
       vertexMemSize[threadId] = sizeVMem;
       edgeMem[threadId] = (uint8_t*) calloc(sizeEMem, 1);
       edgeMemSize[threadId] = sizeEMem;
+      threadMem[threadId] = (uint8_t*) calloc(sizeTMem, 1);
+      threadMemSize[threadId] = sizeTMem;
       // Tinsel address of base of partition
       uint32_t partId = threadId & (TinselThreadsPerDRAM-1);
-      if (mapVerticesToDRAM) {
-        edgeMemBase[threadId] = (1 << TinselLogBytesPerSRAM) +
+      uint32_t sramBase = (1 << TinselLogBytesPerSRAM) +
           (partId << TinselLogBytesPerSRAMPartition);
-        vertexMemBase[threadId] = TinselBytesPerDRAM -
+      uint32_t dramBase = TinselBytesPerDRAM -
           ((partId+1) << TinselLogBytesPerDRAMPartition);
-        // Use partition-interleaved region for DRAM
-        vertexMemBase[threadId] |= 0x80000000;
+      // Use partition-interleaved region for DRAM
+      threadMemBase[threadId] = sramBase;
+      sramBase += threadMemSize[threadId];
+      dramBase |= 0x80000000;
+      if (mapVerticesToDRAM) {
+        vertexMemBase[threadId] = dramBase;
+        if (mapEdgesToDRAM)
+          edgeMemBase[threadId] = dramBase + totalSizeVMem;
+        else
+          edgeMemBase[threadId] = sramBase;
       }
       else {
-        vertexMemBase[threadId] = (1 << TinselLogBytesPerSRAM) +
-          (partId << TinselLogBytesPerSRAMPartition);
-        edgeMemBase[threadId] = TinselBytesPerDRAM -
-          ((partId+1) << TinselLogBytesPerDRAMPartition);
-        // Use partition-interleaved region for DRAM
-        edgeMemBase[threadId] |= 0x80000000;
+        vertexMemBase[threadId] = sramBase;
+        if (mapEdgesToDRAM)
+          edgeMemBase[threadId] = dramBase;
+        else
+          edgeMemBase[threadId] = sramBase + totalSizeVMem;
       }
     }
   }
@@ -229,21 +237,9 @@ template <typename DeviceType,
       uint32_t nextVMem = 0;
       // Next pointer for neighbours arrays
       uint16_t nextNeighbours = 0;
-      PThread<DeviceType, S, E, M>* thread;
-      if (mapVerticesToDRAM) {
-        // Pointer to thread structure
-        thread = (PThread<DeviceType, S, E, M>*) &edgeMem[threadId][nextEMem];
-        // Add space for thread structure
-        nextEMem = cacheAlign(nextEMem +
-                     sizeof(PThread<DeviceType, S, E, M>));
-      }
-      else {
-        // Pointer to thread structure
-        thread = (PThread<DeviceType, S, E, M>*) &vertexMem[threadId][nextVMem];
-        // Add space for thread structure
-        nextVMem = cacheAlign(nextVMem +
-                     sizeof(PThread<DeviceType, S, E, M>));
-      }
+      // Pointer to thread structure
+      PThread<DeviceType, S, E, M>* thread =
+        (PThread<DeviceType, S, E, M>*) &threadMem[threadId][0];
       // Set number of devices on thread
       thread->numDevices = numDevicesOnThread[threadId];
       // Set number of devices in graph
@@ -265,9 +261,6 @@ template <typename DeviceType,
       for (uint32_t devNum = 0; devNum < numDevs; devNum++) {
         PDeviceId id = fromDeviceAddr[threadId][devNum];
         PState<S>* dev = devices[id];
-        // Set thread-local device address
-        // dev->localAddr = devNum;
-
         // Set tinsel address of neighbours arrays
         dev->neighboursOffset = nextNeighbours;
         // Neighbour array
@@ -351,6 +344,11 @@ template <typename DeviceType,
       free(edgeMem);
       free(edgeMemSize);
       free(edgeMemBase);
+      for (uint32_t t = 0; t < TinselMaxThreads; t++)
+        if (threadMem[t] != NULL) free(threadMem[t]);
+      free(threadMem);
+      free(threadMemSize);
+      free(threadMemBase);
     }
   }
 
@@ -446,14 +444,9 @@ template <typename DeviceType,
     releaseAll();
   }
 
-  // Write devices (including topology) to tinsel machine
-  // The 'ram' parameter is 0 to write SRAM partitions
-  // or 1 to write DRAM partitions
-  void writeRAM(HostLink* hostLink, uint32_t ram) {
-    uint8_t** heap = ram == 0 ? vertexMem : edgeMem;
-    uint32_t* heapSize = ram == 0 ? vertexMemSize : edgeMemSize;
-    uint32_t* heapBase = ram == 0 ? vertexMemBase : edgeMemBase;
-
+  // Write partition to tinsel machine
+  void writeRAM(HostLink* hostLink,
+         uint8_t** heap, uint32_t* heapSize, uint32_t* heapBase) {
     // Number of bytes written by each thread
     uint32_t* writeCount = (uint32_t*)
       calloc(TinselMaxThreads, sizeof(uint32_t));
@@ -514,12 +507,11 @@ template <typename DeviceType,
     free(threadCount);
   }
 
-  // Write devices (including topology) to tinsel machine
+  // Write graph to tinsel machine
   void write(HostLink* hostLink) {
-    // Write SRAM partitions
-    writeRAM(hostLink, 0);
-    // Write DRAM partitions
-    writeRAM(hostLink, 1);
+    writeRAM(hostLink, vertexMem, vertexMemSize, vertexMemBase);
+    writeRAM(hostLink, edgeMem, edgeMemSize, edgeMemBase);
+    writeRAM(hostLink, threadMem, threadMemSize, threadMemBase);
   }
 
   // Determine fan-in of given device
