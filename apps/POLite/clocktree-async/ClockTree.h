@@ -34,14 +34,7 @@ struct ClockTreeDevice : PDevice<ClockTreeState, None, ClockTreeMessage>
   // Called once by POLite at start of execution
   inline void init() {
     s->vertexCount = 1;
-    if (s->isRoot) {
-      #ifdef TINSEL
-        tinselPerfCountReset();
-      #endif
-      *readyToSend = Pin(PIN_TICK);
-    }
-    else
-      *readyToSend = No;
+    *readyToSend = No;
   }
 
   // Send handler
@@ -73,6 +66,12 @@ struct ClockTreeDevice : PDevice<ClockTreeState, None, ClockTreeMessage>
 
   // Called by POLite when system becomes idle
   inline bool step() {
+    if (s->isRoot) {
+      #ifdef TINSEL
+        tinselPerfCountReset();
+      #endif
+      *readyToSend = Pin(PIN_TICK);
+    }
     return true;
   }
 
