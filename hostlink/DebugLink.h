@@ -62,6 +62,9 @@ class DebugLink {
   void get(uint32_t* boardX, uint32_t* boardY,
              uint32_t* coreId, uint32_t* threadId, uint8_t* byte);
 
+  // Read temperature of given board
+  int32_t getTemp(uint32_t boardX, uint32_t boardY);
+
   // Is a data available for reading?
   bool canGet();
 

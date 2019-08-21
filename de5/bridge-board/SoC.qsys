@@ -49,6 +49,14 @@
          type = "String";
       }
    }
+   element SoC
+   {
+      datum _originalDeviceFamily
+      {
+         value = "Stratix V";
+         type = "String";
+      }
+   }
    element clk_156
    {
       datum _sortIndex
@@ -321,6 +329,11 @@
  <interface
    name="soft_reset"
    internal="DE5BridgeTop_0.soft_reset"
+   type="conduit"
+   dir="end" />
+ <interface
+   name="temperature"
+   internal="DE5BridgeTop_0.temperature"
    type="conduit"
    dir="end" />
  <interface name="ts_clear" internal="temp_sense.clr" type="reset" dir="end" />

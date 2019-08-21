@@ -109,6 +109,8 @@ wire phy_pll_locked;
 wire soft_reset_in;
 reg soft_reset_out = 0;
 
+wire [7:0] temp_sample;
+
 wire [7:0] ts_out;
 wire ts_done;
 wire ts_enable;
@@ -345,7 +347,8 @@ temp_display temp_display_inst (
   .HEX0_D(HEX0_D),
   .HEX0_DP(HEX0_DP),
   .HEX1_D(HEX1_D),
-  .HEX1_DP(HEX1_DP)
+  .HEX1_DP(HEX1_DP),
+  .sample(temp_sample)
 );
 
 reg [11:0] reset_count = 0;

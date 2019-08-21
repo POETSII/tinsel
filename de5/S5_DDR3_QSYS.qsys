@@ -73,6 +73,14 @@
          type = "String";
       }
    }
+   element S5_DDR3_QSYS
+   {
+      datum _originalDeviceFamily
+      {
+         value = "Stratix V";
+         type = "String";
+      }
+   }
    element clk_156
    {
       datum _sortIndex
@@ -493,6 +501,11 @@
    name="reset_d"
    internal="ref_clk_d.clk_in_reset"
    type="reset"
+   dir="end" />
+ <interface
+   name="temperature"
+   internal="DE5Top_0.temperature"
+   type="conduit"
    dir="end" />
  <interface name="ts_clear" internal="temp_sense.clr" type="reset" dir="end" />
  <interface
