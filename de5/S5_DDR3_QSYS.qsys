@@ -876,7 +876,7 @@
   <parameter name="MEM_CK_PHASE" value="0.0" />
   <parameter name="MEM_CK_WIDTH" value="1" />
   <parameter name="MEM_CLK_EN_WIDTH" value="1" />
-  <parameter name="MEM_CLK_FREQ" value="500.0" />
+  <parameter name="MEM_CLK_FREQ" value="480.0" />
   <parameter name="MEM_CLK_FREQ_MAX" value="800.0" />
   <parameter name="MEM_COL_ADDR_WIDTH" value="10" />
   <parameter name="MEM_CS_WIDTH" value="1" />
@@ -1199,7 +1199,7 @@
   <parameter name="MEM_CK_PHASE" value="0.0" />
   <parameter name="MEM_CK_WIDTH" value="1" />
   <parameter name="MEM_CLK_EN_WIDTH" value="1" />
-  <parameter name="MEM_CLK_FREQ" value="500.0" />
+  <parameter name="MEM_CLK_FREQ" value="480.0" />
   <parameter name="MEM_CLK_FREQ_MAX" value="800.0" />
   <parameter name="MEM_COL_ADDR_WIDTH" value="10" />
   <parameter name="MEM_CS_WIDTH" value="1" />
