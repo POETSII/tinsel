@@ -383,7 +383,7 @@ structure of each cache.
   `LogDCachesPerDRAM`      |       3 | Caches per DRAM
   `DCacheLogWordsPerBeat`  |       3 | Number of 32-bit words per beat
   `DCacheLogBeatsPerLine`  |       0 | Beats per cache line
-  `DCacheLogNumWays`       |       3 | Cache lines in each associative set
+  `DCacheLogNumWays`       |       4 | Cache lines in each associative set
   `DCacheLogSetsPerThread` |       2 | Associative sets per thread
   `LogBeatsPerDRAM`        |      26 | Size of DRAM
 
@@ -1102,7 +1102,7 @@ A Tinsel configuration similar to the one above but with **128 cores**
   `LogDCachesPerDRAM`      |       3 | Caches per DRAM
   `DCacheLogWordsPerBeat`  |       3 | Number of 32-bit words per beat
   `DCacheLogBeatsPerLine`  |       0 | Beats per cache line
-  `DCacheLogNumWays`       |       3 | Cache lines in each associative set
+  `DCacheLogNumWays`       |       4 | Cache lines in each associative set
   `DCacheLogSetsPerThread` |       2 | Associative sets per thread
   `LogBeatsPerDRAM`        |      26 | Size of DRAM
   `SRAMAddrWidth`          |      20 | Address width of each off-chip SRAM
