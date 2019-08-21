@@ -68,6 +68,8 @@ interface DE5BridgeTop;
   // Reset request
   (* always_enabled, always_ready *)
   method Bool resetReq;
+  (* always_ready, always_enabled *)
+  method Action setTemperature(Bit#(8) temp);
 endinterface
 
 `endif

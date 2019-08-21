@@ -326,6 +326,18 @@ bool DebugLink::canGet()
   return false;
 }
 
+// Read temperature of given board
+int32_t DebugLink::getTemp(uint32_t boardX, uint32_t boardY)
+{
+  BoardCtrlPkt pkt;
+  pkt.linkId = linkId[boardY][boardX];
+  pkt.payload[0] = DEBUGLINK_TEMP_IN;
+  putPacket(boxX[boardY][boardX], boxY[boardY][boardX], &pkt);
+  getPacket(boxX[boardY][boardX], boxY[boardY][boardX], &pkt);
+  assert(pkt.payload[0] == DEBUGLINK_TEMP_OUT);
+  return ((int32_t) pkt.payload[1]) - 128;
+}
+
 // Destructor
 DebugLink::~DebugLink()
 {

@@ -1039,11 +1039,13 @@ by each thread.
 After mapping, POLite writes the graph into cluster memory and
 triggers execution.  By default, vertex states are written into the
 off-chip QDRII+ SRAMs, and edge lists are written in the DDR3 DRAMs.
-This behaviour can be inverted by setting `graph.mapVerticesToDRAM` to
-`true`.  Once the application is up and running, the host and the
-graph vertices can continue to communicate: any vertex can send
-messages to the host via the `HostPin` or the `finish` handler, and
-the host can send messages to any vertex.
+This defualt behaviour can be modified by setting the boolean flags
+`graph.mapVerticesToDRAM` and `graph.mapEdgesToDRAM` accordingly (true
+means "map to DRAM" and false means "map to SRAM").  Once the
+application is up and running, the host and the graph vertices can
+continue to communicate: any vertex can send messages to the host via
+the `HostPin` or the `finish` handler, and the host can send messages
+to any vertex.
 
 **Softswitch**. Central to POLite is an event loop running on each
 Tinsel thread, which we call **the softswitch** as it effectively
