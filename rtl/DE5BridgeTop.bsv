@@ -124,6 +124,9 @@ module de5BridgeTop (DE5BridgeTop);
   // Is the idle detected enabled
   Reg#(Bool) idleDetectedEnabled <- mkConfigReg(False);
 
+  // Temperature of this board
+  Reg#(Bit#(8)) temperature <- mkConfigReg(128);
+
   // Merge off-board input streams
   // -----------------------------
 
@@ -272,8 +275,11 @@ module de5BridgeTop (DE5BridgeTop);
 
   rule uartReceive0 (fromJtag.canGet && uartState == 0);
     fromJtag.get;
-    uartState <= 1;
     cmd <= fromJtag.value;
+    if (fromJtag.value == 4) // Temperature query
+      uartState <= 3;
+    else // Standard query
+      uartState <= 1;
   endrule
 
   rule uartReceive1 (fromJtag.canGet && uartState == 1);
@@ -295,12 +301,12 @@ module de5BridgeTop (DE5BridgeTop);
   endrule
 
   rule uartRespond0 (toJtag.canPut && uartState == 3);
-    toJtag.put(0);
+    toJtag.put(cmd == 4 ? 4 : 0);
     uartState <= 4;
   endrule
 
   rule uartRespond1 (toJtag.canPut && uartState == 4);
-    toJtag.put(0);
+    toJtag.put(cmd == 4 ? temperature : 0);
     uartState <= 0;
   endrule
 
@@ -311,6 +317,9 @@ module de5BridgeTop (DE5BridgeTop);
   interface macA = linkA.avalonMac;
   interface macB = linkB.avalonMac;
   interface jtagAvalon = uart.jtagAvalon;
+  method Action setTemperature(Bit#(8) temp);
+    temperature <= temp;
+  endmethod
   `endif
 
 endmodule

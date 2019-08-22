@@ -109,7 +109,10 @@ wire phy_pll_locked;
 wire soft_reset_in;
 reg soft_reset_out = 0;
 
-wire [7:0] temp_sample;
+wire tinsel_clk;
+wire [7:0] temp0;
+reg [7:0] temp1;
+reg [7:0] temp2;
 
 wire [7:0] ts_out;
 wire ts_done;
@@ -334,8 +337,10 @@ SoC system (
   .ts_done_tsdcaldone(ts_done),
   .ts_out_tsdcalo(ts_out),
   .ts_enable_ce(ts_enable),
-  .ts_clear_reset(ts_clear)
+  .ts_clear_reset(ts_clear),
 
+  .temperature_temp_val(temp0),
+  .tinsel_clk_clk(tinsel_clk)
 );
  
 temp_display temp_display_inst (
@@ -348,8 +353,13 @@ temp_display temp_display_inst (
   .HEX0_DP(HEX0_DP),
   .HEX1_D(HEX1_D),
   .HEX1_DP(HEX1_DP),
-  .sample(temp_sample)
+  .sample(temp0)
 );
+
+always @(negedge tinsel_clk) begin
+  temp1 <= temp0;
+  temp2 <= temp1;
+end
 
 reg [11:0] reset_count = 0;
 always @(posedge clk_50mhz) begin
