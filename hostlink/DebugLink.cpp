@@ -327,13 +327,25 @@ bool DebugLink::canGet()
 }
 
 // Read temperature of given board
-int32_t DebugLink::getTemp(uint32_t boardX, uint32_t boardY)
+int32_t DebugLink::getBoardTemp(uint32_t boardX, uint32_t boardY)
 {
   BoardCtrlPkt pkt;
   pkt.linkId = linkId[boardY][boardX];
   pkt.payload[0] = DEBUGLINK_TEMP_IN;
   putPacket(boxX[boardY][boardX], boxY[boardY][boardX], &pkt);
   getPacket(boxX[boardY][boardX], boxY[boardY][boardX], &pkt);
+  assert(pkt.payload[0] == DEBUGLINK_TEMP_OUT);
+  return ((int32_t) pkt.payload[1]) - 128;
+}
+
+// Read temperature of given bridge
+int32_t DebugLink::getBridgeTemp(uint32_t boxX, uint32_t boxY)
+{
+  BoardCtrlPkt pkt;
+  pkt.linkId = bridge[boxY][boxX];
+  pkt.payload[0] = DEBUGLINK_TEMP_IN;
+  putPacket(boxX, boxY, &pkt);
+  getPacket(boxX, boxY, &pkt);
   assert(pkt.payload[0] == DEBUGLINK_TEMP_OUT);
   return ((int32_t) pkt.payload[1]) - 128;
 }
