@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <sys/time.h>
 #include <config.h>
 #include <DebugLink.h>
 
@@ -42,6 +43,9 @@ class HostLink {
   // Destructor
   ~HostLink();
  
+  // Power-on self test
+  bool powerOnSelfTest();
+
   // Debug links
   // -----------
 
