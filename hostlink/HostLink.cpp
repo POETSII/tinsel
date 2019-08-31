@@ -123,6 +123,12 @@ void HostLink::constructor(uint32_t numBoxesX, uint32_t numBoxesY)
       }
     }
   }
+
+  // Run the self test
+  if (! powerOnSelfTest()) {
+    fprintf(stderr, "Power-on self test failed.  Please try again.\n");
+    exit(EXIT_FAILURE);
+  }
 }
 
 HostLink::HostLink()
@@ -498,6 +504,70 @@ void HostLink::store(uint32_t meshX, uint32_t meshY,
     uint32_t numFlits = 1 + (sendWords >> 2);
     send(toAddr(meshX, meshY, coreId, 0), numFlits, &req);
   }
+}
+
+// Power-on self test
+bool HostLink::powerOnSelfTest()
+{
+  const double timeout = 3.0;
+
+  // Need to check that we get a response within a given time
+  struct timeval start, finish, diff;
+
+  // Boot request to load data from memory
+  // (The test involves reading from QDRII+ SRAMs on each board)
+  BootReq req;
+  req.cmd = LoadCmd;
+  req.numArgs = 1;
+  req.args[0] = 1;
+
+  // Flit buffer to store responses
+  uint8_t flit[4 << TinselLogWordsPerFlit];
+
+  // Count number of responses received
+  int count = 0;
+
+  // Send request and consume responses
+  for (int ram = 1; ram <= 2; ram++) {
+    for (int y = 0; y < meshYLen; y++) {
+      for (int x = 0; x < meshXLen; x++) {
+        // Request a word from SRAM
+        uint32_t addr = ram << TinselLogBytesPerSRAM;
+        setAddr(x, y, 0, addr);
+        gettimeofday(&start, NULL);
+        while (1) {
+          bool ok = trySend(toAddr(x, y, 0, 0), 1, &req);
+          if (canRecv()) {
+            recv(flit);
+            count++;
+          }
+          if (ok) break;
+          gettimeofday(&finish, NULL);
+          timersub(&finish, &start, &diff);
+          double duration = (double) diff.tv_sec +
+                            (double) diff.tv_usec / 1000000.0;
+          if (duration > timeout) return false;
+        }
+      }
+    }
+  }
+
+  // Consume remaining responses
+  gettimeofday(&start, NULL);
+  while (count < (2*meshXLen*meshYLen)) {
+    if (canRecv()) {
+      recv(flit);
+      count++;
+      gettimeofday(&start, NULL);
+    }
+    gettimeofday(&finish, NULL);
+    timersub(&finish, &start, &diff);
+    double duration = (double) diff.tv_sec +
+                      (double) diff.tv_usec / 1000000.0;
+    if (duration > timeout) return false;
+  }
+
+  return true;
 }
 
 // Redirect UART StdOut to given file
