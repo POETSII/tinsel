@@ -1,10 +1,10 @@
-# Tinsel 0.6.1
+# Tinsel 0.6.2
 
 Tinsel is a [RISC-V](https://riscv.org/)-based manythread
 message-passing architecture designed for FPGA clusters.  It is being
 developed as part of the [POETS
 Project](https://poets-project.org/about) (Partial Ordered Event
-Triggered Systems).  This manual describes the Tinsel architecture and
+Triggered Systems).  This manual describes the architecture and
 associated APIs.  Further background can be found in our [FPL 2019
 paper](doc/fpl-2019-paper.pdf).  If you're a POETS Partner, you can
 access a machine running Tinsel in the [POETS
@@ -1084,11 +1084,8 @@ The default Tinsel configuration on a single DE5-Net board contains:
   * one termination/idle detector
   * a JTAG UART
 
-The clock frequency is 250MHz and the resource utilisation is *61% of
+The clock frequency is 240MHz and the resource utilisation is *67% of
 the DE5-Net*.
-
-A Tinsel configuration similar to the one above but with **128 cores**
-(2048 threads in total) clocks at 210MHz and uses 88% of the DE5-Net.
 
 ## B. Tinsel Parameters
 
