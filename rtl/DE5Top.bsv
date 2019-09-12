@@ -45,6 +45,8 @@ interface DE5Top;
   interface JtagUartAvalon jtagIfc;
   (* always_ready, always_enabled *)
   method Action setBoardId(Bit#(4) id);
+  (* always_ready, always_enabled *)
+  method Action setTemperature(Bit#(8) temp);
 endinterface
 
 `endif
@@ -60,6 +62,9 @@ module de5Top (DE5Top);
   `else
   Wire#(Bit#(4)) localBoardId <- mkDWire(?);
   `endif
+
+  // Temperature register
+  Reg#(Bit#(8)) temperature <- mkReg(128);
 
   // Create off-chip RAMs
   Vector#(`DRAMsPerBoard, OffChipRAM) rams;
@@ -132,7 +137,8 @@ module de5Top (DE5Top);
   // Create DebugLink interface
   function DebugLinkClient getDebugLinkClient(Core core) = core.debugLinkClient;
   DebugLink debugLink <-
-    mkDebugLink(localBoardId, map(getDebugLinkClient, vecOfCores));
+    mkDebugLink(localBoardId, temperature,
+      map(getDebugLinkClient, vecOfCores));
 
   // Create idle-detector
   IdleDetector idle <- mkIdleDetector;
@@ -199,6 +205,9 @@ module de5Top (DE5Top);
   interface westMac  = net.west;
   method Action setBoardId(Bit#(4) id);
     localBoardId <= id;
+  endmethod
+  method Action setTemperature(Bit#(8) temp);
+    temperature <= temp;
   endmethod
   `endif
 endmodule

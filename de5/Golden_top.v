@@ -233,6 +233,11 @@ wire rst_50mhz_n = CPU_RESET_n;
 wire clk_156mhz;
 wire phy_pll_locked;
 
+wire tinsel_clk;
+wire [7:0] temp0;
+reg [7:0] temp1;
+reg [7:0] temp2;
+
 reg rst_sram_b_n = 0;
 reg rst_sram_d_n = 0;
 
@@ -580,6 +585,8 @@ S5_DDR3_QSYS u0 (
   .qdr_d_status_local_cal_success(qdr_d_status_local_cal_success),
   .qdr_d_status_local_cal_fail(qdr_d_status_local_cal_fail),
 
+  .temperature_temp_val(temp2),
+  .tinsel_clk_clk(tinsel_clk)
 );
 
 temp_display temp_display_inst (
@@ -591,8 +598,14 @@ temp_display temp_display_inst (
   .HEX0_D(HEX0_D),
   .HEX0_DP(HEX0_DP),
   .HEX1_D(HEX1_D),
-  .HEX1_DP(HEX1_DP)
+  .HEX1_DP(HEX1_DP),
+  .sample(temp0)
 );
+
+always @(negedge tinsel_clk) begin
+  temp1 <= temp0;
+  temp2 <= temp1;
+end
 
 // Reset SRAMs
 reg [31:0] rst_sram_b_count = 0;
