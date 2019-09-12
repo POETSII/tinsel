@@ -49,6 +49,22 @@
          type = "String";
       }
    }
+   element SoC
+   {
+      datum _originalDeviceFamily
+      {
+         value = "Stratix V";
+         type = "String";
+      }
+   }
+   element clk_0
+   {
+      datum _sortIndex
+      {
+         value = "19";
+         type = "int";
+      }
+   }
    element clk_156
    {
       datum _sortIndex
@@ -323,6 +339,12 @@
    internal="DE5BridgeTop_0.soft_reset"
    type="conduit"
    dir="end" />
+ <interface
+   name="temperature"
+   internal="DE5BridgeTop_0.temperature"
+   type="conduit"
+   dir="end" />
+ <interface name="tinsel_clk" internal="clk_0.clk" type="clock" dir="start" />
  <interface name="ts_clear" internal="temp_sense.clr" type="reset" dir="end" />
  <interface
    name="ts_done"
@@ -332,6 +354,12 @@
  <interface name="ts_enable" internal="temp_sense.ce" type="conduit" dir="end" />
  <interface name="ts_out" internal="temp_sense.tsdcalo" type="conduit" dir="end" />
  <module name="DE5BridgeTop_0" kind="DE5BridgeTop" version="1.0" enabled="1" />
+ <module name="clk_0" kind="clock_source" version="16.1" enabled="1">
+  <parameter name="clockFrequency" value="50000000" />
+  <parameter name="clockFrequencyKnown" value="false" />
+  <parameter name="inputClockFrequency" value="250000000" />
+  <parameter name="resetSynchronousEdges" value="NONE" />
+ </module>
  <module name="clk_156" kind="clock_source" version="16.1" enabled="1">
   <parameter name="clockFrequency" value="156250000" />
   <parameter name="clockFrequencyKnown" value="true" />
@@ -1584,6 +1612,11 @@
    kind="clock"
    version="16.1"
    start="pcie_mm.coreclkout"
+   end="clk_0.clk_in" />
+ <connection
+   kind="clock"
+   version="16.1"
+   start="pcie_mm.coreclkout"
    end="DE5BridgeTop_0.clock" />
  <connection
    kind="clock"
@@ -1708,6 +1741,11 @@
    version="16.1"
    start="mem_if_ddr3_emif.afi_reset"
    end="mem_if_ddr3_emif_2.afi_reset_in" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="clk_50.clk_reset"
+   end="clk_0.clk_in_reset" />
  <connection
    kind="reset"
    version="16.1"

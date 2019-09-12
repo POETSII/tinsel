@@ -31,6 +31,7 @@ clean:
 	make -C apps/sync clean
 	make -C apps/web clean
 	make -C apps/exchange clean
+	make -C apps/temps clean
 	make -C apps/POLite/heat-gals clean
 	make -C apps/POLite/heat-sync clean
 	make -C apps/POLite/asp-gals clean

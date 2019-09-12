@@ -73,6 +73,22 @@
          type = "String";
       }
    }
+   element S5_DDR3_QSYS
+   {
+      datum _originalDeviceFamily
+      {
+         value = "Stratix V";
+         type = "String";
+      }
+   }
+   element clk_0
+   {
+      datum _sortIndex
+      {
+         value = "34";
+         type = "int";
+      }
+   }
    element clk_156
    {
       datum _sortIndex
@@ -494,6 +510,12 @@
    internal="ref_clk_d.clk_in_reset"
    type="reset"
    dir="end" />
+ <interface
+   name="temperature"
+   internal="DE5Top_0.temperature"
+   type="conduit"
+   dir="end" />
+ <interface name="tinsel_clk" internal="clk_0.clk" type="clock" dir="start" />
  <interface name="ts_clear" internal="temp_sense.clr" type="reset" dir="end" />
  <interface
    name="ts_done"
@@ -503,6 +525,12 @@
  <interface name="ts_enable" internal="temp_sense.ce" type="conduit" dir="end" />
  <interface name="ts_out" internal="temp_sense.tsdcalo" type="conduit" dir="end" />
  <module name="DE5Top_0" kind="DE5Top" version="1.0" enabled="1" />
+ <module name="clk_0" kind="clock_source" version="16.1" enabled="1">
+  <parameter name="clockFrequency" value="50000000" />
+  <parameter name="clockFrequencyKnown" value="false" />
+  <parameter name="inputClockFrequency" value="240000000" />
+  <parameter name="resetSynchronousEdges" value="NONE" />
+ </module>
  <module name="clk_156" kind="clock_source" version="16.1" enabled="1">
   <parameter name="clockFrequency" value="156250000" />
   <parameter name="clockFrequencyKnown" value="true" />
@@ -863,7 +891,7 @@
   <parameter name="MEM_CK_PHASE" value="0.0" />
   <parameter name="MEM_CK_WIDTH" value="1" />
   <parameter name="MEM_CLK_EN_WIDTH" value="1" />
-  <parameter name="MEM_CLK_FREQ" value="500.0" />
+  <parameter name="MEM_CLK_FREQ" value="480.0" />
   <parameter name="MEM_CLK_FREQ_MAX" value="800.0" />
   <parameter name="MEM_COL_ADDR_WIDTH" value="10" />
   <parameter name="MEM_CS_WIDTH" value="1" />
@@ -1186,7 +1214,7 @@
   <parameter name="MEM_CK_PHASE" value="0.0" />
   <parameter name="MEM_CK_WIDTH" value="1" />
   <parameter name="MEM_CLK_EN_WIDTH" value="1" />
-  <parameter name="MEM_CLK_FREQ" value="500.0" />
+  <parameter name="MEM_CLK_FREQ" value="480.0" />
   <parameter name="MEM_CLK_FREQ_MAX" value="800.0" />
   <parameter name="MEM_COL_ADDR_WIDTH" value="10" />
   <parameter name="MEM_CS_WIDTH" value="1" />
@@ -2737,11 +2765,6 @@
  <connection
    kind="clock"
    version="16.1"
-   start="mem_if_ddr3_emif.afi_clk"
-   end="mem_if_ddr3_emif_2.afi_clk_in" />
- <connection
-   kind="clock"
-   version="16.1"
    start="qdr_b.afi_clk"
    end="qdr_a.afi_clk_in" />
  <connection
@@ -2753,17 +2776,22 @@
    kind="clock"
    version="16.1"
    start="mem_if_ddr3_emif.afi_clk"
+   end="mem_if_ddr3_emif_2.afi_clk_in" />
+ <connection
+   kind="clock"
+   version="16.1"
+   start="mem_if_ddr3_emif.afi_clk"
+   end="clk_0.clk_in" />
+ <connection
+   kind="clock"
+   version="16.1"
+   start="mem_if_ddr3_emif.afi_clk"
    end="DE5Top_0.clock" />
  <connection
    kind="clock"
    version="16.1"
    start="mem_if_ddr3_emif.afi_clk"
-   end="mac_a_tx_fifo.in_clk" />
- <connection
-   kind="clock"
-   version="16.1"
-   start="mem_if_ddr3_emif.afi_clk"
-   end="mac_b_tx_fifo.in_clk" />
+   end="mac_d_tx_fifo.in_clk" />
  <connection
    kind="clock"
    version="16.1"
@@ -2773,7 +2801,12 @@
    kind="clock"
    version="16.1"
    start="mem_if_ddr3_emif.afi_clk"
-   end="mac_d_tx_fifo.in_clk" />
+   end="mac_b_tx_fifo.in_clk" />
+ <connection
+   kind="clock"
+   version="16.1"
+   start="mem_if_ddr3_emif.afi_clk"
+   end="mac_a_tx_fifo.in_clk" />
  <connection
    kind="clock"
    version="16.1"
@@ -2818,12 +2851,7 @@
    kind="clock"
    version="16.1"
    start="mem_if_ddr3_emif.afi_clk"
-   end="mac_a_rx_fifo.out_clk" />
- <connection
-   kind="clock"
-   version="16.1"
-   start="mem_if_ddr3_emif.afi_clk"
-   end="mac_b_rx_fifo.out_clk" />
+   end="mac_d_rx_fifo.out_clk" />
  <connection
    kind="clock"
    version="16.1"
@@ -2833,42 +2861,17 @@
    kind="clock"
    version="16.1"
    start="mem_if_ddr3_emif.afi_clk"
-   end="mac_d_rx_fifo.out_clk" />
+   end="mac_b_rx_fifo.out_clk" />
  <connection
    kind="clock"
    version="16.1"
    start="mem_if_ddr3_emif.afi_clk"
-   end="uart_bridge.s0_clk" />
+   end="mac_a_rx_fifo.out_clk" />
  <connection
    kind="clock"
    version="16.1"
    start="mem_if_ddr3_emif.afi_clk"
-   end="qdr_a_w_bridge.s0_clk" />
- <connection
-   kind="clock"
-   version="16.1"
-   start="mem_if_ddr3_emif.afi_clk"
-   end="qdr_a_r_bridge.s0_clk" />
- <connection
-   kind="clock"
-   version="16.1"
-   start="mem_if_ddr3_emif.afi_clk"
-   end="qdr_b_r_bridge.s0_clk" />
- <connection
-   kind="clock"
-   version="16.1"
-   start="mem_if_ddr3_emif.afi_clk"
-   end="qdr_b_w_bridge.s0_clk" />
- <connection
-   kind="clock"
-   version="16.1"
-   start="mem_if_ddr3_emif.afi_clk"
-   end="qdr_c_r_bridge.s0_clk" />
- <connection
-   kind="clock"
-   version="16.1"
-   start="mem_if_ddr3_emif.afi_clk"
-   end="qdr_c_w_bridge.s0_clk" />
+   end="qdr_d_w_bridge.s0_clk" />
  <connection
    kind="clock"
    version="16.1"
@@ -2878,7 +2881,37 @@
    kind="clock"
    version="16.1"
    start="mem_if_ddr3_emif.afi_clk"
-   end="qdr_d_w_bridge.s0_clk" />
+   end="qdr_c_w_bridge.s0_clk" />
+ <connection
+   kind="clock"
+   version="16.1"
+   start="mem_if_ddr3_emif.afi_clk"
+   end="qdr_c_r_bridge.s0_clk" />
+ <connection
+   kind="clock"
+   version="16.1"
+   start="mem_if_ddr3_emif.afi_clk"
+   end="qdr_b_w_bridge.s0_clk" />
+ <connection
+   kind="clock"
+   version="16.1"
+   start="mem_if_ddr3_emif.afi_clk"
+   end="qdr_b_r_bridge.s0_clk" />
+ <connection
+   kind="clock"
+   version="16.1"
+   start="mem_if_ddr3_emif.afi_clk"
+   end="qdr_a_r_bridge.s0_clk" />
+ <connection
+   kind="clock"
+   version="16.1"
+   start="mem_if_ddr3_emif.afi_clk"
+   end="qdr_a_w_bridge.s0_clk" />
+ <connection
+   kind="clock"
+   version="16.1"
+   start="mem_if_ddr3_emif.afi_clk"
+   end="uart_bridge.s0_clk" />
  <connection
    kind="clock"
    version="16.1"
@@ -3093,6 +3126,11 @@
    version="16.1"
    start="qdr_b.afi_reset"
    end="qdr_c.afi_reset_in" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="mem_if_ddr3_emif.afi_reset"
+   end="clk_0.clk_in_reset" />
  <connection
    kind="reset"
    version="16.1"

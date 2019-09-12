@@ -38,6 +38,11 @@ package DebugLink;
 //
 //   The 8-bit payload gets sent to the destination core(s).
 //
+//   TempIn: tag (1 byte)
+//   --------------------
+//
+//   Request the FPGA temperature.
+//
 // Commands sent from DebugLink to the host PC over the JTAG UART are
 // as follows.
 //
@@ -56,6 +61,10 @@ package DebugLink;
 //
 //   A byte sent by a thread is forwarded to the host.
 //
+//   TempOut: tag (1 byte), payload (1 byte)
+//   ---------------------------------------
+//
+//   Actual temperature in celsius is payload - 128.
 
 // =============================================================================
 // Imports
@@ -73,12 +82,14 @@ import ConfigReg :: *;
 // DebugLink commands
 // =============================================================================
 
-typedef Bit#(2) DebugLinkCmd;
+typedef Bit#(3) DebugLinkCmd;
 DebugLinkCmd cmdQueryIn  = 0;
 DebugLinkCmd cmdQueryOut = 0;
 DebugLinkCmd cmdSetDest  = 1;
 DebugLinkCmd cmdStdIn    = 2;
 DebugLinkCmd cmdStdOut   = 2;
+DebugLinkCmd cmdTempIn   = 4;
+DebugLinkCmd cmdTempOut  = 4;
 
 // =============================================================================
 // Types
@@ -198,6 +209,7 @@ endinterface
 
 module mkDebugLink#(
     Bit#(4) boardIdWithinBox,
+    Bit#(8) temperature,
     Vector#(n, DebugLinkClient) cores) (DebugLink);
 
   // The board offset (in a multi-box setup) received via DebugLink
@@ -270,15 +282,21 @@ module mkDebugLink#(
   // Command
   Reg#(DebugLinkCmd) recvCmd <- mkConfigReg(0);
 
-  // Respond to query command?
-  Reg#(Bool) respondQuery <- mkConfigReg(False);
+  // Respond to command?
+  Reg#(Bool) respondFlag <- mkConfigReg(False);
+  Reg#(DebugLinkCmd) respondCmd <- mkConfigRegU;
 
-  rule uartRecv (fromJtag.canGet && toBusPort.canPut && !respondQuery);
+  rule uartRecv (fromJtag.canGet && toBusPort.canPut && !respondFlag);
     fromJtag.get;
     if (recvState == 0) begin
       DebugLinkCmd cmd = truncate(fromJtag.value);
-      recvCmd <= cmd;
-      recvState <= 1;
+      if (cmd == cmdTempIn) begin
+        respondFlag <= True;
+        respondCmd <= cmdTempIn;
+      end else begin
+        recvCmd <= cmd;
+        recvState <= 1;
+      end
     end else if (recvState == 1) begin
       if (recvCmd == cmdQueryIn) begin
         boardOffset <= fromJtag.value;
@@ -313,7 +331,8 @@ module mkDebugLink#(
         // Disable west link?
         if (x == 0 && edgeEn[3] == 1) linkEn[3] = False;
         linkEnableReg <= linkEn;
-        respondQuery <= True;
+        respondFlag <= True;
+        respondCmd <= cmdQueryIn;
         recvState <= 0;
       end else begin
         recvDestCore <= fromJtag.value;
@@ -332,21 +351,34 @@ module mkDebugLink#(
   Reg#(DebugLinkFlit) sendFlit <- mkConfigRegU;
 
   // Send QueryOut command
-  rule uartSendQueryOut (toJtag.canPut && respondQuery);
-    if (sendState == 0) begin
-      // Send QueryOut
-      toJtag.put(zeroExtend(cmdQueryOut));
-      sendState <= 1;
-    end else begin
-      // Send QueryOut payload
-      toJtag.put(1 + zeroExtend(pack(boardIdWithinBox)));
-      sendState <= 0;
-      respondQuery <= False;
+  rule uartSendQueryOut (toJtag.canPut && respondFlag);
+    if (respondCmd == cmdQueryIn) begin
+      if (sendState == 0) begin
+        // Send QueryOut
+        toJtag.put(zeroExtend(cmdQueryOut));
+        sendState <= 1;
+      end else begin
+        // Send QueryOut payload
+        toJtag.put(1 + zeroExtend(pack(boardIdWithinBox)));
+        sendState <= 0;
+        respondFlag <= False;
+      end
+    end else if (respondCmd == cmdTempIn) begin
+      if (sendState == 0) begin
+        // Send TempOut
+        toJtag.put(zeroExtend(cmdTempOut));
+        sendState <= 1;
+      end else begin
+        // Send temperature
+        toJtag.put(temperature);
+        sendState <= 0;
+        respondFlag <= False;
+      end
     end
   endrule
 
   // Send StdOut command
-  rule uartSendStdOut (toJtag.canPut && !respondQuery);
+  rule uartSendStdOut (toJtag.canPut && !respondFlag);
     if (sendState == 0) begin
       if (fromBusPort.canGet) begin
         fromBusPort.get;

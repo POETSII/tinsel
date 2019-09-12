@@ -1,10 +1,10 @@
-# Tinsel 0.6.1
+# Tinsel 0.6.2
 
 Tinsel is a [RISC-V](https://riscv.org/)-based manythread
 message-passing architecture designed for FPGA clusters.  It is being
 developed as part of the [POETS
 Project](https://poets-project.org/about) (Partial Ordered Event
-Triggered Systems).  This manual describes the Tinsel architecture and
+Triggered Systems).  This manual describes the architecture and
 associated APIs.  Further background can be found in our [FPL 2019
 paper](doc/fpl-2019-paper.pdf).  If you're a POETS Partner, you can
 access a machine running Tinsel in the [POETS
@@ -383,7 +383,7 @@ structure of each cache.
   `LogDCachesPerDRAM`      |       3 | Caches per DRAM
   `DCacheLogWordsPerBeat`  |       3 | Number of 32-bit words per beat
   `DCacheLogBeatsPerLine`  |       0 | Beats per cache line
-  `DCacheLogNumWays`       |       3 | Cache lines in each associative set
+  `DCacheLogNumWays`       |       4 | Cache lines in each associative set
   `DCacheLogSetsPerThread` |       2 | Associative sets per thread
   `LogBeatsPerDRAM`        |      26 | Size of DRAM
 
@@ -1039,11 +1039,13 @@ by each thread.
 After mapping, POLite writes the graph into cluster memory and
 triggers execution.  By default, vertex states are written into the
 off-chip QDRII+ SRAMs, and edge lists are written in the DDR3 DRAMs.
-This behaviour can be inverted by setting `graph.mapVerticesToDRAM` to
-`true`.  Once the application is up and running, the host and the
-graph vertices can continue to communicate: any vertex can send
-messages to the host via the `HostPin` or the `finish` handler, and
-the host can send messages to any vertex.
+This defualt behaviour can be modified by setting the boolean flags
+`graph.mapVerticesToDRAM` and `graph.mapEdgesToDRAM` accordingly (true
+means "map to DRAM" and false means "map to SRAM").  Once the
+application is up and running, the host and the graph vertices can
+continue to communicate: any vertex can send messages to the host via
+the `HostPin` or the `finish` handler, and the host can send messages
+to any vertex.
 
 **Softswitch**. Central to POLite is an event loop running on each
 Tinsel thread, which we call **the softswitch** as it effectively
@@ -1082,11 +1084,8 @@ The default Tinsel configuration on a single DE5-Net board contains:
   * one termination/idle detector
   * a JTAG UART
 
-The clock frequency is 250MHz and the resource utilisation is *61% of
+The clock frequency is 240MHz and the resource utilisation is *67% of
 the DE5-Net*.
-
-A Tinsel configuration similar to the one above but with **128 cores**
-(2048 threads in total) clocks at 210MHz and uses 88% of the DE5-Net.
 
 ## B. Tinsel Parameters
 
@@ -1100,7 +1099,7 @@ A Tinsel configuration similar to the one above but with **128 cores**
   `LogDCachesPerDRAM`      |       3 | Caches per DRAM
   `DCacheLogWordsPerBeat`  |       3 | Number of 32-bit words per beat
   `DCacheLogBeatsPerLine`  |       0 | Beats per cache line
-  `DCacheLogNumWays`       |       3 | Cache lines in each associative set
+  `DCacheLogNumWays`       |       4 | Cache lines in each associative set
   `DCacheLogSetsPerThread` |       2 | Associative sets per thread
   `LogBeatsPerDRAM`        |      26 | Size of DRAM
   `SRAMAddrWidth`          |      20 | Address width of each off-chip SRAM
