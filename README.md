@@ -6,9 +6,10 @@ developed as part of the [POETS
 Project](https://poets-project.org/about) (Partial Ordered Event
 Triggered Systems).  This manual describes the architecture and
 associated APIs.  Further background can be found in our [FPL 2019
-paper](doc/fpl-2019-paper.pdf).  If you're a POETS Partner, you can
-access a machine running Tinsel in the [POETS
-Cloud](https://github.com/POETSII/poets-cloud).  
+paper](doc/fpl-2019-paper.pdf), which presents results for [Tinsel
+0.6.1](https://github.com/POETSII/tinsel/tree/tinsel-0.6.1).  If
+you're a POETS Partner, you can access a machine running Tinsel in the
+[POETS Cloud](https://github.com/POETSII/poets-cloud).  
 
 ## Release Log
 
