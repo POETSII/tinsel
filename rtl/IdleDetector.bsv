@@ -401,9 +401,9 @@ interface IdleDetectMaster;
   (* always_ready, always_enabled *)
   method Action enabled(
     Bool en,
-    Bit#(`MeshXBits) xLen,
-    Bit#(`MeshYBits) yLen,
-    Bit#(TAdd#(`MeshXBits, `MeshYBits)) numBoards);
+    Bit#(`MeshXBits1) xLen,
+    Bit#(`MeshYBits1) yLen,
+    Bit#(TAdd#(`MeshXBits1, `MeshYBits1)) numBoards);
 endinterface
 
 module mkIdleDetectMaster (IdleDetectMaster);
@@ -433,9 +433,9 @@ module mkIdleDetectMaster (IdleDetectMaster);
   Wire#(Bool) enableWire <- mkBypassWire;
 
   // X and Y dimensions of the board mesh
-  Wire#(Bit#(`MeshXBits)) meshXLen <- mkBypassWire;
-  Wire#(Bit#(`MeshYBits)) meshYLen <- mkBypassWire;
-  Wire#(Bit#(TAdd#(`MeshXBits, `MeshYBits))) meshBoards <- mkBypassWire;
+  Wire#(Bit#(`MeshXBits1)) meshXLen <- mkBypassWire;
+  Wire#(Bit#(`MeshYBits1)) meshYLen <- mkBypassWire;
+  Wire#(Bit#(TAdd#(`MeshXBits1, `MeshYBits1))) meshBoards <- mkBypassWire;
 
   // Update local message count
   rule updateLocalCount;
@@ -464,11 +464,11 @@ module mkIdleDetectMaster (IdleDetectMaster);
   Wire#(Bool) disableHostMsgsWire <- mkDWire(False);
 
   // For iterating over the worker boards
-  Reg#(Bit#(`MeshXBits)) boardX <- mkConfigReg(0);
-  Reg#(Bit#(`MeshYBits)) boardY <- mkConfigReg(0);
+  Reg#(Bit#(`MeshXBits1)) boardX <- mkConfigReg(0);
+  Reg#(Bit#(`MeshYBits1)) boardY <- mkConfigReg(0);
 
   // Count responses from worker boards
-  Reg#(Bit#(TAdd#(`MeshXBits, `MeshYBits))) respCount <- mkConfigReg(0);
+  Reg#(Bit#(TAdd#(`MeshXBits1, `MeshYBits1))) respCount <- mkConfigReg(0);
 
   // Are any responses so far black?
   Reg#(Bool) anyBlack <- mkConfigReg(False);
@@ -490,7 +490,7 @@ module mkIdleDetectMaster (IdleDetectMaster);
       NetAddr {
         acc: False,
         host: option(False, 0),
-        board: BoardId { y: boardY, x: boardX },
+        board: BoardId { y: truncate(boardY), x: truncate(boardX) },
         core: 0,
         thread: 0
       };
@@ -569,9 +569,9 @@ module mkIdleDetectMaster (IdleDetectMaster);
   method Action decCount = decWire.send;
   method Action enabled(
       Bool en,
-      Bit#(`MeshXBits) xLen,
-      Bit#(`MeshYBits) yLen,
-      Bit#(TAdd#(`MeshXBits, `MeshYBits)) numBoards);
+      Bit#(`MeshXBits1) xLen,
+      Bit#(`MeshYBits1) yLen,
+      Bit#(TAdd#(`MeshXBits1, `MeshYBits1)) numBoards);
 
     enableWire <= en;
     meshXLen <= xLen;

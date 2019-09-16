@@ -233,9 +233,9 @@ module de5BridgeTop (DE5BridgeTop);
   endrule
 
   // Dimensions of the board mesh (received over the UART)
-  Reg#(Bit#(`MeshXBits)) meshXLen <- mkConfigReg(0);
-  Reg#(Bit#(`MeshYBits)) meshYLen <- mkConfigReg(0);
-  Reg#(Bit#(TAdd#(`MeshXBits, `MeshYBits))) meshBoards <- mkConfigReg(0);
+  Reg#(Bit#(`MeshXBits1)) meshXLen <- mkConfigReg(0);
+  Reg#(Bit#(`MeshYBits1)) meshYLen <- mkConfigReg(0);
+  Reg#(Bit#(TAdd#(`MeshXBits1, `MeshYBits1))) meshBoards <- mkConfigReg(0);
 
   // Is idle-detection currently enabled
   Reg#(Bool) idleDetectorEnabled <- mkConfigReg(False);
@@ -286,8 +286,8 @@ module de5BridgeTop (DE5BridgeTop);
     fromJtag.get;
     if (cmd != 0) begin
       idleDetectorEnabled <= True;
-      Bit#(`MeshXBits) xLen = truncate(fromJtag.value[3:0]);
-      Bit#(`MeshYBits) yLen = truncate(fromJtag.value[7:4]);
+      Bit#(`MeshXBits1) xLen = truncate(fromJtag.value[3:0]);
+      Bit#(`MeshYBits1) yLen = truncate(fromJtag.value[7:4]);
       meshYLen <= yLen;
       meshXLen <= xLen;
       meshBoards <= zeroExtend(xLen) * zeroExtend(yLen);

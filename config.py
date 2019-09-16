@@ -110,9 +110,11 @@ p["MacLatency"] = 100
 
 # Number of bits in mesh X coord (board id)
 p["MeshXBits"] = 3
+p["MeshXBits1"] = p["MeshXBits"] + 1
 
 # Number of bits in mesh Y coord (board id)
 p["MeshYBits"] = 3
+p["MeshYBits1"] = p["MeshYBits"] + 1
 
 # Number of bits in mesh X coord within a box (DIP switches)
 p["MeshXBitsWithinBox"] = 2
