@@ -1,16 +1,16 @@
 # Baremetal GALS Heat
 
 Performance from [Baremetal GALS Heat code](heat.c)
-running 50,000 time steps on Tinsel:
+running 50,000 time steps on Tinsel 0.6.2 (240MHz):
 
   FPGAs       | Cells      | Cells/FPGA | Runtime (s)
   ----------- | ---------- | ---------- | -----------
-  1 (1x1)     | 65,536     | 65,536     | 6.2
-  4 (2x2)     | 262,144    | 65,536     | 6.2
-  9 (3x3)     | 589,824    | 65,536     | 6.4
-  12 (3x4)    | 786,432    | 65,536     | 6.5
-  16 (4x4)    | 1,048,576  | 65,536     | 6.6
-  24 (6x4)    | 1,572,864  | 65,536     | 6.8
+  1 (1x1)     | 65,536     | 65,536     | 6.4
+  4 (2x2)     | 262,144    | 65,536     | 6.6
+  9 (3x3)     | 589,824    | 65,536     | 6.8
+  12 (3x4)    | 786,432    | 65,536     | 6.8
+  16 (4x4)    | 1,048,576  | 65,536     | 6.9
+  24 (6x4)    | 1,572,864  | 65,536     | 7.1
   48 (6x8)    | 3,145,728  | 65,536     | 7.8
 
 These runtimes include the time to transfer the final cell states to
