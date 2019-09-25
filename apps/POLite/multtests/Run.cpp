@@ -177,10 +177,10 @@ int main() {
     double duration = (double) diff.tv_sec + (double) diff.tv_usec / 1000000.0;
     printf("Time = %lf\n", duration);
 
-    for (uint32_t y = WIDTH-1; y >= 0; y--) {
+    for (uint32_t y = 0; y < WIDTH; y++) {
         for (uint32_t x = 0; x < LENGTH; x++) {
             //printf("X = %d: Y = %d ", x, y);
-            printf("%d ", result[x][y]);
+            printf("%d ", result[x][(WIDTH-1) - y]);
         }
         printf("\n");
     }
