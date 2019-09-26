@@ -5,12 +5,21 @@
 #include <stdint.h>
 
 // Parameters
-#define LENGTH (2)
-#define WIDTH  (2)
-#define HEIGHT (2)
-#define RETMATSIZE (LENGTH * WIDTH)
 
-extern uint32_t matrixA[WIDTH][LENGTH];
-extern uint32_t matrixB[WIDTH][LENGTH];
+#define MATALEN (2)
+#define MATAWID (2)
+#define MATBLEN (2)
+#define MATBWID (2)
+
+#define MESHLEN (MATAWID)
+#define MESHWID (MATBLEN)
+#define MESHHEI (MATAWID)
+
+#define RETMATSIZE (MESHLEN * MESHWID)
+
+extern uint32_t matrixA[MATAWID][MATALEN];
+extern uint32_t matrixB[MATBWID][MATBLEN];
+
+extern uint32_t mult_possible;
 
 #endif
