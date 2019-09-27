@@ -6,10 +6,18 @@
 
 // Parameters
 
-#define MATALEN (2)
-#define MATAWID (2)
-#define MATBLEN (2)
-#define MATBWID (2)
+/***************************************************
+ * Edit values between here ->
+ * ************************************************/
+
+#define MATALEN (3)
+#define MATAWID (3)
+#define MATBLEN (3)
+#define MATBWID (3)
+
+/***************************************************
+ * <- And here
+ * ************************************************/
 
 #define MESHLEN (MATBLEN)
 #define MESHWID (MATAWID)

@@ -4,7 +4,7 @@
 
 #include <POLite.h>
 
-// Input reception flags
+// Input reception and message validity flags
 const uint32_t EL1 = 1 << 0;
 const uint32_t EL2 = 1 << 1;
 const uint32_t AGG = 1 << 2;
@@ -20,8 +20,10 @@ struct MatMessage {
     // Message Origin -> Implementation uses 0 for A matrix, 1 for B matrix, 
     // 2 for agregated matrix, DeviceID for HostLink return
     uint32_t from;
-    // Matrix Element2
+    // Matrix Elements
     uint32_t element1, element2, aggregate;
+    // Message Element Validity Flag
+    uint32_t valflags;
     // Source Coordinates
     uint32_t source_x, source_y, source_z;
 };
@@ -39,6 +41,8 @@ struct MatState {
     uint32_t element1, element2, aggregate;
     // Reception Flags
     uint32_t inflags;
+    // Message Element Validity Flag
+    uint32_t valflags;
 };
 
 struct MatDevice : PDevice<MatState, None, MatMessage> {
@@ -50,6 +54,7 @@ struct MatDevice : PDevice<MatState, None, MatMessage> {
         s->aggregate = 0;
         s->from = INTERNAL;
         s->inflags = 0;
+        s->valflags = 0;
         *readyToSend = No;
     }
 
@@ -62,34 +67,39 @@ struct MatDevice : PDevice<MatState, None, MatMessage> {
         msg->element1 = s->element1;
         msg->element2 = s->element2;
         msg->aggregate = s->aggregate;
+        msg->valflags = s->valflags;
         *readyToSend = No;
     }
 
     // Receive handler
     inline void recv(MatMessage* msg, None* edge) {
 
-        if ( (!(s->inflags & EL1) && (msg->source_x == (s->x)-1) && (msg->source_y == s->y) && (msg->source_z == s->z) && (msg->from == INTERNAL)) || (msg->from == EXTERNALX) ) {
+        if ( (!(s->inflags & EL1) && (msg->valflags & EL1) && (msg->source_x == (s->x)-1) && (msg->source_y == s->y) && (msg->source_z == s->z) && (msg->from == INTERNAL)) 
+            || (msg->from == EXTERNALX) ) {
             s->element1 = msg->element1;
             s->inflags |= EL1;
 
             // Should this value be propagated in the x dimension?
             if (s->x < ((s->xmax)-1)) {
+                s->valflags |= EL1;
                 *readyToSend = Pin(0);
             }
             
         }
 
-        if ( (!(s->inflags & EL2) && (msg->source_x == s->x) && (msg->source_y == (s->y)-1) && (msg->source_z == s->z) && (msg->from == INTERNAL)) || (msg->from == EXTERNALY) ) {
+        if ( (!(s->inflags & EL2) && (msg->valflags & EL2) && (msg->source_x == s->x) && (msg->source_y == (s->y)-1) && (msg->source_z == s->z) && (msg->from == INTERNAL)) 
+            || (msg->from == EXTERNALY) ) {
             s->element2 = msg->element2;
             s->inflags |= EL2;
 
             // Should this value be propagated in the y dimension?
             if (s->y < ((s->ymax)-1)) {
+                s->valflags |= EL2;
                 *readyToSend = Pin(0);
             }
         }
 
-        if (!(s->inflags & AGG) && (msg->source_x == s->x) && (msg->source_y == s->y) && (msg->source_z == (s->z)-1) && (msg->from == INTERNAL)) {
+        if (!(s->inflags & AGG) && (msg->valflags & AGG) && (msg->source_x == s->x) && (msg->source_y == s->y) && (msg->source_z == (s->z)-1) && (msg->from == INTERNAL)) {
             s->aggregate = msg->aggregate;
             s->inflags |= AGG;
         }
@@ -98,16 +108,18 @@ struct MatDevice : PDevice<MatState, None, MatMessage> {
         if (((s->z) == 0) && (s->inflags & EL1) && (s->inflags & EL2) && !(s->inflags & ANS1)) {
             s->aggregate = s->element1 * s->element2;
             s->inflags |= ANS1;
+            s->valflags |= AGG;
             *readyToSend = Pin(0);
         }
         
-        // If all three elements received
+        // If all three elements received and the aggregate has not already been calculated
         if ((s->inflags & EL1) && (s->inflags & EL2) && (s->inflags & AGG) && !(s->inflags & ANS2)) {
             s->aggregate = (s->element1 * s->element2) + s->aggregate;
             s->inflags |= ANS2;
             
             // Send aggregate if not last in z dimension
             if (((s->z) != (s->zmax)-1)) {
+            s->valflags |= AGG;
             *readyToSend = Pin(0);
             }
 
@@ -127,11 +139,6 @@ struct MatDevice : PDevice<MatState, None, MatMessage> {
         if ((s->z) == (s->zmax)-1) {
             msg->from = s->id;
             msg->aggregate = s->aggregate;
-            //msg->source_x = s->x;
-            //msg->source_y = s->y;
-            //msg->source_z = s->z;
-            //msg->element1 = s->element1;
-            //msg->element2 = s->element2;
             return true;
         }
         else {
