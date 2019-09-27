@@ -11,11 +11,11 @@
 #define MATBLEN (2)
 #define MATBWID (2)
 
-#define MESHLEN (MATAWID)
-#define MESHWID (MATBLEN)
-#define MESHHEI (MATAWID)
+#define MESHLEN (MATBLEN)
+#define MESHWID (MATAWID)
+#define MESHHEI (MATALEN)
 
-#define RETMATSIZE (MESHLEN * MESHWID)
+#define RETMATSIZE (MATALEN * MATBWID)
 
 extern uint32_t matrixA[MATAWID][MATALEN];
 extern uint32_t matrixB[MATBWID][MATBLEN];
