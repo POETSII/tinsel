@@ -49,15 +49,10 @@ int main() {
             for (uint32_t y = 0; y < MESHWID; y++) {
                 for (uint32_t z = 0; z < MESHHEI; z++) {
                     
-                    if (x < MESHLEN-1) {
-                        graph.addEdge(mesh[x][y][z], 0, mesh[x+1][y][z]);
-                        }
-                    if (y < MESHWID-1) {
-                        graph.addEdge(mesh[x][y][z], 0, mesh[x][y+1][z]);
-                        }
                     if (z < MESHHEI-1) {
                         graph.addEdge(mesh[x][y][z], 0, mesh[x][y][z+1]);
-                        }
+                    }
+                    
                 }
             }
         } 
@@ -85,16 +80,14 @@ int main() {
                     
                     // From maxtrix A
                     graph.devices[mesh[x][y][z]]->state.element1 = matrixA[y][z];
-                    //printf("Initialise %d to node [0][%d][%d]\n", matrixA[y][z], y, z);
 
                     // From maxtrix B
                     graph.devices[mesh[x][y][z]]->state.element2 = matrixB[z][x];
-                    //printf("Initialise %d to node [0%d][0][%d]\n", matrixB[z][x], x, z);
                     
-                    // Tell nodes their element1/2 values are received and valid
-                    graph.devices[mesh[x][y][z]]->state.inflags = 0;
-                    graph.devices[mesh[x][y][z]]->state.valflags = 0;
-                    
+                    // Initialise variables prior to starting sumulation
+                    graph.devices[mesh[x][y][z]]->state.aggregate = 0;
+                    graph.devices[mesh[x][y][z]]->state.from = 0;
+                    graph.devices[mesh[x][y][z]]->state.trackflag = 0;
                     
                 }
             }
@@ -111,40 +104,6 @@ int main() {
         // Start timer
         struct timeval start, finish, diff;
         gettimeofday(&start, NULL);
-
-
-/*        int deviceAddr = 0;
-        
-        for (uint32_t h = 0; h < MESHHEI; h++) {
-            for (uint32_t w = 0; w < MESHWID; w++) {
-                for (uint32_t l = 0; l < MESHLEN; l++) {
-                    
-                    // Construct messages -> One same element from each matrix
-                    PMessage<None, MatMessage> sendMsg;
-
-                    if (l == 0) {
-                        // From maxtrix A
-                        deviceAddr = graph.toDeviceAddr[mesh[0][w][h]];
-                        sendMsg.devId = getLocalDeviceId(deviceAddr);
-                        sendMsg.payload.from = EXTERNALX;
-                        sendMsg.payload.element1 = matrixA[w][h];
-                        hostLink.send(getThreadId(deviceAddr), 2, &sendMsg);
-                        //printf("Sent %d to node [0][%d][%d]\n", sendMsg.payload.element1, w, h);
-                    }
-
-                    if (w == 0) {
-                        // From maxtrix B
-                        deviceAddr = graph.toDeviceAddr[mesh[l][0][h]];
-                        sendMsg.devId = getLocalDeviceId(deviceAddr);
-                        sendMsg.payload.from = EXTERNALY;
-                        sendMsg.payload.element2 = matrixB[h][l];
-                        hostLink.send(getThreadId(deviceAddr), 2, &sendMsg);
-                        //printf("Sent %d to node [%d][0][%d]\n", sendMsg.payload.element2, l, h);
-                    }
-
-                }
-            }
-        } */
 
         // Allocate array to contain final value of each device
         uint32_t result[MESHLEN][MESHWID] {};

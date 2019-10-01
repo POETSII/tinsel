@@ -10,10 +10,10 @@
  * Edit values between here ->
  * ************************************************/
 
-#define MATALEN (2)
-#define MATAWID (2)
-#define MATBLEN (2)
-#define MATBWID (2)
+#define MATALEN (10)
+#define MATAWID (10)
+#define MATBLEN (10)
+#define MATBWID (10)
 
 /***************************************************
  * <- And here
