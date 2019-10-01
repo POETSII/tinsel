@@ -21,7 +21,7 @@ struct MatMessage {
     // 2 for agregated matrix, DeviceID for HostLink return
     uint32_t from;
     // Matrix Elements
-    uint32_t element1, element2, aggregate;
+    int32_t element1, element2, aggregate;
     // Message Element Validity Flag
     uint32_t valflags;
     // Source Coordinates
@@ -38,7 +38,7 @@ struct MatState {
     // Message origin
     uint32_t from;
     // Possible Inputs
-    uint32_t element1, element2, aggregate;
+    int32_t element1, element2, aggregate;
     // Reception Flags
     uint32_t inflags;
     // Message Element Validity Flag

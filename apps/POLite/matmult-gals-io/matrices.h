@@ -10,10 +10,10 @@
  * Edit values between here ->
  * ************************************************/
 
-#define MATALEN (2)
-#define MATAWID (3)
-#define MATBLEN (1)
-#define MATBWID (2)
+#define MATALEN (10)
+#define MATAWID (10)
+#define MATBLEN (10)
+#define MATBWID (10)
 
 /***************************************************
  * <- And here
@@ -25,8 +25,8 @@
 
 #define RETMATSIZE (MATAWID * MATBLEN)
 
-extern uint32_t matrixA[MATAWID][MATALEN];
-extern uint32_t matrixB[MATBWID][MATBLEN];
+extern int32_t matrixA[MATAWID][MATALEN];
+extern int32_t matrixB[MATBWID][MATBLEN];
 
 extern uint32_t mult_possible;
 

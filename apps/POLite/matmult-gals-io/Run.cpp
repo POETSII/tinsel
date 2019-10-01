@@ -115,7 +115,7 @@ int main() {
                         sendMsg.payload.from = EXTERNALX;
                         sendMsg.payload.element1 = matrixA[w][h];
                         hostLink.send(getThreadId(deviceAddr), 2, &sendMsg);
-                        printf("Sent %d to node [0][%d][%d]\n", sendMsg.payload.element1, w, h);
+                        //printf("Sent %d to node [0][%d][%d]\n", sendMsg.payload.element1, w, h);
                     }
 
                     if (w == 0) {
@@ -125,7 +125,7 @@ int main() {
                         sendMsg.payload.from = EXTERNALY;
                         sendMsg.payload.element2 = matrixB[h][l];
                         hostLink.send(getThreadId(deviceAddr), 2, &sendMsg);
-                        printf("Sent %d to node [%d][0][%d]\n", sendMsg.payload.element2, l, h);
+                        //printf("Sent %d to node [%d][0][%d]\n", sendMsg.payload.element2, l, h);
                     }
 
                 }
