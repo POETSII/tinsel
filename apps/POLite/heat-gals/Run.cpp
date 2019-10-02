@@ -20,10 +20,12 @@ int main()
   PGraph<HeatDevice, HeatState, None, HeatMessage> graph;
 
   // Create 2D mesh of devices
-  PDeviceId mesh[height][width];
-  for (uint32_t y = 0; y < height; y++)
+  PDeviceId **mesh = new PDeviceId* [height];
+  for (uint32_t y = 0; y < height; y++) {
+    mesh[y] = new PDeviceId [width];
     for (uint32_t x = 0; x < width; x++)
       mesh[y][x] = graph.newDevice();
+  }
 
   // Add edges
   for (uint32_t y = 0; y < height; y++)
