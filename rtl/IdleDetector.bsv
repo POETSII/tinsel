@@ -112,6 +112,18 @@ module mkIdleDetector (IdleDetector);
   // Goes high when multi-flit message being processed
   Reg#(Bool) multiFlit <- mkConfigReg(False);
 
+  // Idle detection states
+  // 0: waiting to forward the idle token
+  // 1: waiting for stage 1 ack
+  // 2: waiting for second done token
+  Reg#(Bit#(2)) state <- mkConfigReg(0);
+
+  // Wire pulsed when to release threads from idle detection
+  PulseWire releaseWire <- mkPulseWireOR;
+
+  // Was the release due to observing a non-token message pass through?
+  SetReset releasedEarly <- mkSetReset(False);
+
   // Forward flits
   rule forward;
     // From mailbox side to network side
@@ -135,17 +147,15 @@ module mkIdleDetector (IdleDetector);
         tokenInQueue.enq(flit);
         netInPort.get;
       end else if (mboxOutPort.canPut) begin
+        if (state == 2 && !releasedEarly.value) begin
+          releaseWire.send;
+          releasedEarly.set;
+        end
         mboxOutPort.put(flit);
         netInPort.get;
       end
     end
   endrule
-
-  // Idle detection states
-  // 0: waiting to forward the idle token
-  // 1: waiting for stage 1 ack 
-  // 2: waiting for second done token
-  Reg#(Bit#(2)) state <- mkConfigReg(0);
 
   // FPGA colour (white or black);
   Reg#(Bool) black <- mkConfigReg(False);
@@ -209,7 +219,10 @@ module mkIdleDetector (IdleDetector);
           state <= 2;
         end
       end else if (state == 2) begin
-        detectedStage2Reg <= True;
+        if (releasedEarly.value)
+          releasedEarly.clear;
+        else
+          releaseWire.send;
         state <= 0;
         tokenInQueue.deq;
         tokenOutQueue.enq(outFlit);
@@ -224,6 +237,12 @@ module mkIdleDetector (IdleDetector);
     end
   endrule
  
+  rule doRelease;
+    if (releaseWire) begin
+      detectedStage2Reg <= True;
+    end
+  endrule
+
   interface IdleSignals idle;
     method Action activeIn(Bool active);
       activeWire <= active;
