@@ -18,28 +18,28 @@ struct NHoodState {
 
 struct NHoodDevice : PDevice<NHoodState, None, NHoodMessage> {
 
-	inline void init() {
-	  *readyToSend = Pin(0);
+  inline void init() {
+    *readyToSend = Pin(0);
     s->timestep = 0;
-	}
+  }
 
-	inline bool step() {
+  inline bool step() {
     *readyToSend = No;
- 	  s->timestep++;
+     s->timestep++;
     if(s->timestep >= s->test_length) return false;
     *readyToSend = Pin(0);
     return true;
-	}
+  }
 
-	inline void send(volatile NHoodMessage *msg){
+  inline void send(volatile NHoodMessage *msg){
     *readyToSend = No;
-	  return;
-	}
+    return;
+  }
 
-	inline void recv(NHoodMessage *msg, None* edge) {
-	}
+  inline void recv(NHoodMessage *msg, None* edge) {
+  }
 
-	inline bool finish(volatile NHoodMessage* msg) {
+  inline bool finish(volatile NHoodMessage* msg) {
     return true;
   }
 
