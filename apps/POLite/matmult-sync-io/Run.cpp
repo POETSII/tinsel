@@ -7,7 +7,7 @@
 #include <sys/time.h>
 
 /*****************************************************
- * Matrix Multiplier - Asynchronous - IO Stream
+ * Matrix Multiplier - Synchronous - IO Stream
  * ***************************************************
  * This code multiplies the matrices specificfied in matrices.cpp.
  * USAGE:
@@ -53,10 +53,10 @@ int main() {
                         graph.addEdge(mesh[x][y][z], 0, mesh[x+1][y][z]);
                         }
                     if (y < MESHWID-1) {
-                        graph.addEdge(mesh[x][y][z], 0, mesh[x][y+1][z]);
+                        graph.addEdge(mesh[x][y][z], 1, mesh[x][y+1][z]);
                         }
                     if (z < MESHHEI-1) {
-                        graph.addEdge(mesh[x][y][z], 0, mesh[x][y][z+1]);
+                        graph.addEdge(mesh[x][y][z], 2, mesh[x][y][z+1]);
                         }
                 }
             }
@@ -82,6 +82,14 @@ int main() {
                     graph.devices[mesh[x][y][z]]->state.xmax = MESHLEN;
                     graph.devices[mesh[x][y][z]]->state.ymax = MESHWID;
                     graph.devices[mesh[x][y][z]]->state.zmax = MESHHEI;
+                    
+                    //Initialise Message Pointer and Matrix Elements
+                    graph.devices[mesh[x][y][z]]->state.msgptr = 0;
+                    graph.devices[mesh[x][y][z]]->state.inflags = 0;
+                    graph.devices[mesh[x][y][z]]->state.element1 = 0;
+                    graph.devices[mesh[x][y][z]]->state.element2 = 0;
+                    graph.devices[mesh[x][y][z]]->state.aggregate = 0;
+
                 }
             }
         }
@@ -112,8 +120,8 @@ int main() {
                         // From maxtrix A
                         deviceAddr = graph.toDeviceAddr[mesh[0][w][h]];
                         sendMsg.devId = getLocalDeviceId(deviceAddr);
-                        sendMsg.payload.from = EXTERNALX;
-                        sendMsg.payload.element1 = matrixA[w][h];
+                        sendMsg.payload.dir = EXTERNALX;
+                        sendMsg.payload.val = matrixA[w][h];
                         hostLink.send(getThreadId(deviceAddr), 2, &sendMsg);
                         //printf("Sent %d to node [0][%d][%d]\n", sendMsg.payload.element1, w, h);
                     }
@@ -122,8 +130,8 @@ int main() {
                         // From maxtrix B
                         deviceAddr = graph.toDeviceAddr[mesh[l][0][h]];
                         sendMsg.devId = getLocalDeviceId(deviceAddr);
-                        sendMsg.payload.from = EXTERNALY;
-                        sendMsg.payload.element2 = matrixB[h][l];
+                        sendMsg.payload.dir = EXTERNALY;
+                        sendMsg.payload.val = matrixB[h][l];
                         hostLink.send(getThreadId(deviceAddr), 2, &sendMsg);
                         //printf("Sent %d to node [%d][0][%d]\n", sendMsg.payload.element2, l, h);
                     }
@@ -144,7 +152,7 @@ int main() {
             if (i == 0) gettimeofday(&finish, NULL);
             
             // Save final value
-            result[graph.devices[msg.payload.from]->state.x][graph.devices[msg.payload.from]->state.y] = msg.payload.aggregate;
+            result[graph.devices[msg.payload.dir]->state.x][graph.devices[msg.payload.dir]->state.y] = msg.payload.val;
             
         }
 
