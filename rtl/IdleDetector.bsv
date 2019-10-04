@@ -84,6 +84,11 @@ interface IdleSignals;
   // Acknowledgement from cores that stage 1 has completed
   (* always_ready, always_enabled *)
   method Action ackStage1(Bool pulse);
+
+  // Pulse indicating inter-board activity
+  // Used in the barrier release phase
+  (* always_ready, always_enabled *)
+  method Action interBoardActivity(Bool pulse);
 endinterface
 
 // The idle detector itself is designed to connect onto mailbox (0,0).
@@ -112,17 +117,14 @@ module mkIdleDetector (IdleDetector);
   // Goes high when multi-flit message being processed
   Reg#(Bool) multiFlit <- mkConfigReg(False);
 
+  // Have the threads been released from the barrier?
+  SetReset released <- mkSetReset(False);
+
   // Idle detection states
   // 0: waiting to forward the idle token
   // 1: waiting for stage 1 ack
   // 2: waiting for second done token
   Reg#(Bit#(2)) state <- mkConfigReg(0);
-
-  // Wire pulsed when to release threads from idle detection
-  PulseWire releaseWire <- mkPulseWireOR;
-
-  // Was the release due to observing a non-token message pass through?
-  SetReset releasedEarly <- mkSetReset(False);
 
   // Forward flits
   rule forward;
@@ -147,10 +149,6 @@ module mkIdleDetector (IdleDetector);
         tokenInQueue.enq(flit);
         netInPort.get;
       end else if (mboxOutPort.canPut) begin
-        if (state == 2 && !releasedEarly.value) begin
-          releaseWire.send;
-          releasedEarly.set;
-        end
         mboxOutPort.put(flit);
         netInPort.get;
       end
@@ -172,6 +170,9 @@ module mkIdleDetector (IdleDetector);
 
   // Ack from cores that stage 1 is complete
   Wire#(Bool) ackStage1Wire <- mkBypassWire;
+
+  // Indicates messages arriving from another board
+  Wire#(Bool) interBoardActivityWire <- mkBypassWire;
 
   // This wire is pulsed when token is forwarded
   Wire#(Bool) tokenForwarded <- mkDWire(False);
@@ -219,11 +220,8 @@ module mkIdleDetector (IdleDetector);
           state <= 2;
         end
       end else if (state == 2) begin
-        if (releasedEarly.value)
-          releasedEarly.clear;
-        else
-          releaseWire.send;
         state <= 0;
+        released.clear;
         tokenInQueue.deq;
         tokenOutQueue.enq(outFlit);
       end
@@ -237,9 +235,13 @@ module mkIdleDetector (IdleDetector);
     end
   endrule
  
+  // We release threads from the barrier as soon as any message
+  // arrives to the board.  The existence of any message at this
+  // point implies that the release phase is underway.
   rule doRelease;
-    if (releaseWire) begin
+    if (state == 2 && !released.value && interBoardActivityWire) begin
       detectedStage2Reg <= True;
+      released.set;
     end
   endrule
 
@@ -263,6 +265,11 @@ module mkIdleDetector (IdleDetector);
     method Action ackStage1(Bool pulse);
       ackStage1Wire <= pulse;
     endmethod
+
+    method Action interBoardActivity(Bool pulse);
+      interBoardActivityWire <= pulse;
+    endmethod
+
   endinterface
 
   interface In netFlitIn = netInPort.in;
