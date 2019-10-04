@@ -436,6 +436,20 @@ module mkMailboxMesh#(
   // Connect the incoming links
   expandConnect(List::map(getFlitOut, toList(westLink)), leftInList);
 
+  // Detect inter-board activity
+  // ---------------------------
+
+  rule informIdleDetector;
+    Bool activity = False;
+    for (Integer i = 0; i < `NumNorthSouthLinks; i=i+1)
+      activity = activity || northLink[i].flitOut.valid ||
+                   southLink[i].flitOut.valid;
+    for (Integer i = 0; i < `NumEastWestLinks; i=i+1)
+      activity = activity || eastLink[i].flitOut.valid ||
+                   westLink[i].flitOut.valid;
+    idle.idle.interBoardActivity(activity);
+  endrule
+
 `ifndef SIMULATE
   function AvalonMac getMac(BoardLink link) = link.avalonMac;
   interface north = Vector::map(getMac, northLink);
