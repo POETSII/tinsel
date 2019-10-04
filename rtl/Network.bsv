@@ -442,11 +442,9 @@ module mkMailboxMesh#(
   rule informIdleDetector;
     Bool activity = False;
     for (Integer i = 0; i < `NumNorthSouthLinks; i=i+1)
-      activity = activity || northLink[i].flitOut.valid ||
-                   southLink[i].flitOut.valid;
+      activity = activity || southLink[i].flitOut.valid;
     for (Integer i = 0; i < `NumEastWestLinks; i=i+1)
-      activity = activity || eastLink[i].flitOut.valid ||
-                   westLink[i].flitOut.valid;
+      activity = activity || westLink[i].flitOut.valid;
     idle.idle.interBoardActivity(activity);
   endrule
 
