@@ -39,6 +39,8 @@ typedef struct {
   Bool done;
   // Vote flag
   Bool vote;
+  // Stage 1 token
+  Bool stage1;
   // In-flight message count
   MsgCount count;
 } IdleToken deriving (Bits);
@@ -52,6 +54,22 @@ typedef struct {
 // enabled again. The two rounds are required to avoid a machine that
 // has returned from tinselIdle() from sending a message to a machine
 // that has not yet returned from tinselIdle().
+
+// Overall, the three stages of idle detection are:
+//
+// Stage 0:
+//   * Master sends idle token to all boards
+//   * Board holds idle token until it sees all threads in tinselIdle() call
+//   * Board sends token back to master
+// Stage 1:
+//   * If idle detected at master, master sends done token to all boards
+//   * On reciept, board informs cores
+//   * Core sends ack when no threads in call to tinselIdle()
+//   * When all acks recieved, board sends token back to master
+// Stage 2:
+//   * Master sends out release tokens
+//   * Board receives release token and responds immediately
+//   * Board tells cores to re-enable mailbox operations
 
 // The signals we watch in order to detect termination, as well as the
 // signals we trigger when it is detected.
@@ -194,6 +212,7 @@ module mkIdleDetector (IdleDetector);
     token.black = black;
     token.vote = voteWire;
     token.done = in.done;
+    token.stage1 = in.stage1;
     token.count = countWire;
     // Construct flit containing output token
     Flit outFlit;
@@ -508,6 +527,7 @@ module mkIdleDetectMaster (IdleDetectMaster);
     IdleToken token;
     token.black = False;
     token.done = False;
+    token.stage1 = False;
     token.count = 0;
     token.vote = currentVote;
     // Construct flit
@@ -531,6 +551,7 @@ module mkIdleDetectMaster (IdleDetectMaster);
       if (flitOutPort.canPut) begin
         // Send probe
         if (state != 0) token.done = True;
+        if (state == 1) token.stage1 = True;
         flit.payload = zeroExtend(pack(token));
         flitOutPort.put(flit);
 
