@@ -439,12 +439,21 @@ module mkMailboxMesh#(
   // Detect inter-board activity
   // ---------------------------
 
+  // For barrier release phase
   rule informIdleDetector;
     Bool activity = False;
-    for (Integer i = 0; i < `NumNorthSouthLinks; i=i+1)
-      activity = activity || southLink[i].flitOut.valid;
-    for (Integer i = 0; i < `NumEastWestLinks; i=i+1)
-      activity = activity || westLink[i].flitOut.valid;
+    for (Integer i = 0; i < `NumNorthSouthLinks; i=i+1) begin
+      Flit flit = southLink[i].flitOut.value;
+      IdleToken in = unpack(truncate(flit.payload));
+      activity = activity || (southLink[i].flitOut.valid &&
+       (flit.isIdleToken ? !in.stage1 : True));
+    end
+    for (Integer i = 0; i < `NumEastWestLinks; i=i+1) begin
+      Flit flit = westLink[i].flitOut.value;
+      IdleToken in = unpack(truncate(flit.payload));
+      activity = activity || (westLink[i].flitOut.valid &&
+        (flit.isIdleToken ? !in.stage1 : True));
+    end
     idle.idle.interBoardActivity(activity);
   endrule
 
