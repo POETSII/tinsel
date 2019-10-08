@@ -354,20 +354,22 @@ endmodule
 // Unguarded version
 module mkUGSizedQueue (SizedQueue#(logSize, elemType))
   provisos (Bits#(elemType, elemWidth));
-  QueueInit init;
+  QueueOpts init;
   init.size = 0;
   init.file = Invalid;
-  let q <- mkUGSizedQueueInit(init);
+  init.style = "AUTO";
+  let q <- mkUGSizedQueueOpts(init);
   return q;
 endmodule
 
 // Guarded version
 module mkSizedQueue (SizedQueue#(logSize, elemType))
   provisos (Bits#(elemType, elemWidth));
-  QueueInit init;
+  QueueOpts init;
   init.size = 0;
   init.file = Invalid;
-  let q <- mkSizedQueueInit(init);
+  init.style = "AUTO";
+  let q <- mkSizedQueueOpts(init);
   return q;
 endmodule
 
@@ -375,10 +377,11 @@ endmodule
 typedef struct {
   Integer size;
   Maybe#(String) file;
-} QueueInit;
+  String style;
+} QueueOpts;
 
 // Unguarded version
-module mkUGSizedQueueInit#(QueueInit init) (SizedQueue#(logSize, elemType))
+module mkUGSizedQueueOpts#(QueueOpts init) (SizedQueue#(logSize, elemType))
   provisos (Bits#(elemType, elemWidth));
 
   // Max length of queue
@@ -387,6 +390,7 @@ module mkUGSizedQueueInit#(QueueInit init) (SizedQueue#(logSize, elemType))
   // Block RAM to hold contents of queue
   BlockRamOpts ramOpts = defaultBlockRamOpts;
   ramOpts.initFile = init.file;
+  ramOpts.style = init.style;
   BlockRam#(Bit#(logSize), elemType) ram <- mkBlockRamOpts(ramOpts);
 
   // State
@@ -454,11 +458,11 @@ module mkUGSizedQueueInit#(QueueInit init) (SizedQueue#(logSize, elemType))
 endmodule
 
 // Guarded version
-module mkSizedQueueInit#(QueueInit init) (SizedQueue#(logSize, elemType))
+module mkSizedQueueOpts#(QueueOpts init) (SizedQueue#(logSize, elemType))
   provisos (Bits#(elemType, elemWidth));
 
   // State
-  SizedQueue#(logSize, elemType) q <- mkUGSizedQueueInit(init);
+  SizedQueue#(logSize, elemType) q <- mkUGSizedQueueOpts(init);
 
   // Methods
   method Action deq if (q.canDeq);
