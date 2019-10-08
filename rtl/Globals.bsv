@@ -27,7 +27,7 @@ typedef struct {
   Option#(Bit#(1)) host;
   BoardId board;
   CoreId core;
-  ThreadId thread;
+  Bit#(`ThreadsPerMailbox) threads;
 } NetAddr deriving (Bits);
 
 // Mailbox id

@@ -240,4 +240,18 @@ function b vector() provisos (MkVector#(b, a, 0));
   return mkVector(Vector::nil);
 endfunction
 
+// Series of n registers
+module mkBuffer#(Integer n, dataT init, dataT inp) (dataT)
+    provisos(Bits#(dataT, dataTWidth));
+  Reg#(dataT) regs[n];
+  for (Integer i = 0; i < n; i=i+1) regs[i] <- mkReg(init);
+
+  rule latch;
+    regs[0] <= inp;
+    for (Integer i = 1; i < n; i=i+1) regs[i] <= regs[i-1];
+  endrule
+
+  return regs[n-1];
+endmodule
+
 endpackage
