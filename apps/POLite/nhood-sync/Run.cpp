@@ -49,8 +49,8 @@ int main()
   hostLink.go();
   printf("Starting\n");
 
-  uint32_t flit[TinselWordsPerFlit];
-  hostLink.recv(flit);
+  uint32_t msg[1 << TinselLogWordsPerMsg];
+  hostLink.recv(msg);
   printf("Finished\n");
 
   return 0;

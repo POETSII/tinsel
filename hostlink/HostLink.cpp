@@ -252,29 +252,26 @@ bool HostLink::trySend(uint32_t dest, uint32_t numFlits, void* msg)
   return send(dest, numFlits, msg, false);
 }
 
-// Receive a flit via PCIe (blocking)
-void HostLink::recv(void* flit)
+// Receive a message via PCIe (blocking)
+void HostLink::recv(void* msg)
 {
-  int numBytes = 1 << TinselLogBytesPerFlit;
-  uint8_t* ptr = (uint8_t*) flit;
+  int numBytes = 1 << TinselLogBytesPerMsg;
+  uint8_t* ptr = (uint8_t*) msg;
   socketBlockingGet(pcieLink, (char*) ptr, numBytes);
 }
 
 // Receive a message (blocking), given size of message in bytes
 void HostLink::recvMsg(void* msg, uint32_t numBytes)
 {
-  // Number of flits needed to hold message of size numBytes
-  int numFlits = 1 + ((numBytes-1) >> TinselLogBytesPerFlit);
-
   // Number of padding bytes that need to be received but not stored
-  int paddingBytes = (numFlits << TinselLogBytesPerFlit) - numBytes;
+  int paddingBytes = (1 << TinselLogBytesPerMsg) - numBytes;
 
   // Fill message
   uint8_t* ptr = (uint8_t*) msg;
   socketBlockingGet(pcieLink, (char*) ptr, numBytes);
 
   // Discard padding bytes
-  uint8_t padding[1 << TinselLogBytesPerFlit];
+  uint8_t padding[1 << TinselLogBytesPerMsg];
   socketBlockingGet(pcieLink, (char*) padding, paddingBytes);
 }
 

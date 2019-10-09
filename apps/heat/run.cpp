@@ -108,7 +108,7 @@ int main()
     // Fill 2D grid
     for (int i = 0; i < 8*X_LEN*Y_LEN; i++) {
       HostMsg msg;
-      hostLink.recv(&msg);
+      hostLink.recvMsg(&msg, sizeof(HostMsg));
       for (int j = 0; j < 8; j++)
         grid[msg.y][msg.x+j] = msg.temps[j];
     }

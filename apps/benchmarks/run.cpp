@@ -31,11 +31,11 @@ int main()
 
     // Wait for response
     const int numThreads = 1 << LogThreadsUsed;
-    uint32_t flit[4];
+    uint32_t msg[1 << TinseLogWordsPerMsg];
     uint32_t total = 0;
     for (int j = 0; j < numThreads; j++) {
-      hostLink.recv(flit);
-      total += flit[0];
+      hostLink.recv(msg);
+      total += msg[0];
     }
     printf("%s: %d cycles on average\n", benchmarks[i], total/numThreads);
   }
