@@ -694,10 +694,10 @@ bool HostLink::send(uint32_t dest, uint32_t numFlits, void* msg);
 // Try to send a message (non-blocking, returns true on success)
 bool HostLink::trySend(uint32_t dest, uint32_t numFlits, void* msg);
 
-// Receive a flit (blocking)
-void HostLink::recv(void* flit);
+// Receive a message (blocking)
+void HostLink::recv(void* msg);
 
-// Can receive a flit without blocking?
+// Can receive a message without blocking?
 bool HostLink::canRecv();
 
 // Receive a message (blocking), given size of message in bytes
@@ -1351,10 +1351,10 @@ class HostLink {
   // Try to send a message (non-blocking, returns true on success)
   bool trySend(uint32_t dest, uint32_t numFlits, void* msg);
 
-  // Receive a flit (blocking)
-  void recv(void* flit);
+  // Receive a message (blocking)
+  void recv(void* msg);
 
-  // Can receive a flit without blocking?
+  // Can receive a message without blocking?
   bool canRecv();
 
   // Receive a message (blocking), given size of message in bytes
