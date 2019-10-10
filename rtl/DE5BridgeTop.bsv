@@ -143,7 +143,7 @@ module de5BridgeTop (DE5BridgeTop);
   rule split (linkOutBuffer.notEmpty);
     Flit flit = linkOutBuffer.dataOut;
     // If board Y coord is even (or it's an idle token), emit on lower link
-    if (flit.dest.board.y[0] == 0 || flit.isIdleToken) begin
+    if (flit.dest.addr.board.y[0] == 0 || flit.isIdleToken) begin
       if (toLinkB.canPut) begin
         linkOutBuffer.deq;
         toLinkB.put(flit);

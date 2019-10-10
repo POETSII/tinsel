@@ -91,7 +91,7 @@ typedef struct {
   // Mailbox destination send operation
   MailboxNetAddr mboxDest;
   // Message pointer for send operation
-  MailboxThreadMsgAddr msgPtr;
+  MailboxMsgAddr msgPtr;
   // Write address for instruction memory
   InstrIndex instrWriteIndex;
   // Thread identifier (must be final field of struct)
@@ -595,11 +595,12 @@ module mkCore#(CoreId myId) (Core);
   InPort#(FPUResp)        fromFPUPort       <- mkInPort;
 
   // Queue of runnable threads
-  QueueInit runQueueInit;
-  runQueueInit.size = 1;
-  runQueueInit.file = Invalid;
+  QueueOpts runQueueOpts;
+  runQueueOpts.size = 1;
+  runQueueOpts.file = Invalid;
+  runQueueOpts.style = "AUTO";
   SizedQueue#(`LogThreadsPerCore, ThreadState) runQueue <-
-    mkUGSizedQueueInit(runQueueInit);
+    mkUGSizedQueueOpts(runQueueOpts);
 
   // Queue of suspended threads pending resumption
   SizedQueue#(`LogThreadsPerCore, ThreadState) resumeQueue <- mkUGSizedQueue;
@@ -632,14 +633,14 @@ module mkCore#(CoreId myId) (Core);
   MailboxClientUnit mailbox <- mkMailboxClientUnit(myId);
 
   // Connection to mailbox client wakeup queue
-  InPort#(ReceiveResp) wakeupPort <- mkInPort;
+  InPort#(Wakeup) wakeupPort <- mkInPort;
   connectUsing(mkUGShiftQueue1(QueueOptFmax),
                  mailbox.wakeup, wakeupPort.in);
 
   // Connection to mailbox client receive response queue
   InPort#(ReceiveResp) mboxReceivePort <- mkInPort;
   connectUsing(mkUGShiftQueue1(QueueOptFmax),
-                 mailbox.respPort, mboxReceivePort.in);
+                 mailbox.respOut, mboxReceivePort.in);
 
   // Pipeline stages
   Reg#(Bool)          fetch1Fire         <- mkDReg(False);
@@ -850,7 +851,7 @@ module mkCore#(CoreId myId) (Core);
       token.thread.msgPtr = byteAddrToMsgIndex(token.valA);
     // Set destination mailbox for send operation
     if (token.op.csr.isSendDest)
-      token.thread.mboxDest = truncate(token.valA);
+      token.thread.mboxDest = unpack(truncate(token.valA));
     // Mailbox scratchpad access
     token.isScratchpadAccess = token.memAddr[31:`LogOffChipRAMBaseAddr] == 0;
     // Mailbox can-send
@@ -958,7 +959,7 @@ module mkCore#(CoreId myId) (Core);
         retry = True;
       else begin
         NetAddr dest;
-        dest.mbox = thread.mboxDest;
+        dest.addr = token.thread.mboxDest;
         dest.threads = {token.valA, token.valB};
         mailbox.send(token.thread.id, token.thread.msgLen,
                        dest, token.thread.msgPtr);
@@ -1073,7 +1074,6 @@ module mkCore#(CoreId myId) (Core);
         when(token.op.csr.isCanSend,  zeroExtend(pack(token.canSend)))
       | when(token.op.csr.isHartId,
                zeroExtend({pack(boardId), myId, token.thread.id}))
-      | when(token.op.csr.isRecv,     mailbox.recvAddr)
       | when(token.op.csr.isFromUart,
                zeroExtend({pack(stdinValid), fromDebugLinkPort.value.payload}))
       | when(token.op.csr.isToUart,
@@ -1214,8 +1214,8 @@ module mkCore#(CoreId myId) (Core);
         mboxReceivePort.get;
         token.id = mboxReceivePort.value.id;
         token.data = mboxReceivePort.value.doRecv ?
-                       mboxReceivePort.value.data :
-                       zeroExtend(mboxReceivePort.value.canRecv);
+                       zeroExtend(mboxReceivePort.value.data) :
+                       zeroExtend(pack(mboxReceivePort.value.canRecv));
       end else if (wakeupPort.canGet) begin
         wakeupPort.get;
         token.id = truncate(wakeupPort.value.id);

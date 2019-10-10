@@ -101,7 +101,6 @@ import Vector       :: *;
 import Queue        :: *;
 import Interface    :: *;
 import BlockRam     :: *;
-import ArrayOfSet   :: *;
 import ConfigReg    :: *;
 import Util         :: *;
 import Globals      :: *;
@@ -134,7 +133,7 @@ typedef struct {
   // Operation
   Bool isStore;
   // Thread-local word address
-  MailboxThreadWordAddr wordAddr;
+  MailboxWordAddr wordAddr;
   // For store operation: data to write
   Bit#(32) data;
   // For store operation: byte enables
@@ -283,7 +282,8 @@ module mkMailbox (Mailbox);
   InPort#(TransmitReq)   txReqPort    <- mkInPort;
   InPort#(FreeReq)       freeReqPort  <- mkInPort;
   InPort#(Flit)          flitInPort   <- mkInPort;
-  Vector#(`CoresPerMailbox, InPort#(ReceiveReq)) rxReqPorts <- mkInPort;
+  Vector#(`CoresPerMailbox, InPort#(ReceiveReq)) rxReqPorts <-
+    replicateM(mkInPort);
 
   // Message access unit
   // ===================
@@ -315,9 +315,6 @@ module mkMailbox (Mailbox);
   // Receive Unit
   // ============
 
-  // Pipeline stages
-  Reg#(Bool) receive1Fire <- mkDReg(False);
-
   // Track which flit in a message is currently being received
   Reg#(MsgLen) recvFlitCount <- mkConfigReg(0);
 
@@ -327,28 +324,29 @@ module mkMailbox (Mailbox);
 
   // Set of currently-unused message slots
   // (The first ThreadsPerMailbox slots are reserved for sending)
-  QueueInit freeSlotsInit = defaultQueueInit;
-  freeSlotsInit.file = Valid(); // TODO, or initialise dynamically?
+  QueueOpts freeSlotsOpts;
+  freeSlotsOpts.style = "AUTO";
+  freeSlotsOpts.size = 2**`LogMsgsPerMailbox - `ThreadsPerMailbox;
+  freeSlotsOpts.file = Valid("FreeSlots");
   SizedQueue#(`LogMsgsPerMailbox, Bit#(`LogMsgsPerMailbox))
-    freeSlots <- mkUGSizedQueuePrefetchInit(freeSlotsInit);
+    freeSlots <- mkUGSizedQueuePrefetchOpts(freeSlotsOpts);
 
   rule receive0;
     let flit = flitInPort.value;
     // Determine destination threads
-    Bit#(`LogThreadsPerMailbox) destThreads = flit.dest.threads;
+    Bit#(`ThreadsPerMailbox) destThreads = flit.dest.threads;
     // Determine if flit can be received
     Bool canRecv = False;
     for (Integer i = 0; i < `ThreadsPerMailbox; i=i+1) begin
       canRecv = canRecv || (destThreads[i] == 1 &&
                               msgPtrQueueFlat[i].notFull);
     end
-    canRecv = canRecv && freeSlots.canDeq;
+    canRecv = canRecv && freeSlots.canPeek && freeSlots.canDeq;
     let slot = freeSlots.dataOut;
     // Try to consume an incoming flit
     if (flitInPort.canGet && canRecv) begin
       flitInPort.get;
       // Write flit to next free slot
-      let flit = flitInPort.value;
       flitWriteWire <= True;
       flitWriteIndexWire <= { slot, recvFlitCount };
       flitWriteDataReg <= flit.payload;
@@ -359,13 +357,11 @@ module mkMailbox (Mailbox);
         freeSlots.deq;
         // Put pointer to new message into each destination's queue
         for (Integer i = 0; i < `ThreadsPerMailbox; i=i+1)
-          if (destMask[i]) msgPtrQueueFlat[i].enq(slot);
+          if (destThreads[i] == 1) msgPtrQueueFlat[i].enq(slot);
         // Set ref count for new slot
-        let count = pack(countOnes(destThreads))
+        let count = pack(countOnes(destThreads));
         myAssert(destThreads != 0, "Mailbox: no destinations specified!");
         refCount.putA(True, slot, zeroExtend(count));
-        // Trigger next stage
-        recieve1Fire <= True;
       end else
         recvFlitCount <= recvFlitCount + 1;
     end
@@ -382,12 +378,14 @@ module mkMailbox (Mailbox);
   // buffer must be less that the request-response round-trip for
   // single thread, so that any dequeue operation has time to
   // propagate before the next request from that thread arrives.
-  Vector#(`CoresPerMailbox, Vector#(`ThreadsPerCore, Bool)) msgPtrQueueCanPeek;
+  Vector#(`CoresPerMailbox, Vector#(`ThreadsPerCore, Bool))
+    msgPtrQueueCanPeek = replicate(newVector());
   Vector#(`CoresPerMailbox,
-    Vector#(`ThreadsPerCore, MailboxMsgAddr)) msgPtrQueueData;
+    Vector#(`ThreadsPerCore, MailboxMsgAddr)) msgPtrQueueData = 
+      replicate(newVector());
   for (Integer i = 0; i < `CoresPerMailbox; i=i+1)
     for (Integer j = 0; j < `ThreadsPerCore; j=j+1) begin
-      msgPtrQueueCanGet[i][j] <-
+      msgPtrQueueCanPeek[i][j] <-
         mkBuffer(1, False, msgPtrQueue[i][j].canPeek &&
           msgPtrQueue[i][j].canDeq);
       msgPtrQueueData[i][j] <- mkBuffer(1, ?, msgPtrQueue[i][j].dataOut);
@@ -397,12 +395,12 @@ module mkMailbox (Mailbox);
   for (Integer i = 0; i < `CoresPerMailbox; i=i+1) begin
     rule serveReceive (rxReqPorts[i].canGet && recvRespQueues[i].notFull);
       ReceiveReq req = rxReqPorts[i].value;
-      rxReqPorts[i].deq;
+      rxReqPorts[i].get;
       ReceiveResp resp;
       // Do lookup
       resp.id = req.id;
       resp.doRecv = req.doRecv;
-      resp.canRecv = msgPtrQueueCanGet[i][req.id];
+      resp.canRecv = msgPtrQueueCanPeek[i][req.id];
       resp.data = msgPtrQueueData[i][req.id];
       if (resp.canRecv && req.doRecv) msgPtrQueue[i][req.id].deq;
       resp.sleeping = req.sleeping;
@@ -535,13 +533,15 @@ module mkMailbox (Mailbox);
   rule free (freeReqPort.canGet);
     FreeReq req = freeReqPort.value;
     // Process request in two cycles
+    let count = refCount.dataOutB;
     if (freeState == 0) begin
       freeState <= 1;
     end else begin
-      let count = refCount.dataOutB;
-      freeReqPort.deq;
-      if (count == 1) freeSlots.enq(req.slot);
-      refCount.putB(True, req.slot, count-1);
+      freeReqPort.get;
+      if (count == 1) begin
+        myAssert(freeSlots.notFull, "Mailbox: freeSlots full!");
+        freeSlots.enq(req.slot);
+      end
       freeState <= 0;
     end
     refCount.putB(freeState == 1, req.slot, count-1);
@@ -549,10 +549,6 @@ module mkMailbox (Mailbox);
 
   // Interfaces
   // ==========
-
-  interface In txReqIn    = txReqPort.in;
-  interface In allocReqIn = allocReqPort.in;
-  interface In spadReqIn  = spadReqPort.in;
 
   function ReceiveReqResp mkReceiveReqResp(Integer i) =
     interface ReceiveReqResp
@@ -564,6 +560,10 @@ module mkMailbox (Mailbox);
           method ReceiveResp value = recvRespQueues[i].dataOut;
         endinterface;
     endinterface;
+
+  interface In txReqIn   = txReqPort.in;
+  interface In freeReqIn = freeReqPort.in;
+  interface In spadReqIn = spadReqPort.in;
 
   interface rxReqResp = genWith(mkReceiveReqResp);
 
@@ -583,8 +583,6 @@ module mkMailbox (Mailbox);
     method Bool valid = scratchpadRespBuffer.canDeq;
     method ScratchpadResp value = scratchpadRespBuffer.dataOut;
   endinterface
-
-  interface In freeReqIn = freeReqPort.in;
 
   interface MailboxNet net;
     interface In flitIn = flitInPort.in;
@@ -649,13 +647,13 @@ interface MailboxClientUnit;
   interface InPort#(ScratchpadResp) scratchpadResp;
 
   // Response port for receive requests
-  interface Out#(ReceiveResp) respPort;
+  interface Out#(ReceiveResp) respOut;
 
   // Wakeup port for sleep requests
   interface Out#(Wakeup) wakeup;
 
   // For free requests
-  interface OutPort#(AllocReq) freeReq;
+  interface OutPort#(FreeReq) freeReq;
 
   // Can given thread send?
   method Bool canSend(ThreadId id);
@@ -704,10 +702,10 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
   InPort#(ReceiveResp)      recvRespPort       <- mkInPort;
   OutPort#(FreeReq)         freeReqPort        <- mkOutPort;
   OutPort#(Wakeup)          wakeupPort         <- mkOutPort;
-  OutPort#(ReceiveResp)     respPort           <- mkOutPort
+  OutPort#(ReceiveResp)     respPort           <- mkOutPort;
 
   // Sleep queue (threads sit in here while waiting for events)
-  SizedQueue#(`LogThreadsPerCore, MailboxResp) sleepQueue <- mkUGSizedQueue;
+  SizedQueue#(`LogThreadsPerCore, Wakeup) sleepQueue <- mkUGSizedQueue;
 
   // Transmit logic
   // ==============
@@ -761,13 +759,9 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
   rule respond (recvRespPort.canGet &&
                   !recvRespPort.value.sleeping.valid &&
                     respPort.canPut);
-    ReceiveResp resp1 = recvRespPort.value;
-    MailboxResp resp2;
-    resp2.id = resp1.id;
-    resp2.sleeping = option(False, ?);
-    resp2.canRecv = resp.canRecv;
-    resp2.recvSlot = resp.data;
+    ReceiveResp resp = recvRespPort.value;
     respPort.put(resp);
+    recvRespPort.get;
   endrule
 
   // Sleep unit
@@ -784,7 +778,7 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
   // Signals from the wakeup unit
   Wire#(Bool) doRequeue <- mkDWire(False);
   Wire#(Bool) doResumeSleep <- mkDWire(False);
-  Wire(Wakeup) resumeSleepWire <- mkDWire(?);
+  Wire#(Wakeup) resumeSleepWire <- mkDWire(?);
 
   rule sleepUnit (doSleep || doResumeSleep || doRequeue);
     myAssert(sleepQueue.notFull, "MailboxClientUnit: sleep violation");
@@ -868,8 +862,8 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
         if (wakeupCond) begin
           // Send wakeup
           wakeupPort.put(thread);
-          if (wakeupReg.wakeEvent[2] == 1) numIdleWaiters.dec;
-          if (wakeupReg.wakeEvent[3] == 1) idleVotes.dec;
+          if (thread.wakeEvent[2] == 1) numIdleWaiters.dec;
+          if (thread.wakeEvent[3] == 1) idleVotes.dec;
           sleepQueue.deq;
         end else if (!doSleep && !doResumeSleep) begin
           // Retry later
@@ -914,12 +908,13 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
     canThreadSend[id].clear;
   endmethod
 
-  method Action canRecv = recvReqPort.canPut;
+  method Bool canRecv = recvReqPort.canPut;
 
   method Action recv(ThreadId id, Bool doRecv);
     ReceiveReq req;
     req.id = id;
     req.doRecv = doRecv;
+    req.sleeping = option(False, ?);
     recvReqPutWire1.send;
     recvReqWire1 <= req;
   endmethod
@@ -928,7 +923,7 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
     if (e[2] == 1) numIdleWaiters.inc;
     if (e[3] == 1) idleVotes.inc;
     doSleep <= True;
-    sleepThread <= Wakeup { id: id, wakeEvent: e, canRecv: False }
+    sleepThread <= Wakeup { id: id, wakeEvent: e, canRecv: False };
   endmethod
 
   method Bool idleReleaseInProgress = idleDetected;
@@ -956,8 +951,8 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
 
   interface scratchpadReq  = scratchpadReqPort;
   interface scratchpadResp = scratchpadRespPort;
-  interface recvResp       = respPort;
-  interface wakeup         = wakeupPort;
+  interface respOut        = respPort.out;
+  interface wakeup         = wakeupPort.out;
   interface freeReq        = freeReqPort;
 
   interface MailboxClient client;
@@ -968,10 +963,10 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
     interface txReqOut = transmitPort.out;
     interface txRespIn = transmitRespPort.in;
     // Receive unit
-    interface Out#(ReceiveReq) rxReqOut = recvReqPort.out;
-    interface In#(ReceiveResp) rxRespIn = recvRespPort.in;
+    interface rxReqOut = recvReqPort.out;
+    interface rxRespIn = recvRespPort.in;
     // Free unit
-    interface Out#(FreeReq) freeReqOut = freeReqPort.out;
+    interface freeReqOut = freeReqPort.out;
   endinterface
 
 endmodule
@@ -1173,8 +1168,8 @@ module mkMailboxAcc#(BoardId boardId, Integer tileX, Integer tileY) (Mailbox);
   interface BOut spadRespOut = mbox.spadRespOut;
   interface In   txReqIn     = mbox.txReqIn;
   interface BOut txRespOut   = mbox.txRespOut;
-  interface In   allocReqIn  = mbox.allocReqIn;
-  interface BOut rxAlertOut  = mbox.rxAlertOut;
+  interface rxReqResp        = mbox.rxReqResp;
+  interface In   freeReqIn   = mbox.freeReqIn;
 
   interface MailboxNet net;
     interface In flitIn = inPort.in;

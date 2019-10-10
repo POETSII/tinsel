@@ -17,7 +17,7 @@ typedef struct {
 
 // Network address
 // Note: If 'host' bit is valid, then once the message reaches the
-// destionation board, it is routed either left or right depending
+// destination board, it is routed either left or right depending
 // the contents of the host bit.  This is to support bridge boards
 // connected at the east/west rims of the FPGA mesh.
 // The 'acc' bit means message is routed to a custom accelerator rather
@@ -26,10 +26,11 @@ typedef struct {
   Bool acc;
   Option#(Bit#(1)) host;
   BoardId board;
+  MailboxId mbox;
 } MailboxNetAddr deriving (Bits);
 
 typedef struct {
-  MailboxNetAddr mbox;
+  MailboxNetAddr addr;
   Bit#(`ThreadsPerMailbox) threads;
 } NetAddr deriving (Bits);
 
@@ -39,8 +40,7 @@ typedef struct {
   Bit#(`MailboxMeshXBits) x;
 } MailboxId deriving (Bits, Eq);
 
-function MailboxId getMailboxId(NetAddr addr) =
-  unpack(truncateLSB(addr.core));
+function MailboxId getMailboxId(NetAddr addr) = addr.addr.mbox;
 
 // ============================================================================
 // Messages

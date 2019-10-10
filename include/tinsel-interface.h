@@ -41,7 +41,7 @@ INLINE void tinselCreateThread(uint32_t id);
 INLINE void tinselKillThread();
 
 // Tell mailbox that given message slot is no longer needed
-INLINE void tinselFree(volatile void* addr)
+INLINE void tinselFree(volatile void* addr);
 
 // Determine if calling thread can send a message
 INLINE int tinselCanSend();

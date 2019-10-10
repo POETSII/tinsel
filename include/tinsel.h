@@ -125,28 +125,13 @@ INLINE void tinselFree(volatile void* addr)
   asm volatile("csrrw zero, " CSR_FREE ", %0" : : "r"(addr));
 }
 
-// Send message to multiple threads on the given mailbox
-INLINE void tinselMulticast(
-  uint32_t mboxDest,      // Destination mailbox
-  uint32_t destMaskHigh,  // Destination bit mask (high bits)
-  uint32_t destMaskLow,   // Destination bit mask (low bits)
-  volatile void* addr)    // Message pointer
-{
-  asm volatile("csrrw zero, " CSR_SEND_PTR ", %0" : : "r"(addr));
-  asm volatile("csrrw zero, " CSR_SEND_DEST ", %0" : : "r"(mboxDest));
-  // Opcode: 0000000 rs2 rs1 000 rd 0001000, with rd=0, rs1=x10, rs2=x11
-  asm volatile(
-    "mv x10, %0\n"
-    "mv x11, %1\n"
-    ".word 0x00b50008\n" : : "r"(destMaskHigh), "r"(destMaskLow));
-}
-
 // Get pointer to thread's message slot reserved for sending
 INLINE volatile void* tinselSendSlot()
 {
-  const volatile char* mb_scratchpad_base =
-    (char*) (1 << TinselLogBytesPerMailbox);
-  uint32_t threadId = tinselId() & (TinselThreadsPerCore - 1);
+  volatile char* mb_scratchpad_base =
+    (volatile char*) (1 << TinselLogBytesPerMailbox);
+  uint32_t threadId = tinselId() &
+    ((1<<TinselLogThreadsPerMailbox) - 1);
   return mb_scratchpad_base + (threadId << TinselLogBytesPerMsg);
 }
 

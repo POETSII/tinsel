@@ -533,8 +533,18 @@ endmodule
 
 module mkUGSizedQueuePrefetch (SizedQueue#(logSize, elemType))
   provisos (Bits#(elemType, elemWidth));
+  QueueOpts opts;
+  opts.size = 0;
+  opts.file = Invalid;
+  opts.style = "AUTO";
+  let q <- mkUGSizedQueuePrefetchOpts(opts); return q;
+endmodule
+
+module mkUGSizedQueuePrefetchOpts#(QueueOpts opts)
+         (SizedQueue#(logSize, elemType))
+  provisos (Bits#(elemType, elemWidth));
   // State
-  SizedQueue#(logSize, elemType) q <- mkUGSizedQueue;
+  SizedQueue#(logSize, elemType) q <- mkUGSizedQueueOpts(opts);
   Reg#(elemType) frontReg <- mkRegU;
   Reg#(Bool) frontValid <- mkReg(False);
   Reg#(elemType) buffer <- mkRegU;
