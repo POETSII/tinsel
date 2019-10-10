@@ -40,16 +40,8 @@ INLINE void tinselCreateThread(uint32_t id);
 // Do not insert currently running thread back in to run queue
 INLINE void tinselKillThread();
 
-// Get pointer to message-aligned slot in mailbox scratchpad
-INLINE volatile void* tinselSlot(int n)
-{
-  const volatile char* mb_scratchpad_base =
-    (char*) (1 << (TinselLogBytesPerMsg + TinselLogMsgsPerThread));
-  return (void*) (mb_scratchpad_base + (n << TinselLogBytesPerMsg));
-}
-
-// Give mailbox permission to use given address to store an message
-INLINE void tinselAlloc(volatile void* addr);
+// Tell mailbox that given message slot is no longer needed
+INLINE void tinselFree(volatile void* addr)
 
 // Determine if calling thread can send a message
 INLINE int tinselCanSend();
@@ -57,9 +49,19 @@ INLINE int tinselCanSend();
 // Determine if calling thread can receive a message
 INLINE int tinselCanRecv();
 
+// Get pointer to thread's message slot reserved for sending
+INLINE volatile void* tinselSendSlot();
+
 // Set message length for send operation
 // (A message of length N is comprised of N+1 flits)
 INLINE void tinselSetLen(int n);
+
+// Send message to multiple threads on the given mailbox
+INLINE void tinselMulticast(
+  uint32_t mboxDest,      // Destination mailbox
+  uint32_t destMaskHigh,  // Destination bit mask (high bits)
+  uint32_t destMaskLow,   // Destination bit mask (low bits)
+  volatile void* addr);   // Message pointer
 
 // Send message at addr to dest
 INLINE void tinselSend(int dest, volatile void* addr);

@@ -34,13 +34,13 @@ import IdleDetector :: *;
 // ----------- | ------ | --- | --------
 // InstrAddr   | 0x800  | W   | Set address for instruction write
 // Instr       | 0x801  | W   | Write to instruction memory
-// Alloc       | 0x802  | W   | Alloc space for new message in scratchpad
+// Free        | 0x802  | W   | Free space for message in scratchpad
 // CanSend     | 0x803  | R   | 1 if can send, 0 otherwise
 // HartId      | 0xf14  | R   | Globally unique hardware thread id
 // CanRecv     | 0x805  | R   | 1 if can receive, 0 otherwise
 // SendLen     | 0x806  | W   | Set message length for send
 // SendPtr     | 0x807  | W   | Set message pointer for send
-// Send        | 0x808  | W   | Send message to supplied destination
+// SendDest    | 0x808  | W   | Set destination mailbox
 // Recv        | 0x809  | R   | Return pointer to message received
 // WaitUntil   | 0x80a  | W   | Sleep until can-send or can-recv
 // FromUart    | 0x80b  | R   | Try to read byte from DebugLink UART
@@ -88,6 +88,8 @@ typedef struct {
   Bit#(5) fpFlags;
   // Message length for send operation
   MsgLen msgLen;
+  // Mailbox destination send operation
+  MailboxNetAddr mboxDest;
   // Message pointer for send operation
   MailboxThreadMsgAddr msgPtr;
   // Write address for instruction memory
@@ -111,10 +113,10 @@ typedef struct {
 // Decoded CSR
 typedef struct {
   Bool isInstrAddr;    Bool isInstr;
-  Bool isAlloc;        Bool isCanSend;
+  Bool isFree;         Bool isCanSend;
   Bool isHartId;       Bool isCanRecv;
   Bool isSendLen;      Bool isSendPtr;
-  Bool isSend;         Bool isRecv;
+  Bool isSendDest;     Bool isRecv;
   Bool isWaitUntil;    Bool isFromUart;
   Bool isToUart;       Bool isNewThread;
   Bool isKillThread;   Bool isFFlag;
@@ -148,6 +150,7 @@ typedef struct {
   Bool isFence;          Bool isMult;
   Bool isMultH;          Bool isMultASigned;
   Bool isMultBSigned;
+  Bool isSend;
   Bool isFPUOp;          Bool isFPAdd;
   Bool isFPMult;         Bool isFPMove;
   Bool isFPDiv;          Bool isFPCmp;
@@ -206,6 +209,7 @@ typedef struct {
   Bool isStore;            // Or a store?
   Bool isFPUOp;            // Or an FPU operation?
   Bool isWaitUntil;        // Or a wait-until operation?
+  Bool isRecv;             // Or a recv/can-recv operation?
   Bit#(6) destReg;         // Destination register for the result
   Bit#(2) loadSelector;    // Bottom two bits of load address
   AccessWidth accessWidth; // Access width of load (byte, half, word)
@@ -302,6 +306,8 @@ function Op decodeOp(Bit#(32) instr);
   ret.isOr = minorOp == 'b110 && isArith;
   ret.isXor = minorOp == 'b100 && isArith;
   ret.isBitwise = ret.isAnd || ret.isOr || ret.isXor;
+  // Custom send instruction
+  ret.isSend = op == 'b00010;
   // Multiplication
   Bool isMultOrMultH = instr[25] == 1 && op == 'b01100;
   ret.isMult = isMultOrMultH && minorOp[1:0] == 0;
@@ -335,12 +341,12 @@ function Op decodeOp(Bit#(32) instr);
   ret.csr.isInstrAddr = ret.isCSR && csrIndex == 'h20;
   ret.csr.isInstr = ret.isCSR && csrIndex == 'h21;
   // Mailbox CSR
-  ret.csr.isAlloc        = ret.isCSR && csrIndex == 'h22;
+  ret.csr.isFree         = ret.isCSR && csrIndex == 'h22;
   ret.csr.isCanSend      = ret.isCSR && csrIndex == 'h23;
   ret.csr.isCanRecv      = ret.isCSR && csrIndex == 'h25;
   ret.csr.isSendLen      = ret.isCSR && csrIndex == 'h26;
   ret.csr.isSendPtr      = ret.isCSR && csrIndex == 'h27;
-  ret.csr.isSend         = ret.isCSR && csrIndex == 'h28;
+  ret.csr.isSendDest     = ret.isCSR && csrIndex == 'h28;
   ret.csr.isRecv         = ret.isCSR && csrIndex == 'h29;
   ret.csr.isWaitUntil    = ret.isCSR && csrIndex == 'h2a;
   ret.csr.isFromUart     = ret.isCSR && csrIndex == 'h2b;
@@ -626,9 +632,14 @@ module mkCore#(CoreId myId) (Core);
   MailboxClientUnit mailbox <- mkMailboxClientUnit(myId);
 
   // Connection to mailbox client wakeup queue
-  InPort#(ThreadEventPair) wakeupPort <- mkInPort;
+  InPort#(ReceiveResp) wakeupPort <- mkInPort;
   connectUsing(mkUGShiftQueue1(QueueOptFmax),
                  mailbox.wakeup, wakeupPort.in);
+
+  // Connection to mailbox client receive response queue
+  InPort#(ReceiveResp) mboxReceivePort <- mkInPort;
+  connectUsing(mkUGShiftQueue1(QueueOptFmax),
+                 mailbox.respPort, mboxReceivePort.in);
 
   // Pipeline stages
   Reg#(Bool)          fetch1Fire         <- mkDReg(False);
@@ -791,13 +802,7 @@ module mkCore#(CoreId myId) (Core);
     regFileA.read({token.thread.id, rfA, regA});
     regFileB.read({token.thread.id, rfB, regB});
     // Prepare mailbox operation
-    token.idleRelease = False;
-    if (isCSROp(token.instr)) begin
-      if (mailbox.idleReleaseInProgress)
-        token.idleRelease = True;
-      else
-        mailbox.prepare(token.thread.id);
-    end
+    token.idleRelease = mailbox.idleReleaseInProgress;
     // Trigger next stage
     decode1Input <= token;
   endrule
@@ -837,33 +842,19 @@ module mkCore#(CoreId myId) (Core);
     // Base of jump (could be PC or register)
     token.jumpBase = token.op.isJumpReg ?
                        truncate(token.valA) : token.thread.pc;
-    // Mailbox send
-    token.retry = False;
-    if (mailbox.canSend && token.op.csr.isSend) begin
-      if (token.idleRelease)
-        token.retry = True;
-      else begin
-        mailbox.send(token.thread.id, token.thread.msgLen,
-                       unpack(truncate(token.valA)), token.thread.msgPtr);
-        incSentReg <= 1;
-      end
-    end
-    // Mailbox receive
-    if (mailbox.canRecv && token.op.csr.isRecv) begin
-      mailbox.recv;
-      incRecvReg <= 1;
-    end
     // Mailbox set message length
     if (token.op.csr.isSendLen)
       token.thread.msgLen = truncate(token.valA);
     // Mailbox set message pointer
     if (token.op.csr.isSendPtr)
       token.thread.msgPtr = byteAddrToMsgIndex(token.valA);
+    // Set destination mailbox for send operation
+    if (token.op.csr.isSendDest)
+      token.thread.mboxDest = truncate(token.valA);
     // Mailbox scratchpad access
     token.isScratchpadAccess = token.memAddr[31:`LogOffChipRAMBaseAddr] == 0;
-    // Mailbox can-send / can-recv
-    token.canSend = !token.idleRelease && mailbox.canSend;
-    token.canRecv = !token.idleRelease && mailbox.canRecv;
+    // Mailbox can-send
+    token.canSend = !token.idleRelease && mailbox.canSend(token.thread.id);
     // Address for write-port of instrMem
     if (token.op.csr.isInstrAddr) begin
       token.thread.instrWriteIndex = truncate(token.valA);
@@ -918,7 +909,7 @@ module mkCore#(CoreId myId) (Core);
       instrMemWriteData <= token.valA;
     end
     // Load or store: send request to data cache or scratchpad
-    Bool retry = token.retry;
+    Bool retry = False;
     Bool suspend = False;
     if (token.op.isLoad || token.op.isStore || token.op.csr.isFlush) begin
       // Determine data to write and assoicated byte-enables
@@ -961,15 +952,37 @@ module mkCore#(CoreId myId) (Core);
           retry = True;
       end
     end
-    // Allocate space for an incoming message in mailbox scratchpad
-    if (token.op.csr.isAlloc) begin
-      if (mailbox.allocateReq.canPut) begin
+    // Mailbox send
+    if (token.op.isSend) begin
+      if (token.idleRelease)
+        retry = True;
+      else begin
+        NetAddr dest;
+        dest.mbox = thread.mboxDest;
+        dest.threads = {token.valA, token.valB};
+        mailbox.send(token.thread.id, token.thread.msgLen,
+                       dest, token.thread.msgPtr);
+        incSentReg <= 1;
+      end
+    end
+    // Free a receieved message in mailbox scratchpad
+    if (token.op.csr.isFree) begin
+      if (mailbox.freeReq.canPut) begin
         // Prepare mailbox allocation request
-        AllocReq req;
+        FreeReq req;
         req.id = {truncate(myId), token.thread.id};
-        req.msgIndex = byteAddrToMsgIndex(token.valA);
+        req.slot = byteAddrToMsgIndex(token.valA);
         // Issue request
-        mailbox.allocateReq.put(req);
+        mailbox.freeReq.put(req);
+      end else
+        retry = True;
+    end
+    // Mailbox receive
+    if (token.op.csr.isRecv || token.op.csr.isCanRecv) begin
+      if (!token.idleRelease && mailbox.canRecv) begin
+        mailbox.recv(token.thread.id, token.op.csr.isRecv);
+        suspend = True;
+        incRecvReg <= 1;
       end else
         retry = True;
     end
@@ -1042,9 +1055,11 @@ module mkCore#(CoreId myId) (Core);
       susp.isStore = token.op.isStore;
       susp.isFPUOp = token.op.isFPUOp;
       susp.isWaitUntil = token.op.csr.isWaitUntil;
+      susp.isRecv = token.op.csr.isCanRecv || token.op.csr.isRecv;
       susp.destReg = {token.destRegFile, rd(token.instr)};
       susp.loadSelector = token.memAddr[1:0];
-      susp.accessWidth = susp.isFPUOp ? wordAccess : token.accessWidth;
+      susp.accessWidth = (susp.isLoad || susp.isStore) ?
+                           token.accessWidth : wordAccess;
       susp.isUnsignedLoad = isUnsignedLoad(token.instr);
       suspended.write(token.thread.id, susp);
     end 
@@ -1056,7 +1071,6 @@ module mkCore#(CoreId myId) (Core);
     // CSR read
     res.csr =
         when(token.op.csr.isCanSend,  zeroExtend(pack(token.canSend)))
-      | when(token.op.csr.isCanRecv,  zeroExtend(pack(token.canRecv)))
       | when(token.op.csr.isHartId,
                zeroExtend({pack(boardId), myId, token.thread.id}))
       | when(token.op.csr.isRecv,     mailbox.recvAddr)
@@ -1196,6 +1210,12 @@ module mkCore#(CoreId myId) (Core);
         mailbox.scratchpadResp.get;
         token.id   = truncate(mailbox.scratchpadResp.value.id);
         token.data = mailbox.scratchpadResp.value.data;
+      end else if (mboxReceivePort.canGet) begin
+        mboxReceivePort.get;
+        token.id = mboxReceivePort.value.id;
+        token.data = mboxReceivePort.value.doRecv ?
+                       mboxReceivePort.value.data :
+                       zeroExtend(mboxReceivePort.value.canRecv);
       end else if (wakeupPort.canGet) begin
         wakeupPort.get;
         token.id = truncate(wakeupPort.value.id);
@@ -1225,8 +1245,8 @@ module mkCore#(CoreId myId) (Core);
     let token = resumeThread3Input;
     // Prepare request for writeback stage
     Writeback wb;
-    wb.write = (susp.isLoad || susp.isFPUOp || susp.isWaitUntil) &&
-                  susp.destReg != 0;
+    wb.write = (susp.isLoad || susp.isFPUOp || susp.isWaitUntil ||
+                  susp.isRecv) && susp.destReg != 0;
     wb.thread = susp.thread;
     wb.thread.id = token.id;
     wb.thread.fpFlags = wb.thread.fpFlags | token.fpFlags;

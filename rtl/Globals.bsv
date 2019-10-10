@@ -26,7 +26,10 @@ typedef struct {
   Bool acc;
   Option#(Bit#(1)) host;
   BoardId board;
-  CoreId core;
+} MailboxNetAddr deriving (Bits);
+
+typedef struct {
+  MailboxNetAddr mbox;
   Bit#(`ThreadsPerMailbox) threads;
 } NetAddr deriving (Bits);
 
