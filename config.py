@@ -66,8 +66,8 @@ p["LogWordsPerFlit"] = 2
 # Max flits per message
 p["LogMaxFlitsPerMsg"] = 2
 
-# Space available per thread in mailbox scratchpad
-p["LogMsgsPerThread"] = 4
+# Space available in mailbox scratchpad
+p["LogMsgsPerMailbox"] = 9
 
 # Number of cores sharing a mailbox
 p["LogCoresPerMailbox"] = 2
@@ -229,6 +229,11 @@ p["DCachesPerDRAM"] = 2**p["LogDCachesPerDRAM"]
 # Flits per message
 p["MaxFlitsPerMsg"] = 2**p["LogMaxFlitsPerMsg"]
 
+# Mailbox size
+p["LogFlitsPerMailbox"] = p["LogMsgsPerMailbox"] + p["LogMaxFlitsPerMsg"]
+p["LogWordsPerMailbox"] = p["LogFlitsPerMailbox"] + p["LogWordsPerFlit"]
+p["LogBytesPerMailbox"] = p["LogWordsPerMailbox"] + 2
+
 # Words per flit
 p["WordsPerFlit"] = 2**p["LogWordsPerFlit"]
 
@@ -244,15 +249,6 @@ p["LogWordsPerMsg"] = p["LogWordsPerFlit"] + p["LogMaxFlitsPerMsg"]
 # Bytes per message
 p["LogBytesPerMsg"] = p["LogWordsPerMsg"] + 2
 
-# Space available per thread in mailbox scratchpad
-p["MsgSlotsPerThread"] = 2**p["LogMsgsPerThread"]
-
-# Number of bytes per message
-p["LogBytesPerMsg"] = p["LogWordsPerMsg"] + 2
-
-# Number of flits per thread in scratchpad
-p["LogFlitsPerThread"] = p["LogMsgsPerThread"] + p["LogMaxFlitsPerMsg"]
-
 # Number of cores sharing a mailbox
 p["CoresPerMailbox"] = 2 ** p["LogCoresPerMailbox"]
 
@@ -262,7 +258,7 @@ p["LogThreadsPerMailbox"] = p["LogCoresPerMailbox"]+p["LogThreadsPerCore"]
 # Base of off-chip memory-mapped region in bytes
 p["LogOffChipRAMBaseAddr"] = (1+p["LogWordsPerFlit"]+2+
                                 p["LogMaxFlitsPerMsg"]+
-                                p["LogMsgsPerThread"])
+                                p["LogMsgsPerMailbox"])
 
 # Size of mailbox transmit buffer
 p["LogTransmitBufferLen"] = (p["LogMaxFlitsPerMsg"]

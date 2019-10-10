@@ -180,9 +180,11 @@ typedef struct {
 } ReceiveReq deriving (Bits);
 
 // Response from receive unit
-typedef struct ReceiveResp {
+typedef struct {
   // Target of response
   ThreadId id;
+  // Operation
+  Bool doRecv;
   // For "can receive" query
   Bool canRecv;
   // Pointer to message received, for "receive" command
@@ -210,13 +212,13 @@ typedef struct {
 // =============================================================================
 
 // Convert byte address to message index
-function MailboxThreadMsgAddr byteAddrToMsgIndex(Bit#(32) addr);
-  MailboxThreadMsgAddr msgAddr = truncate(addr[31:`LogBytesPerMsg]);
+function MailboxMsgAddr byteAddrToMsgIndex(Bit#(32) addr);
+  MailboxMsgAddr msgAddr = truncate(addr[31:`LogBytesPerMsg]);
   return msgAddr;
 endfunction
 
 // Convert message address to byte address
-function Bit#(32) msgAddrToByteAddr(MailboxThreadMsgAddr msgAddr);
+function Bit#(32) msgAddrToByteAddr(MailboxMsgAddr msgAddr);
   Bit#(`LogWordsPerFlit) wordOffset = 0;
   Bit#(`LogMaxFlitsPerMsg) flitOffset = 0;
   return {0, msgAddr, flitOffset, wordOffset, 2'b0};
@@ -399,6 +401,7 @@ module mkMailbox (Mailbox);
       ReceiveResp resp;
       // Do lookup
       resp.id = req.id;
+      resp.doRecv = req.doRecv;
       resp.canRecv = msgPtrQueueCanGet[i][req.id];
       resp.data = msgPtrQueueData[i][req.id];
       if (resp.canRecv && req.doRecv) msgPtrQueue[i][req.id].deq;
@@ -499,7 +502,7 @@ module mkMailbox (Mailbox);
     if (spadReqPort.canGet && inFlightScratchpadReqs.notFull) begin
       spadReqPort.get;
       ScratchpadReq req = spadReqPort.value;
-      MailboxWordAddr addr = {truncate(req.id), req.wordAddr};
+      MailboxWordAddr addr = req.wordAddr;
       scratchpad.putB(req.isStore, addr, req.data, req.byteEn);
       inFlightScratchpadReqs.inc;
       // Trigger next stage
@@ -659,7 +662,7 @@ interface MailboxClientUnit;
 
   // Trigger send
   method Action send(ThreadId id, MsgLen len,
-                       NetAddr dest, MailboxThreadMsgAddr addr);
+                       NetAddr dest, MailboxMsgAddr addr);
 
    // Can we send a receive request to the mailbox?
   method Bool canRecv;
@@ -896,7 +899,7 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
   method Bool canSend(ThreadId id) = canThreadSend[id].value;
 
   method Action send(ThreadId id, MsgLen len,
-                       NetAddr dest, MailboxThreadMsgAddr addr);
+                       NetAddr dest, MailboxMsgAddr addr);
     myAssert(canThreadSend[id].value, "MailboxClientUnit: send violation");
     // Construct transmit request
     TransmitReq req;
