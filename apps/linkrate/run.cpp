@@ -36,7 +36,7 @@ void measureLink(
   }
 
   // Wait for one response each from source and destination
-  uint32_t buffer[1 << TinselLogWordsPerFlit];
+  uint32_t buffer[1 << TinselLogWordsPerMsg];
   for (uint32_t i = 0; i < 2; i++) {
     hostLink->recv(buffer);
     if (i == 0) {
