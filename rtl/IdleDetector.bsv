@@ -219,11 +219,13 @@ module mkIdleDetector (IdleDetector);
     outFlit.isIdleToken = True;
     outFlit.dest =
       NetAddr {
-        acc: False,
-        host: option(True, 0),
-        board: BoardId { y: 0, x: 0 },
-        core: 0,
-        thread: 0
+        addr: MailboxNetAddr {
+          acc: False,
+          host: option(True, 0),
+          board: BoardId { y: 0, x: 0 },
+          mbox: MailboxId { y: 0, x: 0 }
+        },
+        threads: 0
       };
     outFlit.notFinalFlit = False;
     outFlit.payload = zeroExtend(pack(token));
@@ -534,11 +536,13 @@ module mkIdleDetectMaster (IdleDetectMaster);
     Flit flit;
     flit.dest =
       NetAddr {
-        acc: False,
-        host: option(False, 0),
-        board: BoardId { y: truncate(boardY), x: truncate(boardX) },
-        core: 0,
-        thread: 0
+        addr: MailboxNetAddr {
+          acc: False,
+          host: option(False, 0),
+          board: BoardId { y: truncate(boardY), x: truncate(boardX) },
+          mbox: MailboxId { y: 0, x: 0 }
+        },
+        threads: 0
       };
     flit.payload = ?;
     flit.notFinalFlit = False;

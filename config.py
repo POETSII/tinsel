@@ -87,8 +87,11 @@ p["MailboxMeshYLen"] = 2 ** p["MailboxMeshYBits"]
 # Number of mailboxes per board
 p["LogMailboxesPerBoard"] = p["MailboxMeshXBits"] + p["MailboxMeshYBits"]
 
+# Size of multicast queues in mailbox
+p["LogMsgPtrQueueSize"] = 6
+
 # Maximum size of boot loader (in bytes)
-p["MaxBootImageBytes"] = 576
+p["MaxBootImageBytes"] = 720
 
 # Size of transmit buffer in a reliable link
 p["LogTransmitBufferSize"] = 10
@@ -254,6 +257,7 @@ p["CoresPerMailbox"] = 2 ** p["LogCoresPerMailbox"]
 
 # Number of threads sharing a mailbox
 p["LogThreadsPerMailbox"] = p["LogCoresPerMailbox"]+p["LogThreadsPerCore"]
+p["ThreadsPerMailbox"] = 2**p["LogThreadsPerMailbox"]
 
 # Base of off-chip memory-mapped region in bytes
 p["LogOffChipRAMBaseAddr"] = (1+p["LogWordsPerFlit"]+2+
