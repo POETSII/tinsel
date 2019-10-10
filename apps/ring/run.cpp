@@ -21,7 +21,7 @@ int main()
   hostLink.go();
 
   // Wait for response
-  uint32_t resp[4];
+  uint32_t resp[1 << TinseLogWordsPerMsg];
   hostLink.recv(resp);
   printf("Done\n");
 

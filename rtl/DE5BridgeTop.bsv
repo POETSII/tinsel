@@ -217,19 +217,42 @@ module de5BridgeTop (DE5BridgeTop);
     end
   endrule
 
+  // We always send a message-sized message to the host
+  // When a message is less than that size, we emit padding
+  Reg#(Bit#(`LogMaxFlitsPerMsg)) toPCIePadding <- mkReg(0);
+
+  // Count the flits in a message going to the host
+  Reg#(Bit#(`LogMaxFlitsPerMsg)) toPCIeFlitCount <- mkReg(0);
+
   // Connect 10G link to PCIe stream and idle detector
-  rule fromLinkRule (fromLink.canGet);
+  rule fromLinkRule;
     Flit flit = fromLink.value;
-    if (flit.isIdleToken) begin
-      if (toDetector.canPut) begin
-        toDetector.put(flit);
-        fromLink.get;
+    if (toPCIePadding == 0) begin
+      if (fromLink.canGet) begin
+        if (flit.isIdleToken) begin
+          if (toDetector.canPut) begin
+            toDetector.put(flit);
+            fromLink.get;
+          end
+        end else begin
+          if (toPCIe.canPut) begin
+            toPCIe.put(flit.payload);
+            fromLink.get;
+            if (flit.notFinalFlit) begin
+              toPCIeFlitCount <= toPCIeFlitCount+1;
+            end else begin
+              toPCIePadding <=
+                fromInteger (`MaxFlitsPerMsg-1) - toPCIeFlitCount;
+              toPCIeFlitCount <= 0;
+              detector.decCount;
+            end
+          end
+        end
       end
     end else begin
       if (toPCIe.canPut) begin
-        toPCIe.put(flit.payload);
-        fromLink.get;
-        if (!flit.notFinalFlit) detector.decCount;
+        toPCIe.put(0);
+        toPCIePadding <= toPCIePadding-1;
       end
     end
   endrule
