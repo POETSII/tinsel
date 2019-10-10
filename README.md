@@ -1,4 +1,4 @@
-# Tinsel 0.6.2
+# Tinsel 0.6.3
 
 Tinsel is a [RISC-V](https://riscv.org/)-based manythread
 message-passing architecture designed for FPGA clusters.  It is being
@@ -6,10 +6,9 @@ developed as part of the [POETS
 Project](https://poets-project.org/about) (Partial Ordered Event
 Triggered Systems).  This manual describes the architecture and
 associated APIs.  Further background can be found in our [FPL 2019
-paper](doc/fpl-2019-paper.pdf), which presents results for [Tinsel
-0.6.1](https://github.com/POETSII/tinsel/tree/tinsel-0.6.1).  If
-you're a POETS Partner, you can access a machine running Tinsel in the
-[POETS Cloud](https://github.com/POETSII/poets-cloud).  
+paper](doc/fpl-2019-paper.pdf), which presents Tinsel 0.6.  If you're
+a POETS Partner, you can access a machine running Tinsel in the [POETS
+Cloud](https://github.com/POETSII/poets-cloud).  
 
 ## Release Log
 
@@ -694,10 +693,11 @@ bool HostLink::send(uint32_t dest, uint32_t numFlits, void* msg);
 // Try to send a message (non-blocking, returns true on success)
 bool HostLink::trySend(uint32_t dest, uint32_t numFlits, void* msg);
 
-// Receive a flit (blocking)
-void HostLink::recv(void* flit);
+// Receive a message (blocking)
+// Buffer must be at least 1<<LogBytesPerMsg bytes in size
+void HostLink::recv(void* msg);
 
-// Can receive a flit without blocking?
+// Can receive a message without blocking?
 bool HostLink::canRecv();
 
 // Receive a message (blocking), given size of message in bytes
@@ -1351,10 +1351,11 @@ class HostLink {
   // Try to send a message (non-blocking, returns true on success)
   bool trySend(uint32_t dest, uint32_t numFlits, void* msg);
 
-  // Receive a flit (blocking)
-  void recv(void* flit);
+  // Receive a message (blocking)
+  // Buffer must be at least 1<<LogBytesPerMsg bytes in size
+  void recv(void* msg);
 
-  // Can receive a flit without blocking?
+  // Can receive a message without blocking?
   bool canRecv();
 
   // Receive a message (blocking), given size of message in bytes

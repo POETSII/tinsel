@@ -252,29 +252,26 @@ bool HostLink::trySend(uint32_t dest, uint32_t numFlits, void* msg)
   return send(dest, numFlits, msg, false);
 }
 
-// Receive a flit via PCIe (blocking)
-void HostLink::recv(void* flit)
+// Receive a message via PCIe (blocking)
+void HostLink::recv(void* msg)
 {
-  int numBytes = 1 << TinselLogBytesPerFlit;
-  uint8_t* ptr = (uint8_t*) flit;
+  int numBytes = 1 << TinselLogBytesPerMsg;
+  uint8_t* ptr = (uint8_t*) msg;
   socketBlockingGet(pcieLink, (char*) ptr, numBytes);
 }
 
 // Receive a message (blocking), given size of message in bytes
 void HostLink::recvMsg(void* msg, uint32_t numBytes)
 {
-  // Number of flits needed to hold message of size numBytes
-  int numFlits = 1 + ((numBytes-1) >> TinselLogBytesPerFlit);
-
   // Number of padding bytes that need to be received but not stored
-  int paddingBytes = (numFlits << TinselLogBytesPerFlit) - numBytes;
+  int paddingBytes = (1 << TinselLogBytesPerMsg) - numBytes;
 
   // Fill message
   uint8_t* ptr = (uint8_t*) msg;
   socketBlockingGet(pcieLink, (char*) ptr, numBytes);
 
   // Discard padding bytes
-  uint8_t padding[1 << TinselLogBytesPerFlit];
+  uint8_t padding[1 << TinselLogBytesPerMsg];
   socketBlockingGet(pcieLink, (char*) padding, paddingBytes);
 }
 
@@ -360,7 +357,7 @@ void HostLink::boot(const char* codeFilename, const char* dataFilename)
 
   // Send start command
   uint32_t started = 0;
-  uint8_t flit[4 << TinselLogWordsPerFlit];
+  uint32_t msg[1 << TinselLogWordsPerMsg];
   for (int x = 0; x < meshXLen; x++) {
     for (int y = 0; y < meshYLen; y++) {
       for (int i = 0; i < (1 << TinselLogCoresPerBoard); i++) {
@@ -370,7 +367,7 @@ void HostLink::boot(const char* codeFilename, const char* dataFilename)
         while (1) {
           bool ok = trySend(dest, 1, &req);
           if (canRecv()) {
-            recv(flit);
+            recv(msg);
             started++;
           }
           if (ok) break;
@@ -381,7 +378,7 @@ void HostLink::boot(const char* codeFilename, const char* dataFilename)
 
   // Wait for all start responses
   while (started < numCores) {
-    recv(flit);
+    recv(msg);
     started++;
   }
 }
@@ -467,8 +464,8 @@ void HostLink::startOne(uint32_t meshX, uint32_t meshY,
   send(dest, 1, &req);
 
   // Wait for start response
-  uint8_t flit[4 << TinselLogWordsPerFlit];
-  recv(flit);
+  uint32_t msg[1 << TinselLogWordsPerMsg];
+  recv(msg);
 }
 
 // Trigger application execution on all started threads on given core
@@ -522,7 +519,7 @@ bool HostLink::powerOnSelfTest()
   req.args[0] = 1;
 
   // Flit buffer to store responses
-  uint8_t flit[4 << TinselLogWordsPerFlit];
+  uint32_t msg[1 << TinselLogWordsPerMsg];
 
   // Count number of responses received
   int count = 0;
@@ -538,7 +535,7 @@ bool HostLink::powerOnSelfTest()
         while (1) {
           bool ok = trySend(toAddr(x, y, 0, 0), 1, &req);
           if (canRecv()) {
-            recv(flit);
+            recv(msg);
             count++;
           }
           if (ok) break;
@@ -556,7 +553,7 @@ bool HostLink::powerOnSelfTest()
   gettimeofday(&start, NULL);
   while (count < (2*meshXLen*meshYLen)) {
     if (canRecv()) {
-      recv(flit);
+      recv(msg);
       count++;
       gettimeofday(&start, NULL);
     }

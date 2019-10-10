@@ -12,7 +12,7 @@ int main()
   hostLink.go();
 
   printf("Waiting for response\n");
-  uint32_t resp[4];
+  uint32_t resp[1 << TinseLogWordsPerMsg];
   hostLink.recv(resp);
   printf("Cycles = %u\n", resp[0]);
 
