@@ -31,7 +31,7 @@ int main()
 
     // Wait for response
     const int numThreads = 1 << LogThreadsUsed;
-    uint32_t msg[1 << TinseLogWordsPerMsg];
+    uint32_t msg[1 << TinselLogWordsPerMsg];
     uint32_t total = 0;
     for (int j = 0; j < numThreads; j++) {
       hostLink.recv(msg);

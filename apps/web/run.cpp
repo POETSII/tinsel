@@ -102,7 +102,7 @@ int main()
   for (int n = 0; n < 1; n++) {
     // Fill 2D grid
     for (int i = 0; i < NX*NY; i++) {
-      int msg[1 << TinseLogWordsPerMsg];
+      int msg[1 << TinselLogWordsPerMsg];
       hostLink.recv(msg);
       grid[msg[1]][msg[0]] = msg[2];
     }

@@ -12,7 +12,7 @@ int main()
   hostLink.go();
 
   printf("Waiting for message from accelerator\n");
-  uint32_t msg[1 << TinseLogWordsPerMsg];
+  uint32_t msg[1 << TinselLogWordsPerMsg];
   hostLink.recv(msg);
   printf("Got it: %x\n", msg[0]);
 

@@ -11,7 +11,7 @@ int main()
   printf("Starting\n");
   hostLink.go();
 
-  uint32_t resp[1 << TinseLogWordsPerMsg];
+  uint32_t resp[1 << TinselLogWordsPerMsg];
   hostLink.recv(resp);
   printf("Done cycles=%u\n", resp[0]);
 
