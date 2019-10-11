@@ -20,7 +20,6 @@ clean:
 	make -C apps/ping clean
 	make -C apps/custom clean
 	make -C apps/ring clean
-	make -C apps/ring/general clean
 	make -C apps/flood1 clean
 	make -C apps/flood2 clean
 	make -C apps/inter clean
