@@ -194,8 +194,15 @@ module de5BridgeTop (DE5BridgeTop);
       toLinkState <= 0;
     end else begin
       if (fromPCIe.canGet && linkOutBuffer.notFull) begin
+        // Determine flit destination address
+        Bit#(6) destThread = fromPCIeDA[`LogThreadsPerMailbox-1:0];
+        Vector#(64, Bool) destThreads = newVector();
+        for (Integer i = 0; i < 64; i=i+1)
+          destThreads[i] = destThread == fromInteger(i);
+        // Construct flit
         Flit flit;
-        flit.dest = unpack(truncate(fromPCIeDA));
+        flit.dest.addr = unpack(truncate(fromPCIeDA[31:`LogThreadsPerMailbox]));
+        flit.dest.threads = pack(destThreads);
         flit.payload = fromPCIe.value;
         flit.notFinalFlit = True;
         flit.isIdleToken = False;
