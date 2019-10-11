@@ -176,7 +176,7 @@ typedef struct {
   Bool doRecv;
   // Is source thread sleeping?
   Option#(WakeEvent) sleeping;
-} ReceiveReq deriving (Bits);
+} ReceiveReq deriving (Bits, FShow);
 
 // Response from receive unit
 typedef struct {
@@ -190,7 +190,7 @@ typedef struct {
   MailboxMsgAddr data;
   // Is source thread sleeping?
   Option#(WakeEvent) sleeping;
-} ReceiveResp deriving (Bits);
+} ReceiveResp deriving (Bits, FShow);
 
 // Request to "free" unit
 typedef struct {

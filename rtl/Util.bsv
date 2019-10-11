@@ -48,7 +48,7 @@ function Action myAssert(Bool b, String s) =
 typedef struct {
   Bool valid;
   t value;
-} Option#(type t) deriving (Bits);
+} Option#(type t) deriving (Bits, FShow);
 
 // Friendly constructor for Option type
 function Option#(t) option(Bool valid, t value) =

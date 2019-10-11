@@ -171,7 +171,8 @@ void tinselMulticast(
   asm volatile(
     "mv x10, %0\n"
     "mv x11, %1\n"
-    ".word 0x00b50008\n" : : "r"(destMaskHigh), "r"(destMaskLow));
+    ".word 0x00b50008\n" : : "r"(destMaskHigh), "r"(destMaskLow)
+                           : "x10", "x11");
 }
 
 // Send message at addr to dest
