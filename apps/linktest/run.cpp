@@ -25,7 +25,7 @@ int main()
           for (int y2 = 0; y2 < TinselMeshYLenWithinBox; y2++)
             for (int i2 = 0; i2 < (1 << TinselLogCoresPerBoard); i2++) {
               uint32_t dest = hostLink.toAddr(x1, y1, i1, 0);
-              uint32_t resp[1 << TinseLogWordsPerMsg];
+              uint32_t resp[1 << TinselLogWordsPerMsg];
               req.args[1] = hostLink.toAddr(x2, y2, i2, 0);
               hostLink.send(dest, 1, &req);
               hostLink.recv(resp);

@@ -25,7 +25,7 @@ int main()
   hostLink.goOne(0, 0, 1);
 
   printf("Sending ping to thread 0\n");
-  uint32_t ping[1 << TinseLogWordsPerMsg];
+  uint32_t ping[1 << TinselLogWordsPerMsg];
   ping[0] = 100;
   hostLink.send(0, 1, ping);
 

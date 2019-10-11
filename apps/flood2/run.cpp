@@ -15,7 +15,7 @@ int main()
     TinselMeshXLenWithinBox * TinselMeshYLenWithinBox * TinselThreadsPerBoard;
 
   printf("Waiting for responses from %d threads\n", totalThreads);
-  uint32_t resp[1 << TinseLogWordsPerMsg];
+  uint32_t resp[1 << TinselLogWordsPerMsg];
   for (int i = 0; i < totalThreads; i++) {
     hostLink.recv(resp);
     printf("Received response from %d\n", resp[0]);
