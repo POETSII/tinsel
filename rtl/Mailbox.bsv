@@ -705,7 +705,8 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
   OutPort#(ReceiveResp)     respPort           <- mkOutPort;
 
   // Sleep queue (threads sit in here while waiting for events)
-  SizedQueue#(`LogThreadsPerCore, Wakeup) sleepQueue <- mkUGSizedQueue;
+  SizedQueue#(`LogThreadsPerCore, Wakeup) sleepQueue <-
+    mkUGSizedQueuePrefetch;
 
   // Transmit logic
   // ==============
@@ -751,7 +752,7 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
   Wire#(ReceiveReq) recvReqWire2 <- mkDWire(?);
 
   rule createRecvReqs;
-    if (recvReqPutWire1) recvReqPort.put(recvReqWire2);
+    if (recvReqPutWire1) recvReqPort.put(recvReqWire1);
     else if (recvReqPutWire2) recvReqPort.put(recvReqWire2);
   endrule
 
@@ -846,6 +847,7 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
         req.sleeping = option(True, thread.wakeEvent);
         recvReqPutWire2.send;
         recvReqWire2 <= req;
+        sleepQueue.deq;
       end
     end else begin
       // Select only the bits of the event that match
@@ -856,20 +858,20 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
              pack(canSend)};
       // Should a wakeup be sent?
       Bool wakeupCond = eventMatch != 0;
-      // When wakeup port is ready
-      if (wakeupPort.canPut) begin
-        thread.wakeEvent = eventMatch;
-        if (wakeupCond) begin
+      if (wakeupCond) begin
+        // When wakeup port is ready
+        if (wakeupPort.canPut) begin
           // Send wakeup
+          thread.wakeEvent = eventMatch;
           wakeupPort.put(thread);
           if (thread.wakeEvent[2] == 1) numIdleWaiters.dec;
           if (thread.wakeEvent[3] == 1) idleVotes.dec;
           sleepQueue.deq;
-        end else if (!doSleep && !doResumeSleep) begin
-          // Retry later
-          doRequeue <= True;
-          sleepQueue.deq;
-        end
+        end 
+      end else if (!doSleep && !doResumeSleep) begin
+        // Retry later
+        doRequeue <= True;
+        sleepQueue.deq;
       end
     end
   endrule
