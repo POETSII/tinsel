@@ -13,7 +13,7 @@ typedef Bit#(`LogCoresPerBoard) CoreId;
 typedef struct {
   Bit#(`MeshYBits) y;
   Bit#(`MeshXBits) x;
-} BoardId deriving (Eq, Bits);
+} BoardId deriving (Eq, Bits, FShow);
 
 // Network address
 // Note: If 'host' bit is valid, then once the message reaches the
@@ -27,18 +27,18 @@ typedef struct {
   Option#(Bit#(1)) host;
   BoardId board;
   MailboxId mbox;
-} MailboxNetAddr deriving (Bits);
+} MailboxNetAddr deriving (Bits, FShow);
 
 typedef struct {
   MailboxNetAddr addr;
   Bit#(`ThreadsPerMailbox) threads;
-} NetAddr deriving (Bits);
+} NetAddr deriving (Bits, FShow);
 
 // Mailbox id
 typedef struct {
   Bit#(`MailboxMeshYBits) y;
   Bit#(`MailboxMeshXBits) x;
-} MailboxId deriving (Bits, Eq);
+} MailboxId deriving (Bits, Eq, FShow);
 
 function MailboxId getMailboxId(NetAddr addr) = addr.addr.mbox;
 

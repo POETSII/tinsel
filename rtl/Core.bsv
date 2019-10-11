@@ -1198,7 +1198,8 @@ module mkCore#(CoreId myId) (Core);
                        || dcacheResp.canGet
                        || mailbox.scratchpadResp.canGet
                        || wakeupPort.canGet
-                       || fromFPUPort.canGet);
+                       || fromFPUPort.canGet
+                       || mboxReceivePort.canGet);
     ResumeToken token = resumeThread1Input;
     token.fpFlags = 0;
     if (!resumeThread1Fire) begin
@@ -1214,7 +1215,7 @@ module mkCore#(CoreId myId) (Core);
         mboxReceivePort.get;
         token.id = mboxReceivePort.value.id;
         token.data = mboxReceivePort.value.doRecv ?
-                       zeroExtend(mboxReceivePort.value.data) :
+                       msgAddrToByteAddr(mboxReceivePort.value.data) :
                        zeroExtend(pack(mboxReceivePort.value.canRecv));
       end else if (wakeupPort.canGet) begin
         wakeupPort.get;
