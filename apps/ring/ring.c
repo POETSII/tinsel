@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BSD-2-Clause
 #include <tinsel.h>
 
-#define RING_LENGTH 1024
-#define NUM_TOKENS  1000
-#define NUM_LOOPS   10000
+#define RING_LENGTH 70
+#define NUM_TOKENS  2
+#define NUM_LOOPS   2
 
 int main()
 {
@@ -11,10 +11,7 @@ int main()
   int me = tinselId();
 
   // Get pointer to mailbox message slot
-  volatile int* msgOut = tinselSlot(0);
-
-  // Allocate space for some incoming messages
-  for (int i = 0; i < 4; i++) tinselAlloc(tinselSlot(i+1));
+  volatile int* msgOut = tinselSendSlot();
 
   // Mapping from thread id to ring id
   uint32_t id = me;
@@ -38,7 +35,7 @@ int main()
     // Receive
     if (tinselCanRecv()) {
       volatile int* msgIn = tinselRecv();
-      tinselAlloc(msgIn);
+      tinselFree(msgIn);
       if (toRecv > 0) {
         toRecv--;
         toSend++;
