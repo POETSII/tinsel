@@ -25,19 +25,24 @@ int main() {
         printf("Multiplication not possible with supplied matrices!\n");
     }
     else {
+        
+        // Start timer for mesh creation and mapping
+        struct timeval start_map, finish_map, diff_map;
+        gettimeofday(&start_map, NULL);
 
         // Connection to tinsel machine
         //HostLink::HostLink(2, 2);
-        HostLink *host_link = new HostLink(1, 1);
+        HostLink *host_link = new HostLink(2, 2);
         //Sampleclass *qs = new Sampleclass()
 
         // Create POETS graph
         //PGraph<MatDevice, MatState, None, MatMessage>(2, 2) graph;
         
-        PGraph <MatDevice, MatState, None, MatMessage>*graph = new PGraph<MatDevice, MatState, None, MatMessage>(1, 1);
+        PGraph <MatDevice, MatState, None, MatMessage>*graph = new PGraph<MatDevice, MatState, None, MatMessage>(2, 2);
 
         // Create 3D mesh of devices
-        PDeviceId mesh[MESHLEN][MESHWID][MESHHEI];
+        static PDeviceId mesh[MESHLEN][MESHWID][MESHHEI];
+
         for (uint32_t x = 0; x < MESHLEN; x++) {
             for (uint32_t y = 0; y < MESHWID; y++) {
                 for (uint32_t z = 0; z < MESHHEI; z++) {
@@ -65,9 +70,19 @@ int main() {
                 }
             }
         } 
-
+        
         // Prepare mapping from graph to hardware
+        graph->mapVerticesToDRAM = true;
         graph->map();
+        
+        // Record map time
+        gettimeofday(&finish_map, NULL);
+        timersub(&finish_map, &start_map, &diff_map);
+        double map_duration = (double) diff_map.tv_sec + (double) diff_map.tv_usec / 1000000.0;
+        
+        // Start timer for mesh init
+        struct timeval start_init, finish_init, diff_init;
+        gettimeofday(&start_init, NULL);
                     
         // Initialise device coordinates/dimensions
         for (uint32_t x = 0; x < MESHLEN; x++) {
@@ -97,10 +112,19 @@ int main() {
         host_link->boot("code.v", "data.v");
         host_link->go();
         // printf("Starting\n");
+        
+        // Record init time
+        gettimeofday(&finish_init, NULL);
+        timersub(&finish_init, &start_init, &diff_init);
+        double init_duration = (double) diff_init.tv_sec + (double) diff_init.tv_usec / 1000000.0;
 
-        // Start timer
-        struct timeval start, finish, diff;
-        gettimeofday(&start, NULL);
+        // Start timer for sending
+        struct timeval start_send, finish_send, diff_send;
+        gettimeofday(&start_send, NULL);
+        
+        // Start timer for overall processing
+        struct timeval start_proc, finish_proc, diff_proc;
+        gettimeofday(&start_proc, NULL);
 
 
         int deviceAddr = 0;
@@ -135,6 +159,11 @@ int main() {
                 }
             }
         }
+        
+        // Record send time
+        gettimeofday(&finish_send, NULL);
+        timersub(&finish_send, &start_send, &diff_send);
+        double send_duration = (double) diff_send.tv_sec + (double) diff_send.tv_usec / 1000000.0;
 
         // Allocate array to contain final value of each device
         uint32_t result[MESHLEN][MESHWID] {};
@@ -145,16 +174,15 @@ int main() {
             // Receive message
             PMessage<None, MatMessage> msg;
             host_link->recvMsg(&msg, sizeof(msg));
-            if (i == 0) gettimeofday(&finish, NULL);
+            if (i == 0) gettimeofday(&finish_proc, NULL);
             
             // Save final value
             result[graph->devices[msg.payload.from]->state.x][graph->devices[msg.payload.from]->state.y] = msg.payload.aggregate;
             
         }
 
-        // Display time
-        timersub(&finish, &start, &diff);
-        double duration = (double) diff.tv_sec + (double) diff.tv_usec / 1000000.0;
+        timersub(&finish_proc, &start_proc, &diff_proc);
+        double proc_duration = (double) diff_proc.tv_sec + (double) diff_proc.tv_usec / 1000000.0;
         
         for (uint32_t y = 0; y < MESHWID; y++) {
             for (uint32_t x = 0; x < MESHLEN; x++) {
@@ -167,7 +195,7 @@ int main() {
             
         }
         
-        printf("%lf", duration);
+        printf("%lf,%lf,%lf,%lf", map_duration, init_duration, send_duration, proc_duration);
     
     }
     
