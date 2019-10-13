@@ -716,6 +716,12 @@ being used to hold messages, in which case the second argument to
 assumes that the size of the struct is less than or equal to the
 maximum message size.
 
+There is also support for bulk sending and receving of messages. For
+bulk receiving, `recvBulk` and `recvMsgs` generalise `recv` and
+`recvMsg` respectively.  For bulk sending, enable the `useSendBuffer`
+member variable, and call `flush` to ensure that messages actually get
+sent.
+
 ```cpp
 // Receive multiple max-sized messages (blocking)
 void HostLink::recvBulk(int numMsgs, void* msgs);
@@ -731,12 +737,6 @@ bool HostLink::useSendBuffer;
 // Flush the send buffer (when send buffering is enabled)
 void HostLink::flush();
 ```
-
-There is also support for bulk sending and receving of messages. For
-bulk receiving, `recvBulk` and `recvMsgs` generalise `recv` and
-`recvMsg` respectively.  For bulk sending, enable the `useSendBuffer`
-member variable, and call `flush` to ensure that messages actually get
-sent.
 
 These methods for sending a receiving messages work by connecting to a
 local [PCIeStream deamon](/hostlink/pciestreamd.cpp) via a UNIX domain
