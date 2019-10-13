@@ -21,6 +21,9 @@
 #include <string.h>
 #include <signal.h>
 
+// Send buffer size (in flits)
+#define SEND_BUFFER_SIZE 8192
+
 // Function to connect to a PCIeStream UNIX domain socket
 static int connectToPCIeStream(const char* socketPath)
 {
@@ -124,6 +127,11 @@ void HostLink::constructor(uint32_t numBoxesX, uint32_t numBoxesY)
     }
   }
 
+  // Initialise send buffer
+  useSendBuffer = false;
+  sendBuffer = new char [(1<<TinselLogBytesPerFlit) * SEND_BUFFER_SIZE];
+  sendBufferLen = 0;
+
   // Run the self test
   if (! powerOnSelfTest()) {
     fprintf(stderr, "Power-on self test failed.  Please try again.\n");
@@ -165,6 +173,9 @@ HostLink::~HostLink()
   }
   delete [] lineBuffer;
   delete [] lineBufferLen;
+
+  // Free send buffer
+  delete [] sendBuffer;
 
   // Close debug link
   delete debugLink;
@@ -210,6 +221,8 @@ void HostLink::fromAddr(uint32_t addr, uint32_t* meshX, uint32_t* meshY,
 // Inject a message via PCIe (blocking by default)
 bool HostLink::send(uint32_t dest, uint32_t numFlits, void* payload, bool block)
 {
+  assert(useSendBuffer ? block : true);
+
   // Ensure that MaxFlitsPerMsg is not violated
   assert(numFlits > 0 && numFlits <= TinselMaxFlitsPerMsg);
 
@@ -217,32 +230,68 @@ bool HostLink::send(uint32_t dest, uint32_t numFlits, void* payload, bool block)
   // (Because PCIeStream currently has this assumption)
   assert(TinselLogBytesPerFlit == 4);
 
-  // Message buffer
-  uint32_t buffer[4*(TinselMaxFlitsPerMsg+1)];
+  if (useSendBuffer) {
+    // Flush the buffer when we run out of space
+    if ((sendBufferLen + numFlits + 1) >= SEND_BUFFER_SIZE) flush();
 
-  // Fill in the message header
-  // (See DE5BridgeTop.bsv for details)
-  buffer[0] = dest;
-  buffer[1] = 0;
-  buffer[2] = (numFlits-1) << 24;
-  buffer[3] = 0;
+    // Message buffer
+    uint32_t* buffer = (uint32_t*) &sendBuffer[16*sendBufferLen];
 
-  // Bytes in payload
-  int payloadBytes = numFlits*16;
+    // Fill in the message header
+    // (See DE5BridgeTop.bsv for details)
+    buffer[0] = dest;
+    buffer[1] = 0;
+    buffer[2] = (numFlits-1) << 24;
+    buffer[3] = 0;
 
-  // Fill in message payload
-  memcpy(&buffer[4], payload, payloadBytes);
+    // Fill in message payload
+    memcpy(&buffer[4], payload, numFlits*16);
 
-  // Total bytes to send, including header
-  int totalBytes = 16+payloadBytes;
+    // Update buffer
+    sendBufferLen += 1 + numFlits;
 
-  // Write to the socket
-  if (block) {
-    socketBlockingPut(pcieLink, (char*) buffer, totalBytes);
     return true;
   }
   else {
-    return socketPut(pcieLink, (char*) buffer, totalBytes) == 1;
+    assert(sendBufferLen == 0);
+
+    // Message buffer
+    uint32_t buffer[4*(TinselMaxFlitsPerMsg+1)];
+
+    // Fill in the message header
+    // (See DE5BridgeTop.bsv for details)
+    buffer[0] = dest;
+    buffer[1] = 0;
+    buffer[2] = (numFlits-1) << 24;
+    buffer[3] = 0;
+
+    // Bytes in payload
+    int payloadBytes = numFlits*16;
+
+    // Fill in message payload
+    memcpy(&buffer[4], payload, payloadBytes);
+
+    // Total bytes to send, including header
+    int totalBytes = 16+payloadBytes;
+
+    // Write to the socket
+    if (block) {
+      socketBlockingPut(pcieLink, (char*) buffer, totalBytes);
+      return true;
+    }
+    else {
+      return socketPut(pcieLink, (char*) buffer, totalBytes) == 1;
+    }
+  }
+}
+
+// Flush the send buffer
+void HostLink::flush()
+{
+  assert(useSendBuffer);
+  if (sendBufferLen > 0) {
+    socketBlockingPut(pcieLink, sendBuffer, sendBufferLen * 16);
+    sendBufferLen = 0;
   }
 }
 
@@ -256,8 +305,7 @@ bool HostLink::trySend(uint32_t dest, uint32_t numFlits, void* msg)
 void HostLink::recv(void* msg)
 {
   int numBytes = 1 << TinselLogBytesPerMsg;
-  uint8_t* ptr = (uint8_t*) msg;
-  socketBlockingGet(pcieLink, (char*) ptr, numBytes);
+  socketBlockingGet(pcieLink, (char*) msg, numBytes);
 }
 
 // Receive a message (blocking), given size of message in bytes
@@ -273,6 +321,25 @@ void HostLink::recvMsg(void* msg, uint32_t numBytes)
   // Discard padding bytes
   uint8_t padding[1 << TinselLogBytesPerMsg];
   socketBlockingGet(pcieLink, (char*) padding, paddingBytes);
+}
+
+// Receive multiple messages (blocking)
+void HostLink::recvBulk(int numMsgs, void* msgs)
+{
+  int numBytes = numMsgs * (1 << TinselLogBytesPerMsg);
+  socketBlockingGet(pcieLink, (char*) msgs, numBytes);
+}
+
+// Receive multiple messages (blocking), given size of each message
+void HostLink::recvMsgs(int numMsgs, int msgSize, void* msgs)
+{
+  int numBytes = numMsgs * (1 << TinselLogBytesPerMsg);
+  uint8_t* buffer = new uint8_t [numBytes];
+  uint8_t* ptr = (uint8_t*) msgs;
+  socketBlockingGet(pcieLink, (char*) buffer, numBytes);
+  for (int i = 0; i < numMsgs; i++)
+    memcpy(&ptr[i*msgSize], &buffer[i*(1<<TinselLogBytesPerMsg)], msgSize);
+  delete [] buffer;
 }
 
 // Can receive a flit without blocking?
