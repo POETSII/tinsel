@@ -33,7 +33,7 @@ struct MatState {
     // Device id
     uint32_t id;
     // Matrix elements
-    uint32_t element1, element2, aggregate;
+    int32_t element1, element2, aggregate;
     // Reception flags
     uint32_t inflags;
     // Mesh Coordinates

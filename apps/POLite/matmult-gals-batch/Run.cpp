@@ -25,20 +25,28 @@ int main() {
         printf("Multilpication not possible with supplied matrices!\n");
     }
     else {
+        
+        // Start timer for mesh creation and mapping
+        struct timeval start_map, finish_map, diff_map;
+        gettimeofday(&start_map, NULL);
+
 
         // Connection to tinsel machine
-        HostLink hostLink;
+        HostLink *host_link = new HostLink(2, 2);
+
 
         // Create POETS graph
-        PGraph<MatDevice, MatState, None, MatMessage> graph;
+        PGraph <MatDevice, MatState, None, MatMessage>*graph = new PGraph<MatDevice, MatState, None, MatMessage>(2, 2);
+
 
         // Create 3D mesh of devices
-        PDeviceId mesh[MESHLEN][MESHWID][MESHHEI];
+        static PDeviceId mesh[MESHLEN][MESHWID][MESHHEI];
+
         for (uint32_t x = 0; x < MESHLEN; x++) {
             for (uint32_t y = 0; y < MESHWID; y++) {
                 for (uint32_t z = 0; z < MESHHEI; z++) {
                     
-                    mesh[x][y][z] = graph.newDevice();
+                    mesh[x][y][z] = graph->newDevice();
                     
                 }
             }
@@ -50,7 +58,7 @@ int main() {
                 for (uint32_t z = 0; z < MESHHEI; z++) {
                     
                     if (z < MESHHEI-1) {
-                        graph.addEdge(mesh[x][y][z], 0, mesh[x][y][z+1]);
+                        graph->addEdge(mesh[x][y][z], 0, mesh[x][y][z+1]);
                     }
                     
                 }
@@ -58,7 +66,18 @@ int main() {
         } 
 
         // Prepare mapping from graph to hardware
-        graph.map();
+        graph->mapVerticesToDRAM = true;
+        graph->map();
+        
+        // Record map time
+        gettimeofday(&finish_map, NULL);
+        timersub(&finish_map, &start_map, &diff_map);
+        double map_duration = (double) diff_map.tv_sec + (double) diff_map.tv_usec / 1000000.0;
+        
+        // Start timer for mesh init
+        struct timeval start_init, finish_init, diff_init;
+        gettimeofday(&start_init, NULL);
+
                     
         // Initialise device coordinates/dimensions and starting matrices
         for (uint32_t x = 0; x < MESHLEN; x++) {
@@ -66,44 +85,49 @@ int main() {
                 for (uint32_t z = 0; z < MESHHEI; z++) {
                     
                     // Initialise device IDs
-                    graph.devices[mesh[x][y][z]]->state.id = mesh[x][y][z];
+                    graph->devices[mesh[x][y][z]]->state.id = mesh[x][y][z];
                     
                     // Initialise Mesh coordinates on devices
-                    graph.devices[mesh[x][y][z]]->state.x = x;
-                    graph.devices[mesh[x][y][z]]->state.y = y;
-                    graph.devices[mesh[x][y][z]]->state.z = z;
+                    graph->devices[mesh[x][y][z]]->state.x = x;
+                    graph->devices[mesh[x][y][z]]->state.y = y;
+                    graph->devices[mesh[x][y][z]]->state.z = z;
 
                     //Inform each device of matrix size for message passing decisions
-                    graph.devices[mesh[x][y][z]]->state.xmax = MESHLEN;
-                    graph.devices[mesh[x][y][z]]->state.ymax = MESHWID;
-                    graph.devices[mesh[x][y][z]]->state.zmax = MESHHEI;
+                    graph->devices[mesh[x][y][z]]->state.xmax = MESHLEN;
+                    graph->devices[mesh[x][y][z]]->state.ymax = MESHWID;
+                    graph->devices[mesh[x][y][z]]->state.zmax = MESHHEI;
                     
                     // From maxtrix A
-                    graph.devices[mesh[x][y][z]]->state.element1 = matrixA[y][z];
+                    graph->devices[mesh[x][y][z]]->state.element1 = matrixA[y][z];
 
                     // From maxtrix B
-                    graph.devices[mesh[x][y][z]]->state.element2 = matrixB[z][x];
+                    graph->devices[mesh[x][y][z]]->state.element2 = matrixB[z][x];
                     
                     // Initialise variables prior to starting sumulation
-                    graph.devices[mesh[x][y][z]]->state.aggregate = 0;
-                    graph.devices[mesh[x][y][z]]->state.from = 0;
-                    graph.devices[mesh[x][y][z]]->state.trackflag = 0;
+                    graph->devices[mesh[x][y][z]]->state.aggregate = 0;
+                    graph->devices[mesh[x][y][z]]->state.from = 0;
+                    graph->devices[mesh[x][y][z]]->state.trackflag = 0;
                     
                 }
             }
         }
 
         // Write graph down to tinsel machine via HostLink
-        graph.write(&hostLink);
+        graph->write(host_link);
 
         // Load code and trigger execution
-        hostLink.boot("code.v", "data.v");
-        hostLink.go();
-        printf("Starting\n");
+        host_link->boot("code.v", "data.v");
+        host_link->go();
+        //printf("Starting\n");
+        
+        // Record init time
+        gettimeofday(&finish_init, NULL);
+        timersub(&finish_init, &start_init, &diff_init);
+        double init_duration = (double) diff_init.tv_sec + (double) diff_init.tv_usec / 1000000.0;
 
-        // Start timer
-        struct timeval start, finish, diff;
-        gettimeofday(&start, NULL);
+        // Start timer for overall processing
+        struct timeval start_proc, finish_proc, diff_proc;
+        gettimeofday(&start_proc, NULL);
 
         // Allocate array to contain final value of each device
         uint32_t result[MESHLEN][MESHWID] {};
@@ -113,18 +137,19 @@ int main() {
             
             // Receive message
             PMessage<None, MatMessage> msg;
-            hostLink.recvMsg(&msg, sizeof(msg));
-            if (i == 0) gettimeofday(&finish, NULL);
+            host_link->recvMsg(&msg, sizeof(msg));
+            if (i == 0) gettimeofday(&finish_proc, NULL);
+
             
             // Save final value
-            result[graph.devices[msg.payload.from]->state.x][graph.devices[msg.payload.from]->state.y] = msg.payload.aggregate;
+            result[graph->devices[msg.payload.from]->state.x][graph->devices[msg.payload.from]->state.y] = msg.payload.aggregate;
             
         }
 
         // Display time
-        timersub(&finish, &start, &diff);
-        double duration = (double) diff.tv_sec + (double) diff.tv_usec / 1000000.0;
-        printf("Time = %lf\n", duration);
+        timersub(&finish_proc, &start_proc, &diff_proc);
+        double proc_duration = (double) diff_proc.tv_sec + (double) diff_proc.tv_usec / 1000000.0;
+
 
         for (uint32_t y = 0; y < MESHWID; y++) {
             for (uint32_t x = 0; x < MESHLEN; x++) {
@@ -136,6 +161,8 @@ int main() {
             printf("\n");
             
         }
+        
+        printf("%lf,%lf,%lf", map_duration, init_duration, proc_duration);
     
     }
     

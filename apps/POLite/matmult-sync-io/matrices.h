@@ -25,8 +25,8 @@
 
 #define RETMATSIZE (MATAWID * MATBLEN)
 
-extern int32_t matrixA[MATAWID][MATALEN];
-extern int32_t matrixB[MATBWID][MATBLEN];
+extern const int32_t matrixA[MATAWID][MATALEN];
+extern const int32_t matrixB[MATBWID][MATBLEN];
 
 extern uint32_t mult_possible;
 
