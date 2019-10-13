@@ -508,10 +508,14 @@ template <typename DeviceType,
   }
 
   // Write graph to tinsel machine
-  void write(HostLink* hostLink) {
+  void write(HostLink* hostLink) { 
+    bool useSendBufferOld = hostLink->useSendBuffer;
+    hostLink->useSendBuffer = true;
     writeRAM(hostLink, vertexMem, vertexMemSize, vertexMemBase);
     writeRAM(hostLink, edgeMem, edgeMemSize, edgeMemBase);
     writeRAM(hostLink, threadMem, threadMemSize, threadMemBase);
+    hostLink->flush();
+    hostLink->useSendBuffer = useSendBufferOld;
   }
 
   // Determine fan-in of given device

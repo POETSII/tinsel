@@ -693,7 +693,7 @@ bool HostLink::send(uint32_t dest, uint32_t numFlits, void* msg);
 // Try to send a message (non-blocking, returns true on success)
 bool HostLink::trySend(uint32_t dest, uint32_t numFlits, void* msg);
 
-// Receive a message (blocking)
+// Receive a max-sized message (blocking)
 // Buffer must be at least 1<<LogBytesPerMsg bytes in size
 void HostLink::recv(void* msg);
 
@@ -701,21 +701,42 @@ void HostLink::recv(void* msg);
 bool HostLink::canRecv();
 
 // Receive a message (blocking), given size of message in bytes
+// Any bytes beyond numBytes up to the next message boundary will be ignored
 void HostLink::recvMsg(void* msg, uint32_t numBytes);
 ```
 
-Although the `send` method allows a message consisting of multiple
-flits to be sent, the `recv` method only returns a single flit at a
-time and does not indicate the number of flits present in the message
-currently being received.  The length of a message, if not statically
-known, must therefore be encoded in the message contents.  Flits
-belonging to the same message will be received contiguously, in order.
-If the length of the message is known statically, `recvMsg` can be
-used and any bytes beyond `numBytes` up to the next flit boundary will
-be ignored.  This is useful when a `struct` is being used to hold
-messages, in which case the second argument to `recvMsg` is simply the
-`sizeof` the `struct`.  The `recvMsg` function assumes that the size
-of the struct is less than or equal to the maximum message size.
+The `send` method allows a message consisting of multiple flits to be
+sent. The `recv` method reads a single max-sized message, padded with
+zeroes if the actual message received contains fewer than the maximum
+number of flits.  If the length of the message is known statically,
+`recvMsg` can be used and any bytes beyond `numBytes` up to the next
+message boundary will be ignored.  This is useful when a `struct` is
+being used to hold messages, in which case the second argument to
+`recvMsg` is simply the `sizeof` the `struct`.  The `recvMsg` function
+assumes that the size of the struct is less than or equal to the
+maximum message size.
+
+```cpp
+// Receive multiple max-sized messages (blocking)
+void HostLink::recvBulk(int numMsgs, void* msgs);
+
+// Receive multiple messages (blocking), given size of each message
+void HostLink::recvMsgs(int numMsgs, int msgSize, void* msgs);
+
+// When enabled, use buffer for sending messages, permitting bulk writes
+// The buffer must be flushed to ensure data is sent
+// Currently, only blocking sends are supported in this mode
+bool HostLink::useSendBuffer;
+
+// Flush the send buffer (when send buffering is enabled)
+void HostLink::flush();
+```
+
+There is also support for bulk sending and receving of messages. For
+bulk receiving, `recvBulk` and `recvMsgs` generalise `recv` and
+`recvMsg` respectively.  For bulk sending, enable the `useSendBuffer`
+member variable, and call `flush` to ensure that messages actually get
+sent.
 
 These methods for sending a receiving messages work by connecting to a
 local [PCIeStream deamon](/hostlink/pciestreamd.cpp) via a UNIX domain
@@ -1116,6 +1137,8 @@ the DE5-Net*.
   `MeshYLenWithinBox`      |       2 | Boards in Y dimension within box
   `EnablePerfCount`        |    True | Enable performance counters
 
+Further parameters can be found in [config.py](config.py).
+
 ## C. Tinsel Memory Map
 
   Region                  | Description
@@ -1351,7 +1374,7 @@ class HostLink {
   // Try to send a message (non-blocking, returns true on success)
   bool trySend(uint32_t dest, uint32_t numFlits, void* msg);
 
-  // Receive a message (blocking)
+  // Receive a single max-sized message (blocking)
   // Buffer must be at least 1<<LogBytesPerMsg bytes in size
   void recv(void* msg);
 
@@ -1359,8 +1382,25 @@ class HostLink {
   bool canRecv();
 
   // Receive a message (blocking), given size of message in bytes
-  // Any bytes beyond numBytes up to the next flit boundary will be ignored
+  // Any bytes beyond numBytes up to the next message boundary will be ignored
   void recvMsg(void* msg, uint32_t numBytes);
+
+  // Bulk send and receive
+  // ---------------------
+
+  // Receive multiple max-sized messages (blocking)
+  void recvBulk(int numMsgs, void* msgs);
+
+  // Receive multiple messages (blocking), given size of each message
+  void recvMsgs(int numMsgs, int msgSize, void* msgs);
+
+  // When enabled, use buffer for sending messages, permitting bulk writes
+  // The buffer must be flushed to ensure data is sent
+  // Currently, only blocking sends are supported in this mode
+  bool useSendBuffer;
+
+  // Flush the send buffer (when send buffering is enabled)
+  void flush();
 
   // Address construction/deconstruction
   // -----------------------------------
