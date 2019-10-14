@@ -101,8 +101,8 @@ int main() {
                     graph->devices[mesh[x][y][z]]->state.zmax = MESHHEI;
                     
                     //Initialise Message Pointer and Matrix Elements
-                    graph->devices[mesh[x][y][z]]->state.msgptr = 0;
                     graph->devices[mesh[x][y][z]]->state.inflags = 0;
+                    graph->devices[mesh[x][y][z]]->state.sentflags = 0;
                     graph->devices[mesh[x][y][z]]->state.element1 = 0;
                     graph->devices[mesh[x][y][z]]->state.element2 = 0;
                     graph->devices[mesh[x][y][z]]->state.aggregate = 0;
