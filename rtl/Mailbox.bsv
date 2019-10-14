@@ -837,42 +837,39 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
   rule wakeup1 (sleepQueue.canPeek && sleepQueue.canDeq);
     let thread = sleepQueue.dataOut;
     let canSend = canThreadSend[thread.id].value;
+    // Select only the bits of the event that match
+    let eventMatch = thread.wakeEvent &
+          {pack(idleStage1Reg && voteStage1Reg),
+           pack(idleStage1Reg),
+           pack(thread.canRecv),
+           pack(canSend)};
+    // Should a wakeup be sent?
+    Bool wakeupCond = eventMatch != 0;
+    if (wakeupCond) begin
+      // When wakeup port is ready
+      if (wakeupPort.canPut) begin
+        // Send wakeup
+        thread.wakeEvent = eventMatch;
+        wakeupPort.put(thread);
+        if (thread.wakeEvent[2] == 1) numIdleWaiters.dec;
+        if (thread.wakeEvent[3] == 1) idleVotes.dec;
+        sleepQueue.deq;
+      end 
     // If thread can't receive but wants to,
     // we need to make a new receive request
-    if (!thread.canRecv && thread.wakeEvent[1] == 1) begin
-      if (recvReqPort.canPut && !recvReqPutWire1) begin
-        ReceiveReq req;
-        req.id = thread.id;
-        req.doRecv = False;
-        req.sleeping = option(True, thread.wakeEvent);
-        recvReqPutWire2.send;
-        recvReqWire2 <= req;
-        sleepQueue.deq;
-      end
-    end else begin
-      // Select only the bits of the event that match
-      let eventMatch = thread.wakeEvent &
-            {pack(idleStage1Reg && voteStage1Reg),
-             pack(idleStage1Reg),
-             pack(thread.canRecv),
-             pack(canSend)};
-      // Should a wakeup be sent?
-      Bool wakeupCond = eventMatch != 0;
-      if (wakeupCond) begin
-        // When wakeup port is ready
-        if (wakeupPort.canPut) begin
-          // Send wakeup
-          thread.wakeEvent = eventMatch;
-          wakeupPort.put(thread);
-          if (thread.wakeEvent[2] == 1) numIdleWaiters.dec;
-          if (thread.wakeEvent[3] == 1) idleVotes.dec;
-          sleepQueue.deq;
-        end 
-      end else if (!doSleep && !doResumeSleep) begin
-        // Retry later
-        doRequeue <= True;
-        sleepQueue.deq;
-      end
+    end else if (!thread.canRecv && thread.wakeEvent[1] == 1 &&
+                   recvReqPort.canPut && !recvReqPutWire1) begin
+      ReceiveReq req;
+      req.id = thread.id;
+      req.doRecv = False;
+      req.sleeping = option(True, thread.wakeEvent);
+      recvReqPutWire2.send;
+      recvReqWire2 <= req;
+      sleepQueue.deq;
+    end else if (!doSleep && !doResumeSleep) begin
+      // Retry later
+      doRequeue <= True;
+      sleepQueue.deq;
     end
   endrule
 
