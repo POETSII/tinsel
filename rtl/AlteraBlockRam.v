@@ -105,7 +105,7 @@ module AlteraBlockRam (
     altsyncram_component.widthad_b = ADDR_WIDTH,
     altsyncram_component.width_a = DATA_WIDTH,
     altsyncram_component.width_b = DATA_WIDTH,
-    altsyncram_component.width_byteena_a = BE_WIDTH;
+    altsyncram_component.width_byteena_a = BE_WIDTH,
     altsyncram_component.ram_block_type = STYLE;
 
 endmodule
@@ -216,7 +216,7 @@ module AlteraBlockRamTrueMixed (
     altsyncram_component.width_b = DATA_WIDTH_B,
     altsyncram_component.width_byteena_a = 1,
     altsyncram_component.width_byteena_b = 1,
-    altsyncram_component.wrcontrol_wraddress_reg_b = "CLOCK0";
+    altsyncram_component.wrcontrol_wraddress_reg_b = "CLOCK0",
     altsyncram_component.ram_block_type = STYLE;
 
 endmodule
@@ -333,7 +333,7 @@ module AlteraBlockRamTrueMixedBE (
     altsyncram_component.width_b = DATA_WIDTH_B,
     altsyncram_component.width_byteena_a = 1,
     altsyncram_component.width_byteena_b = BE_WIDTH,
-    altsyncram_component.wrcontrol_wraddress_reg_b = "CLOCK0";
+    altsyncram_component.wrcontrol_wraddress_reg_b = "CLOCK0",
     altsyncram_component.ram_block_type = STYLE;
 
 endmodule
