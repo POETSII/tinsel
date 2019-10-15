@@ -10,15 +10,14 @@ int main()
   // Get host id
   int host = tinselHostId();
 
-  // Get pointers to mailbox message slots
-  volatile int* msgIn = tinselSlot(0);
-  volatile int* msgOut = tinselSlot(1);
+  // Get pointers to mailbox message slot
+  volatile int* msgOut = tinselSendSlot();
 
-  tinselAlloc(msgIn);
   tinselWaitUntil(TINSEL_CAN_RECV);
-  tinselRecv();
+  volatile int* msgIn = tinselRecv();
   tinselWaitUntil(TINSEL_CAN_SEND);
   msgOut[0] = msgIn[0]+incVal;
+  tinselFree(msgIn);
   tinselSend(host, msgOut);
 
   return 0;
