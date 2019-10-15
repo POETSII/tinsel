@@ -20,16 +20,9 @@ clean:
 	make -C apps/ping clean
 	make -C apps/custom clean
 	make -C apps/ring clean
-	make -C apps/flood1 clean
-	make -C apps/flood2 clean
-	make -C apps/inter clean
-	make -C apps/benchmarks clean
 	make -C apps/linkrate clean
-	make -C apps/linktest clean
 	make -C apps/multiprog clean
 	make -C apps/sync clean
-	make -C apps/web clean
-	make -C apps/exchange clean
 	make -C apps/temps clean
 	make -C apps/POLite/heat-gals clean
 	make -C apps/POLite/heat-sync clean
