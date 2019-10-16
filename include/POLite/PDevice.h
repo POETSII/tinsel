@@ -22,11 +22,6 @@
 #define POLITE_MAX_FANOUT 256
 #endif
 
-// Number of mailbox slots to use for receive buffer
-#ifndef POLITE_RECV_SLOTS
-#define POLITE_RECV_SLOTS 15
-#endif
-
 // Macros for performance stats
 //   POLITE_DUMP_STATS - dump performance stats on termination
 //   POLITE_COUNT_MSGS - include message counts of performance stats
@@ -249,10 +244,6 @@ template <typename DeviceType,
     // Set number of flits per message
     tinselSetLen((sizeof(PMessage<E,M>)-1) >> TinselLogBytesPerFlit);
 
-    // Allocate some slots for incoming messages
-    // (Slot 0 is reserved for outgoing messages)
-    for (int i = 1; i <= POLITE_RECV_SLOTS; i++) tinselAlloc(tinselSlot(i));
-
     // Event loop
     while (1) {
       // Step 1: try to send
@@ -264,7 +255,7 @@ template <typename DeviceType,
           DeviceType dev = getDevice(id);
           PPin oldReadyToSend = *dev.readyToSend;
           // Invoke receive handler
-          PMessage<E,M>* m = (PMessage<E,M>*) tinselSlot(0);
+          PMessage<E,M>* m = (PMessage<E,M>*) tinselSendSlot();
           dev.recv(&m->payload, &m->edge);
           // Insert device into a senders array, if not already there
           if (oldReadyToSend == No && *dev.readyToSend != No)
@@ -277,7 +268,7 @@ template <typename DeviceType,
         }
         else if (tinselCanSend()) {
           // Destination device is on another thread
-          PMessage<E,M>* m = (PMessage<E,M>*) tinselSlot(0);
+          PMessage<E,M>* m = (PMessage<E,M>*) tinselSendSlot();
           // Copy neighbour edge info into message
           m->devId = getLocalDeviceId(neighbour->destAddr);
           if (! std::is_same<E, None>::value)
@@ -306,7 +297,7 @@ template <typename DeviceType,
           DeviceType dev = getDevice(src);
           PPin pin = *dev.readyToSend - 1;
           // Invoke send handler
-          PMessage<E,M>* m = (PMessage<E,M>*) tinselSlot(0);
+          PMessage<E,M>* m = (PMessage<E,M>*) tinselSendSlot();
           dev.send(&m->payload);
           // Reinsert sender, if it still wants to send
           if (*dev.readyToSend != No) sendersTop++;
@@ -350,8 +341,8 @@ template <typename DeviceType,
         PPin oldReadyToSend = *dev.readyToSend;
         // Invoke receive handler
         dev.recv(&m->payload, &m->edge);
-        // Reallocate mailbox slot
-        tinselAlloc(m);
+        // Free mailbox slot
+        tinselFree(m);
         // Insert device into a senders array, if not already there
         if (*dev.readyToSend != No && oldReadyToSend == No)
           *(sendersTop++) = id;
@@ -367,7 +358,7 @@ template <typename DeviceType,
     for (uint32_t i = 0; i < numDevices; i++) {
       DeviceType dev = getDevice(i);
       tinselWaitUntil(TINSEL_CAN_SEND);
-      PMessage<E,M>* m = (PMessage<E,M>*) tinselSlot(0);
+      PMessage<E,M>* m = (PMessage<E,M>*) tinselSendSlot();
       if (dev.finish(&m->payload)) tinselSend(tinselHostId(), m);
     }
 

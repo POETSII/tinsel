@@ -849,10 +849,10 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
       // When wakeup port is ready
       if (wakeupPort.canPut) begin
         // Send wakeup
-        thread.wakeEvent = eventMatch;
-        wakeupPort.put(thread);
         if (thread.wakeEvent[2] == 1) numIdleWaiters.dec;
         if (thread.wakeEvent[3] == 1) idleVotes.dec;
+        thread.wakeEvent = eventMatch;
+        wakeupPort.put(thread);
         sleepQueue.deq;
       end 
     // If thread can't receive but wants to,
