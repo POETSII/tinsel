@@ -2,6 +2,7 @@
 #ifndef _HEAT_H_
 #define _HEAT_H_
 
+#define POLITE_MAX_FANOUT 32
 #include <POLite.h>
 
 // Tracking Flags flags
