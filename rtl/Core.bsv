@@ -983,7 +983,7 @@ module mkCore#(CoreId myId) (Core);
       if (!token.idleRelease && mailbox.canRecv) begin
         mailbox.recv(token.thread.id, token.op.csr.isRecv);
         suspend = True;
-        incRecvReg <= 1;
+        if (token.op.csr.isRecv) incRecvReg <= 1;
       end else
         retry = True;
     end
