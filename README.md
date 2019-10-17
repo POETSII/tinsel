@@ -1,3 +1,11 @@
+Documentation updates needed for mailbox-level multicast:
+
+  * CSR changes
+  * API changes
+  * new custom instruction
+  * memory map changes
+  * message considered inflight until received and freed
+
 # Tinsel 0.6.3
 
 Tinsel is a [RISC-V](https://riscv.org/)-based manythread
