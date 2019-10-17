@@ -26,7 +26,6 @@ int main()
     uint32_t addrReg = 0;  // Address register
 
     // Get mailbox message slot for sending
-    volatile BootReq* reqOut;
     volatile uint32_t* msgOut = tinselSendSlot();
 
     // Command loop
