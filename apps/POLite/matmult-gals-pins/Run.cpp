@@ -22,7 +22,7 @@
 int main() {
     
     if (!mult_possible) {
-        printf("Multilpication not possible with supplied matrices!\n");
+        printf("Multiplication not possible with supplied matrices!\n");
     }
     else {
         
@@ -32,11 +32,11 @@ int main() {
 
 
         // Connection to tinsel machine
-        HostLink *host_link = new HostLink(2, 2);
+        HostLink *host_link = new HostLink(1, 1);
 
 
         // Create POETS graph
-        PGraph <MatDevice, MatState, None, MatMessage>*graph = new PGraph<MatDevice, MatState, None, MatMessage>(2, 2);
+        PGraph <MatDevice, MatState, None, MatMessage>*graph = new PGraph<MatDevice, MatState, None, MatMessage>(1, 1);
 
 
         // Create 3D mesh of devices

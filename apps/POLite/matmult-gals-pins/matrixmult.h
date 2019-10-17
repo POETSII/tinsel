@@ -18,19 +18,18 @@ const uint32_t INTERNALY = 1;
 const uint32_t INTERNALZ = 2;
 const uint32_t EXTERNALX = 3;
 const uint32_t EXTERNALY = 4;
-const uint32_t UNKNOWN = 5;
-
-// State array size
-const uint32_t BUFSIZE = 3;
 
 struct MatMessage {
+    
     // Direction literals listed above
     uint32_t dir;
     // Matrix Elements
     int32_t val;
+    
 };
 
 struct MatState {
+    
     // Device id
     uint32_t id;
     // Matrix elements
@@ -43,37 +42,15 @@ struct MatState {
     uint32_t x,y,z;
     // Mesh Dimnesions
     uint32_t xmax, ymax, zmax;
-    // Message Counter
-    uint32_t msgcnt;
     
-    uint32_t stepcnt;
 };
 
 struct MatDevice : PDevice<MatState, None, MatMessage> {
 
     // Called once by POLite at start of execution
     inline void init() {
+        
         *readyToSend = No;
-        
-        s->stepcnt = 0;
-        
-        // Maximum number of meesages a node could send
-        s->msgcnt = 3;
-        
-        // Match number of messages to number of edges
-        
-        // If last in x dimension, no message in x dimension to be sent
-        if (s->x == ((s->xmax)-1)) {
-            s->msgcnt = s->msgcnt - 1;
-        }
-        // If last in y dimension, no message in y dimension to be sent
-        if (s->y == ((s->ymax)-1)) {
-            s->msgcnt = s->msgcnt - 1;
-        }
-        // If last in z dimension, no message in z dimension to be sent
-        if ((s->z) == (s->zmax)-1) {
-            s->msgcnt = s->msgcnt - 1;
-        }
         
     }
 
@@ -84,26 +61,48 @@ struct MatDevice : PDevice<MatState, None, MatMessage> {
             
             msg->dir = INTERNALX;
             msg->val = s->element1;
+            s->sentflags |= EL1;
             
         }
         if (*readyToSend == Pin(INTERNALY)) {
             
             msg->dir = INTERNALY;
             msg->val = s->element2;
+            s->sentflags |= EL2;
             
         }
         if (*readyToSend == Pin(INTERNALZ)) {
             
             msg->dir = INTERNALZ;
             msg->val = s->aggregate;
+            s->sentflags |= AGG;
             
         }
         
-        // Decrement message counter
-        s->msgcnt = s->msgcnt - 1;
+        if ((s->x < ((s->xmax)-1)) && (s->inflags & EL1) && !(s->sentflags & EL1)) {
+            // Should we transmit element1, have we received it but not re-transmitted it?
+            
+            *readyToSend = Pin(INTERNALX);
+            
+        }
+        else if ((s->y < ((s->ymax)-1)) && (s->inflags & EL2) && !(s->sentflags & EL2)) {
+            // Should we transmit element2, have we received it but not re-transmitted it?
+            
+            *readyToSend = Pin(INTERNALY);
+            
+        }
+        else if ((s->z < ((s->zmax)-1)) && ((s->inflags & ANS1) || (s->inflags & ANS2)) && !(s->sentflags & AGG)) {
+            // Should we transmit the aggregate, have we calculated it but not re-transmitted it?
+            
+            *readyToSend = Pin(INTERNALZ);
+            
+        }
+        else {
+            
+            // No more stored values to send
+            *readyToSend = No;
+        }
         
-        // Return send flag to no wish to send
-        *readyToSend = No;
     }
 
     // Receive handler
@@ -115,6 +114,11 @@ struct MatDevice : PDevice<MatState, None, MatMessage> {
             s->element1 = msg->val;
             s->inflags |= EL1;
             
+            // Should this value be propagated in the x dimension?
+            if (s->x < ((s->xmax)-1)) {
+                *readyToSend = Pin(INTERNALX);
+            }
+            
         }
 
         // Is the message travelling in the y dimension?
@@ -122,6 +126,11 @@ struct MatDevice : PDevice<MatState, None, MatMessage> {
             
             s->element2 = msg->val;
             s->inflags |= EL2;
+            
+            // Should this value be propagated in the y dimension?
+            if (s->y < ((s->ymax)-1)) {
+                *readyToSend = Pin(INTERNALY);
+            }
 
         }
 
@@ -139,6 +148,7 @@ struct MatDevice : PDevice<MatState, None, MatMessage> {
             // Calculate aggregate
             s->aggregate = s->element1 * s->element2;
             s->inflags |= ANS1;
+            *readyToSend = Pin(INTERNALZ);
             
         }
         
@@ -148,57 +158,22 @@ struct MatDevice : PDevice<MatState, None, MatMessage> {
             // Calculate aggregate
             s->aggregate = (s->element1 * s->element2) + s->aggregate;
             s->inflags |= ANS2;
+            
+            // Send aggregate if not last in z dimension
+            if (((s->z) != (s->zmax)-1)) {
+                
+                *readyToSend = Pin(INTERNALZ);
+                
+            }
 
         }
     }
 
     // Called by POLite when system becomes idle
     inline bool step() {
-        
-        s->stepcnt++;
-        
-        // Are we still expecting to send messages?
-        if (s->msgcnt != 0) {
-               
-            // Should we transmit element1, have we received it but not re-transmitted it?
-            if ((s->x < ((s->xmax)-1)) && (s->inflags & EL1) && !(s->sentflags & EL1) && (*readyToSend == No)) {
-                
-                s->sentflags |= EL1;
-                *readyToSend = Pin(INTERNALX);
-                
-            }
             
-            // Should we transmit element2, have we received it but not re-transmitted it?
-            if ((s->y < ((s->ymax)-1)) && (s->inflags & EL2) && !(s->sentflags & EL2) && (*readyToSend == No)) {
-                
-                s->sentflags |= EL2;
-                *readyToSend = Pin(INTERNALY);
-                
-            }
-            
-            // Should we transmit the aggregate, have we calculated it but not re-transmitted it?
-            if ((s->z < ((s->zmax)-1)) && ((s->inflags & ANS1) || (s->inflags & ANS2)) && !(s->sentflags & AGG) && (*readyToSend == No)) {
-                
-                s->sentflags |= AGG;
-                *readyToSend = Pin(INTERNALZ);
-                
-            }
-            
-        }
-        
-        // Has the node sent all the messages it needs to and has it calculated its aggregate?
-        if ((s->msgcnt == 0) && ((s->inflags & ANS1) || (s->inflags & ANS2))) {
-            // No messages queued. Nothing more to do.
-            return false;
-        }
-        else if (s->stepcnt > 10000) {
-            // Safety feature incase it loops forever
-            return false;
-        }
-        else {
-            // Messages still queued. More to do.
-            return true; 
-        }
+        // Asynchronous App.
+        return false;
         
     }
 

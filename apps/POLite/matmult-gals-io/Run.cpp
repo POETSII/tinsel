@@ -32,13 +32,13 @@ int main() {
 
         // Connection to tinsel machine
         //HostLink::HostLink(2, 2);
-        HostLink *host_link = new HostLink(2, 2);
+        HostLink *host_link = new HostLink(1, 1);
         //Sampleclass *qs = new Sampleclass()
 
         // Create POETS graph
         //PGraph<MatDevice, MatState, None, MatMessage>(2, 2) graph;
         
-        PGraph <MatDevice, MatState, None, MatMessage>*graph = new PGraph<MatDevice, MatState, None, MatMessage>(2, 2);
+        PGraph <MatDevice, MatState, None, MatMessage>*graph = new PGraph<MatDevice, MatState, None, MatMessage>(1, 1);
 
         // Create 3D mesh of devices
         static PDeviceId mesh[MESHLEN][MESHWID][MESHHEI];
