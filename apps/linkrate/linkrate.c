@@ -13,14 +13,10 @@ int main()
   uint32_t host = tinselHostId();
 
   // Get pointers to mailbox message slots
-  volatile int* msgOut = tinselSlot(0);
+  volatile int* msgOut = tinselSendSlot();
 
   // Intiialise send slot
   msgOut[0] = me;
-
-  // Allocate receive slots
-  for (int i = 1; i < 16; i++)
-    tinselAlloc(tinselSlot(i));
 
   // Use single flit messages
   tinselSetLen(0);
@@ -62,7 +58,7 @@ int main()
         while (! tinselCanSend()) {
           while (tinselCanRecv()) {
             volatile int* msgIn = tinselRecv();
-            tinselAlloc(msgIn);
+            tinselFree(msgIn);
             got++;
           }
         }
@@ -76,7 +72,7 @@ int main()
       while (got < expected) {
         if (tinselCanRecv()) {
           volatile int* msgIn = tinselRecv();
-          tinselAlloc(msgIn);
+          tinselFree(msgIn);
           got++;
         }
       }
