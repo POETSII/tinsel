@@ -742,7 +742,6 @@ module mkCore#(CoreId myId) (Core);
 
   // For idle detection (see IdleDetect.bsv)
   Reg#(Bit#(1)) incSentReg <- mkDReg(0);
-  Reg#(Bit#(1)) incRecvReg <- mkDReg(0);
 
   // Schedule stage
   // --------------
@@ -983,7 +982,6 @@ module mkCore#(CoreId myId) (Core);
       if (!token.idleRelease && mailbox.canRecv) begin
         mailbox.recv(token.thread.id, token.op.csr.isRecv);
         suspend = True;
-        if (token.op.csr.isRecv) incRecvReg <= 1;
       end else
         retry = True;
     end
@@ -1310,7 +1308,7 @@ module mkCore#(CoreId myId) (Core);
 
   interface IdleDetectorClient idleClient;
     method Bit#(1) incSent = incSentReg;
-    method Bit#(1) incReceived = incRecvReg;
+    method Bit#(1) incReceived = mailbox.incReceived;
     method Bool active = mailbox.active;
     method Bool vote = mailbox.vote;
     method Action idleDetectedStage1(Bool pulse);

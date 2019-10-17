@@ -88,23 +88,8 @@ int main()
         int numThreads = msgIn->args[0];
         for (int i = 0; i < numThreads; i++)
           tinselCreateThread(i+1);
+        tinselFree(msgIn);
         break;
-      }
-      else if (cmd == PingCmd) {
-        // Respond to ping
-        tinselWaitUntil(TINSEL_CAN_SEND);
-        reqOut = (volatile BootReq*) msgOut;
-        if (msgIn->args[0] != 0) {
-          // If number of hops is one
-          reqOut->cmd = PingCmd;
-          reqOut->args[0] = 0;
-          tinselSend(msgIn->args[1], reqOut);
-        }
-        else {
-          // If number of hops is zero
-          msgOut[0] = tinselId();
-          tinselSend(hostId, msgOut);
-        }
       }
       tinselFree(msgIn);
     }

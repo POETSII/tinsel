@@ -238,6 +238,7 @@ interface Mailbox;
   interface Vector#(`CoresPerMailbox, ReceiveReqResp) rxReqResp;
   // Core-side interfaces to free unit
   interface In#(FreeReq)          freeReqIn;
+  (* always_ready *) method Bit#(1) freeDone;
   // Network-side interface
   interface MailboxNet            net;
 endinterface
@@ -319,8 +320,10 @@ module mkMailbox (Mailbox);
   Reg#(MsgLen) recvFlitCount <- mkConfigReg(0);
 
   // RAM containing reference count for every message slot
+  BlockRamOpts refCountOpts = defaultBlockRamOpts;
+  refCountOpts.registerDataOut = False;
   BlockRamTrueMixed#(MailboxMsgAddr, RefCount, MailboxMsgAddr, RefCount)
-    refCount <- mkBlockRamTrueMixed;
+    refCount <- mkBlockRamTrueMixedOpts(refCountOpts);
 
   // Set of currently-unused message slots
   // (The first ThreadsPerMailbox slots are reserved for sending)
@@ -530,6 +533,10 @@ module mkMailbox (Mailbox);
   // Consume one request every two cycles
   Reg#(Bit#(1)) freeState <- mkReg(0);
 
+  // This register is pulsed when the final reference
+  // to a message slot is freed
+  Reg#(Bit#(1)) freeDoneReg <- mkDReg(0);
+
   rule free (freeReqPort.canGet);
     FreeReq req = freeReqPort.value;
     // Process request in two cycles
@@ -541,6 +548,7 @@ module mkMailbox (Mailbox);
       if (count == 1) begin
         myAssert(freeSlots.notFull, "Mailbox: freeSlots full!");
         freeSlots.enq(req.slot);
+        freeDoneReg <= 1;
       end
       freeState <= 0;
     end
@@ -566,6 +574,7 @@ module mkMailbox (Mailbox);
   interface In spadReqIn = spadReqPort.in;
 
   interface rxReqResp = genWith(mkReceiveReqResp);
+  method Bit#(1) freeDone = freeDoneReg;
 
   interface BOut txRespOut;
     method Action get;
@@ -616,6 +625,8 @@ interface MailboxClient;
   interface In#(ReceiveResp)    rxRespIn;
   // Free unit
   interface Out#(FreeReq)       freeReqOut;
+  (* always_ready, always_enabled *)
+  method Action freeDone(Bit#(1) done);
 endinterface
 
 // A bit vector of events that can cause a sleeping thread to wake up
@@ -688,6 +699,8 @@ interface MailboxClientUnit;
   (* always_ready, always_enabled *)
   method Action idleDetectedStage2(Bool pulse);
   method Bool idleStage1Ack;
+  (* always_ready, always_enabled *)
+  method Bit#(1) incReceived;
 endinterface
 
 import "BDPI" function Bit#(32) getBoardId();
@@ -886,6 +899,9 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
     recvRespPort.get;
   endrule
  
+  // Decrement receive count (for idle-detection)
+  Wire#(Bit#(1)) incReceivedWire <- mkBypassWire;
+
   // Methods
   // =======
 
@@ -945,6 +961,8 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
 
   method Bool idleStage1Ack = stage1AckWire;
 
+  method Bit#(1) incReceived = incReceivedWire;
+
   // Interfaces
   // ==========
 
@@ -966,6 +984,9 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
     interface rxRespIn = recvRespPort.in;
     // Free unit
     interface freeReqOut = freeReqPort.out;
+    method Action freeDone(Bit#(1) done);
+      incReceivedWire <= done;
+    endmethod
   endinterface
 
 endmodule
@@ -1027,6 +1048,16 @@ module connectCoresToMailbox#(
   // Connect receive responses
   for (Integer i = 0; i < `CoresPerMailbox; i=i+1)
     connectDirect(server.rxReqResp[i].rxRespOut, clients[i].rxRespIn);
+
+  // Connect free responses
+  rule freeOne;
+    clients[0].freeDone(server.freeDone);
+  endrule
+  for (Integer i = 1; i < `CoresPerMailbox; i=i+1) begin
+    rule freeRest;
+      clients[i].freeDone(0);
+    endrule
+  end
 endmodule
 
 // =============================================================================
