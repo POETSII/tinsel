@@ -15,7 +15,7 @@ if os.path.exists('results.csv'):
         os.remove('results.csv')
 
 with open('results.csv', "a") as f:
-    f.write("Dimension,Nodes,Map_Time,Init_Time,Send_Time,Proc_Time\n")
+    f.write("Dimension,Nodes,Map_Time,Init_Time,Proc_Time\n")
 
 # Calculate matrices from iteration number
 
@@ -155,8 +155,7 @@ for dimension in range(10, run_max, step_size):
                 durations = r.split(',')
                 map_time = durations[0]
                 init_time = durations[1]
-                send_time = durations[2]
-                proc_time = durations[3]
+                proc_time = durations[2]
 
     result_arr = np.array(result_list).reshape((dimension, dimension))
 
@@ -167,10 +166,10 @@ for dimension in range(10, run_max, step_size):
     if np.array_equal(result_arr, matrix_ans_arr):
         with open('results.csv', "a") as f:
             f.write(str(dimension) + ',' + str(dimension ** 3) + ',' + str(map_time) +
-                    ',' + str(init_time) + ',' + str(send_time) + ',' + str(proc_time) + '\n')
+                    ',' + str(init_time) + ',' + str(proc_time) + '\n')
             print('Dimension = ' + str(dimension) + ' completed')
             print('Number of nodes = ' + str(dimension ** 3) + ', map_time = ' + str(map_time) +
-                  ', init_time = ' + str(init_time) + ', send_time = ' + str(send_time) +
+                  ', init_time = ' + str(init_time) +
                   ', proc_time = ' + str(proc_time) + '\n')
 
     time.sleep(10)
