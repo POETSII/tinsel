@@ -339,10 +339,10 @@ module mkMailbox (Mailbox);
     // Determine destination threads
     Bit#(`ThreadsPerMailbox) destThreads = flit.dest.threads;
     // Determine if flit can be received
-    Bool canRecv = False;
+    Bool canRecv = True;
     for (Integer i = 0; i < `ThreadsPerMailbox; i=i+1) begin
-      canRecv = canRecv || (destThreads[i] == 1 &&
-                              msgPtrQueueFlat[i].notFull);
+      canRecv = canRecv &&
+        (destThreads[i] == 1 ? msgPtrQueueFlat[i].notFull : True);
     end
     canRecv = canRecv && freeSlots.canPeek && freeSlots.canDeq;
     let slot = freeSlots.dataOut;
