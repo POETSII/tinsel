@@ -233,7 +233,7 @@ template <typename DeviceType,
     outHost[0].key = 0;
     outHost[1].key = InvalidKey;
     // Initialise outEdge to null terminator
-    outEdge = &outEmpty[1];
+    outEdge = &outHost[1];
     // Initialise inEdge to null terminator
     PInEdge<E> inEmpty;
     inEmpty.devId = InvalidLocalDevId;
@@ -266,7 +266,7 @@ template <typename DeviceType,
     // Event loop
     while (1) {
       // Step 1: try to send
-      if (outEdge->devId != InvalidLocalDevId) {
+      if (outEdge->key != InvalidKey) {
         // Destination: outEdge->mbox, threadMaskLow, threadMaskHigh
         if (tinselCanSend()) {
           PMessage<M>* m = (PMessage<M>*) tinselSendSlot();
@@ -341,7 +341,7 @@ template <typename DeviceType,
           // Was it ready to send?
           PPin oldReadyToSend = *dev.readyToSend;
           // Invoke receive handler
-          dev.recv(&m->payload, &inEdge->edge);
+          dev.recv(&inMsg->payload, &inEdge->edge);
           // Insert device into a senders array, if not already there
           if (*dev.readyToSend != No && oldReadyToSend == No)
             *(sendersTop++) = id;
@@ -350,15 +350,15 @@ template <typename DeviceType,
           #endif
         }
         else {
-          // Try to free message slow
+          // Try to free message slot
           if (inMsg) {
             tinselFree(inMsg);
             inMsg = NULL;
           }
           // Try to receive new message
-          if (canRecv()) {
-            inMsg = tinselRecv();
-            inEdge = &inTable[inMsg->key];
+          if (tinselCanRecv()) {
+            inMsg = (PMessage<M>*) tinselRecv();
+            inEdge = &inTableBase[inMsg->key];
           }
           else
             break;
