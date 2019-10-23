@@ -28,6 +28,7 @@
 
 // Thread-local device id
 typedef uint16_t PLocalDeviceId;
+#define InvalidLocalDevId 0xffff
 
 // Thread id
 typedef uint32_t PThreadId;
@@ -116,6 +117,8 @@ template <typename M> struct PMessage<None, M> {
   M payload;
 };
 
+// XXX ========================================================================
+
 // Component type of neighbours array
 // For labelleled edges
 template <typename E> struct PNeighbour {
@@ -131,6 +134,37 @@ template <> struct PNeighbour<None> {
   union {
     // Destination thread and device
     PDeviceAddr destAddr;
+    // Unused
+    None edge;
+  };
+};
+
+// XXX ========================================================================
+
+// An outgoing edge from a device
+struct POutEdge {
+  // Destination mailbox
+  uint16_t mbox;
+  // Routing key
+  uint16_t key;
+  // Destination threads
+  uint32_t threadMaskLow;
+  uint32_t threadMaskHigh;
+};
+
+// An incoming edge to a device (labelleled)
+template <typename E> struct PInEdge {
+  // Destination device
+  PLocalDeviceId devId;
+  // Edge info
+  E edge;
+};
+
+// An incoming edge to a device (unlabelleled)
+template <> struct PInEdge<None> {
+  union {
+    // Destination device
+    PLocalDeviceId devId;
     // Unused
     None edge;
   };
