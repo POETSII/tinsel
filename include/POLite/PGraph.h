@@ -13,6 +13,7 @@
 #include <POLite/Graph.h>
 #include <POLite/Placer.h>
 #include <type_traits>
+#include "Seq.h"
 
 // Nodes of a POETS graph are devices
 typedef NodeId PDeviceId;
@@ -46,6 +47,12 @@ template <typename DeviceType,
   uint32_t numBoardsX;
   uint32_t numBoardsY;
 
+  // Multicast routing tables:
+  // Sequence of outgoing edges for every (device, pin) pair
+  Seq<POutEdge>*** outTable;
+  // Sequence of incoming edges for every thread
+  Seq<PInEdge<E>>** inTable;
+
   // Generic constructor
   void constructor(uint32_t lenX, uint32_t lenY) {
     meshLenX = lenX;
@@ -68,6 +75,8 @@ template <typename DeviceType,
     edgeMemBase = NULL;
     mapVerticesToDRAM = false;
     mapEdgesToDRAM = true;
+    outTable = NULL;
+    inTable = NULL;
   }
 
  public:
@@ -76,6 +85,9 @@ template <typename DeviceType,
 
   // Graph containing device ids and connections
   Graph graph;
+
+  // Edge labels: has same structure as graph.outgoing
+  Seq<Seq<E>*> edgeLabels;
 
   // Mapping from device id to device state
   // (Not valid until the mapper is called)
@@ -114,6 +126,7 @@ template <typename DeviceType,
 
   // Create new device
   inline PDeviceId newDevice() {
+    edgeLabels.append(new SmallSeq<E>);
     numDevices++;
     return graph.newNode();
   }
@@ -121,11 +134,14 @@ template <typename DeviceType,
   // Add a connection between devices
   inline void addEdge(PDeviceId from, PinId pin, PDeviceId to) {
     graph.addEdge(from, pin, to);
+    E edge;
+    edgeLabels.elems[from]->append(edge);
   }
 
   // Add labelled edge using given output pin
-  void addLabelledEdge(EdgeLabel label, PDeviceId x, PinId pin, PDeviceId y) {
-    graph.addLabelledEdge(label, x, pin, y);
+  void addLabelledEdge(E edge, PDeviceId x, PinId pin, PDeviceId y) {
+    graph.addEdge(x, pin, y);
+    edgeLabels.elems[x]->append(edge);
   }
 
   // Allocate SRAM and DRAM partitions
@@ -286,12 +302,12 @@ template <typename DeviceType,
               edgeArray[base+offset].destAddr = addr;
               // Edge label
               if (! std::is_same<E, None>::value) {
-                if (i >= graph.edgeLabels->elems[id]->numElems) {
+                if (i >= edgeLabels.elems[id]->numElems) {
                   printf("Edge weight not specified\n");
                   exit(EXIT_FAILURE);
                 }
                 memcpy(&edgeArray[base+offset].edge,
-                  &graph.edgeLabels->elems[id]->elems[i], sizeof(E));
+                  &edgeLabels.elems[id]->elems[i], sizeof(E));
               }
               offset++;
             }
@@ -325,6 +341,151 @@ template <typename DeviceType,
     numDevicesOnThread = (uint32_t*) calloc(TinselMaxThreads, sizeof(uint32_t));
   }
 
+  // Allocate routing tables
+  // (Only valid after mapper is called)
+  void allocateRoutingTables() {
+    // Receiver-side tables
+    inTable = (Seq<PInEdge<E>>**)
+      calloc(TinselMaxThreads,sizeof(Seq<PInEdge<E>>*));
+    for (uint32_t t = 0; t < TinselMaxThreads; t++) {
+      if (numDevicesOnThread[t] != 0)
+        inTable[t] = new SmallSeq<PInEdge<E>>;
+    }
+
+    // Sender-side tables
+    outTable = (Seq<POutEdge>***) calloc(numDevices, sizeof(Seq<POutEdge>**));
+    for (uint32_t d = 0; d < numDevices; d++) {
+      int32_t numPins = graph.maxPin(d) + 1;
+      if (numPins > 0) {
+        outTable[d] = (Seq<POutEdge>**) calloc(numPins, sizeof(Seq<POutEdge>*));
+        for (uint32_t p = 0; p < numPins; p++)
+          outTable[d][p] = new SmallSeq<POutEdge>;
+      }
+    }
+  }
+
+  // Determine routing key for given set of receivers
+  // (The key must be the same for all receivers)
+  uint32_t findKey(uint32_t mbox, Seq<PInEdge<E>>* receivers) { 
+    // TODO: randomise initial key?
+    uint32_t key = 0;
+
+    bool found = false;
+    while (!found) {
+      found = true; 
+      for (uint32_t i = 0; i < 64; i++) {
+        uint32_t numReceivers = receivers[i].numElems;
+        if (numReceivers > 0) {
+          // Compute thread id of receiver
+          uint32_t t = (mbox << TinselLogThreadsPerMailbox) | i;
+          // Compute table size for this thread
+          uint32_t tableSize = inTable[t]->numElems;
+          // Move to next receiver when we find a space
+          if (key >= tableSize) continue;
+          // Is there space at the current key?
+          // (Need space for numReceivers plus null terminator)
+          bool space = true;
+          for (int j = 0; j < numReceivers+1; j++) {
+            if ((key+j) >= tableSize) break;
+            if (inTable[t]->elems[key+j].devId != InvalidLocalDevId) {
+              found = false;
+              key = key+j+1;
+              break;
+            }
+          }
+        }
+      }
+    }
+    return key;
+  }
+
+  // Add entries to the input and output tables for the given receivers
+  // (Only valid after mapper is called)
+  void addRoutingEntries(uint32_t mbox, Seq<PInEdge<E>>* receivers) {
+    uint32_t key = findKey(mbox, receivers);
+    if (key >= 0xffff) {
+      printf("Routing key exceeds 16 bits\n");
+      exit(EXIT_FAILURE);
+    }
+    PInEdge<E> null;
+    null.devId = InvalidLocalDevId;
+    // Now that a key with sufficient space has been found, populate the tables
+    for (uint32_t i = 0; i < 64; i++) {
+      uint32_t numReceivers = receivers[i].numElems;
+      if (numReceivers > 0) {
+        // Compute thread id of receiver
+        uint32_t t = (mbox << TinselLogThreadsPerMailbox) | i;
+        // Compute table size for this thread
+        uint32_t tableSize = inTable[t]->numElems;
+        // Make sure inTable is big enough for new entries
+        for (uint32_t j = tableSize; j < (key+numReceivers+1); j++)
+          inTable[t]->append(null);
+        // Add receivers to thread's inTable
+        for (uint32_t j = 0; j < numReceivers; j++)
+          inTable[t]->elems[key+j] = receivers[i].elems[j];
+      }
+    }
+  }
+
+  // Compute routing tables
+  // (Only valid after mapper is called)
+  void computeRoutingTables() {
+    // Routing table stats
+    uint64_t totalPins = 0;
+    uint64_t totalOutEdges = 0;
+
+    // Sequence of local device ids, for each multicast destiation
+    SmallSeq<PInEdge<E>> receivers[64];
+
+    // For each device
+    for (uint32_t d = 0; d < numDevices; d++) {
+      int32_t numPins = graph.maxPin(d) + 1;
+      // For each pin
+      for (uint32_t p = 0; p < numPins; p++) {
+        totalPins += numPins;
+        // Clear receivers
+        for (uint32_t i = 0; i < 64; i++) receivers[i].clear();
+        Seq<PDeviceId> dests = *(graph.outgoing->elems[d]);
+        Seq<E> edges = *(edgeLabels.elems[d]);
+        // While destinations are remaining
+        while (dests.numElems > 0) {
+          // Current mailbox being considered
+          PDeviceAddr mbox = getThreadId(toDeviceAddr[dests.elems[0]]) >>
+                               TinselLogThreadsPerMailbox;
+          // For each destination
+          uint32_t destsRemaining = 0;
+          for (uint32_t i = 0; i < dests.numElems; i++) {
+            // Determine destination mailbox address and mailbox-local thread
+            PDeviceId destId = dests.elems[i];
+            PDeviceAddr destAddr = toDeviceAddr[destId];
+            uint32_t destMailbox = getThreadId(destAddr) >>
+                                     TinselLogThreadsPerMailbox;
+            uint32_t destThread = getThreadId(destAddr) &
+                                     ((1<<TinselLogThreadsPerMailbox)-1);
+            // Does destination match current destination?
+            if (destMailbox == mbox) {
+              PInEdge<E> edge;
+              edge.devId = getLocalDeviceId(destAddr);
+              if (! std::is_same<E, None>::value) edge.edge = edges.elems[i];
+              receivers[destThread].append(edge);
+            }
+            else {
+              // Add destination back into sequence
+              dests.elems[destsRemaining] = dests.elems[i];
+              edges.elems[destsRemaining] = edges.elems[i];
+              destsRemaining++;
+            }
+          }
+          addRoutingEntries(mbox, receivers);
+          dests.numElems = destsRemaining;
+          edges.numElems = destsRemaining;
+          totalOutEdges++;
+        }
+      }
+    }
+    printf("Average edges per pin: %lu\n", totalOutEdges / totalPins);
+  }  
+
   // Release all structures
   void releaseAll() {
     if (devices != NULL) {
@@ -349,6 +510,23 @@ template <typename DeviceType,
       free(threadMem);
       free(threadMemSize);
       free(threadMemBase);
+    }
+    if (inTable != NULL) {
+      for (uint32_t t = 0; t < TinselMaxThreads; t++)
+        if (inTable[t] != NULL) delete inTable[t];
+      free(inTable);
+      inTable = NULL;
+    }
+    if (outTable != NULL) {
+      for (uint32_t d = 0; d < numDevices; d++) {
+        if (outTable[d] == NULL) continue;
+        int32_t numPins = graph.maxPin(d) + 1;
+        for (uint32_t p = 0; p < numPins; p++)
+          delete outTable[d][p];
+        free(outTable[d]);
+      }
+      free(outTable);
+      outTable = NULL;
     }
   }
 
@@ -417,6 +595,10 @@ template <typename DeviceType,
         }
       }
     }
+
+    // Compute send and receive side routing tables
+    allocateRoutingTables();
+    computeRoutingTables();
 
     // Reallocate and initialise heap structures
     allocatePartitions();
