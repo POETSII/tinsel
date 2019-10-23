@@ -440,15 +440,15 @@ template <typename DeviceType,
     // For each device
     for (uint32_t d = 0; d < numDevices; d++) {
       int32_t numPins = graph.maxPin(d) + 1;
+      totalPins += numPins;
       // For each pin
       for (uint32_t p = 0; p < numPins; p++) {
-        totalPins += numPins;
-        // Clear receivers
-        for (uint32_t i = 0; i < 64; i++) receivers[i].clear();
         Seq<PDeviceId> dests = *(graph.outgoing->elems[d]);
         Seq<E> edges = *(edgeLabels.elems[d]);
         // While destinations are remaining
         while (dests.numElems > 0) {
+          // Clear receivers
+          for (uint32_t i = 0; i < 64; i++) receivers[i].clear();
           // Current mailbox being considered
           PDeviceAddr mbox = getThreadId(toDeviceAddr[dests.elems[0]]) >>
                                TinselLogThreadsPerMailbox;
@@ -483,7 +483,7 @@ template <typename DeviceType,
         }
       }
     }
-    printf("Average edges per pin: %lu\n", totalOutEdges / totalPins);
+    //printf("Average edges per pin: %lu\n", totalOutEdges / totalPins);
   }  
 
   // Release all structures
