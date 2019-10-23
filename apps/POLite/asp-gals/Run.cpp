@@ -89,7 +89,7 @@ int main(int argc, char**argv)
 
   // Accumulate sum at each device
   for (uint32_t i = 0; i < graph.numDevices; i++) {
-    PMessage<None, ASPMessage> msg;
+    PMessage<ASPMessage> msg;
     hostLink.recvMsg(&msg, sizeof(msg));
     // Stop timer
     if (i == 0) gettimeofday(&finish, NULL);

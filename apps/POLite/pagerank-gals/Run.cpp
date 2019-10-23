@@ -79,7 +79,7 @@ int main(int argc, char **argv)
   politeSaveStats(&hostLink, "stats.txt");
 
   // Wait for response
-  PMessage<None, PageRankMessage> msg;
+  PMessage<PageRankMessage> msg;
   for (uint32_t i = 0; i < graph.numDevices; i++) {
     hostLink.recvMsg(&msg, sizeof(msg));
     gscore += msg.payload.val;

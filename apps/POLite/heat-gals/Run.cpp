@@ -90,7 +90,7 @@ int main()
   // Receive final value of each device
   for (uint32_t i = 0; i < graph.numDevices; i++) {
     // Receive message
-    PMessage<None, HeatMessage> msg;
+    PMessage<HeatMessage> msg;
     hostLink.recvMsg(&msg, sizeof(msg));
     if (i == 0) gettimeofday(&finish, NULL);
     // Save final value
