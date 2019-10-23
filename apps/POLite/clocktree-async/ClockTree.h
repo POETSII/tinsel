@@ -2,6 +2,7 @@
 #ifndef _CLOCKTREE_H_
 #define _CLOCKTREE_H_
 
+#define POLITE_NUM_PINS 2
 #include <POLite.h>
 
 // Two pins: one for ticking, one for acking
