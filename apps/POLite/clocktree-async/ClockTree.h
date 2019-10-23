@@ -2,7 +2,6 @@
 #ifndef _CLOCKTREE_H_
 #define _CLOCKTREE_H_
 
-#define POLITE_MAX_FANOUT 32
 #include <POLite.h>
 
 // Two pins: one for ticking, one for acking

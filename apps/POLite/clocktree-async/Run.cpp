@@ -79,7 +79,7 @@ int main(int argc, char** argv)
   gettimeofday(&start, NULL);
 
   // Receive message
-  PMessage<None, ClockTreeMessage> msg;
+  PMessage<ClockTreeMessage> msg;
   hostLink.recvMsg(&msg, sizeof(msg));
   gettimeofday(&finish, NULL);
 

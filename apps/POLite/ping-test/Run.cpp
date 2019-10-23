@@ -39,14 +39,14 @@ int main(int argc, char**argv)
   printf("deviceAddr = %d\n", deviceAddr);
   while (test < 100) {
     // Send ping
-    PMessage<None, PingMessage> sendMsg;
+    PMessage<PingMessage> sendMsg;
     sendMsg.devId = getLocalDeviceId(deviceAddr);
     sendMsg.payload.test = test;
     hostLink.send(getThreadId(deviceAddr), 1, &sendMsg);
     printf("Sent %d to device\n", sendMsg.payload.test);
 
     // Receive pong
-    PMessage<None, PingMessage> recvMsg;
+    PMessage<PingMessage> recvMsg;
     hostLink.recvMsg(&recvMsg, sizeof(recvMsg));
     printf("Received %d from device\n", recvMsg.payload.test);
 
