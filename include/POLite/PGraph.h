@@ -624,6 +624,8 @@ template <typename DeviceType,
   // Deconstructor
   ~PGraph() {
     releaseAll();
+    for (uint32_t i = 0; i < edgeLabels.numElems; i++)
+      delete edgeLabels.elems[i];
   }
 
   // Write partition to tinsel machine
