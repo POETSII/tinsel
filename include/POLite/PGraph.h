@@ -15,6 +15,10 @@
 #include <type_traits>
 #include "Seq.h"
 
+// TODO ================================
+// TODO: maxPin(id) --> POLITE_NUM_PINS?
+// TODO ================================
+
 // Nodes of a POETS graph are devices
 typedef NodeId PDeviceId;
 
@@ -399,9 +403,9 @@ template <typename DeviceType,
     return key;
   }
 
-  // Add entries to the input and output tables for the given receivers
+  // Add entries to the input tables for the given receivers
   // (Only valid after mapper is called)
-  void addRoutingEntries(uint32_t mbox, Seq<PInEdge<E>>* receivers) {
+  uint32_t addInTableEntries(uint32_t mbox, Seq<PInEdge<E>>* receivers) {
     uint32_t key = findKey(mbox, receivers);
     if (key >= 0xffff) {
       printf("Routing key exceeds 16 bits\n");
@@ -425,6 +429,7 @@ template <typename DeviceType,
           inTable[t]->elems[key+j] = receivers[i].elems[j];
       }
     }
+    return key;
   }
 
   // Compute routing tables
@@ -449,6 +454,8 @@ template <typename DeviceType,
         while (dests.numElems > 0) {
           // Clear receivers
           for (uint32_t i = 0; i < 64; i++) receivers[i].clear();
+          uint32_t threadMaskLow = 0;
+          uint32_t threadMaskHigh = 0;
           // Current mailbox being considered
           PDeviceAddr mbox = getThreadId(toDeviceAddr[dests.elems[0]]) >>
                                TinselLogThreadsPerMailbox;
@@ -468,6 +475,8 @@ template <typename DeviceType,
               edge.devId = getLocalDeviceId(destAddr);
               if (! std::is_same<E, None>::value) edge.edge = edges.elems[i];
               receivers[destThread].append(edge);
+              if (destThread < 32) threadMaskLow |= 1 << destThread;
+              if (destThread >= 32) threadMaskHigh |= 1 << (destThread-32);
             }
             else {
               // Add destination back into sequence
@@ -476,11 +485,24 @@ template <typename DeviceType,
               destsRemaining++;
             }
           }
-          addRoutingEntries(mbox, receivers);
+          // Add input table entries
+          uint32_t key = addInTableEntries(mbox, receivers);
+          // Add output table entry
+          POutEdge edge;
+          edge.mbox = mbox;
+          edge.key = key;
+          edge.threadMaskLow = threadMaskLow;
+          edge.threadMaskHigh = threadMaskHigh;
+          outTable[d][p].append(edge);
+          // Prepare for new output table entry
           dests.numElems = destsRemaining;
           edges.numElems = destsRemaining;
           totalOutEdges++;
         }
+        // Add output edge terminator
+        POutEdge term;
+        term.key = InvalidKey;
+        outTable[d][p].append(term);
       }
     }
     //printf("Average edges per pin: %lu\n", totalOutEdges / totalPins);
