@@ -5,6 +5,8 @@ Documentation updates needed for mailbox-level multicast:
   * new custom instruction
   * memory map changes
   * message considered inflight until received and freed
+  * `POLITE_MAX_FANOUT -> POLITE_NUM_PINS`
+  * `mapEdgesToDRAM -> mapInEdgesToDRAM, mapOutEdgesToDRAM`
 
 # Tinsel 0.6.3
 

@@ -32,7 +32,8 @@ int main(int argc, char** argv)
   // Create POETS graph
   PGraph<ClockTreeDevice, ClockTreeState, None, ClockTreeMessage> graph;
   graph.mapVerticesToDRAM = true;
-  graph.mapEdgesToDRAM = true;
+  graph.mapInEdgesToDRAM = true;
+  graph.mapOutEdgesToDRAM = true;
 
   // Number of devices in tree
   int numDevices = size(d, b);
