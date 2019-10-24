@@ -162,10 +162,6 @@ template <typename DeviceType,
   uint16_t time;
   // Number of devices in graph
   uint32_t numVertices;
-  // Current out-going edge in multicast
-  PTR(POutEdge) outEdge;
-  // Current incoming edge in multicast
-  PTR(PInEdge<E>) inEdge;
   // Pointer to array of device states
   PTR(PState<S>) devices;
   // Pointer to base of routing tables
@@ -227,6 +223,11 @@ template <typename DeviceType,
 
   // Invoke device handlers
   void run() {
+    // Current out-going edge in multicast
+    POutEdge* outEdge;
+    // Current incoming edge in multicast
+    PInEdge<E>* inEdge;
+
     // Outgoing edge to host
     POutEdge outHost[2];
     outHost[0].mbox = tinselHostId() >> TinselLogThreadsPerMailbox;
@@ -238,7 +239,7 @@ template <typename DeviceType,
     PInEdge<E> inEmpty;
     inEmpty.devId = InvalidLocalDevId;
     inEdge = &inEmpty;
-    
+
     // Current input message being processed
     PMessage<M>* inMsg = NULL;
 
