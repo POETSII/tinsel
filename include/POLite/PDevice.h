@@ -35,6 +35,7 @@
 // Thread-local device id
 typedef uint16_t PLocalDeviceId;
 #define InvalidLocalDevId 0xffff
+#define UnusedLocalDevId 0xfffe
 
 // Thread id
 typedef uint32_t PThreadId;
@@ -272,6 +273,7 @@ template <typename DeviceType,
         if (tinselCanSend()) {
           PMessage<M>* m = (PMessage<M>*) tinselSendSlot();
           // Send message
+          m->key = outEdge->key;
           tinselMulticast(outEdge->mbox, outEdge->threadMaskHigh,
             outEdge->threadMaskLow, m);
           #ifdef POLITE_COUNT_MSGS
@@ -313,7 +315,7 @@ template <typename DeviceType,
           tinselWaitUntil(TINSEL_CAN_RECV | TINSEL_CAN_SEND);
         }
       }
-      else {
+      else if (!inMsg) {
         // Idle detection
         int idle = tinselIdle(!active);
         if (idle > 1)
@@ -346,6 +348,7 @@ template <typename DeviceType,
           // Insert device into a senders array, if not already there
           if (*dev.readyToSend != No && oldReadyToSend == No)
             *(sendersTop++) = id;
+          inEdge++;
           #ifdef POLITE_COUNT_MSGS
           intraThreadSendCount++;
           #endif

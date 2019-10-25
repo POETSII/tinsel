@@ -197,12 +197,19 @@ template <typename DeviceType,
         sizeVMem = sizeVMem + sizeof(PState<S>);
       }
       // Add space for incoming edge table
-      sizeEIMem = inTable[threadId]->numElems * sizeof(PInEdge<E>);
+      if (inTable[threadId]) {
+        sizeEIMem = inTable[threadId]->numElems * sizeof(PInEdge<E>);
+        sizeEIMem = wordAlign(sizeEIMem);
+      }
       // Add space for outgoing edge table
       for (uint32_t devNum = 0; devNum < numDevs; devNum++) {
         PDeviceId id = fromDeviceAddr[threadId][devNum];
-        sizeEOMem = cacheAlign(sizeEOMem + POLITE_NUM_PINS * sizeof(POutEdge));
+        for (uint32_t p = 0; p < POLITE_NUM_PINS; p++) {
+          Seq<POutEdge>* edges = outTable[id][p];
+          sizeEOMem += sizeof(POutEdge) * edges->numElems;
+        }
       }
+      sizeEOMem = wordAlign(sizeEOMem);
       // The total partition size including uninitialised portions
       uint32_t totalSizeVMem = sizeVMem + sizeof(PLocalDeviceId) * numDevs;
       // Check that total size is reasonable
@@ -223,6 +230,10 @@ template <typename DeviceType,
         exit(EXIT_FAILURE);
       }
       // Allocate space for the initialised portion of the partition
+      assert((sizeVMem%4) == 0);
+      assert((sizeTMem%4) == 0);
+      assert((sizeEIMem%4) == 0);
+      assert((sizeEOMem%4) == 0);
       vertexMem[threadId] = (uint8_t*) calloc(sizeVMem, 1);
       vertexMemSize[threadId] = sizeVMem;
       threadMem[threadId] = (uint8_t*) calloc(sizeTMem, 1);
@@ -237,10 +248,10 @@ template <typename DeviceType,
           (partId << TinselLogBytesPerSRAMPartition);
       uint32_t dramBase = TinselBytesPerDRAM -
           ((partId+1) << TinselLogBytesPerDRAMPartition);
-      threadMemBase[threadId] = sramBase;
-      sramBase += threadMemSize[threadId];
       // Use partition-interleaved region for DRAM
       dramBase |= 0x80000000;
+      threadMemBase[threadId] = sramBase;
+      sramBase += threadMemSize[threadId];
       // Determine base addresses of each region
       if (mapVerticesToDRAM) {
         vertexMemBase[threadId] = dramBase;
@@ -263,7 +274,7 @@ template <typename DeviceType,
         dramBase += sizeEOMem;
       }
       else {
-        inEdgeMemBase[threadId] = sramBase;
+        outEdgeMemBase[threadId] = sramBase;
         sramBase += sizeEOMem;
       }
     }
@@ -314,8 +325,10 @@ template <typename DeviceType,
       // Intialise thread's in edges
       PInEdge<E>* inEdgeArray = (PInEdge<E>*) inEdgeMem[threadId];
       Seq<PInEdge<E>>* edges = inTable[threadId];
-      for (uint32_t i = 0; i < edges->numElems; i++)
-        inEdgeArray[i] = edges->elems[i];
+      if (edges)
+        for (uint32_t i = 0; i < edges->numElems; i++) {
+          inEdgeArray[i] = edges->elems[i];
+        }
       // At this point, check that next pointers line up with heap sizes
       if (nextVMem != vertexMemSize[threadId]) {
         printf("Error: vertex mem size does not match pre-computed size\n");
@@ -382,7 +395,7 @@ template <typename DeviceType,
           bool space = true;
           for (int j = 0; j < numReceivers+1; j++) {
             if ((key+j) >= tableSize) break;
-            if (inTable[t]->elems[key+j].devId != InvalidLocalDevId) {
+            if (inTable[t]->elems[key+j].devId != UnusedLocalDevId) {
               found = false;
               key = key+j+1;
               break;
@@ -398,12 +411,13 @@ template <typename DeviceType,
   // (Only valid after mapper is called)
   uint32_t addInTableEntries(uint32_t mbox, Seq<PInEdge<E>>* receivers) {
     uint32_t key = findKey(mbox, receivers);
-    if (key >= 0xffff) {
+    if (key >= 0xfffe) {
       printf("Routing key exceeds 16 bits\n");
       exit(EXIT_FAILURE);
     }
-    PInEdge<E> null;
+    PInEdge<E> null, unused;
     null.devId = InvalidLocalDevId;
+    unused.devId = UnusedLocalDevId;
     // Now that a key with sufficient space has been found, populate the tables
     for (uint32_t i = 0; i < 64; i++) {
       uint32_t numReceivers = receivers[i].numElems;
@@ -414,10 +428,12 @@ template <typename DeviceType,
         uint32_t tableSize = inTable[t]->numElems;
         // Make sure inTable is big enough for new entries
         for (uint32_t j = tableSize; j < (key+numReceivers+1); j++)
-          inTable[t]->append(null);
+          inTable[t]->append(unused);
         // Add receivers to thread's inTable
-        for (uint32_t j = 0; j < numReceivers; j++)
+        for (uint32_t j = 0; j < numReceivers; j++) {
           inTable[t]->elems[key+j] = receivers[i].elems[j];
+        }
+        inTable[t]->elems[key+numReceivers] = null;
       }
     }
     return key;
