@@ -2,6 +2,7 @@ import subprocess
 import os
 import numpy as np
 import time
+import threading
 
 
 # Remove previous files
@@ -134,29 +135,58 @@ for dimension in range(10, run_max, step_size):
 
     response = subprocess.check_output(['make'])
 
-    if 'error' in str(response).lower():
+    still_running = True
+    timeout_time = int(((0.00004 * (dimension ** 3)) + 20) * 1.5)
+    print('Timeout -> {}s'.format(timeout_time))
+
+    if 'error' in str(response.lower()):
         print('Compile Error')
     else:
 
-        wd = os.getcwd()
-        response = subprocess.check_output(['./run'], cwd='build', shell=True)
-        os.chdir(wd)
-        result = response.split('\n')
+        while still_running:
 
-        result_list = []
+            wd = os.getcwd()
+            kill = lambda process: process.kill()
+            cmd = ['./run']
+            run = subprocess.Popen(
+                cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd='build')
 
-        for i, r in enumerate(result):
-            if i < dimension:
-                elements = r.split(' ')
-                for element in elements:
-                    if element != '':
-                        result_list.append(int(element))
-            else:
-                durations = r.split(',')
-                map_time = durations[0]
-                init_time = durations[1]
-                send_time = durations[2]
-                proc_time = durations[3]
+            my_timer = threading.Timer(timeout_time, kill, [run])
+
+            try:
+                my_timer.start()
+                stdout, stderr = run.communicate()
+
+                print('stdout -> {}'.format(stdout))
+                print('stderr -> {}'.format(stderr))
+
+                if len(stderr) == 0 and len(stdout) != 0:
+                    still_running = False
+                else:
+                    print('Timed Out or Returned Error')
+                    time.sleep(10)
+
+
+            finally:
+                my_timer.cancel()
+
+            os.chdir(wd)
+            result = stdout.split('\n')
+
+            result_list = []
+
+            for i, r in enumerate(result):
+                if i < dimension:
+                    elements = r.split(' ')
+                    for element in elements:
+                        if element != '':
+                            result_list.append(int(element))
+                else:
+                    durations = r.split(',')
+                    map_time = durations[0]
+                    init_time = durations[1]
+                    send_time = durations[2]
+                    proc_time = durations[3]
 
     result_arr = np.array(result_list).reshape((dimension, dimension))
 
