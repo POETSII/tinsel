@@ -211,7 +211,8 @@ template <typename DeviceType,
       }
       sizeEOMem = wordAlign(sizeEOMem);
       // The total partition size including uninitialised portions
-      uint32_t totalSizeVMem = sizeVMem + sizeof(PLocalDeviceId) * numDevs;
+      uint32_t totalSizeVMem =
+        sizeVMem + wordAlign(sizeof(PLocalDeviceId) * numDevs);
       // Check that total size is reasonable
       uint32_t totalSizeSRAM = sizeTMem;
       uint32_t totalSizeDRAM = 0;
