@@ -22,12 +22,6 @@
 #define POLITE_NUM_PINS 1
 #endif
 
-// This parameter controls the maximum number of consecutive receives
-// the softswitch will perform before trying to send.
-#ifndef POLITE_CONSECUTIVE_RECVS
-#define POLITE_CONSECUTIVE_RECVS 6
-#endif
-
 // Macros for performance stats
 //   POLITE_DUMP_STATS - dump performance stats on termination
 //   POLITE_COUNT_MSGS - include message counts of performance stats
