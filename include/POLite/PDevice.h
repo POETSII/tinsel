@@ -226,8 +226,6 @@ template <typename DeviceType,
   void run() {
     // Current out-going edge in multicast
     POutEdge* outEdge;
-    // Current incoming edge in multicast
-    PInEdge<E>* inEdge;
 
     // Outgoing edge to host
     POutEdge outHost[2];
@@ -236,13 +234,6 @@ template <typename DeviceType,
     outHost[1].key = InvalidKey;
     // Initialise outEdge to null terminator
     outEdge = &outHost[1];
-    // Initialise inEdge to null terminator
-    PInEdge<E> inEmpty;
-    inEmpty.devId = InvalidLocalDevId;
-    inEdge = &inEmpty;
-
-    // Current input message being processed
-    PMessage<M>* inMsg = NULL;
 
     // Did last call to step handler request a new time step?
     bool active = true;
@@ -268,9 +259,8 @@ template <typename DeviceType,
     // Event loop
     while (1) {
       // Step 1: try to send
-      if (outEdge->key != InvalidKey) {
-        // Destination: outEdge->mbox, threadMaskLow, threadMaskHigh
-        if (tinselCanSend()) {
+      if (tinselCanSend()) {
+        if (outEdge->key != InvalidKey) {
           PMessage<M>* m = (PMessage<M>*) tinselSendSlot();
           // Send message
           m->key = outEdge->key;
@@ -285,13 +275,7 @@ template <typename DeviceType,
           // Move to next neighbour
           outEdge++;
         }
-        else {
-          // Go to sleep
-          tinselWaitUntil(TINSEL_CAN_RECV | TINSEL_CAN_SEND);
-        }
-      }
-      else if (sendersTop != senders) {
-        if (tinselCanSend()) {
+        else if (sendersTop != senders) {
           // Start new multicast
           PLocalDeviceId src = *(--sendersTop);
           // Lookup device
@@ -311,33 +295,31 @@ template <typename DeviceType,
             ];
         }
         else {
-          // Go to sleep
-          tinselWaitUntil(TINSEL_CAN_RECV | TINSEL_CAN_SEND);
-        }
-      }
-      else if (!inMsg) {
-        // Idle detection
-        int idle = tinselIdle(!active);
-        if (idle > 1)
-          break;
-        else if (idle) {
-          active = false;
-          for (uint32_t i = 0; i < numDevices; i++) {
-            DeviceType dev = getDevice(i);
-            // Invoke the step handler for each device
-            active = dev.step() || active;
-            // Device ready to send?
-            if (*dev.readyToSend != No) {
-              *(sendersTop++) = i;
+          // Idle detection
+          int idle = tinselIdle(!active);
+          if (idle > 1)
+            break;
+          else if (idle) {
+            active = false;
+            for (uint32_t i = 0; i < numDevices; i++) {
+              DeviceType dev = getDevice(i);
+              // Invoke the step handler for each device
+              active = dev.step() || active;
+              // Device ready to send?
+              if (*dev.readyToSend != No) {
+                *(sendersTop++) = i;
+              }
             }
+            time++;
           }
-          time++;
         }
       }
 
       // Step 2: try to receive
-      for (uint32_t i = 0; i < POLITE_CONSECUTIVE_RECVS; i++) {
-        if (inEdge->devId != InvalidLocalDevId) {
+      while (tinselCanRecv()) {
+        PMessage<M>* inMsg = (PMessage<M>*) tinselRecv();
+        PInEdge<E>* inEdge = &inTableBase[inMsg->key];
+        while (inEdge->devId != InvalidLocalDevId) {
           // Lookup destination device
           PLocalDeviceId id = inEdge->devId;
           DeviceType dev = getDevice(id);
@@ -353,20 +335,7 @@ template <typename DeviceType,
           intraThreadSendCount++;
           #endif
         }
-        else {
-          // Try to free message slot
-          if (inMsg) {
-            tinselFree(inMsg);
-            inMsg = NULL;
-          }
-          // Try to receive new message
-          if (tinselCanRecv()) {
-            inMsg = (PMessage<M>*) tinselRecv();
-            inEdge = &inTableBase[inMsg->key];
-          }
-          else
-            break;
-        }
+        tinselFree(inMsg);
       }
     }
 
