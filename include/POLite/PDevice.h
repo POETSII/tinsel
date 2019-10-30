@@ -100,7 +100,7 @@ template <typename S> struct ALIGNED PState {
   S state;
 };
 
-// Message structure (labelled edges)
+// Message structure
 template <typename M> struct PMessage {
   // Source-based routing key
   Key key;
