@@ -206,6 +206,14 @@ typedef struct {
   Bool notFinalFlit;
 } TransmitToken deriving (Bits);
 
+// Type of elements residing in the multicast queues
+typedef struct {
+  // Pointer to message in scratchpad
+  MailboxMsgAddr slot;
+  // Which threads sharing the queue are receivers?
+  Vector#(`ThreadsPerMulticastQueue, Bit#(1)) receivers;
+} MulticastQueueEntry deriving (Bits);
+
 // =============================================================================
 // Functions
 // =============================================================================
@@ -265,17 +273,18 @@ module mkMailbox (Mailbox);
   BlockRamTrueMixedBE#(MailboxFlitAddr, FlitPayload, MailboxWordAddr, Bit#(32))
     scratchpad <- mkBlockRamTrueMixedBE;
 
-  // Message-pointer queue for each thread
+  // Message-pointer queues for each thread group
   // Force these queues to use MLABs
   QueueOpts queueOpts;
   queueOpts.size = 0;
   queueOpts.file = Invalid;
   queueOpts.style = "MLAB";
-  Vector#(`CoresPerMailbox, Vector#(`ThreadsPerCore,
-    SizedQueue#(`LogMsgPtrQueueSize, MailboxMsgAddr)))
-      msgPtrQueue <- replicateM(replicateM(mkUGSizedQueueOpts(queueOpts)));
-  Vector#(`ThreadsPerMailbox,
-    SizedQueue#(`LogMsgPtrQueueSize, MailboxMsgAddr))
+  Vector#(`CoresPerMailbox,
+    Vector#(`MulticastQueuesPerCore,
+      SizedQueue#(`LogMsgPtrQueueSize, MulticastQueueEntry)))
+        msgPtrQueue <- replicateM(replicateM(mkUGSizedQueueOpts(queueOpts)));
+  Vector#(`MulticastQueuesPerMailbox,
+    SizedQueue#(`LogMsgPtrQueueSize, MulticastQueueEntry))
       msgPtrQueueFlat = concat(msgPtrQueue);
 
   // Request & response ports
@@ -340,9 +349,13 @@ module mkMailbox (Mailbox);
     Bit#(`ThreadsPerMailbox) destThreads = flit.dest.threads;
     // Determine if flit can be received
     Bool canRecv = True;
-    for (Integer i = 0; i < `ThreadsPerMailbox; i=i+1) begin
-      canRecv = canRecv &&
-        (destThreads[i] == 1 ? msgPtrQueueFlat[i].notFull : True);
+    for (Integer i = 0; i < `MulticastQueuesPerMailbox; i=i+1) begin
+      Bool forThisQueue = False;
+      for (Integer j = 0; j < `ThreadsPerMulticastQueue; j=j+1) begin
+        forThisQueue = forThisQueue ||
+          destThreads[i*`ThreadsPerMulticastQueue+j] == 1;
+      end
+      canRecv = canRecv && (forThisQueue ? msgPtrQueueFlat[i].notFull : True);
     end
     canRecv = canRecv && freeSlots.canPeek && freeSlots.canDeq;
     let slot = freeSlots.dataOut;
@@ -359,8 +372,16 @@ module mkMailbox (Mailbox);
         // Slot is no longer free
         freeSlots.deq;
         // Put pointer to new message into each destination's queue
-        for (Integer i = 0; i < `ThreadsPerMailbox; i=i+1)
-          if (destThreads[i] == 1) msgPtrQueueFlat[i].enq(slot);
+        for (Integer i = 0; i < `MulticastQueuesPerMailbox; i=i+1) begin
+          MulticastQueueEntry entry;
+          entry.slot = slot;
+          Bool any = False;
+          for (Integer j = 0; j < `ThreadsPerMulticastQueue; j=j+1) begin
+            entry.receivers[j] = destThreads[`ThreadsPerMulticastQueue*i+j];
+            any = any || (entry.receivers[j] == 1);
+          end
+          if (any) msgPtrQueueFlat[i].enq(entry);
+        end
         // Set ref count for new slot
         let count = pack(countOnes(destThreads));
         myAssert(destThreads != 0, "Mailbox: no destinations specified!");
@@ -377,17 +398,25 @@ module mkMailbox (Mailbox);
   Vector#(`CoresPerMailbox, Queue#(ReceiveResp))
     recvRespQueues <- replicateM(mkUGQueue);
 
+  // Each thread is associated with a flipflop denoting whether or not
+  // the next message in the thread's multicast queue has been received
+  // by the thread.
+  Vector#(`CoresPerMailbox,
+    Vector#(`MulticastQueuesPerCore,
+      Vector#(`ThreadsPerMulticastQueue, SetReset))) receivedMask <-
+        replicateM(replicateM(replicateM(mkSetReset(False))));
+
   // Buffer the queue outputs to improve timing.  The length of this
   // buffer must be less that the request-response round-trip for
   // single thread, so that any dequeue operation has time to
   // propagate before the next request from that thread arrives.
-  Vector#(`CoresPerMailbox, Vector#(`ThreadsPerCore, Bool))
+  Vector#(`CoresPerMailbox, Vector#(`MulticastQueuesPerCore, Bool))
     msgPtrQueueCanPeek = replicate(newVector());
   Vector#(`CoresPerMailbox,
-    Vector#(`ThreadsPerCore, MailboxMsgAddr)) msgPtrQueueData = 
-      replicate(newVector());
+    Vector#(`MulticastQueuesPerCore, MulticastQueueEntry))
+      msgPtrQueueData =  replicate(newVector());
   for (Integer i = 0; i < `CoresPerMailbox; i=i+1)
-    for (Integer j = 0; j < `ThreadsPerCore; j=j+1) begin
+    for (Integer j = 0; j < `MulticastQueuesPerCore; j=j+1) begin
       msgPtrQueueCanPeek[i][j] <-
         mkBuffer(1, False, msgPtrQueue[i][j].canPeek &&
           msgPtrQueue[i][j].canDeq);
@@ -397,16 +426,36 @@ module mkMailbox (Mailbox);
   // Serve requests to the receive unit
   for (Integer i = 0; i < `CoresPerMailbox; i=i+1) begin
     rule serveReceive (rxReqPorts[i].canGet && recvRespQueues[i].notFull);
+      // Consume request
       ReceiveReq req = rxReqPorts[i].value;
       rxReqPorts[i].get;
+      Bit#(`LogMulticastQueuesPerCore) queueId = truncateLSB(req.id);
+      Bit#(`LogThreadsPerMulticastQueue) receiverId = truncate(req.id);
+      MulticastQueueEntry entry = msgPtrQueueData[i][queueId];
+      // Prepare response
       ReceiveResp resp;
-      // Do lookup
       resp.id = req.id;
       resp.doRecv = req.doRecv;
-      resp.canRecv = msgPtrQueueCanPeek[i][req.id];
-      resp.data = msgPtrQueueData[i][req.id];
-      if (resp.canRecv && req.doRecv) msgPtrQueue[i][req.id].deq;
+      resp.canRecv = 
+        msgPtrQueueCanPeek[i][queueId] &&
+          entry.receivers[receiverId] == 1 &&
+            !receivedMask[i][queueId][receiverId].value;
+      resp.data = entry.slot;
       resp.sleeping = req.sleeping;
+      if (resp.canRecv && req.doRecv) begin
+        // Ready to consume multicast queue?
+        Bool consume = True;
+        for (Integer j = 0; j < `ThreadsPerMulticastQueue; j=j+1)
+          if (receiverId != fromInteger(j))
+            consume = consume && (entry.receivers[j] == 1 ?
+                       receivedMask[i][queueId][j].value : True);
+        if (consume) begin
+          msgPtrQueue[i][queueId].deq;
+          for (Integer j = 0; j < `ThreadsPerMulticastQueue; j=j+1)
+            receivedMask[i][queueId][j].clear;
+        end else
+          receivedMask[i][queueId][receiverId].set;
+      end
       // Enqueue response
       recvRespQueues[i].enq(resp);
     endrule
