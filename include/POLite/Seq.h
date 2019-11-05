@@ -82,7 +82,7 @@ template <class T> class Seq
     }
 
     // Is given value already in sequence?
-    bool member(T x) {
+    bool member(T x) const {
       for (int i = 0; i < numElems; i++)
         if (elems[i] == x) return true;
       return false;

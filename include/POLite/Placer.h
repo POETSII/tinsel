@@ -2,14 +2,29 @@
 #ifndef _PLACER_H_
 #define _PLACER_H_
 
+#include <vector>
+#include <stdexcept>
+#include <string>
+
 #include <stdint.h>
+#include <string.h>
 #include <metis.h>
+#include <scotch/scotch.h>
 #include <POLite/Graph.h>
 
 typedef uint32_t PartitionId;
 
 // Partition and place a graph on a 2D mesh
 struct Placer {
+  // Select between different methods
+  enum Method
+  {
+    Default,
+    Metis,
+    Scotch
+  };
+  const Method defaultMethod=Metis;
+
   // The graph being placed
   Graph* graph;
 
@@ -41,8 +56,31 @@ struct Placer {
   uint32_t* yCoordSaved;
   uint64_t savedCost;
 
+  // Controls which strategy is used
+  Method method = Default;
+
+  void chooseMethod()
+  {
+    auto e=getenv("DT10_PLACER_METHOD");
+    if(e){
+      if(!strcmp(e, "metis")){
+        method=Metis;
+      }else if(!strcmp(e, "scotch")){
+        method=Scotch;
+      }else if(!strcmp(e, "default") || *e==0){
+        method=Default;
+      }else{
+        fprintf(stderr, "Don't understand placer method : %s\n", e);
+        exit(1);
+      }
+    }
+    if(method==Default){
+      method=defaultMethod;
+    }
+  }
+
   // Partition the graph using Metis
-  void partition() {
+  void partitionMetis() {
     // Compute total number of edges
     uint32_t numEdges = 0;
     for (uint32_t i = 0; i < graph->incoming->numElems; i++) {
@@ -114,6 +152,131 @@ struct Placer {
     free(xadj);
     free(adjncy);
     free(parts);
+
+    // Perform random placement now, so that others can do their
+    // own placement
+    randomPlacement();
+    currentCost = cost();
+  }
+
+  // Place the graph using Scotch
+  void partitionScotch() {
+    idx_t nvtxs = (idx_t) graph->incoming->numElems;
+    idx_t nparts = (idx_t) (width * height);
+    
+    // If there are no vertices
+    if (nvtxs == 0) return;
+
+    // If there are more partitions than vertices
+    if (nparts >= nvtxs) {
+      for (uint32_t i = 0; i < nvtxs; i++)
+        partitions[i] = i;
+      return;
+    }
+
+    // If there is exactly one partition
+    if (nparts == 1) {
+      for (uint32_t i = 0; i < nvtxs; i++)
+        partitions[i] = 0;
+      return;
+    }
+
+    SCOTCH_Arch *archptr=(SCOTCH_Arch *)malloc(sizeof(SCOTCH_Arch));
+    if(SCOTCH_archInit (archptr)){
+      throw std::runtime_error("Couldn't init scotch arch");
+    }
+
+    if(SCOTCH_archMesh2(archptr, width, height)){
+      throw std::runtime_error("Couldn't create 2d mesh in scotch");
+    }
+
+    std::vector<SCOTCH_Num> verttab;
+    std::vector<SCOTCH_Num> edgetab;
+
+    for (uint32_t i = 0; i < nvtxs; i++) {
+      verttab.push_back(edgetab.size());
+
+      const Seq<NodeId>* in = graph->incoming->elems[i];
+      for (uint32_t j = 0; j < in->numElems; j++){
+        edgetab.push_back( in->elems[j] );
+      }
+      
+      const Seq<NodeId>* out = graph->outgoing->elems[i];
+      for (uint32_t j = 0; j < out->numElems; j++){
+        if (! in->member(out->elems[j])){ // TODO: How expensive is this for highly connected graphs?
+          edgetab.push_back( out->elems[j] );
+        }
+      }
+    }
+    verttab.push_back(edgetab.size());
+
+    SCOTCH_Graph *grafptr=(SCOTCH_Graph *)malloc(sizeof(SCOTCH_Graph));
+
+    if(SCOTCH_graphBuild (grafptr,
+      0, //baseval - where do array indices start
+      graph->incoming->numElems, // vertnbr
+      &verttab[0],
+      &verttab[1], //vendtab. Settings to verttab+1 means it is a compact edge array
+      0, // velotab, Integer load per vertex. Not used here.
+      0, // vlbltab, vertex label tab (?)
+      edgetab.size(), // edgenbr,
+      &edgetab[0],
+      0 // edlotab, load on each arc
+    )){
+      throw std::runtime_error("Scotch didn't want to build a graph.");
+    }
+
+    if(SCOTCH_graphCheck (grafptr)){
+      throw std::runtime_error("Scotch does not like the graph we built. Is it consistent?");
+    }
+
+    SCOTCH_Strat *stratptr=(SCOTCH_Strat *)malloc(sizeof(SCOTCH_Strat));
+    if(SCOTCH_stratInit(stratptr)){
+      throw std::runtime_error("Scotch won't make a strategy.");
+    }
+
+    std::vector<SCOTCH_Num> parttab(nvtxs);
+
+    if(SCOTCH_graphMap (grafptr, archptr, stratptr, &parttab[0])){
+      throw std::runtime_error("Scotch couldn't map the graph.");
+    }
+
+    // Populate result array
+    for (uint32_t i = 0; i < graph->incoming->numElems; i++){
+      partitions[i] = (uint32_t) parttab[i];
+    }
+
+    // Explicitly set up placement
+    for (uint32_t y = 0; y < height; y++) {
+      for (uint32_t x = 0; x < width; x++) {
+        unsigned p=y*width+x;
+        mapping[y][x] = p;
+        xCoord[p] = x;
+        yCoord[p] = y;
+      }
+    }
+
+    currentCost = cost();
+
+    SCOTCH_archExit(archptr);
+    free(archptr);
+    SCOTCH_graphExit(grafptr);
+    free(grafptr);
+    SCOTCH_stratInit(stratptr);
+    free(stratptr);
+  }
+
+  void partition()
+  {
+    switch(method){
+    case Default:
+    case Metis:
+      partitionMetis();
+      break;
+    case Scotch:
+      partitionScotch();
+      break;
+    }
   }
 
   // Create subgraph for each partition
@@ -166,6 +329,81 @@ struct Placer {
       for (uint32_t j = 0; j < out->numElems; j++)
         connCount[partitions[i]][partitions[out->elems[j]]]++;
     }
+  }
+
+  // If we are on a width*height mesh, then calculate the
+  // number of channels passing through the intermediate
+  // manhattan routers
+  std::vector<uint64_t> computeInterLinkCounts()
+  {
+    /*
+      Take each * as a node (e.g. board/FPGA), and
+      the lines are the links.
+
+          x
+          0  1  2  3
+      y 0 *--*--*--*   0
+          |  |  |  | 
+        1 *--*--*--*   2
+          |  |  |  | 
+        2 *--*--*--*   4
+          |  |  |  |
+        3 *--*--*--*   6
+                       7
+          0  2  4  6 7
+
+      Being lazy, the link between 
+        (x,y) and (x+1,y) is at  (x+x+1),y*2) = (x*2+1,y*2)
+      and the link between
+        (x,y) and (x,y+1) is at  (x,y+y+1) = (x*2,y*2+1)
+    */
+
+    std::vector<uint64_t> counts((2*width-1)*(2*height-1), 0);
+
+    auto traverse=[&](int x, int y, int dx, int dy, uint64_t weight)
+    {
+      int vx=2*x+dx;
+      int vy=2*y+dy;
+      counts.at( vy*(2*width-1) + vx ) += weight;
+    };
+    
+    auto trace=[&](int ax,int ay, int bx,int by, uint64_t weight)
+    {
+      // TODO: Not sure if this follows the routing strategy.
+      // Presumably there is an x vs y deterministic routing
+      // approach, but I'm being lazy, so I'm going to assume x, then y. Y not?
+      while(ax!=bx){
+        int dir=ax<bx ? +1 : -1;
+        traverse(ax, ay, dir, 0, weight);
+        ax += dir;
+      }
+      while(ay!=by){
+        int dir=ay<by ? +1 : -1;
+        traverse(ax, ay, dir, 0, weight);
+        ay += dir;
+      }
+    };
+
+    computeInterPartitionCounts();
+
+    for(int p1=0; p1+1 < width*height; p1++){
+      for(int p2=p1+1; p2 < width*height; p2++){
+        trace(
+          xCoord[p1], yCoord[p1],
+          xCoord[p2], yCoord[p2],  
+          connCount[p1][p2]
+        );
+      }
+    }
+
+    for(int y=0; y<2*height-1; y++){
+      for(int x=0; x<2*width-1; x++){
+        fprintf(stderr, " %6llu", counts[y*(2*width-1)+x]);
+      } 
+      fprintf(stderr, "\n");
+    }
+
+    return counts;
   }
 
   // Create random mapping between partitions and mesh
@@ -266,7 +504,8 @@ struct Placer {
     savedCost = ~0;
 
     for (uint32_t n = 0; n < numAttempts; n++) {
-      randomPlacement();
+      // Note: moved randomPlacement into metis, so that scotch can create explicit non-random placement
+      //randomPlacement();
       currentCost = cost();
 
       bool change;
@@ -316,7 +555,11 @@ struct Placer {
     yCoord = new uint32_t [width*height];
     xCoordSaved = new uint32_t [width*height];
     yCoordSaved = new uint32_t [width*height];
-    // Partition the graph using Metis
+
+    // Pick a placement method, or select default
+    chooseMethod();
+
+    // Partition the graph using Metis or scotch
     partition();
     // Compute subgraphs, one per partition
     computeSubgraphs();
