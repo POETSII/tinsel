@@ -40,7 +40,6 @@ import IdleDetector :: *;
 // CanRecv     | 0x805  | R   | 1 if can receive, 0 otherwise
 // SendLen     | 0x806  | W   | Set message length for send
 // SendPtr     | 0x807  | W   | Set message pointer for send
-// SendDest    | 0x808  | W   | Set destination mailbox
 // Recv        | 0x809  | R   | Return pointer to message received
 // WaitUntil   | 0x80a  | W   | Sleep until can-send or can-recv
 // FromUart    | 0x80b  | R   | Try to read byte from DebugLink UART
@@ -88,8 +87,6 @@ typedef struct {
   Bit#(5) fpFlags;
   // Message length for send operation
   MsgLen msgLen;
-  // Mailbox destination send operation
-  MailboxNetAddr mboxDest;
   // Message pointer for send operation
   MailboxMsgAddr msgPtr;
   // Write address for instruction memory
@@ -116,7 +113,7 @@ typedef struct {
   Bool isFree;         Bool isCanSend;
   Bool isHartId;       Bool isCanRecv;
   Bool isSendLen;      Bool isSendPtr;
-  Bool isSendDest;     Bool isRecv;
+  Bool isRecv;
   Bool isWaitUntil;    Bool isFromUart;
   Bool isToUart;       Bool isNewThread;
   Bool isKillThread;   Bool isFFlag;
@@ -346,7 +343,6 @@ function Op decodeOp(Bit#(32) instr);
   ret.csr.isCanRecv      = ret.isCSR && csrIndex == 'h25;
   ret.csr.isSendLen      = ret.isCSR && csrIndex == 'h26;
   ret.csr.isSendPtr      = ret.isCSR && csrIndex == 'h27;
-  ret.csr.isSendDest     = ret.isCSR && csrIndex == 'h28;
   ret.csr.isRecv         = ret.isCSR && csrIndex == 'h29;
   ret.csr.isWaitUntil    = ret.isCSR && csrIndex == 'h2a;
   ret.csr.isFromUart     = ret.isCSR && csrIndex == 'h2b;
@@ -848,9 +844,6 @@ module mkCore#(CoreId myId) (Core);
     // Mailbox set message pointer
     if (token.op.csr.isSendPtr)
       token.thread.msgPtr = byteAddrToMsgIndex(token.valA);
-    // Set destination mailbox for send operation
-    if (token.op.csr.isSendDest)
-      token.thread.mboxDest = unpack(truncate(token.valA));
     // Mailbox scratchpad access
     token.isScratchpadAccess = token.memAddr[31:`LogOffChipRAMBaseAddr] == 0;
     // Mailbox can-send
@@ -958,8 +951,11 @@ module mkCore#(CoreId myId) (Core);
         retry = True;
       else begin
         NetAddr dest;
-        dest.addr = token.thread.mboxDest;
-        dest.threads = {token.valA, token.valB};
+        dest.addr = unpack(truncate(token.valA));
+        if (token.valB[31] == 1)
+          dest.threads = replicate(dest.addr.thread);
+        else
+          dest.threads = unpack(truncate(token.valB));
         mailbox.send(token.thread.id, token.thread.msgLen,
                        dest, token.thread.msgPtr);
         incSentReg <= 1;

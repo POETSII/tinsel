@@ -346,7 +346,12 @@ module mkMailbox (Mailbox);
   rule receive0;
     let flit = flitInPort.value;
     // Determine destination threads
-    Bit#(`ThreadsPerMailbox) destThreads = flit.dest.threads;
+    Vector#(`ThreadsPerMailbox, Bool) destThreadsVec = replicate(False);
+    let dests = cons(flit.dest.addr.thread, flit.dest.threads);
+    for (Integer i = 0; i <= `NumMulticastDests; i=i+1)
+      for (Integer j = 0; j < `ThreadsPerMailbox; j=j+1)
+        destThreadsVec[j] = destThreadsVec[j] || (dests[i] == fromInteger(j));
+    Bit#(`ThreadsPerMailbox) destThreads = pack(destThreadsVec);
     // Determine if flit can be received
     Bool canRecv = True;
     for (Integer i = 0; i < `MulticastQueuesPerMailbox; i=i+1) begin

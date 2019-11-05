@@ -16,7 +16,6 @@
 #define CSR_CAN_RECV    "0x805"
 #define CSR_SEND_LEN    "0x806"
 #define CSR_SEND_PTR    "0x807"
-#define CSR_SEND_DEST   "0x808"
 #define CSR_RECV        "0x809"
 #define CSR_WAIT_UNTIL  "0x80a"
 #define CSR_FROM_UART   "0x80b"
@@ -160,28 +159,23 @@ INLINE void tinselSetLen(int n)
 
 // Send message to multiple threads on the given mailbox
 INLINE void tinselMulticast(
-  uint32_t mboxDest,      // Destination mailbox
-  uint32_t destMaskHigh,  // Destination bit mask (high bits)
-  uint32_t destMaskLow,   // Destination bit mask (low bits)
+  uint32_t dest,          // Destination thread
+  uint32_t extra,         // Extra threads on same mailbox
   volatile void* addr)    // Message pointer
 {
   asm volatile("csrrw zero, " CSR_SEND_PTR ", %0" : : "r"(addr));
-  asm volatile("csrrw zero, " CSR_SEND_DEST ", %0" : : "r"(mboxDest));
   // Opcode: 0000000 rs2 rs1 000 rd 0001000, with rd=0, rs1=x10, rs2=x11
   asm volatile(
     "mv x10, %0\n"
     "mv x11, %1\n"
-    ".word 0x00b50008\n" : : "r"(destMaskHigh), "r"(destMaskLow)
+    ".word 0x00b50008\n" : : "r"(dest), "r"(extra)
                            : "x10", "x11");
 }
 
 // Send message at addr to dest
 INLINE void tinselSend(int dest, volatile void* addr)
 {
-  uint32_t threadId = dest & 0x3f;
-  uint32_t high = threadId >= 32 ? (1 << (threadId-32)) : 0;
-  uint32_t low = threadId < 32 ? (1 << threadId) : 0;
-  tinselMulticast(dest >> 6, high, low, addr);
+  tinselMulticast(dest, 0x80000000, addr);
 }
 
 // Receive message

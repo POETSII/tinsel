@@ -2,6 +2,7 @@
 package Globals;
 
 import Util :: *;
+import Vector :: *;
 
 // Core-local thread id
 typedef Bit#(`LogThreadsPerCore) ThreadId;
@@ -27,11 +28,12 @@ typedef struct {
   Option#(Bit#(1)) host;
   BoardId board;
   MailboxId mbox;
-} MailboxNetAddr deriving (Bits, FShow);
+  Bit#(`LogThreadsPerMailbox) thread;
+} UniNetAddr deriving (Bits, FShow);
 
 typedef struct {
-  MailboxNetAddr addr;
-  Bit#(`ThreadsPerMailbox) threads;
+  UniNetAddr addr;
+  Vector#(`NumMulticastDests, Bit#(`LogThreadsPerMailbox)) threads;
 } NetAddr deriving (Bits, FShow);
 
 // Mailbox id

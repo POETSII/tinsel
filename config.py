@@ -366,6 +366,9 @@ p["LogMulticastQueuesPerCore"] = (p["LogThreadsPerCore"] -
                                       p["LogThreadsPerMulticastQueue"])
 p["MulticastQueuesPerCore"] = 2 ** p["LogMulticastQueuesPerCore"]
 
+# Number of multicast destinations that can be specified
+p["NumMulticastDests"] = 31 // p["LogThreadsPerMailbox"]
+
 #==============================================================================
 # Main 
 #==============================================================================

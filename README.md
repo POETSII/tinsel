@@ -1,6 +1,6 @@
 Documentation updates needed for mailbox-level multicast:
 
-  * CSR changes
+  * CSR changes (SendDest no more)
   * API changes
   * new custom instruction
   * memory map changes
