@@ -370,13 +370,10 @@ template <typename DeviceType,
     // Place subgraphs onto 2D mesh
     const uint32_t placerEffort = 8;
     boards.place(placerEffort);
-    // HACK!
-    fprintf(stderr, "boards: currentCost=%llu\n", boards.currentCost);
-    auto mcounts=boards.computeInterLinkCounts();
-    auto mcount_max=*std::max_element(mcounts.begin(), mcounts.end());
-    auto mcount_sum=std::accumulate(mcounts.begin(), mcounts.end(), 0ull);
-    fprintf(stderr, "boards: congestion, currentMaxCost=%llu,  currentSumCost=%llu\n",mcount_max, mcount_sum);
 
+    // HACK: has side-effects for printing
+    boards.computeInterLinkCounts();
+    
     // For each board
     for (uint32_t boardY = 0; boardY < numBoardsY; boardY++) {
       for (uint32_t boardX = 0; boardX < numBoardsX; boardX++) {

@@ -5,6 +5,8 @@
 #include <vector>
 #include <stdexcept>
 #include <string>
+#include <cmath>
+#include <algorithm>
 
 #include <stdint.h>
 #include <string.h>
@@ -364,24 +366,51 @@ struct Placer {
     {
       int vx=2*x+dx;
       int vy=2*y+dy;
-      counts.at( vy*(2*width-1) + vx ) += weight;
+      int index=vy*(2*width-1) + vx;
+      //fprintf(stderr, " (%u,%u)+(%d,%d) -> %u\n", x,y,dx,dy,index);
+      counts.at( index ) += weight;
     };
     
-    auto trace=[&](int ax,int ay, int bx,int by, uint64_t weight)
+    auto trace=[&](int ax,int ay, int bx,int by, uint64_t weight) -> uint64_t
     {
-      // TODO: Not sure if this follows the routing strategy.
-      // Presumably there is an x vs y deterministic routing
-      // approach, but I'm being lazy, so I'm going to assume x, then y. Y not?
-      while(ax!=bx){
-        int dir=ax<bx ? +1 : -1;
-        traverse(ax, ay, dir, 0, weight);
-        ax += dir;
+      /* From Network.bsv:
+          function Route route(NetAddr addr);
+                  if (addr.board.y < b.y) return Down;
+              else if (addr.board.y > b.y) return Up;
+              else if (addr.host.valid) return addr.host.value == 0 ? Left : Right;
+              else if (addr.board.x < b.x) return Left;
+              else if (addr.board.x > b.x) return Right;
+
+          So route in y first, then x
+      */
+
+     int x=ax, y=ay;
+
+     // Record the route taken through links
+     int hops=0;
+      while(y!=by){
+        int dir=y<by ? +1 : -1;
+        traverse(x, y, 0, dir, weight);
+        y += dir;
+        hops++;
       }
-      while(ay!=by){
-        int dir=ay<by ? +1 : -1;
-        traverse(ax, ay, dir, 0, weight);
-        ay += dir;
+      while(x!=bx){
+        int dir=x<bx ? +1 : -1;
+        traverse(x, y, dir, 0, weight);
+        x += dir;
+        hops++;
       }
+
+      // Self-connections should be removed by now.
+      assert(hops>0);
+
+      // Record the cost of routes begining and ending in the node
+      traverse(ax,ay, 0, 0, hops*weight);
+      traverse(bx,by, 0, 0, hops*weight);
+
+      /*if(ax==0 && bx==0){
+        fprintf(stderr, "a=(0,0), hops=%u, weight=%llu, counts[0,0]=%llu\n", hops, weight, counts[0]);
+      }*/
     };
 
     computeInterPartitionCounts();
@@ -396,12 +425,66 @@ struct Placer {
       }
     }
 
+    fprintf(stderr, "Per-link route cost: count of total routes traversing this link:\n");
+    double sumSquareLinkWeight=0;
+    double sumLinkWeight=0;
+    double maxLinkWeight=0;
+    double numLinks=0;
     for(int y=0; y<2*height-1; y++){
       for(int x=0; x<2*width-1; x++){
-        fprintf(stderr, " %6llu", counts[y*(2*width-1)+x]);
+        if((x&1)&&(y&1)){
+          fprintf(stderr, " %6s", " ");
+        }else if( (x&1) || (y&1) ){
+          auto w=counts[y*(2*width-1)+x];
+          fprintf(stderr, " %6llu", w);
+          sumSquareLinkWeight += pow((double)w,2);
+          sumLinkWeight += w;
+          maxLinkWeight = std::max(maxLinkWeight, (double)w);
+          numLinks++;
+        }else{
+          fprintf(stderr, " %6s", "+");
+        }
       } 
       fprintf(stderr, "\n");
     }
+
+    fprintf(stderr, "Per-node route cost: sum(distance*count) for routes beginning and ending in each node:\n");
+    double sumSquareNodeWeight=0;
+    double sumNodeWeight=0;
+    double maxNodeWeight=0;
+    double numNodes=0;
+    for(int y=0; y<2*height-1; y++){
+      for(int x=0; x<2*width-1; x++){
+        if((x&1)&&(y&1)){
+          fprintf(stderr, " %6s", " ");
+        }else if( ! ((x&1) || (y&1)) ){
+          auto w=counts[y*(2*width-1)+x];
+          fprintf(stderr, " %6llu", w);
+          sumSquareNodeWeight += pow((double)w,2);
+          sumNodeWeight += w;
+          maxNodeWeight = std::max(maxNodeWeight, (double)w);
+          numNodes++;
+        }else if(x&1){
+          fprintf(stderr, " %6s", "-");
+        }else{
+          fprintf(stderr, " %6s", "|");
+        }
+      } 
+      fprintf(stderr, "\n");
+    }
+
+    double meanLinkWeight=sumLinkWeight/numLinks;
+    double stddevLinkWeight=sqrt( sumSquareLinkWeight/numLinks - meanLinkWeight*meanLinkWeight  );
+    fprintf(stderr, "Per-link: mean=%.1f, stddev=%.1f, max=%.1f\n", 
+      meanLinkWeight, stddevLinkWeight, maxLinkWeight
+    );
+
+    double meanNodeWeight=sumNodeWeight/numLinks;
+    double stddevNodeWeight=sqrt( sumSquareNodeWeight/numNodes - meanNodeWeight*meanNodeWeight  );
+    fprintf(stderr, "Per-node: mean=%.1f, stddev=%.1f, max=%.1f\n", 
+      meanNodeWeight, stddevNodeWeight, maxNodeWeight
+    );
+
 
     return counts;
   }
