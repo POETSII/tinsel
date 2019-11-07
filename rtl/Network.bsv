@@ -439,22 +439,30 @@ module mkMailboxMesh#(
   // Detect inter-board activity
   // ---------------------------
 
+  // Latch to improve timing
+  Reg#(Bool) activityReg <- mkReg(False);
+
+  // Determine when a flit arrives on a link,
+  // provided that flit is not a stage 1 idle token
+  function Bool active(BoardLink link);
+    Flit flit =  link.flitOut.value;
+    IdleToken in = unpack(truncate(flit.payload));
+    return (link.flitOut.valid && (flit.isIdleToken ? !in.stage1 : True));
+  endfunction
+
   // For barrier release phase
   rule informIdleDetector;
     Bool activity = False;
-    for (Integer i = 0; i < `NumNorthSouthLinks; i=i+1) begin
-      Flit flit = southLink[i].flitOut.value;
-      IdleToken in = unpack(truncate(flit.payload));
-      activity = activity || (southLink[i].flitOut.valid &&
-       (flit.isIdleToken ? !in.stage1 : True));
-    end
-    for (Integer i = 0; i < `NumEastWestLinks; i=i+1) begin
-      Flit flit = westLink[i].flitOut.value;
-      IdleToken in = unpack(truncate(flit.payload));
-      activity = activity || (westLink[i].flitOut.valid &&
-        (flit.isIdleToken ? !in.stage1 : True));
-    end
-    idle.idle.interBoardActivity(activity);
+    for (Integer i = 0; i < `NumNorthSouthLinks; i=i+1)
+     activity = activity || active(southLink[i]);
+    for (Integer i = 0; i < `NumNorthSouthLinks; i=i+1)
+      activity = activity || active(northLink[i]);
+    for (Integer i = 0; i < `NumEastWestLinks; i=i+1)
+      activity = activity || active(westLink[i]);
+    for (Integer i = 0; i < `NumEastWestLinks; i=i+1)
+      activity = activity || active(eastLink[i]);
+    activityReg <= activity;
+    idle.idle.interBoardActivity(activityReg);
   endrule
 
 `ifndef SIMULATE
