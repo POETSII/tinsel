@@ -265,7 +265,7 @@ template <typename DeviceType,
           PPin oldReadyToSend = *dev.readyToSend;
           // Invoke receive handler
           PMessage<E,M>* m = (PMessage<E,M>*) tinselSlot(0);
-          dev.recv(&m->payload, &m->edge);
+          dev.recv(&m->payload, &neighbour->edge);
           // Insert device into a senders array, if not already there
           if (oldReadyToSend == No && *dev.readyToSend != No)
              *(sendersTop++) = id;
