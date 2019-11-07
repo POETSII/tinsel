@@ -77,6 +77,9 @@ template <typename DeviceType,
   // Graph containing device ids and connections
   Graph graph;
 
+  // Edge labels: has same structure as graph.outgoing
+  Seq<Seq<E>*> edgeLabels;
+
   // Mapping from device id to device state
   // (Not valid until the mapper is called)
   PState<S>** devices;
@@ -114,6 +117,7 @@ template <typename DeviceType,
 
   // Create new device
   inline PDeviceId newDevice() {
+    edgeLabels.append(new SmallSeq<E>);
     numDevices++;
     return graph.newNode();
   }
@@ -121,11 +125,14 @@ template <typename DeviceType,
   // Add a connection between devices
   inline void addEdge(PDeviceId from, PinId pin, PDeviceId to) {
     graph.addEdge(from, pin, to);
+    E edge;
+    edgeLabels.elems[from]->append(edge);
   }
 
   // Add labelled edge using given output pin
-  void addLabelledEdge(EdgeLabel label, PDeviceId x, PinId pin, PDeviceId y) {
-    graph.addLabelledEdge(label, x, pin, y);
+  void addLabelledEdge(E edge, PDeviceId x, PinId pin, PDeviceId y) {
+    graph.addEdge(x, pin, y);
+    edgeLabels.elems[x]->append(edge);
   }
 
   // Allocate SRAM and DRAM partitions
@@ -286,12 +293,12 @@ template <typename DeviceType,
               edgeArray[base+offset].destAddr = addr;
               // Edge label
               if (! std::is_same<E, None>::value) {
-                if (i >= graph.edgeLabels->elems[id]->numElems) {
+                if (i >= edgeLabels.elems[id]->numElems) {
                   printf("Edge weight not specified\n");
                   exit(EXIT_FAILURE);
                 }
-                memcpy(&edgeArray[base+offset].edge,
-                  &graph.edgeLabels->elems[id]->elems[i], sizeof(E));
+                edgeArray[base+offset].edge =
+                  edgeLabels.elems[id]->elems[i];
               }
               offset++;
             }
@@ -299,8 +306,8 @@ template <typename DeviceType,
           edgeArray[base+offset].destAddr = invalidDeviceAddr(); // Terminator
         }
         // Add space for edges
-        nextEMem = cacheAlign(nextEMem + (numPins+1) *
-                     POLITE_MAX_FANOUT * sizeof(PNeighbour<E>));
+        nextEMem = nextEMem + (numPins+1) *
+                     POLITE_MAX_FANOUT * sizeof(PNeighbour<E>);
         nextNeighbours += (numPins+1);
       }
       // At this point, check that next pointers line up with heap sizes
@@ -442,6 +449,8 @@ template <typename DeviceType,
   // Deconstructor
   ~PGraph() {
     releaseAll();
+    for (uint32_t i = 0; i < edgeLabels.numElems; i++)
+      delete edgeLabels.elems[i];
   }
 
   // Write partition to tinsel machine
