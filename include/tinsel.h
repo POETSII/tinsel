@@ -151,7 +151,7 @@ INLINE void tinselSetLen(int n)
 // Send message at addr to dest
 INLINE void tinselSend(int dest, volatile void* addr)
 {
-  asm volatile("csrrw zero, " CSR_SEND_PTR ", %0" : : "r"(addr));
+  asm volatile("csrrw zero, " CSR_SEND_PTR ", %0" : : "r"(addr) : "memory");
   asm volatile("csrrw zero, " CSR_SEND ", %0" : : "r"(dest));
 }
 
