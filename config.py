@@ -88,7 +88,7 @@ p["MailboxMeshYLen"] = 2 ** p["MailboxMeshYBits"]
 p["LogMailboxesPerBoard"] = p["MailboxMeshXBits"] + p["MailboxMeshYBits"]
 
 # Maximum size of boot loader (in bytes)
-p["MaxBootImageBytes"] = 576
+p["MaxBootImageBytes"] = 512
 
 # Size of transmit buffer in a reliable link
 p["LogTransmitBufferSize"] = 10

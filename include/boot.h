@@ -41,11 +41,6 @@ typedef enum {
   // to start.
   StartCmd,
 
-  // Ping a thread with an optional thread->thread hop
-  // Argument 0: number of hops (zero or one)
-  // Argument 1: next hop address (when number of hops is one)
-  PingCmd,
-
 } BootCmd;
 
 

@@ -52,27 +52,19 @@ INLINE uint32_t tinselCycleCount()
   return n;
 }
 
-// Flush cache line
+// Flush cache line (non-blocking)
 INLINE void tinselFlushLine(uint32_t lineNum, uint32_t way)
 {
   uint32_t arg = (lineNum << TinselDCacheLogNumWays) | way;
   asm volatile("csrrw zero, " CSR_FLUSH ", %0" : : "r"(arg));
 }
 
-// Cache flush
+// Cache flush (non-blocking)
 INLINE void tinselCacheFlush()
 {
   for (uint32_t i = 0; i < (1<<TinselDCacheLogSetsPerThread); i++)
     for (uint32_t j = 0; j < (1<<TinselDCacheLogNumWays); j++)
       tinselFlushLine(i, j);
-  // Load from each off-chip RAM to ensure that flushes have fully propagated
-  volatile uint8_t* base;
-  // Load from DRAM
-  base = (uint8_t*) TinselDRAMBase; base[0];
-  // Load from SRAM A
-  base = (uint8_t*) ((uint32_t) 1 << TinselLogBytesPerSRAM); base[0];
-  // Load from SRAM B
-  base = (uint8_t*) ((uint32_t) 2 << TinselLogBytesPerSRAM); base[0];
 }
 
 // Write a word to instruction memory

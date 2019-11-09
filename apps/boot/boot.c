@@ -24,10 +24,10 @@ int main()
   if (threadId == 0) {
     // State
     uint32_t addrReg = 0;  // Address register
+    uint32_t lastDataStoreAddr = 0;
 
     // Get mailbox message slot for send and receive
     volatile BootReq* msgIn = tinselSlot(0);
-    volatile BootReq* reqOut;
     volatile uint32_t* msgOut = tinselSlot(1);
 
     // Command loop
@@ -55,6 +55,7 @@ int main()
         for (int i = 0; i < n; i++) {
           uint32_t* ptr = (uint32_t*) addrReg;
           *ptr = msgIn->args[i];
+          lastDataStoreAddr = addrReg;
           addrReg += 4;
         }
       }
@@ -80,6 +81,10 @@ int main()
       else if (cmd == StartCmd) {
         // Cache flush
         tinselCacheFlush();
+        // Wait until lines written back, by issuing a load
+        if (lastDataStoreAddr != 0) {
+          volatile uint32_t* ptr = (uint32_t*) lastDataStoreAddr; ptr[0];
+        }
         // Send response
         tinselWaitUntil(TINSEL_CAN_SEND);
         msgOut[0] = tinselId();
@@ -91,22 +96,6 @@ int main()
         for (int i = 0; i < numThreads; i++)
           tinselCreateThread(i+1);
         break;
-      }
-      else if (cmd == PingCmd) {
-        // Respond to ping
-        tinselWaitUntil(TINSEL_CAN_SEND);
-        reqOut = (volatile BootReq*) msgOut;
-        if (msgIn->args[0] != 0) {
-          // If number of hops is one
-          reqOut->cmd = PingCmd;
-          reqOut->args[0] = 0;
-          tinselSend(msgIn->args[1], reqOut);
-        }
-        else {
-          // If number of hops is zero
-          msgOut[0] = tinselId();
-          tinselSend(hostId, msgOut);
-        }
       }
     }
   }
