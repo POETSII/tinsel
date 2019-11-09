@@ -369,16 +369,17 @@ A *cache flush* function is provided that evicts all cache lines
 owned by the calling thread.
 
 ```c
-// Full cache flush
-// (Issues flush request for every line, and waits until all requests are done)
+// Full cache flush (non-blocking)
 inline void tinselCacheFlush();
 
-// Flush given cache line
-// (Issues flush request, but doesn't wait until request is done)
+// Flush given cache line (non-blocking)
 inline void tinselFlushLine(uint32_t lineNum, uint32_t way)
 ```
 
-These functions are implemented using the following CSR.
+These functions do not block until the flushed lines have reached
+memory (that can be acheived by issuing a subsequent load instruction
+and waiting for the response).  The flush functions are implemented
+using the following CSR.
 
   CSR Name     | CSR    | R/W | Function
   ------------ | ------ | --- | --------
@@ -1241,8 +1242,11 @@ inline uint32_t tinselCycleCount();
 // Write 32-bit word to instruction memory
 inline void tinselWriteInstr(uint32_t addr, uint32_t word);
 
-// Cache flush
+// Full cache flush (non-blocking)
 inline void tinselCacheFlush();
+
+// Cache line flush (non-blocking)
+inline void tinselFlushLine(uint32_t lineNum, uint32_t way)
 
 // Get pointer to nth message-aligned slot in mailbox scratchpad
 inline volatile void* tinselSlot(uint32_t n);
