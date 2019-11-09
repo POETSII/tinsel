@@ -157,7 +157,7 @@ INLINE void tinselMulticast(
   uint32_t destMaskLow,   // Destination bit mask (low bits)
   volatile void* addr)    // Message pointer
 {
-  asm volatile("csrrw zero, " CSR_SEND_PTR ", %0" : : "r"(addr));
+  asm volatile("csrrw zero, " CSR_SEND_PTR ", %0" : : "r"(addr) : "memory");
   asm volatile("csrrw zero, " CSR_SEND_DEST ", %0" : : "r"(mboxDest));
   // Opcode: 0000000 rs2 rs1 000 rd 0001000, with rd=0, rs1=x10, rs2=x11
   asm volatile(
