@@ -334,6 +334,11 @@ module mkMailbox (Mailbox);
   BlockRamTrueMixed#(MailboxMsgAddr, RefCount, MailboxMsgAddr, RefCount)
     refCount <- mkBlockRamTrueMixedOpts(refCountOpts);
 
+  // Signals for triggering a ref count update
+  Reg#(Bool) setRefCount <- mkDReg(False);
+  Reg#(RefCount) refCountReg <- mkConfigRegU;
+  Reg#(Bit#(`LogMsgsPerMailbox)) refCountSlot <- mkConfigRegU;
+
   // Set of currently-unused message slots
   // (The first ThreadsPerMailbox slots are reserved for sending)
   QueueOpts freeSlotsOpts;
@@ -383,12 +388,16 @@ module mkMailbox (Mailbox);
           if (any) msgPtrQueueFlat[i].enq(entry);
         end
         // Set ref count for new slot
-        let count = pack(countOnes(destThreads));
-        myAssert(destThreads != 0, "Mailbox: no destinations specified!");
-        refCount.putA(True, slot, zeroExtend(count));
+        refCountReg <= pack(countOnes(destThreads));
+        refCountSlot <= slot;
+        setRefCount <= True;
       end else
         recvFlitCount <= recvFlitCount + 1;
     end
+  endrule
+
+  rule updateRefCount (setRefCount);
+    refCount.putA(True, refCountSlot, zeroExtend(refCountReg));
   endrule
 
   // Serve requests to the receive unit
