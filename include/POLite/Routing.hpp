@@ -10,6 +10,9 @@
 #include <unordered_set>
 #include <functional>
 #include <algorithm>
+#include <unordered_map>
+#include <random>
+#include <typeinfo>
 
 #include "config.h"
 
@@ -56,7 +59,20 @@ struct thread_id_t
 
 struct route_id_t
 {
-    unsigned value;
+    uint64_t value;
+
+    bool operator==(const route_id_t &o) const
+    { return value==o.value; }
+};
+
+namespace std
+{
+    template<>
+    struct hash<route_id_t>
+    {
+        size_t operator()(const route_id_t &x) const
+        { return x.value; }
+    };
 };
 
 template<class Tag>
@@ -87,13 +103,19 @@ struct SystemParameters
 
     unsigned LogThreadsPerMailbox;
 
+    unsigned get_total_threads() const
+    {
+        return FPGAMeshXLen*FPGAMeshYLen*MailboxMeshXLen*MailboxMeshYLen*(1u<<LogThreadsPerMailbox);
+    }
+
     FPGACoord get_fpga_coord(thread_id_t thread) const
     {
         auto tmp=thread.value >> (MailboxMeshXBits+MailboxMeshYBits+LogThreadsPerMailbox);
         auto x=tmp & ((1u<<FPGAMeshXBits)-1);
-        auto y=tmp & ((1u<<FPGAMeshYBits)-1);
+        auto y=(tmp>>FPGAMeshXBits) & ((1u<<FPGAMeshYBits)-1);
         assert(x<FPGAMeshXLen);
         assert(y<FPGAMeshYLen);
+        // fprintf(stderr, "%0xu -> %u,%u\n", thread.value, x,y);
         return FPGACoord{x,y};
     }
 
@@ -108,7 +130,40 @@ struct SystemParameters
         assert(my<MailboxMeshYLen);
         assert(fx<FPGAMeshXLen);
         assert(fy<FPGAMeshYLen);
-        return MailboxCoord{fx*MailboxMeshXLen+mx,fy*MailboxMeshYLen+my};
+        MailboxCoord res {fx*MailboxMeshXLen+mx,fy*MailboxMeshYLen+my}; 
+        //fprintf(stderr, "%0xu -> %u,%u  %u,%u,  %u,%u\n", thread.value, fx,fy, mx,my, res.x, res.y);
+        return res;    
+    }
+
+    thread_id_t make_thread_id(MailboxCoord pos, unsigned coreOffset) const
+    {
+        assert(pos.x < FPGAMeshXLen*MailboxMeshXLen);
+        assert(pos.y < FPGAMeshYLen*MailboxMeshYLen);
+        assert(coreOffset < (1u<<LogThreadsPerMailbox));
+        unsigned fx = pos.x / MailboxMeshXLen;
+        unsigned mx = pos.x % MailboxMeshXLen;
+        unsigned fy = pos.y / MailboxMeshYLen;
+        unsigned my = pos.y % MailboxMeshYLen;
+        thread_id_t res{
+            coreOffset + 
+            (mx<<LogThreadsPerMailbox) +
+            (my<<(MailboxMeshXBits+LogThreadsPerMailbox)) +
+            (fx<<(MailboxMeshYBits+MailboxMeshXBits+LogThreadsPerMailbox)) +
+            (fy<<(FPGAMeshXBits+MailboxMeshYBits+MailboxMeshXBits+LogThreadsPerMailbox))
+        };
+        //fprintf(stderr, " %u,%u+%u -> %x\n", pos.x, pos.y, coreOffset, res.value);
+        return res;
+    }
+
+    thread_id_t pick_random_thread(std::mt19937 &rng) const
+    {
+        return make_thread_id(
+            MailboxCoord{
+                rng()%(FPGAMeshXLen*MailboxMeshXLen),
+                rng()%(FPGAMeshYLen*MailboxMeshYLen)
+            },
+            rng()%(1u<<TinselLogCoresPerMailbox)
+        );
     }
 };
 
@@ -154,10 +209,10 @@ Direction direction_to(Coord<Tag> from, Coord<Tag> to)
     if(to.y > from.y){
         return North;
     }
-    if(to.x < from.x){
+    if(to.x > from.x){
         return East;
     }
-    if(to.x > from.x){
+    if(to.x < from.x){
         return West;
     }
     return Here;
@@ -180,15 +235,6 @@ int direction_dy(Direction d)
         default: return 0;
     }
 }
-
-struct Route
-{
-    thread_id_t source_thread;
-    thread_id_t dest_thread;
-    Node *source_node;
-    Node *sink_node;
-    std::vector<LinkOut*> path;
-};
 
 struct Link
 {
@@ -248,7 +294,7 @@ public:
 
     virtual const LinkOut *get_link_to(thread_id_t /*dest*/) const
     {
-        throw std::runtime_error("This type of node does not directly take part in routing.");
+        throw std::runtime_error(std::string("This node (")+full_name+") does not directly take part in routing.");
     }
 };
 
@@ -356,6 +402,28 @@ struct NullSinkNode
     LinkIn in; 
 };
 
+struct ClusterNode
+    : Node
+{
+    ClusterNode(Node *parent)
+        : Node(parent, "cluster")
+        , in(this, "in")
+        , out(this, "out")
+    {}
+
+    LinkIn in;
+    LinkOut out;
+
+    virtual const LinkOut *get_link_to(thread_id_t dest) const
+    {
+        if(get_node_containing(dest)==this){
+            return nullptr;
+        }else{
+            return &out;
+        }
+    }
+};
+
 struct MailboxNode
     : Node
 {
@@ -366,20 +434,25 @@ struct MailboxNode
     MailboxNode(Node *parent,const std::string name,  MailboxCoord _position)
         : Node(parent,name)
         , position(_position)
-        , inputs{LinkIn{this,"in[North]"},LinkIn{this,"in[South]"},LinkIn{this,"in[East]"},LinkIn{this,"in[West]"}}
-        , outputs{LinkOut{this,"out[North]"},LinkOut{this,"out[South]"},LinkOut{this,"out[East]"},LinkOut{this,"out[West]"}}
+        , inputs{LinkIn{this,"in[N]"},LinkIn{this,"in[S]"},LinkIn{this,"in[E]"},LinkIn{this,"in[W]"},LinkIn{this,"in[C]"}}
+        , outputs{LinkOut{this,"out[N]"},LinkOut{this,"out[S]"},LinkOut{this,"out[E]"},LinkOut{this,"out[W]"},LinkOut{this,"out[C]"}}
+        , cluster{std::make_unique<ClusterNode>(this)}
     {
+        outputs[Here].connect(&cluster->in);
+        cluster->out.connect(&inputs[Here]);
     }
 
     const MailboxCoord position;
-    std::array<LinkIn,4> inputs;
-    std::array<LinkOut,4> outputs;
+    std::array<LinkIn,5> inputs;
+    std::array<LinkOut,5> outputs;
+
+    std::unique_ptr<ClusterNode> cluster;
 
     const Node *get_node_containing(thread_id_t dest) const override
     {
         auto p=get_mailbox_coord(dest);
         if(p==position){
-            return this;
+            return cluster.get();
         }else{
             return parent->get_node_containing(dest);
         }
@@ -388,10 +461,7 @@ struct MailboxNode
     const LinkOut *get_link_to(thread_id_t dest) const override
     {
         auto dir=direction_to(position, get_mailbox_coord(dest));
-        if(dir==Here){
-            return nullptr;
-        }
-        return &outputs[dir];
+        return &outputs.at(dir);
     }
 };
 
@@ -407,7 +477,7 @@ struct FPGANode
         , meshLengthX(parent->get_parameters()->MailboxMeshXLen)
         , meshLengthY(parent->get_parameters()->MailboxMeshYLen)
         , position(_position)
-        , mailboxOrigin{ _position.x*meshLengthX, _position.x*meshLengthY }
+        , mailboxOrigin{ _position.x*meshLengthX, _position.y*meshLengthY }
         , expanders{{ // Expanders in North, South, East, West order
           { this, "Expander[North]", meshLengthX }, { this, "Expander[South]", meshLengthX },
           { this, "Expander[East]", meshLengthY },  { this, "Expander[West]", meshLengthY }   
@@ -473,7 +543,7 @@ struct FPGANode
         auto pf=get_fpga_coord(dest);
         if(pf==position){
             auto pm=get_mailbox_coord(dest);
-            return get_mailbox(pm.x-mailboxOrigin.x, pm.y-mailboxOrigin.y);
+            return get_mailbox(pm.x-mailboxOrigin.x, pm.y-mailboxOrigin.y)->get_node_containing(dest);
         }else{
             return parent->get_node_containing(dest);
         }
@@ -624,58 +694,123 @@ void print_node_heirarchy(std::ostream &dst, std::string prefix, const Node *nod
     }
 }
 
+
+struct Route
+{
+    route_id_t id;
+    thread_id_t source_thread;
+    thread_id_t dest_thread;
+    const Node *source_node;
+    const Node *sink_node;
+    std::vector<const LinkOut*> path;
+};
+
+Route create_route(const Node *system, route_id_t id, thread_id_t source, thread_id_t dest)
+{
+    Route res{
+        id,
+        source, dest,
+        system->get_node_containing(source), system->get_node_containing(dest),
+        {}
+    };
+
+    //std::cerr<<"Routing from "<<res.source_node->full_name<<" to "<<res.sink_node->full_name<<"\n";
+    const Node *curr=res.source_node;
+    while(curr != res.sink_node){
+        auto link=curr->get_link_to(dest);
+        //std::cerr<<"  "<<curr->full_name<<":"<<link->name<<" -> "<<link->sink->node->full_name<<":"<<link->sink->name<<"\n";
+
+        res.path.push_back(link);
+        curr=link->sink->node;
+    }
+
+    return res;
+}
+
+
+struct Routing
+{
+    const Node *system;
+    std::unordered_map<route_id_t,Route> routes;
+    std::unordered_map<const LinkOut*,std::unordered_set<route_id_t>> links;
+
+    uint64_t next_route_id =0 ;
+
+    Routing(const Node *_system)
+        : system(_system)
+    {}
+
+    route_id_t add_route(thread_id_t source, thread_id_t dest)
+    {
+        route_id_t id{next_route_id++};
+        auto it=routes.insert(std::make_pair(id, create_route(system, id, source, dest)));
+        const Route &r=it.first->second;
+        for(auto l : r.path){
+            links[l].insert(id);
+        }
+        return id;
+    }
+
+    std::unordered_map<const LinkOut*,double> calculate_link_load() const
+    {
+        std::unordered_map<const LinkOut*,double> res;
+        res.reserve(links.size());
+        for(const auto &kv : links){
+            res.insert(std::make_pair(kv.first, kv.second.size()));
+        }
+        return res;
+    }
+};
+
+
 void print_node_heirarchy_as_dot(std::ostream &dst, const Node *root)
 {
-    std::unordered_set<const Node *> visited;
+    auto q=[](const std::string &n)
+    { return "\""+n+"\""; };
 
     auto qn=[](const Node *n)
-    {
-        return "\""+n->full_name+"\"";
-    };
+    { return "\""+n->full_name+"\""; };
 
     auto ql=[](const Link *l)
+    { return "\""+l->node->full_name+":"+l->name+"\""; };
+
+    std::function<void(const Node *)> visit_create = [&](const Node *node)
     {
-        return "\""+l->node->full_name+":"+l->name+"\"";
+        dst<<"  subgraph \"cluster_"<<node->full_name<<"\"{\n";
+        for(auto n : node->subNodes){
+            visit_create(n);
+        }
+
+        dst<<"  "<<qn(node)<<" [ shape = rectangle ]; \n";
+
+        for(auto li : node->linksIn){
+            dst<<"  "<<ql(li)<<" [ shape = doublecircle , label="<<q(li->name)<<" ];\n";
+            dst<<"  "<<ql(li)<<" -> "<<qn(node)<<";\n";
+        }
+
+        for(auto lo : node->linksOut){
+            dst<<"  "<<ql(lo)<<" [ shape = circle , label="<<q(lo->name)<<" ];\n";
+            dst<<"  "<<qn(node)<<" -> "<<ql(lo)<<";\n";
+        }
+
+        dst<<"  };\n";
     };
 
-    std::function<void(const Node *)> visit = [&](const Node *node)
+    std::function<void(const Node *)> visit_link = [&](const Node *node)
     {
-        if(visited.find(node)!=visited.end()){    
-            return;
+        for(auto n : node->subNodes){
+            visit_link(n);
         }
-
-        visited.insert(node);
-
-        if(node->subNodes.size() >0 && (node->linksIn.size()>0 || node->linksOut.size()>0)){
-            throw std::runtime_error("This visualiser can't handle containers with their own links.");
+        
+        for(auto lo : node->linksOut){
+            dst<<"  "<<ql(lo)<<" -> "<<ql(lo->sink)<<";\n";
         }
-
-        if(node->subNodes.size()>0){
-            dst<<"  subgraph \"cluster_"<<node->full_name<<"\"{\n";
-            for(auto n : node->subNodes){
-                visit(n);
-            }
-            dst<<"}\n";
-        }else{
-            dst<<"  "<<qn(node)<<"; \n";
-
-            for(auto li : node->linksIn){
-                dst<<"  "<<ql(li)<<";\n";
-                dst<<"  "<<ql(li)<<" -> "<<qn(node)<<";\n";
-            }
-
-            for(auto lo : node->linksOut){
-                dst<<"  "<<ql(lo)<<";\n";
-                dst<<"  "<<qn(node)<<" -> "<<ql(lo)<<";\n";
-                dst<<"  "<<ql(lo)<<" -> "<<ql(lo->sink)<<";\n";
-            }
-        }
-
     };
 
     dst<<"digraph G{\n";
     dst<<"  overlap = false;\n";
-    visit(root);
+    visit_create(root);
+    visit_link(root);
     dst<<"}";
 }
 
