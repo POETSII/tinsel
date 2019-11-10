@@ -643,7 +643,7 @@ module connectDCachesToOffChipRAM#(
   function getRespIn(cache) = cache.respIn;
   let ramResps <- mkResponseDistributor(
                     getRespKey,
-                    mkUGQueue,
+                    mkUGShiftQueue2(QueueOptFmax),
                     map(getRespIn, caches));
   connectDirect(ram.respOut, ramResps);
 
