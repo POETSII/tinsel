@@ -1137,6 +1137,7 @@ the DE5-Net*.
   `MeshXLenWithinBox`      |       3 | Boards in X dimension within box
   `MeshYLenWithinBox`      |       2 | Boards in Y dimension within box
   `EnablePerfCount`        |    True | Enable performance counters
+  `ClockFreq`              |     240 | Clock frequency in MHz
 
 Further parameters can be found in [config.py](config.py).
 
