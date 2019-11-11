@@ -103,6 +103,9 @@ struct SystemParameters
 
     unsigned LogThreadsPerMailbox;
 
+    unsigned FPGALinkCost;
+    unsigned MailboxLinkCost;
+
     unsigned get_total_threads() const
     {
         return FPGAMeshXLen*FPGAMeshYLen*MailboxMeshXLen*MailboxMeshYLen*(1u<<LogThreadsPerMailbox);
@@ -174,11 +177,17 @@ void initSystemParameters(SystemParameters *p, unsigned FPGAMeshXLen, unsigned F
     unsigned LogThreadsPerCore = TinselLogThreadsPerCore;
     p->LogThreadsPerMailbox = LogCoresPerMailbox + LogThreadsPerCore;
 
-    // hard-coded
     p->FPGAMeshXBits=TinselMeshXBits;
     p->FPGAMeshYBits=TinselMeshYBits;
     p->MailboxMeshXBits=TinselMailboxMeshXBits;
-    p->MailboxMeshYBits=TinselMailboxMeshYBits;
+    p->MailboxMeshYBits=TinselMailboxMeshYBits;*/
+
+    /*
+    p->FPGAMeshXBits=3;
+    p->FPGAMeshYBits=3;
+    p->MailboxMeshXBits=3;
+    p->MailboxMeshYBits=3;
+    */
 
     if((1u<<FPGAMeshXLen) < FPGAMeshXLen ){
         throw std::runtime_error("Not enough FPGA Mesh X bits (from hard-coded config.h).");
@@ -197,6 +206,9 @@ void initSystemParameters(SystemParameters *p, unsigned FPGAMeshXLen, unsigned F
     p->FPGAMeshYLen=FPGAMeshYLen;
     p->MailboxMeshXLen=MailboxMeshXLen;
     p->MailboxMeshYLen=MailboxMeshYLen;
+
+    p->FPGALinkCost=10;
+    p->MailboxLinkCost=1;
 }
 
 
@@ -296,6 +308,13 @@ public:
     {
         throw std::runtime_error(std::string("This node (")+full_name+") does not directly take part in routing.");
     }
+
+    //! If the node is able, suggest where it should be positioned in a 2d graph
+    virtual bool try_suggest_layout_position(double *x, double *y) const
+    {
+        return false;
+    }
+
 };
 
 struct LinkIn
@@ -313,12 +332,14 @@ struct LinkIn
 struct LinkOut
     : Link
 {
-    LinkOut(Node *_node, const std::string &_name)
+    LinkOut(Node *_node, const std::string &_name, unsigned _cost = 1)
         : Link(_node, _name)
+        , cost(_cost)
     {
         _node->linksOut.push_back(this);
     }
 
+    const unsigned cost;
     LinkIn *sink = 0;
 
     void connect(LinkIn *_partner)
@@ -462,6 +483,13 @@ struct MailboxNode
     {
         auto dir=direction_to(position, get_mailbox_coord(dest));
         return &outputs.at(dir);
+    }
+
+    bool try_suggest_layout_position(double *x, double *y) const override
+    {
+        *x=position.x*1000;
+        *y=position.y*1000;
+        return true;
     }
 };
 
@@ -698,20 +726,24 @@ void print_node_heirarchy(std::ostream &dst, std::string prefix, const Node *nod
 struct Route
 {
     route_id_t id;
+    std::string foreign_id;
     thread_id_t source_thread;
     thread_id_t dest_thread;
     const Node *source_node;
     const Node *sink_node;
     std::vector<const LinkOut*> path;
+    uint64_t cost;
 };
 
-Route create_route(const Node *system, route_id_t id, thread_id_t source, thread_id_t dest)
+Route create_route(const Node *system, route_id_t id, thread_id_t source, thread_id_t dest, const std::string &foreign_id="")
 {
     Route res{
         id,
+        foreign_id,
         source, dest,
         system->get_node_containing(source), system->get_node_containing(dest),
-        {}
+        {},
+        0
     };
 
     //std::cerr<<"Routing from "<<res.source_node->full_name<<" to "<<res.sink_node->full_name<<"\n";
@@ -720,6 +752,7 @@ Route create_route(const Node *system, route_id_t id, thread_id_t source, thread
         auto link=curr->get_link_to(dest);
         //std::cerr<<"  "<<curr->full_name<<":"<<link->name<<" -> "<<link->sink->node->full_name<<":"<<link->sink->name<<"\n";
 
+        res.cost += link->cost;
         res.path.push_back(link);
         curr=link->sink->node;
     }
@@ -732,7 +765,9 @@ struct Routing
 {
     const Node *system;
     std::unordered_map<route_id_t,Route> routes;
+    std::unordered_map<std::string,route_id_t> routes_by_foreign_id;
     std::unordered_map<const LinkOut*,std::unordered_set<route_id_t>> links;
+    uint64_t cost = 0;
 
     uint64_t next_route_id =0 ;
 
@@ -740,14 +775,25 @@ struct Routing
         : system(_system)
     {}
 
-    route_id_t add_route(thread_id_t source, thread_id_t dest)
+    route_id_t add_route(thread_id_t source, thread_id_t dest, const std::string foreign_id="")
     {
         route_id_t id{next_route_id++};
+        
         auto it=routes.insert(std::make_pair(id, create_route(system, id, source, dest)));
         const Route &r=it.first->second;
         for(auto l : r.path){
             links[l].insert(id);
         }
+        if(!foreign_id.empty()){
+            auto fit=routes_by_foreign_id.insert(std::make_pair(foreign_id,id));
+            if(!fit.second){
+                routes.erase(it.first);
+                throw std::runtime_error("Duplicate foreign ids for route.");
+            }
+        }
+
+        cost += r.cost;
+
         return id;
     }
 
@@ -763,7 +809,9 @@ struct Routing
 };
 
 
-void print_node_heirarchy_as_dot(std::ostream &dst, const Node *root)
+void print_node_heirarchy_as_dot(std::ostream &dst, const Node *root,
+    const std::unordered_map<const LinkOut*,std::vector<std::string>> &linkEdgeProperties = {}
+)
 {
     auto q=[](const std::string &n)
     { return "\""+n+"\""; };
@@ -781,7 +829,12 @@ void print_node_heirarchy_as_dot(std::ostream &dst, const Node *root)
             visit_create(n);
         }
 
-        dst<<"  "<<qn(node)<<" [ shape = rectangle ]; \n";
+        dst<<"  "<<qn(node)<<" [ shape = rectangle, label="<<q(node->name);
+        double x, y;
+        /*if(node->try_suggest_layout_position(&x, &y)){
+            dst<<", pos=\""<<x<<","<<y<<"!\"";
+        }*/
+        dst<<" ]; \n";
 
         for(auto li : node->linksIn){
             dst<<"  "<<ql(li)<<" [ shape = doublecircle , label="<<q(li->name)<<" ];\n";
@@ -803,7 +856,20 @@ void print_node_heirarchy_as_dot(std::ostream &dst, const Node *root)
         }
         
         for(auto lo : node->linksOut){
-            dst<<"  "<<ql(lo)<<" -> "<<ql(lo->sink)<<";\n";
+            dst<<"  "<<ql(lo)<<" -> "<<ql(lo->sink);
+            auto it=linkEdgeProperties.find(lo);
+            if(it!=linkEdgeProperties.end()){
+                dst<<"[";
+                auto &v=it->second;
+                for(unsigned i=0; i<v.size(); i++){
+                    if(i!=0){
+                        dst<<",";
+                    }
+                    dst<<v[i];
+                }
+                dst<<"]";
+            }
+            dst<<";\n";
         }
     };
 
@@ -813,5 +879,67 @@ void print_node_heirarchy_as_dot(std::ostream &dst, const Node *root)
     visit_link(root);
     dst<<"}";
 }
+
+void print_node_heirarchy_as_dot_no_links(std::ostream &dst, const Node *root,
+    const std::unordered_map<const LinkOut*,std::vector<std::string>> &linkEdgeProperties = {}
+)
+{
+    auto q=[](const std::string &n)
+    { return "\""+n+"\""; };
+
+    auto qn=[](const Node *n)
+    { return "\""+n->full_name+"\""; };
+
+    auto ql=[](const Link *l)
+    { return "\""+l->node->full_name+":"+l->name+"\""; };
+
+    std::function<void(const Node *)> visit_create = [&](const Node *node)
+    {
+        bool doSubgraph=dynamic_cast<const SystemNode*>(node)==0;
+        if(doSubgraph){
+            dst<<"  subgraph \"cluster_"<<node->full_name<<"\"{\n";
+        }
+        for(auto n : node->subNodes){
+            visit_create(n);
+        }
+
+        dst<<"  "<<qn(node)<<" [ shape = rectangle, label="<<q(node->name)<<"]";
+
+        if(doSubgraph){
+            dst<<"  };\n";
+        }
+    };
+
+    std::function<void(const Node *)> visit_link = [&](const Node *node)
+    {
+        for(auto n : node->subNodes){
+            visit_link(n);
+        }
+        
+        for(auto lo : node->linksOut){
+            dst<<"  "<<qn(lo->node)<<" -> "<<qn(lo->sink->node);
+            auto it=linkEdgeProperties.find(lo);
+            if(it!=linkEdgeProperties.end()){
+                dst<<"[";
+                auto &v=it->second;
+                for(unsigned i=0; i<v.size(); i++){
+                    if(i!=0){
+                        dst<<",";
+                    }
+                    dst<<v[i];
+                }
+                dst<<"]";
+            }
+            dst<<";\n";
+        }
+    };
+
+    dst<<"digraph G{\n";
+    dst<<"  overlap = false;\n";
+    visit_create(root);
+    visit_link(root);
+    dst<<"}";
+}
+
 
 #endif

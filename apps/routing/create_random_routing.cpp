@@ -3,7 +3,7 @@
 int main()
 {
     SystemParameters params;
-    initSystemParameters(&params, 4, 4, 4, 4);
+    initSystemParameters(&params, 6,6, 3, 3);
 
     auto system=std::make_unique<SystemNode>(&params);
     validate_node_heirarchy(system.get());
@@ -17,14 +17,21 @@ int main()
 
     auto loads = routes.calculate_link_load();
 
-    std::vector<std::pair<double,const LinkOut *>> sorted;
+    double max_load=0;
     for(const auto &kv : loads){
-        sorted.emplace_back(kv.second, kv.first);
+        max_load=std::max(max_load, kv.second);
     }
 
-    std::sort(sorted.begin(), sorted.end());
 
-    for(const auto &kv : sorted){
-        std::cout<<kv.second->node->full_name<<":"<<kv.second->name<<" : "<<kv.first<<"\n";
+    std::unordered_map<const LinkOut *,std::vector<std::string>> properties;
+    char buff[64]={0};
+    for(const auto &kv : loads){
+        int p=floor(kv.second / max_load * 255);
+        snprintf(buff, sizeof(buff)-1,"color=\"#%02x%02x%02x\"",p,255-p,0);
+        properties[kv.first].push_back(buff);
+        properties[kv.first].push_back("penwidth=5");
+        
     }
+
+    print_node_heirarchy_as_dot_no_links(std::cout, system.get(), properties);
 }
