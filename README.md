@@ -440,9 +440,9 @@ is defined in [Appendix E](#e-tinsel-address-structure).
   `SendPtr`  | 0x807  | W   | Set message pointer for send
   `SendDest` | 0x808  | W   | Set destination mailbox for send
 
-  Instruction | Opcode                                 | Function
-  ----------- | ------------------------------------   | --------
-  `Send`      | `0000000` rs2 rs1 `000 00000 0001000`  | Send message
+  Instruction | Opcode                                  | Function
+  ----------- | --------------------------------------- | --------
+  `Send`      | `0000000 <rs2> <rs1> 000 00000 0001000` | Send message
 
 The [Tinsel API](#f-tinsel-api) provides wrapper functions for these
 custom CSRs and instructions.
