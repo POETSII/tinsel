@@ -504,6 +504,15 @@ inline volatile void* tinselRecv();
 void tinselFree(void* addr);
 ```
 
+To support multicasting, a mailbox contains, for each thread, a
+receive queue of pointers to messages for that thread.  A message
+pointer can therefore be inserted into multiple queues simultanesouly.
+These queues are expensive in hardware, but can be shared between
+threads using the parameter `LogThreadsPerMulticastQueue`.  Queue
+sharing means that a queue element cannot be consumed until all
+destination threads sharing the queue have received it, so the saving
+in area is offset by reduced parallelism.
+
 Sometimes, a thread may wish to wait until it can send or receive.  To
 avoid busy waiting on the `tinselCanSend()` and `tinselCanRecv()`
 functions, a thread can be suspended by writing to the `WaitUntil`
@@ -611,12 +620,13 @@ The full board mesh is comprised of multiple smaller meshes (of size
 A *globally unique thread id*, as returned by `tinselId()`, has the
 following structure from MSB to LSB.
 
-  Field                 | Width  
-  --------------------- | ------------
-  Board Y coord         | `MeshYBits`
-  Board X coord         | `MeshXBits`
-  Board-local core id   | `LogCoresPerBoard`
-  Core-local thread id  | `LogThreadsPerCore`
+  Field                   | Width
+  ----------------------- | ------------
+  Board Y coord           | `MeshYBits`
+  Board X coord           | `MeshXBits`
+  Mailbox Y coord         | `MailboxMeshYBits`
+  Mailbox X coord         | `MailboxMeshXBits`
+  Mailbox-local thread id | `LogThreadsPerMailbox`
 
 Each board-to-board communication port is implemented on top of a
 *10Gbps ethernet MAC*, which automatically detects and drops packets
@@ -1133,6 +1143,7 @@ the DE5-Net*.
   `MeshYLenWithinBox`      |       2 | Boards in Y dimension within box
   `EnablePerfCount`        |    True | Enable performance counters
   `ClockFreq`              |     240 | Clock frequency in MHz
+  `LogThreadsPerMulticastQueue` | 1  | Threads sharing a multicast queue
 
 Further parameters can be found in [config.py](config.py).
 
