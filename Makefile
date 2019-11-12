@@ -26,7 +26,6 @@ clean:
 	make -C apps/inter clean
 	make -C apps/benchmarks clean
 	make -C apps/linkrate clean
-	make -C apps/linktest clean
 	make -C apps/multiprog clean
 	make -C apps/sync clean
 	make -C apps/web clean
