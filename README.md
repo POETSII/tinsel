@@ -511,7 +511,9 @@ These queues are expensive in hardware, but can be shared between
 threads using the parameter `LogThreadsPerMulticastQueue`.  Queue
 sharing means that a queue element cannot be consumed until all
 destination threads sharing the queue have received it, so the saving
-in area is offset by reduced parallelism.
+in area is offset by reduced parallelism.  For futher details, see the
+original feature proposal: [PIP
+22](doc/PIP-0022-mailbox-local-multicast.md).
 
 Sometimes, a thread may wish to wait until it can send or receive.  To
 avoid busy waiting on the `tinselCanSend()` and `tinselCanRecv()`
