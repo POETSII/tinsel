@@ -1218,9 +1218,9 @@ Optional performance-counter CSRs (when `EnablePerfCount` is `True`):
 
 Tinsel also supports the following custom instructions.
 
-  Instruction | Opcode                                 | Function
-  ----------- | ------------------------------------   | --------
-  `Send`      | `0000000` rs2 rs1 `000 00000 0001000`  | Send message
+  Instruction | Opcode                                  | Function
+  ----------- | --------------------------------------- | --------
+  `Send`      | `0000000 <rs2> <rs1> 000 00000 0001000` | Send message
 
 ## E. Tinsel Address Structure
 
