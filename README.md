@@ -1,14 +1,4 @@
-Documentation updates needed for mailbox-level multicast:
-
-  * CSR changes
-  * API changes
-  * new custom instruction
-  * memory map changes
-  * message considered inflight until received and freed
-  * `POLITE_MAX_FANOUT -> POLITE_NUM_PINS`
-  * `mapEdgesToDRAM -> mapInEdgesToDRAM, mapOutEdgesToDRAM`
-
-# Tinsel 0.6.3
+# Tinsel 0.7
 
 Tinsel is a [RISC-V](https://riscv.org/)-based manythread
 message-passing architecture designed for FPGA clusters.  It is being
@@ -96,6 +86,11 @@ demands, but fairly modest compute requrements.  The main features are:
     application development in pure message-passing systems.
     It automatically detects convergence in asynchronous applications,
     and can be used to advance time in synchronous ones. 
+
+  * **Localised hardware multicast**.  Threads can send a message to
+    multiple nearby destinations simultaneously, greatly reducing the
+    number of inter-thread messages in applications exhibiting good
+    locality of communication.
 
   * **Host communication**. Tinsel threads communicate with x86
     machines distributed throughout the FPGA cluster, for command and
@@ -417,27 +412,40 @@ shorter messages consume less bandwidth than longer ones.  The size of
 a flit is defined by `LogWordsPerFlit`.
 
 At the heart of a mailbox is a memory-mapped *scratchpad* that
-stores both incoming and outgoing messages.  Each thread has access to
-space for several messages in the scratchpad, defined by
-`LogMsgsPerThread`.  As well as storing messages, the scratchpad may
-also be used as a small thread-local general-purpose memory.
+stores both incoming and outgoing messages.  The capacity of the
+scratchpad is defined by `LogMsgsPerMailbox`.  Each thread connected
+to the mailbox has one message slot reserved for sending messages.
+The address of this slot is obtained using the following Tinsel API
+call.
+
+```c
+// Get pointer to thread's message slot reserved for sending.
+volatile void* tinselSendSlot();
+```
 
 Once a thread has written a message to the scratchpad, it can trigger
 a *send* operation, provided that the `CanSend` CSR returns true.  It
 does so by: (1) writing the number of flits in the message to the
 `SendLen` CSR; (2) writing the address of the message in the
-scratchpad to the `SendPtr` CSR; and (3) writing the destination
-thread id to the `Send` CSR.
+scratchpad to the `SendPtr` CSR; (3) writing the destination mailbox
+id to the `SendDest` CSR; (4) invoking the `Send` custom instruction,
+whose two operands combine to form a 64-bit mask idenfitying the
+destination threads on the target mailbox.  The format of a mailbox id
+is defined in [Appendix E](#e-tinsel-address-structure).
 
   CSR Name   | CSR    | R/W | Function
   ---------- | ------ | --- | --------
   `CanSend`  | 0x803  | R   | 1 if can send, 0 otherwise
   `SendLen`  | 0x806  | W   | Set message length for send
   `SendPtr`  | 0x807  | W   | Set message pointer for send
-  `Send`     | 0x808  | W   | Send message to supplied destination
+  `SendDest` | 0x808  | W   | Set destination mailbox for send
 
-The [Tinsel API](#f-tinsel-api) provides wrapper functions for accessing
-these CSRs.
+  Instruction | Opcode                                 | Function
+  ----------- | ------------------------------------   | --------
+  `Send`      | `0000000` rs2 rs1 `000 00000 0001000`  | Send message
+
+The [Tinsel API](#f-tinsel-api) provides wrapper functions for these
+custom CSRs and instructions.
 
 ```c
 // Determine if calling thread can send a message
@@ -447,71 +455,54 @@ inline uint32_t tinselCanSend();
 // (A message of length n is comprised of n+1 flits)
 inline void tinselSetLen(uint32_t n);
 
-// Send message at address to destination
+// Send message to multiple threads on the given mailbox.
+void tinselMulticast(
+  uint32_t mboxDest,      // Destination mailbox
+  uint32_t destMaskHigh,  // Destination bit mask (high bits)
+  uint32_t destMaskLow,   // Destination bit mask (low bits)
+  volatile void* addr);   // Message pointer
+
+// Send message at address to destination thread id
 // (Address must be aligned on message boundary)
 inline void tinselSend(uint32_t dest, volatile void* addr);
-
-// Get pointer to nth message-aligned slot in mailbox scratchpad
-inline volatile void* tinselSlot(uint32_t n);
 ```
 
-Several things to note:
+Two things to note:
 
 * After sending a message, a thread must not modify the
 contents of that message while `tinselCanSend()` returns false,
 otherwise the in-flight message could be corrupted.
 
-* The `SendLen` and `SendPtr` CSRs are persistent: if two consecutive
-send operations wish to use the same length and address then the CSRs
-need only be written once.
+* The `SendLen`, `SendPtr` and `SendDest` CSRs are persistent: if two
+consecutive send operations wish to use the same length, pointer, and
+mailbox id then the CSRs need only be written once.
 
-* The scratchpad pointer must be aligned on a max-message-size
-boundary, which we refer to as a message *slot*. The `tinselSlot`
-function yields a pointer to the nth slot in the calling thread's mailbox.
-
-To *receive* a message, a thread must first *allocate* a slot in the
-scratchpad for an incoming message to be stored.  Allocating a slot
-can be viewed as transferring ownership of that slot from the software
-to the hardware.  This is done by writing the address of the slot to
-the `Alloc` CSR.  Multiple slots can be allocated, bounded by
-`LogMsgsPerThread`, creating a receive buffer of the desired capacity.
-
-The hardware may use any one of the allocated slots to store an
-incoming message, but as soon as a slot is used it will be
-automatically *deallocated*.  Now, provided the `CanRecv` CSR returns
-true, the `Recv` CSR can be read, yielding a pointer to the slot
-containing a received message.  Receiving a message can be viewed as
-transferring ownership of a slot from the hardware to the software.
-As soon as the thread is finished with the message, it can
-*reallocate* it, restoring capacity to the receive buffer.  On
-power-up, no slots are allocated for receiving messages, i.e. all
-slots are owned by software and none by hardware.
+All the other message slots, i.e. those not reserved for sending, are
+used by the hardware for receiving messages.  To receive a message, a
+thread first checks that the `CanRecv` CSR returns true, and if so,
+reads the `Recv` CSR, yielding a pointer to the slot containing the
+received message.  As soon as the thread is finished with the message,
+it can *free* it by writing the address of the slot to the `Free` CSR,
+allowing the hardware to recycle that slot for a new future message.
 
  CSR Name   | CSR    | R/W | Function
  ---------- | ------ | --- | --------
- `Alloc`    | 0x802  | W   | Allocate slot in scratchpad for receiving a message
+ `Free`     | 0x802  | W   | Free space used by message in scratchpad
  `CanRecv`  | 0x805  | R   | 1 if can receive, 0 otherwise
  `Recv`     | 0x809  | R   | Return pointer to a received message
 
 Again, the [Tinsel API](#f-tinsel-api) hides these low-level CSRs.
 
 ```c
-// Give mailbox permission to use given slot to store an incoming message
-inline void tinselAlloc(volatile void* addr);
-
 // Determine if calling thread can receive a message
 inline uint32_t tinselCanRecv();
 
 // Receive message
 inline volatile void* tinselRecv();
-```
 
-When more than one slot contains an incoming message, `tinselRecv()`
-will select the one with the lowest address.  This means that the
-order in which messages are received by software is not neccesarily
-equal to the order in which they arrived at the mailbox.  Given the
-*partially-ordered* nature of POETS, we feel that this is a reasonable
-property.
+// Indicate that we've finished with the given message.
+void tinselFree(void* addr);
+```
 
 Sometimes, a thread may wish to wait until it can send or receive.  To
 avoid busy waiting on the `tinselCanSend()` and `tinselCanRecv()`
@@ -537,13 +528,6 @@ typedef enum {TINSEL_CAN_SEND = 1, TINSEL_CAN_RECV = 2} TinselWakeupCond;
 inline void tinselWaitUntil(TinselWakeupCond cond);
 ```
 
-One of the main goals of the mailbox is to support efficient software
-multicasting: when a message is received, it can be forwarded on to
-multiple destinations without having to serialise the message contents
-into and out of the 32-bit core.  The mailbox scratchpad has a
-flit-sized port on the network side, providing much more efficient
-access to messages than is possible from the core.
-
 Tinsel also provides a function 
 
 ```c++
@@ -563,8 +547,10 @@ feature allows efficient termination detection in asynchronous
 applications and efficient barrier synchronisation in synchronous
 applications.  The voting mechanism additionally allows termination to
 be detected in synchronous applications, e.g. all threads in the
-system are stable since the last time step.  For more details, see the
-original feature proposal: [PIP 13](doc/PIP-0013-idle-detection.md).
+system are stable since the last time step.  Note that a message is
+considered undelivered until it is *received and freed*.  For more
+background, see the original feature proposal: [PIP
+13](doc/PIP-0013-idle-detection.md).
 
 A summary of synthesis-time parameters introduced in this section:
 
@@ -573,7 +559,7 @@ A summary of synthesis-time parameters introduced in this section:
   `LogCoresPerMailbox`     |       2 | Number of cores sharing a mailbox
   `LogWordsPerFlit`        |       2 | Number of 32-bit words in a flit
   `LogMaxFlitsPerMsg`      |       2 | Max number of flits in a message
-  `LogMsgsPerThread`       |       4 | Number of slots per thread in scratchpad
+  `LogMsgsPerMailbox`      |       9 | Number of slots in the mailbox
 
 ## 6. Tinsel Network
 
@@ -1072,13 +1058,13 @@ by each thread.
 After mapping, POLite writes the graph into cluster memory and
 triggers execution.  By default, vertex states are written into the
 off-chip QDRII+ SRAMs, and edge lists are written in the DDR3 DRAMs.
-This defualt behaviour can be modified by setting the boolean flags
-`graph.mapVerticesToDRAM` and `graph.mapEdgesToDRAM` accordingly (true
-means "map to DRAM" and false means "map to SRAM").  Once the
-application is up and running, the host and the graph vertices can
-continue to communicate: any vertex can send messages to the host via
-the `HostPin` or the `finish` handler, and the host can send messages
-to any vertex.
+This default behaviour can be modified by setting the boolean flags
+`graph.mapVerticesToDRAM`, `graph.mapInEdgesToDRAM`,
+`graph.mapOutEdgesToDRAM` accordingly (true means "map to DRAM" and
+false means "map to SRAM").  Once the application is up and running,
+the host and the graph vertices can continue to communicate: any
+vertex can send messages to the host via the `HostPin` or the `finish`
+handler, and the host can send messages to any vertex.
 
 **Softswitch**. Central to POLite is an event loop running on each
 Tinsel thread, which we call **the softswitch** as it effectively
@@ -1094,11 +1080,10 @@ required, to meet the semantics of the POLite library.
 vertex-centric paradigm, but there are some limitations. One of the
 features of the Pregel framework is the ability for vertices to add
 and remove vertices and edges at runtime -- but currently, POLite only
-supports static graphs.  Multicasting is currently implemented by
-sending directly to each destination one-at-a-time.  For large
-fan-outs, a hierarchical multicast (where messages get forked at
-intermediate stages along the way to the destinations) could reduce
-communication costs significantly.
+supports static graphs.  And for large *non-localised* fan-outs, a
+hierarchical hardware or software multicast feature may be desirable
+(where messages get forked at intermediate stages along the way to the
+destinations).
 
 ## A. DE5-Net Synthesis Report
 
@@ -1140,7 +1125,7 @@ the DE5-Net*.
   `LogCoresPerMailbox`     |       2 | Number of cores sharing a mailbox
   `LogWordsPerFlit`        |       2 | Number of 32-bit words in a flit
   `LogMaxFlitsPerMsg`      |       2 | Max number of flits in a message
-  `LogMsgsPerThread`       |       4 | Number of slots per thread in scratchpad
+  `LogMsgsPerMailbox`      |       9 | Number of message slots in the mailbox
   `LogMailboxesPerBoard`   |       4 | Number of mailboxes per FPGA board
   `MeshXBits`              |       3 | Number of bits in mesh X coordinate
   `MeshYBits`              |       3 | Number of bits in mesh Y coordinate
@@ -1155,9 +1140,9 @@ Further parameters can be found in [config.py](config.py).
 
   Region                  | Description
   ----------------------- | -----------
-  `0x00000000-0x000003ff` | Reserved
-  `0x00000400-0x000007ff` | Thread-local mailbox scratchpad
-  `0x00000800-0x000fffff` | Reserved
+  `0x00000000-0x00007fff` | Reserved
+  `0x00008000-0x0000ffff` | Mailbox
+  `0x00010000-0x007fffff` | Reserved
   `0x00800000-0x00ffffff` | Cached off-chip SRAM A
   `0x01000000-0x017fffff` | Cached off-chip SRAM B
   `0x01800000-0x7fffffff` | Cached off-chip DRAM
@@ -1186,13 +1171,13 @@ separate memory regions (which they are not).
   ------------ | ------ | --- | --------
   `InstrAddr`  | 0x800  | W   | Set address for instruction write
   `Instr`      | 0x801  | W   | Write to instruction memory
-  `Alloc`      | 0x802  | W   | Alloc space for new message in scratchpad
+  `Free`       | 0x802  | W   | Free space used by message in scratchpad
   `CanSend`    | 0x803  | R   | 1 if can send, 0 otherwise
   `HartId`     | 0xf14  | R   | Globally unique hardware thread id
   `CanRecv`    | 0x805  | R   | 1 if can receive, 0 otherwise
   `SendLen`    | 0x806  | W   | Set message length for send
   `SendPtr`    | 0x807  | W   | Set message pointer for send
-  `Send`       | 0x808  | W   | Send message to supplied destination
+  `SendDest`   | 0x808  | W   | Set destination mailbox id for send
   `Recv`       | 0x809  | R   | Return pointer to message received
   `WaitUntil`  | 0x80a  | W   | Sleep until can-send or can-recv
   `FromUart`   | 0x80b  | R   | Try to read byte from StdIn
@@ -1218,18 +1203,27 @@ Optional performance-counter CSRs (when `EnablePerfCount` is `True`):
   `CPUIdleCountU`  | 0xc0c  | R   | CPU idle-cycle count (upper 8 bits)
   `CycleU`         | 0xc0d  | R   | Cycle counter (upper 8 bits)
 
+Tinsel also supports the following custom instructions.
+
+  Instruction | Opcode                                 | Function
+  ----------- | ------------------------------------   | --------
+  `Send`      | `0000000` rs2 rs1 `000 00000 0001000`  | Send message
 
 ## E. Tinsel Address Structure
 
 A globally unique thread id has the following structure from MSB to
 LSB.
 
-  Field                 | Width  
-  --------------------- | ------------
-  Board Y coord         | `MeshYBits`
-  Board X coord         | `MeshXBits`
-  Board-local core id   | `LogCoresPerBoard`
-  Core-local thread id  | `LogThreadsPerCore`
+  Field                   | Width  
+  ----------------------- | ------------
+  Board Y coord           | `MeshYBits`
+  Board X coord           | `MeshXBits`
+  Mailbox Y coord         | `MailboxMeshYBits`
+  Mailbox X coord         | `MailboxMeshXBits`
+  Mailbox-local thread id | `LogThreadsPerMailbox`
+
+A globally unique mailbox id is exactly the same, except it is missing
+the mailbox-local thread id component.
 
 ## F. Tinsel API
 
@@ -1249,28 +1243,33 @@ inline void tinselCacheFlush();
 // Cache line flush (non-blocking)
 inline void tinselFlushLine(uint32_t lineNum, uint32_t way)
 
-// Get pointer to nth message-aligned slot in mailbox scratchpad
-inline volatile void* tinselSlot(uint32_t n);
-
-// Determine if calling thread can send a message
-inline uint32_t tinselCanSend();
-
 // Set message length for send operation
 // (A message of length n is comprised of n+1 flits)
 inline void tinselSetLen(uint32_t n);
 
-// Send message at address to destination
+// Determine if calling thread can send a message
+inline uint32_t tinselCanSend();
+
+// Send message to multiple threads on the given mailbox.
+// (Address must be aligned on message boundary)
+inline void tinselMulticast(
+  uint32_t mboxDest,      // Destination mailbox
+  uint32_t destMaskHigh,  // Destination bit mask (high bits)
+  uint32_t destMaskLow,   // Destination bit mask (low bits)
+  volatile void* addr);   // Message pointer
+
+// Send message at address to destination thread id
 // (Address must be aligned on message boundary)
 inline void tinselSend(uint32_t dest, volatile void* addr);
-
-// Give mailbox permission to use given slot to store an incoming message
-inline void tinselAlloc(volatile void* addr);
 
 // Determine if calling thread can receive a message
 inline uint32_t tinselCanRecv();
 
 // Receive message
 inline volatile void* tinselRecv();
+
+// Indicate that we've finished with the given message.
+inline void tinselFree(void* addr);
 
 // Thread can be woken by a logical-OR of these events
 typedef enum {TINSEL_CAN_SEND = 1, TINSEL_CAN_RECV = 2} TinselWakeupCond;
