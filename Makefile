@@ -41,5 +41,6 @@ clean:
 	make -C apps/POLite/sssp-async clean
 	make -C apps/POLite/ping-test clean
 	make -C apps/POLite/clocktree-async clean
+	make -C apps/POLite/pressure-sync clean
 	make -C bin clean
 	make -C tests clean
