@@ -41,7 +41,8 @@ void measureLink(
     hostLink->recv(buffer);
     if (i == 0) {
       double duration = (double) buffer[0];
-      double rate = (24.0*NumMsgs*TinselThreadsPerBoard) / (duration/MHZ);
+      double rate = (24.0*NumMsgs*TinselThreadsPerBoard) /
+                      (duration/TinselClockFreq);
       printf("(%d, %d) (%d, %d): %.1lf MB/s\n",
         srcX, srcY, dstX, dstY, rate);
     }

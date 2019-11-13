@@ -1104,7 +1104,7 @@ The default Tinsel configuration on a single DE5-Net board contains:
   * 64 cores
   * 16 threads per core
   * (1024 threads in total)
-  * 16 mailboxes
+  * 16 multicast-capable mailboxes
   * 16 caches
   * 16 floating-point units
   * 2D network-on-chip
@@ -1114,8 +1114,8 @@ The default Tinsel configuration on a single DE5-Net board contains:
   * one termination/idle detector
   * a JTAG UART
 
-The clock frequency is 240MHz and the resource utilisation is *67% of
-the DE5-Net*.
+The clock frequency is 220MHz and the resource utilisation is 77% of
+the DE5-Net.
 
 ## B. Tinsel Parameters
 
@@ -1144,7 +1144,7 @@ the DE5-Net*.
   `MeshXLenWithinBox`      |       3 | Boards in X dimension within box
   `MeshYLenWithinBox`      |       2 | Boards in Y dimension within box
   `EnablePerfCount`        |    True | Enable performance counters
-  `ClockFreq`              |     240 | Clock frequency in MHz
+  `ClockFreq`              |     220 | Clock frequency in MHz
   `LogThreadsPerMulticastQueue` | 1  | Threads sharing a multicast queue
 
 Further parameters can be found in [config.py](config.py).
