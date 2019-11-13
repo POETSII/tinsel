@@ -358,6 +358,12 @@ template <typename DeviceType,
 
   // Implement mapping to tinsel threads
   void map() {
+  #ifdef SCOTCH
+    fprintf(stderr, "Mapping with SCOTCH\n");
+  #else
+    fprintf(stderr, "Mapping with METIS\n");
+  #endif
+
     // Release all mapping and heap structures
     releaseAll();
 
@@ -372,14 +378,14 @@ template <typename DeviceType,
     boards.place(placerEffort);
 
     // HACK: has side-effects for printing
-    boards.computeInterLinkCounts();
-    
+    // boards.computeInterLinkCounts();
+
     // For each board
     for (uint32_t boardY = 0; boardY < numBoardsY; boardY++) {
       for (uint32_t boardX = 0; boardX < numBoardsX; boardX++) {
         // Partition into subgraphs, one per mailbox
         PartitionId b = boards.mapping[boardY][boardX];
-        Placer boxes(&boards.subgraphs[b], 
+        Placer boxes(&boards.subgraphs[b],
                  TinselMailboxMeshXLen, TinselMailboxMeshYLen);
         boxes.place(placerEffort);
 
@@ -411,7 +417,7 @@ template <typename DeviceType,
                 malloc(sizeof(PDeviceId) * numDevs);
               for (uint32_t devNum = 0; devNum < numDevs; devNum++)
                 fromDeviceAddr[threadId][devNum] = g->labels->elems[devNum];
-  
+
               // Populate toDeviceAddr mapping
               assert(numDevs < maxLocalDeviceId());
               for (uint32_t devNum = 0; devNum < numDevs; devNum++) {
@@ -441,7 +447,7 @@ template <typename DeviceType,
     constructor(x, y);
   }
   PGraph(uint32_t numBoxesX, uint32_t numBoxesY) {
-    int x = numBoxesX * TinselMeshXLenWithinBox; 
+    int x = numBoxesX * TinselMeshXLenWithinBox;
     int y = numBoxesY * TinselMeshYLenWithinBox;
     constructor(x, y);
   }
@@ -515,7 +521,7 @@ template <typename DeviceType,
   }
 
   // Write graph to tinsel machine
-  void write(HostLink* hostLink) { 
+  void write(HostLink* hostLink) {
     bool useSendBufferOld = hostLink->useSendBuffer;
     hostLink->useSendBuffer = true;
     writeRAM(hostLink, vertexMem, vertexMemSize, vertexMemBase);

@@ -63,22 +63,29 @@ struct Placer {
 
   void chooseMethod()
   {
-    auto e=getenv("DT10_PLACER_METHOD");
-    if(e){
-      if(!strcmp(e, "metis")){
-        method=Metis;
-      }else if(!strcmp(e, "scotch")){
-        method=Scotch;
-      }else if(!strcmp(e, "default") || *e==0){
-        method=Default;
-      }else{
-        fprintf(stderr, "Don't understand placer method : %s\n", e);
-        exit(1);
-      }
-    }
-    if(method==Default){
+    // auto e=getenv("DT10_PLACER_METHOD");
+    // if(e){
+    //   if(!strcmp(e, "metis")){
+    //     method=Metis;
+    //   }else if(!strcmp(e, "scotch")){
+    //     method=Scotch;
+    //   }else if(!strcmp(e, "default") || *e==0){
+    //     method=Default;
+    //   }else{
+    //     fprintf(stderr, "Don't understand placer method : %s\n", e);
+    //     exit(1);
+    //   }
+    // }
+    // if(method==Default){
+    //   method=defaultMethod;
+    // }
+    #ifdef SCOTCH
+      method=Scotch;
+    #elif defined(METIS)
+      method=Metis;
+    #else
       method=defaultMethod;
-    }
+    #endif
   }
 
   // Partition the graph using Metis
@@ -157,7 +164,9 @@ struct Placer {
 
     // Perform random placement now, so that others can do their
     // own placement
+  #ifdef SCOTCH
     randomPlacement();
+  #endif
     currentCost = cost();
   }
 
@@ -165,23 +174,25 @@ struct Placer {
   void partitionScotch() {
     idx_t nvtxs = (idx_t) graph->incoming->numElems;
     idx_t nparts = (idx_t) (width * height);
-    
+
     // If there are no vertices
     if (nvtxs == 0) return;
 
-    // If there are more partitions than vertices
-    if (nparts >= nvtxs) {
-      for (uint32_t i = 0; i < nvtxs; i++)
-        partitions[i] = i;
-      return;
-    }
+    // fprintf(stderr, "nparts = %u, nvtxs = %u\n", nparts, nvtxs);
+    // // If there are more partitions than vertices
+    // if (nparts >= nvtxs) {
+    //   fprintf(stderr, "HELLO, IS THERE ANYBODY OUT THERE\n");
+    //   for (uint32_t i = 0; i < nvtxs; i++)
+    //     partitions[i] = i;
+    //   return;
+    // }
 
-    // If there is exactly one partition
-    if (nparts == 1) {
-      for (uint32_t i = 0; i < nvtxs; i++)
-        partitions[i] = 0;
-      return;
-    }
+    // // If there is exactly one partition
+    // if (nparts == 1) {
+    //   for (uint32_t i = 0; i < nvtxs; i++)
+    //     partitions[i] = 0;
+    //   return;
+    // }
 
     SCOTCH_Arch *archptr=(SCOTCH_Arch *)malloc(sizeof(SCOTCH_Arch));
     if(SCOTCH_archInit (archptr)){
@@ -202,7 +213,7 @@ struct Placer {
       for (uint32_t j = 0; j < in->numElems; j++){
         edgetab.push_back( in->elems[j] );
       }
-      
+
       const Seq<NodeId>* out = graph->outgoing->elems[i];
       for (uint32_t j = 0; j < out->numElems; j++){
         if (! in->member(out->elems[j])){ // TODO: How expensive is this for highly connected graphs?
@@ -345,16 +356,16 @@ struct Placer {
           x
           0  1  2  3
       y 0 *--*--*--*   0
-          |  |  |  | 
+          |  |  |  |
         1 *--*--*--*   2
-          |  |  |  | 
+          |  |  |  |
         2 *--*--*--*   4
           |  |  |  |
         3 *--*--*--*   6
                        7
           0  2  4  6 7
 
-      Being lazy, the link between 
+      Being lazy, the link between
         (x,y) and (x+1,y) is at  (x+x+1),y*2) = (x*2+1,y*2)
       and the link between
         (x,y) and (x,y+1) is at  (x,y+y+1) = (x*2,y*2+1)
@@ -370,7 +381,7 @@ struct Placer {
       //fprintf(stderr, " (%u,%u)+(%d,%d) -> %u\n", x,y,dx,dy,index);
       counts.at( index ) += weight;
     };
-    
+
     auto trace=[&](int ax,int ay, int bx,int by, uint64_t weight) -> uint64_t
     {
       /* From Network.bsv:
@@ -413,13 +424,13 @@ struct Placer {
       }*/
     };
 
-    computeInterPartitionCounts();
+    // computeInterPartitionCounts();
 
     for(int p1=0; p1+1 < width*height; p1++){
       for(int p2=p1+1; p2 < width*height; p2++){
         trace(
           xCoord[p1], yCoord[p1],
-          xCoord[p2], yCoord[p2],  
+          xCoord[p2], yCoord[p2],
           connCount[p1][p2]
         );
       }
@@ -444,7 +455,7 @@ struct Placer {
         }else{
           fprintf(stderr, " %6s", "+");
         }
-      } 
+      }
       fprintf(stderr, "\n");
     }
 
@@ -469,19 +480,19 @@ struct Placer {
         }else{
           fprintf(stderr, " %6s", "|");
         }
-      } 
+      }
       fprintf(stderr, "\n");
     }
 
     double meanLinkWeight=sumLinkWeight/numLinks;
     double stddevLinkWeight=sqrt( sumSquareLinkWeight/numLinks - meanLinkWeight*meanLinkWeight  );
-    fprintf(stderr, "Per-link: mean=%.1f, stddev=%.1f, max=%.1f\n", 
+    fprintf(stderr, "Per-link: mean=%.1f, stddev=%.1f, max=%.1f\n",
       meanLinkWeight, stddevLinkWeight, maxLinkWeight
     );
 
     double meanNodeWeight=sumNodeWeight/numLinks;
     double stddevNodeWeight=sqrt( sumSquareNodeWeight/numNodes - meanNodeWeight*meanNodeWeight  );
-    fprintf(stderr, "Per-node: mean=%.1f, stddev=%.1f, max=%.1f\n", 
+    fprintf(stderr, "Per-node: mean=%.1f, stddev=%.1f, max=%.1f\n",
       meanNodeWeight, stddevNodeWeight, maxNodeWeight
     );
 
@@ -527,8 +538,9 @@ struct Placer {
   void restore() {
     currentCost = savedCost;
     for (uint32_t y = 0; y < height; y++)
-      for (uint32_t x = 0; x < width; x++)
+      for (uint32_t x = 0; x < width; x++) {
         mapping[y][x] = mappingSaved[y][x];
+      }
     for (uint32_t p = 0; p < width*height; p++) {
       xCoord[p] = xCoordSaved[p];
       yCoord[p] = yCoordSaved[p];
@@ -588,7 +600,9 @@ struct Placer {
 
     for (uint32_t n = 0; n < numAttempts; n++) {
       // Note: moved randomPlacement into metis, so that scotch can create explicit non-random placement
-      //randomPlacement();
+    #ifndef SCOTCH
+      randomPlacement();
+    #endif
       currentCost = cost();
 
       bool change;
@@ -604,7 +618,6 @@ struct Placer {
           }
         }
       } while (change);
-
       if (currentCost <= savedCost)
         save();
       else
@@ -641,13 +654,12 @@ struct Placer {
 
     // Pick a placement method, or select default
     chooseMethod();
-
     // Partition the graph using Metis or scotch
     partition();
     // Compute subgraphs, one per partition
     computeSubgraphs();
     // Count connections between each pair of partitions
-    computeInterPartitionCounts();
+    // computeInterPartitionCounts();
   }
 
   // Deconstructor
