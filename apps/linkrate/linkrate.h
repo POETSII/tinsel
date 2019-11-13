@@ -5,9 +5,6 @@
 #define BOXES_X 2
 #define BOXES_Y 2
 
-// Assumed clock frequency
-#define MHZ 240
-
 // Each thread one source FPGA sends N messages
 // to same thread on a destination FPGA.
 #define NumMsgs 100000
