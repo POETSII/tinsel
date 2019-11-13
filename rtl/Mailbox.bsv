@@ -397,7 +397,7 @@ module mkMailbox (Mailbox);
   endrule
 
   rule updateRefCount (setRefCount);
-    refCount.putA(True, refCountSlot, zeroExtend(refCountReg));
+    refCount.putA(True, refCountSlot, refCountReg);
   endrule
 
   // Serve requests to the receive unit
@@ -415,23 +415,6 @@ module mkMailbox (Mailbox);
       Vector#(`ThreadsPerMulticastQueue, SetReset))) receivedMask <-
         replicateM(replicateM(replicateM(mkSetReset(False))));
 
-  // Buffer the queue outputs to improve timing.  The length of this
-  // buffer must be less that the request-response round-trip for
-  // single thread, so that any dequeue operation has time to
-  // propagate before the next request from that thread arrives.
-  Vector#(`CoresPerMailbox, Vector#(`MulticastQueuesPerCore, Bool))
-    msgPtrQueueCanPeek = replicate(newVector());
-  Vector#(`CoresPerMailbox,
-    Vector#(`MulticastQueuesPerCore, MulticastQueueEntry))
-      msgPtrQueueData =  replicate(newVector());
-  for (Integer i = 0; i < `CoresPerMailbox; i=i+1)
-    for (Integer j = 0; j < `MulticastQueuesPerCore; j=j+1) begin
-      msgPtrQueueCanPeek[i][j] <-
-        mkBuffer(1, False, msgPtrQueue[i][j].canPeek &&
-          msgPtrQueue[i][j].canDeq);
-      msgPtrQueueData[i][j] <- mkBuffer(1, ?, msgPtrQueue[i][j].dataOut);
-    end
-
   // Serve requests to the receive unit
   for (Integer i = 0; i < `CoresPerMailbox; i=i+1) begin
     rule serveReceive (rxReqPorts[i].canGet && recvRespQueues[i].notFull);
@@ -440,13 +423,13 @@ module mkMailbox (Mailbox);
       rxReqPorts[i].get;
       Bit#(`LogMulticastQueuesPerCore) queueId = truncateLSB(req.id);
       Bit#(`LogThreadsPerMulticastQueue) receiverId = truncate(req.id);
-      MulticastQueueEntry entry = msgPtrQueueData[i][queueId];
+      MulticastQueueEntry entry = msgPtrQueue[i][queueId].dataOut;
       // Prepare response
       ReceiveResp resp;
       resp.id = req.id;
       resp.doRecv = req.doRecv;
       resp.canRecv = 
-        msgPtrQueueCanPeek[i][queueId] &&
+        msgPtrQueue[i][queueId].canPeek &&
           entry.receivers[receiverId] == 1 &&
             !receivedMask[i][queueId][receiverId].value;
       resp.data = entry.slot;
