@@ -1254,7 +1254,7 @@ inline void tinselWriteInstr(uint32_t addr, uint32_t word);
 inline void tinselCacheFlush();
 
 // Cache line flush (non-blocking)
-inline void tinselFlushLine(uint32_t lineNum, uint32_t way)
+inline void tinselFlushLine(uint32_t lineNum, uint32_t way);
 
 // Set message length for send operation
 // (A message of length n is comprised of n+1 flits)
