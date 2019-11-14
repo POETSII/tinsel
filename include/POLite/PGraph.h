@@ -358,17 +358,60 @@ template <typename DeviceType,
 
   // Implement mapping to tinsel threads
   void map() {
-  #ifdef SCOTCH
-    fprintf(stderr, "Mapping with SCOTCH\n");
-  #else
-    fprintf(stderr, "Mapping with METIS\n");
-  #endif
-
     // Release all mapping and heap structures
     releaseAll();
 
     // Reallocate mapping structures
     allocateMapping();
+
+  #ifdef SCOTCH
+    fprintf(stderr, "Mapping with SCOTCH\n");
+
+    Placer scotch(&graph, numBoardsX*32, numBoardsY*32);
+    int32_t threadOfScotch = 0;
+    for (uint32_t boardY = 0; boardY < numBoardsY; boardY++) {
+      for (uint32_t boardX = 0; boardX < numBoardsX; boardX++) {
+        for (uint32_t boxX = 0; boxX < TinselMailboxMeshXLen; boxX++) {
+          for (uint32_t boxY = 0; boxY < TinselMailboxMeshYLen; boxY++) {
+            // Partition into subgraphs, one per thread
+            uint32_t numThreads = 1<<TinselLogThreadsPerMailbox;
+            // PartitionId t = boxes.mapping[boxY][boxX];
+            // Placer threads(&boxes.subgraphs[t], numThreads, 1);
+
+            // For each thread
+            for (uint32_t threadNum = 0; threadNum < numThreads; threadNum++) {
+              // Determine tinsel thread id
+              uint32_t threadId = boardY;
+              threadId = (threadId << TinselMeshXBits) | boardX;
+              threadId = (threadId << TinselMailboxMeshYBits) | boxY;
+              threadId = (threadId << TinselMailboxMeshXBits) | boxX;
+              threadId = (threadId << (TinselLogCoresPerMailbox +
+                            TinselLogThreadsPerCore)) | threadNum;
+              // Get subgraph
+              Graph* g = &scotch.subgraphs[threadOfScotch];
+              threadOfScotch++;
+
+              // Populate fromDeviceAddr mapping
+              uint32_t numDevs = g->incoming->numElems;
+              numDevicesOnThread[threadId] = numDevs;
+              fromDeviceAddr[threadId] = (PDeviceId*)
+                malloc(sizeof(PDeviceId) * numDevs);
+              for (uint32_t devNum = 0; devNum < numDevs; devNum++)
+                fromDeviceAddr[threadId][devNum] = g->labels->elems[devNum];
+              // Populate toDeviceAddr mapping
+              assert(numDevs < maxLocalDeviceId());
+              for (uint32_t devNum = 0; devNum < numDevs; devNum++) {
+                PDeviceAddr devAddr =
+                  makeDeviceAddr(threadId, devNum);
+                toDeviceAddr[g->labels->elems[devNum]] = devAddr;
+              }
+            }
+          }
+        }
+      }
+    }
+  #else
+    fprintf(stderr, "Mapping with METIS\n");
 
     // Partition into subgraphs, one per board
     Placer boards(&graph, numBoardsX, numBoardsY);
@@ -430,7 +473,7 @@ template <typename DeviceType,
         }
       }
     }
-
+    #endif
     // Reallocate and initialise heap structures
     allocatePartitions();
     initialisePartitions();

@@ -178,10 +178,8 @@ struct Placer {
     // If there are no vertices
     if (nvtxs == 0) return;
 
-    // fprintf(stderr, "nparts = %u, nvtxs = %u\n", nparts, nvtxs);
     // // If there are more partitions than vertices
     // if (nparts >= nvtxs) {
-    //   fprintf(stderr, "HELLO, IS THERE ANYBODY OUT THERE\n");
     //   for (uint32_t i = 0; i < nvtxs; i++)
     //     partitions[i] = i;
     //   return;
@@ -658,7 +656,7 @@ struct Placer {
     // Compute subgraphs, one per partition
     computeSubgraphs();
     // Count connections between each pair of partitions
-    // computeInterPartitionCounts();
+    computeInterPartitionCounts();
   }
 
   // Deconstructor
