@@ -162,11 +162,11 @@ struct Placer {
     free(adjncy);
     free(parts);
 
-    // Perform random placement now, so that others can do their
-    // own placement
-  #ifdef SCOTCH
-    randomPlacement();
-  #endif
+  //   // Perform random placement now, so that others can do their
+  //   // own placement
+  // #ifdef SCOTCH
+  //   randomPlacement();
+  // #endif
     currentCost = cost();
   }
 
@@ -595,14 +595,13 @@ struct Placer {
   // Very simple local search algorithm for placement
   // Repeatedly swap a mesh node with it's neighbour if it lowers cost
   void place(uint32_t numAttempts) {
+    if (method == Scotch)
+      return;
     // Initialise best cost
     savedCost = ~0;
 
     for (uint32_t n = 0; n < numAttempts; n++) {
-      // Note: moved randomPlacement into metis, so that scotch can create explicit non-random placement
-    #ifndef SCOTCH
       randomPlacement();
-    #endif
       currentCost = cost();
 
       bool change;
