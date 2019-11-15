@@ -88,7 +88,10 @@ p["MailboxMeshYLen"] = 2 ** p["MailboxMeshYBits"]
 p["LogMailboxesPerBoard"] = p["MailboxMeshXBits"] + p["MailboxMeshYBits"]
 
 # Size of multicast queues in mailbox
-p["LogMsgPtrQueueSize"] = 5
+p["LogMsgPtrQueueSize"] = 6
+
+# Size of multicast serialisation buffer
+p["LogMulticastBufferSize"] = 6
 
 # Maximum size of boot loader (in bytes)
 p["MaxBootImageBytes"] = 576
@@ -141,9 +144,6 @@ p["LogNorthSouthLinks"] = 0
 # Number of inter-FPGA links on east edge
 # Number of inter-FPGA links on west edge
 p["LogEastWestLinks"] = 0
-
-# Sharing of multicast queues
-p["LogThreadsPerMulticastQueue"] = 1
 
 # Latencies of arithmetic megafunctions
 p["IntMultLatency"] = 3
@@ -359,15 +359,6 @@ p["DRAMGlobalsLength"] = 2 ** (p["LogBytesPerDRAM"] - 1) - p["DRAMBase"]
 
 # Number of FPGA boards per box (including bridge board)
 p["BoardsPerBox"] = p["MeshXLenWithinBox"] * p["MeshYLenWithinBox"] + 1
-
-# Sharing of multicast queues
-p["ThreadsPerMulticastQueue"] = 2 ** p["LogThreadsPerMulticastQueue"]
-p["LogMulticastQueuesPerMailbox"] = (p["LogThreadsPerMailbox"] -
-                             p["LogThreadsPerMulticastQueue"])
-p["MulticastQueuesPerMailbox"] = 2 ** p["LogMulticastQueuesPerMailbox"]
-p["LogMulticastQueuesPerCore"] = (p["LogThreadsPerCore"] -
-                                      p["LogThreadsPerMulticastQueue"])
-p["MulticastQueuesPerCore"] = 2 ** p["LogMulticastQueuesPerCore"]
 
 #==============================================================================
 # Main 
