@@ -93,13 +93,13 @@ module mkQueueArray (QueueArray#(logNumQueues, logQueueSize, elemType))
   endrule
 
   rule enqStage2 (enqStage2Go);
-    if (ramFront.dataOutA+1 == ramBack.dataOutA) begin
+    if (ramBack.dataOutA+1 == ramFront.dataOutA) begin
       ramFront.putA(False, enqIndex2, ?);
       ramBack.putA(False, enqIndex2, ?);
       enqStage2Go <= True;
     end else begin
-      ramData.putA(True, {enqIndex2, ramBack.dataOutB}, enqItem2);
-      ramBack.putA(True, enqIndex2, ramBack.dataOutB+1);
+      ramData.putA(True, {enqIndex2, ramBack.dataOutA}, enqItem2);
+      ramBack.putA(True, enqIndex2, ramBack.dataOutA+1);
     end
   endrule
 
@@ -113,8 +113,9 @@ module mkQueueArray (QueueArray#(logNumQueues, logQueueSize, elemType))
 
   rule deqStage2a (deqStage2Go);
     ramData.putB(False, {deqIndex2, ramFront.dataOutB}, ?);
-    if (ramFront.dataOutB != ramBack.dataOutB)
+    if (ramFront.dataOutB != ramBack.dataOutB) begin
       canDeqWire <= True;
+    end
   endrule
 
   rule deqStage2b (deqStage2Go);

@@ -414,7 +414,7 @@ module mkMailbox (Mailbox);
       mcastDest <= truncate(pack(countZerosLSB(mcastDests)));
       let firstHot = mcastDests & -mcastDests;
       mcastDests <= mcastDests & ~firstHot;
-      mcastState <= 2;
+      mcastState <= mcastDests == 0 ? 0 : 2;
     endrule
 
     rule mcast2 (mcastState == 2);
@@ -453,9 +453,9 @@ module mkMailbox (Mailbox);
         mcastQueues[i].tryDeq(req.id);
         serveState <= req.doRecv ? 1 : 2;
       end else if (serveState == 1) begin
-        myAssert(mcastQueues[i].canDeq, "Reciving when not ready");
+        myAssert(mcastQueues[i].canDeq, "Receiving when not ready");
         mcastQueues[i].doDeq;
-        serveState <= 1;
+        serveState <= 2;
       end else if (serveState == 2) begin
         recvRespQueues[i].enq(resp);
         rxReqPorts[i].get;
