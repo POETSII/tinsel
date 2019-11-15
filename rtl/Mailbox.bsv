@@ -106,6 +106,7 @@ import Util         :: *;
 import Globals      :: *;
 import DReg         :: *;
 import FlitMerger   :: *;
+import QueueArray   :: *;
 
 // =============================================================================
 // Types
@@ -210,9 +211,9 @@ typedef struct {
 typedef struct {
   // Pointer to message in scratchpad
   MailboxMsgAddr slot;
-  // Which threads sharing the queue are receivers?
-  Vector#(`ThreadsPerMulticastQueue, Bit#(1)) receivers;
-} MulticastQueueEntry deriving (Bits);
+  // Destination threads
+  Bit#(`ThreadsPerCore) dests;
+} MulticastBufferEntry deriving (Bits);
 
 // =============================================================================
 // Functions
@@ -272,20 +273,6 @@ module mkMailbox (Mailbox);
   // (One flit-sized port and one word-sized port)
   BlockRamTrueMixedBE#(MailboxFlitAddr, FlitPayload, MailboxWordAddr, Bit#(32))
     scratchpad <- mkBlockRamTrueMixedBE;
-
-  // Message-pointer queues for each thread group
-  // Force these queues to use MLABs
-  QueueOpts queueOpts;
-  queueOpts.size = 0;
-  queueOpts.file = Invalid;
-  queueOpts.style = "MLAB";
-  Vector#(`CoresPerMailbox,
-    Vector#(`MulticastQueuesPerCore,
-      SizedQueue#(`LogMsgPtrQueueSize, MulticastQueueEntry)))
-        msgPtrQueue <- replicateM(replicateM(mkUGSizedQueueOpts(queueOpts)));
-  Vector#(`MulticastQueuesPerMailbox,
-    SizedQueue#(`LogMsgPtrQueueSize, MulticastQueueEntry))
-      msgPtrQueueFlat = concat(msgPtrQueue);
 
   // Request & response ports
   InPort#(ScratchpadReq) spadReqPort  <- mkInPort;
@@ -348,20 +335,19 @@ module mkMailbox (Mailbox);
   SizedQueue#(`LogMsgsPerMailbox, Bit#(`LogMsgsPerMailbox))
     freeSlots <- mkUGSizedQueuePrefetchOpts(freeSlotsOpts);
 
+  // Multicast buffer
+  Vector#(`CoresPerMailbox,
+    SizedQueue#(`LogMulticastBufferSize, MulticastBufferEntry))
+      mcastBuffer <- replicateM(mkUGSizedQueue);
+
   rule receive0;
     let flit = flitInPort.value;
     // Determine destination threads
     Bit#(`ThreadsPerMailbox) destThreads = flit.dest.threads;
     // Determine if flit can be received
     Bool canRecv = True;
-    for (Integer i = 0; i < `MulticastQueuesPerMailbox; i=i+1) begin
-      Bool forThisQueue = False;
-      for (Integer j = 0; j < `ThreadsPerMulticastQueue; j=j+1) begin
-        forThisQueue = forThisQueue ||
-          destThreads[i*`ThreadsPerMulticastQueue+j] == 1;
-      end
-      canRecv = canRecv && (forThisQueue ? msgPtrQueueFlat[i].notFull : True);
-    end
+    for (Integer i = 0; i < `CoresPerMailbox; i=i+1)
+      canRecv = canRecv && mcastBuffer[i].notFull;
     canRecv = canRecv && freeSlots.canPeek && freeSlots.canDeq;
     let slot = freeSlots.dataOut;
     // Try to consume an incoming flit
@@ -376,16 +362,13 @@ module mkMailbox (Mailbox);
         recvFlitCount <= 0;
         // Slot is no longer free
         freeSlots.deq;
-        // Put pointer to new message into each destination's queue
-        for (Integer i = 0; i < `MulticastQueuesPerMailbox; i=i+1) begin
-          MulticastQueueEntry entry;
-          entry.slot = slot;
-          Bool any = False;
-          for (Integer j = 0; j < `ThreadsPerMulticastQueue; j=j+1) begin
-            entry.receivers[j] = destThreads[`ThreadsPerMulticastQueue*i+j];
-            any = any || (entry.receivers[j] == 1);
-          end
-          if (any) msgPtrQueueFlat[i].enq(entry);
+        // Put pointer to new message into buffer
+        Vector#(`CoresPerMailbox, Bit#(`ThreadsPerCore))
+          vecDestThreads = unpack(destThreads);
+        for (Integer i = 0; i < `CoresPerMailbox; i=i+1) begin
+          MulticastBufferEntry mcastEntry =
+            MulticastBufferEntry { dests: vecDestThreads[i], slot: slot };
+          mcastBuffer[i].enq(mcastEntry);
         end
         // Set ref count for new slot
         refCountReg <= pack(countOnes(destThreads));
@@ -400,6 +383,48 @@ module mkMailbox (Mailbox);
     refCount.putA(True, refCountSlot, refCountReg);
   endrule
 
+  // Populate multicast queues
+  // -------------------------
+
+  // Multicast queues (one per thread)
+  Vector#(`CoresPerMailbox,
+    QueueArray#(`LogThreadsPerCore,
+                  `LogMsgPtrQueueSize,
+                    Bit#(`LogMsgsPerMailbox))) mcastQueues <-
+      replicateM(mkQueueArray);
+
+  for (Integer i = 0; i < `CoresPerMailbox; i=i+1) begin
+    // State
+    Reg#(Bit#(2)) mcastState <- mkConfigReg(0);
+    Reg#(Bit#(`ThreadsPerCore)) mcastDests <- mkConfigRegU;
+    Reg#(Bit#(`LogMsgsPerMailbox)) mcastSlot <- mkConfigRegU;
+    Reg#(Bit#(`LogThreadsPerCore)) mcastDest <- mkConfigRegU;
+  
+    // State machine to consume mcastBuffer, and update mcastQueues
+    rule mcast0 (mcastState == 0);
+      if (mcastBuffer[i].canPeek && mcastBuffer[i].canDeq) begin
+        mcastBuffer[i].deq;
+        mcastDests <= mcastBuffer[i].dataOut.dests;
+        mcastSlot <= mcastBuffer[i].dataOut.slot;
+        mcastState <= 1;
+      end
+    endrule
+
+    rule mcast1 (mcastState == 1);
+      mcastDest <= truncate(pack(countZerosLSB(mcastDests)));
+      let firstHot = mcastDests & -mcastDests;
+      mcastDests <= mcastDests & ~firstHot;
+      mcastState <= 2;
+    endrule
+
+    rule mcast2 (mcastState == 2);
+      if (mcastQueues[i].canEnq) begin
+        mcastQueues[i].enq(mcastDest, mcastSlot);
+        mcastState <= mcastDests == 0 ? 0 : 1;
+      end
+    endrule
+  end
+
   // Serve requests to the receive unit
   // ----------------------------------
 
@@ -407,50 +432,37 @@ module mkMailbox (Mailbox);
   Vector#(`CoresPerMailbox, Queue#(ReceiveResp))
     recvRespQueues <- replicateM(mkUGQueue);
 
-  // Each thread is associated with a flipflop denoting whether or not
-  // the next message in the thread's multicast queue has been received
-  // by the thread.
-  Vector#(`CoresPerMailbox,
-    Vector#(`MulticastQueuesPerCore,
-      Vector#(`ThreadsPerMulticastQueue, SetReset))) receivedMask <-
-        replicateM(replicateM(replicateM(mkSetReset(False))));
-
   // Serve requests to the receive unit
   for (Integer i = 0; i < `CoresPerMailbox; i=i+1) begin
+
+    // State machine
+    Reg#(Bit#(2)) serveState <- mkConfigReg(0);
+
     rule serveReceive (rxReqPorts[i].canGet && recvRespQueues[i].notFull);
-      // Consume request
+      // View request
       ReceiveReq req = rxReqPorts[i].value;
-      rxReqPorts[i].get;
-      Bit#(`LogMulticastQueuesPerCore) queueId = truncateLSB(req.id);
-      Bit#(`LogThreadsPerMulticastQueue) receiverId = truncate(req.id);
-      MulticastQueueEntry entry = msgPtrQueue[i][queueId].dataOut;
       // Prepare response
       ReceiveResp resp;
       resp.id = req.id;
+      resp.canRecv = mcastQueues[i].canDeq;
       resp.doRecv = req.doRecv;
-      resp.canRecv = 
-        msgPtrQueue[i][queueId].canPeek &&
-          entry.receivers[receiverId] == 1 &&
-            !receivedMask[i][queueId][receiverId].value;
-      resp.data = entry.slot;
+      resp.data = mcastQueues[i].itemOut;
       resp.sleeping = req.sleeping;
-      if (resp.canRecv && req.doRecv) begin
-        // Ready to consume multicast queue?
-        Bool consume = True;
-        for (Integer j = 0; j < `ThreadsPerMulticastQueue; j=j+1)
-          if (receiverId != fromInteger(j))
-            consume = consume && (entry.receivers[j] == 1 ?
-                       receivedMask[i][queueId][j].value : True);
-        if (consume) begin
-          msgPtrQueue[i][queueId].deq;
-          for (Integer j = 0; j < `ThreadsPerMulticastQueue; j=j+1)
-            receivedMask[i][queueId][j].clear;
-        end else
-          receivedMask[i][queueId][receiverId].set;
+      // State machine
+      if (serveState == 0) begin
+        mcastQueues[i].tryDeq(req.id);
+        serveState <= req.doRecv ? 1 : 2;
+      end else if (serveState == 1) begin
+        myAssert(mcastQueues[i].canDeq, "Reciving when not ready");
+        mcastQueues[i].doDeq;
+        serveState <= 1;
+      end else if (serveState == 2) begin
+        recvRespQueues[i].enq(resp);
+        rxReqPorts[i].get;
+        serveState <= 0;
       end
-      // Enqueue response
-      recvRespQueues[i].enq(resp);
     endrule
+
   end
 
   // Transmit Unit

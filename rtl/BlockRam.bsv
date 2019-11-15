@@ -47,6 +47,10 @@ interface BlockRamTrueMixed#
   method dataB dataOutB;
 endinterface
 
+// Non-mixed-width variant
+typedef BlockRamTrueMixed#(addr, data, addr, data)
+  BlockRamTrue#(type addr, type data);
+
 // True dual-port mixed-width block RAM with byte-enables
 // (Port B has the byte enables and must be smaller than port A)
 interface BlockRamTrueMixedByteEn#
