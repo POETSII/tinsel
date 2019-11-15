@@ -368,7 +368,7 @@ module mkMailbox (Mailbox);
         for (Integer i = 0; i < `CoresPerMailbox; i=i+1) begin
           MulticastBufferEntry mcastEntry =
             MulticastBufferEntry { dests: vecDestThreads[i], slot: slot };
-          mcastBuffer[i].enq(mcastEntry);
+          if (vecDestThreads[i] != 0) mcastBuffer[i].enq(mcastEntry);
         end
         // Set ref count for new slot
         refCountReg <= pack(countOnes(destThreads));
@@ -414,7 +414,7 @@ module mkMailbox (Mailbox);
       mcastDest <= truncate(pack(countZerosLSB(mcastDests)));
       let firstHot = mcastDests & -mcastDests;
       mcastDests <= mcastDests & ~firstHot;
-      mcastState <= mcastDests == 0 ? 0 : 2;
+      mcastState <= 2;
     endrule
 
     rule mcast2 (mcastState == 2);
