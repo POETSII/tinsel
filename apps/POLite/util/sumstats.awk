@@ -13,7 +13,7 @@ BEGIN {
   intraThreadSendCount = 0;
   interThreadSendCount = 0;
   interBoardSendCount = 0;
-  fmax = 220000000;
+  fmax = 230000000;
   if (boardsX == "" || boardsY == "") {
     boardsX = 3;
     boardsY = 2;
