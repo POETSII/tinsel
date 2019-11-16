@@ -91,7 +91,7 @@ p["LogMailboxesPerBoard"] = p["MailboxMeshXBits"] + p["MailboxMeshYBits"]
 p["LogMsgPtrQueueSize"] = 6
 
 # Size of multicast serialisation buffer
-p["LogMulticastBufferSize"] = 6
+p["LogMulticastBufferSize"] = 9
 
 # Maximum size of boot loader (in bytes)
 p["MaxBootImageBytes"] = 576
@@ -178,7 +178,7 @@ p["BoxMesh"] = ('{'
 p["UseCustomAccelerator"] = False
 
 # Clock frequency (in MHz)
-p["ClockFreq"] = 220
+p["ClockFreq"] = 230
 
 #==============================================================================
 # Derived Parameters

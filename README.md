@@ -504,16 +504,8 @@ inline volatile void* tinselRecv();
 void tinselFree(void* addr);
 ```
 
-To support multicasting, a mailbox contains, for each thread, a
-receive queue of pointers to messages for that thread.  A message
-pointer can therefore be inserted into multiple queues simultanesouly.
-These queues are expensive in hardware, but can be shared between
-threads using the parameter `LogThreadsPerMulticastQueue`.  Queue
-sharing means that a queue element cannot be consumed until all
-destination threads sharing the queue have received it, so the saving
-in area is offset by reduced parallelism.  For futher details, see the
-original feature proposal: [PIP
-22](doc/PIP-0022-mailbox-local-multicast.md).
+For futher details about hardware multicasting, see the original
+feature proposal: [PIP 22](doc/PIP-0022-mailbox-local-multicast.md).
 
 Sometimes, a thread may wish to wait until it can send or receive.  To
 avoid busy waiting on the `tinselCanSend()` and `tinselCanRecv()`
@@ -1114,7 +1106,7 @@ The default Tinsel configuration on a single DE5-Net board contains:
   * one termination/idle detector
   * a JTAG UART
 
-The clock frequency is 220MHz and the resource utilisation is 77% of
+The clock frequency is 230MHz and the resource utilisation is 74% of
 the DE5-Net.
 
 ## B. Tinsel Parameters
@@ -1144,8 +1136,7 @@ the DE5-Net.
   `MeshXLenWithinBox`      |       3 | Boards in X dimension within box
   `MeshYLenWithinBox`      |       2 | Boards in Y dimension within box
   `EnablePerfCount`        |    True | Enable performance counters
-  `ClockFreq`              |     220 | Clock frequency in MHz
-  `LogThreadsPerMulticastQueue` | 1  | Threads sharing a multicast queue
+  `ClockFreq`              |     230 | Clock frequency in MHz
 
 Further parameters can be found in [config.py](config.py).
 
