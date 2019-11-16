@@ -1,6 +1,6 @@
 #!/bin/bash
 
-MHZ=220000000
+MHZ=230000000
 CUTOFF=25000000
 
 function size {
