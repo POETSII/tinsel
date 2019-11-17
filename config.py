@@ -178,7 +178,7 @@ p["BoxMesh"] = ('{'
 p["UseCustomAccelerator"] = False
 
 # Clock frequency (in MHz)
-p["ClockFreq"] = 230
+p["ClockFreq"] = 225
 
 #==============================================================================
 # Derived Parameters

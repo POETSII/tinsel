@@ -170,27 +170,14 @@ typedef struct {
 } TransmitResp deriving (Bits);
 
 // Request to receive unit
-typedef struct {
-  // Source of request
-  ThreadId id;
-  // Operation
-  Bool doRecv;
-  // Is source thread sleeping?
-  Option#(WakeEvent) sleeping;
-} ReceiveReq deriving (Bits, FShow);
+typedef SleepStatus ReceiveReq;
 
 // Response from receive unit
 typedef struct {
-  // Target of response
-  ThreadId id;
-  // Operation
-  Bool doRecv;
-  // For "can receive" query
-  Bool canRecv;
   // Pointer to message received, for "receive" command
   MailboxMsgAddr data;
-  // Is source thread sleeping?
-  Option#(WakeEvent) sleeping;
+  // Status
+  SleepStatus status;
 } ReceiveResp deriving (Bits, FShow);
 
 // Request to "free" unit
@@ -214,6 +201,29 @@ typedef struct {
   // Destination threads
   Bit#(`ThreadsPerCore) dests;
 } MulticastBufferEntry deriving (Bits);
+
+// A bit vector of events that can cause a sleeping thread to wake up
+// Bit 0: can-send
+// Bit 1: can-receive
+// Bit 2: idle, vote false
+// Bit 3: idle, vote true
+typedef Bit#(4) WakeEvent;
+
+// Operation of thread in sleep queue
+typedef enum { CanRecvOp, RecvOp, WaitUntilOp } SleepOp
+  deriving (Bits, Eq, FShow);
+
+// Status of thread in sleep queue
+typedef struct {
+  // Id of thread
+  ThreadId id;
+  // Operation
+  SleepOp op;
+  // If WaitUntilOp, the event(s) that the thread is waiting for
+  WakeEvent wakeEvent;
+  // Is there is an incoming message for the thread?
+  Bool canRecv;
+} SleepStatus deriving (Bits, FShow);
 
 // =============================================================================
 // Functions
@@ -443,15 +453,13 @@ module mkMailbox (Mailbox);
       ReceiveReq req = rxReqPorts[i].value;
       // Prepare response
       ReceiveResp resp;
-      resp.id = req.id;
-      resp.canRecv = mcastQueues[i].canDeq;
-      resp.doRecv = req.doRecv;
+      resp.status = req;
+      resp.status.canRecv = mcastQueues[i].canDeq;
       resp.data = mcastQueues[i].itemOut;
-      resp.sleeping = req.sleeping;
       // State machine
       if (serveState == 0) begin
         mcastQueues[i].tryDeq(req.id);
-        serveState <= req.doRecv ? 1 : 2;
+        serveState <= req.op == RecvOp ? 1 : 2;
       end else if (serveState == 1) begin
         myAssert(mcastQueues[i].canDeq, "Receiving when not ready");
         mcastQueues[i].doDeq;
@@ -682,23 +690,6 @@ interface MailboxClient;
   method Action freeDone(Bit#(1) done);
 endinterface
 
-// A bit vector of events that can cause a sleeping thread to wake up
-// Bit 0: can-send
-// Bit 1: can-receive
-// Bit 2: idle, vote false
-// Bit 3: idle, vote true
-typedef Bit#(4) WakeEvent;
-
-// Response from mailbox
-typedef struct {
-  // Id of thread
-  ThreadId id;
-  // The event(s) that the thread is waiting for
-  WakeEvent wakeEvent;
-  // Is there is an incoming message for the thread?
-  Bool canRecv;
-} Wakeup deriving (Bits);
-
 // =============================================================================
 // Mailbox client unit
 // =============================================================================
@@ -714,7 +705,7 @@ interface MailboxClientUnit;
   interface Out#(ReceiveResp) respOut;
 
   // Wakeup port for sleep requests
-  interface Out#(Wakeup) wakeup;
+  interface Out#(SleepStatus) wakeup;
 
   // For free requests
   interface OutPort#(FreeReq) freeReq;
@@ -726,14 +717,8 @@ interface MailboxClientUnit;
   method Action send(ThreadId id, MsgLen len,
                        NetAddr dest, MailboxMsgAddr addr);
 
-   // Can we send a receive request to the mailbox?
-  method Bool canRecv;
-
-  // Send receive request to the mailbox
-  method Action recv(ThreadId id, Bool doRecv);
-
   // Suspend thread until event(s)
-  method Action sleep(ThreadId id, WakeEvent e);
+  method Action sleep(ThreadId id, WakeEvent e, SleepOp op);
 
   // Goes high when idle release phase (stage 1) in progress
   method Bool idleReleaseInProgress;
@@ -767,11 +752,11 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
   OutPort#(ReceiveReq)      recvReqPort        <- mkOutPort;
   InPort#(ReceiveResp)      recvRespPort       <- mkInPort;
   OutPort#(FreeReq)         freeReqPort        <- mkOutPort;
-  OutPort#(Wakeup)          wakeupPort         <- mkOutPort;
+  OutPort#(SleepStatus)     wakeupPort         <- mkOutPort;
   OutPort#(ReceiveResp)     respPort           <- mkOutPort;
 
   // Sleep queue (threads sit in here while waiting for events)
-  SizedQueue#(`LogThreadsPerCore, Wakeup) sleepQueue <-
+  SizedQueue#(`LogThreadsPerCore, SleepStatus) sleepQueue <-
     mkUGSizedQueuePrefetch;
 
   // Transmit logic
@@ -808,23 +793,9 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
   // Receive logic
   // =============
 
-  // There's a conflict on "receive" requests going to the mailbox:
-  // they can come directly from the core, or from the wakeup unit.
-  // We resolve the conflict by giving priority to the core.
-
-  PulseWire recvReqPutWire1 <- mkPulseWire;
-  PulseWire recvReqPutWire2 <- mkPulseWire;
-  Wire#(ReceiveReq) recvReqWire1 <- mkDWire(?);
-  Wire#(ReceiveReq) recvReqWire2 <- mkDWire(?);
-
-  rule createRecvReqs;
-    if (recvReqPutWire1) recvReqPort.put(recvReqWire1);
-    else if (recvReqPutWire2) recvReqPort.put(recvReqWire2);
-  endrule
-
   // Pass receive responses back to the core
   rule respond (recvRespPort.canGet &&
-                  !recvRespPort.value.sleeping.valid &&
+                  recvRespPort.value.status.op != WaitUntilOp &&
                     respPort.canPut);
     ReceiveResp resp = recvRespPort.value;
     respPort.put(resp);
@@ -840,12 +811,12 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
 
   // Signals from the sleep method
   Wire#(Bool) doSleep <- mkDWire(False);
-  Wire#(Wakeup) sleepThread <- mkDWire(?);
+  Wire#(SleepStatus) sleepThread <- mkDWire(?);
 
   // Signals from the wakeup unit
   Wire#(Bool) doRequeue <- mkDWire(False);
   Wire#(Bool) doResumeSleep <- mkDWire(False);
-  Wire#(Wakeup) resumeSleepWire <- mkDWire(?);
+  Wire#(SleepStatus) resumeSleepWire <- mkDWire(?);
 
   rule sleepUnit (doSleep || doResumeSleep || doRequeue);
     myAssert(sleepQueue.notFull, "MailboxClientUnit: sleep violation");
@@ -911,7 +882,12 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
            pack(canSend)};
     // Should a wakeup be sent?
     Bool wakeupCond = eventMatch != 0;
-    if (wakeupCond) begin
+    if (thread.op != WaitUntilOp) begin
+      if (recvReqPort.canPut) begin
+        recvReqPort.put(thread);
+        sleepQueue.deq;
+      end
+    end else if (wakeupCond) begin
       // When wakeup port is ready
       if (wakeupPort.canPut) begin
         // Send wakeup
@@ -923,15 +899,11 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
       end 
     // If thread can't receive but wants to,
     // we need to make a new receive request
-    end else if (!thread.canRecv && thread.wakeEvent[1] == 1 &&
-                   recvReqPort.canPut && !recvReqPutWire1) begin
-      ReceiveReq req;
-      req.id = thread.id;
-      req.doRecv = False;
-      req.sleeping = option(True, thread.wakeEvent);
-      recvReqPutWire2.send;
-      recvReqWire2 <= req;
-      sleepQueue.deq;
+    end else if (!thread.canRecv && thread.wakeEvent[1] == 1) begin
+      if (recvReqPort.canPut) begin
+        recvReqPort.put(thread);
+        sleepQueue.deq;
+      end
     end else if (!doSleep && !doResumeSleep) begin
       // Retry later
       doRequeue <= True;
@@ -941,13 +913,9 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
 
   // Pass receive responses for wakeup unit back into sleep queue
   rule wakeup2 (recvRespPort.canGet &&
-                  recvRespPort.value.sleeping.valid && !doSleep);
+                  recvRespPort.value.status.op == WaitUntilOp && !doSleep);
     ReceiveResp resp = recvRespPort.value;
-    Wakeup wakeup;
-    wakeup.id = resp.id;
-    wakeup.wakeEvent = resp.sleeping.value;
-    wakeup.canRecv = resp.canRecv;
-    resumeSleepWire <= wakeup;
+    resumeSleepWire <= resp.status;
     doResumeSleep <= True;
     recvRespPort.get;
   endrule
@@ -976,22 +944,12 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
     canThreadSend[id].clear;
   endmethod
 
-  method Bool canRecv = recvReqPort.canPut;
-
-  method Action recv(ThreadId id, Bool doRecv);
-    ReceiveReq req;
-    req.id = id;
-    req.doRecv = doRecv;
-    req.sleeping = option(False, ?);
-    recvReqPutWire1.send;
-    recvReqWire1 <= req;
-  endmethod
-
-  method Action sleep(ThreadId id, WakeEvent e);
+  method Action sleep(ThreadId id, WakeEvent e, SleepOp op);
     if (e[2] == 1) numIdleWaiters.inc;
     if (e[3] == 1) idleVotes.inc;
     doSleep <= True;
-    sleepThread <= Wakeup { id: id, wakeEvent: e, canRecv: False };
+    sleepThread <= SleepStatus
+      { id: id, wakeEvent: e, canRecv: False, op: op };
   endmethod
 
   method Bool idleReleaseInProgress = idleDetected;

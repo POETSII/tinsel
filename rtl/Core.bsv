@@ -633,7 +633,7 @@ module mkCore#(CoreId myId) (Core);
   MailboxClientUnit mailbox <- mkMailboxClientUnit(myId);
 
   // Connection to mailbox client wakeup queue
-  InPort#(Wakeup) wakeupPort <- mkInPort;
+  InPort#(SleepStatus) wakeupPort <- mkInPort;
   connectUsing(mkUGShiftQueue1(QueueOptFmax),
                  mailbox.wakeup, wakeupPort.in);
 
@@ -977,18 +977,16 @@ module mkCore#(CoreId myId) (Core);
       end else
         retry = True;
     end
-    // Mailbox receive
-    if (token.op.csr.isRecv || token.op.csr.isCanRecv) begin
-      if (!token.idleRelease && mailbox.canRecv) begin
-        mailbox.recv(token.thread.id, token.op.csr.isRecv);
-        suspend = True;
-      end else
-        retry = True;
-    end
-    // WaitUntil CSR
-    if (token.op.csr.isWaitUntil) begin
+    // WaitUntil and receive CSRs
+    if (token.op.csr.isWaitUntil || token.op.csr.isRecv ||
+          token.op.csr.isCanRecv) begin
       if (!token.idleRelease) begin
-        mailbox.sleep(token.thread.id, truncate(token.valA));
+        SleepOp op = WaitUntilOp;
+        if (token.op.csr.isRecv) op = RecvOp;
+        if (token.op.csr.isCanRecv) op = CanRecvOp;
+        WakeEvent e = truncate(token.valA);
+        if (!token.op.csr.isWaitUntil) e = 0;
+        mailbox.sleep(token.thread.id, e, op);
         suspend = True;
       end else
         retry = True;
@@ -1211,10 +1209,10 @@ module mkCore#(CoreId myId) (Core);
         token.data = mailbox.scratchpadResp.value.data;
       end else if (mboxReceivePort.canGet) begin
         mboxReceivePort.get;
-        token.id = mboxReceivePort.value.id;
-        token.data = mboxReceivePort.value.doRecv ?
+        token.id = mboxReceivePort.value.status.id;
+        token.data = mboxReceivePort.value.status.op == RecvOp ?
                        msgAddrToByteAddr(mboxReceivePort.value.data) :
-                       zeroExtend(pack(mboxReceivePort.value.canRecv));
+                       zeroExtend(pack(mboxReceivePort.value.status.canRecv));
       end else if (wakeupPort.canGet) begin
         wakeupPort.get;
         token.id = truncate(wakeupPort.value.id);
