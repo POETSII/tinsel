@@ -3,13 +3,24 @@
 #define _PLACER_H_
 
 #include <stdint.h>
+#include <string.h>
 #include <metis.h>
+#include <scotch/scotch.h>
 #include <POLite/Graph.h>
+#include <vector>
 
 typedef uint32_t PartitionId;
 
 // Partition and place a graph on a 2D mesh
 struct Placer {
+  // Select between different methods
+  enum Method {
+    Default,
+    Metis,
+    Scotch
+  };
+  const Method defaultMethod=Metis;
+
   // The graph being placed
   Graph* graph;
 
@@ -41,8 +52,31 @@ struct Placer {
   uint32_t* yCoordSaved;
   uint64_t savedCost;
 
+  // Controls which strategy is used
+  Method method = Default;
+
+  // Select placer method
+  void chooseMethod()
+  {
+    auto e = getenv("POLITE_PLACER");
+    if (e) {
+      if (!strcmp(e, "metis"))
+        method=Metis;
+      else if (!strcmp(e, "scotch"))
+        method=Scotch;
+      else if (!strcmp(e, "default") || *e == '\0')
+        method=Default;
+      else {
+        fprintf(stderr, "Don't understand placer method : %s\n", e);
+        exit(EXIT_FAILURE);
+      }
+    }
+    if (method == Default)
+      method = defaultMethod;
+  }
+
   // Partition the graph using Metis
-  void partition() {
+  void partitionMetis() {
     // Compute total number of edges
     uint32_t numEdges = 0;
     for (uint32_t i = 0; i < graph->incoming->numElems; i++) {
@@ -114,6 +148,103 @@ struct Placer {
     free(xadj);
     free(adjncy);
     free(parts);
+  }
+
+  // Place the graph using Scotch
+  void partitionScotch() {
+    idx_t nvtxs = (idx_t) graph->incoming->numElems;
+    idx_t nparts = (idx_t) (width * height);
+    
+    SCOTCH_Arch *archptr=(SCOTCH_Arch *)malloc(sizeof(SCOTCH_Arch));
+    if (SCOTCH_archInit(archptr)) {
+      fprintf(stderr, "Couldn't init scotch arch\n");
+      exit(EXIT_FAILURE);
+    }
+
+    if (SCOTCH_archMesh2(archptr, width, height)) {
+      fprintf(stderr, "Couldn't create 2d mesh in scotch\n");
+      exit(EXIT_FAILURE);
+    }
+
+    std::vector<SCOTCH_Num> verttab;
+    std::vector<SCOTCH_Num> edgetab;
+
+    for (uint32_t i = 0; i < nvtxs; i++) {
+      verttab.push_back(edgetab.size());
+
+      const Seq<NodeId>* in = graph->incoming->elems[i];
+      for (uint32_t j = 0; j < in->numElems; j++) {
+        if (in->elems[j] != i)
+          edgetab.push_back(in->elems[j]);
+      }
+      
+      const Seq<NodeId>* out = graph->outgoing->elems[i];
+      for (uint32_t j = 0; j < out->numElems; j++) {
+        if (out->elems[j] != i)
+          edgetab.push_back(out->elems[j]);
+      }
+    }
+    verttab.push_back(edgetab.size());
+
+    SCOTCH_Graph *grafptr = (SCOTCH_Graph *) malloc(sizeof(SCOTCH_Graph));
+
+    if (SCOTCH_graphBuild(grafptr,
+      0, // baseval - where do array indices start
+      graph->incoming->numElems, // vertnbr
+      &verttab[0],
+      &verttab[1], // vendtab, means it is a compact edge array
+      0, // velotab, Integer load per vertex. Not used here.
+      0, // vlbltab, vertex label tab (?)
+      edgetab.size(), // edgenbr,
+      &edgetab[0],
+      0 // edlotab, load on each arc
+    )) {
+      fprintf(stderr, "Scotch didn't want to build a graph.\n");
+      exit(EXIT_FAILURE);
+    }
+
+    if (SCOTCH_graphCheck (grafptr)) {
+      fprintf(stderr, "Scotch does not like the graph we built.\n");
+      exit(EXIT_FAILURE);
+    }
+
+    SCOTCH_Strat *stratptr=(SCOTCH_Strat *)malloc(sizeof(SCOTCH_Strat));
+    if (SCOTCH_stratInit(stratptr)) {
+      fprintf(stderr, "Scotch won't make a strategy.\n");
+      exit(EXIT_FAILURE);
+    }
+
+    std::vector<SCOTCH_Num> parttab(nvtxs);
+
+    if (SCOTCH_graphMap (grafptr, archptr, stratptr, &parttab[0])) {
+      fprintf(stderr, "Scotch couldn't map the graph.\n");
+      exit(EXIT_FAILURE);
+    }
+
+    // Populate result array
+    for (uint32_t i = 0; i < graph->incoming->numElems; i++){
+      partitions[i] = (uint32_t) parttab[i];
+    }
+
+    SCOTCH_archExit(archptr);
+    free(archptr);
+    SCOTCH_graphExit(grafptr);
+    free(grafptr);
+    SCOTCH_stratInit(stratptr);
+    free(stratptr);
+  }
+
+  void partition()
+  {
+    switch(method){
+    case Default:
+    case Metis:
+      partitionMetis();
+      break;
+    case Scotch:
+      partitionScotch();
+      break;
+    }
   }
 
   // Create subgraph for each partition
@@ -262,31 +393,44 @@ struct Placer {
   // Very simple local search algorithm for placement
   // Repeatedly swap a mesh node with it's neighbour if it lowers cost
   void place(uint32_t numAttempts) {
-    // Initialise best cost
-    savedCost = ~0;
-
-    for (uint32_t n = 0; n < numAttempts; n++) {
-      randomPlacement();
-      currentCost = cost();
-
-      bool change;
-      do {
-        change = false;
-        // Loop over mesh
-        for (uint32_t y = 0; y < height-1; y++) {
-          for (uint32_t x = 0; x < width-1; x++) {
-            change = trySwap(x, y, x+1, y) ||
-                       trySwap(x, y, x, y+1) ||
-                         trySwap(x, y, x+1, y+1) ||
-                           change;
-          }
+    if (method == Scotch) {
+      // Use Scotch's placement
+      for (uint32_t y = 0; y < height; y++) {
+        for (uint32_t x = 0; x < width; x++) {
+          unsigned p = y*width+x;
+          mapping[y][x] = p;
+          xCoord[p] = x;
+          yCoord[p] = y;
         }
-      } while (change);
+      }
+    }
+    else {
+      // Initialise best cost
+      savedCost = ~0;
 
-      if (currentCost <= savedCost)
-        save();
-      else
-        restore();
+      for (uint32_t n = 0; n < numAttempts; n++) {
+        randomPlacement();
+        currentCost = cost();
+
+        bool change;
+        do {
+          change = false;
+          // Loop over mesh
+          for (uint32_t y = 0; y < height-1; y++) {
+            for (uint32_t x = 0; x < width-1; x++) {
+              change = trySwap(x, y, x+1, y) ||
+                         trySwap(x, y, x, y+1) ||
+                           trySwap(x, y, x+1, y+1) ||
+                             change;
+            }
+          }
+        } while (change);
+  
+        if (currentCost <= savedCost)
+          save();
+        else
+          restore();
+      }
     }
   }
 
@@ -322,6 +466,8 @@ struct Placer {
     computeSubgraphs();
     // Count connections between each pair of partitions
     computeInterPartitionCounts();
+    // Pick a placement method, or select default
+    chooseMethod();
   }
 
   // Deconstructor
