@@ -172,12 +172,6 @@ struct Placer {
     for (uint32_t i = 0; i < nvtxs; i++) {
       verttab.push_back(edgetab.size());
 
-      const Seq<NodeId>* in = graph->incoming->elems[i];
-      for (uint32_t j = 0; j < in->numElems; j++) {
-        if (in->elems[j] != i)
-          edgetab.push_back(in->elems[j]);
-      }
-      
       const Seq<NodeId>* out = graph->outgoing->elems[i];
       for (uint32_t j = 0; j < out->numElems; j++) {
         if (out->elems[j] != i)
@@ -190,7 +184,7 @@ struct Placer {
 
     if (SCOTCH_graphBuild(grafptr,
       0, // baseval - where do array indices start
-      graph->incoming->numElems, // vertnbr
+      nvtxs, // vertnbr
       &verttab[0],
       &verttab[1], // vendtab, means it is a compact edge array
       0, // velotab, Integer load per vertex. Not used here.
@@ -460,14 +454,14 @@ struct Placer {
     yCoord = new uint32_t [width*height];
     xCoordSaved = new uint32_t [width*height];
     yCoordSaved = new uint32_t [width*height];
+    // Pick a placement method, or select default
+    chooseMethod();
     // Partition the graph using Metis
     partition();
     // Compute subgraphs, one per partition
     computeSubgraphs();
     // Count connections between each pair of partitions
     computeInterPartitionCounts();
-    // Pick a placement method, or select default
-    chooseMethod();
   }
 
   // Deconstructor
