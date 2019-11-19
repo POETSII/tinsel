@@ -1,8 +1,7 @@
 # PIP-0022: Mailbox-local multicast
 
 Author: Matthew Naylor
-
-Revision: 2
+Revision: 3
 
 ## Proposal
 
@@ -76,12 +75,9 @@ once a count reaches zero, that memory location can hold a pointer
 (rather than a count) to the next free message slot.
 
 Maintaing a separate message-pointer queue for every thread is
-expensive in hardware: 1024 queues consumes around 20K ALMs (10% of
-DE5-Net).  We propose to allow sharing of queues between threads using
-a new parameter: `LogThreadsPerMulticastQueue`.  Queue sharing means
-that a queue element cannot be consumed until all threads sharing the
-queue have freed it, so the saving in ALMs is offset by reduced
-parallelism.
+expensive in hardware.  We propose to virtualise these queues such
+that the queues of threads sharing a core are maintained in a single
+on-chip RAM, reducing the number of RAMs required by a factor of 16.
 
 ## Impact
 
@@ -283,13 +279,6 @@ Or possibly the pointer is written into registers of some sort within
 the wrapper function, so the bit-mask is capture directly?
 
 ### mn416, 2019/09/27
-
-I did a quick experiment, and 1024 of these per-thread message-pointer
-queues costs about 20,000 ALMs (10% of the DE5).  As expected, that's
-pretty expensive, but possibly in budget. One alternative is to have
-every pair of threads share a queue, halving the requirement.  A
-message in a shared queue cannot be freed until all threads sharing
-the queue have freed it.
 
 David, I agree entirely with all of your suggestions.
 
