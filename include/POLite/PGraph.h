@@ -124,6 +124,9 @@ template <typename DeviceType,
   bool mapInEdgesToDRAM;
   bool mapOutEdgesToDRAM;
 
+  // Allow mapper to print useful information to stdout
+  uint32_t chatty;
+
   // Setter for number of boards to use
   void setNumBoards(uint32_t x, uint32_t y) {
     if (x > meshLenX || y > meshLenY) {
@@ -564,11 +567,19 @@ template <typename DeviceType,
 
   // Implement mapping to tinsel threads
   void map() {
+    // Let's measure some times
+    struct timeval placementStart, placementFinish;
+    struct timeval routingStart, routingFinish;
+    struct timeval initStart, initFinish;
+
     // Release all mapping and heap structures
     releaseAll();
 
     // Reallocate mapping structures
     allocateMapping();
+
+    // Start placement timer
+    gettimeofday(&placementStart, NULL);
 
     // Partition into subgraphs, one per board
     Placer boards(&graph, numBoardsX, numBoardsY);
@@ -628,13 +639,41 @@ template <typename DeviceType,
       }
     }
 
+    // Stop placement timer and start routing timer
+    gettimeofday(&placementFinish, NULL);
+    gettimeofday(&routingStart, NULL);
+
     // Compute send and receive side routing tables
     allocateRoutingTables();
     computeRoutingTables();
 
+    // Stop routing timer and start init timer
+    gettimeofday(&routingFinish, NULL);
+    gettimeofday(&initStart, NULL);
+
     // Reallocate and initialise heap structures
     allocatePartitions();
     initialisePartitions();
+
+    // Display times, if chatty
+    gettimeofday(&initFinish, NULL);
+    if (chatty > 0) {
+      struct timeval diff;
+
+      timersub(&placementFinish, &placementStart, &diff);
+      double duration = (double) diff.tv_sec +
+        (double) diff.tv_usec / 1000000.0;
+      printf("POLite mapper profile:\n");
+      printf("  Partitioning and placement: %lfs\n", duration);
+
+      timersub(&routingFinish, &routingStart, &diff);
+      duration = (double) diff.tv_sec + (double) diff.tv_usec / 1000000.0;
+      printf("  Routing table construction: %lfs\n", duration);
+
+      timersub(&initFinish, &initStart, &diff);
+      duration = (double) diff.tv_sec + (double) diff.tv_usec / 1000000.0;
+      printf("  Thread state initialisation: %lfs\n", duration);
+    }
   }
 
   // Constructor
@@ -725,6 +764,10 @@ template <typename DeviceType,
 
   // Write graph to tinsel machine
   void write(HostLink* hostLink) { 
+    // Start timer
+    struct timeval start, finish;
+    gettimeofday(&start, NULL);
+
     bool useSendBufferOld = hostLink->useSendBuffer;
     hostLink->useSendBuffer = true;
     writeRAM(hostLink, vertexMem, vertexMemSize, vertexMemBase);
@@ -733,6 +776,16 @@ template <typename DeviceType,
     writeRAM(hostLink, outEdgeMem, outEdgeMemSize, outEdgeMemBase);
     hostLink->flush();
     hostLink->useSendBuffer = useSendBufferOld;
+
+    // Display time if chatty
+    gettimeofday(&finish, NULL);
+    if (chatty > 0) {
+      struct timeval diff;
+      timersub(&finish, &start, &diff);
+      double duration = (double) diff.tv_sec +
+        (double) diff.tv_usec / 1000000.0;
+      printf("POLite graph upload time: %lfs\n", duration);
+    }
   }
 
   // Determine fan-in of given device
