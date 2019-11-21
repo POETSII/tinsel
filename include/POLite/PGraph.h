@@ -18,6 +18,15 @@
 // Nodes of a POETS graph are devices
 typedef NodeId PDeviceId;
 
+// This structure holds a group of receiving edges on a thread.
+// All of the edges originate from the same output pin.
+template <typename E> struct PReceiverGroup {
+  // Thread id where all the receivers reside
+  uint32_t threadId;
+  // A sequence of receiving devices on that thread
+  Seq<PInEdge<E>>* receivers;
+};
+
 // POETS graph
 template <typename DeviceType,
           typename S, typename E, typename M> class PGraph {
@@ -81,6 +90,7 @@ template <typename DeviceType,
     mapOutEdgesToDRAM = true;
     outTable = NULL;
     inTable = NULL;
+    chatty = 0;
   }
 
  public:
@@ -376,21 +386,42 @@ template <typename DeviceType,
     }
   }
 
+  // Pack a receivers array
+  // Input: an in-edge sequence for each thread in a mailbox.
+  // Input array may contain lots of holes (0-element sequences)
+  // Output: a sequence of receiver groups
+  // Output array contains no empty receiver groups
+  void createReceiverGroups(
+        uint32_t mbox,
+        Seq<PInEdge<E>>* receivers,
+        Seq<PReceiverGroup<E>>* groups) {
+    groups->clear();
+    for (uint32_t i = 0; i < 64; i++) {
+      if (receivers[i].numElems > 0) {
+        // Add receiver group
+        PReceiverGroup<E> g;
+        g.threadId = (mbox << TinselLogThreadsPerMailbox) | i;
+        g.receivers = &receivers[i];
+        groups->append(g);
+      }
+    }
+  }
+
   // Determine routing key for given set of receivers
   // (The key must be the same for all receivers)
-  uint32_t findKey(uint32_t mbox, Seq<PInEdge<E>>* receivers) { 
-    // TODO: randomise initial key?
+  uint32_t findKey(Seq<PReceiverGroup<E>>* receivers) { 
     uint32_t key = 0;
 
     bool found = false;
     while (!found) {
       found = true; 
-      for (uint32_t i = 0; i < 64; i++) {
-        uint32_t numReceivers = receivers[i].numElems;
+      for (uint32_t i = 0; i < receivers->numElems; i++) {
+        PReceiverGroup<E> g = receivers->elems[i];
+        uint32_t numReceivers = g.receivers->numElems;
         if (numReceivers > 0) {
-          // Compute thread id of receiver
-          uint32_t t = (mbox << TinselLogThreadsPerMailbox) | i;
-          // Compute table size for this thread
+          // Lookup thread id of receiver
+          uint32_t t = g.threadId;
+          // Lookup table size for this thread
           uint32_t tableSize = inTable[t]->numElems;
           // Move to next receiver when we find a space
           if (key >= tableSize) continue;
@@ -413,8 +444,8 @@ template <typename DeviceType,
 
   // Add entries to the input tables for the given receivers
   // (Only valid after mapper is called)
-  uint32_t addInTableEntries(uint32_t mbox, Seq<PInEdge<E>>* receivers) {
-    uint32_t key = findKey(mbox, receivers);
+  uint32_t addInTableEntries(Seq<PReceiverGroup<E>>* receivers) {
+    uint32_t key = findKey(receivers);
     if (key >= 0xfffe) {
       printf("Routing key exceeds 16 bits\n");
       exit(EXIT_FAILURE);
@@ -423,19 +454,20 @@ template <typename DeviceType,
     null.devId = InvalidLocalDevId;
     unused.devId = UnusedLocalDevId;
     // Now that a key with sufficient space has been found, populate the tables
-    for (uint32_t i = 0; i < 64; i++) {
-      uint32_t numReceivers = receivers[i].numElems;
+    for (uint32_t i = 0; i < receivers->numElems; i++) {
+      PReceiverGroup<E> g = receivers->elems[i];
+      uint32_t numReceivers = g.receivers->numElems;
       if (numReceivers > 0) {
-        // Compute thread id of receiver
-        uint32_t t = (mbox << TinselLogThreadsPerMailbox) | i;
-        // Compute table size for this thread
+        // Lookup thread id of receiver
+        uint32_t t = g.threadId;
+        // Lookup table size for this thread
         uint32_t tableSize = inTable[t]->numElems;
         // Make sure inTable is big enough for new entries
         for (uint32_t j = tableSize; j < (key+numReceivers+1); j++)
           inTable[t]->append(unused);
         // Add receivers to thread's inTable
         for (uint32_t j = 0; j < numReceivers; j++) {
-          inTable[t]->elems[key+j] = receivers[i].elems[j];
+          inTable[t]->elems[key+j] = g.receivers->elems[j];
         }
         inTable[t]->elems[key+numReceivers] = null;
       }
@@ -451,6 +483,10 @@ template <typename DeviceType,
 
     // Sequence of local device ids, for each multicast destiation
     SmallSeq<PInEdge<E>> receivers[64];
+
+    // Sequence of receiver groups
+    // (A more compact representation of the receivers array)
+    SmallSeq<PReceiverGroup<E>> groups;
 
     // For each device
     for (uint32_t d = 0; d < numDevices; d++) {
@@ -493,8 +529,10 @@ template <typename DeviceType,
               destsRemaining++;
             }
           }
+          // Create receiver groups
+          createReceiverGroups(mbox, receivers, &groups);
           // Add input table entries
-          uint32_t key = addInTableEntries(mbox, receivers);
+          uint32_t key = addInTableEntries(&groups);
           // Add output table entry
           POutEdge edge;
           edge.mbox = mbox;
