@@ -29,7 +29,8 @@ Released on 8 Jan 2019 and maintained in the
 [tinsel-0.5.1 branch](https://github.com/POETSII/tinsel/tree/tinsel-0.5.1).
 (Hardware idle-detection.)
 * [v0.6](https://github.com/POETSII/tinsel/releases/tag/v0.6):
-Released on 11 Apr 2019 and maintained in the master branch.
+Released on 11 Apr 2019 and maintained in the
+[tinsel-0.6.3 branch](https://github.com/POETSII/tinsel/tree/tinsel-0.6.3).
 (Multi-box cluster.)
 
 ## Contents
@@ -82,13 +83,14 @@ demands, but fairly modest compute requrements.  The main features are:
     instructions for sending and receiving messages 
     between any two threads in the cluster.
 
-  * **Hardware termination detection**.  This significantly simplifies
-    application development in pure message-passing systems.
-    It automatically detects convergence in asynchronous applications,
-    and can be used to advance time in synchronous ones. 
+  * **Hardware termination detection**.  A global termination event is
+    triggered when every thread indicates termination and no messages
+    are in-flight.  Termination can be interpreted as termination of a
+    time step, not just termination of the application, supporting
+    both synchronous and asynchronous event-driven systems.
 
   * **Localised hardware multicast**.  Threads can send a message to
-    multiple nearby destinations simultaneously, greatly reducing the
+    multiple colocated destinations simultaneously, greatly reducing the
     number of inter-thread messages in applications exhibiting good
     locality of communication.
 
