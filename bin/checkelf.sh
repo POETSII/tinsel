@@ -10,11 +10,12 @@ fi
 DUMP=$(riscv64-unknown-elf-objdump -d $1)
 
 # Errors
-ES="\secall\s|ebreak\s"
-ES="$ES|\scsrrs\s|csrrc\s|\scsrrwi\s|\scsrrsi\s|\scsrrci\s"
-ES="$ES|\s[^f]div\s|divu\s|\srem\s|\sremu\s"
-ES="$ES|\sfsqrt\s|fmin\s|fmax\s|\sfclassify\s"
-ES="$ES|\sfmadd\s|fmsub\s|fnmadd\s|\sfnmsub\s"
+T="[\.\s]"
+ES="\secall$T|ebreak$T"
+ES="$ES|\scsrrs$T|\scsrrc$T|\scsrrwi$T|\scsrrsi$T|\scsrrci$T"
+ES="$ES|\s[^f]div$T|divu$T|\srem$T|\sremu$T"
+ES="$ES|\sfsqrt$T|fmin$T|fmax$T|\sfclassify$T"
+ES="$ES|\sfmadd$T|fmsub$T|fnmadd$T|\sfnmsub$T"
 
 if echo "$DUMP" | grep -q -E "$ES"; then
   echo "ERROR: $1 uses unsupported instructions:"
