@@ -253,8 +253,8 @@ template <typename DeviceType,
     // Event loop
     while (1) {
       // Step 1: try to send
-      if (tinselCanSend()) {
-        if (outEdge->key != InvalidKey) {
+      if (outEdge->key != InvalidKey) {
+        if (tinselCanSend()) {
           PMessage<M>* m = (PMessage<M>*) tinselSendSlot();
           // Send message
           m->key = outEdge->key;
@@ -269,7 +269,11 @@ template <typename DeviceType,
           // Move to next neighbour
           outEdge++;
         }
-        else if (sendersTop != senders) {
+        else
+          tinselWaitUntil(TINSEL_CAN_SEND|TINSEL_CAN_RECV);
+      }
+      else if (sendersTop != senders) {
+        if (tinselCanSend()) {
           // Start new multicast
           PLocalDeviceId src = *(--sendersTop);
           // Lookup device
@@ -288,24 +292,26 @@ template <typename DeviceType,
               devices[src].pinBase[pin-2]
             ];
         }
-        else {
-          // Idle detection
-          int idle = tinselIdle(!active);
-          if (idle > 1)
-            break;
-          else if (idle) {
-            active = false;
-            for (uint32_t i = 0; i < numDevices; i++) {
-              DeviceType dev = getDevice(i);
-              // Invoke the step handler for each device
-              active = dev.step() || active;
-              // Device ready to send?
-              if (*dev.readyToSend != No) {
-                *(sendersTop++) = i;
-              }
+        else
+          tinselWaitUntil(TINSEL_CAN_SEND|TINSEL_CAN_RECV);
+      }
+      else {
+        // Idle detection
+        int idle = tinselIdle(!active);
+        if (idle > 1)
+          break;
+        else if (idle) {
+          active = false;
+          for (uint32_t i = 0; i < numDevices; i++) {
+            DeviceType dev = getDevice(i);
+            // Invoke the step handler for each device
+            active = dev.step() || active;
+            // Device ready to send?
+            if (*dev.readyToSend != No) {
+              *(sendersTop++) = i;
             }
-            time++;
           }
+          time++;
         }
       }
 
