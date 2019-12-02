@@ -34,7 +34,7 @@ Released on 11 Apr 2019 and maintained in the
 (Multi-box cluster.)
 * [v0.7](https://github.com/POETSII/tinsel/releases/tag/v0.7):
 Released on 2 Dec 2019 and maintained in the
-[master](https://github.com/POETSII/tinsel/).
+[master branch](https://github.com/POETSII/tinsel/).
 (Localised hardware multicast.)
 
 ## Contents
