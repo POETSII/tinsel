@@ -86,12 +86,12 @@ demands, but fairly modest compute requrements.  The main features are:
   * **Hardware termination detection**.  A global termination event is
     triggered when every thread indicates termination and no messages
     are in-flight.  Termination can be interpreted as termination of a
-    time step, not just termination of the application, supporting
+    time step, or termination of the application, supporting
     both synchronous and asynchronous event-driven systems.
 
   * **Localised hardware multicast**.  Threads can send a message to
-    multiple colocated destinations simultaneously, greatly reducing the
-    number of inter-thread messages in applications exhibiting good
+    multiple colocated destination threads simultaneously, greatly reducing
+    the number of inter-thread messages in applications exhibiting good
     locality of communication.
 
   * **Host communication**. Tinsel threads communicate with x86
@@ -1108,7 +1108,7 @@ The default Tinsel configuration on a single DE5-Net board contains:
   * one termination/idle detector
   * a JTAG UART
 
-The clock frequency is 230MHz and the resource utilisation is 74% of
+The clock frequency is 225MHz and the resource utilisation is 74% of
 the DE5-Net.
 
 ## B. Tinsel Parameters
@@ -1138,7 +1138,7 @@ the DE5-Net.
   `MeshXLenWithinBox`      |       3 | Boards in X dimension within box
   `MeshYLenWithinBox`      |       2 | Boards in Y dimension within box
   `EnablePerfCount`        |    True | Enable performance counters
-  `ClockFreq`              |     230 | Clock frequency in MHz
+  `ClockFreq`              |     225 | Clock frequency in MHz
 
 Further parameters can be found in [config.py](config.py).
 

@@ -34,10 +34,6 @@ set_clock_groups -asynchronous -group {altera_reserved_tck}
 # cycles) before it needs to stabilise.
 set_false_path -from [get_keepers {S5_DDR3_QSYS:u0|de5Top:de5top_0|debugLink_boardId*}] 
 
-# For temperature measurement.  Limits timing due to clock crossing,
-# but is a fairly stable signal, and functionality is not essential.
-set_false_path -from [get_keepers {temp_display:temp_display_inst|display_reg*}]
-
 #**************************************************************
 # Create Generated Clock
 #**************************************************************
