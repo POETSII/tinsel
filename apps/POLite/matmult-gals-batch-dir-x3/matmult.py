@@ -19,10 +19,10 @@ with open('results.csv', "a") as f:
     f.write("Dimension,Nodes,Map_Time,Init_Time,Proc_Time\n")
 
 # Calculate matrices from iteration number
-step_size = 2
-run_max = 11
+step_size = 3
+run_max = 22
 
-for dimension in range(2, run_max, step_size):
+for dimension in range(3, run_max, step_size):
 #for dimension in range(10, 11):
 
     row_odd = []
@@ -111,9 +111,9 @@ for dimension in range(2, run_max, step_size):
         f.write(' * <- And here\n')
         f.write(' * ************************************************/\n')
         f.write('\n')
-        f.write('#define MESHLEN (MATBLEN / 2)\n')
-        f.write('#define MESHWID (MATAWID / 2)\n')
-        f.write('#define MESHHEI (MATALEN / 2)\n')
+        f.write('#define MESHLEN (MATBLEN / 3)\n')
+        f.write('#define MESHWID (MATAWID / 3)\n')
+        f.write('#define MESHHEI (MATALEN / 3)\n')
         f.write('\n')
         f.write('#define RETMATSIZE (MESHLEN * MESHWID)\n')
         f.write('\n')
