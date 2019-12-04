@@ -20,7 +20,7 @@ with open('results.csv', "a") as f:
 
 # Calculate matrices from iteration number
 step_size = 2
-run_max = 5
+run_max = 11
 
 for dimension in range(2, run_max, step_size):
 #for dimension in range(10, 11):

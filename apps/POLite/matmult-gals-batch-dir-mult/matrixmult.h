@@ -66,6 +66,8 @@ struct MatDevice : PDevice<MatState, None, MatMessage> {
             msg->dir = INTERNALX;
             msg->val[0] = s->elementX[0][0];
             msg->val[1] = s->elementX[0][1];
+            msg->val[2] = s->elementX[1][0];
+            msg->val[3] = s->elementX[1][1];
             s->sentflags |= EL1;
             
         }
@@ -74,6 +76,8 @@ struct MatDevice : PDevice<MatState, None, MatMessage> {
             msg->dir = INTERNALY;
             msg->val[0] = s->elementY[0][0];
             msg->val[1] = s->elementY[0][1];
+            msg->val[2] = s->elementY[1][0];
+            msg->val[3] = s->elementY[1][1];
             s->sentflags |= EL2;
             
         }
@@ -151,6 +155,8 @@ struct MatDevice : PDevice<MatState, None, MatMessage> {
             
             s->elementX[0][0] = msg->val[0];
             s->elementX[0][1] = msg->val[1];
+            s->elementX[1][0] = msg->val[2];
+            s->elementX[1][1] = msg->val[3];
             s->inflags |= EL1;
             
             // Should this value be propagated in the x dimension?
@@ -165,6 +171,8 @@ struct MatDevice : PDevice<MatState, None, MatMessage> {
             
             s->elementY[0][0] = msg->val[0];
             s->elementY[0][1] = msg->val[1];
+            s->elementY[1][0] = msg->val[2];
+            s->elementY[1][1] = msg->val[3];
             s->inflags |= EL2;
             
             // Should this value be propagated in the y dimension?
@@ -190,9 +198,14 @@ struct MatDevice : PDevice<MatState, None, MatMessage> {
             
             // Calculate aggregates
             s->aggregate[0][0] = s->elementX[0][0] * s->elementY[0][0];
-            s->aggregate[0][1] = s->elementX[1][0] * s->elementY[0][0];
-            s->aggregate[1][0] = s->elementX[0][0] * s->elementY[1][0];
-            s->aggregate[1][1] = s->elementX[1][0] * s->elementY[1][0];
+            s->aggregate[0][1] = s->elementX[0][1] * s->elementY[0][0];
+            s->aggregate[1][0] = s->elementX[0][0] * s->elementY[0][1];
+            s->aggregate[1][1] = s->elementX[0][1] * s->elementY[0][1];
+            
+            s->aggregate[0][0] += s->elementX[1][0] * s->elementY[1][0];
+            s->aggregate[0][1] += s->elementX[1][1] * s->elementY[1][0];
+            s->aggregate[1][0] += s->elementX[1][0] * s->elementY[1][1];
+            s->aggregate[1][1] += s->elementX[1][1] * s->elementY[1][1];
             s->inflags |= ANS1;
             *readyToSend = Pin(INTERNALZ);
             
@@ -202,10 +215,15 @@ struct MatDevice : PDevice<MatState, None, MatMessage> {
         if ((s->inflags & EL1) && (s->inflags & EL2) && (s->inflags & AGG) && !(s->inflags & ANS2)) {
             
             // Calculate aggregate
-            s->aggregate[0][0] += (s->elementX[0][0] * s->elementY[0][0]);
-            s->aggregate[0][1] += (s->elementX[1][0] * s->elementY[0][0]);
-            s->aggregate[1][0] += (s->elementX[0][0] * s->elementY[1][0]);
-            s->aggregate[1][1] += (s->elementX[1][0] * s->elementY[1][0]);
+            s->aggregate[0][0] += s->elementX[0][0] * s->elementY[0][0];
+            s->aggregate[0][1] += s->elementX[0][1] * s->elementY[0][0];
+            s->aggregate[1][0] += s->elementX[0][0] * s->elementY[0][1];
+            s->aggregate[1][1] += s->elementX[0][1] * s->elementY[0][1];
+            
+            s->aggregate[0][0] += s->elementX[1][0] * s->elementY[1][0];
+            s->aggregate[0][1] += s->elementX[1][1] * s->elementY[1][0];
+            s->aggregate[1][0] += s->elementX[1][0] * s->elementY[1][1];
+            s->aggregate[1][1] += s->elementX[1][1] * s->elementY[1][1];
             s->inflags |= ANS2;
             
             // Propagate aggregate if not last in z dimension
@@ -220,7 +238,7 @@ struct MatDevice : PDevice<MatState, None, MatMessage> {
                 #ifdef TINSEL
                     tinselPerfCountStop();
                     s->elementX[0][0] = tinselCycleCount();
-                    s->elementX[1][0] = tinselCycleCountU();
+                    s->elementX[0][1] = tinselCycleCountU();
                     s->inflags |= CCNT;
                 #endif
                 }
@@ -244,7 +262,7 @@ struct MatDevice : PDevice<MatState, None, MatMessage> {
         }
         
         // Initialise pre-populated sides
-        /*
+        
         if (s->x == 0) {
             s->inflags |= EL1;
             *readyToSend = Pin(INTERNALX);
@@ -253,7 +271,6 @@ struct MatDevice : PDevice<MatState, None, MatMessage> {
             s->inflags |= EL2;
             *readyToSend = Pin(INTERNALY);
         }
-        */
         if ((s->x == 0) && (s->y == 0) && (s->z == 0)) {
             s->aggregate[0][0] = s->elementX[0][0] * s->elementY[0][0];
             s->aggregate[0][1] = s->elementX[0][1] * s->elementY[0][0];

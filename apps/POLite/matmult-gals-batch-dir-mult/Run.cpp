@@ -53,7 +53,7 @@ int main() {
                     
                     mesh[x][y][z] = graph->newDevice();
                     
-                    printf("Node with ID => %d\n", mesh[x][y][z]);
+                    //printf("Node with ID => %d\n", mesh[x][y][z]);
                     
                 }
             }
@@ -95,7 +95,7 @@ int main() {
             for (uint32_t y = 0; y < MESHWID; y++) {
                 for (uint32_t z = 0; z < MESHHEI; z++) {
                     
-                    printf("Initiliazing node with ID => %d\n", mesh[x][y][z]);
+                    //printf("Initiliazing node with ID => %d\n", mesh[x][y][z]);
                     
                     // Initialise device IDs
                     graph->devices[mesh[x][y][z]]->state.id = mesh[x][y][z];
@@ -152,37 +152,33 @@ int main() {
         // Allocate array to contain final value of each device
         uint32_t result[(MESHLEN*2)][(MESHWID*2)] {};
         
-        printf("Result matrix created with dims => %dx%d\n", (MESHLEN*2), (MESHWID*2));
+        //printf("Result matrix created with dims => %dx%d\n", (MESHLEN*2), (MESHWID*2));
         
         // Start timer for overall processing
         struct timeval start_proc, finish_proc, diff_proc;
         gettimeofday(&start_proc, NULL); 
 
-        printf("Expecting returns from count => %d\n", RETMATSIZE);       
+        //printf("Expecting returns from count => %d\n", RETMATSIZE);       
 
         // Receive final value of each device
         for (uint32_t i = 0; i < (RETMATSIZE + 1); i++) {
             
-            printf("Expecting message => %d\n", i);
+            //printf("Expecting message => %d\n", i);
             
             // Receive message
             PMessage<None, MatMessage> msg;
             host_link->recvMsg(&msg, sizeof(msg));
             //if (i == 0) gettimeofday(&finish_proc, NULL);
             
-            printf("Message received => %d\n", i);
+            //printf("Message received => %d\n", i);
             
             // Save final value
             if (msg.payload.dir != CCNTDIR) {
-                //result[(graph->devices[msg.payload.dir]->state.x)*2][(graph->devices[msg.payload.dir]->state.y)*2] = msg.payload.val1;
-                //result[((graph->devices[msg.payload.dir]->state.x)*2)+1][(graph->devices[msg.payload.dir]->state.y)*2] = msg.payload.val2;
-                //result[(graph->devices[msg.payload.dir]->state.x)*2][((graph->devices[msg.payload.dir]->state.y)*2)+1] = msg.payload.val3;
-                //result[((graph->devices[msg.payload.dir]->state.x)*2)+1][((graph->devices[msg.payload.dir]->state.y)*2)+1] = msg.payload.val4;
+                result[(graph->devices[msg.payload.dir]->state.x)*2][(graph->devices[msg.payload.dir]->state.y)*2] = msg.payload.val[0];
+                result[((graph->devices[msg.payload.dir]->state.x)*2)+1][(graph->devices[msg.payload.dir]->state.y)*2] = msg.payload.val[2];
+                result[(graph->devices[msg.payload.dir]->state.x)*2][((graph->devices[msg.payload.dir]->state.y)*2)+1] = msg.payload.val[1];
+                result[((graph->devices[msg.payload.dir]->state.x)*2)+1][((graph->devices[msg.payload.dir]->state.y)*2)+1] = msg.payload.val[3];
                 
-                result[0][0] = msg.payload.val[0];
-                result[0][1] = msg.payload.val[1];
-                result[1][0] = msg.payload.val[2];
-                result[1][1] = msg.payload.val[3];
             }
             else {
                 lower_count = msg.payload.val[0];
@@ -207,8 +203,8 @@ int main() {
             
         }
         
-        printf("Upper count => %lld\n", upper_count);
-        printf("Lower count => %lld\n", lower_count);
+        //printf("Upper count => %lld\n", upper_count);
+        //printf("Lower count => %lld\n", lower_count);
         
         printf("%lf,%lf,%lf", map_duration, init_duration, total_time);
     
