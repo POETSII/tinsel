@@ -10,20 +10,20 @@
  * Edit values between here ->
  * ************************************************/
 
-#define MATALEN (10)
-#define MATAWID (10)
-#define MATBLEN (10)
-#define MATBWID (10)
+#define MATALEN (2)
+#define MATAWID (2)
+#define MATBLEN (2)
+#define MATBWID (2)
 
 /***************************************************
  * <- And here
  * ************************************************/
 
-#define MESHLEN (MATBLEN)
-#define MESHWID (MATAWID)
-#define MESHHEI (MATALEN)
+#define MESHLEN (MATBLEN/2)
+#define MESHWID (MATAWID/2)
+#define MESHHEI (MATALEN/2)
 
-#define RETMATSIZE (MATAWID * MATBLEN)
+#define RETMATSIZE (MESHLEN * MESHWID)
 
 extern int32_t matrixA[MATAWID][MATALEN];
 extern int32_t matrixB[MATBWID][MATBLEN];
