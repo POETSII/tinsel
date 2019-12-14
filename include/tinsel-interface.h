@@ -53,7 +53,7 @@ INLINE int tinselCanRecv();
 INLINE volatile void* tinselSendSlot();
 
 // Set message length for send operation
-// (A message of length N is comprised of N+1 flits)
+// (A message of length N is comprised of N+1 words)
 INLINE void tinselSetLen(int n);
 
 // Send message to multiple threads on the given mailbox

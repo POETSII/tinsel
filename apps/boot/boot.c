@@ -18,8 +18,8 @@ int main()
   // Host id
   uint32_t hostId = tinselHostId();
 
-  // Use one flit per message
-  tinselSetLen(0);
+  // Default message length (full size)
+  tinselSetLen(TinselWordsPerMsg-1);
 
   if (threadId == 0) {
     // State

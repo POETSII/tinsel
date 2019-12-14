@@ -144,7 +144,7 @@ INLINE int tinselCanRecv()
 }
 
 // Set message length for send operation
-// (A message of length N is comprised of N+1 flits)
+// (A message of length N is comprised of N+1 words)
 INLINE void tinselSetLen(int n)
 {
   asm volatile("csrrw zero, " CSR_SEND_LEN ", %0" : : "r"(n));

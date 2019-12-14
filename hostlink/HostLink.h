@@ -31,6 +31,8 @@ class HostLink {
 
   // Send buffer, for bulk sending over PCIe
   char* sendBuffer;
+
+  // Size of send buffer in bytes
   int sendBufferLen;
 
   // Internal constructor
@@ -60,15 +62,15 @@ class HostLink {
   // -----------------------------------
 
   // Send a message (blocking by default)
-  bool send(uint32_t dest, uint32_t numFlits, void* msg, bool block = true);
+  bool send(uint32_t dest, void* msg, bool block = true);
 
   // Try to send a message (non-blocking, returns true on success)
-  bool trySend(uint32_t dest, uint32_t numFlits, void* msg);
+  bool trySend(uint32_t dest, void* msg);
 
-  // Receive a max-sized message (blocking)
+  // Receive a single message (blocking)
   void recv(void* msg);
 
-  // Can receive a flit without blocking?
+  // Can receive a message without blocking?
   bool canRecv();
 
   // Receive a message (blocking), given size of message in bytes

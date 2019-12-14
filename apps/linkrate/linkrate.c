@@ -18,9 +18,6 @@ int main()
   // Intiialise send slot
   msgOut[0] = me;
 
-  // Use single flit messages
-  tinselSetLen(0);
-
   while (1) {
     // Wait for trigger
     // Trigger value contains X and Y coords of destination board (3 bits each)

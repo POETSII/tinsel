@@ -21,8 +21,8 @@
 #include <string.h>
 #include <signal.h>
 
-// Send buffer size (in flits)
-#define SEND_BUFFER_SIZE 8192
+// Send buffer size (in bytes)
+#define SEND_BUFFER_SIZE 131072
 
 // Function to connect to a PCIeStream UNIX domain socket
 static int connectToPCIeStream(const char* socketPath)
@@ -129,7 +129,7 @@ void HostLink::constructor(uint32_t numBoxesX, uint32_t numBoxesY)
 
   // Initialise send buffer
   useSendBuffer = false;
-  sendBuffer = new char [(1<<TinselLogBytesPerFlit) * SEND_BUFFER_SIZE];
+  sendBuffer = new char [SEND_BUFFER_SIZE];
   sendBufferLen = 0;
 
   // Run the self test
@@ -219,36 +219,27 @@ void HostLink::fromAddr(uint32_t addr, uint32_t* meshX, uint32_t* meshY,
 }
 
 // Inject a message via PCIe (blocking by default)
-bool HostLink::send(uint32_t dest, uint32_t numFlits, void* payload, bool block)
+bool HostLink::send(uint32_t dest, void* payload, bool block)
 {
   assert(useSendBuffer ? block : true);
 
-  // Ensure that MaxFlitsPerMsg is not violated
-  assert(numFlits > 0 && numFlits <= TinselMaxFlitsPerMsg);
-
-  // We assume that message flits are 128 bits
-  // (Because PCIeStream currently has this assumption)
-  assert(TinselLogBytesPerFlit == 4);
-
   if (useSendBuffer) {
     // Flush the buffer when we run out of space
-    if ((sendBufferLen + numFlits + 1) >= SEND_BUFFER_SIZE) flush();
+    if ((sendBufferLen+16+TinselBytesPerMsg) >= SEND_BUFFER_SIZE) flush();
 
     // Message buffer
-    uint32_t* buffer = (uint32_t*) &sendBuffer[16*sendBufferLen];
+    uint32_t* buffer = (uint32_t*) &sendBuffer[sendBufferLen];
 
     // Fill in the message header
     // (See DE5BridgeTop.bsv for details)
     buffer[0] = dest;
-    buffer[1] = 0;
-    buffer[2] = (numFlits-1) << 24;
-    buffer[3] = 0;
+    buffer[1] = TinselWordsPerMsg; // Message size in 32-bit words
 
     // Fill in message payload
-    memcpy(&buffer[4], payload, numFlits*16);
+    memcpy(&buffer[4], payload, TinselBytesPerMsg);
 
     // Update buffer
-    sendBufferLen += 1 + numFlits;
+    sendBufferLen += 16 + TinselBytesPerMsg;
 
     return true;
   }
@@ -256,23 +247,18 @@ bool HostLink::send(uint32_t dest, uint32_t numFlits, void* payload, bool block)
     assert(sendBufferLen == 0);
 
     // Message buffer
-    uint32_t buffer[4*(TinselMaxFlitsPerMsg+1)];
+    uint32_t buffer[4 + TinselWordsPerMsg];
 
     // Fill in the message header
     // (See DE5BridgeTop.bsv for details)
     buffer[0] = dest;
-    buffer[1] = 0;
-    buffer[2] = (numFlits-1) << 24;
-    buffer[3] = 0;
-
-    // Bytes in payload
-    int payloadBytes = numFlits*16;
+    buffer[1] = TinselWordsPerMsg; // Message size in 32-bit words
 
     // Fill in message payload
-    memcpy(&buffer[4], payload, payloadBytes);
+    memcpy(&buffer[4], payload, TinselBytesPerMsg);
 
     // Total bytes to send, including header
-    int totalBytes = 16+payloadBytes;
+    int totalBytes = 16+TinselBytesPerMsg;
 
     // Write to the socket
     if (block) {
@@ -290,15 +276,15 @@ void HostLink::flush()
 {
   assert(useSendBuffer);
   if (sendBufferLen > 0) {
-    socketBlockingPut(pcieLink, sendBuffer, sendBufferLen * 16);
+    socketBlockingPut(pcieLink, sendBuffer, sendBufferLen);
     sendBufferLen = 0;
   }
 }
 
 // Try to send a message (non-blocking, returns true on success)
-bool HostLink::trySend(uint32_t dest, uint32_t numFlits, void* msg)
+bool HostLink::trySend(uint32_t dest, void* msg)
 {
-  return send(dest, numFlits, msg, false);
+  return send(dest, msg, false);
 }
 
 // Receive a message via PCIe (blocking)
@@ -376,12 +362,12 @@ void HostLink::boot(const char* codeFilename, const char* dataFilename)
             req.cmd = SetAddrCmd;
             req.numArgs = 1;
             req.args[0] = addr;
-            send(dest, 1, &req);
+            send(dest, &req);
           }
           req.cmd = WriteInstrCmd;
           req.numArgs = 1;
           req.args[0] = word;
-          send(dest, 1, &req);
+          send(dest, &req);
         }
       }
     }
@@ -407,12 +393,12 @@ void HostLink::boot(const char* codeFilename, const char* dataFilename)
             req.cmd = SetAddrCmd;
             req.numArgs = 1;
             req.args[0] = addr;
-            send(dest, 1, &req);
+            send(dest, &req);
           }
           req.cmd = StoreCmd;
           req.numArgs = 1;
           req.args[0] = word;
-          send(dest, 1, &req);
+          send(dest, &req);
         }
       }
     }
@@ -432,7 +418,7 @@ void HostLink::boot(const char* codeFilename, const char* dataFilename)
         req.cmd = StartCmd;
         req.args[0] = (1<<TinselLogThreadsPerCore)-1;
         while (1) {
-          bool ok = trySend(dest, 1, &req);
+          bool ok = trySend(dest, &req);
           if (canRecv()) {
             recv(msg);
             started++;
@@ -479,12 +465,12 @@ void HostLink::loadInstrsOntoCore(const char* codeFilename,
       req.cmd = SetAddrCmd;
       req.numArgs = 1;
       req.args[0] = addr;
-      send(dest, 1, &req);
+      send(dest, &req);
     }
     req.cmd = WriteInstrCmd;
     req.numArgs = 1;
     req.args[0] = word;
-    send(dest, 1, &req);
+    send(dest, &req);
     addrReg = addr + 4;
   }
 }
@@ -506,12 +492,12 @@ void HostLink::loadDataViaCore(const char* dataFilename,
       req.cmd = SetAddrCmd;
       req.numArgs = 1;
       req.args[0] = addr;
-      send(dest, 1, &req);
+      send(dest, &req);
     }
     req.cmd = StoreCmd;
     req.numArgs = 1;
     req.args[0] = word;
-    send(dest, 1, &req);
+    send(dest, &req);
     addrReg = addr + 4;
   }
 }
@@ -528,7 +514,7 @@ void HostLink::startOne(uint32_t meshX, uint32_t meshY,
   // Send start command
   req.cmd = StartCmd;
   req.args[0] = numThreads-1;
-  send(dest, 1, &req);
+  send(dest, &req);
 
   // Wait for start response
   uint32_t msg[1 << TinselLogWordsPerMsg];
@@ -551,7 +537,7 @@ void HostLink::setAddr(uint32_t meshX, uint32_t meshY,
   req.cmd = SetAddrCmd;
   req.numArgs = 1;
   req.args[0] = addr;
-  send(toAddr(meshX, meshY, coreId, 0), 1, &req);
+  send(toAddr(meshX, meshY, coreId, 0), &req);
 }
 
 // Store words to remote memory on a given board via given core
@@ -561,12 +547,12 @@ void HostLink::store(uint32_t meshX, uint32_t meshY,
   BootReq req;
   req.cmd = StoreCmd;
   while (numWords > 0) {
-    uint32_t sendWords = numWords > 15 ? 15 : numWords;
+    uint32_t sendWords = numWords > (TinselWordsPerMsg-1) ?
+      (TinselWordsPerMsg-1) : numWords;
     numWords = numWords - sendWords;
     req.numArgs = sendWords;
     for (uint32_t i = 0; i < sendWords; i++) req.args[i] = data[i];
-    uint32_t numFlits = 1 + (sendWords >> 2);
-    send(toAddr(meshX, meshY, coreId, 0), numFlits, &req);
+    send(toAddr(meshX, meshY, coreId, 0), &req);
   }
 }
 
@@ -600,7 +586,7 @@ bool HostLink::powerOnSelfTest()
         setAddr(x, y, 0, addr);
         gettimeofday(&start, NULL);
         while (1) {
-          bool ok = trySend(toAddr(x, y, 0, 0), 1, &req);
+          bool ok = trySend(toAddr(x, y, 0, 0), &req);
           if (canRecv()) {
             recv(msg);
             count++;

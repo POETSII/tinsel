@@ -46,7 +46,7 @@ package Mailbox;
 // message is comprised of several flits).  The size of the mailbox
 // is in 32-bit words is
 //
-//   2^LogMsgSlotsPerMailbox * 2^LogMaxFlitsPerMsg * 2^LogWordsPerFlit.
+//   2^LogMsgSlotsPerMailbox * 2^LogWordsPerMsg.
 //
 // The first ThreadsPerMailbox message slots are reserved for message
 // sending (one send slot per thread).  All other slots are used as
@@ -118,9 +118,6 @@ typedef Bit#(`LogThreadsPerMailbox) MailboxClientId;
 // 32-bit word address in scratchpad memory
 typedef Bit#(`LogWordsPerMailbox) MailboxWordAddr;
 
-// Flit address in scratchpad memory
-typedef Bit#(`LogFlitsPerMailbox) MailboxFlitAddr;
-
 // Message address in scratchpad memory
 typedef Bit#(`LogMsgsPerMailbox) MailboxMsgAddr;
 
@@ -191,7 +188,7 @@ typedef struct {
 // Transmit pipeline token
 typedef struct {
   NetAddr dest;
-  Bool notFinalFlit;
+  MsgLen numWords;
 } TransmitToken deriving (Bits);
 
 // Type of elements residing in the multicast queues
@@ -237,9 +234,8 @@ endfunction
 
 // Convert message address to byte address
 function Bit#(32) msgAddrToByteAddr(MailboxMsgAddr msgAddr);
-  Bit#(`LogWordsPerFlit) wordOffset = 0;
-  Bit#(`LogMaxFlitsPerMsg) flitOffset = 0;
-  return {0, msgAddr, flitOffset, wordOffset, 2'b0};
+  Bit#(`LogWordsPerMsg) wordOffset = 0;
+  return {0, msgAddr, wordOffset, 2'b0};
 endfunction
 
 // =============================================================================
@@ -281,8 +277,9 @@ endinterface
 module mkMailbox (Mailbox);
   // True dual-port mixed-width scratchpad
   // (One flit-sized port and one word-sized port)
-  BlockRamTrueMixedBE#(MailboxFlitAddr, FlitPayload, MailboxWordAddr, Bit#(32))
-    scratchpad <- mkBlockRamTrueMixedBE;
+  BlockRamOpts scratchpadOpts = defaultBlockRamOpts;
+  BlockRamTrueMixedBE#(MailboxMsgAddr, FlitPayload, MailboxWordAddr, Bit#(32))
+    scratchpad <- mkBlockRamTrueMixedBEOpts(scratchpadOpts);
 
   // Request & response ports
   InPort#(ScratchpadReq) spadReqPort  <- mkInPort;
@@ -302,28 +299,21 @@ module mkMailbox (Mailbox);
   // The read wires must not be written when the write wire is set.
 
   // Control wires for modifying messages in scratchpad
-  Wire#(Bool) flitWriteWire <- mkDWire(False);
-  Reg#(Bool) flitWriteReg <- mkRegU;
-  Wire#(MailboxFlitAddr) flitReadIndexWire <- mkDWire(0);
-  Wire#(MailboxFlitAddr) flitWriteIndexWire <- mkDWire(0);
+  Reg#(Bool) flitWriteReg <- mkDReg(False);
+  Wire#(MailboxMsgAddr) flitReadIndexWire <- mkDWire(0);
   Reg#(FlitPayload) flitWriteDataReg <- mkConfigRegU;
-  Reg#(MailboxFlitAddr) flitIndexReg <- mkRegU;
+  Reg#(MailboxMsgAddr) flitWriteIndexReg <- mkDReg(0);
 
   // Use wires to issue flit access in scratchpad
   rule flitAccessUnit;
-    flitWriteReg <= flitWriteWire;
-    flitIndexReg <= flitReadIndexWire | flitWriteIndexWire;
     scratchpad.putA(
       flitWriteReg,
-      flitIndexReg,
+      flitWriteIndexReg | flitReadIndexWire,
       flitWriteDataReg);
   endrule
 
   // Receive Unit
   // ============
-
-  // Track which flit in a message is currently being received
-  Reg#(MsgLen) recvFlitCount <- mkConfigReg(0);
 
   // RAM containing reference count for every message slot
   BlockRamOpts refCountOpts = defaultBlockRamOpts;
@@ -364,28 +354,23 @@ module mkMailbox (Mailbox);
     if (flitInPort.canGet && canRecv) begin
       flitInPort.get;
       // Write flit to next free slot
-      flitWriteWire <= True;
-      flitWriteIndexWire <= { slot, recvFlitCount };
+      flitWriteReg <= True;
+      flitWriteIndexReg <= slot;
       flitWriteDataReg <= flit.payload;
-      // Is this the final flit of a message?
-      if (! flit.notFinalFlit) begin
-        recvFlitCount <= 0;
-        // Slot is no longer free
-        freeSlots.deq;
-        // Put pointer to new message into buffer
-        Vector#(`CoresPerMailbox, Bit#(`ThreadsPerCore))
-          vecDestThreads = unpack(destThreads);
-        for (Integer i = 0; i < `CoresPerMailbox; i=i+1) begin
-          MulticastBufferEntry mcastEntry =
-            MulticastBufferEntry { dests: vecDestThreads[i], slot: slot };
-          if (vecDestThreads[i] != 0) mcastBuffer[i].enq(mcastEntry);
-        end
-        // Set ref count for new slot
-        refCountReg <= pack(countOnes(destThreads));
-        refCountSlot <= slot;
-        setRefCount <= True;
-      end else
-        recvFlitCount <= recvFlitCount + 1;
+      // Slot is no longer free
+      freeSlots.deq;
+      // Put pointer to new message into buffer
+      Vector#(`CoresPerMailbox, Bit#(`ThreadsPerCore))
+        vecDestThreads = unpack(destThreads);
+      for (Integer i = 0; i < `CoresPerMailbox; i=i+1) begin
+        MulticastBufferEntry mcastEntry =
+          MulticastBufferEntry { dests: vecDestThreads[i], slot: slot };
+        if (vecDestThreads[i] != 0) mcastBuffer[i].enq(mcastEntry);
+      end
+      // Set ref count for new slot
+      refCountReg <= pack(countOnes(destThreads));
+      refCountSlot <= slot;
+      setRefCount <= True;
     end
   endrule
 
@@ -477,70 +462,50 @@ module mkMailbox (Mailbox);
   // =============
 
   // Transmit flit-buffer
-  SizedQueue#(`LogTransmitBufferLen, Flit) transmitBuffer <-
-    mkUGShiftQueue(QueueOptFmax);
-
-  // Track number of in-flight requests
-  Count#(TAdd#(`LogTransmitBufferLen, 1)) inFlightTransmits <-
-    mkCount(2 ** `LogTransmitBufferLen);
+  Queue#(Flit) transmitBuffer <- mkUGShiftQueue(QueueOptFmax);
 
   // Transmit response-buffer
-  Queue#(TransmitResp) transmitRespBuffer <- mkUGShiftQueue(QueueOptFmax);
+  Queue1#(TransmitResp) transmitRespBuffer <- mkUGShiftQueue(QueueOptFmax);
 
-  // Flit count
-  Reg#(MsgLen) transmitFlitCount <- mkConfigReg(0);
+  // State machine
+  Reg#(Bit#(2)) transmitState <- mkReg(0);
+  Reg#(TransmitToken) transmitToken <- mkConfigRegU;
 
-  // Pipeline state
-  Reg#(TransmitToken) transmit2Input <- mkVReg;
-  Reg#(TransmitToken) transmit3Input <- mkVReg;
-  Reg#(TransmitToken) transmit4Input <- mkVReg;
-
-  rule transmit1;
+  rule transmit0 (transmitState == 0);
     if (txReqPort.canGet &&
-          inFlightTransmits.notFull &&
+          transmitBuffer.notFull &&
             transmitRespBuffer.notFull &&
-              !flitWriteWire) begin
+              !flitWriteReg) begin
       TransmitReq req = txReqPort.value;
-      // Is this the final beat of the message?
-      Bool endOfMsg = False;
-      if (transmitFlitCount == req.len) begin
-        endOfMsg = True;
-        transmitFlitCount <= 0;
-        // Consume request
-        txReqPort.get;
-        // Put response
-        transmitRespBuffer.enq(TransmitResp { id: req.id });
-      end else
-        transmitFlitCount <= transmitFlitCount+1;
+      // Consume request
+      txReqPort.get;
+      // Put response
+      transmitRespBuffer.enq(TransmitResp { id: req.id });
       // Read message from scratchpad
       flitReadIndexWire <=
-        { truncate(req.id), req.msgIndex, transmitFlitCount };
+        { truncate(req.id), req.msgIndex };
       // Trigger next stage
-      inFlightTransmits.inc;
-      let token = TransmitToken {dest: req.dest, notFinalFlit: !endOfMsg};
-      transmit2Input <= token;
+      let token = TransmitToken {dest: req.dest, numWords: req.len};
+      transmitToken <= token;
+      transmitState <= 1;
     end
   endrule
 
-  rule transmit2;
+  rule transmit1 (transmitState == 1);
     // Trigger next stage
-    transmit3Input <= transmit2Input;
+    transmitState <= 2;
   endrule
 
-  rule transmit3;
-    // Trigger next stage
-    transmit4Input <= transmit3Input;
-  endrule
-
-  rule transmit4;
-    TransmitToken token = transmit4Input;
+  rule transmit2 (transmitState == 2);
+    TransmitToken token = transmitToken;
     // Put flit into transmit buffer
     myAssert(transmitBuffer.notFull, "transmitBuffer overflow");
     let flit = Flit { dest:         token.dest
                     , payload:      scratchpad.dataOutA
-                    , notFinalFlit: token.notFinalFlit
+                    , numWords:     token.numWords
                     , isIdleToken:  False };
     transmitBuffer.enq(flit);
+    transmitState <= 0;
   endrule
   
   // Scratchpad
@@ -660,7 +625,6 @@ module mkMailbox (Mailbox);
     interface BOut flitOut;
       method Action get;
         transmitBuffer.deq;
-        inFlightTransmits.dec;
       endmethod
       method Bool valid = transmitBuffer.canDeq;
       method Flit value = transmitBuffer.dataOut;

@@ -60,11 +60,8 @@ p["DRAMLatency"] = 20
 # Size of each DRAM
 p["LogBeatsPerDRAM"] = 26
 
-# Size of internal flit payload
-p["LogWordsPerFlit"] = 2
-
-# Max flits per message
-p["LogMaxFlitsPerMsg"] = 2
+# Size of message payload
+p["LogWordsPerMsg"] = 2
 
 # Space available in mailbox scratchpad
 p["LogMsgsPerMailbox"] = 9
@@ -235,28 +232,19 @@ p["CoresPerDCache"] = 2**p["LogCoresPerDCache"]
 # Caches per DRAM
 p["DCachesPerDRAM"] = 2**p["LogDCachesPerDRAM"]
 
-# Flits per message
-p["MaxFlitsPerMsg"] = 2**p["LogMaxFlitsPerMsg"]
-
 # Mailbox size
-p["LogFlitsPerMailbox"] = p["LogMsgsPerMailbox"] + p["LogMaxFlitsPerMsg"]
-p["LogWordsPerMailbox"] = p["LogFlitsPerMailbox"] + p["LogWordsPerFlit"]
+p["LogWordsPerMailbox"] = p["LogMsgsPerMailbox"] + p["LogWordsPerMsg"]
 p["LogBytesPerMailbox"] = p["LogWordsPerMailbox"] + 2
 
-# Words per flit
-p["WordsPerFlit"] = 2**p["LogWordsPerFlit"]
-
-# Bytes per flit
-p["LogBytesPerFlit"] = p["LogWordsPerFlit"] + 2
-
-# Bits per flit
-p["BitsPerFlit"] = p["WordsPerFlit"] * 32
-
 # Words per message
-p["LogWordsPerMsg"] = p["LogWordsPerFlit"] + p["LogMaxFlitsPerMsg"]
+p["WordsPerMsg"] = 2**p["LogWordsPerMsg"]
 
 # Bytes per message
 p["LogBytesPerMsg"] = p["LogWordsPerMsg"] + 2
+p["BytesPerMsg"] = 2 ** p["LogBytesPerMsg"]
+
+# Bits per message
+p["BitsPerMsg"] = p["WordsPerMsg"] * 32
 
 # Number of cores sharing a mailbox
 p["CoresPerMailbox"] = 2 ** p["LogCoresPerMailbox"]
@@ -266,13 +254,8 @@ p["LogThreadsPerMailbox"] = p["LogCoresPerMailbox"]+p["LogThreadsPerCore"]
 p["ThreadsPerMailbox"] = 2**p["LogThreadsPerMailbox"]
 
 # Base of off-chip memory-mapped region in bytes
-p["LogOffChipRAMBaseAddr"] = (1+p["LogWordsPerFlit"]+2+
-                                p["LogMaxFlitsPerMsg"]+
+p["LogOffChipRAMBaseAddr"] = (1+p["LogWordsPerMsg"]+2+
                                 p["LogMsgsPerMailbox"])
-
-# Size of mailbox transmit buffer
-p["LogTransmitBufferLen"] = (p["LogMaxFlitsPerMsg"]
-                               if p["LogMaxFlitsPerMsg"] > 1 else 1)
 
 # Number of mailboxes per board
 p["MailboxesPerBoard"] = 2 ** p["LogMailboxesPerBoard"]

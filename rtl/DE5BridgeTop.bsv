@@ -9,12 +9,11 @@
 //
 // The format of the data stream in the PC->FPGA direction is:
 //
-//   1. DA: Destination address (4 bytes)
-//   2. NM: Number of messages that follow minus one (4 bytes)
-//   3. FM: Number of flit payloads per message minus one (1 byte)
-//   4. Padding (7 bytes)
-//   5. (NM+1)*(FM+1) flit payloads ((NM+1)*(FM+1)*BytesPerFlit bytes)
-//   6. Goto step 1
+//   1. Destination address (4 bytes)
+//   2. Message size (4 bytes)
+//   3. Padding (8 bytes)
+//   4. Message payload (BytesPerMsg bytes)
+//   5. Goto step 1
 //
 // The format of the data stream in the FPGA->PC direction is simply
 // raw flit payloads.
@@ -75,14 +74,22 @@ endinterface
 `endif
 
 // ============================================================================
+// Types
+// ============================================================================
+
+// A host message is 16 bytes followed by a standard message payload
+typedef TAdd#(128, `BitsPerMsg) BitsPerHostMsg;
+typedef Bit#(BitsPerHostMsg) HostMsg;
+
+// ============================================================================
 // Implementation
 // ============================================================================
 
 module de5BridgeTop (DE5BridgeTop);
 
   // Ports
-  OutPort#(Bit#(128)) toPCIe <- mkOutPort;
-  InPort#(Bit#(128)) fromPCIe <- mkInPort;
+  OutPort#(FlitPayload) toPCIe <- mkOutPort;
+  InPort#(HostMsg) fromPCIe <- mkInPort;
   OutPort#(Flit) toLinkA <- mkOutPort;
   OutPort#(Flit) toLinkB <- mkOutPort;
   InPort#(Flit) fromLink <- mkInPort;
@@ -110,9 +117,13 @@ module de5BridgeTop (DE5BridgeTop);
   connectUsing(mkUGQueue, toLinkA.out, linkA.flitIn);
   connectUsing(mkUGQueue, toLinkB.out, linkB.flitIn);
 
-  // Connect ports to PCIeStream
-  connectUsing(mkUGQueue, toPCIe.out, pcie.streamIn);
-  connectDirect(pcie.streamOut, fromPCIe.in);
+  // Connect to PCIe stream via serialiser/deserialiser
+  Serialiser#(FlitPayload, Bit#(128)) ser <- mkSerialiser;
+  Deserialiser#(Bit#(128), HostMsg) des <- mkDeserialiser;
+  connectUsing(mkUGQueue, ser.serialOut, pcie.streamIn);
+  connectDirect(pcie.streamOut, des.serialIn);
+  connectUsing(mkUGQueue, toPCIe.out, ser.parallelIn);
+  connectUsing(mkUGQueue, des.parallelOut, fromPCIe.in);
 
   // Create idle detector master
   IdleDetectMaster detector <- mkIdleDetectMaster;
@@ -158,108 +169,49 @@ module de5BridgeTop (DE5BridgeTop);
   // Connect PCIe stream and 10G link
   // --------------------------------
 
-  Reg#(Bit#(32)) fromPCIeDA    <- mkConfigRegU;
-  Reg#(Bit#(32)) fromPCIeNM    <- mkConfigRegU;
-  Reg#(Bit#(8))  fromPCIeFM    <- mkConfigRegU;
-  Reg#(Bit#(1))  toLinkState   <- mkConfigReg(0);
-
-  Reg#(Bit#(32)) messageCount  <- mkConfigReg(0);
-  Reg#(Bit#(8))  flitCount     <- mkConfigReg(0);
-  Reg#(Bool)     hostInjectInProgress <- mkConfigReg(False);
-
-  rule toLink0 (toLinkState == 0);
+  rule toLink;
     if (fromDetector.canGet) begin
       if (linkOutBuffer.notFull) begin
         linkOutBuffer.enq(fromDetector.value);
         fromDetector.get;
       end
-    end else begin
-      if (hostInjectInProgress)
-        toLinkState <= 1;
-      else if (fromPCIe.canGet) begin
-        hostInjectInProgress <= True;
-        Bit#(128) data = fromPCIe.value;
-        fromPCIeDA <= data[31:0];
-        fromPCIeNM <= data[63:32];
-        fromPCIeFM <= data[95:88];
-        toLinkState <= 1;
-        fromPCIe.get;
-      end
-    end
-  endrule
-
-  rule toLink1 (toLinkState == 1);
-    if (flitCount == 0 && detector.disableHostMsgs) begin
-      // Hold off sending
-      toLinkState <= 0;
-    end else begin
+    end else if (!detector.disableHostMsgs) begin
       if (fromPCIe.canGet && linkOutBuffer.notFull) begin
+        Bit#(32) addr = fromPCIe.value[31:0];
         // Determine flit destination address
-        Bit#(6) destThread = fromPCIeDA[`LogThreadsPerMailbox-1:0];
+        Bit#(6) destThread = addr[`LogThreadsPerMailbox-1:0];
         Vector#(64, Bool) destThreads = newVector();
         for (Integer i = 0; i < 64; i=i+1)
           destThreads[i] = destThread == fromInteger(i);
         // Construct flit
         Flit flit;
-        flit.dest.addr = unpack(truncate(fromPCIeDA[31:`LogThreadsPerMailbox]));
+        flit.dest.addr = unpack(truncate(addr[31:`LogThreadsPerMailbox]));
         flit.dest.threads = pack(destThreads);
-        flit.payload = fromPCIe.value;
-        flit.notFinalFlit = True;
+        flit.payload = truncateLSB(fromPCIe.value);
         flit.isIdleToken = False;
-        if (flitCount == fromPCIeFM) begin
-          flitCount <= 0;
-          flit.notFinalFlit = False;
-          if (messageCount == fromPCIeNM) begin
-            messageCount <= 0;
-            toLinkState <= 0;
-            hostInjectInProgress <= False;
-          end else
-            messageCount <= messageCount+1;
-        end else
-          flitCount <= flitCount+1;
+        flit.numWords = truncate(fromPCIe.value[63:32]-1);
         linkOutBuffer.enq(flit);
         fromPCIe.get;
-        if (flitCount == 0) detector.incCount;
+        detector.incCount;
       end
     end
   endrule
 
-  // We always send a message-sized message to the host
-  // When a message is less than that size, we emit padding
-  Reg#(Bit#(`LogMaxFlitsPerMsg)) toPCIePadding <- mkReg(0);
-
-  // Count the flits in a message going to the host
-  Reg#(Bit#(`LogMaxFlitsPerMsg)) toPCIeFlitCount <- mkReg(0);
-
   // Connect 10G link to PCIe stream and idle detector
   rule fromLinkRule;
     Flit flit = fromLink.value;
-    if (toPCIePadding == 0) begin
-      if (fromLink.canGet) begin
-        if (flit.isIdleToken) begin
-          if (toDetector.canPut) begin
-            toDetector.put(flit);
-            fromLink.get;
-          end
-        end else begin
-          if (toPCIe.canPut) begin
-            toPCIe.put(flit.payload);
-            fromLink.get;
-            if (flit.notFinalFlit) begin
-              toPCIeFlitCount <= toPCIeFlitCount+1;
-            end else begin
-              toPCIePadding <=
-                fromInteger (`MaxFlitsPerMsg-1) - toPCIeFlitCount;
-              toPCIeFlitCount <= 0;
-              detector.decCount;
-            end
-          end
+    if (fromLink.canGet) begin
+      if (flit.isIdleToken) begin
+        if (toDetector.canPut) begin
+          toDetector.put(flit);
+          fromLink.get;
         end
-      end
-    end else begin
-      if (toPCIe.canPut) begin
-        toPCIe.put(0);
-        toPCIePadding <= toPCIePadding-1;
+      end else begin
+        if (toPCIe.canPut) begin
+          toPCIe.put(flit.payload);
+          fromLink.get;
+          detector.decCount;
+        end
       end
     end
   endrule

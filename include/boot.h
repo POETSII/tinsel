@@ -10,7 +10,7 @@ typedef struct {
   uint8_t cmd;
   uint8_t numArgs;
   uint16_t unused;
-  uint32_t args[15];
+  uint32_t args[TinselWordsPerMsg-1];
 } BootReq;
 
 // Various commands supported by the boot loader

@@ -52,18 +52,17 @@ with the `vpp` option (which stands for Verilog pre-processor).
 
 Here is the flit format, as a SystemVerilog structure:
 
-```sv
+```
 typedef struct packed {
   // Destination address
   NetAddr dest;
-  // Payload
-  logic [`TinselBitsPerFlit-1:0] payload;
-  // Is this the final flit in the message?
-  logic notFinalFlit;
+  // Size of payload in 32-bit words
+  logic [`TinselLogWordsPerMsg-1:0] numWords;
   // Is this a special packet for idle-detection?
   logic isIdleToken;
+  // Payload
+  logic [`TinselBitsPerMsg-1:0] payload;
 } Flit;
-```
 
 ## Address format
 

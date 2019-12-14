@@ -1,3 +1,7 @@
+Todo:
+
+  * Multi-flit messages no longer exist
+
 # Tinsel 0.7.1
 
 Tinsel is a [RISC-V](https://riscv.org/)-based manythread
@@ -409,13 +413,12 @@ network on which any thread can send a message to any other thread
 communication is more efficient between threads that share the same
 mailbox.
 
-A Tinsel *message* is comprised of a bounded number of *flits*.  A
-thread can send a message containing any number of flits (up to the
-bound defined by `LogMaxFlitsPerMsg`), but conceptually the message is
-treated as an *atomic unit*: at any moment, either the whole message
-has reached the destination or none of it has.  As one would expect,
-shorter messages consume less bandwidth than longer ones.  The size of
-a flit is defined by `LogWordsPerFlit`.
+We use the term *message* and *flit* interchangeably.  The distinction
+is useful when a message may be comprised of multiple flits, but that
+is currently not the case.  The maximum size of a message is defined
+by `LogWordsPerMsg`, but the user *may* call `tinselSetLen()` at
+runtime to indicate they are not using the full payload, and the
+hardware *may* use this length to reduce communication costs.
 
 At the heart of a mailbox is a memory-mapped *scratchpad* that
 stores both incoming and outgoing messages.  The capacity of the
@@ -431,7 +434,7 @@ volatile void* tinselSendSlot();
 
 Once a thread has written a message to the scratchpad, it can trigger
 a *send* operation, provided that the `CanSend` CSR returns true.  It
-does so by: (1) writing the number of flits in the message to the
+does so by: (1) writing the size of the message (in words) to the
 `SendLen` CSR; (2) writing the address of the message in the
 scratchpad to the `SendPtr` CSR; (3) writing the destination mailbox
 id to the `SendDest` CSR; (4) invoking the `Send` custom instruction,
@@ -442,7 +445,7 @@ is defined in [Appendix E](#e-tinsel-address-structure).
   CSR Name   | CSR    | R/W | Function
   ---------- | ------ | --- | --------
   `CanSend`  | 0x803  | R   | 1 if can send, 0 otherwise
-  `SendLen`  | 0x806  | W   | Set message length for send
+  `SendLen`  | 0x806  | W   | Set message length for send (in words)
   `SendPtr`  | 0x807  | W   | Set message pointer for send
   `SendDest` | 0x808  | W   | Set destination mailbox for send
 
@@ -458,7 +461,7 @@ custom CSRs and instructions.
 inline uint32_t tinselCanSend();
 
 // Set message length for send operation
-// (A message of length n is comprised of n+1 flits)
+// (A message of length n is comprised of n+1 32-bit words)
 inline void tinselSetLen(uint32_t n);
 
 // Send message to multiple threads on the given mailbox.
@@ -566,8 +569,7 @@ A summary of synthesis-time parameters introduced in this section:
   Parameter                | Default | Description
   ------------------------ | ------- | -----------
   `LogCoresPerMailbox`     |       2 | Number of cores sharing a mailbox
-  `LogWordsPerFlit`        |       2 | Number of 32-bit words in a flit
-  `LogMaxFlitsPerMsg`      |       2 | Max number of flits in a message
+  `LogWordsPerMsg`         |       2 | Number of 32-bit words in a message
   `LogMsgsPerMailbox`      |       9 | Number of slots in the mailbox
 
 ## 6. Tinsel Network
@@ -580,19 +582,12 @@ parameter `LogMailboxesPerBoard`.
   `LogMailboxesPerBoard`   |       4 | Number of mailboxes per FPGA board
 
 The mailboxes are connected together by a 2D network-on-chip (NoC)
-carrying message flits (see section [Tinsel
-Mailbox](#4-tinsel-mailbox)).  The network ensures that flits from
-different messages are not interleaved or, equivalently, flits from
-the same message appear *contiguously* between any two mailboxes.
-This avoids complex logic for reassembling messages.  It also avoids
-the deadlock case whereby a receiver's buffer is exhausted with
-partial messages, yet is unable to provide a single whole message for
-the receiver to consume in order free space.
+carrying messages (see section [Tinsel Mailbox](#4-tinsel-mailbox)).
 
 It is more efficient to send messages between threads that share a
 mailbox than between threads on different mailboxes.  This is because,
-in the former case, flits are simply copied from one part of a
-scratchpad to another using a wide, flit-sized, read/write port.  Such
+in the former case, messages are simply copied from one part of a
+scratchpad to another using a wide, message-sized, read/write port.  Such
 messages do not occupy any bandwidth on the bidirectional NoC
 connecting the mailboxes.
 
@@ -695,10 +690,10 @@ as follows.
 
 ```cpp
 // Send a message (blocking)
-bool HostLink::send(uint32_t dest, uint32_t numFlits, void* msg);
+bool HostLink::send(uint32_t dest, void* msg);
 
 // Try to send a message (non-blocking, returns true on success)
-bool HostLink::trySend(uint32_t dest, uint32_t numFlits, void* msg);
+bool HostLink::trySend(uint32_t dest, void* msg);
 
 // Receive a max-sized message (blocking)
 // Buffer must be at least 1<<LogBytesPerMsg bytes in size
@@ -712,16 +707,14 @@ bool HostLink::canRecv();
 void HostLink::recvMsg(void* msg, uint32_t numBytes);
 ```
 
-The `send` method allows a message consisting of multiple flits to be
-sent. The `recv` method reads a single max-sized message, padded with
-zeroes if the actual message received contains fewer than the maximum
-number of flits.  If the length of the message is known statically,
-`recvMsg` can be used and any bytes beyond `numBytes` up to the next
-message boundary will be ignored.  This is useful when a `struct` is
-being used to hold messages, in which case the second argument to
-`recvMsg` is simply the `sizeof` the `struct`.  The `recvMsg` function
-assumes that the size of the struct is less than or equal to the
-maximum message size.
+The `send` method allows a single message to be sent and the `recv`
+method consumes a single message.  If the logical length of the
+message is known statically, `recvMsg` can be used and any bytes
+beyond `numBytes` up to the next message boundary will be ignored.
+This is useful when a `struct` is being used to hold messages, in
+which case the second argument to `recvMsg` is simply the `sizeof` the
+`struct`.  The `recvMsg` function assumes that the size of the struct
+is less than or equal to the maximum message size.
 
 There is also support for bulk sending and receving of messages. For
 bulk receiving, `recvBulk` and `recvMsgs` generalise `recv` and
@@ -1133,8 +1126,7 @@ the DE5-Net.
   `SRAMAddrWidth`          |      20 | Address width of each off-chip SRAM
   `LogBytesPerSRAMBeat`    |       3 | Data width of each off-chip SRAM
   `LogCoresPerMailbox`     |       2 | Number of cores sharing a mailbox
-  `LogWordsPerFlit`        |       2 | Number of 32-bit words in a flit
-  `LogMaxFlitsPerMsg`      |       2 | Max number of flits in a message
+  `LogWordsPerMsg`         |       2 | Number of 32-bit words in a message
   `LogMsgsPerMailbox`      |       9 | Number of message slots in the mailbox
   `LogMailboxesPerBoard`   |       4 | Number of mailboxes per FPGA board
   `MeshXBits`              |       3 | Number of bits in mesh X coordinate
@@ -1254,7 +1246,7 @@ inline void tinselCacheFlush();
 inline void tinselFlushLine(uint32_t lineNum, uint32_t way);
 
 // Set message length for send operation
-// (A message of length n is comprised of n+1 flits)
+// (A message of length n is comprised of n+1 32-bit words)
 inline void tinselSetLen(uint32_t n);
 
 // Determine if calling thread can send a message

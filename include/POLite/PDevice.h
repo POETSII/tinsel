@@ -247,8 +247,8 @@ template <typename DeviceType,
       }
     }
 
-    // Set number of flits per message
-    tinselSetLen((sizeof(PMessage<M>)-1) >> TinselLogBytesPerFlit);
+    // Set number of words per message
+    tinselSetLen((sizeof(PMessage<M>)-1) >> 2);
 
     // Event loop
     while (1) {

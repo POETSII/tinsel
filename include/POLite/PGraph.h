@@ -779,7 +779,8 @@ template <typename DeviceType,
                   hostLink->setAddr(x, y, c,
                     heapBase[hostLink->toAddr(x, y, c, t+1)]);
               } else {
-                uint32_t send = min((heapSize[threadId] - written)>>2, 15);
+                uint32_t send =
+                  min((heapSize[threadId] - written)>>2, TinselWordsPerMsg-1);
                 hostLink->store(x, y, c, send,
                   (uint32_t*) &heap[threadId][written]);
                 writeCount[threadId] = written + send * sizeof(uint32_t);

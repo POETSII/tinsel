@@ -46,23 +46,23 @@ function MailboxId getMailboxId(NetAddr addr) = addr.addr.mbox;
 // Messages
 // ============================================================================
 
-// Message length in flits
-// (A length of N corresponds to N+1 flits)
-typedef Bit#(`LogMaxFlitsPerMsg) MsgLen;
+// Message length in 32-bit words
+// (A length of N corresponds to N+1 words)
+typedef Bit#(`LogWordsPerMsg) MsgLen;
 
 // Flit payload
-typedef Bit#(TMul#(`WordsPerFlit, 32)) FlitPayload;
+typedef Bit#(`BitsPerMsg) FlitPayload;
 
 // Flit type
 typedef struct {
   // Destination address
   NetAddr dest;
-  // Payload
-  FlitPayload payload;
-  // Is this the final flit in the message?
-  Bool notFinalFlit;
+  // Size of payload in 32-bit words minus one
+  MsgLen numWords;
   // Is this a special packet for idle-detection?
   Bool isIdleToken;
+  // Payload
+  FlitPayload payload;
 } Flit deriving (Bits);
 
 // A padded flit is a multiple of 64 bits

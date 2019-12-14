@@ -27,10 +27,10 @@ int main()
   printf("Sending ping to thread 0\n");
   uint32_t ping[1 << TinselLogWordsPerMsg];
   ping[0] = 100;
-  hostLink.send(0, 1, ping);
+  hostLink.send(0, ping);
 
   printf("Sending ping to thread 16\n");
-  hostLink.send(16, 1, ping);
+  hostLink.send(16, ping);
 
   printf("Waiting for responses\n");
   hostLink.recv(ping);

@@ -71,16 +71,6 @@ endinterface
 // In which direction should a message be routed?
 typedef enum { Left, Right, Up, Down, Mailbox } Route deriving (Bits, Eq);
 
-// Routes may be locked to prevent interleaving of flits of different messages
-typedef enum {
-  Unlocked,     // Route is unlocked
-  FromLeft,     // Route source must be from left
-  FromRight,    // Route source must be from right
-  FromTop,      // Route source must be from top
-  FromBottom,   // Route source must be from bottom
-  FromMailbox   // Route source must be from mailbox
-} RouteLock deriving (Bits, Eq);
-
 // The routing function has the following type
 typedef function Route route(NetAddr addr) RouteFunc;
 
@@ -89,15 +79,10 @@ module mkRouterMux#(
   RouteFunc route,
   Route dest,
   OutPort#(Flit) destPort,
-  Vector#(n, RouteLock) fromLock,
   Vector#(n, InPort#(Flit)) inPort) ();
 
   // Number of input ports
   Integer numPorts = valueOf(n);
-
-  // Lock on the to-destination route
-  // (To support multiple flits per message)
-  Reg#(RouteLock) toDestLock <- mkConfigReg(Unlocked);
 
   // Track whether or not the destination port is busy
   Bool busy = False;
@@ -108,8 +93,7 @@ module mkRouterMux#(
     routeToDest[i] =
          !busy
       && inPort[i].canGet
-      && route(inPort[i].value.dest) == dest
-      && (toDestLock == Unlocked || toDestLock == fromLock[i]);
+      && route(inPort[i].value.dest) == dest;
     // When we find a sutable input port, destination becomes busy
     busy = busy || routeToDest[i];
   end
@@ -120,7 +104,6 @@ module mkRouterMux#(
     rule toDest (destPort.canPut && routeToDest[i]);
       inPort[i].get;
       destPort.put(inPort[i].value);
-      toDestLock <= inPort[i].value.notFinalFlit ? fromLock[i] : Unlocked;
     endrule
   end
 endmodule
@@ -163,7 +146,6 @@ module mkMeshRouter#(MailboxId m) (MeshRouter);
     route,
     Mailbox,
     toMailboxPort,
-    vector(FromLeft, FromRight, FromTop, FromBottom, FromMailbox),
     vector(leftInPort, rightInPort, topInPort, bottomInPort, fromMailboxPort)
   );
 
@@ -172,7 +154,6 @@ module mkMeshRouter#(MailboxId m) (MeshRouter);
     route,
     Left,
     leftOutPort,
-    vector(FromRight,   FromTop,   FromBottom,   FromMailbox),
     vector(rightInPort, topInPort, bottomInPort, fromMailboxPort)
   );
 
@@ -181,7 +162,6 @@ module mkMeshRouter#(MailboxId m) (MeshRouter);
     route,
     Right,
     rightOutPort,
-    vector(FromLeft,   FromTop,   FromBottom,   FromMailbox),
     vector(leftInPort, topInPort, bottomInPort, fromMailboxPort)
   );
 
@@ -190,7 +170,6 @@ module mkMeshRouter#(MailboxId m) (MeshRouter);
     route,
     Up,
     topOutPort,
-    vector(FromLeft,   FromRight,   FromBottom,   FromMailbox),
     vector(leftInPort, rightInPort, bottomInPort, fromMailboxPort)
   );
 
@@ -199,7 +178,6 @@ module mkMeshRouter#(MailboxId m) (MeshRouter);
     route,
     Down,
     bottomOutPort,
-    vector(FromLeft,   FromRight,   FromTop,   FromMailbox),
     vector(leftInPort, rightInPort, topInPort, fromMailboxPort)
   );
 

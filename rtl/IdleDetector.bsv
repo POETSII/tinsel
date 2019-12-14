@@ -132,9 +132,6 @@ module mkIdleDetector (IdleDetector);
   Queue1#(Flit) tokenInQueue <- mkUGShiftQueue1(QueueOptFmax);
   Queue1#(Flit) tokenOutQueue <- mkUGShiftQueue1(QueueOptFmax);
 
-  // Goes high when multi-flit message being processed
-  Reg#(Bool) multiFlit <- mkConfigReg(False);
-
   // Have the threads been released from the barrier?
   SetReset released <- mkSetReset(False);
 
@@ -148,14 +145,13 @@ module mkIdleDetector (IdleDetector);
   rule forward;
     // From mailbox side to network side
     if (netOutPort.canPut) begin
-      if (tokenOutQueue.canDeq && !multiFlit) begin
+      if (tokenOutQueue.canDeq) begin
         netOutPort.put(tokenOutQueue.dataOut);
         tokenOutQueue.deq;
       end else if (mboxInPort.canGet) begin
         Flit flit = mboxInPort.value;
         netOutPort.put(flit);
         mboxInPort.get;
-        multiFlit <= flit.notFinalFlit;
       end
     end
 
@@ -217,6 +213,7 @@ module mkIdleDetector (IdleDetector);
     // Construct flit containing output token
     Flit outFlit;
     outFlit.isIdleToken = True;
+    outFlit.numWords = 3; // i.e. 4 words
     outFlit.dest =
       NetAddr {
         addr: MailboxNetAddr {
@@ -227,7 +224,6 @@ module mkIdleDetector (IdleDetector);
         },
         threads: 0
       };
-    outFlit.notFinalFlit = False;
     outFlit.payload = zeroExtend(pack(token));
     if (in.done) begin
       if (state == 0) begin
@@ -545,8 +541,8 @@ module mkIdleDetectMaster (IdleDetectMaster);
         threads: 0
       };
     flit.payload = ?;
-    flit.notFinalFlit = False;
     flit.isIdleToken = True;
+    flit.numWords = 3; // i.e. 4 words
     // New value for probeSent
     Bool probeSentNew = probeSent;
 

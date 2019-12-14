@@ -18,12 +18,12 @@ typedef struct packed {
 typedef struct packed {
   // Destination address
   NetAddr dest;
-  // Payload
-  logic [`TinselBitsPerFlit-1:0] payload;
-  // Is this the final flit in the message?
-  logic notFinalFlit;
+  // Size of payload in 32-bit words
+  logic [`TinselLogWordsPerMsg-1:0] numWords;
   // Is this a special packet for idle-detection?
   logic isIdleToken;
+  // Payload
+  logic [`TinselBitsPerMsg-1:0] payload;
 } Flit;
 
 module ExternalTinselAccelerator
@@ -83,9 +83,9 @@ module ExternalTinselAccelerator
         outQueueFull <= 1;
         outQueueData <= '{
             dest: inQueueData.payload[$bits(NetAddr)-1:0]
-          , payload: inQueueData.payload
-          , notFinalFlit: 0
+          , numWords: `TinselWordsPerMsg-1
           , isIdleToken: 0
+          , payload: inQueueData.payload
         };
         inQueueFull <= 0;
       end

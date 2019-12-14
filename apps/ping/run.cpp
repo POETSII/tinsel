@@ -13,7 +13,7 @@ int main()
   printf("Sending ping\n");
   uint32_t ping[1 << TinselLogWordsPerMsg];
   ping[0] = 100;
-  hostLink.send(0, 1, ping);
+  hostLink.send(0, ping);
 
   printf("Waiting for response\n");
   hostLink.recv(ping);

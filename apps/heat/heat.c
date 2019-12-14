@@ -3,6 +3,7 @@
 // Each thread handles an 8x8 subgrid of cells.
 
 #include <tinsel.h>
+#include <assert.h>
 #include "heat.h"
 
 // 32-bit fixed-point number in 16.16 format
@@ -106,14 +107,17 @@ typedef struct {
   int temp[8];
 } Msg;
 
+static_assert(sizeof(Msg) < TinselBytesPerMsg,
+  "Msg structure too large");
+static_assert(sizeof(HostMsg) < TinselBytesPerMsg,
+  "HostMsg structure too large");
+
 // Output
 // ------
 
 // Emit the state of the thread-local subgrid
 void emitGrid(int (*subgrid)[8])
 {
-  // Messages will be comprised of 1 flit
-  tinselSetLen(0);
   // Determine X and Y position of thread
   uint32_t xPos, yPos;
   myXY(&xPos, &yPos);
@@ -133,8 +137,6 @@ void emitGrid(int (*subgrid)[8])
       msg->temps[j] = (subgrid[i][j] >> 16);
     tinselSend(hostId, msg);
   }
-  // Restore message size of 3 flits
-  tinselSetLen(2);
 }
 
 // Top-level
@@ -224,9 +226,6 @@ int main()
   if (neighbour[E] < 0)
     for (int i = 0; i < 8; i++)
       msgIn[E].temp[i] = FixedPoint(40, 0);
-
-  // Messages will be comprised of 3 flits
-  tinselSetLen(2);
 
   // Simulation
   // ----------
