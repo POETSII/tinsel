@@ -1,6 +1,6 @@
 Todo:
 
-  * Multi-flit messages no longer exist
+  * Use numWords field of message in inter-board links to reduce comms cost
 
 # Tinsel 0.7.1
 
@@ -413,12 +413,11 @@ network on which any thread can send a message to any other thread
 communication is more efficient between threads that share the same
 mailbox.
 
-We use the term *message* and *flit* interchangeably.  The distinction
-is useful when a message may be comprised of multiple flits, but that
-is currently not the case.  The maximum size of a message is defined
-by `LogWordsPerMsg`, but the user *may* call `tinselSetLen()` at
-runtime to indicate they are not using the full payload, and the
-hardware *may* use this length to reduce communication costs.
+The maximum size of a message is defined by `LogWordsPerMsg`, but the
+user *may* set a message length at runtime (using the `SendLen` CSR or
+the `tinselSetLen` function) to indicate they are not using the full
+payload, and the hardware *may* use this length to reduce
+communication costs.
 
 At the heart of a mailbox is a memory-mapped *scratchpad* that
 stores both incoming and outgoing messages.  The capacity of the
@@ -1385,10 +1384,10 @@ class HostLink {
   // -----------------------------------
 
   // Send a message (blocking by default)
-  bool send(uint32_t dest, uint32_t numFlits, void* msg, bool block = true);
+  bool send(uint32_t dest, void* msg, bool block = true);
 
   // Try to send a message (non-blocking, returns true on success)
-  bool trySend(uint32_t dest, uint32_t numFlits, void* msg);
+  bool trySend(uint32_t dest, void* msg);
 
   // Receive a single max-sized message (blocking)
   // Buffer must be at least 1<<LogBytesPerMsg bytes in size

@@ -52,11 +52,6 @@ testMem: *.bsv *.c
          -sim -g testMem -u TestMem.bsv
 	$(BSC) $(BSCFLAGS) -sim -o testMem -e testMem *.c
 
-testMailbox: *.bsv *.c
-	$(BSC) $(BSCFLAGS) $(DEFS) -D SIMULATE \
-         -sim -g testMailbox -u TestMailbox.bsv
-	$(BSC) $(BSCFLAGS) -sim -o testMailbox -e testMailbox *.c
-
 InstrMem.hex:
 	make -C $(TINSEL_ROOT)/apps/boot
 
@@ -72,14 +67,11 @@ $(QP)/FreeSlots.mif: GenInit.sh
 .PHONY: test-mem
 test-mem: testMem
 
-.PHONY: test-mailbox
-test-mailbox: testMailbox
-
 .PHONY: clean
 clean:
 	rm -f *.cxx *.o *.h *.ba *.bo *.so *.ipinfo
 	rm -f InstrMem.hex DataMem.hex RunQueue.hex
-	rm -f testMem de5Top testMailbox de5BridgeTop
+	rm -f testMem de5Top de5BridgeTop
 	rm -f de5Top.v mkCore.v mkDCache.v mkMailbox.v mkDebugLinkRouter.v
 	rm -f mkFPU.v mkMeshRouter.v
 	rm -f de5BridgeTop.v

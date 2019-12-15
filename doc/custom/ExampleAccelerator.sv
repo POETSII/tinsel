@@ -1,7 +1,7 @@
 `include "config.v"
 
-// Example accelerator which consumes a flit, and then sends it to the
-// address specified in the first word of the flit's payload.
+// Example accelerator which consumes a message, and then sends it to the
+// address specified in the first word of the message's payload.
 
 typedef struct packed {
   logic acc;
@@ -24,7 +24,7 @@ typedef struct packed {
   logic isIdleToken;
   // Payload
   logic [`TinselBitsPerMsg-1:0] payload;
-} Flit;
+} Msg;
 
 module ExternalTinselAccelerator
   ( // Clock and reset
@@ -36,13 +36,13 @@ module ExternalTinselAccelerator
   , input wire [`TinselMeshXBits-1:0] board_x
   , input wire [`TinselMeshYBits-1:0] board_y
 
-    // Stream of flits coming in
-  , input wire [$bits(Flit)-1:0] in_data
+    // Stream of messages coming in
+  , input wire [$bits(Msg)-1:0] in_data
   , input wire in_valid
   , output wire in_ready
 
-    // Stream of flits going out
-  , output wire [$bits(Flit)-1:0] out_data
+    // Stream of messages going out
+  , output wire [$bits(Msg)-1:0] out_data
   , output wire out_valid
   , input wire out_ready
   );
@@ -51,15 +51,15 @@ module ExternalTinselAccelerator
   parameter TILE_X = 0;
   parameter TILE_Y = 0;
 
-  // Input flit queue
+  // Input message queue
   reg inQueueFull = 0;
-  Flit inQueueData;
+  Msg inQueueData;
 
   assign in_ready = !inQueueFull;
 
-  // Output flit queue
+  // Output message queue
   reg outQueueFull = 0;
-  Flit outQueueData;
+  Msg outQueueData;
 
   assign out_valid = outQueueFull;
   assign out_data = outQueueData;

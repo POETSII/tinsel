@@ -23,13 +23,13 @@ module ExternalTinselAccelerator
   , input wire [`TinselMeshXBits-1:0] board_x
   , input wire [`TinselMeshYBits-1:0] board_y
 
-    // Stream of flits coming in
-  , input wire [$bits(Flit)-1:0] in_data
+    // Stream of messages coming in
+  , input wire [$bits(Msg)-1:0] in_data
   , input wire in_valid
   , output wire in_ready
 
-    // Stream of flits going out
-  , output wire [$bits(Flit)-1:0] out_data
+    // Stream of messages going out
+  , output wire [$bits(Msg)-1:0] out_data
   , output wire out_valid
   , input wire out_ready
   );
@@ -48,9 +48,9 @@ Note the use of Verilog macros such as `TinselMeshXBits` and
 [config.py](https://github.com/POETSII/tinsel/blob/master/config.py)
 with the `vpp` option (which stands for Verilog pre-processor).
 
-## Flit format
+## Message format
 
-Here is the flit format, as a SystemVerilog structure:
+Here is the message format, as a SystemVerilog structure:
 
 ```
 typedef struct packed {
@@ -62,11 +62,11 @@ typedef struct packed {
   logic isIdleToken;
   // Payload
   logic [`TinselBitsPerMsg-1:0] payload;
-} Flit;
+} Msg;
 
 ## Address format
 
-Here is the address format for the `dest` field in a flit.  Note the
+Here is the address format for the `dest` field in a message.  Note the
 `acc` field, which determines whether a packet is destined for a
 custom accelerator or a mailbox.
 
@@ -133,8 +133,8 @@ p["MeshYLenWithinBox"] = 1
 
 **Step 2**. We made a sample accelerator for testing purposes:
 [ExampleAccelerator.sv](ExampleAccelerator.sv).  This accelerator
-receives any flit and sends it to the address specified in the first
-word of the flit's payload.
+receives any message and sends it to the address specified in the first
+word of the message's payload.
 
 **Step 3**. Update `de5/Golden_top.qsf` to specify location of the
 custom accelerator.  For example, add the line

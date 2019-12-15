@@ -4,7 +4,7 @@
 package Network;
 
 // This package supports creation of mesh of MailboxNet interfaces.
-// Recall that a MailboxNet consists simply of a flit-sized input and
+// Recall that a MailboxNet consists simply of a message-sized input and
 // output port (see Mailbox.bsv).
 
 // =============================================================================
@@ -22,48 +22,45 @@ import Mac          :: *;
 import Socket       :: *;
 import Util         :: *;
 import IdleDetector :: *;
-import FlitMerger   :: *;
+import MsgMerger    :: *;
 
 // =============================================================================
 // Mesh Router
 // =============================================================================
 
 // A mesh router is a component that connects to each mailbox and
-// routes incoming flits into the mailbox or along the mesh,
-// depending on the flit address.  Similarly, it takes outgoing
-// flits from the mailbox and routes them back into the mailbox
-// (loopback) or onto the mesh, depending on the flit address.
+// routes incoming messages into the mailbox or along the mesh,
+// depending on the message address.  Similarly, it takes outgoing
+// messages from the mailbox and routes them back into the mailbox
+// (loopback) or onto the mesh, depending on the message address.
 //
-//    Top flit in       ----------+  +---------> Top flit out
+//    Top msg in        ----------+  +---------> Top msg out  
 //                                |  |
 //                                v  |
 //                           +------------+
-//    Left flit in      ---->|            |----> Right flit out
+//    Left msg in       ---->|            |----> Right msg out
 //                           |    Mesh    |
-//    Left flit out     <----|   Router   |<---- Right flit in
+//    Left msg out      <----|   Router   |<---- Right msg in
 //                           |            |
-//    Flit from mailbox ---->|            |----> Flit to mailbox
+//    Msg from mailbox  ---->|            |----> Msg to mailbox
 //                           +------------+
 //                                ^  |
 //                                |  |
-//    Bottom flit in    ----------+  +---------> Bottom flit out
+//    Bottom msg in     ----------+  +---------> Bottom msg out
 //                                            
-//
-// Care is taken to ensure that messages are atomic, i.e.
-// the flits of a message are not interleaved with other flits.
 
 // Mesh router interface
 interface MeshRouter;
-  interface In#(Flit)  leftIn;
-  interface Out#(Flit) leftOut;
-  interface In#(Flit)  rightIn;
-  interface Out#(Flit) rightOut;
-  interface In#(Flit)  topIn;
-  interface Out#(Flit) topOut;
-  interface In#(Flit)  bottomIn;
-  interface Out#(Flit) bottomOut;
-  interface In#(Flit)  fromMailbox;
-  interface Out#(Flit) toMailbox;
+  interface In#(Msg)  leftIn;
+  interface Out#(Msg) leftOut;
+  interface In#(Msg)  rightIn;
+  interface Out#(Msg) rightOut;
+  interface In#(Msg)  topIn;
+  interface Out#(Msg) topOut;
+  interface In#(Msg)  bottomIn;
+  interface Out#(Msg) bottomOut;
+  interface In#(Msg)  fromMailbox;
+  interface Out#(Msg) toMailbox;
   (* always_ready, always_enabled *)
   method Action setBoardId(BoardId id);
 endinterface
@@ -78,8 +75,8 @@ typedef function Route route(NetAddr addr) RouteFunc;
 module mkRouterMux#(
   RouteFunc route,
   Route dest,
-  OutPort#(Flit) destPort,
-  Vector#(n, InPort#(Flit)) inPort) ();
+  OutPort#(Msg) destPort,
+  Vector#(n, InPort#(Msg)) inPort) ();
 
   // Number of input ports
   Integer numPorts = valueOf(n);
@@ -116,16 +113,16 @@ module mkMeshRouter#(MailboxId m) (MeshRouter);
   Wire#(BoardId) b <- mkDWire(?);
 
   // Ports
-  InPort#(Flit)  leftInPort      <- mkInPort;
-  OutPort#(Flit) leftOutPort     <- mkOutPort;
-  InPort#(Flit)  rightInPort     <- mkInPort;
-  OutPort#(Flit) rightOutPort    <- mkOutPort;
-  InPort#(Flit)  topInPort       <- mkInPort;
-  OutPort#(Flit) topOutPort      <- mkOutPort;
-  InPort#(Flit)  bottomInPort    <- mkInPort;
-  OutPort#(Flit) bottomOutPort   <- mkOutPort;
-  InPort#(Flit)  fromMailboxPort <- mkInPort;
-  OutPort#(Flit) toMailboxPort   <- mkOutPort;
+  InPort#(Msg)  leftInPort      <- mkInPort;
+  OutPort#(Msg) leftOutPort     <- mkOutPort;
+  InPort#(Msg)  rightInPort     <- mkInPort;
+  OutPort#(Msg) rightOutPort    <- mkOutPort;
+  InPort#(Msg)  topInPort       <- mkInPort;
+  OutPort#(Msg) topOutPort      <- mkOutPort;
+  InPort#(Msg)  bottomInPort    <- mkInPort;
+  OutPort#(Msg) bottomOutPort   <- mkOutPort;
+  InPort#(Msg)  fromMailboxPort <- mkInPort;
+  OutPort#(Msg) toMailboxPort   <- mkOutPort;
 
   // Routing function
   function Route route(NetAddr a);
@@ -200,7 +197,7 @@ module mkMeshRouter#(MailboxId m) (MeshRouter);
 endmodule
 
 // =============================================================================
-// Flit-sized reliable links
+// Message-width reliable links
 // =============================================================================
 
 interface BoardLink;
@@ -209,8 +206,8 @@ interface BoardLink;
   interface AvalonMac avalonMac;
 `endif
   // Internal interface
-  interface In#(Flit) flitIn;
-  interface Out#(Flit) flitOut;
+  interface In#(Msg) msgIn;
+  interface Out#(Msg) msgOut;
   // Performance monitor
   method Bit#(32) numTimeouts;
 endinterface
@@ -227,24 +224,24 @@ module mkBoardLink#(Bool en, SocketId id) (BoardLink);
   `endif
 
   // Serialiser
-  Serialiser#(PaddedFlit, Bit#(64)) ser <- mkSerialiser;
+  Serialiser#(PaddedMsg, Bit#(64)) ser <- mkSerialiser;
 
   // Deserialiser
-  Deserialiser#(Bit#(64), PaddedFlit) des <- mkDeserialiser;
+  Deserialiser#(Bit#(64), PaddedMsg) des <- mkDeserialiser;
 
   // Connections
   connectUsing(mkUGQueue, enableOut(en, ser.serialOut), link.streamIn);
   connectDirect(enableBOut(en, link.streamOut), des.serialIn);
 
-  let unpaddedFlitIn  <- onIn(padFlit, ser.parallelIn);
-  let unpaddedFlitOut <- onOut(unpadFlit, des.parallelOut);
+  let unpaddedMsgIn <- onIn(padMsg, ser.parallelIn);
+  let unpaddedMsgOut <- onOut(unpadMsg, des.parallelOut);
 
 `ifndef SIMULATE
   interface AvalonMac avalonMac = link.avalonMac;
 `endif
 
-  interface In flitIn = unpaddedFlitIn;
-  interface Out flitOut = unpaddedFlitOut;
+  interface In msgIn = unpaddedMsgIn;
+  interface Out msgOut = unpaddedMsgOut;
   method Bit#(32) numTimeouts = link.numTimeouts;
 endmodule
 
@@ -302,19 +299,19 @@ module mkMailboxMesh#(
       // Mailbox (0,0) is special (connects to idle detector)
       if (x == 0 && y == 0) begin
         // Connect mailbox to router via idle-detector
-        connectDirect(mailboxes[y][x].flitOut, idle.mboxFlitIn);
+        connectDirect(mailboxes[y][x].msgOut, idle.mboxMsgIn);
         connectUsing(mkUGShiftQueue1(QueueOptFmax),
-                       idle.netFlitOut, routers[y][x].fromMailbox);
+                       idle.netMsgOut, routers[y][x].fromMailbox);
  
         // Connect router to mailbox via idle-detector
         connectUsing(mkUGShiftQueue1(QueueOptFmax),
-                       routers[y][x].toMailbox, idle.netFlitIn);
+                       routers[y][x].toMailbox, idle.netMsgIn);
         connectUsing(mkUGShiftQueue1(QueueOptFmax),
-                       idle.mboxFlitOut, mailboxes[y][x].flitIn);
+                       idle.mboxMsgOut, mailboxes[y][x].msgIn);
       end else begin
-        connectDirect(mailboxes[y][x].flitOut, routers[y][x].fromMailbox);
+        connectDirect(mailboxes[y][x].msgOut, routers[y][x].fromMailbox);
         connectUsing(mkUGShiftQueue1(QueueOptFmax),
-                       routers[y][x].toMailbox, mailboxes[y][x].flitIn);
+                       routers[y][x].toMailbox, mailboxes[y][x].msgIn);
       end
     end
 
@@ -344,75 +341,75 @@ module mkMailboxMesh#(
   // -------------------
 
   // Extract mesh top inputs and outputs
-  List#(In#(Flit)) topInList = Nil;
-  List#(Out#(Flit)) topOutList = Nil;
+  List#(In#(Msg)) topInList = Nil;
+  List#(Out#(Msg)) topOutList = Nil;
   for (Integer x = `MailboxMeshXLen-1; x >= 0; x=x-1) begin
     topOutList = Cons(routers[`MailboxMeshYLen-1][x].topOut, topOutList);
     topInList = Cons(routers[`MailboxMeshYLen-1][x].topIn, topInList);
   end
 
   // Connect the outgoing links
-  function In#(Flit) getFlitIn(BoardLink link) = link.flitIn;
-  reduceConnect(mkFlitMerger,
-    topOutList, List::map(getFlitIn, toList(northLink)));
+  function In#(Msg) getMsgIn(BoardLink link) = link.msgIn;
+  reduceConnect(mkMsgMerger,
+    topOutList, List::map(getMsgIn, toList(northLink)));
   
   // Connect the incoming links
-  function Out#(Flit) getFlitOut(BoardLink link) = link.flitOut;
-  expandConnect(List::map(getFlitOut, toList(northLink)), topInList);
+  function Out#(Msg) getMsgOut(BoardLink link) = link.msgOut;
+  expandConnect(List::map(getMsgOut, toList(northLink)), topInList);
 
   // Connect south links
   // -------------------
 
   // Extract mesh bottom inputs and outputs
-  List#(In#(Flit)) botInList = Nil;
-  List#(Out#(Flit)) botOutList = Nil;
+  List#(In#(Msg)) botInList = Nil;
+  List#(Out#(Msg)) botOutList = Nil;
   for (Integer x = `MailboxMeshXLen-1; x >= 0; x=x-1) begin
     botOutList = Cons(routers[0][x].bottomOut, botOutList);
     botInList = Cons(routers[0][x].bottomIn, botInList);
   end
 
   // Connect the outgoing links
-  reduceConnect(mkFlitMerger, botOutList,
-    List::map(getFlitIn, toList(southLink)));
+  reduceConnect(mkMsgMerger, botOutList,
+    List::map(getMsgIn, toList(southLink)));
   
   // Connect the incoming links
-  expandConnect(List::map(getFlitOut, toList(southLink)), botInList);
+  expandConnect(List::map(getMsgOut, toList(southLink)), botInList);
 
   // Connect east links
   // ------------------
 
   // Extract mesh right inputs and outputs
-  List#(In#(Flit)) rightInList = Nil;
-  List#(Out#(Flit)) rightOutList = Nil;
+  List#(In#(Msg)) rightInList = Nil;
+  List#(Out#(Msg)) rightOutList = Nil;
   for (Integer y = `MailboxMeshYLen-1; y >= 0; y=y-1) begin
     rightOutList = Cons(routers[y][`MailboxMeshXLen-1].rightOut, rightOutList);
     rightInList = Cons(routers[y][`MailboxMeshXLen-1].rightIn, rightInList);
   end
 
   // Connect the outgoing links
-  reduceConnect(mkFlitMerger,
-    rightOutList, List::map(getFlitIn, toList(eastLink)));
+  reduceConnect(mkMsgMerger,
+    rightOutList, List::map(getMsgIn, toList(eastLink)));
   
   // Connect the incoming links
-  expandConnect(List::map(getFlitOut, toList(eastLink)), rightInList);
+  expandConnect(List::map(getMsgOut, toList(eastLink)), rightInList);
 
   // Connect west links
   // ------------------
 
    // Extract mesh right inputs and outputs
-  List#(In#(Flit)) leftInList = Nil;
-  List#(Out#(Flit)) leftOutList = Nil;
+  List#(In#(Msg)) leftInList = Nil;
+  List#(Out#(Msg)) leftOutList = Nil;
   for (Integer y = `MailboxMeshYLen-1; y >= 0; y=y-1) begin
     leftOutList = Cons(routers[y][0].leftOut, leftOutList);
     leftInList = Cons(routers[y][0].leftIn, leftInList);
   end
 
   // Connect the outgoing links
-  reduceConnect(mkFlitMerger,
-    leftOutList, List::map(getFlitIn, toList(westLink)));
+  reduceConnect(mkMsgMerger,
+    leftOutList, List::map(getMsgIn, toList(westLink)));
   
   // Connect the incoming links
-  expandConnect(List::map(getFlitOut, toList(westLink)), leftInList);
+  expandConnect(List::map(getMsgOut, toList(westLink)), leftInList);
 
   // Detect inter-board activity
   // ---------------------------
@@ -420,12 +417,12 @@ module mkMailboxMesh#(
   // Latch to improve timing
   Reg#(Bool) activityReg <- mkReg(False);
 
-  // Determine when a flit arrives on a link,
-  // provided that flit is not a stage 1 idle token
+  // Determine when a message arrives on a link,
+  // provided that message is not a stage 1 idle token
   function Bool active(BoardLink link);
-    Flit flit =  link.flitOut.value;
-    IdleToken in = unpack(truncate(flit.payload));
-    return (link.flitOut.valid && (flit.isIdleToken ? !in.stage1 : True));
+    Msg msg = link.msgOut.value;
+    IdleToken in = unpack(truncate(msg.payload));
+    return (link.msgOut.valid && (msg.isIdleToken ? !in.stage1 : True));
   endfunction
 
   // For barrier release phase

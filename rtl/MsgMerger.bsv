@@ -1,20 +1,20 @@
 // SPDX-License-Identifier: BSD-2-Clause
 // Copyright (c) Matthew Naylor
 
-package FlitMerger;
+package MsgMerger;
 
 import Util      :: *;
 import Globals   :: *;
 import Interface :: *;
 import Queue     :: *;
 
-// Fair merge two flit ports
-module mkFlitMerger#(Out#(Flit) left, Out#(Flit) right) (Out#(Flit));
+// Fair merge two message ports
+module mkMsgMerger#(Out#(Msg) left, Out#(Msg) right) (Out#(Msg));
 
   // Ports
-  InPort#(Flit) leftIn <- mkInPort;
-  InPort#(Flit) rightIn <- mkInPort;
-  OutPort#(Flit) outPort <- mkOutPort;
+  InPort#(Msg) leftIn <- mkInPort;
+  InPort#(Msg) rightIn <- mkInPort;
+  OutPort#(Msg) outPort <- mkOutPort;
 
   connectUsing(mkUGShiftQueue1(QueueOptFmax), left, leftIn.in);
   connectUsing(mkUGShiftQueue1(QueueOptFmax), right, rightIn.in);

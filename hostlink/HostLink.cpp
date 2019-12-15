@@ -328,7 +328,7 @@ void HostLink::recvMsgs(int numMsgs, int msgSize, void* msgs)
   delete [] buffer;
 }
 
-// Can receive a flit without blocking?
+// Can receive a message without blocking?
 bool HostLink::canRecv()
 {
   return socketCanGet(pcieLink);
@@ -571,7 +571,7 @@ bool HostLink::powerOnSelfTest()
   req.numArgs = 1;
   req.args[0] = 1;
 
-  // Flit buffer to store responses
+  // Message buffer to store responses
   uint32_t msg[1 << TinselLogWordsPerMsg];
 
   // Count number of responses received

@@ -5,7 +5,6 @@
 #include <stdint.h>
 
 // Boot request
-// (Number of flits required depends on the number of args used)
 typedef struct {
   uint8_t cmd;
   uint8_t numArgs;

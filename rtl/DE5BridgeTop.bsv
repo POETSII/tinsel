@@ -16,10 +16,7 @@
 //   5. Goto step 1
 //
 // The format of the data stream in the FPGA->PC direction is simply
-// raw flit payloads.
-//
-// This module assumes that BytesPerFlit is 16.  This restriction
-// should be removed in future, if necessary.
+// raw message payloads.
 
 package DE5BridgeTop;
 
@@ -41,7 +38,7 @@ import ConfigReg    :: *;
 import JtagUart     :: *;
 import DebugLink    :: *;
 import IdleDetector :: *;
-import FlitMerger   :: *;
+import MsgMerger    :: *;
 
 // ============================================================================
 // Interface
@@ -88,15 +85,15 @@ typedef Bit#(BitsPerHostMsg) HostMsg;
 module de5BridgeTop (DE5BridgeTop);
 
   // Ports
-  OutPort#(FlitPayload) toPCIe <- mkOutPort;
+  OutPort#(MsgPayload) toPCIe <- mkOutPort;
   InPort#(HostMsg) fromPCIe <- mkInPort;
-  OutPort#(Flit) toLinkA <- mkOutPort;
-  OutPort#(Flit) toLinkB <- mkOutPort;
-  InPort#(Flit) fromLink <- mkInPort;
+  OutPort#(Msg) toLinkA <- mkOutPort;
+  OutPort#(Msg) toLinkB <- mkOutPort;
+  InPort#(Msg) fromLink <- mkInPort;
   OutPort#(Bit#(8)) toJtag <- mkOutPort;
   InPort#(Bit#(8)) fromJtag <- mkInPort;
-  OutPort#(Flit) toDetector <- mkOutPort;
-  InPort#(Flit) fromDetector <- mkInPort;
+  OutPort#(Msg) toDetector <- mkOutPort;
+  InPort#(Msg) fromDetector <- mkInPort;
 
   // Create JTAG UART instance
   JtagUart uart <- mkJtagUart;
@@ -114,11 +111,11 @@ module de5BridgeTop (DE5BridgeTop);
   BoardLink linkB <- mkBoardLink(pcie.en, southSocket[0]);
 
   // Connect ports to off-board links
-  connectUsing(mkUGQueue, toLinkA.out, linkA.flitIn);
-  connectUsing(mkUGQueue, toLinkB.out, linkB.flitIn);
+  connectUsing(mkUGQueue, toLinkA.out, linkA.msgIn);
+  connectUsing(mkUGQueue, toLinkB.out, linkB.msgIn);
 
   // Connect to PCIe stream via serialiser/deserialiser
-  Serialiser#(FlitPayload, Bit#(128)) ser <- mkSerialiser;
+  Serialiser#(MsgPayload, Bit#(128)) ser <- mkSerialiser;
   Deserialiser#(Bit#(128), HostMsg) des <- mkDeserialiser;
   connectUsing(mkUGQueue, ser.serialOut, pcie.streamIn);
   connectDirect(pcie.streamOut, des.serialIn);
@@ -129,8 +126,8 @@ module de5BridgeTop (DE5BridgeTop);
   IdleDetectMaster detector <- mkIdleDetectMaster;
 
   // Connect ports to idle detect master
-  connectUsing(mkUGQueue, toDetector.out, detector.flitIn);
-  connectUsing(mkUGQueue, detector.flitOut, fromDetector.in);
+  connectUsing(mkUGQueue, toDetector.out, detector.msgIn);
+  connectUsing(mkUGQueue, detector.msgOut, fromDetector.in);
 
   // Is the idle detected enabled
   Reg#(Bool) idleDetectedEnabled <- mkConfigReg(False);
@@ -142,27 +139,27 @@ module de5BridgeTop (DE5BridgeTop);
   // -----------------------------
 
   // Merge two input inter-board input streams into one
-  let mergeOut <- mkFlitMerger(linkA.flitOut, linkB.flitOut);
+  let mergeOut <- mkMsgMerger(linkA.msgOut, linkB.msgOut);
   connectUsing(mkUGQueue, mergeOut, fromLink.in);
 
   // Split off-board output stream
   // -----------------------------
 
   // Link output buffer (this is the stream to split)
-  Queue#(Flit) linkOutBuffer <- mkUGQueue;
+  Queue#(Msg) linkOutBuffer <- mkUGQueue;
 
   rule split (linkOutBuffer.notEmpty);
-    Flit flit = linkOutBuffer.dataOut;
+    Msg msg = linkOutBuffer.dataOut;
     // If board Y coord is even (or it's an idle token), emit on lower link
-    if (flit.dest.addr.board.y[0] == 0 || flit.isIdleToken) begin
+    if (msg.dest.addr.board.y[0] == 0 || msg.isIdleToken) begin
       if (toLinkB.canPut) begin
         linkOutBuffer.deq;
-        toLinkB.put(flit);
+        toLinkB.put(msg);
       end
     // If board Y coord is odd, emit on higher link
     end else if (toLinkA.canPut) begin
       linkOutBuffer.deq;
-      toLinkA.put(flit);
+      toLinkA.put(msg);
     end
   endrule
 
@@ -178,19 +175,19 @@ module de5BridgeTop (DE5BridgeTop);
     end else if (!detector.disableHostMsgs) begin
       if (fromPCIe.canGet && linkOutBuffer.notFull) begin
         Bit#(32) addr = fromPCIe.value[31:0];
-        // Determine flit destination address
+        // Determine message destination address
         Bit#(6) destThread = addr[`LogThreadsPerMailbox-1:0];
         Vector#(64, Bool) destThreads = newVector();
         for (Integer i = 0; i < 64; i=i+1)
           destThreads[i] = destThread == fromInteger(i);
-        // Construct flit
-        Flit flit;
-        flit.dest.addr = unpack(truncate(addr[31:`LogThreadsPerMailbox]));
-        flit.dest.threads = pack(destThreads);
-        flit.payload = truncateLSB(fromPCIe.value);
-        flit.isIdleToken = False;
-        flit.numWords = truncate(fromPCIe.value[63:32]-1);
-        linkOutBuffer.enq(flit);
+        // Construct message
+        Msg msg;
+        msg.dest.addr = unpack(truncate(addr[31:`LogThreadsPerMailbox]));
+        msg.dest.threads = pack(destThreads);
+        msg.payload = truncateLSB(fromPCIe.value);
+        msg.isIdleToken = False;
+        msg.numWords = truncate(fromPCIe.value[63:32]-1);
+        linkOutBuffer.enq(msg);
         fromPCIe.get;
         detector.incCount;
       end
@@ -199,16 +196,16 @@ module de5BridgeTop (DE5BridgeTop);
 
   // Connect 10G link to PCIe stream and idle detector
   rule fromLinkRule;
-    Flit flit = fromLink.value;
+    Msg msg = fromLink.value;
     if (fromLink.canGet) begin
-      if (flit.isIdleToken) begin
+      if (msg.isIdleToken) begin
         if (toDetector.canPut) begin
-          toDetector.put(flit);
+          toDetector.put(msg);
           fromLink.get;
         end
       end else begin
         if (toPCIe.canPut) begin
-          toPCIe.put(flit.payload);
+          toPCIe.put(msg.payload);
           fromLink.get;
           detector.decCount;
         end

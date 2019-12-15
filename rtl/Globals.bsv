@@ -50,10 +50,10 @@ function MailboxId getMailboxId(NetAddr addr) = addr.addr.mbox;
 // (A length of N corresponds to N+1 words)
 typedef Bit#(`LogWordsPerMsg) MsgLen;
 
-// Flit payload
-typedef Bit#(`BitsPerMsg) FlitPayload;
+// Message payload
+typedef Bit#(`BitsPerMsg) MsgPayload;
 
-// Flit type
+// Message type
 typedef struct {
   // Destination address
   NetAddr dest;
@@ -62,16 +62,16 @@ typedef struct {
   // Is this a special packet for idle-detection?
   Bool isIdleToken;
   // Payload
-  FlitPayload payload;
-} Flit deriving (Bits);
+  MsgPayload payload;
+} Msg deriving (Bits);
 
-// A padded flit is a multiple of 64 bits
+// A padded message is a multiple of 64 bits
 // (i.e. the data width of the 10G MAC interface)
-typedef TMul#(TDiv#(SizeOf#(Flit), 64), 64) PaddedFlitNumBits;
-typedef Bit#(PaddedFlitNumBits) PaddedFlit;
+typedef TMul#(TDiv#(SizeOf#(Msg), 64), 64) PaddedMsgNumBits;
+typedef Bit#(PaddedMsgNumBits) PaddedMsg;
 
 // Padding functions
-function PaddedFlit padFlit(Flit flit) = {?, pack(flit)};
-function Flit unpadFlit(PaddedFlit flit) = unpack(truncate(pack(flit)));
+function PaddedMsg padMsg(Msg msg) = {?, pack(msg)};
+function Msg unpadMsg(PaddedMsg msg) = unpack(truncate(pack(msg)));
 
 endpackage

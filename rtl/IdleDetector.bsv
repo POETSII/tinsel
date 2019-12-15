@@ -113,24 +113,24 @@ endinterface
 interface IdleDetector;
   interface IdleSignals idle;
   // Network side
-  interface In#(Flit) netFlitIn;
-  interface Out#(Flit) netFlitOut;
+  interface In#(Msg) netMsgIn;
+  interface Out#(Msg) netMsgOut;
   // Mailbox side
-  interface In#(Flit) mboxFlitIn;
-  interface Out#(Flit) mboxFlitOut;
+  interface In#(Msg) mboxMsgIn;
+  interface Out#(Msg) mboxMsgOut;
 endinterface
 
 module mkIdleDetector (IdleDetector);
 
   // Ports  
-  InPort#(Flit) netInPort <- mkInPort;
-  OutPort#(Flit) netOutPort <- mkOutPort;
-  InPort#(Flit) mboxInPort <- mkInPort;
-  OutPort#(Flit) mboxOutPort <- mkOutPort;
+  InPort#(Msg) netInPort <- mkInPort;
+  OutPort#(Msg) netOutPort <- mkOutPort;
+  InPort#(Msg) mboxInPort <- mkInPort;
+  OutPort#(Msg) mboxOutPort <- mkOutPort;
 
   // An idle-detection token waits here
-  Queue1#(Flit) tokenInQueue <- mkUGShiftQueue1(QueueOptFmax);
-  Queue1#(Flit) tokenOutQueue <- mkUGShiftQueue1(QueueOptFmax);
+  Queue1#(Msg) tokenInQueue <- mkUGShiftQueue1(QueueOptFmax);
+  Queue1#(Msg) tokenOutQueue <- mkUGShiftQueue1(QueueOptFmax);
 
   // Have the threads been released from the barrier?
   SetReset released <- mkSetReset(False);
@@ -141,7 +141,7 @@ module mkIdleDetector (IdleDetector);
   // 2: waiting for second done token
   Reg#(Bit#(2)) state <- mkConfigReg(0);
 
-  // Forward flits
+  // Forward messages
   rule forward;
     // From mailbox side to network side
     if (netOutPort.canPut) begin
@@ -149,21 +149,21 @@ module mkIdleDetector (IdleDetector);
         netOutPort.put(tokenOutQueue.dataOut);
         tokenOutQueue.deq;
       end else if (mboxInPort.canGet) begin
-        Flit flit = mboxInPort.value;
-        netOutPort.put(flit);
+        Msg msg = mboxInPort.value;
+        netOutPort.put(msg);
         mboxInPort.get;
       end
     end
 
     // From network side to mailbox side
     if (netInPort.canGet) begin
-      Flit flit = netInPort.value;
-      if (flit.isIdleToken) begin
+      Msg msg = netInPort.value;
+      if (msg.isIdleToken) begin
         myAssert(tokenInQueue.notFull, "Multiple idle tokens in flight");
-        tokenInQueue.enq(flit);
+        tokenInQueue.enq(msg);
         netInPort.get;
       end else if (mboxOutPort.canPut) begin
-        mboxOutPort.put(flit);
+        mboxOutPort.put(msg);
         netInPort.get;
       end
     end
@@ -202,7 +202,7 @@ module mkIdleDetector (IdleDetector);
   // Send idle token
   rule sendToken (tokenInQueue.canDeq);
     myAssert(tokenOutQueue.notFull, "Multiple idle tokens in flight");
-    // Extract input token from flit
+    // Extract input token from message
     IdleToken in = unpack(truncate(tokenInQueue.dataOut.payload));
     IdleToken token;
     token.black = black;
@@ -210,11 +210,11 @@ module mkIdleDetector (IdleDetector);
     token.done = in.done;
     token.stage1 = in.stage1;
     token.count = countWire;
-    // Construct flit containing output token
-    Flit outFlit;
-    outFlit.isIdleToken = True;
-    outFlit.numWords = 3; // i.e. 4 words
-    outFlit.dest =
+    // Construct message containing output token
+    Msg outMsg;
+    outMsg.isIdleToken = True;
+    outMsg.numWords = 3; // i.e. 4 words
+    outMsg.dest =
       NetAddr {
         addr: MailboxNetAddr {
           acc: False,
@@ -224,7 +224,7 @@ module mkIdleDetector (IdleDetector);
         },
         threads: 0
       };
-    outFlit.payload = zeroExtend(pack(token));
+    outMsg.payload = zeroExtend(pack(token));
     if (in.done) begin
       if (state == 0) begin
         detectedStage1Reg <= True;
@@ -233,21 +233,21 @@ module mkIdleDetector (IdleDetector);
       end else if (state == 1) begin
         if (ackStage1Wire) begin
           tokenInQueue.deq;
-          tokenOutQueue.enq(outFlit);
+          tokenOutQueue.enq(outMsg);
           state <= 2;
         end
       end else if (state == 2) begin
         state <= 0;
         released.clear;
         tokenInQueue.deq;
-        tokenOutQueue.enq(outFlit);
+        tokenOutQueue.enq(outMsg);
       end
     end else begin
       myAssert(state == 0, "Unexpected idle done token");
       if (!activeWire) begin
         tokenForwarded <= True;
         tokenInQueue.deq;
-        tokenOutQueue.enq(outFlit);
+        tokenOutQueue.enq(outMsg);
       end
     end
   endrule
@@ -289,11 +289,11 @@ module mkIdleDetector (IdleDetector);
 
   endinterface
 
-  interface In netFlitIn = netInPort.in;
-  interface Out netFlitOut = netOutPort.out;
+  interface In netMsgIn = netInPort.in;
+  interface Out netMsgOut = netOutPort.out;
 
-  interface In mboxFlitIn = mboxInPort.in;
-  interface Out mboxFlitOut = mboxOutPort.out;
+  interface In mboxMsgIn = mboxInPort.in;
+  interface Out mboxMsgOut = mboxOutPort.out;
 
 endmodule
 
@@ -429,8 +429,8 @@ endmodule
 // (Runs on the bridge board)
 
 interface IdleDetectMaster;
-  interface In#(Flit) flitIn;
-  interface Out#(Flit) flitOut;
+  interface In#(Msg) msgIn;
+  interface Out#(Msg) msgOut;
 
   // Disable host messages when this is high
   method Bool disableHostMsgs;
@@ -452,8 +452,8 @@ endinterface
 module mkIdleDetectMaster (IdleDetectMaster);
  
   // Ports  
-  InPort#(Flit) flitInPort <- mkInPort;
-  OutPort#(Flit) flitOutPort <- mkOutPort;
+  InPort#(Msg) msgInPort <- mkInPort;
+  OutPort#(Msg) msgOutPort <- mkOutPort;
 
   // Number of messages sent minus number of message received
   Reg#(MsgCount) localCount <- mkConfigReg(0);
@@ -528,9 +528,9 @@ module mkIdleDetectMaster (IdleDetectMaster);
     token.stage1 = False;
     token.count = 0;
     token.vote = currentVote;
-    // Construct flit
-    Flit flit;
-    flit.dest =
+    // Construct message
+    Msg msg;
+    msg.dest =
       NetAddr {
         addr: MailboxNetAddr {
           acc: False,
@@ -540,20 +540,20 @@ module mkIdleDetectMaster (IdleDetectMaster);
         },
         threads: 0
       };
-    flit.payload = ?;
-    flit.isIdleToken = True;
-    flit.numWords = 3; // i.e. 4 words
+    msg.payload = ?;
+    msg.isIdleToken = True;
+    msg.numWords = 3; // i.e. 4 words
     // New value for probeSent
     Bool probeSentNew = probeSent;
 
     // Continue sending current probe
     if (! probeSent) begin
-      if (flitOutPort.canPut) begin
+      if (msgOutPort.canPut) begin
         // Send probe
         if (state != 0) token.done = True;
         if (state == 1) token.stage1 = True;
-        flit.payload = zeroExtend(pack(token));
-        flitOutPort.put(flit);
+        msg.payload = zeroExtend(pack(token));
+        msgOutPort.put(msg);
 
         // Move to next board
         if (boardX == (meshXLen-1)) begin
@@ -569,9 +569,9 @@ module mkIdleDetectMaster (IdleDetectMaster);
     end
 
     // Receive probe responses
-    if (flitInPort.canGet) begin
-      flitInPort.get;
-      token = unpack(truncate(flitInPort.value.payload));
+    if (msgInPort.canGet) begin
+      msgInPort.get;
+      token = unpack(truncate(msgInPort.value.payload));
       if (respCount == (meshBoards-1)) begin
         respCount <= 0;
         probeSentNew = False;
@@ -608,8 +608,8 @@ module mkIdleDetectMaster (IdleDetectMaster);
     probeSent <= probeSentNew;
   endrule
   
-  interface In flitIn = flitInPort.in;
-  interface Out flitOut = flitOutPort.out;
+  interface In msgIn = msgInPort.in;
+  interface Out msgOut = msgOutPort.out;
   method Bool disableHostMsgs =
     disableHostMsgsWire || disableHostMsgsReg;
   method Action incCount = incWire.send;

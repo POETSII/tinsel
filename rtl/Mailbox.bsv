@@ -25,9 +25,9 @@ package Mailbox;
 //                 |                                  |
 //                 |       +---------------+          | 
 //              <--------->| Transmit Unit |          |
-//    Group        |       +---------------+          |<----- Flit in
+//    Group        |       +---------------+          |<----- Msg in
 //     of          |                                  | 
-//    cores        |       +----------------+         |-----> Flit out
+//    cores        |       +----------------+         |-----> Msg out
 //              <--------->| Receive Unit   |         |
 //                 |       +----------------+         |
 //                 |                                  |
@@ -42,9 +42,8 @@ package Mailbox;
 // ----------
 // 
 // The scratchpad is a mixed-width dual-port block RAM with a 32-bit bus
-// on the core side and a flit-sized bus on the network side (a
-// message is comprised of several flits).  The size of the mailbox
-// is in 32-bit words is
+// on the core side and a message-sized bus on the network side.
+// The size of the mailbox is in 32-bit words is
 //
 //   2^LogMsgSlotsPerMailbox * 2^LogWordsPerMsg.
 //
@@ -105,7 +104,7 @@ import ConfigReg    :: *;
 import Util         :: *;
 import Globals      :: *;
 import DReg         :: *;
-import FlitMerger   :: *;
+import MsgMerger    :: *;
 import QueueArray   :: *;
 
 // =============================================================================
@@ -265,8 +264,8 @@ interface ReceiveReqResp;
 endinterface
 
 interface MailboxNet;
-  interface In#(Flit)   flitIn;
-  interface BOut#(Flit) flitOut;
+  interface In#(Msg)   msgIn;
+  interface BOut#(Msg) msgOut;
 endinterface
 
 // =============================================================================
@@ -276,16 +275,16 @@ endinterface
 (* synthesize *)
 module mkMailbox (Mailbox);
   // True dual-port mixed-width scratchpad
-  // (One flit-sized port and one word-sized port)
+  // (One message-sized port and one word-sized port)
   BlockRamOpts scratchpadOpts = defaultBlockRamOpts;
-  BlockRamTrueMixedBE#(MailboxMsgAddr, FlitPayload, MailboxWordAddr, Bit#(32))
+  BlockRamTrueMixedBE#(MailboxMsgAddr, MsgPayload, MailboxWordAddr, Bit#(32))
     scratchpad <- mkBlockRamTrueMixedBEOpts(scratchpadOpts);
 
   // Request & response ports
   InPort#(ScratchpadReq) spadReqPort  <- mkInPort;
   InPort#(TransmitReq)   txReqPort    <- mkInPort;
   InPort#(FreeReq)       freeReqPort  <- mkInPort;
-  InPort#(Flit)          flitInPort   <- mkInPort;
+  InPort#(Msg)           msgInPort    <- mkInPort;
   Vector#(`CoresPerMailbox, InPort#(ReceiveReq)) rxReqPorts <-
     replicateM(mkInPort);
 
@@ -293,23 +292,23 @@ module mkMailbox (Mailbox);
   // ===================
 
   // There is a conflict between the transmit and receive pipelines:
-  // "receive" needs to write a flit to the scratchpad while
-  // "transmit" needs to read a flit.  The message access unit
+  // "receive" needs to write a message to the scratchpad while
+  // "transmit" needs to read a message.  The message access unit
   // resolves this conflict: write takes priorty over read.
-  // The read wires must not be written when the write wire is set.
+  // The read wires must not be written when the write register is set.
 
   // Control wires for modifying messages in scratchpad
-  Reg#(Bool) flitWriteReg <- mkDReg(False);
-  Wire#(MailboxMsgAddr) flitReadIndexWire <- mkDWire(0);
-  Reg#(FlitPayload) flitWriteDataReg <- mkConfigRegU;
-  Reg#(MailboxMsgAddr) flitWriteIndexReg <- mkDReg(0);
+  Reg#(Bool) msgWriteReg <- mkDReg(False);
+  Wire#(MailboxMsgAddr) msgReadIndexWire <- mkDWire(0);
+  Reg#(MsgPayload) msgWriteDataReg <- mkConfigRegU;
+  Reg#(MailboxMsgAddr) msgWriteIndexReg <- mkDReg(0);
 
-  // Use wires to issue flit access in scratchpad
-  rule flitAccessUnit;
+  // Use wires to issue message access in scratchpad
+  rule msgAccessUnit;
     scratchpad.putA(
-      flitWriteReg,
-      flitWriteIndexReg | flitReadIndexWire,
-      flitWriteDataReg);
+      msgWriteReg,
+      msgWriteIndexReg | msgReadIndexWire,
+      msgWriteDataReg);
   endrule
 
   // Receive Unit
@@ -341,22 +340,22 @@ module mkMailbox (Mailbox);
       mcastBuffer <- replicateM(mkUGSizedQueue);
 
   rule receive0;
-    let flit = flitInPort.value;
+    let msg = msgInPort.value;
     // Determine destination threads
-    Bit#(`ThreadsPerMailbox) destThreads = flit.dest.threads;
-    // Determine if flit can be received
+    Bit#(`ThreadsPerMailbox) destThreads = msg.dest.threads;
+    // Determine if message can be received
     Bool canRecv = True;
     for (Integer i = 0; i < `CoresPerMailbox; i=i+1)
       canRecv = canRecv && mcastBuffer[i].notFull;
     canRecv = canRecv && freeSlots.canPeek && freeSlots.canDeq;
     let slot = freeSlots.dataOut;
-    // Try to consume an incoming flit
-    if (flitInPort.canGet && canRecv) begin
-      flitInPort.get;
-      // Write flit to next free slot
-      flitWriteReg <= True;
-      flitWriteIndexReg <= slot;
-      flitWriteDataReg <= flit.payload;
+    // Try to consume an incoming message
+    if (msgInPort.canGet && canRecv) begin
+      msgInPort.get;
+      // Write message to next free slot
+      msgWriteReg <= True;
+      msgWriteIndexReg <= slot;
+      msgWriteDataReg <= msg.payload;
       // Slot is no longer free
       freeSlots.deq;
       // Put pointer to new message into buffer
@@ -461,8 +460,8 @@ module mkMailbox (Mailbox);
   // Transmit Unit
   // =============
 
-  // Transmit flit-buffer
-  Queue#(Flit) transmitBuffer <- mkUGShiftQueue(QueueOptFmax);
+  // Transmit message-buffer
+  Queue#(Msg) transmitBuffer <- mkUGShiftQueue(QueueOptFmax);
 
   // Transmit response-buffer
   Queue1#(TransmitResp) transmitRespBuffer <- mkUGShiftQueue(QueueOptFmax);
@@ -475,14 +474,14 @@ module mkMailbox (Mailbox);
     if (txReqPort.canGet &&
           transmitBuffer.notFull &&
             transmitRespBuffer.notFull &&
-              !flitWriteReg) begin
+              !msgWriteReg) begin
       TransmitReq req = txReqPort.value;
       // Consume request
       txReqPort.get;
       // Put response
       transmitRespBuffer.enq(TransmitResp { id: req.id });
       // Read message from scratchpad
-      flitReadIndexWire <=
+      msgReadIndexWire <=
         { truncate(req.id), req.msgIndex };
       // Trigger next stage
       let token = TransmitToken {dest: req.dest, numWords: req.len};
@@ -498,13 +497,13 @@ module mkMailbox (Mailbox);
 
   rule transmit2 (transmitState == 2);
     TransmitToken token = transmitToken;
-    // Put flit into transmit buffer
+    // Put message into transmit buffer
     myAssert(transmitBuffer.notFull, "transmitBuffer overflow");
-    let flit = Flit { dest:         token.dest
-                    , payload:      scratchpad.dataOutA
-                    , numWords:     token.numWords
-                    , isIdleToken:  False };
-    transmitBuffer.enq(flit);
+    let msg = Msg { dest:         token.dest
+                  , payload:      scratchpad.dataOutA
+                  , numWords:     token.numWords
+                  , isIdleToken:  False };
+    transmitBuffer.enq(msg);
     transmitState <= 0;
   endrule
   
@@ -620,14 +619,14 @@ module mkMailbox (Mailbox);
   endinterface
 
   interface MailboxNet net;
-    interface In flitIn = flitInPort.in;
+    interface In msgIn = msgInPort.in;
 
-    interface BOut flitOut;
+    interface BOut msgOut;
       method Action get;
         transmitBuffer.deq;
       endmethod
       method Bool valid = transmitBuffer.canDeq;
-      method Flit value = transmitBuffer.dataOut;
+      method Msg value = transmitBuffer.dataOut;
     endinterface
   endinterface
 
@@ -1060,11 +1059,11 @@ endmodule
 // presence of custom accelerators.
 
 interface TinselAccelerator;
-  method Action put(Flit flit);
+  method Action put(Msg msg);
   method Bool canPut;
   method Action get;
   method Bool canGet;
-  method Flit data;
+  method Msg data;
   (* always_ready, always_enabled *)
   method Action setBoardId(Bit#(`MeshXBits) boardX, Bit#(`MeshYBits) boardY);
 endinterface
@@ -1124,12 +1123,12 @@ module mkMailboxAcc#(BoardId boardId, Integer tileX, Integer tileY) (Mailbox);
   // Feed input to mailbox or accelerator
   // ------------------------------------
 
-  InPort#(Flit) inPort <- mkInPort;
-  OutPort#(Flit) toMailbox <- mkOutPort;
+  InPort#(Msg) inPort <- mkInPort;
+  OutPort#(Msg) toMailbox <- mkOutPort;
 
   // Connect to mailbox
   connectUsing(mkUGShiftQueue1(QueueOptFmax),
-    toMailbox.out, mbox.net.flitIn);
+    toMailbox.out, mbox.net.msgIn);
 
   // To accelerator
   rule connectToAcc (inPort.canGet && inPort.value.dest.acc && acc.canPut);
@@ -1148,8 +1147,8 @@ module mkMailboxAcc#(BoardId boardId, Integer tileX, Integer tileY) (Mailbox);
   // ------------------------------------------
 
   // Accelerator output
-  Queue1#(Flit) accOutQueue <- mkUGShiftQueue1(QueueOptFmax);
-  OutPort#(Flit) accOutPort <- mkOutPort;
+  Queue1#(Msg) accOutQueue <- mkUGShiftQueue1(QueueOptFmax);
+  OutPort#(Msg) accOutPort <- mkOutPort;
 
   rule fillAccOutQueue (acc.canGet && accOutQueue.notFull);
     acc.get;
@@ -1162,11 +1161,11 @@ module mkMailboxAcc#(BoardId boardId, Integer tileX, Integer tileY) (Mailbox);
   endrule
 
   // Mailbox output
-  Out#(Flit) mboxOut <- convertBOutToOut(mbox.net.flitOut);
+  Out#(Msg) mboxOut <- convertBOutToOut(mbox.net.msgOut);
 
   // Overall output
-  Out#(Flit) out <- mkFlitMerger(mboxOut, accOutPort.out);
-  Queue1#(Flit) outQueue <- mkUGShiftQueue1(QueueOptFmax);
+  Out#(Msg) out <- mkMsgMerger(mboxOut, accOutPort.out);
+  Queue1#(Msg) outQueue <- mkUGShiftQueue1(QueueOptFmax);
   connectToQueue(out, outQueue);
 
   interface In   spadReqIn   = mbox.spadReqIn;
@@ -1177,13 +1176,13 @@ module mkMailboxAcc#(BoardId boardId, Integer tileX, Integer tileY) (Mailbox);
   interface In   freeReqIn   = mbox.freeReqIn;
 
   interface MailboxNet net;
-    interface In flitIn = inPort.in;
-    interface BOut flitOut;
+    interface In msgIn = inPort.in;
+    interface BOut msgOut;
       method Action get;
         outQueue.deq;
       endmethod
       method Bool valid = outQueue.canDeq;
-      method Flit value = outQueue.dataOut;
+      method Msg value = outQueue.dataOut;
     endinterface
   endinterface
 
