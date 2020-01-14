@@ -1,0 +1,28 @@
+###########################################
+Single thread baseline implementation	
+###########################################
+
+Usage:
+
+This implementation is designed to run a singled threaded matrix multiplier on the X86 hosteling machine.
+One file needs altering to specify your use case.
+
+1. matmult.py
+
+# matmult.py
+
+This file is designed to generate the matrices for you in incremental step sizes.
+The only value that requires changing is run_max. This needs setting to your last valid value (plus 1 for python syntax).
+e.g. to run such that the last matrices calculated are 10 x 10, run_max = 11.
+
+Multiple runs of the same values may be performed by changing the following loop =>
+
+for it in range(10)
+
+
+RUNNING THE SCRIPT =>
+
+python matmult.py
+
+This will report stdout/stderr and relevant processing times. The processing times will also be recorded in results.csv if run is successful.
+
