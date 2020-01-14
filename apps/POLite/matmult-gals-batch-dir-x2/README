@@ -1,5 +1,5 @@
 ###########################################
-Rough copy of X3 (3x3 cube matrix per node)
+Rough copy of X2 (2x2 cube matrix per node)
 ###########################################
 
 Usage:
@@ -11,9 +11,13 @@ Two files needs altering to specify your use case.
 
 # matmult.py
 
-This file is designed to generate the matrices for you in step sizes of 3.
-The only value that requires changing is run_max. This needs setting to your last valid mod 3 value (plus 1 for python syntax).
-e.g. to run such that the last matrices calculated are 21 x 21, run_max = 22.
+This file is designed to generate the matrices for you in step sizes of 2.
+The only value that requires changing is run_max. This needs setting to your last valid mod 2 value (plus 1 for python syntax).
+e.g. to run such that the last matrices calculated are 10 x 10, run_max = 11.
+
+Multiple runs of the same values may be performed by increasing the following loop =>
+
+for _ in range(10)
 
 # Run.cpp
 
