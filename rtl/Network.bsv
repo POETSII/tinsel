@@ -146,11 +146,8 @@ module mkMeshRouter#(MailboxId m) (MeshRouter);
 
   // Routing function
   function Route route(NetAddr a);
-         if (a.addr.board.y < b.y) return Down;
-    else if (a.addr.board.y > b.y) return Up;
-    else if (a.addr.host.valid) return a.addr.host.value == 0 ? Left : Right;
-    else if (a.addr.board.x < b.x) return Left;
-    else if (a.addr.board.x > b.x) return Right;
+         if (a.addr.board != b)   return Down;
+    else if (a.addr.host.valid)   return Down;
     else if (a.addr.mbox.y < m.y) return Down;
     else if (a.addr.mbox.y > m.y) return Up;
     else if (a.addr.mbox.x < m.x) return Left;
@@ -219,6 +216,104 @@ module mkMeshRouter#(MailboxId m) (MeshRouter);
   interface In  fromMailbox = fromMailboxPort.in;
   interface Out toMailbox   = toMailboxPort.out;
 
+endmodule
+
+// =============================================================================
+// Board router
+// =============================================================================
+
+// Similar to a mesh router, but: (1) different routing function,
+// which routes between boards rather than mailboxes; (2) no loopback
+// in the sense that packets coming from mailbox mesh never get routed back
+// onto mailbox mesh.  This is a first step towards supporting
+// programmable board routers.
+module mkBoardRouter(MeshRouter);
+
+  // Board id
+  Wire#(BoardId) b <- mkDWire(?);
+
+  // Ports
+  InPort#(Flit)  leftInPort      <- mkInPort;
+  OutPort#(Flit) leftOutPort     <- mkOutPort;
+  InPort#(Flit)  rightInPort     <- mkInPort;
+  OutPort#(Flit) rightOutPort    <- mkOutPort;
+  InPort#(Flit)  topInPort       <- mkInPort;
+  OutPort#(Flit) topOutPort      <- mkOutPort;
+  InPort#(Flit)  bottomInPort    <- mkInPort;
+  OutPort#(Flit) bottomOutPort   <- mkOutPort;
+  InPort#(Flit)  fromMailboxPort <- mkInPort;
+  OutPort#(Flit) toMailboxPort   <- mkOutPort;
+
+  // Routing function
+  function Route route(NetAddr a);
+         if (a.addr.host.valid)    return a.addr.host.value == 0 ? Left : Right;
+    else if (a.addr.board.x < b.x) return Left;
+    else if (a.addr.board.x > b.x) return Right;
+    else if (a.addr.board.y < b.y) return Down;
+    else if (a.addr.board.y > b.y) return Up;
+    else return Mailbox;
+  endfunction
+
+  // Route to the mailbox
+  mkRouterMux(
+    route,
+    Mailbox,
+    toMailboxPort,
+    vector(FromLeft, FromRight, FromTop, FromBottom),
+    vector(leftInPort, rightInPort, topInPort, bottomInPort)
+  );
+
+  // Route left
+  mkRouterMux(
+    route,
+    Left,
+    leftOutPort,
+    vector(FromRight,   FromTop,   FromBottom,   FromMailbox),
+    vector(rightInPort, topInPort, bottomInPort, fromMailboxPort)
+  );
+
+  // Route right
+  mkRouterMux(
+    route,
+    Right,
+    rightOutPort,
+    vector(FromLeft,   FromTop,   FromBottom,   FromMailbox),
+    vector(leftInPort, topInPort, bottomInPort, fromMailboxPort)
+  );
+
+  // Route up
+  mkRouterMux(
+    route,
+    Up,
+    topOutPort,
+    vector(FromLeft,   FromRight,   FromBottom,   FromMailbox),
+    vector(leftInPort, rightInPort, bottomInPort, fromMailboxPort)
+  );
+
+  // Route down
+  mkRouterMux(
+    route,
+    Down,
+    bottomOutPort,
+    vector(FromLeft,   FromRight,   FromTop,   FromMailbox),
+    vector(leftInPort, rightInPort, topInPort, fromMailboxPort)
+  );
+
+  method Action setBoardId(BoardId id);
+    b <= id;
+  endmethod
+
+  // Interface
+  interface In  leftIn      = leftInPort.in;
+  interface Out leftOut     = leftOutPort.out;
+  interface In  rightIn     = rightInPort.in;
+  interface Out rightOut    = rightOutPort.out;
+  interface In  topIn       = topInPort.in;
+  interface Out topOut      = topOutPort.out;
+  interface In  bottomIn    = bottomInPort.in;
+  interface Out bottomOut   = bottomOutPort.out;
+  interface In  fromMailbox = fromMailboxPort.in;
+  interface Out toMailbox   = toMailboxPort.out;
 endmodule
 
 // =============================================================================
@@ -362,79 +457,59 @@ module mkMailboxMesh#(
                      routers[y+1][x].bottomOut, routers[y][x].topIn);
   end
 
-  // Connect north links
-  // -------------------
+  // Board router
+  // ------------
 
-  // Extract mesh top inputs and outputs
-  List#(In#(Flit)) topInList = Nil;
-  List#(Out#(Flit)) topOutList = Nil;
-  for (Integer x = `MailboxMeshXLen-1; x >= 0; x=x-1) begin
-    topOutList = Cons(routers[`MailboxMeshYLen-1][x].topOut, topOutList);
-    topInList = Cons(routers[`MailboxMeshYLen-1][x].topIn, topInList);
-  end
+  // For routing messages between boards
+  MeshRouter boardRouter <- mkBoardRouter;
 
-  // Connect the outgoing links
-  function In#(Flit) getFlitIn(BoardLink link) = link.flitIn;
-  reduceConnect(mkFlitMerger,
-    topOutList, List::map(getFlitIn, toList(northLink)));
-  
-  // Connect the incoming links
-  function Out#(Flit) getFlitOut(BoardLink link) = link.flitOut;
-  expandConnect(List::map(getFlitOut, toList(northLink)), topInList);
+  // Set board id for board router
+  rule setBoardRouterId;
+    boardRouter.setBoardId(boardId);
+  endrule
 
-  // Connect south links
-  // -------------------
+  // Connect board router to north link
+  connectUsing(mkUGShiftQueue1(QueueOptFmax),
+    boardRouter.topOut, northLink[0].flitIn);
+  connectUsing(mkUGShiftQueue1(QueueOptFmax),
+    northLink[0].flitOut, boardRouter.topIn);
 
-  // Extract mesh bottom inputs and outputs
-  List#(In#(Flit)) botInList = Nil;
+  // Connect board router to south link
+  connectUsing(mkUGShiftQueue1(QueueOptFmax),
+    boardRouter.bottomOut, southLink[0].flitIn);
+  connectUsing(mkUGShiftQueue1(QueueOptFmax),
+    southLink[0].flitOut, boardRouter.bottomIn);
+
+  // Connect board router to east link
+  connectUsing(mkUGShiftQueue1(QueueOptFmax),
+    boardRouter.rightOut, eastLink[0].flitIn);
+  connectUsing(mkUGShiftQueue1(QueueOptFmax),
+    eastLink[0].flitOut, boardRouter.rightIn);
+
+  // Connect board router to west link
+  connectUsing(mkUGShiftQueue1(QueueOptFmax),
+    boardRouter.leftOut, westLink[0].flitIn);
+  connectUsing(mkUGShiftQueue1(QueueOptFmax),
+    westLink[0].flitOut, boardRouter.leftIn);
+
+  // Connect mailbox mesh south rim to board router
+  function List#(t) single(t elem) = List::cons(elem, Nil);
   List#(Out#(Flit)) botOutList = Nil;
-  for (Integer x = `MailboxMeshXLen-1; x >= 0; x=x-1) begin
+  for (Integer x = `MailboxMeshXLen-1; x >= 0; x=x-1)
     botOutList = Cons(routers[0][x].bottomOut, botOutList);
-    botInList = Cons(routers[0][x].bottomIn, botInList);
-  end
+  function In#(Flit) getFlitIn(BoardLink link) = link.flitIn;
+  reduceConnect(mkFlitMerger, botOutList, single(boardRouter.fromMailbox));
 
-  // Connect the outgoing links
-  reduceConnect(mkFlitMerger, botOutList,
-    List::map(getFlitIn, toList(southLink)));
-  
-  // Connect the incoming links
-  expandConnect(List::map(getFlitOut, toList(southLink)), botInList);
-
-  // Connect east links
-  // ------------------
-
-  // Extract mesh right inputs and outputs
-  List#(In#(Flit)) rightInList = Nil;
-  List#(Out#(Flit)) rightOutList = Nil;
-  for (Integer y = `MailboxMeshYLen-1; y >= 0; y=y-1) begin
-    rightOutList = Cons(routers[y][`MailboxMeshXLen-1].rightOut, rightOutList);
-    rightInList = Cons(routers[y][`MailboxMeshXLen-1].rightIn, rightInList);
-  end
-
-  // Connect the outgoing links
-  reduceConnect(mkFlitMerger,
-    rightOutList, List::map(getFlitIn, toList(eastLink)));
-  
-  // Connect the incoming links
-  expandConnect(List::map(getFlitOut, toList(eastLink)), rightInList);
-
-  // Connect west links
-  // ------------------
-
-   // Extract mesh right inputs and outputs
-  List#(In#(Flit)) leftInList = Nil;
-  List#(Out#(Flit)) leftOutList = Nil;
-  for (Integer y = `MailboxMeshYLen-1; y >= 0; y=y-1) begin
-    leftOutList = Cons(routers[y][0].leftOut, leftOutList);
-    leftInList = Cons(routers[y][0].leftIn, leftInList);
-  end
-
-  // Connect the outgoing links
-  reduceConnect(mkFlitMerger,
-    leftOutList, List::map(getFlitIn, toList(westLink)));
-  
-  // Connect the incoming links
-  expandConnect(List::map(getFlitOut, toList(westLink)), leftInList);
+  // Connect board router to mailbox mesh south rim
+  function In#(Flit) getBottomIn(MeshRouter r) = r.bottomIn;
+  Vector#(`MailboxMeshXLen, In#(Flit)) southRimInPorts =
+    map(getBottomIn, routers[0]);
+  function Bit#(`MailboxMeshXBits) flitGetX(Flit flit) =
+    flit.dest.addr.mbox.x;
+  let southRimDistributor <- mkResponseDistributor(flitGetX,
+    mkUGShiftQueue1(QueueOptFmax), southRimInPorts);
+  connectUsing(mkUGShiftQueue1(QueueOptFmax), boardRouter.toMailbox,
+    southRimDistributor);
 
   // Detect inter-board activity
   // ---------------------------
