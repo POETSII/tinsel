@@ -1,0 +1,32 @@
+###########################################
+Single thread Eigen implementation	
+###########################################
+
+REQUIREMENTS:
+This implementation requires the Eigen C++ library.
+http://eigen.tuxfamily.org/
+
+Usage:
+
+This implementation is designed to run a singled threaded matrix multiplier on the X86 hosteling machine.
+One file needs altering to specify your use case.
+
+1. matmulteigen.py
+
+# matmulteigen.py
+
+This file is designed to generate the matrices for you in incremental step sizes.
+The only values that require changing are those used in the matrix generation loop. 
+
+step_size = xxxx
+run_max = xxxx
+
+for dimension in range(xxxx, run_max, step_size):
+
+
+RUNNING THE SCRIPT =>
+
+python matmulteigen.py
+
+This will report the dimension and relevant processing times. The processing times will also be recorded in results.csv if run is successful.
+
