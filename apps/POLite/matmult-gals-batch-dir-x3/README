@@ -1,0 +1,35 @@
+###########################################
+Rough copy of X3 (9x9 cube matrix per node)
+###########################################
+
+Usage:
+
+Two files needs altering to speciify your use case.
+
+1. matmult.py
+2. Run.cpp
+
+# matmult.py
+
+This file is designed to generate the matrices for you in step sizes of 3.
+The only value that requires changing is run_max. This needs setting to your last valid mod 3 value (plus 1 for python syntax).
+e.g. to run such that the last matrices calculated are 21 x 21, run_max = 22.
+
+# Run.cpp
+
+The cluter size needs specifiying in two places within this file.
+
+HostLink *host_link = new HostLink(x, y)
+PGraph <MatDevice, MatState, None, MatMessage>*graph = new PGraph<MatDevice, MatState, None, MatMessage>(x, y)
+
+Where :-
+x = cluster x dimension
+y = cluster y dimension
+
+
+RUNNNING THE SCRIPT =>
+
+python matmult.py
+
+This will report stdout/stderr and relevent processing times. The processing times will also be recorded in results.csv if run is successful.
+
