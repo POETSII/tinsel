@@ -1,0 +1,44 @@
+###########################################
+Rough copy of X1 (One multi-accumulate instruction per node)
+Implementation functions asynchronously, with the matrix elements transmitted from the hostlink and isotropic edge messaging.
+###########################################
+
+Usage:
+
+Two files needs altering to specify your use case.
+
+1. matmult.py
+2. Run.cpp
+
+# matmult.py
+
+This file is designed to generate the matrices for you in incremental step sizes.
+The values that require changing are:
+
+run_max
+
+This needs setting to your last value (plus 1 for python syntax).
+e.g. to run such that the last matrices calculated are 10 x 10, run_max = 11.
+
+step_size
+
+This is the incremental step size.
+
+# Run.cpp
+
+The cluster size needs specifying in two places within this file.
+
+HostLink *host_link = new HostLink(x, y)
+PGraph <MatDevice, MatState, None, MatMessage>*graph = new PGraph<MatDevice, MatState, None, MatMessage>(x, y)
+
+Where :-
+x = cluster x dimension
+y = cluster y dimension
+
+
+RUNNING THE SCRIPT =>
+
+python matmult.py
+
+This will report dimension and relevant processing times. The processing times will also be recorded in results.csv if run is successful.
+
