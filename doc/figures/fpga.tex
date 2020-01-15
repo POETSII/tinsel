@@ -14,14 +14,18 @@
   \definecolor{myorange}{RGB}{197,90,17}
   \definecolor{mygreen}{RGB}{84,130,53}
 
-  \node[fill=gray!20,rounded corners,
-        minimum width=6.3cm,minimum height=4.8cm] (border0)
-    at (4.5,2.0) {};
-  \node[fill=white,rounded corners,
-        minimum width=5.8cm,minimum height=4.1cm] (border1)
-    at (4.5,1.8) {};
-  \node[fill=none,color=black] at (4.5,6.4)
-    {\footnotesize{inter-FPGA reliable links}};
+  \node[fill=gray!20, minimum width=6.7cm, 
+        inner sep=1mm,text=black]
+    (southlink) at (4.5cm, -2.7cm) {\footnotesize{south link}};
+  \node[fill=gray!20, minimum width=6.7cm, text=black,
+        inner sep=1mm]
+     (northlink) at (4.5cm, 6.34cm) {\footnotesize{north link}};
+  \node[fill=gray!20, minimum width=4.0cm, rotate=-90,
+        text=black, inner sep=1mm]
+    (westlink) at (-1.8cm, 1.82cm) {\footnotesize{west link}};
+  \node[fill=gray!20, minimum width=4.0cm, rotate=-90,
+        text=black, inner sep=1mm]
+    (westlink) at (10.8cm, 1.82cm) {\footnotesize{east link}};
 
   \node[fill=myblue,rounded corners] (tile00)
      at (0,0) {\footnotesize{tile}};
@@ -360,32 +364,32 @@
   \draw[arrows=-,color=black] (south2b) to (south2c);
 
   \draw[arrows=-,color=black] (router00.west) to
-    ([xshift=-2.3mm]router00.west);
+    ([xshift=-3.2mm]router00.west);
   \draw[arrows=-,color=black] (router01.west) to
-    ([xshift=-2.3mm]router01.west);
+    ([xshift=-3.2mm]router01.west);
   \draw[arrows=-,color=black] (router02.west) to
-    ([xshift=-2.3mm]router02.west);
+    ([xshift=-3.2mm]router02.west);
   \draw[arrows=-,color=black] (router03.west) to
-    ([xshift=-2.3mm]router03.west);
+    ([xshift=-3.2mm]router03.west);
 
   \draw[arrows=-,color=black] (router30.east) to
-    ([xshift=14.4mm]router30.east);
+    ([xshift=15.5mm]router30.east);
   \draw[arrows=-,color=black] (router31.east) to
-    ([xshift=14.4mm]router31.east);
+    ([xshift=15.5mm]router31.east);
   \draw[arrows=-,color=black] (router32.east) to
-    ([xshift=14.4mm]router32.east);
+    ([xshift=15.5mm]router32.east);
   \draw[arrows=-,color=black] (router33.east) to
-    ([xshift=14.4mm]router33.east);
+    ([xshift=15.5mm]router33.east);
 
   \draw[arrows=-,color=black] (router03.north) to
-    ([yshift=2mm]router03.north);
+    ([yshift=2.5mm]router03.north);
   \draw[arrows=-,color=black] (router13.north) to
-    ([yshift=2mm]router13.north);
+    ([yshift=2.5mm]router13.north);
   \draw[arrows=-,color=black] (router23.north) to
-    ([yshift=2mm]router23.north);
+    ([yshift=2.5mm]router23.north);
   \draw[arrows=-,color=black] (router33.north) to
-    ([yshift=2mm]router33.north);
-
+    ([yshift=2.5mm]router33.north);
 \end{tikzpicture}
+
 
 \end{document}
