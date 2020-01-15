@@ -136,8 +136,8 @@ accelerators](doc/custom) in tiles.
 Each FPGA contains two *Tinsel Slices*, with each slice typically
 comprising eight tiles connected to one 4GB DDR3 DIMM and two 8MB
 QDRII+ SRAMs.  All tiles are connected together via a routers to form
-a 2D NoC.  At the edges of the NoC are the inter-FPGA reliable
-links.
+a 2D NoC.  The NoC is connected to the inter-FPGA links using a
+per-board router.
 
 <img align="center" src="doc/figures/fpga.png">
 
