@@ -5,6 +5,7 @@
 #include <HostLink.h>
 #include <POLite.h>
 #include <sys/time.h>
+#include <vector>
 
 /*****************************************************
  * Matrix Multiplier - Asynchronous - Batch - Isotropic Messages
@@ -46,19 +47,25 @@ int main() {
         }
     }
     
-    // Add edges
+    // Add normal edges in smith-waternam graph and unless last node add traceback initialisation edges
     for (uint32_t x = 0; x < (QUERYLENGTH + 1); x++) {
         for (uint32_t y = 0; y < (SUBLENGTH + 1); y++) {
                 
                 if (x < QUERYLENGTH) {
                     graph->addEdge(mesh[x][y], 0, mesh[x+1][y]);
-                    }
+                    graph->addEdge(mesh[x+1][y], 3, mesh[x][y]);
+                }
                 if (y < SUBLENGTH) {
                     graph->addEdge(mesh[x][y], 1, mesh[x][y+1]);
-                    }
+                    graph->addEdge(mesh[x][y+1], 4, mesh[x][y]);
+                }
                 if ((x < QUERYLENGTH) && (y < SUBLENGTH)) {
                     graph->addEdge(mesh[x][y], 2, mesh[x+1][y+1]);
-                    }
+                    graph->addEdge(mesh[x+1][y+1], 5, mesh[x][y]);
+                }
+                if ( (x < (QUERYLENGTH)) || (y < (SUBLENGTH)) ) {
+                    graph->addEdge(mesh[QUERYLENGTH][SUBLENGTH], ((y * QUERYLENGTH) + x + 6), mesh[x][y]);
+                }
         }
     }
     
@@ -98,6 +105,10 @@ int main() {
                 graph->devices[mesh[x][y]]->state.element1 = 0;
                 graph->devices[mesh[x][y]]->state.element2 = 0;
                 graph->devices[mesh[x][y]]->state.element3 = 0;
+                
+                graph->devices[mesh[x][y]]->state.largestx = x;
+                graph->devices[mesh[x][y]]->state.largesty = y;
+                
             }
             else {
                 graph->devices[mesh[x][y]]->state.query = seqQuery[x - 1];
@@ -109,6 +120,10 @@ int main() {
                 graph->devices[mesh[x][y]]->state.element1 = 0;
                 graph->devices[mesh[x][y]]->state.element2 = 0;
                 graph->devices[mesh[x][y]]->state.element3 = 0;
+                
+                graph->devices[mesh[x][y]]->state.largestx = x;
+                graph->devices[mesh[x][y]]->state.largesty = y;
+            
             }
             else {
                 graph->devices[mesh[x][y]]->state.subject = seqSub[y - 1];
@@ -120,6 +135,12 @@ int main() {
             // Initialise inflags and sentflags
             graph->devices[mesh[x][y]]->state.inflags = 0;
             graph->devices[mesh[x][y]]->state.sentflags = 0;
+            
+            // Initialise largest element direction
+            graph->devices[mesh[x][y]]->state.largestdir = 0;
+            
+            // Initialise largest element aggreagte seen
+            graph->devices[mesh[x][y]]->state.largestagg = 0;
             
         }
     }
@@ -142,8 +163,18 @@ int main() {
     gettimeofday(&start_proc, NULL);        
 
     // Allocate array to contain final value of each device
-    uint32_t result[(SUBLENGTH + 1)][(QUERYLENGTH + 1)] {};
-
+    //uint32_t result[(SUBLENGTH + 1)][(QUERYLENGTH + 1)] {};
+    
+    // Create a vector containing integers
+    std::vector<char> aligned_query;
+    
+    // Create first non-zero aggregate
+    uint32_t aggregate = 1;
+    bool time_got = false;
+    
+    printf("everything mapped\n\n");
+    
+    /*
     // Receive final value of each device
     for (uint32_t i = 0; i < ( (QUERYLENGTH + 1) * (SUBLENGTH + 1) ); i++) {
         
@@ -155,11 +186,35 @@ int main() {
         // Save final value
         result[graph->devices[msg.payload.dir]->state.y][graph->devices[msg.payload.dir]->state.x] = msg.payload.val;
         
+    } */
+
+    
+    // Receive final value of each device
+    while (aggregate != 0) {
+        
+        // Receive message
+        PMessage<None, MatMessage> msg;
+        host_link->recvMsg(&msg, sizeof(msg));
+        
+        if (time_got == false) {
+            gettimeofday(&finish_proc, NULL);
+            time_got = true;
+        }
+        
+        // Save final value
+        aligned_query.push_back(char(msg.payload.val));
+        aggregate = msg.payload.dir;
+        
+        printf("Query = %c\n", msg.payload.val);
+        printf("Aggregate = %d\n", msg.payload.dir);
+        
     }
+    
 
     timersub(&finish_proc, &start_proc, &diff_proc);
     double proc_duration = (double) diff_proc.tv_sec + (double) diff_proc.tv_usec / 1000000.0;
     
+    /*
     for (uint32_t y = 0; y < (SUBLENGTH + 1); y++) {
         for (uint32_t x = 0; x < (QUERYLENGTH + 1); x++) {
             
@@ -170,8 +225,15 @@ int main() {
         printf("\n");
         
     }
+    */
     
-    printf("%lf,%lf,%lf", map_duration, init_duration, proc_duration);
+    std::vector<char>::size_type n = aligned_query.size();
+    for (int i = n - 2; i >= 0; --i) {
+        printf("%c", aligned_query[i]);
+    }
+
+    
+    printf("\n\n%lf,%lf,%lf", map_duration, init_duration, proc_duration);
     
     return 0;
 
