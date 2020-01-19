@@ -7,10 +7,10 @@
  * ************************************************/
 
 // Subject Sequence as array
-char seqSub[SUBLENGTH] = {'A','G','A','T','T','C','G','A','G'};
+char seqSub[SUBLENGTH] = {'G','G','T','T','G','A','C','T','A'};
 
 // Query Sequence as array
-char seqQuery[QUERYLENGTH] = {'A','G','T','C','T','A','G'};
+char seqQuery[QUERYLENGTH] = {'T','G','T','T','A','C','G','G'};
 
 
 /***************************************************

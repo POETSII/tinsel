@@ -64,7 +64,7 @@ int main() {
                     graph->addEdge(mesh[x+1][y+1], 5, mesh[x][y]);
                 }
                 if ( (x < (QUERYLENGTH)) || (y < (SUBLENGTH)) ) {
-                    graph->addEdge(mesh[QUERYLENGTH][SUBLENGTH], ((y * QUERYLENGTH) + x + 6), mesh[x][y]);
+                    graph->addEdge(mesh[QUERYLENGTH][SUBLENGTH], ((y * (QUERYLENGTH + 1) + x + 6)), mesh[x][y]);
                 }
         }
     }
@@ -186,8 +186,8 @@ int main() {
         // Save final value
         result[graph->devices[msg.payload.dir]->state.y][graph->devices[msg.payload.dir]->state.x] = msg.payload.val;
         
-    } */
-
+    }
+    */
     
     // Receive final value of each device
     while (aggregate != 0) {
@@ -231,7 +231,7 @@ int main() {
     for (int i = n - 2; i >= 0; --i) {
         printf("%c", aligned_query[i]);
     }
-
+    
     
     printf("\n\n%lf,%lf,%lf", map_duration, init_duration, proc_duration);
     

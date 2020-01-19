@@ -139,7 +139,7 @@ struct MatDevice : PDevice<MatState, None, MatMessage> {
         }
         else if (*readyToSend == HostPin) {
             
-            msg->dir = s->largestdir;
+            msg->dir = s->aggregate;
             
             if (s->largestdir != REVERSEZ)
             {
@@ -321,7 +321,7 @@ struct MatDevice : PDevice<MatState, None, MatMessage> {
                 //NO -> Calculate edge to largest node and send traceback message
                 s->largestdir = (s->largesty * s->xmax) + s->largestx + TRACEEDGESTART;
                 
-                // Indicate Traceback messgae to be sent
+                // Indicate Traceback message to be sent
                 s->inflags |= TB;
                 
                 // Call edge to largest aggregate
@@ -344,11 +344,11 @@ struct MatDevice : PDevice<MatState, None, MatMessage> {
     // Optionally send message to host on termination
     inline bool finish(volatile MatMessage* msg) {
     
-        /*
-        msg->dir = s->id;
-        msg->val = s->largestx;
-        return true;
-        */
+        
+        //msg->dir = s->id;
+        //msg->val = s->largesty;
+        //return true;
+        
         
         return false;
         
