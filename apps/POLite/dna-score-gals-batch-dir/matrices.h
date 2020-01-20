@@ -10,8 +10,8 @@
  * Edit values between here ->
  * ************************************************/
 
-#define SUBLENGTH (9)
-#define QUERYLENGTH (8)
+#define SUBLENGTH (2111)
+#define QUERYLENGTH (2044)
 
 /***************************************************
  * <- And here

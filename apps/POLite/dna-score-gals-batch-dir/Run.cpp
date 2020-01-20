@@ -28,13 +28,13 @@ int main() {
 
     // Connection to tinsel machine
     //HostLink::HostLink(2, 2);
-    HostLink *host_link = new HostLink(1, 1);
+    HostLink *host_link = new HostLink(2, 4);
     //Sampleclass *qs = new Sampleclass()
 
     // Create POETS graph
     //PGraph<MatDevice, MatState, None, MatMessage>(2, 2) graph;
     
-    PGraph <MatDevice, MatState, None, MatMessage>*graph = new PGraph<MatDevice, MatState, None, MatMessage>(1, 1);
+    PGraph <MatDevice, MatState, None, MatMessage>*graph = new PGraph<MatDevice, MatState, None, MatMessage>(2, 4);
 
     // Create 3D mesh of devices
     static PDeviceId mesh[QUERYLENGTH + 1][SUBLENGTH + 1];
@@ -63,8 +63,9 @@ int main() {
                     graph->addEdge(mesh[x][y], 2, mesh[x+1][y+1]);
                     graph->addEdge(mesh[x+1][y+1], 5, mesh[x][y]);
                 }
-                if ( (x < (QUERYLENGTH)) || (y < (SUBLENGTH)) ) {
-                    graph->addEdge(mesh[QUERYLENGTH][SUBLENGTH], ((y * (QUERYLENGTH + 1) + x + 6)), mesh[x][y]);
+                // Loopback for final node
+                if ((x == QUERYLENGTH) && (y == SUBLENGTH)) {
+                    graph->addEdge(mesh[x][y], 7, mesh[x][y]);
                 }
         }
     }
@@ -205,8 +206,8 @@ int main() {
         aligned_query.push_back(char(msg.payload.val));
         aggregate = msg.payload.dir;
         
-        printf("Query = %c\n", msg.payload.val);
-        printf("Aggregate = %d\n", msg.payload.dir);
+        //printf("Query = %c\n", msg.payload.val);
+        //printf("Aggregate = %d\n", msg.payload.dir);
         
     }
     

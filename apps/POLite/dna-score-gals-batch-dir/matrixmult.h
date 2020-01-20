@@ -2,7 +2,7 @@
 #ifndef _HEAT_H_
 #define _HEAT_H_
 
-//#define POLITE_MAX_FANOUT 32
+#define POLITE_MAX_FANOUT 32
 #include <POLite.h>
 
 // Input reception and message validity flags
@@ -12,6 +12,7 @@ const uint32_t EL3 = 1 << 2;
 const uint32_t AGG = 1 << 3;
 const uint32_t TB = 1 << 4;
 const uint32_t LASTNODE = 1 << 5;
+const uint32_t PRETB = 1 << 6;
 
 // MatMessage dir -> Internal/External Plane Flags (Device ID used in finish call)
 const uint32_t INTERNALX = 0;
@@ -21,7 +22,9 @@ const uint32_t REVERSEX = 3;
 const uint32_t REVERSEY = 4;
 const uint32_t REVERSEZ = 5;
 const uint32_t TRACEBACK = 6;
-const uint32_t TRACEEDGESTART = 6;
+//const uint32_t TRACEEDGESTART = 6;
+const uint32_t LOOPBACK = 7;
+const uint32_t PRETRACEBACK = 8;
 
 // Smith-Waterman Constants
 const int32_t MATCH = 3;
@@ -116,9 +119,20 @@ struct MatDevice : PDevice<MatState, None, MatMessage> {
             s->sentflags |= EL3;
             
         }
-        if ((*readyToSend == Pin(REVERSEX)) || (*readyToSend == Pin(REVERSEY)) || (*readyToSend == Pin(REVERSEZ)) || (s->inflags & TB) ) {
+        if (*readyToSend == Pin(LOOPBACK)) {
             
-            msg->dir = TRACEBACK;
+            msg->dir = PRETRACEBACK;
+            
+        }
+        if ((*readyToSend == Pin(REVERSEX)) || (*readyToSend == Pin(REVERSEY)) || (*readyToSend == Pin(REVERSEZ))) {
+            
+            if (s->inflags & TB) {
+                msg->dir = TRACEBACK;
+            }
+            else {
+                
+                msg->dir = PRETRACEBACK;
+            }
             
         }
         
@@ -141,7 +155,7 @@ struct MatDevice : PDevice<MatState, None, MatMessage> {
             
             msg->dir = s->aggregate;
             
-            if (s->largestdir != REVERSEZ)
+            if (s->largestdir == REVERSEY)
             {
                 msg->val = int('-');
             }
@@ -151,6 +165,9 @@ struct MatDevice : PDevice<MatState, None, MatMessage> {
             
             // Are there more nucleotides in the traceback sequence?
             if (s->aggregate != 0) {
+                
+                // we are in traceback
+                s->inflags |= TB;
                 
                 *readyToSend = Pin(s->largestdir);
                 
@@ -170,6 +187,36 @@ struct MatDevice : PDevice<MatState, None, MatMessage> {
         // Is the message a traceback request?
         if (msg->dir == TRACEBACK) {
             *readyToSend = HostPin;
+        }
+        
+        // Is the message a pretraceback request?
+        if (msg->dir == PRETRACEBACK) {
+            
+            // Are we the largest aggregate seen?
+            if ((s->largestx == s->x) && (s->largesty == s->y)) {
+                
+                //YES -> Start traceback
+                *readyToSend = HostPin;
+                
+            }
+            else if ((s->largestx < s->x) && (s->largesty < s->y)) {
+            
+                //YES -> Start pretraceback
+                *readyToSend = Pin(REVERSEZ);
+            
+            }
+            else if (s->largesty < s->y) {
+            
+                //YES -> Start pretraceback
+                *readyToSend = Pin(REVERSEY);
+            
+            }
+            else if (s->largestx < s->x) {
+            
+                //YES -> Start pretraceback
+                *readyToSend = Pin(REVERSEX);
+            
+            }
         }
 
         // Is the message travelling in the x dimension?
@@ -309,25 +356,9 @@ struct MatDevice : PDevice<MatState, None, MatMessage> {
             // Indicate Traceback messgae to be sent
             s->inflags |= LASTNODE;
             
-            // Are we the largest aggregate seen?
-            if ((s->largestx == s->x) && (s->largesty == s->y)) {
+            //Start pretraceback
+            *readyToSend = Pin(LOOPBACK);
                 
-                //YES -> Start traceback
-                *readyToSend = HostPin;
-                
-            }
-            else {
-                
-                //NO -> Calculate edge to largest node and send traceback message
-                s->largestdir = (s->largesty * s->xmax) + s->largestx + TRACEEDGESTART;
-                
-                // Indicate Traceback message to be sent
-                s->inflags |= TB;
-                
-                // Call edge to largest aggregate
-                *readyToSend = Pin(s->largestdir);
-            }
-            
         }
         
         
