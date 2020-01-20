@@ -5,8 +5,11 @@ package DRAM;
 // Types
 // ============================================================================
 
+// DRAM client id
+typedef Bit#(TAdd#(`LogDCachesPerDRAM, 1)) DRAMClientId;
+
 // DRAM request id
-typedef DCacheId DRAMReqId;
+typedef DRAMClientId DRAMReqId;
 
 // DRAM request
 typedef struct {
