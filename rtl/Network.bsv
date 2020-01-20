@@ -23,6 +23,8 @@ import Socket       :: *;
 import Util         :: *;
 import IdleDetector :: *;
 import FlitMerger   :: *;
+import OffChipRAM   :: *;
+import DRAM         :: *;
 
 // =============================================================================
 // Mesh Router
@@ -366,27 +368,30 @@ module mkBoardLink#(Bool en, SocketId id) (BoardLink);
 endmodule
 
 // =============================================================================
-// Mailbox Mesh
+// Network-on-chip
 // =============================================================================
 
-// Interface to external (off-board) network
-interface ExtNetwork;
-`ifndef SIMULATE
-  // Avalon interfaces to 10G MACs
+// NoC interface
+interface NoC;
+  `ifndef SIMULATE
+  // Avalon interfaces to 10G MACs (inter-FPGA links)
   interface Vector#(`NumNorthSouthLinks, AvalonMac) north;
   interface Vector#(`NumNorthSouthLinks, AvalonMac) south;
   interface Vector#(`NumEastWestLinks, AvalonMac) east;
   interface Vector#(`NumEastWestLinks, AvalonMac) west;
-`endif
+  `endif
+  // Connections to off-chip memory (for the programmable router)
+  interface Vector#(`DRAMsPerBoard, BOut#(DRAMReq)) dramReqs;
+  interface Vector#(`DRAMsPerBoard, In#(DRAMResp)) dramResps;
 endinterface
 
-module mkMailboxMesh#(
+module mkNoC#(
          BoardId boardId,
          Vector#(4, Bool) linkEnable,
          Vector#(`MailboxMeshYLen,
            Vector#(`MailboxMeshXLen, MailboxNet)) mailboxes,
          IdleDetector idle)
-       (ExtNetwork);
+       (NoC);
 
   // Create off-board links
   Vector#(`NumNorthSouthLinks, BoardLink) northLink <-
@@ -397,6 +402,14 @@ module mkMailboxMesh#(
     mapM(mkBoardLink(linkEnable[2]), eastSocket);
   Vector#(`NumEastWestLinks, BoardLink) westLink <-
     mapM(mkBoardLink(linkEnable[3]), westSocket);
+
+  // Responses from off-chip memory
+  Vector#(`DRAMsPerBoard, InPort#(DRAMResp)) dramRespPort <-
+    replicateM(mkInPort);
+
+  // Requests to off-chip memory
+  Vector#(`DRAMsPerBoard, Queue1#(DRAMReq)) dramReqQueues <-
+    replicateM(mkUGShiftQueue1(QueueOptFmax));
 
   // Create mailbox routers
   Vector#(`MailboxMeshYLen,
@@ -540,13 +553,24 @@ module mkMailboxMesh#(
     idle.idle.interBoardActivity(activityReg);
   endrule
 
-`ifndef SIMULATE
+  // Interfaces
+  // ----------
+
+  function In#(t) getIn(InPort#(t) p) = p.in;
+
+  `ifndef SIMULATE
   function AvalonMac getMac(BoardLink link) = link.avalonMac;
   interface north = Vector::map(getMac, northLink);
   interface south = Vector::map(getMac, southLink);
   interface east = Vector::map(getMac, eastLink);
   interface west = Vector::map(getMac, westLink);
-`endif
+  `endif
+
+  // Requests to off-chip memory
+  interface dramReqs = Vector::map(queueToBOut, dramReqQueues);
+
+  // Responses from off-chip memory
+  interface dramResps = Vector::map(getIn, dramRespPort);
 
 endmodule
 

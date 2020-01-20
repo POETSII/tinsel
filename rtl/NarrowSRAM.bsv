@@ -9,7 +9,7 @@ import Util        :: *;
 // ============================================================================
 
 // SRAM request id
-typedef Bit#(`LogDCachesPerDRAM) SRAMReqId;
+typedef Bit#(TAdd#(`LogDCachesPerDRAM, 1)) SRAMReqId;
 
 // SRAM load request
 typedef struct {

@@ -496,7 +496,7 @@ module mkDCache#(DCacheId myId) (DCache);
     // Create memory request
     DRAMReq memReq;
     memReq.isStore = !isLoad;
-    memReq.id = myId;
+    memReq.id = zeroExtend(myId);
     memReq.addr = {isLoad ? readLineAddr : writeLineAddr, reqBeat};
     memReq.data = isLoad ? {?, pack(info)} : dataMem.dataOutA;
     memReq.burst = isLoad ? `BeatsPerLine : 1;
@@ -588,66 +588,6 @@ interface DCacheClient;
   (* always_ready, always_enabled *)
   method Action incWritebackCount(Bool inc);
 endinterface
-
-// ============================================================================
-// Connections
-// ============================================================================
-
-module connectCoresToDCache#(
-         Vector#(`CoresPerDCache, DCacheClient) clients,
-         DCache dcache) ();
-
-  // Connect requests
-  function getDCacheReqOut(client) = client.dcacheReqOut;
-  let dcacheReqs <- mkMergeTree(Fair,
-                      mkUGShiftQueue1(QueueOptFmax),
-                      map(getDCacheReqOut, clients));
-  connectUsing(mkUGQueue, dcacheReqs, dcache.reqIn);
-
-  // Connect responses
-  function Bit#(`LogCoresPerDCache) getDCacheRespKey(DCacheResp resp) =
-    truncateLSB(resp.id);
-  function getDCacheRespIn(client) = client.dcacheRespIn;
-  let dcacheResps <- mkResponseDistributor(
-                      getDCacheRespKey,
-                      mkUGShiftQueue1(QueueOptFmax),
-                      map(getDCacheRespIn, clients));
-  connectDirect(dcache.respOut, dcacheResps);
-
-  // Connect performance-counter wires
-  rule connectPerfCountWires;
-    clients[0].incMissCount(dcache.incMissCount);
-    clients[0].incHitCount(dcache.incHitCount);
-    clients[0].incWritebackCount(dcache.incWritebackCount);
-    for (Integer i = 1; i < `CoresPerDCache; i=i+1) begin
-      clients[i].incMissCount(False);
-      clients[i].incHitCount(False);
-      clients[i].incWritebackCount(False);
-    end
-  endrule
-
-endmodule
-
-module connectDCachesToOffChipRAM#(
-         Vector#(`DCachesPerDRAM, DCache) caches, OffChipRAM ram) ();
-
-  // Connect requests
-  function getReqOut(cache) = cache.reqOut;
-  let reqs <- mkMergeTreeB(Fair,
-                mkUGShiftQueue1(QueueOptFmax),
-                map(getReqOut, caches));
-  connectUsing(mkUGQueue, reqs, ram.reqIn);
-
-  // Connect load responses
-  function DCacheId getRespKey(DRAMResp resp) = resp.id;
-  function getRespIn(cache) = cache.respIn;
-  let ramResps <- mkResponseDistributor(
-                    getRespKey,
-                    mkUGShiftQueue2(QueueOptFmax),
-                    map(getRespIn, caches));
-  connectDirect(ram.respOut, ramResps);
-
-endmodule
 
 // ============================================================================
 // Dummy cache
