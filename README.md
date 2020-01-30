@@ -1,3 +1,22 @@
+TODO, document the following:
+
+```c++
+// Tinsel API
+// ==========
+
+// Send message at addr using given routing key 
+inline void tinselKeySend(int key, volatile void* addr);
+
+// HostLink API
+// ============
+
+// Send a message using routing key (blocking by default)
+bool keySend(uint32_t key, uint32_t numFlits, void* msg, bool block = true);
+
+// Try to send using routing key (non-blocking, returns true on success)
+bool keyTrySend(uint32_t key, uint32_t numFlits, void* msg);
+```
+
 # Tinsel 0.7.1
 
 Tinsel is a [RISC-V](https://riscv.org/)-based manythread

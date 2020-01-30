@@ -35,6 +35,10 @@ class HostLink {
 
   // Internal constructor
   void constructor(uint32_t numBoxesX, uint32_t numBoxesY);
+
+  // Internal helper for sending messages
+  bool sendHelper(uint32_t dest, uint32_t numFlits, void* payload,
+         bool block, uint32_t key);
  public:
   // Dimensions of board mesh
   int meshXLen;
@@ -64,6 +68,12 @@ class HostLink {
 
   // Try to send a message (non-blocking, returns true on success)
   bool trySend(uint32_t dest, uint32_t numFlits, void* msg);
+
+  // Send a message using routing key (blocking by default)
+  bool keySend(uint32_t key, uint32_t numFlits, void* msg, bool block = true);
+
+  // Try to send using routing key (non-blocking, returns true on success)
+  bool keyTrySend(uint32_t key, uint32_t numFlits, void* msg);
 
   // Receive a max-sized message (blocking)
   void recv(void* msg);

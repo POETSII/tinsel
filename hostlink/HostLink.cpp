@@ -218,8 +218,9 @@ void HostLink::fromAddr(uint32_t addr, uint32_t* meshX, uint32_t* meshY,
   *meshY = addr;
 }
 
-// Inject a message via PCIe (blocking by default)
-bool HostLink::send(uint32_t dest, uint32_t numFlits, void* payload, bool block)
+// Internal helper for sending messages
+bool HostLink::sendHelper(uint32_t dest, uint32_t numFlits, void* payload,
+       bool block, uint32_t key)
 {
   assert(useSendBuffer ? block : true);
 
@@ -242,7 +243,7 @@ bool HostLink::send(uint32_t dest, uint32_t numFlits, void* payload, bool block)
     buffer[0] = dest;
     buffer[1] = 0;
     buffer[2] = (numFlits-1) << 24;
-    buffer[3] = 0;
+    buffer[3] = key;
 
     // Fill in message payload
     memcpy(&buffer[4], payload, numFlits*16);
@@ -285,6 +286,13 @@ bool HostLink::send(uint32_t dest, uint32_t numFlits, void* payload, bool block)
   }
 }
 
+
+// Inject a message via PCIe (blocking by default)
+bool HostLink::send(uint32_t dest, uint32_t numFlits, void* msg, bool block)
+{
+  return sendHelper(dest, numFlits, msg, block, 0);
+}
+
 // Flush the send buffer
 void HostLink::flush()
 {
@@ -298,7 +306,28 @@ void HostLink::flush()
 // Try to send a message (non-blocking, returns true on success)
 bool HostLink::trySend(uint32_t dest, uint32_t numFlits, void* msg)
 {
-  return send(dest, numFlits, msg, false);
+  return sendHelper(dest, numFlits, msg, false, 0);
+}
+
+// Send a message using routing key (blocking by default)
+bool HostLink::keySend(uint32_t key, uint32_t numFlits,
+       void* msg, bool block)
+{
+  uint32_t useRoutingKey = 1 << (
+    TinselLogThreadsPerCore + TinselLogCoresPerMailbox +
+    TinselMailboxMeshXBits + TinselMailboxMeshYBits +
+    TinselMeshXBits + TinselMeshYBits + 2);
+  return sendHelper(useRoutingKey, numFlits, msg, block, key);
+}
+
+// Try to send using routing key (non-blocking, returns true on success)
+bool HostLink::keyTrySend(uint32_t key, uint32_t numFlits, void* msg)
+{
+  uint32_t useRoutingKey = 1 << (
+    TinselLogThreadsPerCore + TinselLogCoresPerMailbox +
+    TinselMailboxMeshXBits + TinselMailboxMeshYBits +
+    TinselMeshXBits + TinselMeshYBits + 2);
+  return sendHelper(useRoutingKey, numFlits, msg, false, key);
 }
 
 // Receive a message via PCIe (blocking)

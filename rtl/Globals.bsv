@@ -20,10 +20,13 @@ typedef struct {
 // destination board, it is routed either left or right depending
 // the contents of the host bit.  This is to support bridge boards
 // connected at the east/west rims of the FPGA mesh.
+// The 'isKey' bit means that the destination is a routing key, held
+// in the botom 32 bits of the 'NetAddr'.
 // The 'acc' bit means message is routed to a custom accelerator rather
 // than a mailbox.
 typedef struct {
   Bool acc;
+  Bool isKey;
   Option#(Bit#(1)) host;
   BoardId board;
   MailboxId mbox;
@@ -41,6 +44,9 @@ typedef struct {
 } MailboxId deriving (Bits, Eq, FShow);
 
 function MailboxId getMailboxId(NetAddr addr) = addr.addr.mbox;
+
+// Extract routing key from network address
+function Bit#(32) getRoutingKey(NetAddr addr) = truncate(pack(addr));
 
 // ============================================================================
 // Messages
