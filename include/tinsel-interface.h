@@ -166,7 +166,7 @@ INLINE uint32_t tinselAccId(
            uint32_t tileX, uint32_t tileY)
 {
   uint32_t addr;
-  addr = 0x4;
+  addr = 0x8;
   addr = (addr << TinselMeshYBits) | boardY;
   addr = (addr << TinselMeshXBits) | boardX;
   addr = (addr << TinselMailboxMeshYBits) | tileY;

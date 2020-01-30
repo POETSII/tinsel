@@ -221,6 +221,7 @@ module mkIdleDetector (IdleDetector);
       NetAddr {
         addr: MailboxNetAddr {
           acc: False,
+          isKey: False,
           host: option(True, 0),
           board: BoardId { y: 0, x: 0 },
           mbox: MailboxId { y: 0, x: 0 }
@@ -538,6 +539,7 @@ module mkIdleDetectMaster (IdleDetectMaster);
       NetAddr {
         addr: MailboxNetAddr {
           acc: False,
+          isKey: False,
           host: option(False, 0),
           board: BoardId { y: truncate(boardY), x: truncate(boardX) },
           mbox: MailboxId { y: 0, x: 0 }
