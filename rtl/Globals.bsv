@@ -46,7 +46,7 @@ typedef struct {
 function MailboxId getMailboxId(NetAddr addr) = addr.addr.mbox;
 
 // Extract routing key from network address
-function Bit#(32) getRoutingKey(NetAddr addr) = truncate(pack(addr));
+function Bit#(32) getRoutingKeyRaw(NetAddr addr) = truncate(pack(addr));
 
 // ============================================================================
 // Messages
