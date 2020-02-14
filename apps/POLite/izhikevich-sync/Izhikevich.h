@@ -10,14 +10,15 @@
 #include "RNG.h"
 
 // Number of time steps to run for
-#define NUM_STEPS 1000
+#define NUM_STEPS 100
 
 // Vertex state
 struct IzhikevichState {
   // Random-number-generator state
   uint32_t rng;
   // Neuron state
-  float u, v, I, spikeCount;
+  float u, v, I;
+  uint32_t spikeCount;
   // Neuron properties
   float a, b, c, d, Ir;
 };

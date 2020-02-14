@@ -60,6 +60,7 @@ int main(int argc, char**argv)
   for (PDeviceId i = 0; i < graph.numDevices; i++) {
     IzhikevichState* n = &graph.devices[i]->state;
     n->rng = (int32_t) (urand()*((double) (1<<31)));
+    n->fanIn = graph.fanIn(i);
     if (excite[i]) {
       float re = (float) urand();
       n->a = 0.02;

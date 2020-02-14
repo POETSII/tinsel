@@ -6,7 +6,7 @@
 #include <sys/time.h>
 #include "RNG.h"
 
-#define NUM_STEPS 1000
+#define NUM_STEPS 100
 
 // Neuron 
 struct Neuron {
