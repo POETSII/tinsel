@@ -73,6 +73,17 @@ struct EdgeList {
     }
     return max;
   }
+
+  // Determine min fan-out
+  uint32_t minFanOut() {
+    uint32_t min = ~0;
+    for (uint32_t i = 0; i < numNodes; i++) {
+      uint32_t numNeighbours = neighbours[i][0];
+      if (numNeighbours < min) min = numNeighbours;
+    }
+    return min;
+  }
+
 };
 
 #endif
