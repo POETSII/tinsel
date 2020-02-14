@@ -52,6 +52,19 @@ int main(int argc, char**argv)
     }
   }
 
+  // Add zero-weight back-edges for any directed edges
+  // (For GALS synchronisation)
+  for (uint32_t i = 0; i < net.numNodes; i++) {
+    for (uint32_t j = 0; j < net.neighbours[i][0]; j++) {
+      uint32_t n = net.neighbours[i][j+1];
+      // TODO: can be more efficient here
+      bool needBackEdge = true;
+      for (uint32_t k = 0; k < net.neighbours[n][0]; k++)
+        if (net.neighbours[n][k+1] == i) needBackEdge = false;
+      if (needBackEdge) graph.addLabelledEdge(0.0, n, 0, i);
+    }
+  }
+
   // Prepare mapping from graph to hardware
   graph.map();
 
