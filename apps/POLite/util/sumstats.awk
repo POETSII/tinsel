@@ -15,8 +15,8 @@ BEGIN {
   interBoardSendCount = 0;
   fmax = 240000000;
   if (boardsX == "" || boardsY == "") {
-    boardsX = 3;
-    boardsY = 2;
+    boardsX = 6;
+    boardsY = 8;
   }
 }
 

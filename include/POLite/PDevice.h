@@ -180,6 +180,8 @@ template <typename DeviceType,
   uint32_t interThreadSendCount;
   // Messages sent between threads on different boards
   uint32_t interBoardSendCount;
+  // Number of wait to sends
+  uint32_t sendWaits;
   #endif
 
   #ifdef TINSEL
@@ -216,8 +218,8 @@ template <typename DeviceType,
     }
     // Per-thread performance counters
     #ifdef POLITE_COUNT_MSGS
-    printf("LS:%x,TS:%x,BS:%x\n", intraThreadSendCount,
-             interThreadSendCount, interBoardSendCount);
+    printf("MS:%x,LS:%x,TS:%x,BS:%x,WS:%x\n", me, intraThreadSendCount,
+             interThreadSendCount, interBoardSendCount, sendWaits);
     #endif
   }
 
@@ -296,6 +298,7 @@ template <typename DeviceType,
         else {
           // Go to sleep
           tinselWaitUntil(TINSEL_CAN_RECV | TINSEL_CAN_SEND);
+          sendWaits++;
         }
       }
       else if (sendersTop != senders) {
@@ -317,6 +320,7 @@ template <typename DeviceType,
         else {
           // Go to sleep
           tinselWaitUntil(TINSEL_CAN_RECV | TINSEL_CAN_SEND);
+          sendWaits++;
         }
       }
       else {

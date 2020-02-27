@@ -60,12 +60,16 @@ struct Placer {
   {
     auto e = getenv("POLITE_PLACER");
     if (e) {
-      if (!strcmp(e, "metis"))
+      if (!strcmp(e, "metis")) {
         method=Metis;
-      else if (!strcmp(e, "scotch"))
+      }
+      else if (!strcmp(e, "scotch")) {
+        fprintf(stderr, "PLACING WITH SCOTCH\n");
         method=Scotch;
-      else if (!strcmp(e, "default") || *e == '\0')
+      }
+      else if (!strcmp(e, "default") || *e == '\0'){
         method=Default;
+      }
       else {
         fprintf(stderr, "Don't understand placer method : %s\n", e);
         exit(EXIT_FAILURE);
@@ -154,7 +158,7 @@ struct Placer {
   void partitionScotch() {
     idx_t nvtxs = (idx_t) graph->incoming->numElems;
     idx_t nparts = (idx_t) (width * height);
-    
+
     SCOTCH_Arch *archptr=(SCOTCH_Arch *)malloc(sizeof(SCOTCH_Arch));
     if (SCOTCH_archInit(archptr)) {
       fprintf(stderr, "Couldn't init scotch arch\n");
@@ -419,7 +423,7 @@ struct Placer {
             }
           }
         } while (change);
-  
+
         if (currentCost <= savedCost)
           save();
         else
