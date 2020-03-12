@@ -21,6 +21,7 @@ int main(int argc, char**argv)
   // Read network
   EdgeList net;
   net.read(argv[1]);
+  assert(net.minFanOut() > 0);
 
   // Connection to tinsel machine
   HostLink hostLink;

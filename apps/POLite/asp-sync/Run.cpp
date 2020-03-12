@@ -19,9 +19,10 @@ int main(int argc, char**argv)
   // Read network
   EdgeList net;
   net.read(argv[1]);
-
+  
   // Print max fan-out
   printf("Max fan-out = %d\n", net.maxFanOut());
+  assert(net.minFanOut() > 0);
 
   // Check that parameters make sense
   assert(32*N <= net.numNodes);

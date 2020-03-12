@@ -27,6 +27,7 @@ int main(int argc, char **argv)
   EdgeList net;
   net.read(argv[1]);
   printf(" done\n");
+  assert(net.minFanOut() > 0);
 
   // Print max fan-out
   printf("Max fan-out = %d\n", net.maxFanOut());
