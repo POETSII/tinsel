@@ -181,7 +181,17 @@ template <typename DeviceType,
   // Messages sent between threads on different boards
   uint32_t interBoardSendCount;
   // Number of wait to sends
+#ifdef WAIT_COUNT
   uint32_t sendWaits;
+#endif
+#ifdef IDLE_COUNT
+  uint32_t lastActivity = 0;
+  uint32_t firstActivity = 0;
+  int32_t sumActiveTime = 0;
+  uint64_t sumActiveTimeSquare = 0;
+  int32_t sumBarrierTime = 0;
+  uint64_t sumBarrierTimeSquare = 0;
+#endif
   #endif
 
   #ifdef TINSEL
@@ -218,8 +228,14 @@ template <typename DeviceType,
     }
     // Per-thread performance counters
     #ifdef POLITE_COUNT_MSGS
+    #ifdef WAIT_COUNT
     printf("MS:%x,LS:%x,TS:%x,BS:%x,WS:%x\n", me, intraThreadSendCount,
              interThreadSendCount, interBoardSendCount, sendWaits);
+    #endif
+    #ifdef IDLE_COUNT
+    printf("MS:%x,LS:%x,TS:%x,BS:%x,AS:%x,ASS:%x,RS:%x,RSS:%x\n", me, intraThreadSendCount,
+             interThreadSendCount, interBoardSendCount, sumActiveTime, sumActiveTimeSquare, sumBarrierTime, sumBarrierTimeSquare);
+    #endif
     #endif
   }
 
@@ -298,7 +314,9 @@ template <typename DeviceType,
         else {
           // Go to sleep
           tinselWaitUntil(TINSEL_CAN_RECV | TINSEL_CAN_SEND);
+          #ifdef WAIT_COUNT
           sendWaits++;
+          #endif
         }
       }
       else if (sendersTop != senders) {
@@ -320,12 +338,17 @@ template <typename DeviceType,
         else {
           // Go to sleep
           tinselWaitUntil(TINSEL_CAN_RECV | TINSEL_CAN_SEND);
+          #ifdef WAIT_COUNT
           sendWaits++;
+          #endif
         }
       }
       else {
         // Idle detection
         int idle = tinselIdle(!active);
+        #ifdef IDLE_COUNT
+        lastActivity = tinselCycleCount();
+        #endif
         if (idle > 1)
           break;
         else if (idle) {
@@ -334,6 +357,18 @@ template <typename DeviceType,
             DeviceType dev = getDevice(i);
             // Invoke the step handler for each device
             active = dev.step() || active;
+            #ifdef IDLE_COUNT
+              uint32_t now = tinselCycleCount();
+              int32_t activeTime = lastActivity - firstActivity;
+              int32_t barrierTime = now - lastActivity;
+
+              sumActiveTime += activeTime;
+              sumActiveTimeSquare += (uint64_t)activeTime * activeTime;
+              sumBarrierTime += barrierTime;
+              sumBarrierTimeSquare += (uint64_t)barrierTime * barrierTime;
+
+              firstActivity = now;
+            #endif
             // Device ready to send?
             if (*dev.readyToSend != No) {
               *(sendersTop++) = i;
