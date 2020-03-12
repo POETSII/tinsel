@@ -362,24 +362,25 @@ template <typename DeviceType,
             DeviceType dev = getDevice(i);
             // Invoke the step handler for each device
             active = dev.step() || active;
-            #ifdef IDLE_COUNT
-              uint32_t now = tinselCycleCount();
-              int32_t activeTime = lastActivity - firstActivity;
-              int32_t barrierTime = now - lastActivity;
 
-              sumActiveTime += activeTime;
-              sumActiveTimeSquare += (uint64_t)activeTime * activeTime;
-              sumBarrierTime += barrierTime;
-              sumBarrierTimeSquare += (uint64_t)barrierTime * barrierTime;
-
-              firstActivity = now;
-            #endif
             // Device ready to send?
             if (*dev.readyToSend != No) {
               *(sendersTop++) = i;
             }
           }
           time++;
+          #ifdef IDLE_COUNT
+            uint32_t now = tinselCycleCount();
+            int32_t activeTime = lastActivity - firstActivity;
+            int32_t barrierTime = now - lastActivity;
+
+            sumActiveTime += activeTime;
+            sumActiveTimeSquare += (uint64_t)activeTime * activeTime;
+            sumBarrierTime += barrierTime;
+            sumBarrierTimeSquare += (uint64_t)barrierTime * barrierTime;
+
+            firstActivity = now;
+          #endif
         }
       }
 
