@@ -233,8 +233,13 @@ template <typename DeviceType,
              interThreadSendCount, interBoardSendCount, sendWaits);
     #endif
     #ifdef IDLE_COUNT
-    printf("MS:%x,LS:%x,TS:%x,BS:%x,AS:%x,ASS:%x,RS:%x,RSS:%x\n", me, intraThreadSendCount,
-             interThreadSendCount, interBoardSendCount, sumActiveTime, sumActiveTimeSquare, sumBarrierTime, sumBarrierTimeSquare);
+    uint32_t sumActiveTimeSquareU = sumActiveTimeSquare >> 32;
+    uint32_t sumActiveTimeSquareL = sumActiveTimeSquare & 0xffffffff;
+    uint32_t sumBarrierTimeSquareU = sumBarrierTimeSquare >> 32;
+    uint32_t sumBarrierTimeSquareL = sumBarrierTimeSquare & 0xffffffff;
+    printf("MS:%x,LS:%x,TS:%x,BS:%x,AS:%x,ASU:%x,ASL:%x,RS:%x,RSU:%x,RSL:%x\n", me, intraThreadSendCount,
+             interThreadSendCount, interBoardSendCount, sumActiveTime, sumActiveTimeSquareU,
+             sumActiveTimeSquareL, sumBarrierTime, sumBarrierTimeSquareU, sumBarrierTimeSquareL);
     #endif
     #endif
   }
