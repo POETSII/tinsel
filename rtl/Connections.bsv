@@ -55,7 +55,8 @@ module connectClientsToOffChipRAM#(
   // Data caches
   Vector#(`DCachesPerDRAM, DCache) caches,
   // Programmable per-board router, reqs and resps
-  BOut#(DRAMReq) routerReqs, In#(DRAMResp) routerResps,
+  Vector#(`FetchersPerProgRouter, BOut#(DRAMReq)) routerReqs,
+  Vector#(`FetchersPerProgRouter, In#(DRAMResp)) routerResps,
   // Off-chip memory
   OffChipRAM ram) ();
 
@@ -63,8 +64,7 @@ module connectClientsToOffChipRAM#(
   function getReqOut(cache) = cache.reqOut;
   let reqs <- mkMergeTreeB(Fair,
                 mkUGShiftQueue1(QueueOptFmax),
-                append(map(getReqOut, caches),
-                  cons(routerReqs, nil)));
+                append(map(getReqOut, caches), routerReqs));
   connectUsing(mkUGQueue, reqs, ram.reqIn);
 
   // Connect load responses
@@ -73,8 +73,7 @@ module connectClientsToOffChipRAM#(
   let ramResps <- mkResponseDistributor(
                     getRespKey,
                     mkUGShiftQueue2(QueueOptFmax),
-                    append(map(getRespIn, caches), 
-                      cons(routerResps, nil)));
+                    append(map(getRespIn, caches), routerResps));
   connectDirect(ram.respOut, ramResps);
 
 endmodule

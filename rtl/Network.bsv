@@ -381,8 +381,10 @@ interface NoC;
   interface Vector#(`NumEastWestLinks, AvalonMac) west;
   `endif
   // Connections to off-chip memory (for the programmable router)
-  interface Vector#(`DRAMsPerBoard, BOut#(DRAMReq)) dramReqs;
-  interface Vector#(`DRAMsPerBoard, In#(DRAMResp)) dramResps;
+  interface Vector#(`DRAMsPerBoard,
+    Vector#(`FetchersPerProgRouter, BOut#(DRAMReq))) dramReqs;
+  interface Vector#(`DRAMsPerBoard,
+    Vector#(`FetchersPerProgRouter, In#(DRAMResp))) dramResps;
 endinterface
 
 module mkNoC#(
@@ -404,12 +406,17 @@ module mkNoC#(
     mapM(mkBoardLink(linkEnable[3]), westSocket);
 
   // Responses from off-chip memory
-  Vector#(`DRAMsPerBoard, InPort#(DRAMResp)) dramRespPort <-
-    replicateM(mkInPort);
+  Vector#(`DRAMsPerBoard,
+    Vector#(`FetchersPerProgRouter, InPort#(DRAMResp))) dramRespPort <-
+      replicateM(replicateM(mkInPort));
 
   // Requests to off-chip memory
-  Vector#(`DRAMsPerBoard, Queue1#(DRAMReq)) dramReqQueues <-
-    replicateM(mkUGShiftQueue1(QueueOptFmax));
+  Vector#(`DRAMsPerBoard,
+    Vector#(`FetchersPerProgRouter, Queue1#(DRAMReq))) dramReqQueues <-
+      replicateM(replicateM(mkUGShiftQueue1(QueueOptFmax)));
+
+  // Dimension-ordered routers
+  // -------------------------
 
   // Create mailbox routers
   Vector#(`MailboxMeshYLen,
@@ -567,10 +574,12 @@ module mkNoC#(
   `endif
 
   // Requests to off-chip memory
-  interface dramReqs = Vector::map(queueToBOut, dramReqQueues);
+  interface dramReqs =
+    Vector::map(Vector::map(queueToBOut), dramReqQueues);
 
   // Responses from off-chip memory
-  interface dramResps = Vector::map(getIn, dramRespPort);
+  interface dramResps =
+    Vector::map(Vector::map(getIn), dramRespPort);
 
 endmodule
 

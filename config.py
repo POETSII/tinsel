@@ -360,6 +360,10 @@ p["DRAMGlobalsLength"] = 2 ** (p["LogBytesPerDRAM"] - 1) - p["DRAMBase"]
 # Number of FPGA boards per box (including bridge board)
 p["BoardsPerBox"] = p["MeshXLenWithinBox"] * p["MeshYLenWithinBox"] + 1
 
+# Number of fetchers in the per-board programmable router
+# (Currently assumed to be 4)
+p["FetchersPerProgRouter"] = 4
+
 #==============================================================================
 # Main 
 #==============================================================================
