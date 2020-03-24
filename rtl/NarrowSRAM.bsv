@@ -8,7 +8,7 @@ import Util :: *;
 // ============================================================================
 
 // SRAM request id
-typedef Bit#(TAdd#(`LogDCachesPerDRAM, 1)) SRAMReqId;
+typedef Bit#(TLog#(TAdd#(`DCachesPerDRAM,`FetchersPerProgRouter))) SRAMReqId;
 
 // SRAM load request
 typedef struct {
@@ -139,7 +139,6 @@ module mkSRAM#(RAMId id) (SRAM);
         resp.id = req.id;
         resp.data = pack(elems);
         resp.info = req.info;
-        resp.info.beat = truncate(loadBurstCount);
         resps.enq(resp);
         inFlightCount.dec;
       end
