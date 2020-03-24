@@ -438,8 +438,9 @@ module mkDCache#(DCacheId myId) (DCache);
     let flush = flushQueue.dataOut;
     let resp = respPort.value;
     InflightDCacheReqInfo info = unpack(truncate(resp.info));
+    Bit#(`LogBeatsPerLine) beat = truncate(resp.beat);
     lineWriteDataWire <= resp.data;
-    lineWriteIndexWire <= beatIndex(truncate(resp.beat), info.req.id,
+    lineWriteIndexWire <= beatIndex(beat, info.req.id,
                             info.req.addr, info.way);
     // Ready to consume flush queue?
     if (flushQueue.canDeq && flushQueue.canPeek) begin
@@ -454,7 +455,7 @@ module mkDCache#(DCacheId myId) (DCache);
       // Remove item from fill queue and feed associated request (which
       // will definitely hit if it starts again from the beginning of
       // the pipeline) back to beginning of the pipeline
-      if (allHigh(resp.beat))
+      if (allHigh(beat))
         feedbackTrigger <= True;
       // Write new line data to dataMem
       // (The write parameters are set outside condition for better timing)
@@ -493,7 +494,6 @@ module mkDCache#(DCacheId myId) (DCache);
     InflightDCacheReqInfo info;
     info.req = miss.req;
     info.way = miss.evictWay;
-    info.beat = ?;
     // Create memory request
     DRAMReq memReq;
     memReq.isStore = !isLoad;
