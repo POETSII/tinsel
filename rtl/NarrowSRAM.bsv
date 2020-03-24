@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: BSD-2-Clause
 package NarrowSRAM;
 
-import DCacheTypes :: *;
-import Util        :: *;
+import Util :: *;
 
 // ============================================================================
 // Types
@@ -16,7 +15,7 @@ typedef struct {
   SRAMReqId id;
   Bit#(`SRAMAddrWidth) addr;
   Bit#(`SRAMBurstWidth) burst;
-  InflightDCacheReqInfo info;
+  Bit#(`BeatWidth) info;
 } SRAMLoadReq deriving (Bits);
 
 // SRAM store request
@@ -31,7 +30,7 @@ typedef struct {
 typedef struct {
   SRAMReqId id;
   Bit#(`SRAMDataWidth) data;
-  InflightDCacheReqInfo info;
+  Bit#(`BeatWidth) info;
 } SRAMResp deriving (Bits);
 
 // ============================================================================
@@ -243,7 +242,7 @@ endinterface
 typedef struct {
   SRAMReqId id;
   Bit#(`SRAMBurstWidth) burst;
-  InflightDCacheReqInfo info;
+  Bit#(`BeatWidth) info;
 } SRAMInFlightReq deriving (Bits);
 
 // SRAM Implementation

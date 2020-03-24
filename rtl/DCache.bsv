@@ -437,9 +437,10 @@ module mkDCache#(DCacheId myId) (DCache);
     // This rule either consumes a flush request or a memory response
     let flush = flushQueue.dataOut;
     let resp = respPort.value;
+    InflightDCacheReqInfo info = unpack(truncate(resp.info));
     lineWriteDataWire <= resp.data;
-    lineWriteIndexWire <= beatIndex(resp.info.beat, resp.info.req.id,
-                            resp.info.req.addr, resp.info.way);
+    lineWriteIndexWire <= beatIndex(truncate(resp.beat), info.req.id,
+                            info.req.addr, info.way);
     // Ready to consume flush queue?
     if (flushQueue.canDeq && flushQueue.canPeek) begin
       flush.req.cmd.isFlush = False;
@@ -453,14 +454,14 @@ module mkDCache#(DCacheId myId) (DCache);
       // Remove item from fill queue and feed associated request (which
       // will definitely hit if it starts again from the beginning of
       // the pipeline) back to beginning of the pipeline
-      if (allHigh(resp.info.beat))
+      if (allHigh(resp.beat))
         feedbackTrigger <= True;
       // Write new line data to dataMem
       // (The write parameters are set outside condition for better timing)
       lineWriteReqWire <= True;
       respPort.get;
       // Set feedback request
-      feedbackReq <= resp.info.req;
+      feedbackReq <= info.req;
     end
   endrule
 

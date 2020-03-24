@@ -361,8 +361,10 @@ p["DRAMGlobalsLength"] = 2 ** (p["LogBytesPerDRAM"] - 1) - p["DRAMBase"]
 p["BoardsPerBox"] = p["MeshXLenWithinBox"] * p["MeshYLenWithinBox"] + 1
 
 # Number of fetchers in the per-board programmable router
-# (Currently assumed to be 4)
-p["FetchersPerProgRouter"] = 4
+# Parameters for programmable routers
+# (and the routing-record fetchers they contain)
+p["FetchersPerProgRouter"] = 5
+p["LogFetcherFlitBufferSize"] = 5
 
 #==============================================================================
 # Main 
