@@ -25,8 +25,13 @@ typedef struct {
 typedef struct {
   DRAMReqId id;
   Bit#(`BeatWidth) data;
-  InflightDCacheReqInfo info;
+  // Which beat is it?
   Bool finalBeat;
+  Bit#(`BeatBurstWidth) beat;
+  // Data from original load request
+  // (Can be largely ignored and optimised away, but
+  // can also hold useful info about the original request)
+  Bit#(`BeatWidth) info;
 } DRAMResp deriving (Bits);
 
 // DRAM identifier
@@ -83,7 +88,6 @@ import Util        :: *;
 import Interface   :: *;
 import Queue       :: *;
 import Assert      :: *;
-import DCacheTypes :: *;
 
 // Types
 // -----
@@ -154,8 +158,8 @@ module mkDRAM#(RAMId id) (DRAM);
           DRAMResp resp;
           resp.id = req.id;
           resp.data = pack(elems);
-          resp.info = unpack(truncate(req.data));
-          resp.info.beat = truncate(burstCount);
+          resp.info = req.data;
+          resp.beat = burstCount;
           resp.finalBeat = finalBeat;
           resps.enq(resp);
           decOutstanding.send;
@@ -222,7 +226,6 @@ import Interface   :: *;
 import Assert      :: *;
 import Util        :: *;
 import Assert      :: *;
-import DCacheTypes :: *;
 
 // Types
 // -----
@@ -247,7 +250,7 @@ endinterface
 typedef struct {
   DRAMReqId id;
   Bit#(`BeatBurstWidth) burst;
-  InflightDCacheReqInfo info;
+  Bit#(`BeatWidth) info;
 } DRAMInFlightReq deriving (Bits);
 
 // Implementation
@@ -312,7 +315,7 @@ module mkDRAM#(t id) (DRAM);
           DRAMInFlightReq inflightReq;
           inflightReq.id = req.id;
           inflightReq.burst = req.burst;
-          inflightReq.info = unpack(truncate(req.data));
+          inflightReq.info = req.data;
           inFlight.enq(inflightReq);
           inFlightCount.incBy(zeroExtend(req.burst));
         end
@@ -339,7 +342,7 @@ module mkDRAM#(t id) (DRAM);
       DRAMResp resp;
       resp.id = inFlight.dataOut.id;
       resp.info = inFlight.dataOut.info;
-      resp.info.beat = truncate(burstCount-1);
+      resp.beat = truncate(burstCount-1);
       resp.data = respBuffer.dataOut;
       resp.finalBeat = burstCount == inFlight.dataOut.burst;
       return resp;

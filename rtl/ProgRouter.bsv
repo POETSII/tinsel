@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BSD-2-Clause
-package ProgRouting;
-
-// Functions and data types for programmable routers
+// Functions, data types, and modules for programmable routers
+package ProgRouter;
 
 // =============================================================================
 // Routing keys and beats
@@ -27,11 +26,17 @@ typedef struct {
 
 // 32-bit routing key
 typedef struct {
+  // Which off-chip RAM?
+  Bit#(`LogDRAMsPerBoard) ram
   // Pointer to array of routing beats containing routing records
-  Bit#(26) ptr;
+  Bit#(`LogBeatsPerDRAM) ptr;
   // Number of beats in the array
-  Bit#(6) numBeats;
+  Bit#(`LogRoutingEntryLen) numBeats;
 } RoutingKey deriving (Bits);
+
+// Extract routing key from an address
+function RoutingKey getRoutingKey(NetAddr addr) =
+  unpack(getRoutingKeyRaw(addr));
 
 // =============================================================================
 // Types of routing record
@@ -106,6 +111,57 @@ typedef struct {
   Bit#(5) unused;
   // New 32-bit routing key for new set of records on current router
   Bit#(32) newKey;
-} MRMRecord deriving (Bits);
+} INDRecord deriving (Bits);
+
+// =============================================================================
+// Design
+// =============================================================================
+
+// =============================================================================
+// Fetcher
+// =============================================================================
+
+// Address in a fetcher's flit buffer
+typedef Bit#(TSub#(`LogFetcherFlitBufferSize, `LogMaxFlitsPerMsg))
+  FetcherFlitBufferMsgAddr;
+
+// This structure contains information about an in-flight memory
+// request from a fetcher.  When a fetcher issues a memory load
+// request, this info is packed into the unused data field of the
+// request.  When the memory subsystem responds, it passes back the
+// same info in an extra field inside the memory response structure.
+// Maintaining info about an inflight request inside the request
+// itself provides an easy way to handle out-of-order responses from
+// memory.
+typedef struct {
+  // Message address in the fetcher's flit buffer
+  FetcherFlitBufferMsgAddr msgAddr;
+  // Is this the final routing beat for the key being fetched?
+  Bool finalBeat;
+} InflightFetcherReqInfo deriving (Bits);
+
+// =============================================================================
+// Programmable router
+// =============================================================================
+
+interface ProgRouter;
+  // Incoming and outgoing flits
+  interface Vector#(`FetchersPerProgRouter, In#(Flit) flitIn);
+  interface Vector#(`FetchersPerProgRouter, Out#(Flit) flitOut);
+
+  // Interface to off-chip memory
+  interface Vector#(`DRAMsPerBoard,
+    Vector#(`FetchersPerProgRouter, BOut#(DRAMReq))) ramReqs;
+  interface Vector#(`DRAMsPerBoard,
+    Vector#(`FetchersPerProgRouter, In#(DRAMResp))) ramResps;
+endinterface
+
+module mkProgRouter (ProgRouter);
+
+  // Flit input ports
+  Vector#(`FetchersPerProgRouter, InPort#(Flit)) flitInPort <-
+    replicateM(mkInPort);
+
+endmodule
 
 endpackage
