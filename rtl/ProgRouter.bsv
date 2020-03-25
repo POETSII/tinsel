@@ -171,9 +171,11 @@ typedef struct {
 // Fetcher
 // =============================================================================
 
-// Address in a fetcher's flit buffer
-typedef Bit#(TSub#(`LogFetcherFlitBufferSize, `LogMaxFlitsPerMsg))
-  FetcherFlitBufferMsgAddr;
+// Flit address in a fetcher's flit buffer
+typedef Bit#(`FetcherLogFlitBufferSize) FetcherFlitBufferAddr;
+
+// Message address in a fetcher's flit buffer
+typedef Bit#(`FetcherLogMsgsPerFlitBuffer) FetcherFlitBufferMsgAddr;
 
 // This structure contains information about an in-flight memory
 // request from a fetcher.  When a fetcher issues a memory load
@@ -186,9 +188,156 @@ typedef Bit#(TSub#(`LogFetcherFlitBufferSize, `LogMaxFlitsPerMsg))
 typedef struct {
   // Message address in the fetcher's flit buffer
   FetcherFlitBufferMsgAddr msgAddr;
-  // Is this the final routing beat for the key being fetched?
-  Bool finalBeat;
+  // How many beats in the burst?
+  Bit#(`BeatBurstWidth) burst;
+  // Is this the final burst of routing records for the current key?
+  Bool finalBurst;
 } InflightFetcherReqInfo deriving (Bits);
+
+// Fetcher interface
+interface Fetcher;
+  // Incoming and outgoing flits
+  interface In#(Flit) flitIn;
+  interface Out#(Flit) flitOut;
+  // Off-chip RAM connections
+  Vector#(`DRAMsPerBoard, BOut#(DRAMReq)) ramReqs;
+  Vector#(`DRAMsPerBoard, In#(DRAMResp)) ramResps;
+endinterface
+
+// Fetcher module
+module mkFetcher;
+
+  // Flit input port
+  InPort#(Flit)) flitInPort <- mkInPort;
+
+  // RAM response ports
+  Vector#(`DRAMsPerBoard, InPort#(DRAMResp)) ramRespPort <-
+    replicateM(mkInPort);
+
+  // RAM request queues
+  Vector#(`DRAMsPerBoard, Queue1#(DRAMReq)) ramReqQueue <-
+    replicateM(mkUGShiftQueue(QueueOptFmax));
+
+  // Flit buffer
+  BlockRamOpts flitBufferOpts =
+    BlockRamOpts {
+      readDuringWrite: DontCare,
+      style: "AUTO",
+      registerDataOut: False,
+      initFile: Invalid
+    };
+  BlockRam#(FetcherFlitBufferAddr, Flit) flitBuffer <- mkBlockRam;
+
+  // Beat buffer
+  SizedQueue#(`LogProgRouterBeatBufferSize, RoutingBeat)) beatBuffer <-
+    replicateM(mkUGSizedQueue);
+
+  // Stage 1: consume input message
+  // ------------------------------
+
+  // Consumer state
+  // State 0: pass through flits that don't contain routing keys
+  // State 1: buffer flits that do contain routing keys
+  // State 2: fetch routing beats
+  Reg#(Bit#(2)) consumeState <- mkReg(0);
+
+  // Count number of flits of message consumed so far
+  Reg#(Bit#(`LogFlitsPerMsg)) consumeFlitCount <- mkReg(0);
+
+  // Flit slot allocator
+  Vector#(`FetcherMsgsPerFlitBuffer, SetReset) flitBufferUsedSlots <-
+    mkSetReset(False);
+
+  // Chosen message slot
+  Reg#(FetcherFlitBufferMsgAddr) chosenReg <- mkRegU;
+
+  // Routing key of message consumed
+  Reg#(RoutingKey) consumeKey <- mkRegU;
+
+  // Maintain count of routing beats fetched so far
+  Reg#(Bit#(`LogRoutingEntryLen)) fetchBeatCount <- mkReg(0);
+
+  // State 0: pass through flits that don't contain routing keys
+  rule consumeMessage0 (consumeState == 0);
+    Flit flit = flitInPort.value;
+    // Find unused message slot
+    Bool found = False;
+    FetcherFlitBufferMsgAddr chosen = ?;
+    for (Integer i = 0; i < `FetcherMsgsPerFlitBuffer; i=i+1) 
+      if (flitBufferUsedSlots[i].value == 0) begin
+        found = True;
+        chosen = fromInteger(i);
+      end
+    chosenReg <= chosen;
+    // Initialise counters for subsequent states
+    flitCount <= 0;
+    fetchBeatCount<= 0;
+    // Consume flit
+    if (flitInPort.canGet) begin
+      if (flit.dest.addr.isKey) begin
+        if (found) begin
+          consumeState <= 1;
+        end
+      end else if (flitQueue.notFull) begin
+        // TODO: avoid conflict with interpreter stage
+        flitOutQueue.enq(flit);
+        flitInPort.get;
+      end
+    end
+  endrule
+
+  // State 1: buffer flits that do contain routing keys
+  rule consumeMessage1 (consumeState == 1);
+    Flit flit = flitInPort.value;
+    if (flitInPort.canGet) begin
+      flitInPort.get;
+      consumeKey <= getRoutingKey(flit.dest.addr);
+      // Write to flit buffer
+      flitBuffer.write({chosenReg, consumeFlitCount}, flit);
+      consumeFlitCount <= consumeFlitCount + 1;
+      // On final flit, move to fetch state
+      if (! flit.notFinalFlit) begin
+        consumeState <= 2;
+        // Claim chosen slot
+        flitBufferUsedSlots[chosenReg].set;
+      end
+    end
+  endrule
+
+  // State 2: fetch routing beats
+  rule consumeMessage2 (consumeState == 2);
+    // Have we finished fetching beats?
+    Bool finished = fetchBeatCount + `ProgRouterMaxBurst >= consumeKey.len;
+    // Prepare inflight RAM request info
+    // (to handle out of order resps from the RAMs)
+    InflightFetcherReqInfo info;
+    info.msgAddr = chosenReg;
+    info.burst = min(consumeKey.len - fetchBeatCount, `ProgRouterMaxBurst);
+    info.finalBurst = finished;
+    // Prepare RAM request
+    DRAMReq req;
+    req.isStore = False;
+    req.id = fromInteger(`DCachesPerDRAM + myId);
+    req.addr = {1'b0, consumeKey.ptr + fetchBeatCount};
+    req.data = zeroExtend(pack(info));
+    req.burst = info.burst;
+    // Don't overfetch (beat buffer has finite size)
+    if (ramReqQueue[consumeKey.ram].notFull &&
+          beatBufferLen.available >= zeroExtend(req.burst)) begin
+        ramReqQueue[consumeKey.ram].enq(req);
+        fetchBeatCount <= fetchBeatCount + req.burst;
+        beatBufferLen.incBy(zeroExtend(req.burst));
+        if (finished) consumeState <= 0;
+      end
+    end
+  endrule
+
+  // Stage 2: consume RAM responses
+  // ------------------------------
+
+
+
+endmodule
 
 // =============================================================================
 // Programmable router
