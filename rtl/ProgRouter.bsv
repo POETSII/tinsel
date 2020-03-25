@@ -117,6 +117,56 @@ typedef struct {
 // Design
 // =============================================================================
 
+// In the following diagram N/S/E/W are the inter-FPGA links and
+// L0..L3 are links at one edge of the NoC.  Depending on the NoC
+// dimensions, there may be more or less than four links on a single
+// NoC edge, but the diagram assumes four.
+
+//
+//               N     S     E     W     L0..L3/Loop   Input flits
+//               |     |     |     |     |       |
+//             +---+ +---+ +---+ +---+ +---+     |
+//             | F | | F | | F | | F | | F |     |     Fetchers
+//             +---+ +---+ +---+ +---+ +---+     |
+//               |     |     |     |     |       |
+//             +---------------------------+     |
+//             |          Crossbar         |     |     Preliminary routing
+//             +---------------------------+     |
+//               |     |     |     |     |       |
+//              N/L0  S/L1  E/L2  W/L3   Ind-----+     Output queues
+//               |     |     |     |
+//             +---------------------------+
+//             |          Expander         |           Final expansion
+//             +---------------------------+
+//               |  |  |  |  |  |  |  |
+//               N  S  E  W  L0 L1 L2 L3               Output flits
+//
+
+// The core functionality is implemented in the fetchers, which:
+//   (1) extract routing keys from incoming flits;
+//   (2) lookup the keys in RAM;
+//   (3) interpret the resulting routing records; and
+//   (4) emit the interpreted flits.
+
+// The key property of these fetchers is that they act entirely
+// indepdedently of each other: each one can make progress even if
+// another is blocked.  Unfortunately, this leads to a duplicated
+// logic resources, but is necessary to avoid deadlock.
+
+// Note that, as the routers are fully programmable, it is possible
+// for the programmer to introduce deadlock using an ill-defined
+// routing scheme, e.g. where a flit arrives in on (say) link N and
+// requires a flit to be sent back along the same direction N.
+// However, the hardware does guarantee deadlock-freedom if the
+// routing scheme is based on dimension-ordered routing.
+
+// After the fetchers have interpreted the flits, they are fed to a
+// fair crossbar which organises them by destination into output
+// queues.  To reduce logic, we allow each inter-board link to share
+// an output queue with a local link, as this does not compromise
+// forward progress.  Finally the queues are expanded to provide an
+// output stream for each possible destination.
+
 // =============================================================================
 // Fetcher
 // =============================================================================
