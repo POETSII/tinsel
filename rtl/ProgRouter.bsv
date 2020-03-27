@@ -2,6 +2,15 @@
 // Functions, data types, and modules for programmable routers
 package ProgRouter;
 
+import Globals   :: *;
+import Util      :: *;
+import DRAM      :: *;
+import Vector    :: *;
+import Queue     :: *;
+import Interface :: *;
+import BlockRam  :: *;
+import Assert    :: *;
+
 // =============================================================================
 // Routing keys and beats
 // =============================================================================
@@ -24,18 +33,10 @@ typedef struct {
   Vector#(6, Bit#(40)) chunks;
 } RoutingBeat deriving (Bits);
 
-// Routing beat, tagged with the beat number in the DRAM burst
-typedef struct {
-  // Beat
-  RoutingBeat beat;
-  // Beat number
-  Bit#(`BeatBurstWidth) beatNum;
-} NumberedRoutingBeat deriving (Bits);
-
 // 32-bit routing key
 typedef struct {
   // Which off-chip RAM?
-  Bit#(`LogDRAMsPerBoard) ram
+  Bit#(`LogDRAMsPerBoard) ram;
   // Pointer to array of routing beats containing routing records
   Bit#(`LogBeatsPerDRAM) ptr;
   // Number of beats in the array
@@ -56,14 +57,14 @@ typedef enum {
   RR   = 3'd2, // 40-bit Router-to-Router
   MRM  = 3'd3, // 80-bit Multicast Router-to-Mailbox
   IND  = 3'd4  // 40-bit Indirection
-} RoutingRecordTag;
+} RoutingRecordTag deriving (Bits, Eq);
 
 typedef enum {
   NORTH = 2'd0,
   SOUTH = 2'd1,
   EAST  = 2'd2,
-  WEST  = 2'd3,
-} RoutingDir;
+  WEST  = 2'd3
+} RoutingDir deriving (Bits, Eq);
 
 // 40-bit Unicast Router-to-Mailbox (URM1) record
 typedef struct {
@@ -228,21 +229,31 @@ typedef struct {
   Bool finalBurst;
 } InflightFetcherReqInfo deriving (Bits);
 
+// Routing beat, tagged with the beat number in the DRAM burst
+typedef struct {
+  // Beat
+  RoutingBeat beat;
+  // Beat number
+  Bit#(`BeatBurstWidth) beatNum;
+  // Inflight request info
+  InflightFetcherReqInfo info;
+} NumberedRoutingBeat deriving (Bits);
+
 // Fetcher interface
 interface Fetcher;
   // Incoming and outgoing flits
   interface In#(Flit) flitIn;
   interface BOut#(RoutedFlit) flitOut;
   // Off-chip RAM connections
-  Vector#(`DRAMsPerBoard, BOut#(DRAMReq)) ramReqs;
-  Vector#(`DRAMsPerBoard, In#(DRAMResp)) ramResps;
+  interface Vector#(`DRAMsPerBoard, BOut#(DRAMReq)) ramReqs;
+  interface Vector#(`DRAMsPerBoard, In#(DRAMResp)) ramResps;
 endinterface
 
 // Fetcher module
-module mkFetcher#(BoardId boardId) (Fetcher);
+module mkFetcher#(Integer fetcherId, BoardId boardId) (Fetcher);
 
   // Flit input port
-  InPort#(Flit)) flitInPort <- mkInPort;
+  InPort#(Flit) flitInPort <- mkInPort;
 
   // RAM request queues
   Vector#(`DRAMsPerBoard, Queue1#(DRAMReq)) ramReqQueue <-
@@ -259,12 +270,12 @@ module mkFetcher#(BoardId boardId) (Fetcher);
   BlockRam#(FetcherFlitBufferAddr, Flit) flitBuffer <- mkBlockRam;
 
   // Beat buffer
-  SizedQueue#(`LogProgRouterBeatBufferSize, NumberedRoutingBeat))
-    beatBuffer <- replicateM(mkUGSizedQueue);
+  SizedQueue#(`FetcherLogBeatBufferSize, NumberedRoutingBeat)
+    beatBuffer <- mkUGSizedQueue;
 
   // Track length of beat buffer, so that we don't overfetch
-  Count#(TAdd#(`LogProgRouterBeatBufferSize, 1)) beatBufferLen <-
-      mkCount(2 ** `LogProgRouterBeatBufferSize);
+  Count#(TAdd#(`FetcherLogBeatBufferSize, 1)) beatBufferLen <-
+      mkCount(2 ** `FetcherLogBeatBufferSize);
 
   // For flits whose destinations are *not* routing keys
   Queue1#(RoutedFlit) flitBypassQueue <- mkUGShiftQueue(QueueOptFmax);
@@ -285,11 +296,11 @@ module mkFetcher#(BoardId boardId) (Fetcher);
   Reg#(Bit#(2)) consumeState <- mkReg(0);
 
   // Count number of flits of message consumed so far
-  Reg#(Bit#(`LogFlitsPerMsg)) consumeFlitCount <- mkReg(0);
+  Reg#(Bit#(`LogMaxFlitsPerMsg)) consumeFlitCount <- mkReg(0);
 
   // Flit slot allocator
   Vector#(`FetcherMsgsPerFlitBuffer, SetReset) flitBufferUsedSlots <-
-    mkSetReset(False);
+    replicateM(mkSetReset(False));
 
   // Chosen message slot
   Reg#(FetcherFlitBufferMsgAddr) chosenReg <- mkRegU;
@@ -307,14 +318,14 @@ module mkFetcher#(BoardId boardId) (Fetcher);
     Bool found = False;
     FetcherFlitBufferMsgAddr chosen = ?;
     for (Integer i = 0; i < `FetcherMsgsPerFlitBuffer; i=i+1) 
-      if (flitBufferUsedSlots[i].value == 0) begin
+      if (! flitBufferUsedSlots[i].value) begin
         found = True;
         chosen = fromInteger(i);
       end
     chosenReg <= chosen;
     // Initialise counters for subsequent states
-    flitCount <= 0;
-    fetchBeatCount<= 0;
+    consumeFlitCount <= 0;
+    fetchBeatCount <= 0;
     // Consume flit
     if (flitInPort.canGet) begin
       if (flit.dest.addr.isKey) begin
@@ -324,9 +335,9 @@ module mkFetcher#(BoardId boardId) (Fetcher);
       end else if (flitBypassQueue.notFull) begin
         flitInPort.get;
         // Make routing decision
-        RoutingDecision decision = RouteLocal;
-        MailboxNetAddr = flit.dest.addr;
-        if (a.addr.host.valid)
+        RoutingDecision decision = RouteNoC;
+        MailboxNetAddr addr = flit.dest.addr;
+        if (addr.host.valid)
           decision = addr.host.value == 0 ? RouteWest : RouteEast;
         else if (addr.board.x < boardId.x) decision = RouteWest;
         else if (addr.board.x > boardId.x) decision = RouteEast;
@@ -343,7 +354,7 @@ module mkFetcher#(BoardId boardId) (Fetcher);
     Flit flit = flitInPort.value;
     if (flitInPort.canGet) begin
       flitInPort.get;
-      consumeKey <= getRoutingKey(flit.dest.addr);
+      consumeKey <= getRoutingKey(flit.dest);
       // Write to flit buffer
       flitBuffer.write({chosenReg, consumeFlitCount}, flit);
       consumeFlitCount <= consumeFlitCount + 1;
@@ -359,28 +370,28 @@ module mkFetcher#(BoardId boardId) (Fetcher);
   // State 2: fetch routing beats
   rule consumeMessage2 (consumeState == 2);
     // Have we finished fetching beats?
-    Bool finished = fetchBeatCount + `ProgRouterMaxBurst >= consumeKey.len;
+    Bool finished = fetchBeatCount+`ProgRouterMaxBurst >= consumeKey.numBeats;
     // Prepare inflight RAM request info
     // (to handle out of order resps from the RAMs)
     InflightFetcherReqInfo info;
     info.msgAddr = chosenReg;
-    info.burst = min(consumeKey.len - fetchBeatCount, `ProgRouterMaxBurst);
+    info.burst = truncate(
+      min(consumeKey.numBeats - fetchBeatCount, `ProgRouterMaxBurst));
     info.finalBurst = finished;
     // Prepare RAM request
     DRAMReq req;
     req.isStore = False;
-    req.id = fromInteger(`DCachesPerDRAM + myId);
-    req.addr = {1'b0, consumeKey.ptr + fetchBeatCount};
+    req.id = fromInteger(`DCachesPerDRAM + fetcherId);
+    req.addr = {1'b0, consumeKey.ptr + zeroExtend(fetchBeatCount)};
     req.data = {?, pack(info)};
     req.burst = info.burst;
     // Don't overfetch (beat buffer has finite size)
     if (ramReqQueue[consumeKey.ram].notFull &&
           beatBufferLen.available >= zeroExtend(req.burst)) begin
-        ramReqQueue[consumeKey.ram].enq(req);
-        fetchBeatCount <= fetchBeatCount + req.burst;
-        beatBufferLen.incBy(zeroExtend(req.burst));
-        if (finished) consumeState <= 0;
-      end
+      ramReqQueue[consumeKey.ram].enq(req);
+      fetchBeatCount <= fetchBeatCount + zeroExtend(req.burst);
+      beatBufferLen.incBy(zeroExtend(req.burst));
+      if (finished) consumeState <= 0;
     end
   endrule
 
@@ -389,7 +400,7 @@ module mkFetcher#(BoardId boardId) (Fetcher);
 
   // Merge responses from each RAM
   staticAssert(`DRAMsPerBoard == 2,
-    "Fetcher: need to generalise number of RAMs used")
+    "Fetcher: need to generalise number of RAMs used");
   MergeUnit#(NumberedRoutingBeat) ramRespMerger <- mkMergeUnitFair;
 
   // Convert a RAM response to a numbered routing beat
@@ -397,18 +408,19 @@ module mkFetcher#(BoardId boardId) (Fetcher);
     NumberedRoutingBeat {
       beat: unpack(resp.data)
     , beatNum: resp.beat
+    , info: unpack(truncate(resp.info))
     };
 
   // Create RAM response input interfaces for this module
   In#(DRAMResp) respA <- onIn(fromDRAMResp, ramRespMerger.inA);
   In#(DRAMResp) respB <- onIn(fromDRAMResp, ramRespMerger.inB);
-  Vector#(`DRAMsPerBoard, In#(DRAMResp)) ramResps = vector(respA, respB);
+  Vector#(`DRAMsPerBoard, In#(DRAMResp)) ramRespsOut = vector(respA, respB);
 
   // Connect the merger to the beat buffer
   connectToQueue(ramRespMerger.out, beatBuffer);
 
   // Count number of flits of message emitted so far
-  Reg#(Bit#(`LogFlitsPerMsg)) emitFlitCount <- mkReg(0);
+  Reg#(Bit#(`LogMaxFlitsPerMsg)) emitFlitCount <- mkReg(0);
 
   // Count number of records processed so far in current beat
   Reg#(Bit#(3)) recordCount <- mkReg(0);
@@ -423,16 +435,16 @@ module mkFetcher#(BoardId boardId) (Fetcher);
 
   // State 0: register the routing beat and fetch first flit
   rule interpreter0 (interpreterState == 0);
-    let beat = beatBuffer.dataOut.beat;
-    InflightFetcherReqInfo info = unpack(truncate(beat.info));
+    let beat = beatBuffer.dataOut;
+    InflightFetcherReqInfo info = beat.info;
     // Consume beat
     if (beatBuffer.canDeq && beatBuffer.canPeek) begin
-      beatReg <= beatBuffer.dataOut;
+      beatReg <= beat;
       beatBuffer.deq;
       interpreterState <= 1;
     end
     // Load first flit
-    flitBuffer.load({info.msgAddr, 0});
+    flitBuffer.read({info.msgAddr, 0});
     emitFlitCount <= 0;
     recordCount <= 0;
   endrule
@@ -442,9 +454,9 @@ module mkFetcher#(BoardId boardId) (Fetcher);
     // Extract details of registered routing beat
     let beat = beatReg.beat;
     let beatNum = beatReg.beatNum;
-    InflightFetcherReqInfo info = unpack(truncate(beat.info));
+    let info = beatReg.info;
     // Extract tag from next record
-    RoutingRecordTag tag = beat.chunks[5].tag;
+    RoutingRecordTag tag = unpack(truncateLSB(beat.chunks[5]));
     // Is this the first flit of a message?
     Bool firstFlit = emitFlitCount == 0;
     // Modify flit by interpreting routing key
@@ -455,29 +467,29 @@ module mkFetcher#(BoardId boardId) (Fetcher);
       URM1: begin
         URM1Record rec = unpack(beat.chunks[5]);
         flit.dest.addr.isKey = False;
-        flit.dest.addr.mbox = rec.mbox;
+        flit.dest.addr.mbox = unpack(rec.mbox);
         Vector#(`ThreadsPerMailbox, Bool) threadMask = newVector;
         for (Integer j = 0; j < `ThreadsPerMailbox; j=j+1)
-          threadMask = rec.thread == fromInteger(j);
+          threadMask[j] = rec.thread == fromInteger(j);
         flit.dest.threads = pack(threadMask);
         // Replace first word of message with local key
         if (firstFlit)
           flit.payload = {truncateLSB(flit.payload), 5'b0, rec.localKey};
-        decision = RouteLocal;
+        decision = RouteNoC;
       end
       // 80-bit Unicast Router-to-Mailbox
       URM2: begin
         URM2Record rec = unpack({beat.chunks[5], beat.chunks[4]});
         flit.dest.addr.isKey = False;
-        flit.dest.addr.mbox = rec.mbox;
+        flit.dest.addr.mbox = unpack(rec.mbox);
         Vector#(`ThreadsPerMailbox, Bool) threadMask = newVector;
         for (Integer j = 0; j < `ThreadsPerMailbox; j=j+1)
-          threadMask = rec.thread == fromInteger(j);
+          threadMask[j] = rec.thread == fromInteger(j);
         flit.dest.threads = pack(threadMask);
         // Replace first two words of message with local key
         if (firstFlit)
           flit.payload = {truncateLSB(flit.payload), rec.localKey};
-        decision = RouteLocal;
+        decision = RouteNoC;
       end
       // 40-bit Router-to-Router
       RR: begin
@@ -485,19 +497,19 @@ module mkFetcher#(BoardId boardId) (Fetcher);
         case (rec.dir)
           NORTH: begin
             decision = RouteNorth;
-            flit.dest.board = BoardId {x: boardId.x, y: boardId.y+1};
+            flit.dest.addr.board = BoardId {x: boardId.x, y: boardId.y+1};
           end
           SOUTH: begin
             decision = RouteSouth;
-            flit.dest.board = BoardId {x: boardId.x, y: boardId.y-1};
+            flit.dest.addr.board = BoardId {x: boardId.x, y: boardId.y-1};
           end
           EAST: begin
             decision = RouteEast;
-            flit.dest.board = BoardId {x: boardId.x+1, y: boardId.y};
+            flit.dest.addr.board = BoardId {x: boardId.x+1, y: boardId.y};
           end
           WEST: begin
             decision = RouteWest;
-            flit.dest.board = BoardId {x: boardId.x-1, y: boardId.y};
+            flit.dest.addr.board = BoardId {x: boardId.x-1, y: boardId.y};
           end
         endcase
         flit.dest.threads = {?, rec.newKey};
@@ -506,9 +518,9 @@ module mkFetcher#(BoardId boardId) (Fetcher);
       MRM: begin
         MRMRecord rec = unpack({beat.chunks[5], beat.chunks[4]});
         flit.dest.addr.isKey = False;
-        flit.dest.addr.mbox = rec.mbox;
+        flit.dest.addr.mbox = unpack(rec.mbox);
         flit.dest.threads = rec.destMask;
-        decision = RouteLocal;
+        decision = RouteNoC;
       end
       // 40-bit Indirection
       IND: begin
@@ -516,10 +528,10 @@ module mkFetcher#(BoardId boardId) (Fetcher);
         flit.dest.threads = {?, rec.newKey};
         decision = RouteLoop;
       end
-    end
+    endcase
     // Is output queue ready for new flit?
     Bool emit = flitProcessedQueue.notFull;
-    Bool newFlitCount = emitFlitCount;
+    let newFlitCount = emitFlitCount;
     // Consume routing record
     if (emit) begin
       flitProcessedQueue.enq(RoutedFlit { decision: decision, flit: flit });
@@ -537,9 +549,10 @@ module mkFetcher#(BoardId boardId) (Fetcher);
         for (Integer i = 5; i > 0; i=i-1)
           newBeat.chunks[i] = beat.chunks[i-1];
       end
-      beatReg <= NumberedRoutingBeat { beatNum: beatNum, beat: newBeat };
+      beatReg <= NumberedRoutingBeat {
+        beat: newBeat, beatNum: beatNum, info: info };
       // Is this the final record in the beat?
-      if ((recordCount+1) == beat.size) begin
+      if ((recordCount+1) == truncate(beat.size)) begin
         interpreterState <= 0;
         // Have we finished with this message yet?
         if (info.finalBurst && info.burst == (beatNum+1)) begin
@@ -554,7 +567,7 @@ module mkFetcher#(BoardId boardId) (Fetcher);
         newFlitCount = 0;
     end
     // Issue flit load request
-    flitBuffer.load({info.msgAddr, newFlitCount});
+    flitBuffer.read({info.msgAddr, newFlitCount});
     emitFlitCount <= newFlitCount;
   endrule
 
@@ -575,15 +588,15 @@ module mkFetcher#(BoardId boardId) (Fetcher);
         flitBypassQueue.deq;
         flitOutQueue.enq(flitBypassQueue.dataOut);
         mergeInProgress <= flitBypassQueue.dataOut.flit.notFinalFlit;
-        prevFromBypass = True;
+        prevFromBypass <= True;
       end
     end else if (flitProcessedQueue.canDeq) begin
       flitProcessedQueue.deq;
       flitOutQueue.enq(flitProcessedQueue.dataOut);
       mergeInProgress <= flitProcessedQueue.dataOut.flit.notFinalFlit;
-      prevFromBypass = False;
+      prevFromBypass <= False;
     end
-  endrule;
+  endrule
 
   // Interfaces
   // -----------
@@ -591,7 +604,7 @@ module mkFetcher#(BoardId boardId) (Fetcher);
   interface flitIn = flitInPort.in;
   interface flitOut = queueToBOut(flitOutQueue);
   interface ramReqs = map(queueToBOut, ramReqQueue);
-  interface ramResps = ramResps;
+  interface ramResps = ramRespsOut;
 
 endmodule
 
@@ -601,8 +614,8 @@ endmodule
 
 interface ProgRouter;
   // Incoming and outgoing flits
-  interface Vector#(`FetchersPerProgRouter, In#(Flit) flitIn);
-  interface Vector#(`FetchersPerProgRouter, Out#(Flit) flitOut);
+  interface Vector#(`FetchersPerProgRouter, In#(Flit)) flitIn;
+  interface Vector#(`FetchersPerProgRouter, Out#(Flit)) flitOut;
 
   // Interface to off-chip memory
   interface Vector#(`DRAMsPerBoard,
