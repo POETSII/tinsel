@@ -25,6 +25,7 @@ import IdleDetector :: *;
 import FlitMerger   :: *;
 import OffChipRAM   :: *;
 import DRAM         :: *;
+import ProgRouter   :: *;
 
 // =============================================================================
 // Mesh Router

@@ -161,6 +161,15 @@ p["SRAMLatency"] = 8
 p["SRAMLogMaxInFlight"] = 5
 p["SRAMStoreLatency"] = 2
 
+# Programmable router parameters:
+p["LogRoutingEntryLen"] = 5 # Number of beats in a routing table entry
+p["ProgRouterMaxBurst"] = 4
+p["FetcherLogBeatBufferSize"] = 5
+p["FetcherLogFlitBufferSize"] = 5
+p["FetcherLogMsgsPerFlitBuffer"] = (
+  p["FetcherLogFlitBufferSize"] - p["LogMaxFlitsPerMsg"])
+p["FetcherMsgsPerFlitBuffer"] = 2 ** p["FetcherLogMsgsPerFlitBuffer"]
+
 # Enable performance counters
 p["EnablePerfCount"] = True
 
