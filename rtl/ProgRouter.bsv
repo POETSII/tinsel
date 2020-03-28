@@ -441,6 +441,7 @@ module mkFetcher#(Integer fetcherId, BoardId boardId) (Fetcher);
     if (beatBuffer.canDeq && beatBuffer.canPeek) begin
       beatReg <= beat;
       beatBuffer.deq;
+      beatBufferLen.dec;
       interpreterState <= 1;
     end
     // Load first flit
