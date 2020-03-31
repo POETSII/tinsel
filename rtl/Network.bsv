@@ -308,16 +308,6 @@ module mkNoC#(
   Vector#(`NumEastWestLinks, BoardLink) westLink <-
     mapM(mkBoardLink(linkEnable[3]), westSocket);
 
-  // Responses from off-chip memory
-  Vector#(`DRAMsPerBoard,
-    Vector#(`FetchersPerProgRouter, InPort#(DRAMResp))) dramRespPort <-
-      replicateM(replicateM(mkInPort));
-
-  // Requests to off-chip memory
-  Vector#(`DRAMsPerBoard,
-    Vector#(`FetchersPerProgRouter, Queue1#(DRAMReq))) dramReqQueues <-
-      replicateM(replicateM(mkUGShiftQueue1(QueueOptFmax)));
-
   // Dimension-ordered routers
   // -------------------------
 
@@ -466,12 +456,10 @@ module mkNoC#(
   `endif
 
   // Requests to off-chip memory
-  interface dramReqs =
-    Vector::map(Vector::map(queueToBOut), dramReqQueues);
+  interface dramReqs = boardRouter.ramReqs;
 
   // Responses from off-chip memory
-  interface dramResps =
-    Vector::map(Vector::map(getIn), dramRespPort);
+  interface dramResps = boardRouter.ramResps;
 
 endmodule
 
