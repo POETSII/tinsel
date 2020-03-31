@@ -212,6 +212,14 @@ module onBOut#(function u f(t x), BOut#(t) out) (BOut#(u));
   method u value = f(out.value);
 endmodule
 
+// Convert BOut to Out
+function Out#(t) fromBOut(BOut#(t) out) =
+  interface Out
+    method Action tryGet = out.get;
+    method Bool valid = out.valid;
+    method t value = out.value;
+  endinterface;
+
 // A null In port accepts and discards all inputs
 module mkNullIn (In#(t));
   method Action tryPut(u val); endmethod
