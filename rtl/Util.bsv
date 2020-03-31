@@ -254,4 +254,24 @@ module mkBuffer#(Integer n, dataT init, dataT inp) (dataT)
   return regs[n-1];
 endmodule
 
+// Isolate first hot bit
+function Bit#(n) firstHot(Bit#(n) x) = x & (~x + 1);
+
+// Function for fair scheduling of n tasks
+function Tuple2#(Bit#(n), Bit#(n)) sched(Bit#(n) hist, Bit#(n) avail);
+  // First choice: an available bit that's not in the history
+  Bit#(n) first = firstHot(avail & ~hist);
+  // Second choice: any available bit
+  Bit#(n) second = firstHot(avail);
+
+  // Return new history, and chosen bit
+  if (first != 0) begin
+    // Return first choice, and update history
+    return tuple2(hist | first, first);
+  end else begin
+    // Return second choice, and reset history
+    return tuple2(second, second);
+  end
+endfunction
+
 endpackage

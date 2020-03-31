@@ -10,6 +10,7 @@ import Queue     :: *;
 import Interface :: *;
 import BlockRam  :: *;
 import Assert    :: *;
+import Util      :: *;
 
 // =============================================================================
 // Routing keys and beats
@@ -171,7 +172,7 @@ typedef enum {
 //              N/L0  S/L1  E/L2  W/L3   Ind-----+     Output queues
 //               |     |     |     |
 //             +---------------------------+
-//             |          Expander         |           Final expansion
+//             |          Splitter         |           Final splitting
 //             +---------------------------+
 //               |  |  |  |  |  |  |  |
 //               N  S  E  W  L0 L1 L2 L3               Output flits
@@ -199,7 +200,7 @@ typedef enum {
 // fair crossbar which organises them by destination into output
 // queues.  To reduce logic, we allow each inter-board link to share
 // an output queue with a local link, as this does not compromise
-// forward progress.  Finally the queues are expanded to provide an
+// forward progress.  Finally the queues are split to provide an
 // output stream for each possible destination.
 
 // =============================================================================
@@ -250,7 +251,7 @@ interface Fetcher;
 endinterface
 
 // Fetcher module
-module mkFetcher#(Integer fetcherId, BoardId boardId) (Fetcher);
+module mkFetcher#(BoardId boardId, Integer fetcherId) (Fetcher);
 
   // Flit input port
   InPort#(Flit) flitInPort <- mkInPort;
@@ -610,13 +611,133 @@ module mkFetcher#(Integer fetcherId, BoardId boardId) (Fetcher);
 endmodule
 
 // =============================================================================
+// Crossbar
+// =============================================================================
+
+// Selector function for a mux in the programmable router crossbar
+typedef function Bool selector(RoutedFlit flit) SelectorFunc;
+
+module mkProgRouterCrossbar#(
+         Vector#(n, SelectorFunc) f,
+         Vector#(n, BOut#(RoutedFlit)) out)
+           (Vector#(n, BOut#(RoutedFlit)))
+  provisos (Add#(a_, 1, n));
+
+  // Input ports
+  Vector#(n, InPort#(RoutedFlit)) inPort <- replicateM(mkInPort);
+
+  // Connect up input ports
+  for (Integer i = 0; i < valueOf(n); i=i+1)
+    connectDirect(out[i], inPort[i].in);
+
+  // Cosume wires, for each input port
+  Vector#(n, PulseWire) consumeWire<- replicateM(mkPulseWireOR);
+
+  // Keep track of service history for flit sources (for fair selection)
+  Vector#(n, Reg#(Bit#(n))) hist <- replicateM(mkReg(0));
+
+  // Current choice of flit source
+  Vector#(n, Reg#(Bit#(n))) choiceReg <- replicateM(mkReg(0));
+
+  // Output queue
+  Vector#(n, Queue1#(RoutedFlit)) outQueue <-
+    replicateM(mkUGShiftQueue(QueueOptFmax));
+
+  // Selector mux for each out queue
+  for (Integer i = 0; i < valueOf(n); i=i+1) begin
+
+    rule select;
+      // Vector of input flits and available flits
+      Vector#(n, RoutedFlit) flits = newVector;
+      Vector#(n, Bool) avails = newVector;
+      for (Integer i = 0; i < valueOf(n); i=i+1) begin
+        flits[i] = inPort[i].value;
+        avails[i] = f[i](inPort[i].value) && inPort[i].canGet;
+      end
+      Bit#(n) avail = pack(avails);
+      // Choose a new source using fair scheduler
+      match {.newHist, .choice} = sched(hist[i], avail);
+      // Select a flit
+      RoutedFlit flit =
+        oneHotSelect(unpack(choiceReg[i]), flits);
+      // Consume a flit
+      if (choiceReg[i] != 0) begin
+        if (outQueue[i].notFull) begin
+          // Pass chosen flit to out queue
+          outQueue[i].enq(flit);
+          // On final flit of message
+          if (!flit.flit.notFinalFlit) begin
+            if (choice != choiceReg[i]) begin
+              choiceReg[i] <= choice;
+              hist[i] <= newHist;
+            end else
+              choiceReg[i] <= 0;
+          end
+        end
+      end else begin
+        choiceReg[i] <= choice;
+        hist[i] <= newHist;
+      end
+      // Consume from chosen source
+      for (Integer j = 0; j < valueOf(n); j=j+1)
+        if (outQueue[i].notFull && choiceReg[i][j] == 1)
+          consumeWire[j].send;
+    endrule
+
+  end
+
+  // Consume from flit sources
+  rule consumeFlitSources;
+    for (Integer j = 0; j < valueOf(n); j=j+1)
+      if (consumeWire[j]) inPort[j].get;
+  endrule
+
+  return map(queueToBOut, outQueue);
+endmodule
+
+
+// =============================================================================
+// Splitter
+// =============================================================================
+
+// Split a single stream in two based on a predicate
+module splitFlits#(SelectorFunc f, BOut#(RoutedFlit) out)
+                  (Tuple2#(BOut#(Flit), BOut#(Flit)));
+
+  // Consume wire
+  PulseWire consumeWire <- mkPulseWireOR;
+
+  // Output streams
+  BOut#(Flit) outYes =
+    interface BOut
+      method Action get = consumeWire.send;
+      method Bool valid = out.valid && f(out.value);
+      method Flit value = out.value.flit;
+    endinterface;
+  BOut#(Flit) outNo =
+    interface BOut
+      method Action get = consumeWire.send;
+      method Bool valid = out.valid && !f(out.value);
+      method Flit value = out.value.flit;
+    endinterface;
+
+  // Consume
+  rule consume;
+    if (consumeWire) out.get;
+  endrule
+
+  return tuple2(outYes, outNo);
+endmodule
+
+// =============================================================================
 // Programmable router
 // =============================================================================
 
 interface ProgRouter;
   // Incoming and outgoing flits
   interface Vector#(`FetchersPerProgRouter, In#(Flit)) flitIn;
-  interface Vector#(`FetchersPerProgRouter, Out#(Flit)) flitOut;
+  interface Vector#(`FetchersPerProgRouter, BOut#(Flit)) flitOut;
+  interface Vector#(`MailboxMeshXLen, BOut#(Flit)) nocFlitOut;
 
   // Interface to off-chip memory
   interface Vector#(`DRAMsPerBoard,
@@ -625,14 +746,71 @@ interface ProgRouter;
     Vector#(`FetchersPerProgRouter, In#(DRAMResp))) ramResps;
 endinterface
 
-/*
-module mkProgRouter (ProgRouter);
+module mkProgRouter#(BoardId boardId) (ProgRouter);
 
-  // Flit input ports
-  Vector#(`FetchersPerProgRouter, InPort#(Flit)) flitInPort <-
-    replicateM(mkInPort);
+  // Fetchers
+  Vector#(`FetchersPerProgRouter, Fetcher) fetchers = newVector;
+  for (Integer i = 0; i < `FetchersPerProgRouter; i=i+1)
+    fetchers[i] <- mkFetcher(boardId, i);
+
+  // Crossbar routing functions
+  function Bit#(2) xcoord(RoutedFlit rf) =
+    zeroExtend(rf.flit.dest.addr.mbox.x);
+  function Bool routeN(RoutedFlit rf) =
+    rf.decision == RouteNorth || (rf.decision == RouteNoC && xcoord(rf) == 0);
+  function Bool routeS(RoutedFlit rf) =
+    rf.decision == RouteSouth || (rf.decision == RouteNoC && xcoord(rf) == 1);
+  function Bool routeE(RoutedFlit rf) =
+    rf.decision == RouteEast || (rf.decision == RouteNoC && xcoord(rf) == 2);
+  function Bool routeW(RoutedFlit rf) =
+    rf.decision == RouteWest || (rf.decision == RouteNoC && xcoord(rf) == 3);
+  function Bool routeLoop(RoutedFlit rf) = rf.decision == RouteLoop;
+  Vector#(`FetchersPerProgRouter, SelectorFunc) funcs =
+    vector(routeN, routeS, routeE, routeW, routeLoop);
+
+  // Crossbar
+  function BOut#(RoutedFlit) getFetcherFlitOut(Fetcher f) = f.flitOut;
+  Vector#(`FetchersPerProgRouter, BOut#(RoutedFlit)) fetcherOuts =
+    map(getFetcherFlitOut, fetchers);
+  Vector#(`FetchersPerProgRouter, BOut#(RoutedFlit))
+    crossbarOuts <- mkProgRouterCrossbar(funcs, fetcherOuts);
+
+  // Flit input interfaces
+  Vector#(`FetchersPerProgRouter, In#(Flit)) flitInIfc = newVector;
+  for (Integer i = 0; i < `FetchersPerProgRouter; i=i+1)
+    flitInIfc[i] = fetchers[i].flitIn;
+
+  // Flit output interfaces
+  Vector#(`FetchersPerProgRouter, BOut#(Flit)) flitOutIfc = newVector;
+  Vector#(`MailboxMeshXLen, BOut#(Flit)) nocFlitOutIfc = newVector;
+
+  // Strands
+  function Bool forNoC(RoutedFlit rf) = rf.decision == RouteNoC;
+  for (Integer i = 0; i < 4; i=i+1) begin
+    match {.noc, .other} <- splitFlits(forNoC, crossbarOuts[i]);
+    flitOutIfc[i] = other;
+    if (i < `MailboxMeshXLen) nocFlitOutIfc[i] = noc;
+  end
+  function Flit toFlit (RoutedFlit rf) = rf.flit;
+  flitOutIfc[4] <- onBOut(toFlit, crossbarOuts[4]);
+
+  // RAM interfaces
+  Vector#(`DRAMsPerBoard, Vector#(`FetchersPerProgRouter, In#(DRAMResp)))
+    ramRespIfc = replicate(newVector);
+  Vector#(`DRAMsPerBoard, Vector#(`FetchersPerProgRouter, BOut#(DRAMReq)))
+    ramReqIfc = replicate(newVector);
+  for (Integer i = 0; i < `DRAMsPerBoard; i=i+1)
+    for (Integer j = 0; j < `FetchersPerProgRouter; j=j+1) begin
+      ramReqIfc[i][j] = fetchers[j].ramReqs[i];
+      ramRespIfc[i][j] = fetchers[j].ramResps[i];
+    end
+
+  interface flitIn = flitInIfc;
+  interface flitOut = flitOutIfc;
+  interface nocFlitOut = nocFlitOutIfc;
+  interface ramReqs = ramReqIfc;
+  interface ramResps = ramRespIfc;
 
 endmodule
-*/
 
 endpackage
