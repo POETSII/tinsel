@@ -334,6 +334,7 @@ module mkFetcher#(BoardId boardId, Integer fetcherId) (Fetcher);
           consumeState <= 1;
         end
       end else if (flitBypassQueue.notFull) begin
+$display("ProgRouter: bypass");
         flitInPort.get;
         // Make routing decision
         RoutingDecision decision = RouteNoC;
@@ -469,7 +470,8 @@ module mkFetcher#(BoardId boardId, Integer fetcherId) (Fetcher);
       URM1: begin
         URM1Record rec = unpack(beat.chunks[5]);
         flit.dest.addr.isKey = False;
-        flit.dest.addr.mbox = unpack(rec.mbox);
+        flit.dest.addr.mbox.x = unpack(truncate(rec.mbox[1:0]));
+        flit.dest.addr.mbox.y = unpack(truncate(rec.mbox[3:2]));
         Vector#(`ThreadsPerMailbox, Bool) threadMask = newVector;
         for (Integer j = 0; j < `ThreadsPerMailbox; j=j+1)
           threadMask[j] = rec.thread == fromInteger(j);
@@ -483,7 +485,8 @@ module mkFetcher#(BoardId boardId, Integer fetcherId) (Fetcher);
       URM2: begin
         URM2Record rec = unpack({beat.chunks[5], beat.chunks[4]});
         flit.dest.addr.isKey = False;
-        flit.dest.addr.mbox = unpack(rec.mbox);
+        flit.dest.addr.mbox.x = unpack(truncate(rec.mbox[1:0]));
+        flit.dest.addr.mbox.y = unpack(truncate(rec.mbox[3:2]));
         Vector#(`ThreadsPerMailbox, Bool) threadMask = newVector;
         for (Integer j = 0; j < `ThreadsPerMailbox; j=j+1)
           threadMask[j] = rec.thread == fromInteger(j);
@@ -520,7 +523,8 @@ module mkFetcher#(BoardId boardId, Integer fetcherId) (Fetcher);
       MRM: begin
         MRMRecord rec = unpack({beat.chunks[5], beat.chunks[4]});
         flit.dest.addr.isKey = False;
-        flit.dest.addr.mbox = unpack(rec.mbox);
+        flit.dest.addr.mbox.x = unpack(truncate(rec.mbox[1:0]));
+        flit.dest.addr.mbox.y = unpack(truncate(rec.mbox[3:2]));
         flit.dest.threads = rec.destMask;
         decision = RouteNoC;
       end
@@ -587,6 +591,7 @@ module mkFetcher#(BoardId boardId, Integer fetcherId) (Fetcher);
       flitBypassQueue.canDeq;
     if (chooseBypass) begin
       if (flitBypassQueue.canDeq) begin
+$display("ProgRouter: consuming from bypass queue");
         flitBypassQueue.deq;
         flitOutQueue.enq(flitBypassQueue.dataOut);
         mergeInProgress <= flitBypassQueue.dataOut.flit.notFinalFlit;
@@ -649,38 +654,37 @@ module mkProgRouterCrossbar#(
     rule select;
       // Vector of input flits and available flits
       Vector#(n, RoutedFlit) flits = newVector;
-      Vector#(n, Bool) avails = newVector;
-      for (Integer i = 0; i < valueOf(n); i=i+1) begin
-        flits[i] = inPort[i].value;
-        avails[i] = f[i](inPort[i].value) && inPort[i].canGet;
+      Vector#(n, Bool) nextAvails = newVector;
+      Bool avail = False;
+      for (Integer j = 0; j < valueOf(n); j=j+1) begin
+        flits[j] = inPort[j].value;
+        nextAvails[j] = inPort[j].canGet && f[i](inPort[j].value)
+                          && choiceReg[i][j] == 0;
+        avail = avail || (choiceReg[i][j] == 1 && inPort[j].canGet);
       end
-      Bit#(n) avail = pack(avails);
+      Bit#(n) nextAvail = pack(nextAvails);
       // Choose a new source using fair scheduler
-      match {.newHist, .choice} = sched(hist[i], avail);
+      match {.newHist, .nextChoice} = sched(hist[i], nextAvail);
       // Select a flit
-      RoutedFlit flit =
-        oneHotSelect(unpack(choiceReg[i]), flits);
+      RoutedFlit flit = oneHotSelect(unpack(choiceReg[i]), flits);
       // Consume a flit
-      if (choiceReg[i] != 0) begin
+      if (avail) begin
         if (outQueue[i].notFull) begin
           // Pass chosen flit to out queue
           outQueue[i].enq(flit);
           // On final flit of message
           if (!flit.flit.notFinalFlit) begin
-            if (choice != choiceReg[i]) begin
-              choiceReg[i] <= choice;
-              hist[i] <= newHist;
-            end else
-              choiceReg[i] <= 0;
+            choiceReg[i] <= nextChoice;
+            hist[i] <= newHist;
           end
         end
-      end else begin
-        choiceReg[i] <= choice;
+      end else if (choiceReg[i] == 0) begin
+        choiceReg[i] <= nextChoice;
         hist[i] <= newHist;
       end
       // Consume from chosen source
       for (Integer j = 0; j < valueOf(n); j=j+1)
-        if (outQueue[i].notFull && choiceReg[i][j] == 1)
+        if (inPort[j].canGet && choiceReg[i][j] == 1 && outQueue[i].notFull)
           consumeWire[j].send;
     endrule
 
