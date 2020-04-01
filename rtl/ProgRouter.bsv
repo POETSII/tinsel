@@ -334,7 +334,6 @@ module mkFetcher#(BoardId boardId, Integer fetcherId) (Fetcher);
           consumeState <= 1;
         end
       end else if (flitBypassQueue.notFull) begin
-$display("ProgRouter: bypass");
         flitInPort.get;
         // Make routing decision
         RoutingDecision decision = RouteNoC;
@@ -591,7 +590,6 @@ $display("ProgRouter: bypass");
       flitBypassQueue.canDeq;
     if (chooseBypass) begin
       if (flitBypassQueue.canDeq) begin
-$display("ProgRouter: consuming from bypass queue");
         flitBypassQueue.deq;
         flitOutQueue.enq(flitBypassQueue.dataOut);
         mergeInProgress <= flitBypassQueue.dataOut.flit.notFinalFlit;
