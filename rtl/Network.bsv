@@ -150,6 +150,7 @@ module mkMeshRouter#(MailboxId m) (MeshRouter);
   // Routing function
   function Route route(NetAddr a);
          if (a.addr.board != b)   return Down;
+    else if (a.addr.isKey)        return Down;
     else if (a.addr.host.valid)   return Down;
     else if (a.addr.mbox.y < m.y) return Down;
     else if (a.addr.mbox.y > m.y) return Up;

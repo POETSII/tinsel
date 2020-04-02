@@ -32,7 +32,7 @@ typedef struct {
   Bit#(16) size;
   // The 40-bit record chunks
   Vector#(6, Bit#(40)) chunks;
-} RoutingBeat deriving (Bits);
+} RoutingBeat deriving (Bits, FShow);
 
 // 32-bit routing key
 typedef struct {
@@ -42,7 +42,7 @@ typedef struct {
   Bit#(`LogBeatsPerDRAM) ptr;
   // Number of beats in the array
   Bit#(`LogRoutingEntryLen) numBeats;
-} RoutingKey deriving (Bits);
+} RoutingKey deriving (Bits, FShow);
 
 // Extract routing key from an address
 function RoutingKey getRoutingKey(NetAddr addr) =
@@ -58,7 +58,7 @@ typedef enum {
   RR   = 3'd2, // 40-bit Router-to-Router
   MRM  = 3'd3, // 80-bit Multicast Router-to-Mailbox
   IND  = 3'd4  // 40-bit Indirection
-} RoutingRecordTag deriving (Bits, Eq);
+} RoutingRecordTag deriving (Bits, Eq, FShow);
 
 typedef enum {
   NORTH = 2'd0,
@@ -78,7 +78,7 @@ typedef struct {
   // Local key. The first word of the message
   // payload is overwritten with this.
   Bit#(27) localKey;
-} URM1Record deriving (Bits);
+} URM1Record deriving (Bits, FShow);
 
 // 80-bit Unicast Router-to-Mailbox (URM2) record
 typedef struct {
@@ -137,7 +137,7 @@ typedef struct {
   Flit flit;
   // Routing decision for flit
   RoutingDecision decision;
-} RoutedFlit deriving (Bits);
+} RoutedFlit deriving (Bits, FShow);
 
 // Routing decision
 typedef enum {
@@ -147,7 +147,7 @@ typedef enum {
   RouteWest,
   RouteNoC,
   RouteLoop
-} RoutingDecision deriving (Bits, Eq);
+} RoutingDecision deriving (Bits, Eq, FShow);
 
 // =============================================================================
 // Design
@@ -228,7 +228,7 @@ typedef struct {
   Bit#(`BeatBurstWidth) burst;
   // Is this the final burst of routing records for the current key?
   Bool finalBurst;
-} InflightFetcherReqInfo deriving (Bits);
+} InflightFetcherReqInfo deriving (Bits, FShow);
 
 // Routing beat, tagged with the beat number in the DRAM burst
 typedef struct {
@@ -238,7 +238,7 @@ typedef struct {
   Bit#(`BeatBurstWidth) beatNum;
   // Inflight request info
   InflightFetcherReqInfo info;
-} NumberedRoutingBeat deriving (Bits);
+} NumberedRoutingBeat deriving (Bits, FShow);
 
 // Fetcher interface
 interface Fetcher;
@@ -268,7 +268,8 @@ module mkFetcher#(BoardId boardId, Integer fetcherId) (Fetcher);
       registerDataOut: False,
       initFile: Invalid
     };
-  BlockRam#(FetcherFlitBufferAddr, Flit) flitBuffer <- mkBlockRam;
+  BlockRam#(FetcherFlitBufferAddr, Flit) flitBuffer <-
+    mkBlockRamOpts(flitBufferOpts);
 
   // Beat buffer
   SizedQueue#(`FetcherLogBeatBufferSize, NumberedRoutingBeat)

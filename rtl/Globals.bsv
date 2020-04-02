@@ -69,7 +69,7 @@ typedef struct {
   Bool notFinalFlit;
   // Is this a special packet for idle-detection?
   Bool isIdleToken;
-} Flit deriving (Bits);
+} Flit deriving (Bits, FShow);
 
 // A padded flit is a multiple of 64 bits
 // (i.e. the data width of the 10G MAC interface)
