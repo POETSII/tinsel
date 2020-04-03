@@ -81,6 +81,7 @@ template <int NumBeats> struct RoutingTable {
   // Add a URM1 record to the table
   void addURM1(uint32_t mboxX, uint32_t mboxY,
                  uint32_t mboxThread, uint32_t localKey) {
+    if (numChunks == 6) next();
     uint8_t* ptr = beats[currentBeat].bytes + 5*(5-numChunks);
     ptr[0] = localKey;
     ptr[1] = localKey >> 8;
@@ -88,7 +89,63 @@ template <int NumBeats> struct RoutingTable {
     ptr[3] = ((mboxThread&0x1f) << 3) | ((localKey >> 24) & 0x7);
     ptr[4] = (mboxY << 3) | (mboxX << 1) | (mboxThread >> 5);
     numChunks++;
+  }
+
+  // Add a URM2 record to the table
+  void addURM2(uint32_t mboxX, uint32_t mboxY, uint32_t mboxThread,
+                 uint32_t localKeyHigh, uint32_t localKeyLow) {
+    if (numChunks >= 5) next();
+    uint8_t* ptr = beats[currentBeat].bytes + 5*(4-numChunks);
+    ptr[0] = localKeyLow;
+    ptr[1] = localKeyLow >> 8;
+    ptr[2] = localKeyLow >> 16;
+    ptr[3] = localKeyLow >> 24;
+    ptr[4] = localKeyHigh;
+    ptr[5] = localKeyHigh >> 8;
+    ptr[6] = localKeyHigh >> 16;
+    ptr[7] = localKeyHigh >> 24;
+    ptr[8] = (mboxThread&0x1f) << 3;
+    ptr[9] = (1 << 5) | (mboxY << 3) | (mboxX << 1) | (mboxThread >> 5);
+    numChunks += 2;
+  }
+
+  // Add an MRM record to the table
+  void addMRM(uint32_t mboxX, uint32_t mboxY,
+                uint32_t threadsHigh, uint32_t threadsLow) {
+    if (numChunks >= 5) next();
+    uint8_t* ptr = beats[currentBeat].bytes + 5*(4-numChunks);
+    ptr[0] = threadsLow;
+    ptr[1] = threadsLow >> 8;
+    ptr[2] = threadsLow >> 16;
+    ptr[3] = threadsLow >> 24;
+    ptr[4] = threadsHigh;
+    ptr[5] = threadsHigh >> 8;
+    ptr[6] = threadsHigh >> 16;
+    ptr[7] = threadsHigh >> 24;
+    ptr[9] = (3 << 5) | (mboxY << 3) | (mboxX << 1);
+    numChunks += 2;
+  }
+
+  // Add an IND record to the table
+  // Return a pointer to the indirection key,
+  // so it can be set later by the caller
+  uint8_t* addIND() {
     if (numChunks == 6) next();
+    uint8_t* ptr = beats[currentBeat].bytes + 5*(5-numChunks);
+    ptr[4] = 4 << 5;
+    numChunks++;
+    return ptr;
+  }
+
+  // Set indirection key
+  void setIND(uint8_t* ind, bool upperRam,
+                uint8_t* beatPtr, uint32_t numBeats) {
+    uint32_t key = (uint32_t) beatPtr | numBeats;
+    if (upperRam) key |= 0x80000000;
+    ind[0] = key;
+    ind[1] = key >> 8;
+    ind[2] = key >> 16;
+    ind[3] = key >> 24;
   }
 };
 
@@ -110,17 +167,24 @@ int main()
   // On thread 0
   if (me == 0) {
     // Add an URM1 record
-    uint8_t* entry = table.currentPointer();
-    table.addURM1(0, 0, 10, 0xff);
+    uint8_t* entry1 = table.currentPointer();
+    table.addURM1(0, 0, 10, 0xfff);
+    table.addURM2(0, 0, 60, 0xff1, 0xff0);
+    //table.addMRM(1, 0, 0x22222222, 0x11111111);
+    uint8_t* ind = table.addIND();
     table.next();
+    uint8_t* entry2 = table.currentPointer();
+    table.addURM1(0, 0, 20, 0x111);
+    table.next();
+    table.setIND(ind, 0, entry2, 1);
 
     // Cache flush, to write table into RAM
     tinselCacheFlush();
     // Wait until flush done, by issuing a load
-    volatile uint32_t* dummyPtr = (uint32_t*) entry; dummyPtr[0];
+    volatile uint32_t* dummyPtr = (uint32_t*) entry1; dummyPtr[0];
 
     // Construct key
-    uint32_t key = (uint32_t) entry;
+    uint32_t key = (uint32_t) entry1;
     key = key | 1; // Entry is 1 beat long
 
     // Send message to key

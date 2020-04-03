@@ -23,7 +23,7 @@ data.v: progrouter.elf
                 --set-section-flags .bss=alloc,load,contents \
                 progrouter.elf data.v
 
-progrouter.elf: progrouter.cpp link.ld $(INC)/config.h $(INC)/tinsel.h entry.o
+progrouter.elf: progrouter.cpp link.ld $(INC)/config.h $(INC)/tinsel.h entry.o $(LIB)/lib.o
 	$(RV_CPPC) $(CFLAGS) -Wall -c -o progrouter.o progrouter.cpp
 	$(RV_LD) $(LDFLAGS) -T link.ld -o progrouter.elf entry.o progrouter.o $(LIB)/lib.o
 
