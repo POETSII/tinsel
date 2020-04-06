@@ -57,12 +57,16 @@ template <int NumBeats> struct RoutingTable {
   // Number of chunks used so far in current beat
   uint32_t numChunks;
 
+  // Number of records used so far in current beat
+  uint32_t numRecords;
+
   // Index of beat currently being filled
   uint32_t currentBeat;
 
   // Constructor
   RoutingTable() {
     currentBeat = 0;
+    numChunks = numRecords = 0;
   }
 
   // Pointer to current beat being filled
@@ -73,8 +77,9 @@ template <int NumBeats> struct RoutingTable {
   // Move on to next the beat
   void next() {
     beats[currentBeat].bytes[31] = 0;
-    beats[currentBeat].bytes[30] = numChunks;
+    beats[currentBeat].bytes[30] = numRecords;
     numChunks = 0;
+    numRecords = 0;
     currentBeat++;
   }
 
@@ -89,6 +94,7 @@ template <int NumBeats> struct RoutingTable {
     ptr[3] = ((mboxThread&0x1f) << 3) | ((localKey >> 24) & 0x7);
     ptr[4] = (mboxY << 3) | (mboxX << 1) | (mboxThread >> 5);
     numChunks++;
+    numRecords++;
   }
 
   // Add a URM2 record to the table
@@ -107,6 +113,7 @@ template <int NumBeats> struct RoutingTable {
     ptr[8] = (mboxThread&0x1f) << 3;
     ptr[9] = (1 << 5) | (mboxY << 3) | (mboxX << 1) | (mboxThread >> 5);
     numChunks += 2;
+    numRecords++;
   }
 
   // Add an MRM record to the table
@@ -124,6 +131,7 @@ template <int NumBeats> struct RoutingTable {
     ptr[7] = threadsHigh >> 24;
     ptr[9] = (3 << 5) | (mboxY << 3) | (mboxX << 1);
     numChunks += 2;
+    numRecords++;
   }
 
   // Add an IND record to the table
@@ -134,6 +142,7 @@ template <int NumBeats> struct RoutingTable {
     uint8_t* ptr = beats[currentBeat].bytes + 5*(5-numChunks);
     ptr[4] = 4 << 5;
     numChunks++;
+    numRecords++;
     return ptr;
   }
 
@@ -146,6 +155,19 @@ template <int NumBeats> struct RoutingTable {
     ind[1] = key >> 8;
     ind[2] = key >> 16;
     ind[3] = key >> 24;
+  }
+
+  // Add an RR record to the table
+  void addRR(uint32_t dir, uint32_t key) {
+    if (numChunks == 6) next();
+    uint8_t* ptr = beats[currentBeat].bytes + 5*(5-numChunks);
+    ptr[0] = key;
+    ptr[1] = key >> 8;
+    ptr[2] = key >> 16;
+    ptr[3] = key >> 24;
+    ptr[4] = (2 << 5) | (dir << 3);
+    numChunks++;
+    numRecords++;
   }
 };
 
@@ -170,6 +192,8 @@ int main()
     uint8_t* entry1 = table.currentPointer();
     table.addURM1(0, 0, 10, 0xfff);
     table.addURM2(0, 0, 60, 0xff1, 0xff0);
+    table.addURM2(0, 0, 60, 0xff3, 0xff2);
+    table.addURM2(0, 0, 60, 0xff5, 0xff4);
     //table.addMRM(1, 0, 0x22222222, 0x11111111);
     uint8_t* ind = table.addIND();
     table.next();
@@ -185,7 +209,7 @@ int main()
 
     // Construct key
     uint32_t key = (uint32_t) entry1;
-    key = key | 1; // Entry is 1 beat long
+    key = key | 2; // Entry is 2 beats long
 
     // Send message to key
     tinselWaitUntil(TINSEL_CAN_SEND);

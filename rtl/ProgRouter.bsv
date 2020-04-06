@@ -28,7 +28,7 @@ import Util      :: *;
 
 // 256-bit routing beat
 typedef struct {
-  // Number of 40-bit record chunks present
+  // Number of records present
   Bit#(16) size;
   // The 40-bit record chunks
   Vector#(6, Bit#(40)) chunks;
