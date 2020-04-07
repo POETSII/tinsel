@@ -16,11 +16,11 @@ import Util      :: *;
 // Routing keys and beats
 // =============================================================================
 
-// A routing record is either 40 bits or 80 bits in size (aligned on a
-// 40-bit or 80-bit boundary respectively). Multiple records are
+// A routing record is either 48 bits or 96 bits in size (aligned on a
+// 48-bit or 96-bit boundary respectively). Multiple records are
 // packed into a 256-bit DRAM beat (aligned on a 256-bit boundary).
 // The most significant 16 bits of the beat contain a count of the
-// number of records in the beat (in the range 1 to 6 inclusive). The
+// number of records in the beat (in the range 1 to 5 inclusive). The
 // remaining 240 bits contain records. The first record lies in the
 // least-significant bits of the beat. The size portion of the routing
 // key contains the number of contiguous DRAM beats holding all
@@ -30,8 +30,8 @@ import Util      :: *;
 typedef struct {
   // Number of records present
   Bit#(16) size;
-  // The 40-bit record chunks
-  Vector#(6, Bit#(40)) chunks;
+  // The 48-bit record chunks
+  Vector#(5, Bit#(48)) chunks;
 } RoutingBeat deriving (Bits, FShow);
 
 // 32-bit routing key
@@ -53,11 +53,11 @@ function RoutingKey getRoutingKey(NetAddr addr) =
 // =============================================================================
 
 typedef enum {
-  URM1 = 3'd0, // 40-bit Unicast Router-to-Mailbox
-  URM2 = 3'd1, // 80-bit Unicast Router-to-Mailbox
-  RR   = 3'd2, // 40-bit Router-to-Router
-  MRM  = 3'd3, // 80-bit Multicast Router-to-Mailbox
-  IND  = 3'd4  // 40-bit Indirection
+  URM1 = 3'd0, // 48-bit Unicast Router-to-Mailbox
+  URM2 = 3'd1, // 96-bit Unicast Router-to-Mailbox
+  RR   = 3'd2, // 48-bit Router-to-Router
+  MRM  = 3'd3, // 96-bit Multicast Router-to-Mailbox
+  IND  = 3'd4  // 48-bit Indirection
 } RoutingRecordTag deriving (Bits, Eq, FShow);
 
 typedef enum {
@@ -67,7 +67,7 @@ typedef enum {
   WEST  = 2'd3
 } RoutingDir deriving (Bits, Eq);
 
-// 40-bit Unicast Router-to-Mailbox (URM1) record
+// 48-bit Unicast Router-to-Mailbox (URM1) record
 typedef struct {
   // Record type
   RoutingRecordTag tag;
@@ -75,12 +75,14 @@ typedef struct {
   Bit#(4) mbox;
   // Mailbox-local thread identifier
   Bit#(6) thread;
+  // Unused
+  Bit#(3) unused;
   // Local key. The first word of the message
   // payload is overwritten with this.
-  Bit#(27) localKey;
+  Bit#(32) localKey;
 } URM1Record deriving (Bits, FShow);
 
-// 80-bit Unicast Router-to-Mailbox (URM2) record
+// 96-bit Unicast Router-to-Mailbox (URM2) record
 typedef struct {
   // Record type
   RoutingRecordTag tag;
@@ -89,26 +91,26 @@ typedef struct {
   // Mailbox-local thread identifier
   Bit#(6) thread;
   // Currently unused
-  Bit#(3) unused;
+  Bit#(19) unused;
   // Local key. The first two words of the message
   // payload is overwritten with this.
   Bit#(64) localKey;
 } URM2Record deriving (Bits);
 
-// 40-bit Router-to-Router (RR) record
+// 48-bit Router-to-Router (RR) record
 typedef struct {
   // Record type
   RoutingRecordTag tag;
   // Direction (N, S, E, or W)
   RoutingDir dir;
   // Currently unused
-  Bit#(3) unused;
+  Bit#(11) unused;
   // New 32-bit routing key that will replace the one in the
   // current message for the next hop of the message's journey
   Bit#(32) newKey;
 } RRRecord deriving (Bits);
 
-// 80-bit Multicast Router-to-Mailbox (MRM) record
+// 96-bit Multicast Router-to-Mailbox (MRM) record
 typedef struct {
   // Record type
   RoutingRecordTag tag;
@@ -116,16 +118,19 @@ typedef struct {
   Bit#(4) mbox;
   // Currently unused
   Bit#(9) unused;
+  // Local key. The least-significant half-word
+  // of the message is replaced with this
+  Bit#(16) localKey;
   // Mailbox-local destination mask
   Bit#(64) destMask;
 } MRMRecord deriving (Bits);
 
-// 40-bit Indirection (IND) record:
+// 48-bit Indirection (IND) record:
 typedef struct {
   // Record type
   RoutingRecordTag tag;
   // Currently unused
-  Bit#(5) unused;
+  Bit#(13) unused;
   // New 32-bit routing key for new set of records on current router
   Bit#(32) newKey;
 } INDRecord deriving (Bits);
@@ -459,16 +464,16 @@ module mkFetcher#(BoardId boardId, Integer fetcherId) (Fetcher);
     let beatNum = beatReg.beatNum;
     let info = beatReg.info;
     // Extract tag from next record
-    RoutingRecordTag tag = unpack(truncateLSB(beat.chunks[5]));
+    RoutingRecordTag tag = unpack(truncateLSB(beat.chunks[4]));
     // Is this the first flit of a message?
     Bool firstFlit = emitFlitCount == 0;
     // Modify flit by interpreting routing key
     RoutingDecision decision = ?;
     Flit flit = flitBuffer.dataOut;
     case (tag)
-      // 40-bit Unicast Router-to-Mailbox
+      // 48-bit Unicast Router-to-Mailbox
       URM1: begin
-        URM1Record rec = unpack(beat.chunks[5]);
+        URM1Record rec = unpack(beat.chunks[4]);
         flit.dest.addr.isKey = False;
         flit.dest.addr.mbox.x = unpack(truncate(rec.mbox[1:0]));
         flit.dest.addr.mbox.y = unpack(truncate(rec.mbox[3:2]));
@@ -478,12 +483,12 @@ module mkFetcher#(BoardId boardId, Integer fetcherId) (Fetcher);
         flit.dest.threads = pack(threadMask);
         // Replace first word of message with local key
         if (firstFlit)
-          flit.payload = {truncateLSB(flit.payload), 5'b0, rec.localKey};
+          flit.payload = {truncateLSB(flit.payload), rec.localKey};
         decision = RouteNoC;
       end
-      // 80-bit Unicast Router-to-Mailbox
+      // 96-bit Unicast Router-to-Mailbox
       URM2: begin
-        URM2Record rec = unpack({beat.chunks[5], beat.chunks[4]});
+        URM2Record rec = unpack({beat.chunks[4], beat.chunks[3]});
         flit.dest.addr.isKey = False;
         flit.dest.addr.mbox.x = unpack(truncate(rec.mbox[1:0]));
         flit.dest.addr.mbox.y = unpack(truncate(rec.mbox[3:2]));
@@ -496,9 +501,9 @@ module mkFetcher#(BoardId boardId, Integer fetcherId) (Fetcher);
           flit.payload = {truncateLSB(flit.payload), rec.localKey};
         decision = RouteNoC;
       end
-      // 40-bit Router-to-Router
+      // 48-bit Router-to-Router
       RR: begin
-        RRRecord rec = unpack(beat.chunks[5]);
+        RRRecord rec = unpack(beat.chunks[4]);
         case (rec.dir)
           NORTH: begin
             decision = RouteNorth;
@@ -519,18 +524,21 @@ module mkFetcher#(BoardId boardId, Integer fetcherId) (Fetcher);
         endcase
         flit.dest.threads = {?, rec.newKey};
       end
-      // 80-bit Multicast Router-to-Mailbox
+      // 96-bit Multicast Router-to-Mailbox
       MRM: begin
-        MRMRecord rec = unpack({beat.chunks[5], beat.chunks[4]});
+        MRMRecord rec = unpack({beat.chunks[4], beat.chunks[3]});
         flit.dest.addr.isKey = False;
         flit.dest.addr.mbox.x = unpack(truncate(rec.mbox[1:0]));
         flit.dest.addr.mbox.y = unpack(truncate(rec.mbox[3:2]));
         flit.dest.threads = rec.destMask;
+        // Replace first half-word of message with local key
+        if (firstFlit)
+          flit.payload = {truncateLSB(flit.payload), rec.localKey};
         decision = RouteNoC;
       end
-      // 40-bit Indirection
+      // 48-bit Indirection
       IND: begin
-        INDRecord rec = unpack(beat.chunks[5]);
+        INDRecord rec = unpack(beat.chunks[4]);
         flit.dest.threads = {?, rec.newKey};
         decision = RouteLoop;
       end
@@ -547,12 +555,12 @@ module mkFetcher#(BoardId boardId, Integer fetcherId) (Fetcher);
       RoutingBeat newBeat = beat;
       Bool doubleChunk = unpack(pack(tag)[0]);
       if (doubleChunk) begin
-        for (Integer i = 5; i > 2; i=i-2) begin
+        for (Integer i = 4; i > 2; i=i-2) begin
           newBeat.chunks[i] = beat.chunks[i-2];
           newBeat.chunks[i-1] = beat.chunks[i-3];
         end
       end else begin
-        for (Integer i = 5; i > 0; i=i-1)
+        for (Integer i = 4; i > 0; i=i-1)
           newBeat.chunks[i] = beat.chunks[i-1];
       end
       beatReg <= NumberedRoutingBeat {
