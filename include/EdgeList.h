@@ -16,7 +16,7 @@ struct EdgeList {
   uint32_t** neighbours;
 
   // Read network from file
-  void read(const char* filename)
+  void read(const char* filename, bool warn = true)
   {
     // Read edges
     FILE* fp = fopen(filename, "rt");
@@ -62,6 +62,11 @@ struct EdgeList {
     // Release
     free(count);
     fclose(fp);
+
+    if (warn && minFanOut() == 0) {
+      printf("Warning: some vertices have no outgoing edges and\n");
+      printf("         some POLite apps do not handle this case.\n");
+    }
   }
 
   // Determine max fan-out
@@ -73,6 +78,17 @@ struct EdgeList {
     }
     return max;
   }
+
+  // Determine min fan-out
+  uint32_t minFanOut() {
+    uint32_t min = ~0;
+    for (uint32_t i = 0; i < numNodes; i++) {
+      uint32_t numNeighbours = neighbours[i][0];
+      if (numNeighbours < min) min = numNeighbours;
+    }
+    return min;
+  }
+
 };
 
 #endif
