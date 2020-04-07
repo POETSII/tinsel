@@ -56,7 +56,7 @@ template <typename DeviceType,
   uint32_t numBoardsX;
   uint32_t numBoardsY;
 
-  // Multicast routing tables:
+  // Thread routing tables:
   // Sequence of outgoing edges for every (device, pin) pair
   Seq<POutEdge>*** outTable;
   // Sequence of incoming edges for every thread
@@ -365,9 +365,9 @@ template <typename DeviceType,
     numDevicesOnThread = (uint32_t*) calloc(TinselMaxThreads, sizeof(uint32_t));
   }
 
-  // Allocate routing tables
+  // Allocate thread routing tables
   // (Only valid after mapper is called)
-  void allocateRoutingTables() {
+  void allocateThreadRoutingTables() {
     // Receiver-side tables
     inTable = (Seq<PInEdge<E>>**)
       calloc(TinselMaxThreads,sizeof(Seq<PInEdge<E>>*));
@@ -407,9 +407,9 @@ template <typename DeviceType,
     }
   }
 
-  // Determine routing key for given set of receivers
+  // Determine thread routing key for given set of receivers
   // (The key must be the same for all receivers)
-  uint32_t findKey(Seq<PReceiverGroup<E>>* receivers) { 
+  uint32_t findThreadKey(Seq<PReceiverGroup<E>>* receivers) { 
     uint32_t key = 0;
 
     bool found = false;
@@ -445,9 +445,9 @@ template <typename DeviceType,
   // Add entries to the input tables for the given receivers
   // (Only valid after mapper is called)
   uint32_t addInTableEntries(Seq<PReceiverGroup<E>>* receivers) {
-    uint32_t key = findKey(receivers);
+    uint32_t key = findThreadKey(receivers);
     if (key >= 0xfffe) {
-      printf("Routing key exceeds 16 bits\n");
+      printf("Thread routing key exceeds 16 bits\n");
       exit(EXIT_FAILURE);
     }
     PInEdge<E> null, unused;
@@ -475,9 +475,9 @@ template <typename DeviceType,
     return key;
   }
 
-  // Compute routing tables
+  // Compute thread routing tables
   // (Only valid after mapper is called)
-  void computeRoutingTables() {
+  void computeThreadRoutingTables() {
     // Routing table stats
     uint64_t totalOutEdges = 0;
 
@@ -607,7 +607,7 @@ template <typename DeviceType,
   void map() {
     // Let's measure some times
     struct timeval placementStart, placementFinish;
-    struct timeval routingStart, routingFinish;
+    struct timeval threadRoutingStart, threadRoutingFinish;
     struct timeval initStart, initFinish;
 
     // Release all mapping and heap structures
@@ -679,14 +679,14 @@ template <typename DeviceType,
 
     // Stop placement timer and start routing timer
     gettimeofday(&placementFinish, NULL);
-    gettimeofday(&routingStart, NULL);
+    gettimeofday(&threadRoutingStart, NULL);
 
-    // Compute send and receive side routing tables
-    allocateRoutingTables();
-    computeRoutingTables();
+    // Compute send and receive side thread routing tables
+    allocateThreadRoutingTables();
+    computeThreadRoutingTables();
 
     // Stop routing timer and start init timer
-    gettimeofday(&routingFinish, NULL);
+    gettimeofday(&threadRoutingFinish, NULL);
     gettimeofday(&initStart, NULL);
 
     // Reallocate and initialise heap structures
@@ -704,9 +704,9 @@ template <typename DeviceType,
       printf("POLite mapper profile:\n");
       printf("  Partitioning and placement: %lfs\n", duration);
 
-      timersub(&routingFinish, &routingStart, &diff);
+      timersub(&threadRoutingFinish, &threadRoutingStart, &diff);
       duration = (double) diff.tv_sec + (double) diff.tv_usec / 1000000.0;
-      printf("  Routing table construction: %lfs\n", duration);
+      printf("  Thread routing table construction: %lfs\n", duration);
 
       timersub(&initFinish, &initStart, &diff);
       duration = (double) diff.tv_sec + (double) diff.tv_usec / 1000000.0;
