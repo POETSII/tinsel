@@ -2,6 +2,8 @@
 #ifndef _HEAT_H_
 #define _HEAT_H_
 
+#define POLITE_DUMP_STATS
+#define POLITE_COUNT_MSGS
 #include <POLite.h>
 
 struct HeatMessage {
@@ -10,7 +12,7 @@ struct HeatMessage {
   // Time step
   uint32_t time;
   // Temperature at sender
-  uint32_t val;
+  float val;
 };
 
 struct HeatState {
@@ -21,9 +23,9 @@ struct HeatState {
   // Current time step of device
   uint32_t time;
   // Current temperature of device
-  uint32_t val;
+  float val;
   // Accumulator for temperatures received at times t and t+1
-  uint32_t acc, accNext;
+  float acc, accNext;
   // Count messages sent and received
   uint8_t sent, received, receivedNext;
   // Is the temperature of this device constant?
@@ -45,7 +47,7 @@ struct HeatDevice : PDevice<HeatState, None, HeatMessage> {
     // Proceed to next time step?
     if (s->sent && s->received == s->fanIn) {
       s->time--;
-      if (!s->isConstant) s->val = s->acc >> 2;
+      if (!s->isConstant) s->val = s->acc / (float) s->fanIn;
       s->acc = s->accNext;
       s->received = s->receivedNext;
       s->accNext = s->receivedNext = 0;
