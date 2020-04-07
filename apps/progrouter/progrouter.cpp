@@ -7,36 +7,36 @@ Byte ordering in a routing beat:
 
   31: Upper byte of length (i.e. number of records in beat)
   30: Lower byte of length
-  29: Upper byte of first chunk 
+  29: Upper byte of first chunk
   28:
   27:
   26:
-  25: Lower byte of first chunk 
-  24: Upper byte of second chunk 
-  23:
+  25: 
+  24: Lower byte of first chunk
+  23: Upper byte of second chunk
   22:
   21:
-  20: Lower byte of second chunk
-  19: Upper byte of third chunk
-  18:
-  17:
+  20: 
+  19: 
+  18: Lower byte of second chunk
+  17: Upper byte of third chunk
   16:
-  15: Lower byte of third chunk
-  14: Upper byte of fourth chunk
+  15: 
+  14: 
   13:
-  12:
-  11:
-  10: Lower byte of fourth chunk
-   9: Upper byte of fifth chunk
+  12: Lower byte of third chunk
+  11: Upper byte of fourth chunk
+  10: 
+   9: 
    8:
    7:
-   6:
-   5: Lower byte of fifth chunk
-   4: Upper byte of sixth chunk
+   6: Lower byte of fourth chunk
+   5: Upper byte of fifth chunk
+   4: 
    3:
    2:
    1:
-   0: Lower byte of sixth chunk
+   0: Lower byte of fifth chunk
 
 Need to fold this into the docs eventually.
 */
@@ -86,13 +86,14 @@ template <int NumBeats> struct RoutingTable {
   // Add a URM1 record to the table
   void addURM1(uint32_t mboxX, uint32_t mboxY,
                  uint32_t mboxThread, uint32_t localKey) {
-    if (numChunks == 6) next();
-    uint8_t* ptr = beats[currentBeat].bytes + 5*(5-numChunks);
+    if (numChunks == 5) next();
+    uint8_t* ptr = beats[currentBeat].bytes + 6*(4-numChunks);
     ptr[0] = localKey;
     ptr[1] = localKey >> 8;
     ptr[2] = localKey >> 16;
-    ptr[3] = ((mboxThread&0x1f) << 3) | ((localKey >> 24) & 0x7);
-    ptr[4] = (mboxY << 3) | (mboxX << 1) | (mboxThread >> 5);
+    ptr[3] = localKey >> 24;
+    ptr[4] = (mboxThread&0x1f) << 3;
+    ptr[5] = (mboxY << 3) | (mboxX << 1) | (mboxThread >> 5);
     numChunks++;
     numRecords++;
   }
@@ -100,8 +101,8 @@ template <int NumBeats> struct RoutingTable {
   // Add a URM2 record to the table
   void addURM2(uint32_t mboxX, uint32_t mboxY, uint32_t mboxThread,
                  uint32_t localKeyHigh, uint32_t localKeyLow) {
-    if (numChunks >= 5) next();
-    uint8_t* ptr = beats[currentBeat].bytes + 5*(4-numChunks);
+    if (numChunks >= 4) next();
+    uint8_t* ptr = beats[currentBeat].bytes + 6*(3-numChunks);
     ptr[0] = localKeyLow;
     ptr[1] = localKeyLow >> 8;
     ptr[2] = localKeyLow >> 16;
@@ -110,17 +111,18 @@ template <int NumBeats> struct RoutingTable {
     ptr[5] = localKeyHigh >> 8;
     ptr[6] = localKeyHigh >> 16;
     ptr[7] = localKeyHigh >> 24;
-    ptr[8] = (mboxThread&0x1f) << 3;
-    ptr[9] = (1 << 5) | (mboxY << 3) | (mboxX << 1) | (mboxThread >> 5);
+    ptr[10] = (mboxThread&0x1f) << 3;
+    ptr[11] = (1 << 5) | (mboxY << 3) | (mboxX << 1) | (mboxThread >> 5);
     numChunks += 2;
     numRecords++;
   }
 
   // Add an MRM record to the table
   void addMRM(uint32_t mboxX, uint32_t mboxY,
-                uint32_t threadsHigh, uint32_t threadsLow) {
-    if (numChunks >= 5) next();
-    uint8_t* ptr = beats[currentBeat].bytes + 5*(4-numChunks);
+                uint32_t threadsHigh, uint32_t threadsLow,
+                  uint16_t localKey) {
+    if (numChunks >= 4) next();
+    uint8_t* ptr = beats[currentBeat].bytes + 6*(3-numChunks);
     ptr[0] = threadsLow;
     ptr[1] = threadsLow >> 8;
     ptr[2] = threadsLow >> 16;
@@ -129,7 +131,9 @@ template <int NumBeats> struct RoutingTable {
     ptr[5] = threadsHigh >> 8;
     ptr[6] = threadsHigh >> 16;
     ptr[7] = threadsHigh >> 24;
-    ptr[9] = (3 << 5) | (mboxY << 3) | (mboxX << 1);
+    ptr[8] = localKey;
+    ptr[9] = localKey >> 8;
+    ptr[11] = (3 << 5) | (mboxY << 3) | (mboxX << 1);
     numChunks += 2;
     numRecords++;
   }
@@ -138,9 +142,9 @@ template <int NumBeats> struct RoutingTable {
   // Return a pointer to the indirection key,
   // so it can be set later by the caller
   uint8_t* addIND() {
-    if (numChunks == 6) next();
-    uint8_t* ptr = beats[currentBeat].bytes + 5*(5-numChunks);
-    ptr[4] = 4 << 5;
+    if (numChunks == 5) next();
+    uint8_t* ptr = beats[currentBeat].bytes + 6*(4-numChunks);
+    ptr[5] = 4 << 5;
     numChunks++;
     numRecords++;
     return ptr;
@@ -159,13 +163,13 @@ template <int NumBeats> struct RoutingTable {
 
   // Add an RR record to the table
   void addRR(uint32_t dir, uint32_t key) {
-    if (numChunks == 6) next();
-    uint8_t* ptr = beats[currentBeat].bytes + 5*(5-numChunks);
+    if (numChunks == 5) next();
+    uint8_t* ptr = beats[currentBeat].bytes + 6*(4-numChunks);
     ptr[0] = key;
     ptr[1] = key >> 8;
     ptr[2] = key >> 16;
     ptr[3] = key >> 24;
-    ptr[4] = (2 << 5) | (dir << 3);
+    ptr[5] = (2 << 5) | (dir << 3);
     numChunks++;
     numRecords++;
   }
@@ -194,7 +198,7 @@ int main()
     table.addURM2(0, 0, 60, 0xff1, 0xff0);
     table.addURM2(0, 0, 60, 0xff3, 0xff2);
     table.addURM2(0, 0, 60, 0xff5, 0xff4);
-    //table.addMRM(1, 0, 0x22222222, 0x11111111);
+    //table.addMRM(1, 0, 0x22222222, 0x11111111, 0x2222);
     uint8_t* ind = table.addIND();
     table.next();
     uint8_t* entry2 = table.currentPointer();
