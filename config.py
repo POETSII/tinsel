@@ -365,6 +365,12 @@ p["LogBytesPerSRAMPartition"] = p["LogBytesPerSRAM"] - p["LogThreadsPerSRAM"]
 # DRAM base and length
 p["DRAMBase"] = 3 * (2 ** p["LogBytesPerSRAM"])
 p["DRAMGlobalsLength"] = 2 ** (p["LogBytesPerDRAM"] - 1) - p["DRAMBase"]
+p["POLiteDRAMGlobalsLength"] = 2 ** 14
+p["POLiteProgRouterBase"] = p["DRAMBase"] + p["POLiteDRAMGlobalsLength"]
+p["POLiteProgRouterLength"] = (p["DRAMGlobalsLength"] -
+                                 p["POLiteDRAMGlobalsLength"])
+
+# POLite globals
 
 # Number of FPGA boards per box (including bridge board)
 p["BoardsPerBox"] = p["MeshXLenWithinBox"] * p["MeshYLenWithinBox"] + 1

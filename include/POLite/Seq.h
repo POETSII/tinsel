@@ -45,12 +45,26 @@ template <class T> class Seq
       elems = newElems;
     }
 
+    // Extend size of sequence by N
+    void extendBy(int n)
+    {
+      numElems += n;
+      if (numElems > maxElems)
+        setCapacity(numElems*2);
+    }
+
     // Extend size of sequence by one
     void extend()
     {
-      numElems++;
-      if (numElems > maxElems)
-        setCapacity(maxElems*2);
+      extendBy(1);
+    }
+
+    // Ensure space for a further N elements
+    void ensureSpaceFor(int n)
+    {
+      int newNumElems = numElems + n;
+      if (newNumElems > maxElems)
+        setCapacity(newNumElems*2);
     }
 
     // Append

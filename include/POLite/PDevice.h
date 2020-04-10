@@ -54,9 +54,8 @@ inline PLocalDeviceId getLocalDeviceId(PDeviceAddr addr) { return addr >> 19; }
 // What's the max allowed local device address?
 inline uint32_t maxLocalDeviceId() { return 8192; }
 
-// Routing key
-typedef uint16_t Key;
-#define InvalidKey 0xffff
+// Index into the per-thread in-edge table
+typedef uint16_t InTableKey;
 
 // Pins
 //   No      - means 'not ready to send'
@@ -92,8 +91,8 @@ template <typename S, typename E, typename M> struct PDevice {
 
 // Generic device state structure
 template <typename S> struct ALIGNED PState {
-  // Pointer to base of neighbours arrays
-  uint16_t pinBase[POLITE_NUM_PINS];
+  // Board-level routing key for each outgoing pin
+  uint32_t pin[POLITE_NUM_PINS];
   // Ready-to-send status
   PPin readyToSend;
   // Custom state
@@ -103,20 +102,9 @@ template <typename S> struct ALIGNED PState {
 // Message structure
 template <typename M> struct PMessage {
   // Source-based routing key
-  Key key;
+  InTableKey key;
   // Application message
   M payload;
-};
-
-// An outgoing edge from a device
-struct POutEdge {
-  // Destination mailbox
-  uint16_t mbox;
-  // Routing key
-  uint16_t key;
-  // Destination threads
-  uint32_t threadMaskLow;
-  uint32_t threadMaskHigh;
 };
 
 // An incoming edge to a device (labelleled)
@@ -137,16 +125,6 @@ template <> struct PInEdge<None> {
   };
 };
 
-// Helper function: Count board hops between two threads
-inline uint32_t hopsBetween(uint32_t t0, uint32_t t1) {
-  uint32_t xmask = ((1<<TinselMeshXBits)-1);
-  int32_t y0 = t0 >> (TinselLogThreadsPerBoard + TinselMeshXBits);
-  int32_t x0 = (t0 >> TinselLogThreadsPerBoard) & xmask;
-  int32_t y1 = t1 >> (TinselLogThreadsPerBoard + TinselMeshXBits);
-  int32_t x1 = (t1 >> TinselLogThreadsPerBoard) & xmask;
-  return (abs(x0-x1) + abs(y0-y1));
-}
-
 // Generic thread structure
 template <typename DeviceType,
           typename S, typename E, typename M> struct PThread {
@@ -159,8 +137,7 @@ template <typename DeviceType,
   uint32_t numVertices;
   // Pointer to array of device states
   PTR(PState<S>) devices;
-  // Pointer to base of routing tables
-  PTR(POutEdge) outTableBase;
+  // Pointer to base of in table
   PTR(PInEdge<E>) inTableBase;
   // Array of local device ids are ready to send
   PTR(PLocalDeviceId) senders;
@@ -218,17 +195,6 @@ template <typename DeviceType,
 
   // Invoke device handlers
   void run() {
-    // Current out-going edge in multicast
-    POutEdge* outEdge;
-
-    // Outgoing edge to host
-    POutEdge outHost[2];
-    outHost[0].mbox = tinselHostId() >> TinselLogThreadsPerMailbox;
-    outHost[0].key = 0;
-    outHost[1].key = InvalidKey;
-    // Initialise outEdge to null terminator
-    outEdge = &outHost[1];
-
     // Did last call to step handler request a new time step?
     bool active = true;
 
@@ -252,29 +218,10 @@ template <typename DeviceType,
 
     // Event loop
     while (1) {
-      // Step 1: try to send
-      if (outEdge->key != InvalidKey) {
+      // Try to send
+      if (sendersTop != senders) {
         if (tinselCanSend()) {
-          PMessage<M>* m = (PMessage<M>*) tinselSendSlot();
-          // Send message
-          m->key = outEdge->key;
-          tinselMulticast(outEdge->mbox, outEdge->threadMaskHigh,
-            outEdge->threadMaskLow, m);
-          #ifdef POLITE_COUNT_MSGS
-          interThreadSendCount++;
-          interBoardSendCount +=
-            hopsBetween(outEdge->mbox << TinselLogThreadsPerMailbox,
-              tinselId());
-          #endif
-          // Move to next neighbour
-          outEdge++;
-        }
-        else
-          tinselWaitUntil(TINSEL_CAN_SEND|TINSEL_CAN_RECV);
-      }
-      else if (sendersTop != senders) {
-        if (tinselCanSend()) {
-          // Start new multicast
+          // Get next sender
           PLocalDeviceId src = *(--sendersTop);
           // Lookup device
           DeviceType dev = getDevice(src);
@@ -284,13 +231,14 @@ template <typename DeviceType,
           dev.send(&m->payload);
           // Reinsert sender, if it still wants to send
           if (*dev.readyToSend != No) sendersTop++;
-          // Determine out-edge array for sender
+          // Is it a send to the host pin or a user pin?
           if (pin == HostPin)
-            outEdge = outHost;
+            tinselSend(tinselHostId(), m);
           else
-            outEdge = (POutEdge*) &outTableBase[
-              devices[src].pinBase[pin-2]
-            ];
+            tinselKeySend(devices[src].pin[pin-2], m);
+          #ifdef POLITE_COUNT_MSGS
+          interThreadSendCount++;
+          #endif
         }
         else
           tinselWaitUntil(TINSEL_CAN_SEND|TINSEL_CAN_RECV);

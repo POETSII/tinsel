@@ -27,13 +27,18 @@ clean:
 	make -C apps/progrouter clean
 	make -C apps/POLite/heat-gals clean
 	make -C apps/POLite/heat-sync clean
+	make -C apps/POLite/heat-cube-sync clean
+	make -C apps/POLite/heat-grid-sync clean
 	make -C apps/POLite/asp-gals clean
 	make -C apps/POLite/asp-sync clean
-	make -C apps/POLite/asp-pc clean
 	make -C apps/POLite/pagerank-sync clean
 	make -C apps/POLite/pagerank-gals clean
+	make -C apps/POLite/sssp-sync clean
 	make -C apps/POLite/sssp-async clean
-	make -C apps/POLite/ping-test clean
 	make -C apps/POLite/clocktree-async clean
+	make -C apps/POLite/izhikevich-gals clean
+	make -C apps/POLite/izhikevich-sync clean
+	make -C apps/POLite/pressure-sync clean
+	make -C apps/POLite/hashmin-sync clean
 	make -C bin clean
 	make -C tests clean

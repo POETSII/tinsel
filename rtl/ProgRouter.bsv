@@ -361,15 +361,21 @@ module mkFetcher#(BoardId boardId, Integer fetcherId) (Fetcher);
     Flit flit = flitInPort.value;
     if (flitInPort.canGet) begin
       flitInPort.get;
-      consumeKey <= getRoutingKey(flit.dest);
+      RoutingKey key = getRoutingKey(flit.dest);
+      consumeKey <= key
       // Write to flit buffer
       flitBuffer.write({chosenReg, consumeFlitCount}, flit);
       consumeFlitCount <= consumeFlitCount + 1;
       // On final flit, move to fetch state
       if (! flit.notFinalFlit) begin
-        consumeState <= 2;
-        // Claim chosen slot
-        flitBufferUsedSlots[chosenReg].set;
+        // Ignore keys with zero beats
+        if (key.numBeats == 0) begin
+          consumeState <= 0;
+        end else begin
+          consumeState <= 2;
+          // Claim chosen slot
+          flitBufferUsedSlots[chosenReg].set;
+        end
       end
     end
   endrule
