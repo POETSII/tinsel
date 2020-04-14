@@ -140,10 +140,6 @@ module de5Top (DE5Top);
   // Create idle-detector
   IdleDetector idle <- mkIdleDetector;
 
-  // Connect cores to idle-detector
-  function idleClient(core) = core.idleClient;
-  connectCoresToIdleDetector(map(idleClient, vecOfCores), idle);
-
   // Create mailboxes
   Vector#(`MailboxMeshYLen,
     Vector#(`MailboxMeshXLen, Mailbox)) mailboxes =
@@ -171,6 +167,11 @@ module de5Top (DE5Top);
     debugLink.linkEnable,
     map(map(mailboxNet), mailboxes),
     idle);
+
+  // Connect cores and ProgRouter fetchers to idle-detector
+  function idleClient(core) = core.idleClient;
+  connectClientsToIdleDetector(
+    map(idleClient, vecOfCores), noc.activities, idle);
 
   // Connections to off-chip RAMs
   for (Integer i = 0; i < `DRAMsPerBoard; i=i+1)

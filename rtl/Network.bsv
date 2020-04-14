@@ -289,6 +289,8 @@ interface NoC;
     Vector#(`FetchersPerProgRouter, BOut#(DRAMReq))) dramReqs;
   interface Vector#(`DRAMsPerBoard,
     Vector#(`FetchersPerProgRouter, In#(DRAMResp))) dramResps;
+  // ProgRouter fetcher activities
+  interface Vector#(`FetchersPerProgRouter, FetcherActivity) activities;
 endinterface
 
 module mkNoC#(
@@ -461,6 +463,9 @@ module mkNoC#(
 
   // Responses from off-chip memory
   interface dramResps = boardRouter.ramResps;
+
+  // Fetcher activities
+  interface activities = boardRouter.activities;
 
 endmodule
 
