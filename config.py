@@ -309,6 +309,7 @@ p["ThreadsPerBoard"] = 2 ** p["LogThreadsPerBoard"]
 
 # Cores per board
 p["LogCoresPerBoard"] = p["LogCoresPerMailbox"] + p["LogMailboxesPerBoard"]
+p["LogCoresPerBoard1"] = p["LogCoresPerBoard"] + 1
 p["CoresPerBoard"] = 2**p["LogCoresPerBoard"]
 
 # Threads per core

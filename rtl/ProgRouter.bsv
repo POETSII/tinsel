@@ -11,6 +11,7 @@ import Interface :: *;
 import BlockRam  :: *;
 import Assert    :: *;
 import Util      :: *;
+import DReg      :: *;
 
 // =============================================================================
 // Routing keys and beats
@@ -253,6 +254,16 @@ interface Fetcher;
   // Off-chip RAM connections
   interface Vector#(`DRAMsPerBoard, BOut#(DRAMReq)) ramReqs;
   interface Vector#(`DRAMsPerBoard, In#(DRAMResp)) ramResps;
+  // Activity
+  interface FetcherActivity activity;
+endinterface
+
+// Fetcher activity for performance counters and termination detection
+(* always_ready *)
+interface FetcherActivity;
+  method Bit#(1) incSent;
+  method Bit#(1) incReceived;
+  method Bool active;
 endinterface
 
 // Fetcher module
@@ -292,6 +303,10 @@ module mkFetcher#(BoardId boardId, Integer fetcherId) (Fetcher);
 
   // Final output queue for flits
   Queue1#(RoutedFlit) flitOutQueue <- mkUGShiftQueue(QueueOptFmax);
+
+  // Activity
+  Reg#(Bit#(1)) incSentReg <- mkDReg(0);
+  Reg#(Bit#(1)) incReceivedReg <- mkDReg(0);
 
   // Stage 1: consume input message
   // ------------------------------
@@ -362,7 +377,7 @@ module mkFetcher#(BoardId boardId, Integer fetcherId) (Fetcher);
     if (flitInPort.canGet) begin
       flitInPort.get;
       RoutingKey key = getRoutingKey(flit.dest);
-      consumeKey <= key
+      consumeKey <= key;
       // Write to flit buffer
       flitBuffer.write({chosenReg, consumeFlitCount}, flit);
       consumeFlitCount <= consumeFlitCount + 1;
@@ -404,6 +419,7 @@ module mkFetcher#(BoardId boardId, Integer fetcherId) (Fetcher);
       ramReqQueue[consumeKey.ram].enq(req);
       fetchBeatCount <= fetchBeatCount + zeroExtend(req.burst);
       beatBufferLen.incBy(zeroExtend(req.burst));
+      incReceivedReg <= 1;
       if (finished) consumeState <= 0;
     end
   endrule
@@ -583,8 +599,10 @@ module mkFetcher#(BoardId boardId, Integer fetcherId) (Fetcher);
       // Is this the final flit in the message?
       if (flit.notFinalFlit)
         newFlitCount = emitFlitCount + 1;
-      else
+      else begin
+        incSentReg <= 1;
         newFlitCount = 0;
+      end
     end
     // Issue flit load request
     flitBuffer.read({info.msgAddr, newFlitCount});
@@ -625,6 +643,13 @@ module mkFetcher#(BoardId boardId, Integer fetcherId) (Fetcher);
   interface flitOut = queueToBOut(flitOutQueue);
   interface ramReqs = map(queueToBOut, ramReqQueue);
   interface ramResps = ramRespsOut;
+
+  interface FetcherActivity activity;
+    method Bit#(1) incSent = incSentReg;
+    method Bit#(1) incReceived = incReceivedReg;
+    method Bool active =
+      beatBufferLen.value == 0 && interpreterState == 0;
+  endinterface
 
 endmodule
 
@@ -761,6 +786,9 @@ interface ProgRouter;
     Vector#(`FetchersPerProgRouter, BOut#(DRAMReq))) ramReqs;
   interface Vector#(`DRAMsPerBoard,
     Vector#(`FetchersPerProgRouter, In#(DRAMResp))) ramResps;
+
+  // Activities
+  interface Vector#(`FetchersPerProgRouter, FetcherActivity) activities;
 endinterface
 
 module mkProgRouter#(BoardId boardId) (ProgRouter);
@@ -822,11 +850,13 @@ module mkProgRouter#(BoardId boardId) (ProgRouter);
       ramRespIfc[i][j] = fetchers[j].ramResps[i];
     end
 
+  function FetcherActivity getActivity(Fetcher f) = f.activity;
   interface flitIn = flitInIfc;
   interface flitOut = flitOutIfc;
   interface nocFlitOut = nocFlitOutIfc;
   interface ramReqs = ramReqIfc;
   interface ramResps = ramRespIfc;
+  interface activities = map(getActivity, fetchers);
 
 endmodule
 

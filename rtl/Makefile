@@ -11,7 +11,7 @@ DEFS = $(shell python ../config.py defs)
 BSC = bsc
 BSCFLAGS = -wait-for-license -suppress-warnings S0015 \
            -suppress-warnings G0023 \
-           -steps-warn-interval 500000 -check-assert \
+           -steps-warn-interval 750000 -check-assert \
            +RTS -K32M -RTS
 
 # Top level module

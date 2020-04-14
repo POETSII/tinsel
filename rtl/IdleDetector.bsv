@@ -18,14 +18,16 @@
 // The implementation below is based on Safra's termination detection
 // algorithm (EWD998).
 
-import Mailbox   :: *;
-import Globals   :: *;
-import Interface :: *;
-import Queue     :: *;
-import Vector    :: *;
-import ConfigReg :: *;
-import Util      :: *;
-import DReg      :: *;
+import Mailbox    :: *;
+import Globals    :: *;
+import Interface  :: *;
+import Queue      :: *;
+import Vector     :: *;
+import ConfigReg  :: *;
+import Util       :: *;
+import DReg       :: *;
+import ProgRouter :: *;
+import Assert     :: *;
 
 // The total number of messages sent by all threads on an FPGA minus
 // the total number of messages received by all threads on an FPGA.
@@ -343,22 +345,33 @@ interface IdleDetectorClient;
   method Bool idleStage1Ack;
 endinterface
 
-// Connect cores to idle detector
-module connectCoresToIdleDetector#(
-         Vector#(n, IdleDetectorClient) core, IdleDetector detector) ()
-           provisos (Log#(n, log_n), Add#(log_n, 1, m), Add#(_a, m, 62));
+// Connect cores and fetchers to idle detector
+module connectClientsToIdleDetector#(
+         Vector#(`CoresPerBoard, IdleDetectorClient) core,
+         Vector#(`FetchersPerProgRouter, FetcherActivity) fetcher,
+         IdleDetector detector) ()
+           provisos (Mul#(2, `CoresPerBoard, n));
+
+  staticAssert(2**`LogCoresPerBoard1 > `CoresPerBoard+`FetchersPerProgRouter,
+    "connectCoresToIdleDetector: insufficient width");
 
   // Sum "incSent" wires from each core
-  Vector#(n, Bit#(m)) incSents = newVector;
-  for (Integer i = 0; i < valueOf(n); i=i+1)
+  Vector#(n, Bit#(`LogCoresPerBoard1)) incSents = replicate(0);
+  for (Integer i = 0; i < `CoresPerBoard; i=i+1)
     incSents[i] = zeroExtend(core[i].incSent);
-  Bit#(m) incSent <- mkPipelinedReductionTree( \+ , 0, toList(incSents));
+  for (Integer i = 0; i < `FetchersPerProgRouter; i=i+1)
+    incSents[`CoresPerBoard+i] = zeroExtend(fetcher[i].incSent);
+  Bit#(`LogCoresPerBoard1) incSent <-
+    mkPipelinedReductionTree( \+ , 0, toList(incSents));
 
   // Sum "incRecv" wires from each core
-  Vector#(n, Bit#(m)) incRecvs = newVector;
-  for (Integer i = 0; i < valueOf(n); i=i+1)
+  Vector#(n, Bit#(`LogCoresPerBoard1)) incRecvs = replicate(0);
+  for (Integer i = 0; i < `CoresPerBoard; i=i+1)
     incRecvs[i] = zeroExtend(core[i].incReceived);
-  Bit#(m) incRecv <- mkPipelinedReductionTree( \+ , 0, toList(incRecvs));
+  for (Integer i = 0; i < `FetchersPerProgRouter; i=i+1)
+    incRecvs[`CoresPerBoard+i] = zeroExtend(fetcher[i].incReceived);
+  Bit#(`LogCoresPerBoard1) incRecv <-
+    mkPipelinedReductionTree( \+ , 0, toList(incRecvs));
 
   // Maintain the total count
   Reg#(MsgCount) count <- mkConfigReg(0);
@@ -369,16 +382,18 @@ module connectCoresToIdleDetector#(
   endrule
 
   // OR the "active" wires from each core
-  Vector#(n, Bool) actives = newVector;
-  for (Integer i = 0; i < valueOf(n); i=i+1)
+  Vector#(n, Bool) actives = replicate(False);
+  for (Integer i = 0; i < `CoresPerBoard; i=i+1)
     actives[i] = core[i].active;
+  for (Integer i = 0; i < `FetchersPerProgRouter; i=i+1)
+    actives[`CoresPerBoard+i] = fetcher[i].active;
   Bool anyActive <- mkPipelinedReductionTree( \|| , True, toList(actives));
 
-  // OR the "vote" wires from each core
-  Vector#(n, Bool) votes = newVector;
-  for (Integer i = 0; i < valueOf(n); i=i+1)
+  // AND the "vote" wires from each core
+  Vector#(n, Bool) votes = replicate(True);
+  for (Integer i = 0; i < `CoresPerBoard; i=i+1)
     votes[i] = core[i].vote;
-  Bool unanamous <- mkPipelinedReductionTree( \&& , False, toList(votes));
+  Bool voteDecision <- mkPipelinedReductionTree( \&& , False, toList(votes));
 
   // Register the result
   Reg#(Bool) active <- mkConfigReg(True);
@@ -386,24 +401,25 @@ module connectCoresToIdleDetector#(
   
   rule updateActive;
     active <= anyActive;
-    vote <= unanamous;
+    vote <= voteDecision;
   endrule
 
   // Counter number of stage 1 acks
-  Reg#(Bit#(m)) numAcks <- mkConfigReg(0);
+  Reg#(Bit#(`LogCoresPerBoard1)) numAcks <- mkConfigReg(0);
 
   // Sum stage 1 ack wires from each core
-  Vector#(n, Bit#(m)) incAcks = newVector;
-  for (Integer i = 0; i < valueOf(n); i=i+1)
+  Vector#(`CoresPerBoard, Bit#(`LogCoresPerBoard1)) incAcks = newVector;
+  for (Integer i = 0; i < `CoresPerBoard; i=i+1)
     incAcks[i] = zeroExtend(pack(core[i].idleStage1Ack));
-  Bit#(m) incAck <- mkPipelinedReductionTree( \+ , 0, toList(incAcks));
+  Bit#(`LogCoresPerBoard1) incAck <-
+    mkPipelinedReductionTree( \+ , 0, toList(incAcks));
 
   // Stage 1 output ack
   Wire#(Bool) stage1AckWire <- mkDWire(False);
 
   rule updateAcks;
-    Bit#(m) total = numAcks + incAck;
-    if (total == fromInteger(valueOf(n))) begin
+    Bit#(`LogCoresPerBoard1) total = numAcks + incAck;
+    if (total == `CoresPerBoard) begin
       numAcks <= 0;
       stage1AckWire <= True;
     end else begin
@@ -419,7 +435,7 @@ module connectCoresToIdleDetector#(
     detector.idle.voteIn(vote);
     detector.idle.ackStage1(stage1AckWire);
 
-    for (Integer i = 0; i < valueOf(n); i=i+1) begin
+    for (Integer i = 0; i < `CoresPerBoard; i=i+1) begin
       core[i].idleDetectedStage1(detector.idle.detectedStage1);
       core[i].idleVoteStage1(detector.idle.voteStage1);
       core[i].idleDetectedStage2(detector.idle.detectedStage2);
