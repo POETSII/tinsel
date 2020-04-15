@@ -299,7 +299,7 @@ class ProgRouterMesh {
 
   // Add routing destinations from given global mailbox id
   uint32_t addDestsFromBoard(uint32_t mbox, Seq<PRoutingDest>* dests) {
-    addDestsFromBoardXY(destX(mbox), destY(mbox), dests);
+    return addDestsFromBoardXY(destX(mbox), destY(mbox), dests);
   }
 
   // Write routing tables to memory via HostLink
@@ -340,12 +340,13 @@ class ProgRouterMesh {
             Seq<uint8_t>* seq = table[y][x].table[i];
             if (offset < seq->numElems) {
               uint32_t dest = hostLink->toAddr(x, y, coresPerDRAM * i, 0);
+              uint8_t* base = &seq->elems[offset];
               allDone = false;
               req.cmd = StoreCmd;
               req.numArgs = 3;
-              req.args[0] = ((uint32_t*) seq->elems)[0];
-              req.args[1] = ((uint32_t*) seq->elems)[1];
-              req.args[2] = ((uint32_t*) seq->elems)[2];
+              req.args[0] = ((uint32_t*) base)[0];
+              req.args[1] = ((uint32_t*) base)[1];
+              req.args[2] = ((uint32_t*) base)[2];
               hostLink->send(dest, 1, &req);
             }
           }
