@@ -648,7 +648,7 @@ module mkFetcher#(BoardId boardId, Integer fetcherId) (Fetcher);
     method Bit#(1) incSent = incSentReg;
     method Bit#(1) incReceived = incReceivedReg;
     method Bool active =
-      beatBufferLen.value == 0 && interpreterState == 0;
+      beatBufferLen.value != 0 || consumeState != 0;
   endinterface
 
 endmodule
