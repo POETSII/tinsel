@@ -164,6 +164,8 @@ p["SRAMStoreLatency"] = 2
 # Programmable router parameters:
 p["LogRoutingEntryLen"] = 5 # Number of beats in a routing table entry
 p["ProgRouterMaxBurst"] = 4
+p["ProgRouterCrossbarOutputs"] = 4
+p["FetcherLogIndQueueSize"] = 1
 p["FetcherLogBeatBufferSize"] = 5
 p["FetcherLogFlitBufferSize"] = 5
 p["FetcherLogMsgsPerFlitBuffer"] = (
@@ -187,7 +189,7 @@ p["BoxMesh"] = ('{'
 p["UseCustomAccelerator"] = False
 
 # Clock frequency (in MHz)
-p["ClockFreq"] = 225
+p["ClockFreq"] = 220
 
 #==============================================================================
 # Derived Parameters

@@ -17,16 +17,21 @@ bool keySend(uint32_t key, uint32_t numFlits, void* msg, bool block = true);
 bool keyTrySend(uint32_t key, uint32_t numFlits, void* msg);
 ```
 
+New section on programmable routers:
+  * Routing record format, byte ordering etc.
+  * Semantics of records
+  * Restrictions on IND records
+  * Avoiding deadlock: programmer has some added resposibility here
+
 # Tinsel 0.7.1
 
 Tinsel is a [RISC-V](https://riscv.org/)-based manythread
 message-passing architecture designed for FPGA clusters.  It is being
 developed as part of the [POETS
 Project](https://poets-project.org/about) (Partial Ordered Event
-Triggered Systems).  This manual describes the architecture and
-associated APIs.  Further background can be found in our [FPL 2019
-paper](doc/fpl-2019-paper.pdf), which presents Tinsel 0.6.  If you're
-a POETS Partner, you can access a machine running Tinsel in the [POETS
+Triggered Systems).  Further background can be found in our [FPL 2019
+paper](doc/fpl-2019-paper.pdf).  If you're a POETS Partner, you can
+access a machine running Tinsel in the [POETS
 Cloud](https://github.com/POETSII/poets-cloud).  
 
 ## Release Log
@@ -46,7 +51,7 @@ Released on 10 Sep 2018 and maintained in the
 * [v0.5](https://github.com/POETSII/tinsel/releases/tag/v0.5):
 Released on 8 Jan 2019 and maintained in the
 [tinsel-0.5.1 branch](https://github.com/POETSII/tinsel/tree/tinsel-0.5.1).
-(Hardware idle-detection.)
+(Hardware termination-detection.)
 * [v0.6](https://github.com/POETSII/tinsel/releases/tag/v0.6):
 Released on 11 Apr 2019 and maintained in the
 [tinsel-0.6.3 branch](https://github.com/POETSII/tinsel/tree/tinsel-0.6.3).
@@ -106,7 +111,7 @@ demands, but fairly modest compute requrements.  The main features are:
     instructions for sending and receiving messages 
     between any two threads in the cluster.
 
-  * **Hardware termination detection**.  A global termination event is
+  * **Hardware termination-detection**.  A global termination event is
     triggered when every thread indicates termination and no messages
     are in-flight.  Termination can be interpreted as termination of a
     time step, or termination of the application, supporting
@@ -563,7 +568,7 @@ Tinsel also provides a function
   int tinselIdle(bool vote);
 ```
 
-which blocks until either
+for global termination detection, which blocks until either
 
   1. a message is available to receive, or
 

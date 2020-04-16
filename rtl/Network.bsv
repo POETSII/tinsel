@@ -404,9 +404,6 @@ module mkNoC#(
   List#(Out#(Flit)) botOutList = Nil;
   for (Integer x = `MailboxMeshXLen-1; x >= 0; x=x-1)
     botOutList = Cons(routers[0][x].bottomOut, botOutList);
-  // Also include loopback connection to board router to implement IND records
-  botOutList = Cons(fromBOut(boardRouter.flitOut[4]), botOutList);
-  function In#(Flit) getFlitIn(BoardLink link) = link.flitIn;
   reduceConnect(mkFlitMerger, botOutList, single(boardRouter.flitIn[4]));
 
   // Connect board router to mailbox mesh south rim
