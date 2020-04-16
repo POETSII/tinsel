@@ -189,9 +189,14 @@ int main()
   msgOut[1] = 0x20;
   msgOut[2] = 0x30;
   msgOut[3] = 0x40;
+  msgOut[4] = 0x50;
+  msgOut[5] = 0x60;
+  msgOut[6] = 0x70;
+  msgOut[7] = 0x80;
 
   // On thread 0
   if (me == 0) {
+tinselSetLen(1);
     // Add an URM1 record
     uint8_t* entry1 = table.currentPointer();
     table.addURM1(0, 0, 10, 0xfff);
@@ -199,12 +204,7 @@ int main()
     table.addURM2(0, 0, 60, 0xff3, 0xff2);
     table.addURM2(0, 0, 60, 0xff5, 0xff4);
     //table.addMRM(1, 0, 0x22222222, 0x11111111, 0x2222);
-    uint8_t* ind = table.addIND();
     table.next();
-    uint8_t* entry2 = table.currentPointer();
-    table.addURM1(0, 0, 20, 0x111);
-    table.next();
-    table.setIND(ind, 0, entry2, 1);
 
     // Cache flush, to write table into RAM
     tinselCacheFlush();
@@ -226,7 +226,9 @@ int main()
   while (me != 0) {
     tinselWaitUntil(TINSEL_CAN_RECV);
     volatile uint32_t* msgIn = (uint32_t*) tinselRecv();
-    printf("%x %x %x %x\n", msgIn[0], msgIn[1], msgIn[2], msgIn[3]);
+    printf("%x %x %x %x %x %x %x %x\n",
+        msgIn[0], msgIn[1], msgIn[2], msgIn[3]
+      , msgIn[4], msgIn[5], msgIn[6], msgIn[7]);
     tinselFree(msgIn);
   }
 

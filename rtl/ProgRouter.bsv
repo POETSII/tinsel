@@ -126,7 +126,10 @@ typedef struct {
   Bit#(64) destMask;
 } MRMRecord deriving (Bits);
 
-// 48-bit Indirection (IND) record:
+// 48-bit Indirection (IND) record
+// Note the restrictions on IND records:
+// 1. At most one IND record per key lookup
+// 2. A max-sized key lookup must contain an IND record
 typedef struct {
   // Record type
   RoutingRecordTag tag;
@@ -135,6 +138,10 @@ typedef struct {
   // New 32-bit routing key for new set of records on current router
   Bit#(32) newKey;
 } INDRecord deriving (Bits);
+
+// =============================================================================
+// Internal types
+// =============================================================================
 
 // It is sometimes convenient (though redundant) to record a routing
 // decision for a flit internally within the programmable router
@@ -151,9 +158,16 @@ typedef enum {
   RouteSouth,
   RouteEast,
   RouteWest,
-  RouteNoC,
-  RouteLoop
+  RouteNoC
 } RoutingDecision deriving (Bits, Eq, FShow);
+
+// Elements of the indirection queue inside each fetcher
+typedef struct {
+  // The indirection
+  RoutingKey key;
+  // The location of the message in the flit buffer
+  FetcherFlitBufferMsgAddr addr;
+} IndQueueEntry deriving (Bits, FShow);
 
 // =============================================================================
 // Design
@@ -165,17 +179,17 @@ typedef enum {
 // NoC edge, but the diagram assumes four.
 
 //
-//               N     S     E     W     L0..L3/Loop   Input flits
-//               |     |     |     |     |       |
-//             +---+ +---+ +---+ +---+ +---+     |
-//             | F | | F | | F | | F | | F |     |     Fetchers
-//             +---+ +---+ +---+ +---+ +---+     |
-//               |     |     |     |     |       |
-//             +---------------------------+     |
-//             |          Crossbar         |     |     Routing
-//             +---------------------------+     |
-//               |     |     |     |     |       |
-//              N/L0  S/L1  E/L2  W/L3   Ind-----+     Output queues
+//               N     S     E     W     L0..L3        Input flits
+//               |     |     |     |     |        
+//             +---+ +---+ +---+ +---+ +---+      
+//             | F | | F | | F | | F | | F |           Fetchers
+//             +---+ +---+ +---+ +---+ +---+      
+//               |     |     |     |     |        
+//             +---------------------------+      
+//             |          Crossbar         |           Routing
+//             +---------------------------+      
+//               |     |     |     |              
+//              N/L0  S/L1  E/L2  W/L3                 Output queues
 //               |     |     |     |
 //             +---------------------------+
 //             |          Splitter         |           Final splitting
@@ -192,15 +206,15 @@ typedef enum {
 
 // The key property of these fetchers is that they act entirely
 // indepdedently of each other: each one can make progress even if
-// another is blocked.  Unfortunately, this leads to a duplicated
-// logic resources, but is necessary to avoid deadlock.
+// another is blocked.  This leads to duplicated logic resources, but
+// is necessary to avoid deadlock.
 
-// Note that, as the routers are fully programmable, it is possible
-// for the programmer to introduce deadlock using an ill-defined
-// routing scheme, e.g. where a flit arrives in on (say) link N and
-// requires a flit to be sent back along the same direction N.
-// However, the hardware does guarantee deadlock-freedom if the
-// routing scheme is based on dimension-ordered routing.
+// As the routers are fully programmable, it is possible for the
+// programmer to introduce deadlock using an ill-defined routing
+// scheme, e.g. where a flit arrives in on (say) link N and requires a
+// flit to be sent back along the same direction N.  However, the
+// hardware does guarantee deadlock-freedom if the routing scheme is
+// based on dimension-ordered routing.
 
 // After the fetchers have interpreted the flits, they are fed to a
 // fair crossbar which organises them by destination into output
@@ -234,6 +248,8 @@ typedef struct {
   Bit#(`BeatBurstWidth) burst;
   // Is this the final burst of routing records for the current key?
   Bool finalBurst;
+  // Are we processing a max-sized key (which must contain an IND record)?
+  Bool isMaxSizedKey;
 } InflightFetcherReqInfo deriving (Bits, FShow);
 
 // Routing beat, tagged with the beat number in the DRAM burst
@@ -304,6 +320,12 @@ module mkFetcher#(BoardId boardId, Integer fetcherId) (Fetcher);
   // Final output queue for flits
   Queue1#(RoutedFlit) flitOutQueue <- mkUGShiftQueue(QueueOptFmax);
 
+  // Indirection queue and size
+  SizedQueue#(`FetcherLogIndQueueSize, IndQueueEntry) indQueue <-
+    mkUGShiftQueue(QueueOptFmax);
+  Count#(TAdd#(`FetcherLogIndQueueSize, 1)) indQueueLen <-
+      mkCount(2 ** `FetcherLogIndQueueSize);
+
   // Activity
   Reg#(Bit#(1)) incSentReg <- mkDReg(0);
   Reg#(Bit#(1)) incReceivedReg <- mkDReg(0);
@@ -333,6 +355,9 @@ module mkFetcher#(BoardId boardId, Integer fetcherId) (Fetcher);
   // Maintain count of routing beats fetched so far
   Reg#(Bit#(`LogRoutingEntryLen)) fetchBeatCount <- mkReg(0);
 
+  // Track when messages are bypassing fetcher, to keep the bypass atomic
+  Reg#(Bool) bypassInProgress <- mkReg(False);
+
   // State 0: pass through flits that don't contain routing keys
   rule consumeMessage0 (consumeState == 0);
     Flit flit = flitInPort.value;
@@ -344,29 +369,54 @@ module mkFetcher#(BoardId boardId, Integer fetcherId) (Fetcher);
         found = True;
         chosen = fromInteger(i);
       end
-    chosenReg <= chosen;
     // Initialise counters for subsequent states
     consumeFlitCount <= 0;
     fetchBeatCount <= 0;
-    // Consume flit
-    if (flitInPort.canGet) begin
-      if (flit.dest.addr.isKey) begin
-        if (found) begin
-          consumeState <= 1;
+    // First, try to consume indirection
+    if (indQueue.canDeq && indQueue.canPeek && !bypassInProgress) begin
+      IndQueueEntry ind = indQueue.dataOut;
+      // Consume
+      indQueue.deq;
+      // Release space in indQueue, unless we have another max-sized key
+      if (!allHigh(ind.key.numBeats))
+        indQueueLen.dec;
+      // Jump straight to fetch state, as message already in flit buffer
+      chosenReg <= ind.addr;
+      consumeKey <= ind.key;
+      // Proceed only if key size is non-zero
+      if (ind.key.numBeats != 0)
+        consumeState <= 2;
+    end else begin
+      chosenReg <= chosen;
+      // Otherwise, try to consume flit
+      if (flitInPort.canGet) begin
+        if (flit.dest.addr.isKey) begin
+          if (found) begin
+            RoutingKey key = getRoutingKey(flit.dest);
+            // For a full-size key, we must reserve space in the indQueue
+            if (allHigh(key.numBeats)) begin
+              if (indQueueLen.notFull) begin
+                indQueueLen.inc;
+                consumeState <= 1;
+              end
+            end else
+              consumeState <= 1;
+          end
+        end else if (flitBypassQueue.notFull) begin
+          flitInPort.get;
+          bypassInProgress <= flit.notFinalFlit;
+          // Make routing decision
+          RoutingDecision decision = RouteNoC;
+          MailboxNetAddr addr = flit.dest.addr;
+          if (addr.host.valid)
+            decision = addr.host.value == 0 ? RouteWest : RouteEast;
+          else if (addr.board.x < boardId.x) decision = RouteWest;
+          else if (addr.board.x > boardId.x) decision = RouteEast;
+          else if (addr.board.y < boardId.y) decision = RouteSouth;
+          else if (addr.board.y > boardId.y) decision = RouteNorth;
+          // Insert into bypass queue
+          flitBypassQueue.enq(RoutedFlit { decision: decision, flit: flit});
         end
-      end else if (flitBypassQueue.notFull) begin
-        flitInPort.get;
-        // Make routing decision
-        RoutingDecision decision = RouteNoC;
-        MailboxNetAddr addr = flit.dest.addr;
-        if (addr.host.valid)
-          decision = addr.host.value == 0 ? RouteWest : RouteEast;
-        else if (addr.board.x < boardId.x) decision = RouteWest;
-        else if (addr.board.x > boardId.x) decision = RouteEast;
-        else if (addr.board.y < boardId.y) decision = RouteSouth;
-        else if (addr.board.y > boardId.y) decision = RouteNorth;
-        // Insert into bypass queue
-        flitBypassQueue.enq(RoutedFlit { decision: decision, flit: flit});
       end
     end
   endrule
@@ -398,7 +448,7 @@ module mkFetcher#(BoardId boardId, Integer fetcherId) (Fetcher);
   // State 2: fetch routing beats
   rule consumeMessage2 (consumeState == 2);
     // Have we finished fetching beats?
-    Bool finished = fetchBeatCount+`ProgRouterMaxBurst >= consumeKey.numBeats;
+    Bool finished = (consumeKey.numBeats-fetchBeatCount) <= `ProgRouterMaxBurst;
     // Prepare inflight RAM request info
     // (to handle out of order resps from the RAMs)
     InflightFetcherReqInfo info;
@@ -406,6 +456,7 @@ module mkFetcher#(BoardId boardId, Integer fetcherId) (Fetcher);
     info.burst = truncate(
       min(consumeKey.numBeats - fetchBeatCount, `ProgRouterMaxBurst));
     info.finalBurst = finished;
+    info.isMaxSizedKey = allHigh(consumeKey.numBeats);
     // Prepare RAM request
     DRAMReq req;
     req.isStore = False;
@@ -559,20 +610,16 @@ module mkFetcher#(BoardId boardId, Integer fetcherId) (Fetcher);
         decision = RouteNoC;
       end
       // 48-bit Indirection
-      IND: begin
-        INDRecord rec = unpack(beat.chunks[4]);
-        flit.dest.threads = {?, rec.newKey};
-        decision = RouteLoop;
-      end
+      IND: begin end
     endcase
     // Is output queue ready for new flit?
     Bool emit = flitProcessedQueue.notFull;
     let newFlitCount = emitFlitCount;
     // Consume routing record
     if (emit) begin
-      flitProcessedQueue.enq(RoutedFlit { decision: decision, flit: flit });
-      // Move to next record
-      recordCount <= recordCount + 1;
+      // Only enqueue if not an IND record
+      if (tag != IND)
+        flitProcessedQueue.enq(RoutedFlit { decision: decision, flit: flit });
       // Shift beat to point to next record
       RoutingBeat newBeat = beat;
       Bool doubleChunk = unpack(pack(tag)[0]);
@@ -585,21 +632,32 @@ module mkFetcher#(BoardId boardId, Integer fetcherId) (Fetcher);
         for (Integer i = 4; i > 0; i=i-1)
           newBeat.chunks[i] = beat.chunks[i-1];
       end
-      beatReg <= NumberedRoutingBeat {
-        beat: newBeat, beatNum: beatNum, info: info };
-      // Is this the final record in the beat?
-      if ((recordCount+1) == truncate(beat.size)) begin
-        interpreterState <= 0;
-        // Have we finished with this message yet?
-        if (info.finalBurst && info.burst == (beatNum+1)) begin
-          // Reclaim message slot in flit buffer
-          flitBufferUsedSlots[info.msgAddr].clear;
-        end
-      end
       // Is this the final flit in the message?
       if (flit.notFinalFlit)
         newFlitCount = emitFlitCount + 1;
       else begin
+        // Move to next record
+        recordCount <= recordCount + 1;
+        beatReg <= NumberedRoutingBeat {
+          beat: newBeat, beatNum: beatNum, info: info };
+        // Handle IND record: insert into indirection queue
+        if (tag == IND) begin
+          myAssert(indQueue.notFull, "Restrictions on IND records violated");
+          INDRecord ind = unpack(beat.chunks[4]);
+          indQueue.enq(IndQueueEntry
+            { key: unpack(ind.newKey), addr: info.msgAddr });
+        end
+        // Is this the final record in the beat?
+        if ((recordCount+1) == truncate(beat.size)) begin
+          interpreterState <= 0;
+          // Have we finished with this message yet?
+          if (info.finalBurst && info.burst == (beatNum+1)) begin
+            // Reclaim message slot in flit buffer
+            // (Don't do this when we have an indirection to process)
+            if (! info.isMaxSizedKey)
+              flitBufferUsedSlots[info.msgAddr].clear;
+          end
+        end
         incSentReg <= 1;
         newFlitCount = 0;
       end
@@ -661,46 +719,46 @@ endmodule
 typedef function Bool selector(RoutedFlit flit) SelectorFunc;
 
 module mkProgRouterCrossbar#(
-         Vector#(n, SelectorFunc) f,
-         Vector#(n, BOut#(RoutedFlit)) out)
-           (Vector#(n, BOut#(RoutedFlit)))
-  provisos (Add#(a_, 1, n));
+         Vector#(numOut, SelectorFunc) f,
+         Vector#(numIn, BOut#(RoutedFlit)) out)
+           (Vector#(numOut, BOut#(RoutedFlit)))
+             provisos(Add#(a__, 1, numIn));
 
   // Input ports
-  Vector#(n, InPort#(RoutedFlit)) inPort <- replicateM(mkInPort);
+  Vector#(numIn, InPort#(RoutedFlit)) inPort <- replicateM(mkInPort);
 
   // Connect up input ports
-  for (Integer i = 0; i < valueOf(n); i=i+1)
+  for (Integer i = 0; i < valueOf(numIn); i=i+1)
     connectDirect(out[i], inPort[i].in);
 
   // Cosume wires, for each input port
-  Vector#(n, PulseWire) consumeWire<- replicateM(mkPulseWireOR);
+  Vector#(numIn, PulseWire) consumeWire <- replicateM(mkPulseWireOR);
 
   // Keep track of service history for flit sources (for fair selection)
-  Vector#(n, Reg#(Bit#(n))) hist <- replicateM(mkReg(0));
+  Vector#(numOut, Reg#(Bit#(numIn))) hist <- replicateM(mkReg(0));
 
   // Current choice of flit source
-  Vector#(n, Reg#(Bit#(n))) choiceReg <- replicateM(mkReg(0));
+  Vector#(numOut, Reg#(Bit#(numIn))) choiceReg <- replicateM(mkReg(0));
 
   // Output queue
-  Vector#(n, Queue1#(RoutedFlit)) outQueue <-
+  Vector#(numOut, Queue1#(RoutedFlit)) outQueue <-
     replicateM(mkUGShiftQueue(QueueOptFmax));
 
   // Selector mux for each out queue
-  for (Integer i = 0; i < valueOf(n); i=i+1) begin
+  for (Integer i = 0; i < valueOf(numOut); i=i+1) begin
 
     rule select;
       // Vector of input flits and available flits
-      Vector#(n, RoutedFlit) flits = newVector;
-      Vector#(n, Bool) nextAvails = newVector;
+      Vector#(numIn, RoutedFlit) flits = newVector;
+      Vector#(numIn, Bool) nextAvails = newVector;
       Bool avail = False;
-      for (Integer j = 0; j < valueOf(n); j=j+1) begin
+      for (Integer j = 0; j < valueOf(numIn); j=j+1) begin
         flits[j] = inPort[j].value;
         nextAvails[j] = inPort[j].canGet && f[i](inPort[j].value)
                           && choiceReg[i][j] == 0;
         avail = avail || (choiceReg[i][j] == 1 && inPort[j].canGet);
       end
-      Bit#(n) nextAvail = pack(nextAvails);
+      Bit#(numIn) nextAvail = pack(nextAvails);
       // Choose a new source using fair scheduler
       match {.newHist, .nextChoice} = sched(hist[i], nextAvail);
       // Select a flit
@@ -721,7 +779,7 @@ module mkProgRouterCrossbar#(
         hist[i] <= newHist;
       end
       // Consume from chosen source
-      for (Integer j = 0; j < valueOf(n); j=j+1)
+      for (Integer j = 0; j < valueOf(numIn); j=j+1)
         if (inPort[j].canGet && choiceReg[i][j] == 1 && outQueue[i].notFull)
           consumeWire[j].send;
     endrule
@@ -730,7 +788,7 @@ module mkProgRouterCrossbar#(
 
   // Consume from flit sources
   rule consumeFlitSources;
-    for (Integer j = 0; j < valueOf(n); j=j+1)
+    for (Integer j = 0; j < valueOf(numIn); j=j+1)
       if (consumeWire[j]) inPort[j].get;
   endrule
 
@@ -778,7 +836,7 @@ endmodule
 interface ProgRouter;
   // Incoming and outgoing flits
   interface Vector#(`FetchersPerProgRouter, In#(Flit)) flitIn;
-  interface Vector#(`FetchersPerProgRouter, BOut#(Flit)) flitOut;
+  interface Vector#(`ProgRouterCrossbarOutputs, BOut#(Flit)) flitOut;
   interface Vector#(`MailboxMeshXLen, BOut#(Flit)) nocFlitOut;
 
   // Interface to off-chip memory
@@ -809,15 +867,14 @@ module mkProgRouter#(BoardId boardId) (ProgRouter);
     rf.decision == RouteEast || (rf.decision == RouteNoC && xcoord(rf) == 2);
   function Bool routeW(RoutedFlit rf) =
     rf.decision == RouteWest || (rf.decision == RouteNoC && xcoord(rf) == 3);
-  function Bool routeLoop(RoutedFlit rf) = rf.decision == RouteLoop;
-  Vector#(`FetchersPerProgRouter, SelectorFunc) funcs =
-    vector(routeN, routeS, routeE, routeW, routeLoop);
+  Vector#(`ProgRouterCrossbarOutputs, SelectorFunc) funcs =
+    vector(routeN, routeS, routeE, routeW);
 
   // Crossbar
   function BOut#(RoutedFlit) getFetcherFlitOut(Fetcher f) = f.flitOut;
   Vector#(`FetchersPerProgRouter, BOut#(RoutedFlit)) fetcherOuts =
     map(getFetcherFlitOut, fetchers);
-  Vector#(`FetchersPerProgRouter, BOut#(RoutedFlit))
+  Vector#(`ProgRouterCrossbarOutputs, BOut#(RoutedFlit))
     crossbarOuts <- mkProgRouterCrossbar(funcs, fetcherOuts);
 
   // Flit input interfaces
@@ -826,18 +883,17 @@ module mkProgRouter#(BoardId boardId) (ProgRouter);
     flitInIfc[i] = fetchers[i].flitIn;
 
   // Flit output interfaces
-  Vector#(`FetchersPerProgRouter, BOut#(Flit)) flitOutIfc = newVector;
+  Vector#(`ProgRouterCrossbarOutputs, BOut#(Flit)) flitOutIfc = newVector;
   Vector#(`MailboxMeshXLen, BOut#(Flit)) nocFlitOutIfc = newVector;
 
   // Strands
   function Bool forNoC(RoutedFlit rf) = rf.decision == RouteNoC;
-  for (Integer i = 0; i < 4; i=i+1) begin
+  for (Integer i = 0; i < `ProgRouterCrossbarOutputs; i=i+1) begin
     match {.noc, .other} <- splitFlits(forNoC, crossbarOuts[i]);
     flitOutIfc[i] = other;
     if (i < `MailboxMeshXLen) nocFlitOutIfc[i] = noc;
   end
   function Flit toFlit (RoutedFlit rf) = rf.flit;
-  flitOutIfc[4] <- onBOut(toFlit, crossbarOuts[4]);
 
   // RAM interfaces
   Vector#(`DRAMsPerBoard, Vector#(`FetchersPerProgRouter, In#(DRAMResp)))
