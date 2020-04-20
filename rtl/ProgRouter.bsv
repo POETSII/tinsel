@@ -624,10 +624,8 @@ module mkFetcher#(BoardId boardId, Integer fetcherId) (Fetcher);
       RoutingBeat newBeat = beat;
       Bool doubleChunk = unpack(pack(tag)[0]);
       if (doubleChunk) begin
-        for (Integer i = 4; i > 2; i=i-2) begin
+        for (Integer i = 4; i > 1; i=i-1)
           newBeat.chunks[i] = beat.chunks[i-2];
-          newBeat.chunks[i-1] = beat.chunks[i-3];
-        end
       end else begin
         for (Integer i = 4; i > 0; i=i-1)
           newBeat.chunks[i] = beat.chunks[i-1];
