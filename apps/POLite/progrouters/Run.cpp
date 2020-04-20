@@ -8,21 +8,21 @@ int main(int argc, char **argv)
   HostLink hostLink;
 
   // Create routing tables
-  ProgRouterMesh mesh(TinselMeshXLenWithinBox, TinselMeshYLenWithinBox);
+  ProgRouterMesh mesh(2, 1);
 
   // Board (1, 0)
-  for (int i = 0; i < 60; i++) {
+  for (int i = 0; i < 2; i++) {
     uint64_t mask = 1ul << i;
     mesh.table[0][1].addMRM(1, 0, mask >> 32, mask, 0xf0f0);
   }
-  uint32_t key01 = mesh.table[0][0].genKey();
+  uint32_t key01 = mesh.table[0][1].genKey();
 
   // Board (0, 0)
-  for (int i = 0; i < 40; i++) {
+  for (int i = 0; i < 2; i++) {
     uint64_t mask = 1ul << i;
     mesh.table[0][0].addMRM(1, 0, mask >> 32, mask, 0xf0f0);
   }
-  for (int i = 0; i < 30; i++) {
+  for (int i = 0; i < 2; i++) {
     uint64_t mask = 1ul << i;
     mesh.table[0][0].addMRM(1, 1, mask >> 32, mask, 0xf0f0);
   }
