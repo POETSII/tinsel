@@ -227,14 +227,13 @@ inline uint32_t destMboxY(uint32_t mbox) {
 // ============================
 
 class ProgRouterMesh {
-  // 2D array of tables;
-  ProgRouter** table;
-
   // Board mesh dimensions
   uint32_t boardsX;
   uint32_t boardsY;
 
  public:
+  // 2D array of tables;
+  ProgRouter** table;
 
   // Constructor
   ProgRouterMesh(uint32_t numBoardsX, uint32_t numBoardsY) {
