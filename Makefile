@@ -24,7 +24,6 @@ clean:
 	make -C apps/multiprog clean
 	make -C apps/sync clean
 	make -C apps/temps clean
-	make -C apps/progrouter clean
 	make -C apps/POLite/heat-gals clean
 	make -C apps/POLite/heat-sync clean
 	make -C apps/POLite/heat-cube-sync clean
@@ -40,5 +39,6 @@ clean:
 	make -C apps/POLite/izhikevich-sync clean
 	make -C apps/POLite/pressure-sync clean
 	make -C apps/POLite/hashmin-sync clean
+	make -C apps/POLite/progrouters clean
 	make -C bin clean
 	make -C tests clean
