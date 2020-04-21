@@ -470,8 +470,10 @@ module mkFetcher#(BoardId boardId, Integer fetcherId) (Fetcher);
       ramReqQueue[consumeKey.ram].enq(req);
       fetchBeatCount <= fetchBeatCount + zeroExtend(req.burst);
       beatBufferLen.incBy(zeroExtend(req.burst));
-      incReceivedReg <= 1;
-      if (finished) consumeState <= 0;
+      if (finished) begin
+        consumeState <= 0;
+        incReceivedReg <= 1;
+      end
     end
   endrule
 
