@@ -250,7 +250,7 @@ class ProgRouterMesh {
                                  Seq<PRoutingDest>* dests) {
     assert(dests->numElems > 0);
 
-    // Categorise non-local dests into local, N, S, E, and W groups
+    // Categorise dests into local, N, S, E, and W groups
     Seq<PRoutingDest> local(dests->numElems);
     Seq<PRoutingDest> north(dests->numElems);
     Seq<PRoutingDest> south(dests->numElems);
@@ -260,8 +260,8 @@ class ProgRouterMesh {
       PRoutingDest dest = dests->elems[i];
       uint32_t receiverX = destX(dest.mbox);
       uint32_t receiverY = destY(dest.mbox);
-      if (receiverX < senderX) east.append(dest);
-      else if (receiverX > senderX) west.append(dest);
+      if (receiverX < senderX) west.append(dest);
+      else if (receiverX > senderX) east.append(dest);
       else if (receiverY < senderY) south.append(dest);
       else if (receiverY > senderY) north.append(dest);
       else local.append(dest);
