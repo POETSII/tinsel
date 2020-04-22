@@ -545,6 +545,9 @@ module mkFetcher#(BoardId boardId, Integer fetcherId) (Fetcher);
     // Modify flit by interpreting routing key
     RoutingDecision decision = ?;
     Flit flit = flitBuffer.dataOut;
+    // Unless otherwise stated (e.g. RR records),
+    // flits emitted will be destined for this board
+    flit.dest.addr.board = boardId;
     case (tag)
       // 48-bit Unicast Router-to-Mailbox
       URM1: begin
