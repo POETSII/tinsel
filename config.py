@@ -380,7 +380,7 @@ p["BoardsPerBox"] = p["MeshXLenWithinBox"] * p["MeshYLenWithinBox"] + 1
 
 # Parameters for programmable routers
 # (and the routing-record fetchers they contain)
-p["FetchersPerProgRouter"] = 5
+p["FetchersPerProgRouter"] = 6
 p["LogFetcherFlitBufferSize"] = 5
 
 #==============================================================================
