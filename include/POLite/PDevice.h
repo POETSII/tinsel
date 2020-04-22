@@ -237,8 +237,8 @@ template <typename DeviceType,
     uint32_t sumActiveTimeSquareL = sumActiveTimeSquare & 0xffffffff;
     uint32_t sumBarrierTimeSquareU = sumBarrierTimeSquare >> 32;
     uint32_t sumBarrierTimeSquareL = sumBarrierTimeSquare & 0xffffffff;
-    printf("MS:%x,LS:%x,TS:%x,BS:%x,AS:%x,ASU:%x,ASL:%x,RS:%x,RSU:%x,RSL:%x\n", me, intraThreadSendCount,
-             interThreadSendCount, interBoardSendCount, sumActiveTime, sumActiveTimeSquareU,
+    printf("MS:%x,DS:%x,LS:%x,TS:%x,BS:%x,AS:%x,ASU:%x,ASL:%x,RS:%x,RSU:%x,RSL:%x\n", me, numDevices,
+             intraThreadSendCount, interThreadSendCount, interBoardSendCount, sumActiveTime, sumActiveTimeSquareU,
              sumActiveTimeSquareL, sumBarrierTime, sumBarrierTimeSquareU, sumBarrierTimeSquareL);
     #endif
     #endif
