@@ -23,6 +23,17 @@ New section on programmable routers:
   * Restrictions on IND records
   * Avoiding deadlock: programmer has some added resposibility here
 
+Support for extra send slot:
+  * On reset, HW has no slots available for receiving.
+  * The boot loader reserves one slot per thread for sending, the rest are
+    made available for receiving, using `tinselFree()`.
+  * The address of the send slot is determined using `tinselSendSlot()`.
+  * HostLink and the boot loader support reserving an extra slot for sending
+    if desired, via call to `HostLink::useExtraSendSlot()`, *before*
+    the first call to `HostLink::boot()` or `HostLink::startOne()`.
+  * The `tinselSendSlotExtra()` function returns the address of the
+    extra send slot.
+
 # Tinsel 0.7.1
 
 Tinsel is a [RISC-V](https://riscv.org/)-based manythread

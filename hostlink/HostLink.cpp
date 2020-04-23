@@ -132,6 +132,9 @@ void HostLink::constructor(uint32_t numBoxesX, uint32_t numBoxesY)
   sendBuffer = new char [(1<<TinselLogBytesPerFlit) * SEND_BUFFER_SIZE];
   sendBufferLen = 0;
 
+  // By default, don't as for the extra send slot
+  flagUseExtraSendSlot = false;
+
   // Run the self test
   if (! powerOnSelfTest()) {
     fprintf(stderr, "Power-on self test failed.  Please try again.\n");
@@ -216,6 +219,15 @@ void HostLink::fromAddr(uint32_t addr, uint32_t* meshX, uint32_t* meshY,
   addr >>= TinselMeshXBits;
 
   *meshY = addr;
+}
+
+
+// Tell boot loader to reserve an extra send slot per thread
+// This means the application can use tinselSendSlotExtra()
+// Only has an effect if called before first boot() or startOne()
+void HostLink::useExtraSendSlot()
+{
+  flagUseExtraSendSlot = true;
 }
 
 // Internal helper for sending messages
@@ -460,6 +472,7 @@ void HostLink::boot(const char* codeFilename, const char* dataFilename)
         uint32_t dest = toAddr(x, y, i, 0);
         req.cmd = StartCmd;
         req.args[0] = (1<<TinselLogThreadsPerCore)-1;
+        req.args[1] = flagUseExtraSendSlot;
         while (1) {
           bool ok = trySend(dest, 1, &req);
           if (canRecv()) {
@@ -557,6 +570,7 @@ void HostLink::startOne(uint32_t meshX, uint32_t meshY,
   // Send start command
   req.cmd = StartCmd;
   req.args[0] = numThreads-1;
+  req.args[1] = flagUseExtraSendSlot;
   send(dest, 1, &req);
 
   // Wait for start response

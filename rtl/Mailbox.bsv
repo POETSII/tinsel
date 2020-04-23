@@ -48,9 +48,10 @@ package Mailbox;
 //
 //   2^LogMsgSlotsPerMailbox * 2^LogMaxFlitsPerMsg * 2^LogWordsPerFlit.
 //
-// The first ThreadsPerMailbox message slots are reserved for message
-// sending (one send slot per thread).  All other slots are used as
-// a receive buffer.
+//
+// By default no slots are available for receiving.  The boot loader
+// resolves this by using tinselFree() to make slots available for
+// receiving.
 // 
 // One attraction of using a unified scratchpad for send and receive
 // is that a message can be forwarded (recieved and sent) without
@@ -337,13 +338,10 @@ module mkMailbox (Mailbox);
   Reg#(Bit#(`LogMsgsPerMailbox)) refCountSlot <- mkConfigRegU;
 
   // Set of currently-unused message slots
-  // (The first ThreadsPerMailbox slots are reserved for sending)
-  QueueOpts freeSlotsOpts;
-  freeSlotsOpts.style = "AUTO";
-  freeSlotsOpts.size = 2**`LogMsgsPerMailbox - `ThreadsPerMailbox;
-  freeSlotsOpts.file = Valid("FreeSlots");
+  // On reset, no slots are available for receiving
+  // The boot loader uses tinselFree() to initially populate this queue
   SizedQueue#(`LogMsgsPerMailbox, Bit#(`LogMsgsPerMailbox))
-    freeSlots <- mkUGSizedQueuePrefetchOpts(freeSlotsOpts);
+    freeSlots <- mkUGSizedQueuePrefetch;
 
   // Multicast buffer
   Vector#(`CoresPerMailbox,
@@ -598,6 +596,9 @@ module mkMailbox (Mailbox);
   // to a message slot is freed
   Reg#(Bit#(1)) freeDoneReg <- mkDReg(0);
 
+  // Note: freeing a slot with a ref count of zero actually happens on
+  // startup, when the boot loader initialises the free slot queue and
+  // decides how many slots to use for sending and how many for receiving
   rule free (freeReqPort.canGet);
     FreeReq req = freeReqPort.value;
     // Process request in two cycles
@@ -606,14 +607,14 @@ module mkMailbox (Mailbox);
       freeState <= 1;
     end else begin
       freeReqPort.get;
-      if (count == 1) begin
+      if (count <= 1) begin
         myAssert(freeSlots.notFull, "Mailbox: freeSlots full!");
         freeSlots.enq(req.slot);
-        freeDoneReg <= 1;
       end
+      if (count == 1) freeDoneReg <= 1;
       freeState <= 0;
     end
-    refCount.putB(freeState == 1, req.slot, count-1);
+    refCount.putB(freeState == 1, req.slot, count == 0 ? 0 : count-1);
   endrule
 
   // Interfaces

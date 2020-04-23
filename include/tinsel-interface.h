@@ -49,8 +49,33 @@ INLINE int tinselCanSend();
 // Determine if calling thread can receive a message
 INLINE int tinselCanRecv();
 
+// Get pointer to given mailbox's message slot
+INLINE volatile void* tinselMailboxSlot(int n)
+{
+  volatile char* mb_scratchpad_base =
+    (volatile char*) (1 << TinselLogBytesPerMailbox);
+  return mb_scratchpad_base + (n << TinselLogBytesPerMsg);
+}
+
 // Get pointer to thread's message slot reserved for sending
-INLINE volatile void* tinselSendSlot();
+INLINE volatile void* tinselSendSlot()
+{
+  volatile char* mb_scratchpad_base =
+    (volatile char*) (1 << TinselLogBytesPerMailbox);
+  uint32_t threadId = tinselId() &
+    ((1<<TinselLogThreadsPerMailbox) - 1);
+  return mb_scratchpad_base + (threadId << TinselLogBytesPerMsg);
+}
+
+// Get pointer to thread's extra message slot (optional) reserved for sending
+INLINE volatile void* tinselSendSlotExtra()
+{
+  volatile char* mb_scratchpad_base =
+    (volatile char*) (1 << TinselLogBytesPerMailbox);
+  uint32_t threadId = tinselId() &
+    ((1<<TinselLogThreadsPerMailbox) - 1);
+  return mb_scratchpad_base + (threadId << (1+TinselLogBytesPerMsg));
+}
 
 // Set message length for send operation
 // (A message of length N is comprised of N+1 flits)

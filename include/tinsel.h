@@ -117,16 +117,6 @@ INLINE void tinselFree(volatile void* addr)
   asm volatile("csrrw zero, " CSR_FREE ", %0" : : "r"(addr));
 }
 
-// Get pointer to thread's message slot reserved for sending
-INLINE volatile void* tinselSendSlot()
-{
-  volatile char* mb_scratchpad_base =
-    (volatile char*) (1 << TinselLogBytesPerMailbox);
-  uint32_t threadId = tinselId() &
-    ((1<<TinselLogThreadsPerMailbox) - 1);
-  return mb_scratchpad_base + (threadId << TinselLogBytesPerMsg);
-}
-
 // Determine if calling thread can send a message
 INLINE int tinselCanSend()
 {

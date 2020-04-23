@@ -39,6 +39,9 @@ class HostLink {
   // Internal helper for sending messages
   bool sendHelper(uint32_t dest, uint32_t numFlits, void* payload,
          bool block, uint32_t key);
+
+  // Configuration option: ask boot loader to reserve extra send slot?
+  bool flagUseExtraSendSlot;
  public:
   // Dimensions of board mesh
   int meshXLen;
@@ -53,6 +56,11 @@ class HostLink {
  
   // Power-on self test
   bool powerOnSelfTest();
+
+  // Tell boot loader to reserve an extra send slot per thread
+  // This means the application can use tinselSendSlotExtra()
+  // Only has an effect if called before first boot() or startOne()
+  void useExtraSendSlot();
 
   // Debug links
   // -----------

@@ -18,6 +18,19 @@ int main()
   // Host id
   uint32_t hostId = tinselHostId();
 
+  // One thread per mailbox initialises receive slots
+  uint32_t mboxThreadId = me & ((1 << TinselLogThreadsPerMailbox) - 1);
+  if (mboxThreadId == 0) {
+    // Reserve two send slots per thread at beginning of mailbox scratchpad
+    for (int i = 2<<TinselLogThreadsPerMailbox;
+           i < (1<<TinselLogMsgsPerMailbox); i++)
+      tinselFree(tinselMailboxSlot(i));
+  }
+
+  // Boot loader restarts at this point after main() returns
+  int restarted = 0;
+  restart:
+
   // Use one flit per message
   tinselSetLen(0);
 
@@ -83,6 +96,15 @@ int main()
         if (lastDataStoreAddr != 0) {
           volatile uint32_t* ptr = (uint32_t*) lastDataStoreAddr; ptr[0];
         }
+        // Is extra send slot not requested?
+        if (mboxThreadId == 0 && !restarted) {
+          if (!msgIn->args[1]) {
+            // Use the extra send slot for receiving instead
+            for (int i = 1<<TinselLogThreadsPerMailbox;
+                   i < (2<<TinselLogThreadsPerMailbox); i++)
+              tinselFree(tinselMailboxSlot(i));
+          }
+        }
         // Send response
         tinselWaitUntil(TINSEL_CAN_SEND);
         msgOut[0] = tinselId();
@@ -106,7 +128,8 @@ int main()
 
   // Restart boot loader
   if (threadId != 0) tinselKillThread();
-  asm volatile("jr zero");
+  restarted = 1;
+  goto restart;
 
   // Unreachable
   return 0;

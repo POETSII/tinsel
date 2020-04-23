@@ -38,7 +38,8 @@ typedef enum {
   // StartCmd performs a cache flush, sends ack to the host, waits for
   // the UART trigger, starts threads, and jumps to the
   // application code.  The first argument is the number of threads
-  // to start.
+  // to start.  The second argument is a boolean indicating if an
+  // extra mailbox slot should be reserved for sending.
   StartCmd,
 
 } BootCmd;
