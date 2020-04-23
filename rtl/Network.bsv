@@ -401,10 +401,14 @@ module mkNoC#(
 
   // Connect mailbox mesh south rim to board router
   function List#(t) single(t elem) = List::cons(elem, Nil);
-  List#(Out#(Flit)) botOutList = Nil;
-  for (Integer x = `MailboxMeshXLen-1; x >= 0; x=x-1)
-    botOutList = Cons(routers[0][x].bottomOut, botOutList);
-  reduceConnect(mkFlitMerger, botOutList, single(boardRouter.flitIn[4]));
+  List#(Out#(Flit)) botOutList0 = Nil;
+  List#(Out#(Flit)) botOutList1 = Nil;
+  for (Integer x = `MailboxMeshXLen-1; x >= 0; x=x-2) begin
+    botOutList0 = Cons(routers[0][x].bottomOut, botOutList0);
+    botOutList1 = Cons(routers[0][x-1].bottomOut, botOutList1);
+  end
+  reduceConnect(mkFlitMerger, botOutList0, single(boardRouter.flitIn[4]));
+  reduceConnect(mkFlitMerger, botOutList1, single(boardRouter.flitIn[5]));
 
   // Connect board router to mailbox mesh south rim
   function In#(Flit) getBottomIn(MeshRouter r) = r.bottomIn;
