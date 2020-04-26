@@ -95,9 +95,7 @@ module connectClientsToOffChipRAM#(
           fetcherCount.incBy(zeroExtend(fetcherReqsB.value.burst));
         endaction;
       method Bool valid = fetcherReqsB.valid && 
-        (fetcherCount.available +
-           zeroExtend(fetcherReqsB.value.burst) <=
-             fromInteger(throttleCount));
+        zeroExtend(fetcherReqsB.value.burst) <= fetcherCount.available;
       method DRAMReq value = fetcherReqsB.value;
     endinterface;
 
