@@ -73,7 +73,7 @@ module connectClientsToOffChipRAM#(
     mkMergeTreeB(Fair,
       mkUGShiftQueue1(QueueOptFmax),
       map(getReqOut, caches));
-  Queue1#(DRAMReq) cacheReqsQueue <- mkUGShiftQueue1(QueueOptFmax);
+  Queue#(DRAMReq) cacheReqsQueue <- mkUGQueue;
   connectToQueue(cacheReqs, cacheReqsQueue);
   BOut#(DRAMReq) cacheReqsB = queueToBOut(cacheReqsQueue);
 
