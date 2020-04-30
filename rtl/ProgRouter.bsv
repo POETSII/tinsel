@@ -929,10 +929,10 @@ module mkProgRouter#(BoardId boardId) (ProgRouter);
     end
 
   // Performance counters
-  Vector#(`FetchersPerProgRouter,
-    Bit#(LogFetchersPerProgRouter)) incSents;
-  Vector#(`FetchersPerProgRouter,
-    Bit#(LogFetchersPerProgRouter)) incSentsInterBoard;
+  Vector#(TExp#(TLog#(`FetchersPerProgRouter)),
+    Bit#(LogFetchersPerProgRouter)) incSents = replicate(0);
+  Vector#(TExp#(TLog#(`FetchersPerProgRouter)),
+    Bit#(LogFetchersPerProgRouter)) incSentsInterBoard = replicate(0);
   for (Integer i = 0; i < `FetchersPerProgRouter; i=i+1) begin
     incSents[i] = zeroExtend(fetchers[i].activity.incSent);
     incSentsInterBoard[i] =
