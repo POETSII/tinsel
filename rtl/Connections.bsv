@@ -7,6 +7,7 @@ import DRAM        :: *;
 import Queue       :: *;
 import DCache      :: *;
 import DCacheTypes :: *;
+import Util        :: *;
 
 // ============================================================================
 // DCache <-> Core connections
@@ -54,17 +55,52 @@ endmodule
 module connectClientsToOffChipRAM#(
   // Data caches
   Vector#(`DCachesPerDRAM, DCache) caches,
-  // Programmable per-board router, reqs and resps
+  // Reqs and resps from ProgRouter's fetchers
   Vector#(`FetchersPerProgRouter, BOut#(DRAMReq)) routerReqs,
   Vector#(`FetchersPerProgRouter, In#(DRAMResp)) routerResps,
   // Off-chip memory
   OffChipRAM ram) ();
 
-  // Connect requests
+  // Count the number of outstanding fetcher requests
+  // Used to throttle the fetcher requests to avoid starving/blocking
+  // the cache requests
+  Integer throttleCount = 2 ** (`DRAMLogMaxInFlight - 1);
+  Count#(`DRAMLogMaxInFlight) fetcherCount <- mkCount(throttleCount);
+
+  // Merge cache requests
   function getReqOut(cache) = cache.reqOut;
-  let reqs <- mkMergeTreeB(Fair,
-                mkUGShiftQueue1(QueueOptFmax),
-                append(map(getReqOut, caches), routerReqs));
+  Out#(DRAMReq) cacheReqs <-
+    mkMergeTreeB(Fair,
+      mkUGShiftQueue1(QueueOptFmax),
+      map(getReqOut, caches));
+  Queue#(DRAMReq) cacheReqsQueue <- mkUGQueue;
+  connectToQueue(cacheReqs, cacheReqsQueue);
+  BOut#(DRAMReq) cacheReqsB = queueToBOut(cacheReqsQueue);
+
+  // Merge router requests
+  Out#(DRAMReq) fetcherReqs <-
+    mkMergeTreeB(Fair,
+      mkUGShiftQueue1(QueueOptFmax),
+      routerReqs);
+  Queue1#(DRAMReq) fetcherReqsQueue <- mkUGShiftQueue1(QueueOptFmax);
+  connectToQueue(fetcherReqs, fetcherReqsQueue);
+  BOut#(DRAMReq) fetcherReqsB = queueToBOut(fetcherReqsQueue);
+
+  // Update count on router request
+  BOut#(DRAMReq) fetcherReqsIncCountB =
+    interface BOut
+      method Action get =
+        action
+          fetcherReqsB.get;
+          fetcherCount.incBy(zeroExtend(fetcherReqsB.value.burst));
+        endaction;
+      method Bool valid = fetcherReqsB.valid && 
+        zeroExtend(fetcherReqsB.value.burst) <= fetcherCount.available;
+      method DRAMReq value = fetcherReqsB.value;
+    endinterface;
+
+  // Merge cache and router requests, and connect to off-chip RAM
+  let reqs <- mkMergeTwoB(Fair, cacheReqsB, fetcherReqsIncCountB);
   connectUsing(mkUGQueue, reqs, ram.reqIn);
 
   // Connect load responses
@@ -74,7 +110,22 @@ module connectClientsToOffChipRAM#(
                     getRespKey,
                     mkUGShiftQueue2(QueueOptFmax),
                     append(map(getRespIn, caches), routerResps));
-  connectDirect(ram.respOut, ramResps);
+
+  // Update count on respose
+  BOut#(DRAMResp) ramRespOutDecCount =
+    interface BOut
+      method Action get =
+        action
+          ram.respOut.get;
+          if (ram.respOut.value.id >= fromInteger(`DCachesPerDRAM))
+            fetcherCount.dec;
+        endaction;
+      method Bool valid = ram.respOut.valid;
+      method DRAMResp value = ram.respOut.value;
+    endinterface;
+
+  // Connect responses from off-chip RAM
+  connectDirect(ramRespOutDecCount, ramResps);
 
 endmodule
 
