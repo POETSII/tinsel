@@ -274,4 +274,31 @@ function Tuple2#(Bit#(n), Bit#(n)) sched(Bit#(n) hist, Bit#(n) avail);
   end
 endfunction
 
+// Pipelined reduction tree
+module mkPipelinedReductionTree#(
+         function a reduce(a x, a y),
+         a init,
+         List#(a) xs)
+       (a) provisos(Bits#(a, _));
+  Integer len = List::length(xs);
+  if (len == 0)
+    return error("mkSumList applied to empty list");
+  else if (len == 1)
+    return xs[0];
+  else begin
+    List#(a) ys = xs;
+    List#(a) reduced = Nil;
+    for (Integer i = 0; i < len; i=i+2) begin
+      Reg#(a) r <- mkConfigReg(init);
+      rule assignOut;
+        r <= reduce(ys[0], ys[1]);
+      endrule
+      ys = List::drop(2, ys);
+      reduced = Cons(readReg(r), reduced);
+    end
+    a res <- mkPipelinedReductionTree(reduce, init, reduced);
+    return res;
+  end
+endmodule
+
 endpackage

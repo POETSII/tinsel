@@ -23,6 +23,9 @@ New section on programmable routers:
   * Restrictions on IND records
   * Avoiding deadlock: programmer has some added resposibility here
 
+New performance counters accessible from core zero on each board only:
+  * `ProgRouterSent` and `ProgRouterSentInterBoard`
+
 # Tinsel 0.7.1
 
 Tinsel is a [RISC-V](https://riscv.org/)-based manythread
