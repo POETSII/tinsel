@@ -8,6 +8,8 @@ import Queue       :: *;
 import DCache      :: *;
 import DCacheTypes :: *;
 import Util        :: *;
+import ProgRouter  :: *;
+import Core        :: *;
 
 // ============================================================================
 // DCache <-> Core connections
@@ -127,6 +129,23 @@ module connectClientsToOffChipRAM#(
   // Connect responses from off-chip RAM
   connectDirect(ramRespOutDecCount, ramResps);
 
+endmodule
+
+// ============================================================================
+// ProgRouter performance counter connections
+// ============================================================================
+
+module connectProgRouterPerfCountersToCores#(
+         ProgRouterPerfCounters counters, Vector#(n, Core) cores) (Empty);
+  rule connect;
+    // Only core zero can access the ProgRouter perf counters
+    cores[0].progRouterPerfClient.incSent(counters.incSent);
+    cores[0].progRouterPerfClient.incSentInterBoard(counters.incSentInterBoard);
+    for (Integer i = 1; i < valueOf(n); i=i+1) begin
+      cores[i].progRouterPerfClient.incSent(?);
+      cores[i].progRouterPerfClient.incSentInterBoard(?);
+    end
+  endrule
 endmodule
 
 endpackage
