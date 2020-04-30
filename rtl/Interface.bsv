@@ -412,7 +412,7 @@ module mkMergeTreeB#(MergeMethod m, module#(SizedQueue#(d, t)) mkQ,
     xs = List::cons(x, xs);
   end
 
-  let out <- mkMergeTreeList(m, mkQ, xs);
+  let out <- mkMergeTreeList(m, mkQ, List::reverse(xs));
   return out;
 endmodule
 
