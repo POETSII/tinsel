@@ -147,11 +147,9 @@ template <typename DeviceType,
   // Count number of messages sent
   #ifdef POLITE_COUNT_MSGS
   // Total messages sent
-  uint32_t intraThreadSendCount;
-  // Total messages sent between threads
-  uint32_t interThreadSendCount;
-  // Messages sent between threads on different boards
-  uint32_t interBoardSendCount;
+  uint32_t msgsSent;
+  // Total messages received
+  uint32_t msgsReceived;
   #endif
 
   #ifdef TINSEL
@@ -188,8 +186,13 @@ template <typename DeviceType,
     }
     // Per-thread performance counters
     #ifdef POLITE_COUNT_MSGS
-    printf("LS:%x,TS:%x,BS:%x\n", intraThreadSendCount,
-             interThreadSendCount, interBoardSendCount);
+    uint32_t intraBoardId = me & ((1<<TinselLogThreadsPerBoard) - 1);
+    uint32_t progRouterSent =
+      intraBoardId == 0 ? tinselProgRouterSent() : 0;
+    uint32_t progRouterSentInter =
+      intraBoardId == 0 ? tinselProgRouterSentInterBoard() : 0;
+    printf("MS:%x,MR:%x,PR:%x,PRI:%x\n",
+      msgsSent, msgsReceived, progRouterSent, progRouterSentInter);
     #endif
   }
 
@@ -237,7 +240,7 @@ template <typename DeviceType,
           else
             tinselKeySend(devices[src].pin[pin-2], m);
           #ifdef POLITE_COUNT_MSGS
-          interThreadSendCount++;
+          msgsSent++;
           #endif
         }
         else
@@ -280,7 +283,7 @@ template <typename DeviceType,
             *(sendersTop++) = id;
           inEdge++;
           #ifdef POLITE_COUNT_MSGS
-          intraThreadSendCount++;
+          msgsReceived++;
           #endif
         }
         tinselFree(inMsg);

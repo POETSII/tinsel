@@ -277,8 +277,13 @@ endinterface
 // Fetcher activity for performance counters and termination detection
 (* always_ready *)
 interface FetcherActivity;
+  // Increment number of sent messages
   method Bit#(1) incSent;
+  // Increment number of messages sent to another board
+  method Bit#(1) incSentInterBoard;
+  // Increment number of received messages
   method Bit#(1) incReceived;
+  // Active (in the termination-detection sense)?
   method Bool active;
 endinterface
 
@@ -328,6 +333,7 @@ module mkFetcher#(BoardId boardId, Integer fetcherId) (Fetcher);
 
   // Activity
   Reg#(Bit#(1)) incSentReg <- mkDReg(0);
+  Reg#(Bit#(1)) incSentInterBoardReg <- mkDReg(0);
   Reg#(Bit#(1)) incReceivedReg <- mkDReg(0);
 
   // Stage 1: consume input message
@@ -662,6 +668,7 @@ module mkFetcher#(BoardId boardId, Integer fetcherId) (Fetcher);
           end
         end
         incSentReg <= 1;
+        if (tag == RR) incSentInterBoardReg <= 1;
         newFlitCount = 0;
       end
     end
@@ -707,6 +714,7 @@ module mkFetcher#(BoardId boardId, Integer fetcherId) (Fetcher);
 
   interface FetcherActivity activity;
     method Bit#(1) incSent = incSentReg;
+    method Bit#(1) incSentInterBoard = incSentInterBoardReg;
     method Bit#(1) incReceived = incReceivedReg;
     method Bool active =
       beatBufferLen.value != 0 || consumeState != 0;
@@ -836,6 +844,16 @@ endmodule
 // Programmable router
 // =============================================================================
 
+// Enough bits to store a count of the number of fetchers
+typedef TLog#(TAdd#(`FetchersPerProgRouter, 1)) LogFetchersPerProgRouter;
+
+// ProgRouter's performance counters
+(* always_ready, always_enabled *)
+interface ProgRouterPerfCounters;
+  method Bit#(LogFetchersPerProgRouter) incSent;
+  method Bit#(LogFetchersPerProgRouter) incSentInterBoard;
+endinterface
+
 interface ProgRouter;
   // Incoming and outgoing flits
   interface Vector#(`FetchersPerProgRouter, In#(Flit)) flitIn;
@@ -848,8 +866,9 @@ interface ProgRouter;
   interface Vector#(`DRAMsPerBoard,
     Vector#(`FetchersPerProgRouter, In#(DRAMResp))) ramResps;
 
-  // Activities
+  // Activities & performance counters
   interface Vector#(`FetchersPerProgRouter, FetcherActivity) activities;
+  interface ProgRouterPerfCounters perfCounters;
 endinterface
 
 module mkProgRouter#(BoardId boardId) (ProgRouter);
@@ -909,6 +928,21 @@ module mkProgRouter#(BoardId boardId) (ProgRouter);
       ramRespIfc[i][j] = fetchers[j].ramResps[i];
     end
 
+  // Performance counters
+  Vector#(TExp#(TLog#(`FetchersPerProgRouter)),
+    Bit#(LogFetchersPerProgRouter)) incSents = replicate(0);
+  Vector#(TExp#(TLog#(`FetchersPerProgRouter)),
+    Bit#(LogFetchersPerProgRouter)) incSentsInterBoard = replicate(0);
+  for (Integer i = 0; i < `FetchersPerProgRouter; i=i+1) begin
+    incSents[i] = zeroExtend(fetchers[i].activity.incSent);
+    incSentsInterBoard[i] =
+      zeroExtend(fetchers[i].activity.incSentInterBoard);
+  end
+  Bit#(LogFetchersPerProgRouter) numSent <-
+    mkPipelinedReductionTree( \+ , 0, toList(incSents));
+  Bit#(LogFetchersPerProgRouter) numSentInterBoard <-
+    mkPipelinedReductionTree( \+ , 0, toList(incSentsInterBoard));
+
   function FetcherActivity getActivity(Fetcher f) = f.activity;
   interface flitIn = flitInIfc;
   interface flitOut = flitOutIfc;
@@ -916,7 +950,18 @@ module mkProgRouter#(BoardId boardId) (ProgRouter);
   interface ramReqs = ramReqIfc;
   interface ramResps = ramRespIfc;
   interface activities = map(getActivity, fetchers);
+  interface ProgRouterPerfCounters perfCounters;
+    method incSent = numSent;
+    method incSentInterBoard = numSentInterBoard;
+  endinterface
 
 endmodule
+
+// For core(s) to access ProgRouter's performance counters
+(* always_ready, always_enabled *)
+interface ProgRouterPerfClient;
+  method Action incSent(Bit#(LogFetchersPerProgRouter) amount);
+  method Action incSentInterBoard(Bit#(LogFetchersPerProgRouter) amount);
+endinterface
 
 endpackage

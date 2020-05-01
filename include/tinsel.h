@@ -28,13 +28,15 @@
 #define CSR_FLUSH       "0xc01"
 
 // Performance counter CSRs
-#define CSR_PERFCOUNT     "0xc07"
-#define CSR_MISSCOUNT     "0xc08"
-#define CSR_HITCOUNT      "0xc09"
-#define CSR_WBCOUNT       "0xc0a"
-#define CSR_CPUIDLECOUNT  "0xc0b"
-#define CSR_CPUIDLECOUNTU "0xc0c"
-#define CSR_CYCLEU        "0xc0d"
+#define CSR_PERFCOUNT           "0xc07"
+#define CSR_MISSCOUNT           "0xc08"
+#define CSR_HITCOUNT            "0xc09"
+#define CSR_WBCOUNT             "0xc0a"
+#define CSR_CPUIDLECOUNT        "0xc0b"
+#define CSR_CPUIDLECOUNTU       "0xc0c"
+#define CSR_CYCLEU              "0xc0d"
+#define CSR_PROGROUTERSENT      "0xc0e"
+#define CSR_PROGROUTERSENTINTER "0xc0f"
 
 // Get globally unique thread id of caller
 INLINE uint32_t tinselId()
@@ -280,7 +282,7 @@ INLINE uint32_t tinselWritebackCount()
   return n;
 }
 
-// Performance counter:: get the CPU-idle count
+// Performance counter: get the CPU-idle count
 INLINE uint32_t tinselCPUIdleCount()
 {
   uint32_t n;
@@ -301,6 +303,22 @@ INLINE uint32_t tinselCycleCountU()
 {
   uint32_t n;
   asm volatile ("csrrw %0, " CSR_CYCLEU ", zero" : "=r"(n));
+  return n;
+}
+
+// Performance counter: number of messages emitted by ProgRouter
+INLINE uint32_t tinselProgRouterSent()
+{
+  uint32_t n;
+  asm volatile ("csrrw %0, " CSR_PROGROUTERSENT ", zero" : "=r"(n));
+  return n;
+}
+
+// Performance counter: number of inter-board messages emitted by ProgRouter
+INLINE uint32_t tinselProgRouterSentInterBoard()
+{
+  uint32_t n;
+  asm volatile ("csrrw %0, " CSR_PROGROUTERSENTINTER ", zero" : "=r"(n));
   return n;
 }
 
