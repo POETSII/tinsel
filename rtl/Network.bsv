@@ -289,8 +289,9 @@ interface NoC;
     Vector#(`FetchersPerProgRouter, BOut#(DRAMReq))) dramReqs;
   interface Vector#(`DRAMsPerBoard,
     Vector#(`FetchersPerProgRouter, In#(DRAMResp))) dramResps;
-  // ProgRouter fetcher activities
+  // ProgRouter fetcher activities & performance counters
   interface Vector#(`FetchersPerProgRouter, FetcherActivity) activities;
+  interface ProgRouterPerfCounters progRouterPerfCounters;
 endinterface
 
 module mkNoC#(
@@ -467,6 +468,10 @@ module mkNoC#(
 
   // Fetcher activities
   interface activities = boardRouter.activities;
+
+  // Performance counters
+  interface ProgRouterPerfCounters progRouterPerfCounters =
+    boardRouter.perfCounters;
 
 endmodule
 

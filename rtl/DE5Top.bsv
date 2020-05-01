@@ -178,6 +178,10 @@ module de5Top (DE5Top);
     connectClientsToOffChipRAM(dcaches[i],
       noc.dramReqs[i], noc.dramResps[i], rams[i]);
 
+  // Connects ProgRouter performance counters to cores
+  connectProgRouterPerfCountersToCores(noc.progRouterPerfCounters,
+    concat(concat(cores)));
+
   // Set board ids
   rule setBoardIds;
     for (Integer i = 0; i < `DRAMsPerBoard; i=i+1)
