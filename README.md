@@ -26,6 +26,16 @@ New section on programmable routers:
 New performance counters accessible from core zero on each board only:
   * `ProgRouterSent` and `ProgRouterSentInterBoard`
 
+Document the following:
+
+```c++
+// Performance counter: number of messages emitted by ProgRouter
+INLINE uint32_t tinselProgRouterSent();
+
+// Performance counter: number of inter-board messages emitted by ProgRouter
+INLINE uint32_t tinselProgRouterSentInterBoard();
+```
+
 # Tinsel 0.7.1
 
 Tinsel is a [RISC-V](https://riscv.org/)-based manythread
