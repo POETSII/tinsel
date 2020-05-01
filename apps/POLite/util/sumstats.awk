@@ -54,7 +54,7 @@ BEGIN {
         mr=strtonum("0x"fields[3]);
         pr=strtonum("0x"fields[4]);
         pri=strtonum("0x"fields[5]);
-        msgsSent = msgsSent + mr;
+        msgsSent = msgsSent + ms;
         msgsReceived = msgsReceived + mr;
         progRouterSent = progRouterSent + pr;
         progRouterSentInter = progRouterSentInter + pri;
