@@ -150,6 +150,8 @@ template <typename DeviceType,
   uint32_t msgsSent;
   // Total messages received
   uint32_t msgsReceived;
+  // Number of times we wanted to send but couldn't
+  uint32_t blockedSends;
   #endif
 
   #ifdef TINSEL
@@ -191,8 +193,9 @@ template <typename DeviceType,
       intraBoardId == 0 ? tinselProgRouterSent() : 0;
     uint32_t progRouterSentInter =
       intraBoardId == 0 ? tinselProgRouterSentInterBoard() : 0;
-    printf("MS:%x,MR:%x,PR:%x,PRI:%x\n",
-      msgsSent, msgsReceived, progRouterSent, progRouterSentInter);
+    printf("MS:%x,MR:%x,PR:%x,PRI:%x,BL:%x\n",
+      msgsSent, msgsReceived, progRouterSent,
+        progRouterSentInter, blockedSends);
     #endif
   }
 
@@ -240,11 +243,15 @@ template <typename DeviceType,
           else
             tinselKeySend(devices[src].pin[pin-2], m);
           #ifdef POLITE_COUNT_MSGS
-          msgsSent++;
+            msgsSent++;
           #endif
         }
-        else
+        else {
+          #ifdef POLITE_COUNT_MSGS
+            blockedSends++;
+          #endif
           tinselWaitUntil(TINSEL_CAN_SEND|TINSEL_CAN_RECV);
+        }
       }
       else {
         // Idle detection
@@ -283,7 +290,7 @@ template <typename DeviceType,
             *(sendersTop++) = id;
           inEdge++;
           #ifdef POLITE_COUNT_MSGS
-          msgsReceived++;
+            msgsReceived++;
           #endif
         }
         tinselFree(inMsg);
