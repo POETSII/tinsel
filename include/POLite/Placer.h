@@ -17,7 +17,8 @@ struct Placer {
   enum Method {
     Default,
     Metis,
-    Scotch
+    Scotch,
+    Random
   };
   const Method defaultMethod=Metis;
 
@@ -64,6 +65,8 @@ struct Placer {
         method=Metis;
       else if (!strcmp(e, "scotch"))
         method=Scotch;
+      else if (!strcmp(e, "random"))
+        method=Random;
       else if (!strcmp(e, "default") || *e == '\0')
         method=Default;
       else {
@@ -228,6 +231,18 @@ struct Placer {
     free(stratptr);
   }
 
+  // Partition the graph randomly
+  void partitionRandom() {
+    uint32_t numVertices = graph->incoming->numElems;
+    uint32_t numParts = width * height;
+
+    // Populate result array
+    srand(0);
+    for (uint32_t i = 0; i < numVertices; i++) {
+      partitions[i] = rand() % numParts;
+    }
+  }
+
   void partition()
   {
     switch(method){
@@ -237,6 +252,9 @@ struct Placer {
       break;
     case Scotch:
       partitionScotch();
+      break;
+    case Random:
+      partitionRandom();
       break;
     }
   }
