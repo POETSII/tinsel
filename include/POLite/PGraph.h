@@ -68,6 +68,11 @@ template <typename DeviceType,
     edgeMemBase = NULL;
     mapVerticesToDRAM = false;
     mapEdgesToDRAM = true;
+    chatty = 0;
+    str = getenv("POLITE_CHATTY");
+    if (str != NULL) {
+      chatty = !strcmp(str, "0") ? 0 : 1;
+    }
   }
 
  public:
@@ -103,6 +108,9 @@ template <typename DeviceType,
   // (If false, map to SRAM instead)
   bool mapVerticesToDRAM;
   bool mapEdgesToDRAM;
+
+  // Allow mapper to print useful information to stdout
+  uint32_t chatty;
 
   // Setter for number of boards to use
   void setNumBoards(uint32_t x, uint32_t y) {
@@ -361,11 +369,18 @@ template <typename DeviceType,
 
   // Implement mapping to tinsel threads
   void map() {
+    // Let's measure some times
+    struct timeval placementStart, placementFinish;
+    struct timeval initStart, initFinish;
+
     // Release all mapping and heap structures
     releaseAll();
 
     // Reallocate mapping structures
     allocateMapping();
+
+    // Start placement timer
+    gettimeofday(&placementStart, NULL);
 
     // Partition into subgraphs, one per board
     Placer boards(&graph, numBoardsX, numBoardsY);
@@ -425,9 +440,29 @@ template <typename DeviceType,
       }
     }
 
+    // Stop placement timer and start initialisation timer
+    gettimeofday(&placementFinish, NULL);
+    gettimeofday(&initStart, NULL);
+
     // Reallocate and initialise heap structures
     allocatePartitions();
     initialisePartitions();
+
+    // Display times, if chatty
+    gettimeofday(&initFinish, NULL);
+    if (chatty > 0) {
+      struct timeval diff;
+
+      timersub(&placementFinish, &placementStart, &diff);
+      double duration = (double) diff.tv_sec +
+        (double) diff.tv_usec / 1000000.0;
+      printf("POLite mapper profile:\n");
+      printf("  Partitioning and placement: %lfs\n", duration);
+
+      timersub(&initFinish, &initStart, &diff);
+      duration = (double) diff.tv_sec + (double) diff.tv_usec / 1000000.0;
+      printf("  Thread state initialisation: %lfs\n", duration);
+    }
   }
 
   // Constructor
