@@ -98,6 +98,10 @@ template <typename DeviceType,
     inTable = NULL;
     routingTables = NULL;
     chatty = 0;
+    str = getenv("POLITE_CHATTY");
+    if (str != NULL) {
+      chatty = !strcmp(str, "0") ? 0 : 1;
+    }
   }
 
  public:
