@@ -180,6 +180,8 @@ template <typename DeviceType,
   uint32_t interThreadSendCount;
   // Messages sent between threads on different boards
   uint32_t interBoardSendCount;
+  // Number of times sending was blocked
+  uint32_t blockedSends;
   #endif
 
   #ifdef TINSEL
@@ -216,8 +218,9 @@ template <typename DeviceType,
     }
     // Per-thread performance counters
     #ifdef POLITE_COUNT_MSGS
-    printf("LS:%x,TS:%x,BS:%x\n", intraThreadSendCount,
-             interThreadSendCount, interBoardSendCount);
+    printf("LS:%x,TS:%x,BS:%x,BL:%x\n", intraThreadSendCount,
+             interThreadSendCount, interBoardSendCount,
+               blockedSends);
     #endif
   }
 
@@ -294,6 +297,9 @@ template <typename DeviceType,
           neighbour++;
         }
         else {
+          #ifdef POLITE_COUNT_MSGS
+            blockedSends++;
+          #endif
           // Go to sleep
           tinselWaitUntil(TINSEL_CAN_RECV | TINSEL_CAN_SEND);
         }
@@ -315,6 +321,9 @@ template <typename DeviceType,
             (devices[src].neighboursOffset + pin) * POLITE_MAX_FANOUT];
         }
         else {
+          #ifdef POLITE_COUNT_MSGS
+            blockedSends++;
+          #endif
           // Go to sleep
           tinselWaitUntil(TINSEL_CAN_RECV | TINSEL_CAN_SEND);
         }
