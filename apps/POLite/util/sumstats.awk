@@ -14,6 +14,7 @@ BEGIN {
   msgsSent = 0;
   progRouterSent = 0;
   progRouterSentInter = 0;
+  blockedSends = 0;
   fmax = 220000000;
   if (boardsX == "" || boardsY == "") {
     boardsX = 3;
@@ -49,15 +50,18 @@ BEGIN {
         coreCount = coreCount+1;
       }
       # Per-thread message counts
-      else if (match($0, /(.*) MS:(.*),MR:(.*),PR:(.*),PRI:(.*)/, fields)) {
+      else if (match($0, /(.*) MS:(.*),MR:(.*),PR:(.*),PRI:(.*),BL:(.*)/,
+                 fields)) {
         ms=strtonum("0x"fields[2]);
         mr=strtonum("0x"fields[3]);
         pr=strtonum("0x"fields[4]);
         pri=strtonum("0x"fields[5]);
+        bl=strtonum("0x"fields[6]);
         msgsSent = msgsSent + ms;
         msgsReceived = msgsReceived + mr;
         progRouterSent = progRouterSent + pr;
         progRouterSentInter = progRouterSentInter + pri;
+        blockedSends = blockedSends + bl;
       }
     }
   }
@@ -77,6 +81,7 @@ END {
   print "Msgs sent by threads: ", msgsSent
   print "Msgs injected by ProgRouter:", progRouterSent
   print "Inter-board msgs:", progRouterSentInter
+  print "Blocked sends:", blockedSends
   print ""
   print "Notes:"
   print "  * ProgRouter injections includes inter-board msgs"
