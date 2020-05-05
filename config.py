@@ -164,7 +164,6 @@ p["SRAMStoreLatency"] = 2
 # Programmable router parameters:
 p["LogRoutingEntryLen"] = 5 # Number of beats in a routing table entry
 p["ProgRouterMaxBurst"] = 4
-p["ProgRouterCrossbarOutputs"] = 4
 p["FetcherLogIndQueueSize"] = 1
 p["FetcherLogBeatBufferSize"] = 5
 p["FetcherLogFlitBufferSize"] = 5
@@ -380,7 +379,7 @@ p["BoardsPerBox"] = p["MeshXLenWithinBox"] * p["MeshYLenWithinBox"] + 1
 
 # Parameters for programmable routers
 # (and the routing-record fetchers they contain)
-p["FetchersPerProgRouter"] = 6
+p["FetchersPerProgRouter"] = 4 + p["MailboxMeshXLen"]
 p["LogFetcherFlitBufferSize"] = 5
 
 #==============================================================================
