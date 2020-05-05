@@ -179,24 +179,17 @@ typedef struct {
 // NoC edge, but the diagram assumes four.
 
 //
-//               N     S     E     W   L0/L1 L2/L3     Input flits
-//               |     |     |     |     |     |  
-//             +---+ +---+ +---+ +---+ +---+ +---+
-//             | F | | F | | F | | F | | F | | F |     Fetchers
-//             +---+ +---+ +---+ +---+ +---+ +---+
-//               |     |     |     |     |     |  
-//             +---------------------------------+      
-//             |          Crossbar               |     Routing
-//             +---------------------------------+      
-//               |     |     |     |              
-//              N/L0  S/L1  E/L2  W/L3                 Output queues
-//               |     |     |     |
-//             +---------------------------+
-//             |          Splitter         |           Final splitting
-//             +---------------------------+
-//               |  |  |  |  |  |  |  |
-//               N  S  E  W  L0 L1 L2 L3               Output flits
-//
+//   N     S     E     W    L0     L1    L2    L3     Input flits
+//   |     |     |     |     |     |     |     |
+// +---+ +---+ +---+ +---+ +---+ +---+ +---+ +---+
+// | F | | F | | F | | F | | F | | F | | F | | F |    Fetchers
+// +---+ +---+ +---+ +---+ +---+ +---+ +---+ +---+
+//   |     |     |     |     |     |     |     |
+// +-------------------------------------------+      
+// |                 Crossbar                  |      Routing
+// +-------------------------------------------+      
+//   |     |     |     |     |     |     |     |  
+//   N     S     E     W     L0    L1    L2    L3     Output queues
 
 // The core functionality is implemented in the fetchers, which:
 //   (1) extract routing keys from incoming flits;
@@ -218,10 +211,7 @@ typedef struct {
 
 // After the fetchers have interpreted the flits, they are fed to a
 // fair crossbar which organises them by destination into output
-// queues.  To reduce logic, we allow each inter-board link to share
-// an output queue with a local link, as this does not compromise
-// forward progress.  Finally the queues are split to provide an
-// output stream for each possible destination.
+// queues.
 
 // =============================================================================
 // Fetcher
@@ -751,8 +741,8 @@ module mkProgRouterCrossbar#(
   // Current choice of flit source
   Vector#(numOut, Reg#(Bit#(numIn))) choiceReg <- replicateM(mkReg(0));
 
-  // Output queue
-  Vector#(numOut, Queue1#(RoutedFlit)) outQueue <-
+  // Output queues
+  Vector#(numOut, Queue#(RoutedFlit)) outQueue <-
     replicateM(mkUGShiftQueue(QueueOptFmax));
 
   // Selector mux for each out queue
@@ -857,8 +847,7 @@ endinterface
 interface ProgRouter;
   // Incoming and outgoing flits
   interface Vector#(`FetchersPerProgRouter, In#(Flit)) flitIn;
-  interface Vector#(`ProgRouterCrossbarOutputs, BOut#(Flit)) flitOut;
-  interface Vector#(`MailboxMeshXLen, BOut#(Flit)) nocFlitOut;
+  interface Vector#(`FetchersPerProgRouter, BOut#(Flit)) flitOut;
 
   // Interface to off-chip memory
   interface Vector#(`DRAMsPerBoard,
@@ -879,43 +868,35 @@ module mkProgRouter#(BoardId boardId) (ProgRouter);
     fetchers[i] <- mkFetcher(boardId, i);
 
   // Crossbar routing functions
-  function Bit#(2) xcoord(RoutedFlit rf) =
+  function Bit#(`MailboxMeshXBits) xcoord(RoutedFlit rf) =
     zeroExtend(rf.flit.dest.addr.mbox.x);
-  function Bool routeN(RoutedFlit rf) =
-    rf.decision == RouteNorth || (rf.decision == RouteNoC && xcoord(rf) == 0);
-  function Bool routeS(RoutedFlit rf) =
-    rf.decision == RouteSouth || (rf.decision == RouteNoC && xcoord(rf) == 1);
-  function Bool routeE(RoutedFlit rf) =
-    rf.decision == RouteEast || (rf.decision == RouteNoC && xcoord(rf) == 2);
-  function Bool routeW(RoutedFlit rf) =
-    rf.decision == RouteWest || (rf.decision == RouteNoC && xcoord(rf) == 3);
-  Vector#(`ProgRouterCrossbarOutputs, SelectorFunc) funcs =
-    vector(routeN, routeS, routeE, routeW);
+  function Bool routeN(RoutedFlit rf) = rf.decision == RouteNorth;
+  function Bool routeS(RoutedFlit rf) = rf.decision == RouteSouth;
+  function Bool routeE(RoutedFlit rf) = rf.decision == RouteEast;
+  function Bool routeW(RoutedFlit rf) = rf.decision == RouteWest;
+  function Bool routeL(Bit#(`MailboxMeshXBits) x, RoutedFlit rf) =
+    rf.decision == RouteNoC && xcoord(rf) == x;
+  Vector#(`FetchersPerProgRouter, SelectorFunc) funcs;
+  funcs[0] = routeN; funcs[1] = routeS;
+  funcs[2] = routeE; funcs[3] = routeW;
+  for (Integer i = 0; i < `MailboxMeshXLen; i=i+1)
+    funcs[4+i] = routeL(fromInteger(i));
 
   // Crossbar
   function BOut#(RoutedFlit) getFetcherFlitOut(Fetcher f) = f.flitOut;
   Vector#(`FetchersPerProgRouter, BOut#(RoutedFlit)) fetcherOuts =
     map(getFetcherFlitOut, fetchers);
-  Vector#(`ProgRouterCrossbarOutputs, BOut#(RoutedFlit))
+  Vector#(`FetchersPerProgRouter, BOut#(RoutedFlit))
     crossbarOuts <- mkProgRouterCrossbar(funcs, fetcherOuts);
+  Vector#(`FetchersPerProgRouter, BOut#(Flit)) crossbarOutFlits;
+  function Flit toFlit (RoutedFlit rf) = rf.flit;
+  for (Integer i = 0; i < `FetchersPerProgRouter; i=i+1)
+    crossbarOutFlits[i] <- onBOut(toFlit, crossbarOuts[i]);
 
   // Flit input interfaces
   Vector#(`FetchersPerProgRouter, In#(Flit)) flitInIfc = newVector;
   for (Integer i = 0; i < `FetchersPerProgRouter; i=i+1)
     flitInIfc[i] = fetchers[i].flitIn;
-
-  // Flit output interfaces
-  Vector#(`ProgRouterCrossbarOutputs, BOut#(Flit)) flitOutIfc = newVector;
-  Vector#(`MailboxMeshXLen, BOut#(Flit)) nocFlitOutIfc = newVector;
-
-  // Strands
-  function Bool forNoC(RoutedFlit rf) = rf.decision == RouteNoC;
-  for (Integer i = 0; i < `ProgRouterCrossbarOutputs; i=i+1) begin
-    match {.noc, .other} <- splitFlits(forNoC, crossbarOuts[i]);
-    flitOutIfc[i] = other;
-    if (i < `MailboxMeshXLen) nocFlitOutIfc[i] = noc;
-  end
-  function Flit toFlit (RoutedFlit rf) = rf.flit;
 
   // RAM interfaces
   Vector#(`DRAMsPerBoard, Vector#(`FetchersPerProgRouter, In#(DRAMResp)))
@@ -945,8 +926,7 @@ module mkProgRouter#(BoardId boardId) (ProgRouter);
 
   function FetcherActivity getActivity(Fetcher f) = f.activity;
   interface flitIn = flitInIfc;
-  interface flitOut = flitOutIfc;
-  interface nocFlitOut = nocFlitOutIfc;
+  interface flitOut = crossbarOutFlits;
   interface ramReqs = ramReqIfc;
   interface ramResps = ramRespIfc;
   interface activities = map(getActivity, fetchers);
