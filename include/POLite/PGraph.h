@@ -512,10 +512,11 @@ template <typename DeviceType,
           uint32_t key = addInTableEntries(&groups);
           // Add output table entry
           PRoutingDest edge;
+          edge.kind = PRDestKindMRM;
           edge.mbox = mbox;
-          edge.key = key;
-          edge.threadMaskLow = threadMaskLow;
-          edge.threadMaskHigh = threadMaskHigh;
+          edge.mrm.key = key;
+          edge.mrm.threadMaskLow = threadMaskLow;
+          edge.mrm.threadMaskHigh = threadMaskHigh;
           outTable[d][p]->append(edge);
           // Prepare for new output table entry
           dests.numElems = destsRemaining;
