@@ -182,20 +182,56 @@ class ProgRouter {
     numChunks++;
     numRecords++;
   }
+
+  // Add a URM1 record to the table
+  void addURM1(uint32_t mboxX, uint32_t mboxY,
+                 uint32_t threadId, uint32_t key) {
+    if (numChunks == 5) nextBeat();
+    uint8_t* ptr = currentRecord48();
+    ptr[0] = key;
+    ptr[1] = key >> 8;
+    ptr[2] = key >> 16;
+    ptr[3] = key >> 24;
+    ptr[4] = (threadId << 3);
+    ptr[5] = (mboxY << 3) | (mboxX << 1) | (threadId >> 5);
+    numChunks++;
+    numRecords++;
+  }
 };
 
 // ==================================
 // Data type for routing destinations
 // ==================================
 
-struct PRoutingDest {
-  // Destination mailbox
-  uint32_t mbox;
-  // Thread-level routing key
+enum PRoutingDestKind { PRDestKindURM1, PRDestKindMRM };
+
+// URM1 routing destination
+struct PRoutingDestURM1 {
+  // Mailbox-local thread
+  uint16_t threadId;
+  // Thread-local routing key
+  uint32_t key;
+};
+
+// MRM routing destination
+struct PRoutingDestMRM {
+  // Thread-local routing key
   uint16_t key;
   // Destination threads
   uint32_t threadMaskLow;
   uint32_t threadMaskHigh;
+};
+
+// Routing destination
+struct PRoutingDest {
+  PRoutingDestKind kind;
+  // Destination mailbox
+  uint32_t mbox;
+  // URM1 or MRM destination
+  union {
+    PRoutingDestURM1 urm1;
+    PRoutingDestMRM mrm;
+  };
 };
 
 // Extract board X coord from routing dest
@@ -288,9 +324,19 @@ class ProgRouterMesh {
     // Add local records
     for (int i = 0; i < local.numElems; i++) {
       PRoutingDest dest = local.elems[i];
-      table[senderY][senderX].addMRM(destMboxX(dest.mbox),
-        destMboxY(dest.mbox), dest.threadMaskHigh,
-        dest.threadMaskLow, dest.key);
+      if (dest.kind == PRDestKindMRM) {
+        table[senderY][senderX].addMRM(destMboxX(dest.mbox),
+          destMboxY(dest.mbox), dest.mrm.threadMaskHigh,
+          dest.mrm.threadMaskLow, dest.mrm.key);
+      }
+      else if (dest.kind == PRDestKindURM1) {
+        table[senderY][senderX].addURM1(destMboxX(dest.mbox),
+          destMboxY(dest.mbox), dest.urm1.threadId, dest.urm1.key);
+      }
+      else {
+        fprintf(stderr, "ProgRouters.h: unknown routing record kind\n");
+        exit(EXIT_FAILURE);
+      }
     }
 
     return table[senderY][senderX].genKey();

@@ -6,13 +6,22 @@
 
 #ifdef TINSEL
   #include <tinsel.h>
-  #include <POLite/PDevice.h>
+  #ifdef POLITE_FAST_MAP
+    #include <POLite/FastMap/PDevice.h>
+  #else
+    #include <POLite/PDevice.h>
+  #endif
 #else
-  #include <POLite/PDevice.h>
+  #ifdef POLITE_FAST_MAP
+    #include <POLite/FastMap/PDevice.h>
+    #include <POLite/FastMap/PGraph.h>
+  #else
+    #include <POLite/PDevice.h>
+    #include <POLite/PGraph.h>
+  #endif
   #include <POLite/Seq.h>
   #include <POLite/Graph.h>
   #include <POLite/Placer.h>
-  #include <POLite/PGraph.h>
 #endif
 
 #endif

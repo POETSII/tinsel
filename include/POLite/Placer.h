@@ -10,6 +10,14 @@ typedef uint32_t PartitionId;
 
 // Partition and place a graph on a 2D mesh
 struct Placer {
+  // Select between different methods
+  enum Method {
+    Default,
+    Metis,
+    Random
+  };
+  const Method defaultMethod=Metis;
+
   // The graph being placed
   Graph* graph;
 
@@ -41,8 +49,31 @@ struct Placer {
   uint32_t* yCoordSaved;
   uint64_t savedCost;
 
+  // Controls which strategy is used
+  Method method = Default;
+
+  // Select placer method
+  void chooseMethod()
+  {
+    auto e = getenv("POLITE_PLACER");
+    if (e) {
+      if (!strcmp(e, "metis"))
+        method=Metis;
+      else if (!strcmp(e, "random"))
+        method=Random;
+      else if (!strcmp(e, "default") || *e == '\0')
+        method=Default;
+      else {
+        fprintf(stderr, "Don't understand placer method : %s\n", e);
+        exit(EXIT_FAILURE);
+      }
+    }
+    if (method == Default)
+      method = defaultMethod;
+  }
+
   // Partition the graph using Metis
-  void partition() {
+  void partitionMetis() {
     // Compute total number of edges
     uint32_t numEdges = 0;
     for (uint32_t i = 0; i < graph->incoming->numElems; i++) {
@@ -114,6 +145,31 @@ struct Placer {
     free(xadj);
     free(adjncy);
     free(parts);
+  }
+
+  // Partition the graph randomly
+  void partitionRandom() {
+    uint32_t numVertices = graph->incoming->numElems;
+    uint32_t numParts = width * height;
+
+    // Populate result array
+    srand(0);
+    for (uint32_t i = 0; i < numVertices; i++) {
+      partitions[i] = rand() % numParts;
+    }
+  }
+
+  void partition()
+  {
+    switch(method){
+    case Default:
+    case Metis:
+      partitionMetis();
+      break;
+    case Random:
+      partitionRandom();
+      break;
+    }
   }
 
   // Create subgraph for each partition
@@ -316,6 +372,8 @@ struct Placer {
     yCoord = new uint32_t [width*height];
     xCoordSaved = new uint32_t [width*height];
     yCoordSaved = new uint32_t [width*height];
+    // Pick a placement method, or select default
+    chooseMethod();
     // Partition the graph using Metis
     partition();
     // Compute subgraphs, one per partition
