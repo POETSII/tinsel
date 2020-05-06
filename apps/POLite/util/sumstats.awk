@@ -15,7 +15,7 @@ BEGIN {
   progRouterSent = 0;
   progRouterSentInter = 0;
   blockedSends = 0;
-  fmax = 220000000;
+  fmax = 215000000;
   if (boardsX == "" || boardsY == "") {
     boardsX = 3;
     boardsY = 2;
