@@ -18,15 +18,6 @@
 // Nodes of a POETS graph are devices
 typedef NodeId PDeviceId;
 
-// This structure holds a group of receiving edges on a thread.
-// All of the edges originate from the same output pin.
-template <typename E> struct PReceiverGroup {
-  // Thread id where all the receivers reside
-  uint32_t threadId;
-  // A sequence of receiving devices on that thread
-  Seq<PInEdge<E>>* receivers;
-};
-
 // POETS graph
 template <typename DeviceType,
           typename S, typename E, typename M> class PGraph {
@@ -363,171 +354,40 @@ template <typename DeviceType,
       keyTable[d] = new uint32_t [POLITE_NUM_PINS];
   }
 
-  // Pack a receivers array
-  // Input: an in-edge sequence for each thread in a mailbox.
-  // Input array may contain lots of holes (0-element sequences)
-  // Output: a sequence of receiver groups
-  // Output array contains no empty receiver groups
-  void createReceiverGroups(
-        uint32_t mbox,
-        Seq<PInEdge<E>>* receivers,
-        Seq<PReceiverGroup<E>>* groups) {
-    groups->clear();
-    for (uint32_t i = 0; i < 64; i++) {
-      if (receivers[i].numElems > 0) {
-        // Add receiver group
-        PReceiverGroup<E> g;
-        g.threadId = (mbox << TinselLogThreadsPerMailbox) | i;
-        g.receivers = &receivers[i];
-        groups->append(g);
-      }
-    }
-  }
-
-  // Determine in-table key for given set of receivers
-  // (The key must be the same for all receivers)
-  uint32_t findInTableKey(Seq<PReceiverGroup<E>>* receivers) { 
-    uint32_t key = 0;
-
-    bool found = false;
-    while (!found) {
-      found = true; 
-      for (uint32_t i = 0; i < receivers->numElems; i++) {
-        PReceiverGroup<E> g = receivers->elems[i];
-        uint32_t numReceivers = g.receivers->numElems;
-        if (numReceivers > 0) {
-          // Lookup thread id of receiver
-          uint32_t t = g.threadId;
-          // Lookup table size for this thread
-          uint32_t tableSize = inTable[t]->numElems;
-          // Move to next receiver when we find a space
-          if (key >= tableSize) continue;
-          // Is there space at the current key?
-          // (Need space for numReceivers plus null terminator)
-          bool space = true;
-          for (int j = 0; j < numReceivers+1; j++) {
-            if ((key+j) >= tableSize) break;
-            if (inTable[t]->elems[key+j].devId != UnusedLocalDevId) {
-              found = false;
-              key = key+j+1;
-              break;
-            }
-          }
-        }
-      }
-    }
-    return key;
-  }
-
-  // Add entries to the input tables for the given receivers
-  // (Only valid after mapper is called)
-  uint32_t addInTableEntries(Seq<PReceiverGroup<E>>* receivers) {
-    uint32_t key = findInTableKey(receivers);
-    if (key >= 0xfffe) {
-      printf("In-table routing key exceeds 16 bits\n");
-      exit(EXIT_FAILURE);
-    }
-    PInEdge<E> null, unused;
-    null.devId = InvalidLocalDevId;
-    unused.devId = UnusedLocalDevId;
-    // Now that a key with sufficient space has been found, populate the tables
-    for (uint32_t i = 0; i < receivers->numElems; i++) {
-      PReceiverGroup<E> g = receivers->elems[i];
-      uint32_t numReceivers = g.receivers->numElems;
-      if (numReceivers > 0) {
-        // Lookup thread id of receiver
-        uint32_t t = g.threadId;
-        // Lookup table size for this thread
-        uint32_t tableSize = inTable[t]->numElems;
-        // Make sure inTable is big enough for new entries
-        for (uint32_t j = tableSize; j < (key+numReceivers+1); j++)
-          inTable[t]->append(unused);
-        // Add receivers to thread's inTable
-        for (uint32_t j = 0; j < numReceivers; j++) {
-          inTable[t]->elems[key+j] = g.receivers->elems[j];
-        }
-        inTable[t]->elems[key+numReceivers] = null;
-      }
-    }
-    return key;
-  }
-
   // Compute thread edge input and output tables
   // (Only valid after mapper is called)
   void computeInOutTables() {
-    // Routing table stats
-    uint64_t totalOutEdges = 0;
-
-    // Sequence of local device ids, for each multicast destiation
-    SmallSeq<PInEdge<E>> receivers[64];
-
-    // Sequence of receiver groups
-    // (A more compact representation of the receivers array)
-    SmallSeq<PReceiverGroup<E>> groups;
-
     // For each device
     for (uint32_t d = 0; d < numDevices; d++) {
       // For each pin
       for (uint32_t p = 0; p < POLITE_NUM_PINS; p++) {
-        Seq<PDeviceId> dests = *(graph.outgoing->elems[d]);
-        Seq<E> edges = *(edgeLabels.elems[d]);
-        // While destinations are remaining
-        while (dests.numElems > 0) {
-          // Clear receivers
-          for (uint32_t i = 0; i < 64; i++) receivers[i].clear();
-          uint32_t threadMaskLow = 0;
-          uint32_t threadMaskHigh = 0;
-          // Current mailbox being considered
-          PDeviceAddr mbox = getThreadId(toDeviceAddr[dests.elems[0]]) >>
-                               TinselLogThreadsPerMailbox;
-          // For each destination
-          uint32_t destsRemaining = 0;
-          for (uint32_t i = 0; i < dests.numElems; i++) {
-            // Determine destination mailbox address and mailbox-local thread
-            PDeviceId destId = dests.elems[i];
-            PDeviceAddr destAddr = toDeviceAddr[destId];
-            uint32_t destMailbox = getThreadId(destAddr) >>
-                                     TinselLogThreadsPerMailbox;
-            uint32_t destThread = getThreadId(destAddr) &
-                                     ((1<<TinselLogThreadsPerMailbox)-1);
-            // Does destination match current destination?
-            if (destMailbox == mbox) {
-              PInEdge<E> edge;
-              edge.devId = getLocalDeviceId(destAddr);
-              if (! std::is_same<E, None>::value) edge.edge = edges.elems[i];
-              receivers[destThread].append(edge);
-              if (destThread < 32) threadMaskLow |= 1 << destThread;
-              if (destThread >= 32) threadMaskHigh |= 1 << (destThread-32);
-            }
-            else {
-              // Add destination back into sequence
-              dests.elems[destsRemaining] = dests.elems[i];
-              edges.elems[destsRemaining] = edges.elems[i];
-              destsRemaining++;
-            }
+        Seq<PDeviceId>* dests = graph.outgoing->elems[d];
+        Seq<E>* edges = edgeLabels.elems[d];
+        for (uint32_t i = 0; i < dests->numElems; i++) {
+          PDeviceId destId = dests->elems[i];
+          // Destination thread id
+          uint32_t threadId = getThreadId(toDeviceAddr[destId]);
+          // Thread-local device id
+          uint32_t devId = getLocalDeviceId(toDeviceAddr[destId]);
+          // Add edge to thread's input table
+          uint32_t edgeId = inTable[threadId]->numElems;
+          if (i < inTable[threadId]->numElems) {
+            PInEdge<E> edge;
+            edge.edge = edges->elems[i];
+            inTable[threadId]->append(edge);
           }
-          // Create receiver groups
-          createReceiverGroups(mbox, receivers, &groups);
-          // Add input table entries
-          uint32_t key = addInTableEntries(&groups);
           // Add output table entry
-          PRoutingDest edge;
-          edge.kind = PRDestKindMRM;
-          edge.mbox = mbox;
-          edge.mrm.key = key;
-          edge.mrm.threadMaskLow = threadMaskLow;
-          edge.mrm.threadMaskHigh = threadMaskHigh;
-          outTable[d][p]->append(edge);
-          // Prepare for new output table entry
-          dests.numElems = destsRemaining;
-          edges.numElems = destsRemaining;
-          totalOutEdges++;
+          PRoutingDest rdest;
+          rdest.kind = PRDestKindURM1;
+          rdest.mbox = threadId >> TinselLogThreadsPerMailbox;
+          rdest.urm1.key = devId | (edgeId << 16);
+          rdest.urm1.threadId = threadId &
+            ((1<<TinselLogThreadsPerMailbox) - 1);
+          outTable[d][p]->append(rdest);
         }
       }
     }
-    //printf("Average edges per pin: %lu\n",
-    //  totalOutEdges / (numDevices * POLITE_NUM_PINS);
-  }  
+  }
 
   // Release all structures
   void releaseAll() {
