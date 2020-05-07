@@ -28,13 +28,13 @@ sim: $(TOPMOD) $(HOSTTOPMOD)
 .PHONY: verilog
 verilog: $(TOPMOD).v $(HOSTTOPMOD).v
 
-$(TOPMOD): *.bsv *.c InstrMem.hex FreeSlots.hex
+$(TOPMOD): *.bsv *.c InstrMem.hex
 	make -C $(TINSEL_ROOT)/apps/boot
 	make -C $(TINSEL_ROOT)/hostlink udsock
 	$(BSC) $(BSCFLAGS) $(DEFS) -D SIMULATE -sim -g $(TOPMOD) -u $(TOPFILE)
 	$(BSC) $(BSCFLAGS) -sim -o $(TOPMOD) -e $(TOPMOD) *.c
 
-$(TOPMOD).v: *.bsv $(QP)/InstrMem.mif $(QP)/FreeSlots.mif
+$(TOPMOD).v: *.bsv $(QP)/InstrMem.mif
 	make -C $(TINSEL_ROOT)/apps/boot
 	$(BSC) $(BSCFLAGS) -opt-undetermined-vals -unspecified-to X \
          $(DEFS) -u -verilog -g $(TOPMOD) $(TOPFILE)
@@ -63,12 +63,6 @@ InstrMem.hex:
 $(QP)/InstrMem.mif:
 	make -C $(TINSEL_ROOT)/apps/boot
 
-FreeSlots.hex: GenInit.sh
-	./GenInit.sh
-
-$(QP)/FreeSlots.mif: GenInit.sh
-	./GenInit.sh
-
 .PHONY: test-mem
 test-mem: testMem
 
@@ -83,7 +77,6 @@ clean:
 	rm -f de5Top.v mkCore.v mkDCache.v mkMailbox.v mkDebugLinkRouter.v
 	rm -f mkFPU.v mkMeshRouter.v
 	rm -f de5BridgeTop.v
-	rm -f FreeSlots.hex ../de5/FreeSlots.mif
 	rm -rf test-mem-log
 	rm -rf test-mailbox-log
 	rm -rf test-array-of-queue-log

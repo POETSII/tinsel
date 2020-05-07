@@ -260,6 +260,9 @@ interface Mailbox;
   (* always_ready *) method Bit#(1) freeDone;
   // Network-side interface
   interface MailboxNet            net;
+  // Initialise send slots (use extra send slot?)
+  (* always_ready, always_enabled *)
+  method Action initSendSlots(Option#(Bool) useExtraSendSlot);
 endinterface
 
 // Combined receive request/response interface
@@ -291,6 +294,45 @@ module mkMailbox (Mailbox);
   InPort#(Flit)          flitInPort   <- mkInPort;
   Vector#(`CoresPerMailbox, InPort#(ReceiveReq)) rxReqPorts <-
     replicateM(mkInPort);
+
+  // Initialise free slots
+  // =====================
+
+  // Set of currently-unused message slots
+  // By default, the first ThreadsPerMailbox slots are reserved for sending
+  // Optionally, the first 2*ThreadsPerMailbox slots are reserved for sending
+  SizedQueue#(`LogMsgsPerMailbox, Bit#(`LogMsgsPerMailbox))
+    freeSlots <- mkUGSizedQueuePrefetch;
+
+  // Reserve extra send slot?
+  Wire#(Option#(Bool)) useExtraSendSlot <- mkBypassWire;
+
+  // State of free slot initialiser
+  Reg#(Bit#(1)) freeSlotsInitState <- mkConfigReg(0);
+
+  // Have the free slots been initialised yet?
+  Reg#(Bool) freeSlotsInitDone <- mkConfigReg(False);
+
+  // Next slot to insert into free slot queue
+  Reg#(Bit#(`LogMsgsPerMailbox)) freeSlotsInitNext <- mkConfigRegU;
+
+  // Wait until config option available, which tells us how
+  // many slots to reserve for sending
+  rule initFreeSlots0 (freeSlotsInitState == 0);
+    if (useExtraSendSlot.valid) begin
+      freeSlotsInitNext <= useExtraSendSlot.value ?
+        fromInteger(2*`ThreadsPerMailbox) : `ThreadsPerMailbox;
+      freeSlotsInitState <= 1;
+    end
+  endrule
+
+  // Initialise free slots
+  rule initFreeSlots1 (!freeSlotsInitDone && freeSlotsInitState == 1);
+    freeSlots.enq(freeSlotsInitNext);
+    freeSlotsInitNext <= freeSlotsInitNext + 1;
+    if (freeSlotsInitNext == fromInteger(2**`LogMsgsPerMailbox - 1))
+      freeSlotsInitDone <= True;
+  endrule
 
   // Message access unit
   // ===================
@@ -335,15 +377,6 @@ module mkMailbox (Mailbox);
   Reg#(Bool) setRefCount <- mkDReg(False);
   Reg#(RefCount) refCountReg <- mkConfigRegU;
   Reg#(Bit#(`LogMsgsPerMailbox)) refCountSlot <- mkConfigRegU;
-
-  // Set of currently-unused message slots
-  // (The first ThreadsPerMailbox slots are reserved for sending)
-  QueueOpts freeSlotsOpts;
-  freeSlotsOpts.style = "AUTO";
-  freeSlotsOpts.size = 2**`LogMsgsPerMailbox - `ThreadsPerMailbox;
-  freeSlotsOpts.file = Valid("FreeSlots");
-  SizedQueue#(`LogMsgsPerMailbox, Bit#(`LogMsgsPerMailbox))
-    freeSlots <- mkUGSizedQueuePrefetchOpts(freeSlotsOpts);
 
   // Multicast buffer
   Vector#(`CoresPerMailbox,
@@ -598,7 +631,7 @@ module mkMailbox (Mailbox);
   // to a message slot is freed
   Reg#(Bit#(1)) freeDoneReg <- mkDReg(0);
 
-  rule free (freeReqPort.canGet);
+  rule free (freeReqPort.canGet && freeSlotsInitDone);
     FreeReq req = freeReqPort.value;
     // Process request in two cycles
     let count = refCount.dataOutB;
@@ -666,6 +699,10 @@ module mkMailbox (Mailbox);
       method Flit value = transmitBuffer.dataOut;
     endinterface
   endinterface
+
+  method Action initSendSlots(Option#(Bool) useExtra);
+    useExtraSendSlot <= useExtra;
+  endmethod
 
 endmodule
 
@@ -1138,14 +1175,16 @@ import "BVI" ExternalTinselAccelerator =
 
 `ifndef UseCustomAccelerator
 
-module mkMailboxAcc#(BoardId boardId, Integer tileX, Integer tileY) (Mailbox);
+module mkMailboxAcc#(BoardId boardId,
+         Integer tileX, Integer tileY) (Mailbox);
   Mailbox mbox <- mkMailbox;
   return mbox;
 endmodule
 
 `else
 
-module mkMailboxAcc#(BoardId boardId, Integer tileX, Integer tileY) (Mailbox);
+module mkMailboxAcc#(BoardId boardId,
+         Integer tileX, Integer tileY) (Mailbox);
   // Instantiate standard mailbox
   Mailbox mbox <- mkMailbox;
 

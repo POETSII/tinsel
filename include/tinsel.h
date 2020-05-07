@@ -129,6 +129,18 @@ INLINE volatile void* tinselSendSlot()
   return mb_scratchpad_base + (threadId << TinselLogBytesPerMsg);
 }
 
+// Get pointer to thread's extra message slot reserved for sending
+// (Assumes that HostLink has requested the extra slot)
+INLINE volatile void* tinselSendSlotExtra()
+{
+  volatile char* mb_scratchpad_base =
+    (volatile char*) (1 << TinselLogBytesPerMailbox);
+  uint32_t threadId = tinselId() &
+    ((1<<TinselLogThreadsPerMailbox) - 1);
+  return mb_scratchpad_base +
+           ((TinselThreadsPerMailbox+threadId) << TinselLogBytesPerMsg);
+}
+
 // Determine if calling thread can send a message
 INLINE int tinselCanSend()
 {
