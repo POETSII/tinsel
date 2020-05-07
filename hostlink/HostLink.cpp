@@ -167,6 +167,11 @@ HostLink::HostLink(uint32_t numBoxesX, uint32_t numBoxesY)
   constructor(params);
 }
 
+HostLink::HostLink(HostLinkParams params)
+{
+  constructor(params);
+}
+
 // Destructor
 HostLink::~HostLink()
 {
