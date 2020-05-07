@@ -60,9 +60,11 @@ static int connectToPCIeStream(const char* socketPath)
 }
 
 // Internal constructor
-void HostLink::constructor(uint32_t numBoxesX, uint32_t numBoxesY)
+void HostLink::constructor(HostLinkParams p)
 {
-  if (numBoxesX > TinselBoxMeshXLen || numBoxesY > TinselBoxMeshYLen) {
+  useExtraSendSlot = p.useExtraSendSlot;
+
+  if (p.numBoxesX > TinselBoxMeshXLen || p.numBoxesY > TinselBoxMeshYLen) {
     fprintf(stderr, "Number of boxes requested exceeds those available\n");
     exit(EXIT_FAILURE);
   }
@@ -92,7 +94,11 @@ void HostLink::constructor(uint32_t numBoxesX, uint32_t numBoxesY)
   #endif
 
   // Create DebugLink
-  debugLink = new DebugLink(numBoxesX, numBoxesY);
+  DebugLinkParams debugLinkParams;
+  debugLinkParams.numBoxesX = p.numBoxesX;
+  debugLinkParams.numBoxesY = p.numBoxesY;
+  debugLinkParams.useExtraSendSlot = p.useExtraSendSlot;
+  debugLink = new DebugLink(debugLinkParams);
 
   // Set board mesh dimensions
   meshXLen = debugLink->meshXLen;
@@ -145,12 +151,20 @@ HostLink::HostLink()
   int x = str ? atoi(str) : 1;
   str = getenv("HOSTLINK_BOXES_Y");
   int y = str ? atoi(str) : 1;
-  constructor(x, y);
+  HostLinkParams params;
+  params.numBoxesX = x;
+  params.numBoxesY = y;
+  params.useExtraSendSlot = false;
+  constructor(params);
 }
 
 HostLink::HostLink(uint32_t numBoxesX, uint32_t numBoxesY)
 {
-  constructor(numBoxesX, numBoxesY);
+  HostLinkParams params;
+  params.numBoxesX = numBoxesX;
+  params.numBoxesY = numBoxesY;
+  params.useExtraSendSlot = false;
+  constructor(params);
 }
 
 // Destructor

@@ -26,7 +26,7 @@ New section on programmable routers:
 New performance counters accessible from core zero on each board only:
   * `ProgRouterSent` and `ProgRouterSentInterBoard`
 
-Document the following:
+Document the following new perf counters:
 
 ```c++
 // Performance counter: number of messages emitted by ProgRouter
@@ -35,6 +35,11 @@ INLINE uint32_t tinselProgRouterSent();
 // Performance counter: number of inter-board messages emitted by ProgRouter
 INLINE uint32_t tinselProgRouterSentInterBoard();
 ```
+
+Document extra send slot option:
+
+  * `HostLinkParams`, `DebugLinkParams`
+  * `tinselSendSlotExtra()`
 
 # Tinsel 0.7.1
 

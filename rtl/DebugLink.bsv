@@ -13,16 +13,18 @@ package DebugLink;
 // Commands sent from the host PC to DebugLink typically consist of a
 // few bytes over the JTAG UART.
 //
-//   QueryIn: tag (1 byte), board offset (1 byte), edge disable (1 byte)
-//   -------------------------------------------------------------------
+//   QueryIn: tag (1 byte), board offset (1 byte), config (1 byte)
+//   -------------------------------------------------------------
 //
 //   Sets the X offset (offset[3:0]) and the Y offset (offset[7:4])
 //   of the board id (to support multiple boxes).
 //   Disable the specified inter-FPGA links:
-//     * disable[0]: disable links on north side of box
-//     * disable[1]: disable links on south side of box
-//     * disable[2]: disable links on east side of box
-//     * disable[3]: disable links on west side of box
+//     * config[0]: disable links on north side of box
+//     * config[1]: disable links on south side of box
+//     * config[2]: disable links on east side of box
+//     * config[3]: disable links on west side of box
+//   Enable extra send slot:
+//     * config[4]: reserve extra send slot
 //   Responds with a QueryOut (see below).
 //
 //   SetDest: tag (1 byte), thread id (1 byte), core id (1 byte)
@@ -202,9 +204,13 @@ interface DebugLink;
   // Get board id via DebugLink
   (* always_ready, always_enabled *)
   method BoardId getBoardId();
-  // Optionally disable each inter-FPGA link via DebugLink
+  // Config option: disable each inter-FPGA link via DebugLink
+  // (Allows sanboxing of boxes or groups of boxes)
   (* always_ready, always_enabled *)
   method Vector#(4, Bool) linkEnable;
+  // Config option: reserve extra send slot per thread in mailbox
+  (* always_ready, always_enabled *)
+  method Option#(Bool) useExtraSendSlot;
 endinterface
 
 module mkDebugLink#(
@@ -223,6 +229,11 @@ module mkDebugLink#(
   // An enable line for each inter-FPGA link on the board
   // (Initially, all disabled)
   Reg#(Vector#(4, Bool)) linkEnableReg <- mkConfigReg(replicate(False));
+
+  // Config option: reserve extra send slot in mailbox?
+  // Use a chain of registers to aid propagation on chip
+  Vector#(3, Reg#(Option#(Bool))) useExtraSendSlotReg <-
+     replicateM(mkConfigReg(Option {valid : False, value: False}));
 
   // Ports
   InPort#(Bit#(8)) fromJtag <- mkInPort;
@@ -331,6 +342,9 @@ module mkDebugLink#(
         // Disable west link?
         if (x == 0 && edgeEn[3] == 1) linkEn[3] = False;
         linkEnableReg <= linkEn;
+        // Reserve extra send slot?
+        useExtraSendSlotReg[2] <=
+          Option {valid: True, value: fromJtag.value[4] == 1};
         respondFlag <= True;
         respondCmd <= cmdQueryIn;
         recvState <= 0;
@@ -404,6 +418,11 @@ module mkDebugLink#(
     end
   endrule
 
+  // Propagate extra send slot option through chain of registers (for timing)
+  rule chain;
+    for (Integer i = 0; i < 2; i=i+1)
+      useExtraSendSlotReg[i] <= useExtraSendSlotReg[i+1];
+  endrule
 
   `ifndef SIMULATE
   interface jtagAvalon = uart.jtagAvalon;
@@ -411,7 +430,7 @@ module mkDebugLink#(
 
   method BoardId getBoardId() = boardId;
   method Vector#(4, Bool) linkEnable = linkEnableReg;
-
+  method Option#(Bool) useExtraSendSlot = useExtraSendSlotReg[0];
 endmodule
 
 endpackage
