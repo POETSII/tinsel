@@ -84,7 +84,7 @@ module connectClientsToOffChipRAM#(
     mkMergeTreeB(Fair,
       mkUGShiftQueue1(QueueOptFmax),
       routerReqs);
-  Queue1#(DRAMReq) fetcherReqsQueue <- mkUGShiftQueue1(QueueOptFmax);
+  Queue#(DRAMReq) fetcherReqsQueue <- mkUGQueue;
   connectToQueue(fetcherReqs, fetcherReqsQueue);
   BOut#(DRAMReq) fetcherReqsB = queueToBOut(fetcherReqsQueue);
 
