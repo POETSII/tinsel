@@ -148,6 +148,13 @@ module de5Top (DE5Top);
     for (Integer x = 0; x < `MailboxMeshXLen; x=x+1)
       mailboxes[y][x] <- mkMailboxAcc(debugLink.getBoardId(), x, y);
 
+  // Initialise mailbox send slots
+  rule initSendSlots;
+    for (Integer y = 0; y < `MailboxMeshYLen; y=y+1)
+      for (Integer x = 0; x < `MailboxMeshXLen; x=x+1)
+        mailboxes[y][x].initSendSlots(debugLink.useExtraSendSlot);
+  endrule
+
   // Connect cores to mailboxes
   for (Integer y = 0; y < `MailboxMeshYLen; y=y+1)
     for (Integer x = 0; x < `MailboxMeshXLen; x=x+1) begin
