@@ -432,6 +432,7 @@ module mkFetcher#(BoardId boardId, Integer fetcherId) (Fetcher);
         // Ignore keys with zero beats
         if (key.numBeats == 0) begin
           consumeState <= 0;
+          incReceivedReg <= 1;
         end else begin
           consumeState <= 2;
           // Claim chosen slot
