@@ -284,7 +284,7 @@ class ProgRouterMesh {
   // Returns routing key
   uint32_t addDestsFromBoardXY(uint32_t senderX, uint32_t senderY,
                                  Seq<PRoutingDest>* dests) {
-    assert(dests->numElems > 0);
+    if (dests->numElems == 0) return 0;
 
     // Categorise dests into local, N, S, E, and W groups
     Seq<PRoutingDest> local(dests->numElems);
