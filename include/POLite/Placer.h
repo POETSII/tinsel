@@ -14,7 +14,8 @@ struct Placer {
   enum Method {
     Default,
     Metis,
-    Random
+    Random,
+    Direct
   };
   const Method defaultMethod=Metis;
 
@@ -61,6 +62,8 @@ struct Placer {
         method=Metis;
       else if (!strcmp(e, "random"))
         method=Random;
+      else if (!strcmp(e, "direct"))
+        method=Direct;
       else if (!strcmp(e, "default") || *e == '\0')
         method=Default;
       else {
@@ -159,6 +162,18 @@ struct Placer {
     }
   }
 
+  // Partition the graph using direct mapping
+  void partitionDirect() {
+    uint32_t numVertices = graph->incoming->numElems;
+    uint32_t numParts = width * height;
+    uint32_t partSize = (numVertices + numParts) / numParts;
+
+    // Populate result array
+    for (uint32_t i = 0; i < numVertices; i++) {
+      partitions[i] = i / partSize;
+    }
+  }
+
   void partition()
   {
     switch(method){
@@ -168,6 +183,9 @@ struct Placer {
       break;
     case Random:
       partitionRandom();
+      break;
+    case Direct:
+      partitionDirect();
       break;
     }
   }
