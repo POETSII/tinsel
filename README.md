@@ -1,41 +1,3 @@
-TODO, document the following:
-
-```c++
-// Tinsel API
-// ==========
-
-// Send message at addr using given routing key 
-inline void tinselKeySend(uint32_t key, volatile void* addr);
-
-// HostLink API
-// ============
-
-// Send a message using routing key (blocking by default)
-bool keySend(uint32_t key, uint32_t numFlits, void* msg, bool block = true);
-
-// Try to send using routing key (non-blocking, returns true on success)
-bool keyTrySend(uint32_t key, uint32_t numFlits, void* msg);
-```
-
-New section on programmable routers:
-  * Routing record format, byte ordering etc.
-  * Semantics of records
-  * Restrictions on IND records
-  * Avoiding deadlock: programmer has some added resposibility here
-
-New performance counters accessible from core zero on each board only:
-  * `ProgRouterSent` and `ProgRouterSentInterBoard`
-
-Document the following new perf counters:
-
-```c++
-// Performance counter: number of messages emitted by ProgRouter
-INLINE uint32_t tinselProgRouterSent();
-
-// Performance counter: number of inter-board messages emitted by ProgRouter
-INLINE uint32_t tinselProgRouterSentInterBoard();
-```
-
 # Tinsel 0.8
 
 Tinsel is a [RISC-V](https://riscv.org/)-based manythread
@@ -696,7 +658,203 @@ purposes, resulting in very little overhead on the wire.
 
 ## 7. Tinsel Router
 
-TODO
+The Tinsel overlay provides a programmable router on each FPGA board
+to support *global* multicasting.  Programmable routers automatically
+propagate messages to any number of destination threads distributed
+throughout the cluster, minimising inter-FPGA bandwidth usage for
+distributed fanouts, and offloading the work from the cores.  Further
+background can be found in [PIP 24](doc/PIP-0024-global-multicast.md).
+
+To support programmable routers, the destination component of a
+message is generalised so that it can be (1) a thread id; or (2) a
+*routing key*.  A message, sent by a thread, containing a routing
+key as a destination will go to a per-board router on the same
+FPGA.  The router will use the key as an index into a DRAM-based
+routing table and automatically propagate the message towards all the
+destinations associated with that key. 
+
+A **routing key** is a 32-bit value consisting of a board-local *ram
+id*, a *pointer*, and a *size*:
+
+```sv
+// 32-bit routing key (MSB to LSB)
+typedef struct {
+  // Which off-chip RAM on this board?
+  Bit#(`LogDRAMsPerBoard) ram;
+  // Pointer to array of routing beats containing routing records
+  Bit#(`LogBeatsPerDRAM) ptr;
+  // Number of beats in the array
+  Bit#(`LogRoutingEntryLen) numBeats;
+} RoutingKey;
+```
+
+To send a message to a routing key, a new Tinsel API call is provided:
+
+```c
+// Send message at addr using given routing key 
+inline void tinselKeySend(uint32_t key, volatile void* addr);
+```
+
+When a message reaches the per-board router, the `ptr` field of the
+routing key is used as an index into DRAM, where a sequence of 256-bit
+**routing beats** are found.  The `numBeats` field of the routing key
+indicates how many contiguous routing beats there are.  The value of
+`numBeats` may be zero, in which case there are no destinations
+associated with the key.
+
+A routing beat consists of a *size* and a sequence of five 48-bit
+*routing chunks*:
+
+```sv
+// 256-bit routing beat (aligned, MSB to LSB)
+typedef struct {
+  // Number of routing records present in this beat
+  Bit#(16) size;
+  // Five 48-bit record chunks
+  Vector#(5, Bit#(48)) chunks;
+} RoutingBeat;
+```
+
+The *size* must lie in the range 1 to 5 inclusive (0 is disallowed).
+A **routing record** consists of one or two routing chunks, depending
+on the **record type**.
+
+All byte orderings are little endian.  For example, the order of bytes
+in a routing beat is as follows.
+
+Byte | Contents
+---- | --------
+31:  | Upper byte of size (i.e. number of records in beat)
+30:  | Lower byte of size
+29:  | Upper byte of first chunk
+...  | ...
+24:  | Lower byte of first chunk
+23:  | Upper byte of second chunk
+...  | ...
+18:  | Lower byte of second chunk
+17:  | Upper byte of third chunk
+...  | ...
+12:  | Lower byte of third chunk
+11:  | Upper byte of fourth chunk
+...  | ...
+ 6:  | Lower byte of fourth chunk
+ 5:  | Upper byte of fifth chunk
+...  | ...
+ 0:  | Lower byte of fifth chunk
+
+Clearly, both routing keys and routing beats have a maximum size.
+However, in principle there is no limit to the number of records
+associated with a key, due to the possibility of *indirection records*
+(see below).
+
+There are five types of routing record, defined below.
+
+**48-bit Unicast Router-to-Mailbox (URM1):**
+
+```sv
+typedef struct {
+  // Record type (URM1 == 0)
+  Bit#(3) tag;
+  // Mailbox destination
+  Bit#(4) mbox;
+  // Mailbox-local thread identifier
+  Bit#(6) thread;
+  // Unused
+  Bit#(3) unused;
+  // Local key. The first word of the message
+  // payload is overwritten with this.
+  Bit#(32) localKey;
+} URM1Record;
+```
+
+The `localKey` can be used for anything, but might encode the
+destination thread-local device identifier, or edge identifier, or
+both.  The `mbox` field is currently 4 bits (two Y bits followed by
+two X bits), but there are spare bits available to increase the size
+of this field in future if necessary.
+
+**96-bit Unicast Router-to-Mailbox (URM2):**
+
+```sv
+typedef struct {
+  // Record type (URM2 == 1)
+  Bit#(3) tag;
+  // Mailbox destination
+  Bit#(4) mbox;
+  // Mailbox-local thread identifier
+  Bit#(6) thread;
+  // Currently unused
+  Bit#(19) unused;
+  // Local key. The first two words of the message
+  // payload is overwritten with this.
+  Bit#(64) localKey;
+} URM2Record;
+```
+
+This is the same as a URM1 record except the local key is 64-bits in
+size.
+
+**48-bit Router-to-Router (RR):**
+
+```sv
+typedef struct {
+  // Record type (RR == 2)
+  Bit#(3) tag;
+  // Direction (N,S,E,W == 0,1,2,3)
+  Bit#(2) dir;
+  // Currently unused
+  Bit#(11) unused;
+  // New 32-bit routing key that will replace the one in the
+  // current message for the next hop of the message's journey
+  Bit#(32) newKey;
+} RRRecord;
+```
+
+The `newKey` field will replace the key in the current message for the
+next hop of the message's journey.  Introducing a new key at each hop
+simplifies the mapping process (keeping it quick).
+
+**96-bit Multicast Router-to-Mailbox (MRM):**
+
+```sv
+typedef struct {
+  // Record type (MRM == 3)
+  Bit#(3) tag;
+  // Mailbox destination
+  Bit#(4) mbox;
+  // Currently unused
+  Bit#(9) unused;
+  // Local key. The least-significant half-word
+  // of the message is replaced with this
+  Bit#(16) localKey;
+  // Mailbox-local destination mask
+  Bit#(64) destMask;
+} MRMRecord;
+```
+
+**48-bit Indirection (IND):**
+
+```sv
+// 48-bit Indirection (IND) record
+// Note the restrictions on IND records:
+// 1. At most one IND record per key lookup
+// 2. A max-sized key lookup must contain an IND record
+typedef struct {
+  // Record type (IND == 4)
+  Bit#(3) tag;
+  // Currently unused
+  Bit#(13) unused;
+  // New 32-bit routing key for new set of records on current router
+  Bit#(32) newKey;
+} INDRecord;
+```
+
+Indirection records can be used to handle large fanouts, which exceed
+the number of bits available in the size portion of the routing key.
+
+Finally, it is worth noting that when using programmable routers,
+there is an added responsibility for the programmer to use a
+deadlock-free routing scheme, such as dimension-ordered routing.
 
 ## 8. Tinsel HostLink
 
@@ -781,6 +939,12 @@ bool HostLink::canRecv();
 // Receive a message (blocking), given size of message in bytes
 // Any bytes beyond numBytes up to the next message boundary will be ignored
 void HostLink::recvMsg(void* msg, uint32_t numBytes);
+
+// Send a message using routing key (blocking)
+bool HostLink::keySend(uint32_t key, uint32_t numFlits, void* msg);
+
+// Try to send using routing key (non-blocking, returns true on success)
+bool HostLink::keyTrySend(uint32_t key, uint32_t numFlits, void* msg);
 ```
 
 The `send` method allows a message consisting of multiple flits to be
@@ -1148,7 +1312,7 @@ vertex can send messages to the host via the `HostPin` or the `finish`
 handler, and the host can send messages to any vertex.
 
 **Softswitch**. Central to POLite is an event loop running on each
-Tinsel thread, which we call **the softswitch** as it effectively
+Tinsel thread, which we call the softswitch as it effectively
 context-switches between vertices mapped to the same thread.  The
 softswitch has four main responsibilities: (1) to maintain a queue of
 vertices wanting to send; (2) to implement multicast sends over a pin
@@ -1157,14 +1321,34 @@ messages efficiently between vertices running on the same thread and
 on different threads; and (4) to invoke the vertex handlers when
 required, to meet the semantics of the POLite library.
 
+**POLite static parameters**. The following macros can be defined,
+before the first instance of `#include <POLite.h>`, to control some
+aspects of POLite behaviour.
+
+  Macro               | Meaning
+  ---------           | -------
+  `POLITE_NUM_PINS`   | Max number of pins per vertex (default 1)
+  `POLITE_DUMP_STATS` | Dump stats upon completion
+  `POLITE_COUNT_MSGS` | Include message counts in stats dump
+  `POLITE_FAST_MAP`   | Use fast mapper (at the expense of application performance)
+
+**POLite dynamic parameters**.  The following environment variables can
+be set, to control some aspects of POLite behaviour.
+
+  Environment variable | Meaning
+  -------------------- | -------
+  `HOSTLINK_BOXES_X`   | Size of box mesh to use in X dimension
+  `HOSTLINK_BOXES_Y`   | Size of box mesh to use in Y dimension
+  `POLITE_BOARDS_X`    | Size of board mesh to use in X dimension
+  `POLITE_BOARDS_Y`    | Size of board mesh to use in Y dimension
+  `POLITE_CHATTY`      | Set to `1` to enable emission of mapper stats
+  `POLITE_PLACER`      | Use `metis`, `random`, or `direct` placement
+
 **Limitations**. POLite provides several important features of the
 vertex-centric paradigm, but there are some limitations. One of the
 features of the Pregel framework is the ability for vertices to add
 and remove vertices and edges at runtime -- but currently, POLite only
-supports static graphs.  And for large *non-localised* fan-outs, a
-hierarchical hardware or software multicast feature may be desirable
-(where messages get forked at intermediate stages along the way to the
-destinations).
+supports static graphs. 
 
 ## A. DE5-Net Synthesis Report
 
@@ -1181,9 +1365,10 @@ The default Tinsel configuration on a single DE5-Net board contains:
   * four QDRII+ SRAM controllers
   * four 10Gbps reliable links
   * one termination/idle detector
+  * one 8x8 programmable router
   * a JTAG UART
 
-The clock frequency is 225MHz and the resource utilisation is 74% of
+The clock frequency is 215MHz and the resource utilisation is 84% of
 the DE5-Net.
 
 ## B. Tinsel Parameters
@@ -1215,7 +1400,7 @@ the DE5-Net.
   `EnablePerfCount`        |    True | Enable performance counters
   `ClockFreq`              |     215 | Clock frequency in MHz
 
-Further parameters can be found in [config.py](config.py).
+A full list of parameters can be found in [config.py](config.py).
 
 ## C. Tinsel Memory Map
 
@@ -1274,15 +1459,20 @@ separate memory regions (which they are not).
 
 Optional performance-counter CSRs (when `EnablePerfCount` is `True`):
 
-  Name             | CSR    | R/W | Function
-  ---------------- | ------ | --- | --------
-  `PerfCount`      | 0xc07  | W   | Reset(0)/Start(1)/Stop(2) all counters
-  `MissCount`      | 0xc08  | R   | Cache miss count
-  `HitCount`       | 0xc09  | R   | Cache hit count
-  `WritebackCount` | 0xc0a  | R   | Cache writeback count
-  `CPUIdleCount`   | 0xc0b  | R   | CPU idle-cycle count (lower 32 bits)
-  `CPUIdleCountU`  | 0xc0c  | R   | CPU idle-cycle count (upper 8 bits)
-  `CycleU`         | 0xc0d  | R   | Cycle counter (upper 8 bits)
+ Name                  | CSR    | R/W | Function
+ ----------------      | ------ | --- | --------
+ `PerfCount`           | 0xc07  | W   | Reset(0)/Start(1)/Stop(2) all counters
+ `MissCount`           | 0xc08  | R   | Cache miss count
+ `HitCount`            | 0xc09  | R   | Cache hit count
+ `WritebackCount`      | 0xc0a  | R   | Cache writeback count
+ `CPUIdleCount`        | 0xc0b  | R   | CPU idle-cycle count (lower 32 bits)
+ `CPUIdleCountU`       | 0xc0c  | R   | CPU idle-cycle count (upper 8 bits)
+ `CycleU`              | 0xc0d  | R   | Cycle counter (upper 8 bits)
+ `ProgRouterSent`      | 0xc0e  | R   | Total msgs sent by ProgRouter
+ `ProgRouterSentInter` | 0xc0f  | R   | Inter-board msgs sent by ProgRouter
+
+Note that `ProgRouterSent` and `ProgRouterSentInter` are only valid
+from thread zero on each board.
 
 Tinsel also supports the following custom instructions.
 
@@ -1349,6 +1539,9 @@ inline void tinselMulticast(
 // Send message at address to destination thread id
 // (Address must be aligned on message boundary)
 inline void tinselSend(uint32_t dest, volatile void* addr);
+
+// Send message at address using given routing key
+inline void tinselKeySend(uint32_t key, volatile void* addr);
 
 // Determine if calling thread can receive a message
 inline uint32_t tinselCanRecv();
@@ -1429,6 +1622,14 @@ inline uint32_t tinselCPUIdleCountU();
 // Read cycle counter (upper 8 bits)
 inline uint32_t tinselCycleCountU();
 
+// Performance counter: number of messages emitted by ProgRouter
+// (Only valid from thread zero on each board)
+inline uint32_t tinselProgRouterSent();
+
+// Performance counter: number of inter-board messages emitted by ProgRouter
+// (Only valid from thread zero on each board)
+inline uint32_t tinselProgRouterSentInterBoard();
+
 // Address construction
 inline uint32_t tinselToAddr(
          uint32_t boardX, uint32_t boardY,
@@ -1486,6 +1687,12 @@ class HostLink {
   // Receive a message (blocking), given size of message in bytes
   // Any bytes beyond numBytes up to the next message boundary will be ignored
   void recvMsg(void* msg, uint32_t numBytes);
+
+  // Send a message using routing key (blocking by default)
+  bool keySend(uint32_t key, uint32_t numFlits, void* msg, bool block = true);
+
+  // Try to send using routing key (non-blocking, returns true on success)
+  bool keyTrySend(uint32_t key, uint32_t numFlits, void* msg);
 
   // Bulk send and receive
   // ---------------------
