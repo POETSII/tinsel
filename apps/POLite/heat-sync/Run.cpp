@@ -25,7 +25,6 @@ int main(int argc, char **argv)
   // Print max fan-out
   printf("Min fan-out = %d\n", net.minFanOut());
   printf("Max fan-out = %d\n", net.maxFanOut());
-  assert(net.minFanOut() > 0);
 
   // Connection to tinsel machine
   HostLink hostLink;

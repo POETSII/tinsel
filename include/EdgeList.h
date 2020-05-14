@@ -19,7 +19,7 @@ struct EdgeList {
   uint32_t** neighbours;
 
   // Read network from file
-  void read(const char* filename, bool warn = true)
+  void read(const char* filename)
   {
     std::fstream file(filename, std::ios_base::in);
     std::vector<uint32_t> vec;
@@ -57,11 +57,6 @@ struct EdgeList {
     // Release
     free(count);
     file.close();
-
-    if (warn && minFanOut() == 0) {
-      printf("Warning: some vertices have no outgoing edges and\n");
-      printf("         some POLite apps do not handle this case.\n");
-    }
   }
 
   // Determine max fan-out
