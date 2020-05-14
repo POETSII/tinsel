@@ -27,9 +27,9 @@ int main(int argc, char **argv)
   EdgeList net;
   net.read(argv[1]);
   printf(" done\n");
-  assert(net.minFanOut() > 0);
 
-  // Print max fan-out
+  // Print fan-out
+  printf("Min fan-out = %d\n", net.minFanOut());
   printf("Max fan-out = %d\n", net.maxFanOut());
   
   // Create nodes in POETS graph

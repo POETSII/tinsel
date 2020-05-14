@@ -22,6 +22,7 @@ int main(int argc, char**argv)
   
   // Print max fan-out
   printf("Max fan-out = %d\n", net.maxFanOut());
+  printf("Min fan-out = %d\n", net.minFanOut());
   assert(net.minFanOut() > 0);
 
   // Check that parameters make sense

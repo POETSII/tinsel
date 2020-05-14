@@ -21,7 +21,8 @@ int main(int argc, char**argv)
   // Read network
   EdgeList net;
   net.read(argv[1]);
-  assert(net.minFanOut() > 0);
+  printf("Max fan-out = %d\n", net.maxFanOut());
+  printf("Min fan-out = %d\n", net.minFanOut());
 
   // Connection to tinsel machine
   HostLink hostLink;
