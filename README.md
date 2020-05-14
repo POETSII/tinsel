@@ -5,7 +5,7 @@ TODO, document the following:
 // ==========
 
 // Send message at addr using given routing key 
-inline void tinselKeySend(int key, volatile void* addr);
+inline void tinselKeySend(uint32_t key, volatile void* addr);
 
 // HostLink API
 // ============
@@ -36,12 +36,7 @@ INLINE uint32_t tinselProgRouterSent();
 INLINE uint32_t tinselProgRouterSentInterBoard();
 ```
 
-Document extra send slot option:
-
-  * `HostLinkParams`, `DebugLinkParams`
-  * `tinselSendSlotExtra()`
-
-# Tinsel 0.7.1
+# Tinsel 0.8
 
 Tinsel is a [RISC-V](https://riscv.org/)-based manythread
 message-passing architecture designed for FPGA clusters.  It is being
@@ -76,8 +71,12 @@ Released on 11 Apr 2019 and maintained in the
 (Multi-box cluster.)
 * [v0.7](https://github.com/POETSII/tinsel/releases/tag/v0.7):
 Released on 2 Dec 2019 and maintained in the
+[tinsel-0.7.1 branch](https://github.com/POETSII/tinsel/tree/tinsel-0.7.1).
+(Local hardware multicast.)
+* [v0.8](https://github.com/POETSII/tinsel/releases/tag/v0.8):
+Released on 18 May 2020 and maintained in the
 [master branch](https://github.com/POETSII/tinsel/).
-(Localised hardware multicast.)
+(Global hardware multicast.)
 
 ## Contents
 
@@ -87,8 +86,9 @@ Released on 2 Dec 2019 and maintained in the
 * [4. Tinsel Cache](#4-tinsel-cache)
 * [5. Tinsel Mailbox](#5-tinsel-mailbox)
 * [6. Tinsel Network](#6-tinsel-network)
-* [7. Tinsel HostLink](#7-tinsel-hostlink)
-* [8. POLite API](#8-polite-api)
+* [7. Tinsel Router](#7-tinsel-router)
+* [8. Tinsel HostLink](#8-tinsel-hostlink)
+* [9. POLite API](#9-polite-api)
 
 ## Appendices
 
@@ -135,10 +135,15 @@ demands, but fairly modest compute requrements.  The main features are:
     time step, or termination of the application, supporting
     both synchronous and asynchronous event-driven systems.
 
-  * **Localised hardware multicast**.  Threads can send a message to
-    multiple colocated destination threads simultaneously, greatly reducing
+  * **Local hardware multicast**.  Threads can send a message to
+    multiple collocated destination threads simultaneously, greatly reducing
     the number of inter-thread messages in applications exhibiting good
     locality of communication.
+
+  * **Global hardware multicast**.  Programmable routers
+    automatically propagate messages to any number of destination
+    threads distributed throughout the cluster, minimising inter-FPGA
+    bandwidth usage for distributed fanouts.
 
   * **Host communication**. Tinsel threads communicate with x86
     machines distributed throughout the FPGA cluster, for command and
@@ -148,7 +153,7 @@ demands, but fairly modest compute requrements.  The main features are:
     include custom accelerators written in SystemVerilog.
 
 This repository also includes a prototype high-level vertex-centric
-programming API for Tinsel, called [POLite](#8-polite-api).
+programming API for Tinsel, called [POLite](#9-polite-api).
 
 ## 2. High-Level Structure
 
@@ -175,11 +180,13 @@ accelerators](doc/custom) in tiles.
 
 #### Tinsel FPGA
 
-Each FPGA contains two *Tinsel Slices*, with each slice typically
+Each FPGA contains two *Tinsel Slices*, with each slice by default
 comprising eight tiles connected to one 4GB DDR3 DIMM and two 8MB
 QDRII+ SRAMs.  All tiles are connected together via a routers to form
 a 2D NoC.  The NoC is connected to the inter-FPGA links using a
-per-board router.
+*per-board programmable router*.  Note that the per-board router also
+has connections to off-chip memory: this is where the programmable
+routing tables are stored.
 
 <img align="center" src="doc/figures/fpga.png">
 
@@ -460,16 +467,22 @@ has reached the destination or none of it has.  As one would expect,
 shorter messages consume less bandwidth than longer ones.  The size of
 a flit is defined by `LogWordsPerFlit`.
 
-At the heart of a mailbox is a memory-mapped *scratchpad* that
-stores both incoming and outgoing messages.  The capacity of the
-scratchpad is defined by `LogMsgsPerMailbox`.  Each thread connected
-to the mailbox has one message slot reserved for sending messages.
-The address of this slot is obtained using the following Tinsel API
-call.
+At the heart of a mailbox is a memory-mapped *scratchpad* that stores
+both incoming and outgoing messages.  The capacity of the scratchpad
+is defined by `LogMsgsPerMailbox`.  Each thread connected to the
+mailbox has one or two message slots reserved for sending messages.
+(By default, only a single send slot is reserved; the extra send slot
+may be optionally reserved at power-up via a parameter to the
+[HostLink](#8-tinsel-hostlink) constructor.)  The addresses of these
+slots are obtained using the following Tinsel API calls.
 
 ```c
-// Get pointer to thread's message slot reserved for sending.
+// Get pointer to thread's message slot reserved for sending
 volatile void* tinselSendSlot();
+
+// Get pointer to thread's extra message slot reserved for sending
+// (Assumes that HostLink has requested the extra slot)
+volatile void* tinselSendSlotExtra();
 ```
 
 Once a thread has written a message to the scratchpad, it can trigger
@@ -681,7 +694,11 @@ communication.  And since we are using the links point-to-point,
 almost all of the ethernet header fields can be used for our own
 purposes, resulting in very little overhead on the wire.
 
-## 7. Tinsel HostLink
+## 7. Tinsel Router
+
+TODO
+
+## 8. Tinsel HostLink
 
 *HostLink* is the means by which Tinsel cores running on a mesh of
 FPGA boards communicate with a *host PC*.  It comprises three main
@@ -689,7 +706,7 @@ communication channels:
 
 * An FPGA *bridge board* that connects the host PC inside a POETS box
 (PCI Express) to the FPGA mesh (SFP+).  Using this high-bandwidth
-channel (10Gbps), the host PC can efficiently send messages to any
+channel (2 x 10Gbps), the host PC can efficiently send messages to any
 Tinsel thread and vice-versa.
 
 * A set of *debug links* connecting the host PC inside a POETS box to
@@ -704,34 +721,45 @@ each FPGA's *power management module* via separate USB UART cables.
 These connections can be used to power-on/power-off each FPGA and to
 monitor power consumption, temperature, and fan tachometer.
 
-HostLink supports multiple POETS boxes, but requires that one of these
-boxes is designated as the **master box**.  Currently, all messages
-are injected/extracted to/from the FPGA network via the master box's
-bridge board.
-
-A Tinsel application typically consists of two programs: one which
-runs on the RISC-V cores, linked against the [Tinsel
+HostLink allows multiple POETS boxes to be used to run an application,
+but requires that one of these boxes is designated as the **master
+box**.  A Tinsel application typically consists of two programs: one
+which runs on the RISC-V cores, linked against the [Tinsel
 API](#f-tinsel-api), and the other which runs on the host PC of the
 master box, linked against the [HostLink API](#g-hostlink-api).  The
 HostLink API is implemented as a C++ class called `HostLink`.  The
 constructor for this class first powers up all the worker FPGAs (which
-are by default powered down).  On power-up the FPGAs are automatically
-programmed using the Tinsel bit-file residing in flash memory, and are
-ready to be used within a few seconds, as soon as the `HostLink`
-constructor returns.
+are by default powered down).  On power-up, the FPGAs are
+automatically programmed using the Tinsel bit-file residing in flash
+memory, and are ready to be used within a few seconds, as soon as the
+`HostLink` constructor returns.
 
 The `HostLink` constructor is overloaded:
 
 ```cpp
 HostLink::HostLink();
 HostLink::HostLink(uint32_t numBoxesX, uint32_t numBoxesY);
+HostLink::HostLink(HostLinkParams params);
 ```
 
 If it is called without any arguments, then it assumes that a single
-box is to be used.  Alternatively, the user may request multiple
-boxes by specifying the width and height of the box sub-mesh they
-wish to use.  (The box from which the application is started is
-considered as the origin of this sub-mesh.)
+box is to be used.  Alternatively, the user may request multiple boxes
+by specifying the width and height of the box sub-mesh they wish to
+use.  (The box from which the application is started, i.e. the master
+box, is considered as the the origin of this sub-mesh.)  The most
+general constructor takes a `HostLinkParams` structure as an argument,
+which allows additional options to be specified.
+
+```cpp
+// HostLink parameters
+struct HostLinkParams {
+  // Number of boxes to use (default is 1x1)
+  uint32_t numBoxesX;
+  uint32_t numBoxesY;
+  // Enable use of tinselSendSlotExtra() on threads (default is false)
+  bool useExtraSendSlot;
+};
+```
 
 HostLink methods for sending and receiving messages on the host PC are
 as follows.
@@ -937,7 +965,7 @@ not be called.  When the application returns from `main()`, all but
 one thread on each core are killed and the remaining threads reenter
 the boot loader.
 
-## 8. POLite API
+## 9. POLite API
 
 POLite is a layer of abstraction that takes care of mapping arbitrary
 task graphs onto the Tinsel overlay, completely hiding architectural
@@ -1300,6 +1328,13 @@ inline void tinselFlushLine(uint32_t lineNum, uint32_t way);
 // (A message of length n is comprised of n+1 flits)
 inline void tinselSetLen(uint32_t n);
 
+// Get pointer to thread's message slot reserved for sending
+volatile void* tinselSendSlot();
+
+// Get pointer to thread's extra message slot reserved for sending
+// (Assumes that HostLink has requested the extra slot)
+volatile void* tinselSendSlotExtra();
+
 // Determine if calling thread can send a message
 inline uint32_t tinselCanSend();
 
@@ -1518,14 +1553,24 @@ class HostLink {
   // Trigger application execution on all started threads on given core
   void goOne(uint32_t meshX, uint32_t meshY, uint32_t coreId);
 };
+
+// HostLink parameters (used by the most general HostLink constructor)
+struct HostLinkParams {
+  // Number of boxes to use (default is 1x1)
+  uint32_t numBoxesX;
+  uint32_t numBoxesY;
+  // Enable use of tinselSendSlotExtra() on threads (default is false)
+  bool useExtraSendSlot;
+};
 ```
 
 ```cpp
 class DebugLink {
  public:
 
-  // Constructor
+  // Constructors
   DebugLink(uint32_t numBoxesX, uint32_t numBoxesY);
+  DebugLink(DebugLinkParams params);
 
   // On given board, set destination core and thread
   void setDest(uint32_t boardX, uint32_t boardY,
