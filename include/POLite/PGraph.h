@@ -178,6 +178,10 @@ template <typename DeviceType,
 
   // Add labelled edge using given output pin
   void addLabelledEdge(E edge, PDeviceId x, PinId pin, PDeviceId y) {
+    if (pin >= POLITE_NUM_PINS) {
+      printf("addEdge: pin exceeds POLITE_NUM_PINS\n");
+      exit(EXIT_FAILURE);
+    }
     graph.addEdge(x, pin, y);
     edgeLabels.elems[x]->append(edge);
   }
