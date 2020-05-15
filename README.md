@@ -66,12 +66,11 @@ Released on 18 May 2020 and maintained in the
 ## 1. Overview
 
 On the [POETS Project](https://poets-project.org/about), we are
-looking at ways to accelerate applications that can be expressed as
-large numbers of small processes communicating by message-passing.
-Our first attempt is based around a manythread RISC-V architecture
-called Tinsel running on an FPGA cluster.  Tinsel aims to support
-irregular applications that have heavy memory and communication
-demands, but fairly modest compute requrements.  The main features are:
+looking at ways to accelerate applications that are naturally
+expressed as a large number of small processes communicating by
+message-passing.  Our first attempt is based around a manythread
+RISC-V architecture called Tinsel, running on an FPGA cluster.  The
+main features are:
 
   * **Multithreading**.  A critical aspect of the design
     is to tolerate latency as cleanly as possible.  This includes the
@@ -79,10 +78,6 @@ demands, but fairly modest compute requrements.  The main features are:
     (tens of cycles); off-chip memories; deep pipelines
     (keeping Fmax high); and sharing of resources between cores
     (such as caches, mailboxes, and FPUs).
-
-  * **Caches**.  To keep the programming model simple, we have opted
-    to use thread-partitioned data caches to optimise access to
-    off-chip memory rather than DMA. 
 
   * **Message-passing**. Although there is a requirement to support a
     large amount of memory, it is not necessary to provide the
@@ -658,12 +653,12 @@ purposes, resulting in very little overhead on the wire.
 
 ## 7. Tinsel Router
 
-The Tinsel overlay provides a programmable router on each FPGA board
-to support *global* multicasting.  Programmable routers automatically
-propagate messages to any number of destination threads distributed
-throughout the cluster, minimising inter-FPGA bandwidth usage for
-distributed fanouts, and offloading the work from the cores.  Further
-background can be found in [PIP 24](doc/PIP-0024-global-multicast.md).
+Tinsel provides a programmable router on each FPGA board to support
+*global* multicasting.  Programmable routers automatically propagate
+messages to any number of destination threads distributed throughout
+the cluster, minimising inter-FPGA bandwidth usage for distributed
+fanouts, and offloading work from the cores.  Further background can
+be found in [PIP 24](doc/PIP-0024-global-multicast.md).
 
 To support programmable routers, the destination component of a
 message is generalised so that it can be (1) a thread id; or (2) a
@@ -688,7 +683,8 @@ typedef struct {
 } RoutingKey;
 ```
 
-To send a message to a routing key, a new Tinsel API call is provided:
+To send a message using a routing key as the destination, a new Tinsel
+API call is provided:
 
 ```c
 // Send message at addr using given routing key 
