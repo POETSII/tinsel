@@ -249,9 +249,8 @@ module mkReliableLinkCore#(Mac mac) (ReliableLink);
 
   // 3-state machine
   // State 0: send header
-  // State 1: send header
-  // State 2: send body
-  Reg#(Bit#(2)) txState <- mkConfigReg(0);
+  // State 1: send body
+  Reg#(Bit#(1)) txState <- mkConfigReg(0);
 
   // Number of items to send
   Reg#(Bit#(7)) numItemsToSend <- mkConfigReg(0);
@@ -292,29 +291,19 @@ module mkReliableLinkCore#(Mac mac) (ReliableLink);
   endrule
 
   rule transmit1 (txState == 1 && toMACPort.canPut);
-    // Send the 2nd beat of the header.  This beat contains the
-    // ethernet type/length field, which we set to 0x600.
-    Bit#(64) data = 64'h0600_0600_0600_0600;
-    // End of packet?
-    Bool eop = numItemsToSend == 0;
-    // Send beat
-    toMACPort.put(macBeat(False, eop, data));
-    txState <= eop ? 0 : 2;
-    if (eop) transmitBuffer.enableTimeout;
-  endrule
-
-  rule transmit2 (txState == 2 && toMACPort.canPut);
     // Construct beat
     MacBeat beat;
     beat.start = False;
-    beat.stop  = numItemsToSend == 1;
+    beat.stop  = numItemsToSend <= 1;
     beat.data  = transmitBuffer.dataOut;
     // Send beat
     toMACPort.put(beat);
     // Update state
-    txState <= beat.stop ? 0 : 2;
-    numItemsToSend <= numItemsToSend-1;
-    transmitBuffer.take;
+    txState <= beat.stop ? 0 : 1;
+    if (numItemsToSend != 0) begin
+      numItemsToSend <= numItemsToSend-1;
+      transmitBuffer.take;
+    end
     if (beat.stop) transmitBuffer.enableTimeout;
   endrule
 
@@ -327,9 +316,8 @@ module mkReliableLinkCore#(Mac mac) (ReliableLink);
 
   // 2-state machine
   // State 0: receive header
-  // State 1: receive header
-  // State 2: receive body
-  Reg#(Bit#(2)) rxState <- mkConfigReg(0);
+  // State 1: receive body
+  Reg#(Bit#(1)) rxState <- mkConfigReg(0);
 
   // Number of items to receive
   Reg#(Bit#(7)) numItemsToRecv <- mkConfigReg(0);
@@ -358,13 +346,6 @@ module mkReliableLinkCore#(Mac mac) (ReliableLink);
   endrule
 
   rule receive1 (rxState == 1 && fromMACPort.canGet);
-    // Ignore second beat of header.
-    fromMACPort.get;
-    MacBeat beat = fromMACPort.value;
-    rxState <= beat.stop ? 0 : 2;
-  endrule
-
-  rule receive2 (rxState == 2 && fromMACPort.canGet);
     // Receive beat
     MacBeat beat = fromMACPort.value;
     // Are there any items to receive?
@@ -374,11 +355,11 @@ module mkReliableLinkCore#(Mac mac) (ReliableLink);
       fromMACPort.get;
       receiveBuffer.enq(beat.data);
       numItemsToRecv <= numItemsToRecv - 1;
-      rxState <= beat.stop ? 0 : 2;
+      rxState <= beat.stop ? 0 : 1;
     end else begin
       // Ignore data
       fromMACPort.get;
-      rxState <= beat.stop ? 0 : 2;
+      rxState <= beat.stop ? 0 : 1;
     end
   endrule
 
