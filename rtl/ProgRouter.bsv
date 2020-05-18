@@ -404,12 +404,12 @@ module mkFetcher#(BoardId boardId, Integer fetcherId) (Fetcher);
           // Make routing decision
           RoutingDecision decision = RouteNoC;
           MailboxNetAddr addr = flit.dest.addr;
-          if (addr.host.valid)
+          if (addr.board.y < boardId.y) decision = RouteSouth;
+          else if (addr.board.y > boardId.y) decision = RouteNorth;
+          else if (addr.host.valid)
             decision = addr.host.value == 0 ? RouteWest : RouteEast;
           else if (addr.board.x < boardId.x) decision = RouteWest;
           else if (addr.board.x > boardId.x) decision = RouteEast;
-          else if (addr.board.y < boardId.y) decision = RouteSouth;
-          else if (addr.board.y > boardId.y) decision = RouteNorth;
           // Insert into bypass queue
           flitBypassQueue.enq(RoutedFlit { decision: decision, flit: flit});
         end
