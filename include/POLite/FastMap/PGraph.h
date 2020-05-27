@@ -371,11 +371,9 @@ template <typename DeviceType,
           uint32_t devId = getLocalDeviceId(toDeviceAddr[destId]);
           // Add edge to thread's input table
           uint32_t edgeId = inTable[threadId]->numElems;
-          if (i < inTable[threadId]->numElems) {
-            PInEdge<E> edge;
-            edge.edge = edges->elems[i];
-            inTable[threadId]->append(edge);
-          }
+          PInEdge<E> edge;
+          edge.edge = edges->elems[i];
+          inTable[threadId]->append(edge);
           // Add output table entry
           PRoutingDest rdest;
           rdest.kind = PRDestKindURM1;
