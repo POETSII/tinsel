@@ -10,16 +10,24 @@
  * Edit values between here ->
  * ************************************************/
 
-#define SUBLENGTH (9027)
-#define QUERYLENGTH (8944)
+#define MATALEN (10)
+#define MATAWID (10)
+#define MATBLEN (10)
+#define MATBWID (10)
 
 /***************************************************
  * <- And here
  * ************************************************/
 
-extern char seqSub[SUBLENGTH];
-extern char seqQuery[QUERYLENGTH];
+#define MESHLEN (MATBLEN)
+#define MESHWID (MATAWID)
+#define MESHHEI (MATALEN)
 
-const uint32_t RESLEN = (SUBLENGTH > QUERYLENGTH) ? SUBLENGTH : QUERYLENGTH;
+#define RETMATSIZE (MATAWID * MATBLEN)
+
+extern int32_t matrixA[MATAWID][MATALEN];
+extern int32_t matrixB[MATBWID][MATBLEN];
+
+extern uint32_t mult_possible;
 
 #endif

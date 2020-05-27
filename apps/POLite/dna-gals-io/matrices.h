@@ -10,16 +10,17 @@
  * Edit values between here ->
  * ************************************************/
 
-#define SUBLENGTH (9027)
-#define QUERYLENGTH (8944)
+#define NOOFSTATES (10)
+#define NOOFSYM (4)
+#define NOOFOBS (10)
 
 /***************************************************
  * <- And here
  * ************************************************/
 
-extern char seqSub[SUBLENGTH];
-extern char seqQuery[QUERYLENGTH];
-
-const uint32_t RESLEN = (SUBLENGTH > QUERYLENGTH) ? SUBLENGTH : QUERYLENGTH;
+extern const uint32_t observation[NOOFOBS];
+extern const float init_prob[NOOFSTATES];
+extern const float trans_prob[NOOFSTATES][NOOFSTATES];
+extern const float emis_prob[NOOFSTATES][NOOFSYM];
 
 #endif

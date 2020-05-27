@@ -1,25 +1,25 @@
 // SPDX-License-Identifier: BSD-2-Clause
-#ifndef _MATRICES_H_
-#define _MATRICES_H_
-
 #include <stdint.h>
-
-// Parameters
-
+#include "matrices.h"
 /***************************************************
  * Edit values between here ->
  * ************************************************/
 
-#define SUBLENGTH (9027)
-#define QUERYLENGTH (8944)
+// Matrix A as 2D array
+const int32_t matrixA[MATAWID][MATALEN] = {
+    { 0, 1 },
+    { 1, 0 }
+};
+
+// Matrix B as 2D array
+const int32_t matrixB[MATAWID][MATALEN] = {
+    { 1, 0 },
+    { 0, 1 }
+};
 
 /***************************************************
  * <- And here
  * ************************************************/
 
-extern char seqSub[SUBLENGTH];
-extern char seqQuery[QUERYLENGTH];
+uint32_t mult_possible = (MATALEN == MATBWID) ? 1 : 0;
 
-const uint32_t RESLEN = (SUBLENGTH > QUERYLENGTH) ? SUBLENGTH : QUERYLENGTH;
-
-#endif
