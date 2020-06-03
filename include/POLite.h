@@ -4,20 +4,33 @@
 
 #include <stdint.h>
 
+// Select default mapper
+#if !defined(POLITE_MAP_LOCAL) || \
+    !defined(POLITE_MAP_DIST)  || \
+    !defined(POLITE_MAP_HYBRID)
+  // Default mapper
+  #define POLITE_MAP_HYBRID
+#endif
+
 #ifdef TINSEL
   #include <tinsel.h>
-  #ifdef POLITE_FAST_MAP
-    #include <POLite/FastMap/PDevice.h>
-  #else
-    #include <POLite/PDevice.h>
+  #if defined(POLITE_MAP_LOCAL)
+    #include <POLite/Local/PDevice.h>
+  #elif defined(POLITE_MAP_DIST)
+    #include <POLite/Dist/PDevice.h>
+  #elif defined(POLITE_MAP_HYBRID)
+    #include <POLite/Hybrid/PDevice.h>
   #endif
 #else
-  #ifdef POLITE_FAST_MAP
-    #include <POLite/FastMap/PDevice.h>
-    #include <POLite/FastMap/PGraph.h>
-  #else
-    #include <POLite/PDevice.h>
-    #include <POLite/PGraph.h>
+  #if defined(POLITE_FAST_LOCAL)
+    #include <POLite/Local/PDevice.h>
+    #include <POLite/Local/PGraph.h>
+  #elif defined(POLITE_MAP_DIST)
+    #include <POLite/Dist/PDevice.h>
+    #include <POLite/Dist/PGraph.h>
+  #elif defined (POLITE_MAP_HYBRID)
+    #include <POLite/Hybrid/PDevice.h>
+    #include <POLite/Hybrid/PGraph.h>
   #endif
   #include <POLite/Seq.h>
   #include <POLite/Graph.h>

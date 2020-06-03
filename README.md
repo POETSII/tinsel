@@ -1326,7 +1326,15 @@ aspects of POLite behaviour.
   `POLITE_NUM_PINS`   | Max number of pins per vertex (default 1)
   `POLITE_DUMP_STATS` | Dump stats upon completion
   `POLITE_COUNT_MSGS` | Include message counts in stats dump
-  `POLITE_FAST_MAP`   | Use fast mapper (at the expense of application performance)
+
+POLite supports three mapping modes, also controlled via macros:
+
+ 
+  Macro               | Use when graphs have...
+  ---------           | -----------------------
+  `POLITE_MAP_LOCAL`  | ...lots of local connections and few distributed connections
+  `POLITE_MAP_DIST`   | ...lots of distributed connections and few local connections (this mapper is fast)
+  `POLITE_MAP_HYBRID` | ...a mix of local and distributed connections (default)
 
 **POLite dynamic parameters**.  The following environment variables can
 be set, to control some aspects of POLite behaviour.
@@ -1341,10 +1349,11 @@ be set, to control some aspects of POLite behaviour.
   `POLITE_PLACER`      | Use `metis`, `random`, or `direct` placement
 
 **Limitations**. POLite provides several important features of the
-vertex-centric paradigm, but there are some limitations. One of the
-features of the Pregel framework is the ability for vertices to add
-and remove vertices and edges at runtime -- but currently, POLite only
-supports static graphs. 
+vertex-centric paradigm, but there are lots of limitations and quirks;
+it is only intended as a prototype library for hardware evaluation
+purposes. One of the features of the Pregel framework is the ability
+for vertices to add and remove vertices and edges at runtime -- but
+currently, POLite only supports static graphs. 
 
 ## A. DE5-Net Synthesis Report
 
