@@ -76,7 +76,9 @@ int main()
   // Display time
   timersub(&finish, &start, &diff);
   double duration = (double) diff.tv_sec + (double) diff.tv_usec / 1000000.0;
+  #ifndef POLITE_DUMP_STATS
   printf("Time = %lf\n", duration);
+  #endif
 
   return 0;
 }
