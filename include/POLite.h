@@ -5,8 +5,8 @@
 #include <stdint.h>
 
 // Select default mapper
-#if !defined(POLITE_MAP_LOCAL) || \
-    !defined(POLITE_MAP_DIST)  || \
+#if !defined(POLITE_MAP_LOCAL) && \
+    !defined(POLITE_MAP_DIST)  && \
     !defined(POLITE_MAP_HYBRID)
   // Default mapper
   #define POLITE_MAP_HYBRID
@@ -22,13 +22,13 @@
     #include <POLite/Hybrid/PDevice.h>
   #endif
 #else
-  #if defined(POLITE_FAST_LOCAL)
+  #if defined(POLITE_MAP_LOCAL)
     #include <POLite/Local/PDevice.h>
     #include <POLite/Local/PGraph.h>
   #elif defined(POLITE_MAP_DIST)
     #include <POLite/Dist/PDevice.h>
     #include <POLite/Dist/PGraph.h>
-  #elif defined (POLITE_MAP_HYBRID)
+  #elif defined(POLITE_MAP_HYBRID)
     #include <POLite/Hybrid/PDevice.h>
     #include <POLite/Hybrid/PGraph.h>
   #endif
