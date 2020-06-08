@@ -13,7 +13,6 @@
 #include <POLite/Graph.h>
 #include <POLite/Placer.h>
 #include <type_traits>
-#include "Seq.h"
 
 // Nodes of a POETS graph are devices
 typedef NodeId PDeviceId;
@@ -91,6 +90,10 @@ template <typename DeviceType,
     outTable = NULL;
     inTable = NULL;
     chatty = 0;
+    str = getenv("POLITE_CHATTY");
+    if (str != NULL) {
+      chatty = !strcmp(str, "0") ? 0 : 1;
+    }
   }
 
  public:

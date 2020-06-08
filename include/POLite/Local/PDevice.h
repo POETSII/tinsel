@@ -273,7 +273,9 @@ template <typename DeviceType,
           outEdge++;
         }
         else {
+          #ifdef POLITE_COUNT_MSGS
           blockedSends++;
+          #endif
           tinselWaitUntil(TINSEL_CAN_SEND|TINSEL_CAN_RECV);
         }
       }
@@ -298,7 +300,9 @@ template <typename DeviceType,
             ];
         }
         else {
+          #ifdef POLITE_COUNT_MSGS
           blockedSends++;
+          #endif
           tinselWaitUntil(TINSEL_CAN_SEND|TINSEL_CAN_RECV);
         }
       }
