@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: BSD-2-Clause
-APP_CPP = matrixmult.cpp
-APP_HDR = matrixmult.h
-RUN_CPP = Run.cpp matrices.cpp
-RUN_H = matrices.h
+APP_CPP = impute.cpp
+APP_HDR = impute.h
+RUN_CPP = Run.cpp model.cpp
+RUN_H = model.h
 
 include ../util/polite.mk
