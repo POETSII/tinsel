@@ -7,10 +7,10 @@ from random import randint
 
 # global vars
 seed(1)
-run_max = 11
-run_step = 10
+run_max = 10001
+run_step = 20
 no_sym = 4
-obs_ratio = 1
+obs_ratio = 0.1
 true_fbalgo = 0
 
 '''
@@ -41,12 +41,12 @@ if os.path.exists('results.csv'):
 with open('results.csv', "a") as f:
     f.write("States,Observations,Panel_Size,Proc_Time\n")
 
-for no_states in range(10, run_max, run_step):
+for no_states in range(20, run_max, run_step):
 
     trans_prob = []
     emis_prob = []
 
-    no_obs = no_states * obs_ratio
+    no_obs = int(no_states * obs_ratio)
 
     init_prob = np.random.random(no_states)
     init_prob /= init_prob.sum()
