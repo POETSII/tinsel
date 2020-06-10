@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <metis.h>
 #include <POLite/Graph.h>
+#include <queue>
 
 typedef uint32_t PartitionId;
 
@@ -15,7 +16,8 @@ struct Placer {
     Default,
     Metis,
     Random,
-    Direct
+    Direct,
+    BFS
   };
   const Method defaultMethod=Metis;
 
@@ -64,6 +66,8 @@ struct Placer {
         method=Random;
       else if (!strcmp(e, "direct"))
         method=Direct;
+      else if (!strcmp(e, "bfs"))
+        method=BFS;
       else if (!strcmp(e, "default") || *e == '\0')
         method=Default;
       else {
@@ -174,6 +178,54 @@ struct Placer {
     }
   }
 
+  // Partition the graph using repeated BFS
+  void partitionBFS() {
+    uint32_t numVertices = graph->incoming->numElems;
+    uint32_t numParts = width * height;
+    uint32_t partSize = (numVertices + numParts) / numParts;
+
+    // Visited bit for each vertex
+    bool* seen = new bool [numVertices];
+    memset(seen, 0, numVertices);
+
+    // Next vertex to visit
+    uint32_t nextUnseen = 0;
+
+    // Next partition id
+    uint32_t nextPart = 0;
+
+    while (nextUnseen < numVertices) {
+      // Frontier
+      std::queue<uint32_t> frontier;
+      uint32_t count = 0;
+
+      while (nextUnseen < numVertices && count < partSize) {
+        // Sized-bounded BFS from nextUnseen
+        frontier.push(nextUnseen);
+        while (count < partSize && !frontier.empty()) {
+          uint32_t v = frontier.front();
+          frontier.pop();
+          if (!seen[v]) {
+            seen[v] = true;
+            partitions[v] = nextPart;
+            count++;
+            // Add unvisited neighbours of v to the frontier
+            Seq<uint32_t>* dests = graph->outgoing->elems[v];
+            for (uint32_t i = 0; i < dests->numElems; i++) {
+              uint32_t w = dests->elems[i];
+              if (!seen[w]) frontier.push(w);
+            }
+          }
+        }
+        while (nextUnseen < numVertices && seen[nextUnseen]) nextUnseen++;
+      }
+
+      nextPart++;
+    }
+
+    delete [] seen;
+  }
+
   void partition()
   {
     switch(method){
@@ -186,6 +238,9 @@ struct Placer {
       break;
     case Direct:
       partitionDirect();
+      break;
+    case BFS:
+      partitionBFS();
       break;
     }
   }
