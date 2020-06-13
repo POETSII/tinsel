@@ -9,9 +9,9 @@ import threading
 # global vars
 seed(1)
 run_max = 4001
-run_step = 20
+run_step = 1
 no_sym = 4
-obs_ratio = 0.5
+obs_ratio = 10
 true_fbalgo = 0
 
 '''

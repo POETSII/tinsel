@@ -8,9 +8,9 @@ from random import randint
 # global vars
 seed(1)
 run_max = 10001
-run_step = 20
+run_step = 1
 no_sym = 4
-obs_ratio = 0.1
+obs_ratio = 10
 true_fbalgo = 0
 
 '''
@@ -41,7 +41,7 @@ if os.path.exists('results.csv'):
 with open('results.csv', "a") as f:
     f.write("States,Observations,Panel_Size,Proc_Time\n")
 
-for no_states in range(20, run_max, run_step):
+for no_states in range(2, run_max, run_step):
 
     trans_prob = []
     emis_prob = []
@@ -168,7 +168,8 @@ for no_states in range(20, run_max, run_step):
     with open('results.csv', "a") as f:
         f.write(str(no_states) + ',' + str(no_obs) + ',' + str(no_states * no_obs) + ',' + str(result) + '\n')
         print('States = ' + str(no_states) + ' completed' + '\n')
-        print('Observations = ' + str(no_obs) + '\n\n')
+        print('Observations = ' + str(no_obs) + '\n')
+        print('Reference Panel = ' + str(no_states * no_obs) + '\n\n')
 
 
     time.sleep(10)

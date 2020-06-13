@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <chrono>
+#include <math.h>
 
 int main()
 {
@@ -26,6 +27,8 @@ int main()
                 
                 prev_a_sum = 0.0f;
                 for (k = 0; k < NOOFSTATES; ++k) {
+                    volatile float tm = 1 - exp ((-4 * 1000000 * 0.0001) / NOOFSTATES);
+                    volatile float not_tm = 1 - tm;
                     prev_a_sum += hmm[k][i-1] * trans_prob[k][j];
                 }
             }

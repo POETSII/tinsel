@@ -5,6 +5,7 @@
 #define POLITE_MAX_FANOUT 4000
 #include <POLite.h>
 #include "model.h"
+#include <math.h>
 
 // ImpMessage types
 const uint32_t INDUCTION = 0;
@@ -104,6 +105,9 @@ struct ImpDevice : PDevice<ImpState, None, ImpMessage> {
     inline void recv(ImpMessage* msg, None* edge) {
         
         if (msg->msgtype == INDUCTION) {
+            
+            s->ccountl = 1 - exp ((-4 * 1000000 * 0.0001) / NOOFSTATES);
+            s->ccountu = 1 - s->ccountl;
 
             s->alpha += msg->val * s->transprob;
             s->indreccount++;
