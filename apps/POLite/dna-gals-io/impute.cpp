@@ -1,20 +1,20 @@
 // SPDX-License-Identifier: BSD-2-Clause
-#include "matrixmult.h"
+#include "impute.h"
 
 #include <tinsel.h>
 #include <POLite.h>
 
 typedef PThread<
-          MatDevice,
-          MatState,    // State
+          ImpDevice,
+          ImpState,    // State
           None,         // Edge label
-          MatMessage   // Message
-        > MatThread;
+          ImpMessage   // Message
+        > ImpThread;
 
 int main()
 {
   // Point thread structure at base of thread's heap
-  MatThread* thread = (MatThread*) tinselHeapBaseSRAM();
+  ImpThread* thread = (ImpThread*) tinselHeapBaseSRAM();
 
   // Invoke interpreter
   thread->run();

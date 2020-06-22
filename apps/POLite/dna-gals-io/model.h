@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BSD-2-Clause
-#ifndef _MATRICES_H_
-#define _MATRICES_H_
+#ifndef _MODEL_H_
+#define _MODEL_H_
 
 #include <stdint.h>
 

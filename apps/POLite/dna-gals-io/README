@@ -1,6 +1,6 @@
 ###########################################
 Rough copy of X1 (One multi-accumulate instruction per node)
-Implementation functions asynchronously, with the matrix elements transmitted from the hostlink and direction edge messaging.
+Implementation functions asynchronously, with the matrix elements pre-loaded into each node and directional edge messaging.
 ###########################################
 
 Usage:

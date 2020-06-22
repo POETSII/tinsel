@@ -1,25 +1,30 @@
 // SPDX-License-Identifier: BSD-2-Clause
-#include "matrixmult.h"
-#include "matrices.h"
+#include "impute.h"
+#include "model.h"
 
 #include <HostLink.h>
 #include <POLite.h>
 #include <sys/time.h>
 
 /*****************************************************
- * Matrix Multiplier - Synchronous - IO Stream
+ * Genomic Imputation - X86 IO Streaming Version
  * ***************************************************
- * This code multiplies the matrices specificfied in matrices.cpp.
+ * This code streams target ahplotypes from the X86 side
  * USAGE:
- * 1. Matrix A and Matrix B to be defined in matrices.cpp
- * 2. Matrix A and Matrix B dimensions to be defined in matrices.h.
+ * To Be Completed ...
  * 
  * PLEASE NOTE:
- * Implementation checks whether mulitplication is possible.
- * (Matrix A Cols == Matrix B Rows)
+ * To Be Completed ...
+ * 
+ * ssh jordmorr@ayres.cl.cam.ac.uk
+ * scp -r C:\Users\drjor\Documents\tinsel\apps\POLite\dna-gals-io jordmorr@ayres.cl.cam.ac.uk:~/tinsel/apps/POLite
+ * scp jordmorr@ayres.cl.cam.ac.uk:~/tinsel/apps/POLite/dna-gals-io/results.csv C:\Users\drjor\Documents\tinsel\apps\POLite\dna-gals-io
  * ****************************************************/
 
 int main() {
+    uint32_t lower_count = 1u;
+    uint64_t upper_count = 1u;
+    double total_time = 0.0f;
         
     // Start timer for mesh creation and mapping
     struct timeval start_map, finish_map, diff_map;
@@ -31,7 +36,7 @@ int main() {
 
 
     // Create POETS graph
-    PGraph <MatDevice, MatState, None, MatMessage>*graph = new PGraph<MatDevice, MatState, None, MatMessage>(1, 1);
+    PGraph <ImpDevice, ImpState, None, ImpMessage>*graph = new PGraph<ImpDevice, ImpState, None, ImpMessage>(1, 1);
 
 
     // Create 2D mesh of devices
@@ -44,17 +49,22 @@ int main() {
         }
     }
     
-    // Add edges
+    // Add induction edges
     for (uint32_t x = 0; x < NOOFOBS-1; x++) {
         for (uint32_t y = 0; y < NOOFSTATES; y++) {
             
             for (uint32_t z = 0; z < NOOFSTATES; z++) {
-                graph->addEdge(mesh[y][x], z, mesh[z][x+1]);
+                graph->addEdge(mesh[y][x], 0, mesh[z][x+1]);
             }
 
         }
     } 
 
+    // Add termination edges
+    for (uint32_t y = 0; y < NOOFSTATES-1; y++) {
+        graph->addEdge(mesh[y][NOOFOBS-1], 0, mesh[NOOFSTATES-1][NOOFOBS-1]);
+    }
+    
     // Prepare mapping from graph to hardware
     graph->mapVerticesToDRAM = true;
     graph->map();
@@ -83,10 +93,26 @@ int main() {
             graph->devices[mesh[y][x]]->state.xmax = NOOFOBS;
             graph->devices[mesh[y][x]]->state.ymax = NOOFSTATES;
             
-            //Initialise Message Pointer and Matrix Elements
-            //graph->devices[mesh[y][x]]->state.inflags = 0;
-            //graph->devices[mesh[y][x]]->state.sentflags = 0;
+            // Initialise Sentflags
+            graph->devices[mesh[y][x]]->state.sentflags = 0;
             
+            // Initialise Counters
+            graph->devices[mesh[y][x]]->state.indreccount = 0;
+            graph->devices[mesh[y][x]]->state.finreccount = 0;
+            
+            //Initialise Message Pointer and Matrix Elements
+            if (x == 0) {
+                graph->devices[mesh[y][x]]->state.initprob = init_prob[y];
+            }
+            
+            graph->devices[mesh[y][x]]->state.transprob = (1.0 / NOOFSTATES);
+            graph->devices[mesh[y][x]]->state.emisprob = 0.9999;
+
+            // Initialise Values
+            graph->devices[mesh[y][x]]->state.alpha = 0;
+            graph->devices[mesh[y][x]]->state.answer = 0;
+          
+
         }
     }
 
@@ -103,68 +129,76 @@ int main() {
     timersub(&finish_init, &start_init, &diff_init);
     double init_duration = (double) diff_init.tv_sec + (double) diff_init.tv_usec / 1000000.0;
 
-    // Start timer for sending
-    struct timeval start_send, finish_send, diff_send;
-    gettimeofday(&start_send, NULL);
-
     // Start timer for overall processing
     struct timeval start_proc, finish_proc, diff_proc;
-    gettimeofday(&start_proc, NULL);
+    gettimeofday(&start_proc, NULL);  
 
-    int deviceAddr = 0;
-    
-    for (uint32_t y = 0; y < NOOFSTATES; y++) {
+    #ifndef IMPDEBUG
+        //JPMREAL
+        // Allocate array to contain final value of each device
+        //float result = 0.0f;
 
-        // Construct messages -> One same element from each matrix
-        PMessage<None, MatMessage> sendMsg;
-
-        // From maxtrix A
-        deviceAddr = graph->toDeviceAddr[mesh[y][0]];
-        sendMsg.devId = getLocalDeviceId(deviceAddr);
-        sendMsg.payload.dir = EXTERNALX;
-        sendMsg.payload.val = matrixA[w][h];
-        host_link->send(getThreadId(deviceAddr), 2, &sendMsg);
-        //printf("Sent %d to node [0][%d][%d]\n", sendMsg.payload.element1, w, h);
-
-    }
-    
-    // Record send time
-    gettimeofday(&finish_send, NULL);
-    timersub(&finish_send, &start_send, &diff_send);
-    double send_duration = (double) diff_send.tv_sec + (double) diff_send.tv_usec / 1000000.0;
-
-    // Allocate array to contain final value of each device
-    uint32_t result[MESHLEN][MESHWID] {};
-
-    // Receive final value of each device
-    for (uint32_t i = 0; i < RETMATSIZE; i++) {
-        
         // Receive message
-        PMessage<None, MatMessage> msg;
+        PMessage<None, ImpMessage> msg;
         host_link->recvMsg(&msg, sizeof(msg));
-        if (i == 0) gettimeofday(&finish_proc, NULL);
-
-        // Save final value
-        result[graph->devices[msg.payload.dir]->state.x][graph->devices[msg.payload.dir]->state.y] = msg.payload.val;
+        gettimeofday(&finish_proc, NULL);
         
-    }
+        // Save final value
+        //result = msg.payload.val;
+        
+        lower_count = msg.payload.val;
+        upper_count = msg.payload.msgtype;
 
-    // Display time
-    timersub(&finish_proc, &start_proc, &diff_proc);
-    double proc_duration = (double) diff_proc.tv_sec + (double) diff_proc.tv_usec / 1000000.0;
+        timersub(&finish_proc, &start_proc, &diff_proc);
+        double proc_duration = (double) diff_proc.tv_sec + (double) diff_proc.tv_usec / 1000000.0;
+        
+        total_time = ((upper_count << 32) + lower_count) / 240000000.0;
+           
+        //printf("%f\n", result);
+        #ifdef CYCDEBUG
+        //JPM CYCLE DEBUG
+        printf("%ld,%d,%lf", upper_count, lower_count, total_time);
+        #else
+        //JPM STANDARD DEBUG
+        printf("%lf,%lf,%lf", map_duration, init_duration, total_time);
+        #endif
 
-    for (uint32_t y = 0; y < MESHWID; y++) {
-        for (uint32_t x = 0; x < MESHLEN; x++) {
+    #endif
+    
+    #ifdef IMPDEBUG
+        //JPMDEBUG
+        // Allocate array to contain final value of each device
+        float result[NOOFSTATES][NOOFOBS] {};
+
+        // Receive final value of each device
+        for (uint32_t i = 0; i < (NOOFSTATES*NOOFOBS); i++) {
             
-            printf("%d ", result[x][y]);
+            // Receive message
+            PMessage<None, ImpMessage> msg;
+            host_link->recvMsg(&msg, sizeof(msg));
+            if (i == 0) gettimeofday(&finish_proc, NULL);
+
+            // Save final value
+            result[graph->devices[msg.payload.msgtype]->state.y][graph->devices[msg.payload.msgtype]->state.x] = msg.payload.val;
             
         }
-        
-        printf("\n");
-        
-    }
+
+        // Display time
+        timersub(&finish_proc, &start_proc, &diff_proc);
+        double proc_duration = (double) diff_proc.tv_sec + (double) diff_proc.tv_usec / 1000000.0;
+
+        for (uint32_t y = 0; y < NOOFSTATES; y++) {
+            for (uint32_t x = 0; x < NOOFOBS; x++) {
+                
+                printf("%f ", result[y][x]);
+                
+            }
+            
+            printf("\n");
+            
+        }
+    #endif
     
-    printf("%lf,%lf,%lf,%lf", map_duration, init_duration, send_duration, proc_duration);
     
     return 0;
 

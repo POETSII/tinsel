@@ -7,16 +7,14 @@
 #include <sys/time.h>
 
 /*****************************************************
- * Matrix Multiplier - Asynchronous - Batch - Isotropic Messages
+ * Genomic Imputation - Batch Processing Version
  * ***************************************************
- * This code multiplies the matrices specificfied in matrices.cpp.
+ * This code streams target ahplotypes from the X86 side
  * USAGE:
- * 1. Matrix A and Matrix B to be defined in matrices.cpp
- * 2. Matrix A and Matrix B dimensions to be defined in matrices.h.
+ * To Be Completed ...
  * 
  * PLEASE NOTE:
- * Implementation checks whether mulitplication is possible.
- * (Matrix A Cols == Matrix B Rows)
+ * To Be Completed ...
  * 
  * ssh jordmorr@ayres.cl.cam.ac.uk
  * scp -r C:\Users\drjor\Documents\tinsel\apps\POLite\dna-gals-batch jordmorr@ayres.cl.cam.ac.uk:~/tinsel/apps/POLite
