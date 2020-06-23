@@ -574,11 +574,10 @@ template <typename DeviceType,
     // Split destinations into local/non-local
     Seq<PDeviceId>* dests = graph.outgoing->elems[devId];
     Seq<PinId>* pinIds = graph.pins->elems[devId];
-    uint32_t index = 0;
     for (uint32_t d = 0; d < dests->numElems; d++) {
       if (pinIds->elems[d] == pinId) {
         PEdgeDest e;
-        e.index = index++;
+        e.index = d;
         e.dest = dests->elems[d];
         e.addr = toDeviceAddr[e.dest];
         uint32_t destBoard = getThreadId(e.addr) >> TinselLogThreadsPerBoard;
