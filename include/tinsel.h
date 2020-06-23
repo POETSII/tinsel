@@ -193,11 +193,7 @@ INLINE void tinselSend(int dest, volatile void* addr)
 // Send message at addr using given routing key
 INLINE void tinselKeySend(int key, volatile void* addr)
 {
-  // Special address to signify use of routing key
-  uint32_t useRoutingKey = 1 <<
-    (TinselMailboxMeshYBits + TinselMailboxMeshXBits +
-     TinselMeshXBits + TinselMeshYBits + 2);
-  tinselMulticast(useRoutingKey, 0, key, addr);
+  tinselMulticast(tinselUseRoutingKey(), 0, key, addr);
 }
 
 // Receive message
