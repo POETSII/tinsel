@@ -135,6 +135,16 @@ template <typename E> struct PInEdge {
   E edge;
 };
 
+// An incoming edge to a device (unlabelled)
+template <> struct PInEdge<None> {
+  union {
+    // Destination device
+    PLocalDeviceId devId;
+    // Unused
+    None edge;
+  };
+};
+
 // Header for a list of incoming edges (fixed size structure to
 // support fast construction/packing of local-multicast tables)
 template <typename E> struct PInHeader {

@@ -47,11 +47,12 @@ struct Bitmap {
 
   // Find index of next zero bit, and flip that bit
   inline uint32_t grabNextBit() {
-    uint64_t word = ~getWord(firstFree);
-    assert(word != 0ul);
-    uint32_t bit = __builtin_ctzll(word);
+    uint64_t word = getWord(firstFree);
+    assert(~word != 0ul);
+    uint32_t bit = __builtin_ctzll(~word);
+    uint32_t result = 64*firstFree + bit;
     setBit(firstFree, bit);
-    return 64*firstFree + bit;
+    return result;
   }
 };
 
