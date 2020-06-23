@@ -175,4 +175,13 @@ INLINE uint32_t tinselAccId(
   return addr;
 }
 
+// Special address to signify use of routing key
+INLINE uint32_t tinselUseRoutingKey()
+{
+  // Special address to signify use of routing key
+  return 1 <<
+    (TinselMailboxMeshYBits + TinselMailboxMeshXBits +
+     TinselMeshXBits + TinselMeshYBits + 2);
+}
+
 #endif
