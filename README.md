@@ -1299,13 +1299,21 @@ by each thread.
 After mapping, POLite writes the graph into cluster memory and
 triggers execution.  By default, vertex states are written into the
 off-chip QDRII+ SRAMs, and edge lists are written in the DDR3 DRAMs.
-This default behaviour can be modified by setting the boolean flags
-`graph.mapVerticesToDRAM`, `graph.mapInEdgesToDRAM`,
-`graph.mapOutEdgesToDRAM` accordingly (true means "map to DRAM" and
-false means "map to SRAM").  Once the application is up and running,
-the host and the graph vertices can continue to communicate: any
-vertex can send messages to the host via the `HostPin` or the `finish`
-handler, and the host can send messages to any vertex.
+This default behaviour can be modified by adjusting the following
+flags of the `PGraph` class.
+
+  Flag                     | Default
+  ------------------------ | -------
+  `mapVerticesToDRAM`      | `false`
+  `mapInEdgeHeadersToDRAM` | `true`
+  `mapInEdgeRestToDRAM`    | `true`
+  `mapOutEdgesToDRAM`      | `true`
+
+A value of `true` means "map to DRAM", while `false` means "map to
+(off-chip) SRAM".  Once the application is up and running, the host
+and the graph vertices can continue to communicate: any vertex can
+send messages to the host via the `HostPin` or the `finish` handler,
+and the host can send messages to any vertex.
 
 **Softswitch**. Central to POLite is an event loop running on each
 Tinsel thread, which we call the softswitch as it effectively
@@ -1321,20 +1329,12 @@ required, to meet the semantics of the POLite library.
 before the first instance of `#include <POLite.h>`, to control some
 aspects of POLite behaviour.
 
-  Macro               | Meaning
-  ---------           | -------
-  `POLITE_NUM_PINS`   | Max number of pins per vertex (default 1)
-  `POLITE_DUMP_STATS` | Dump stats upon completion
-  `POLITE_COUNT_MSGS` | Include message counts in stats dump
-
-POLite supports three mapping modes, also controlled via macros:
-
- 
-  Macro               | Use when graphs have...
-  ---------           | -----------------------
-  `POLITE_MAP_LOCAL`  | ...lots of local connections and few distributed connections
-  `POLITE_MAP_DIST`   | ...lots of distributed connections and few local connections (this mapper is fast)
-  `POLITE_MAP_HYBRID` | ...a mix of local and distributed connections (default)
+  Macro                     | Meaning
+  ---------                 | -------
+  `POLITE_NUM_PINS`         | Max number of pins per vertex (default 1)
+  `POLITE_DUMP_STATS`       | Dump stats upon completion
+  `POLITE_COUNT_MSGS`       | Include message counts in stats dump
+  `POLITE_EDGES_PER_HEADER` | Lower this for large edge states (default 6)
 
 **POLite dynamic parameters**.  The following environment variables can
 be set, to control some aspects of POLite behaviour.
@@ -1346,14 +1346,13 @@ be set, to control some aspects of POLite behaviour.
   `POLITE_BOARDS_X`    | Size of board mesh to use in X dimension
   `POLITE_BOARDS_Y`    | Size of board mesh to use in Y dimension
   `POLITE_CHATTY`      | Set to `1` to enable emission of mapper stats
-  `POLITE_PLACER`      | Use `metis`, `random`, or `direct` placement
+  `POLITE_PLACER`      | Use `metis`, `random`, `bfs`, or `direct` placement
 
-**Limitations**. POLite provides several important features of the
-vertex-centric paradigm, but there are lots of limitations and quirks;
-it is only intended as a prototype library for hardware evaluation
-purposes. One of the features of the Pregel framework is the ability
-for vertices to add and remove vertices and edges at runtime -- but
-currently, POLite only supports static graphs. 
+**Limitations**. POLite is primarily intended as a prototype library
+for hardware evaluation purposes. It occupies a single, simple point
+in a wider, richer design space.  In particular, it doesn't support
+dynamic creation of vertices and edges, and it hasn't been optimised
+to deal with highly non-uniform fanouts.
 
 ## A. DE5-Net Synthesis Report
 
