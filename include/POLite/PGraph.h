@@ -595,23 +595,23 @@ template <typename DeviceType,
 
   // Compute table updates for destinations for given device
   // (Only valid after mapper is called)
-  void computeTables(Seq<PEdgeDest>* local, uint32_t d, 
+  void computeTables(Seq<PEdgeDest>* dests, uint32_t d,
          Seq<PRoutingDest>* out) {
     out->clear();
     uint32_t index = 0;
-    while (index < local->numElems) {
+    while (index < dests->numElems) {
       // New set of receiver groups on same mailbox
       uint32_t threadMaskLow = 0;
       uint32_t threadMaskHigh = 0;
       uint32_t nextGroup = 0;
       // Current mailbox & thread being considered
-      PDeviceAddr mbox = getThreadId(local->elems[index].addr) >>
+      PDeviceAddr mbox = getThreadId(dests->elems[index].addr) >>
                            TinselLogThreadsPerMailbox;
-      uint32_t thread = getThreadId(local->elems[index].addr) &
+      uint32_t thread = getThreadId(dests->elems[index].addr) &
                           ((1<<TinselLogThreadsPerMailbox)-1);
       // Determine edges targetting same mailbox
-      while (index < local->numElems) {
-        PEdgeDest* edge = &local->elems[index];
+      while (index < dests->numElems) {
+        PEdgeDest* edge = &dests->elems[index];
         // Determine destination mailbox address and mailbox-local thread
         uint32_t destMailbox = getThreadId(edge->addr) >>
                                  TinselLogThreadsPerMailbox;
