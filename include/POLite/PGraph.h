@@ -629,7 +629,7 @@ template <typename DeviceType,
               in.edge = edges->elems[edge->index];
             // Update current receiver group
             groups[nextGroup].receivers.append(in);
-            groups[nextGroup].threadId = thread;
+            groups[nextGroup].threadId = getThreadId(edge->addr);
             if (thread < 32) threadMaskLow |= 1 << thread;
             if (thread >= 32) threadMaskHigh |= 1 << (thread-32);
             index++;
