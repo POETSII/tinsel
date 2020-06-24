@@ -254,4 +254,51 @@ module mkBuffer#(Integer n, dataT init, dataT inp) (dataT)
   return regs[n-1];
 endmodule
 
+// Isolate first hot bit
+function Bit#(n) firstHot(Bit#(n) x) = x & (~x + 1);
+
+// Function for fair scheduling of n tasks
+function Tuple2#(Bit#(n), Bit#(n)) sched(Bit#(n) hist, Bit#(n) avail);
+  // First choice: an available bit that's not in the history
+  Bit#(n) first = firstHot(avail & ~hist);
+  // Second choice: any available bit
+  Bit#(n) second = firstHot(avail);
+
+  // Return new history, and chosen bit
+  if (first != 0) begin
+    // Return first choice, and update history
+    return tuple2(hist | first, first);
+  end else begin
+    // Return second choice, and reset history
+    return tuple2(second, second);
+  end
+endfunction
+
+// Pipelined reduction tree
+module mkPipelinedReductionTree#(
+         function a reduce(a x, a y),
+         a init,
+         List#(a) xs)
+       (a) provisos(Bits#(a, _));
+  Integer len = List::length(xs);
+  if (len == 0)
+    return error("mkSumList applied to empty list");
+  else if (len == 1)
+    return xs[0];
+  else begin
+    List#(a) ys = xs;
+    List#(a) reduced = Nil;
+    for (Integer i = 0; i < len; i=i+2) begin
+      Reg#(a) r <- mkConfigReg(init);
+      rule assignOut;
+        r <= reduce(ys[0], ys[1]);
+      endrule
+      ys = List::drop(2, ys);
+      reduced = Cons(readReg(r), reduced);
+    end
+    a res <- mkPipelinedReductionTree(reduce, init, reduced);
+    return res;
+  end
+endmodule
+
 endpackage

@@ -2,24 +2,26 @@
 #ifndef _HEAT_H_
 #define _HEAT_H_
 
+#define POLITE_DUMP_STATS
+#define POLITE_COUNT_MSGS
 #include <POLite.h>
 
 struct HeatMessage {
   // Sender id
   uint32_t from;
-  // Time step
-  uint32_t time;
   // Temperature at sender
-  uint32_t val;
+  float val;
 };
 
 struct HeatState {
   // Device id
   uint32_t id;
-  // Current time step of device
-  uint32_t time;
   // Current temperature of device
-  uint32_t val, acc;
+  float val, acc;
+  // Time step
+  uint16_t time;
+  // Number of neighbours
+  uint16_t numNeighbours;
   // Is the temperature of this device constant?
   bool isConstant;
 };
@@ -34,7 +36,6 @@ struct HeatDevice : PDevice<HeatState, None, HeatMessage> {
   // Send handler
   inline void send(volatile HeatMessage* msg) {
     msg->from = s->id;
-    msg->time = s->time;
     msg->val = s->val;
     *readyToSend = No;
   }
@@ -42,6 +43,7 @@ struct HeatDevice : PDevice<HeatState, None, HeatMessage> {
   // Receive handler
   inline void recv(HeatMessage* msg, None* edge) {
     s->acc += msg->val;
+    s->numNeighbours++;
   }
 
   // Called by POLite when system becomes idle
@@ -53,8 +55,9 @@ struct HeatDevice : PDevice<HeatState, None, HeatMessage> {
     }
     else {
       s->time--;
-      if (!s->isConstant) s->val = s->acc >> 2;
-      s->acc = 0;
+      if (!s->isConstant) s->val = s->acc / (float) s->numNeighbours;
+      s->acc = 0.0;
+      s->numNeighbours = 0;
       *readyToSend = Pin(0);
       return true;
     }

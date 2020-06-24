@@ -22,14 +22,22 @@
 #define POLITE_NUM_PINS 1
 #endif
 
-// Macros for performance stats
+// The local-multicast key points to a list of incoming edges.  Some
+// of those edges are stored in a header, the rest in an array at a
+// different location.  The number stored in the header is controlled
+// by the following parameter.  If it's too low, we risk wasting
+// memory bandwidth.  If it's too high, we risk wasting memory.  
+// The minimum value is 0.  For large edge state sizes, use 0.
+#ifndef POLITE_EDGES_PER_HEADER
+#define POLITE_EDGES_PER_HEADER 6
+#endif
+
+// Macros for performance stats:
 //   POLITE_DUMP_STATS - dump performance stats on termination
-//   POLITE_COUNT_MSGS - include message counts of performance stats
+//   POLITE_COUNT_MSGS - include message counts in performance stats
 
 // Thread-local device id
 typedef uint16_t PLocalDeviceId;
-#define InvalidLocalDevId 0xffff
-#define UnusedLocalDevId 0xfffe
 
 // Thread id
 typedef uint32_t PThreadId;
@@ -54,7 +62,7 @@ inline PLocalDeviceId getLocalDeviceId(PDeviceAddr addr) { return addr >> 19; }
 // What's the max allowed local device address?
 inline uint32_t maxLocalDeviceId() { return 8192; }
 
-// Routing key
+// Local multicast key
 typedef uint16_t Key;
 #define InvalidKey 0xffff
 
@@ -102,8 +110,8 @@ template <typename S> struct ALIGNED PState {
 
 // Message structure
 template <typename M> struct PMessage {
-  // Source-based routing key
-  Key key;
+  // Destination key
+  uint16_t destKey;
   // Application message
   M payload;
 };
@@ -119,15 +127,15 @@ struct POutEdge {
   uint32_t threadMaskHigh;
 };
 
-// An incoming edge to a device (labelleled)
+// An incoming edge to a device
 template <typename E> struct PInEdge {
   // Destination device
   PLocalDeviceId devId;
-  // Edge info
+  // Edge data
   E edge;
 };
 
-// An incoming edge to a device (unlabelleled)
+// An incoming edge to a device (unlabelled)
 template <> struct PInEdge<None> {
   union {
     // Destination device
@@ -137,15 +145,17 @@ template <> struct PInEdge<None> {
   };
 };
 
-// Helper function: Count board hops between two threads
-inline uint32_t hopsBetween(uint32_t t0, uint32_t t1) {
-  uint32_t xmask = ((1<<TinselMeshXBits)-1);
-  int32_t y0 = t0 >> (TinselLogThreadsPerBoard + TinselMeshXBits);
-  int32_t x0 = (t0 >> TinselLogThreadsPerBoard) & xmask;
-  int32_t y1 = t1 >> (TinselLogThreadsPerBoard + TinselMeshXBits);
-  int32_t x1 = (t1 >> TinselLogThreadsPerBoard) & xmask;
-  return (abs(x0-x1) + abs(y0-y1));
-}
+// Header for a list of incoming edges (fixed size structure to
+// support fast construction/packing of local-multicast tables)
+template <typename E> struct PInHeader {
+  // Number of receivers
+  uint16_t numReceivers;
+  // Pointer to remaining edges in inTableRest,
+  // if they don't all fit in the header
+  uint16_t restIndex;
+  // Edges stored in the header, to make good use of cached data
+  PInEdge<E> edges[POLITE_EDGES_PER_HEADER];
+};
 
 // Generic thread structure
 template <typename DeviceType,
@@ -161,7 +171,8 @@ template <typename DeviceType,
   PTR(PState<S>) devices;
   // Pointer to base of routing tables
   PTR(POutEdge) outTableBase;
-  PTR(PInEdge<E>) inTableBase;
+  PTR(PInHeader<E>) inTableHeaderBase;
+  PTR(PInEdge<E>) inTableRestBase;
   // Array of local device ids are ready to send
   PTR(PLocalDeviceId) senders;
   // This array is accessed in a LIFO manner
@@ -170,11 +181,11 @@ template <typename DeviceType,
   // Count number of messages sent
   #ifdef POLITE_COUNT_MSGS
   // Total messages sent
-  uint32_t intraThreadSendCount;
-  // Total messages sent between threads
-  uint32_t interThreadSendCount;
-  // Messages sent between threads on different boards
-  uint32_t interBoardSendCount;
+  uint32_t msgsSent;
+  // Total messages received
+  uint32_t msgsReceived;
+  // Number of times we wanted to send but couldn't
+  uint32_t blockedSends;
   #endif
 
   #ifdef TINSEL
@@ -211,8 +222,14 @@ template <typename DeviceType,
     }
     // Per-thread performance counters
     #ifdef POLITE_COUNT_MSGS
-    printf("LS:%x,TS:%x,BS:%x\n", intraThreadSendCount,
-             interThreadSendCount, interBoardSendCount);
+    uint32_t intraBoardId = me & ((1<<TinselLogThreadsPerBoard) - 1);
+    uint32_t progRouterSent =
+      intraBoardId == 0 ? tinselProgRouterSent() : 0;
+    uint32_t progRouterSentInter =
+      intraBoardId == 0 ? tinselProgRouterSentInterBoard() : 0;
+    printf("MS:%x,MR:%x,PR:%x,PRI:%x,BL:%x\n",
+      msgsSent, msgsReceived, progRouterSent,
+        progRouterSentInter, blockedSends);
     #endif
   }
 
@@ -257,20 +274,21 @@ template <typename DeviceType,
         if (tinselCanSend()) {
           PMessage<M>* m = (PMessage<M>*) tinselSendSlot();
           // Send message
-          m->key = outEdge->key;
+          m->destKey = outEdge->key;
           tinselMulticast(outEdge->mbox, outEdge->threadMaskHigh,
             outEdge->threadMaskLow, m);
           #ifdef POLITE_COUNT_MSGS
-          interThreadSendCount++;
-          interBoardSendCount +=
-            hopsBetween(outEdge->mbox << TinselLogThreadsPerMailbox,
-              tinselId());
+          msgsSent++;
           #endif
           // Move to next neighbour
           outEdge++;
         }
-        else
+        else {
+          #ifdef POLITE_COUNT_MSGS
+          blockedSends++;
+          #endif
           tinselWaitUntil(TINSEL_CAN_SEND|TINSEL_CAN_RECV);
+        }
       }
       else if (sendersTop != senders) {
         if (tinselCanSend()) {
@@ -292,8 +310,12 @@ template <typename DeviceType,
               devices[src].pinBase[pin-2]
             ];
         }
-        else
+        else {
+          #ifdef POLITE_COUNT_MSGS
+          blockedSends++;
+          #endif
           tinselWaitUntil(TINSEL_CAN_SEND|TINSEL_CAN_RECV);
+        }
       }
       else {
         // Idle detection
@@ -318,8 +340,14 @@ template <typename DeviceType,
       // Step 2: try to receive
       while (tinselCanRecv()) {
         PMessage<M>* inMsg = (PMessage<M>*) tinselRecv();
-        PInEdge<E>* inEdge = &inTableBase[inMsg->key];
-        while (inEdge->devId != InvalidLocalDevId) {
+        PInHeader<E>* inHeader = &inTableHeaderBase[inMsg->destKey];
+        // Determine number and location of edges/receivers
+        uint32_t numReceivers = inHeader->numReceivers;
+        PInEdge<E>* inEdge = inHeader->edges;
+        // For each receiver
+        for (uint32_t i = 0; i < numReceivers; i++) {
+          if (i == POLITE_EDGES_PER_HEADER)
+            inEdge = &inTableRestBase[inHeader->restIndex];
           // Lookup destination device
           PLocalDeviceId id = inEdge->devId;
           DeviceType dev = getDevice(id);
@@ -332,7 +360,7 @@ template <typename DeviceType,
             *(sendersTop++) = id;
           inEdge++;
           #ifdef POLITE_COUNT_MSGS
-          intraThreadSendCount++;
+          msgsReceived++;
           #endif
         }
         tinselFree(inMsg);

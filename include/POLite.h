@@ -9,10 +9,10 @@
   #include <POLite/PDevice.h>
 #else
   #include <POLite/PDevice.h>
+  #include <POLite/PGraph.h>
   #include <POLite/Seq.h>
   #include <POLite/Graph.h>
   #include <POLite/Placer.h>
-  #include <POLite/PGraph.h>
 #endif
 
 #endif

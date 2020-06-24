@@ -23,6 +23,9 @@ import Socket       :: *;
 import Util         :: *;
 import IdleDetector :: *;
 import FlitMerger   :: *;
+import OffChipRAM   :: *;
+import DRAM         :: *;
+import ProgRouter   :: *;
 
 // =============================================================================
 // Mesh Router
@@ -146,11 +149,9 @@ module mkMeshRouter#(MailboxId m) (MeshRouter);
 
   // Routing function
   function Route route(NetAddr a);
-         if (a.addr.board.y < b.y) return Down;
-    else if (a.addr.board.y > b.y) return Up;
-    else if (a.addr.host.valid) return a.addr.host.value == 0 ? Left : Right;
-    else if (a.addr.board.x < b.x) return Left;
-    else if (a.addr.board.x > b.x) return Right;
+         if (a.addr.board != b)   return Down;
+    else if (a.addr.isKey)        return Down;
+    else if (a.addr.host.valid)   return Down;
     else if (a.addr.mbox.y < m.y) return Down;
     else if (a.addr.mbox.y > m.y) return Up;
     else if (a.addr.mbox.x < m.x) return Left;
@@ -271,27 +272,35 @@ module mkBoardLink#(Bool en, SocketId id) (BoardLink);
 endmodule
 
 // =============================================================================
-// Mailbox Mesh
+// Network-on-chip
 // =============================================================================
 
-// Interface to external (off-board) network
-interface ExtNetwork;
-`ifndef SIMULATE
-  // Avalon interfaces to 10G MACs
+// NoC interface
+interface NoC;
+  `ifndef SIMULATE
+  // Avalon interfaces to 10G MACs (inter-FPGA links)
   interface Vector#(`NumNorthSouthLinks, AvalonMac) north;
   interface Vector#(`NumNorthSouthLinks, AvalonMac) south;
   interface Vector#(`NumEastWestLinks, AvalonMac) east;
   interface Vector#(`NumEastWestLinks, AvalonMac) west;
-`endif
+  `endif
+  // Connections to off-chip memory (for the programmable router)
+  interface Vector#(`DRAMsPerBoard,
+    Vector#(`FetchersPerProgRouter, BOut#(DRAMReq))) dramReqs;
+  interface Vector#(`DRAMsPerBoard,
+    Vector#(`FetchersPerProgRouter, In#(DRAMResp))) dramResps;
+  // ProgRouter fetcher activities & performance counters
+  interface Vector#(`FetchersPerProgRouter, FetcherActivity) activities;
+  interface ProgRouterPerfCounters progRouterPerfCounters;
 endinterface
 
-module mkMailboxMesh#(
+module mkNoC#(
          BoardId boardId,
          Vector#(4, Bool) linkEnable,
          Vector#(`MailboxMeshYLen,
            Vector#(`MailboxMeshXLen, MailboxNet)) mailboxes,
          IdleDetector idle)
-       (ExtNetwork);
+       (NoC);
 
   // Create off-board links
   Vector#(`NumNorthSouthLinks, BoardLink) northLink <-
@@ -302,6 +311,9 @@ module mkMailboxMesh#(
     mapM(mkBoardLink(linkEnable[2]), eastSocket);
   Vector#(`NumEastWestLinks, BoardLink) westLink <-
     mapM(mkBoardLink(linkEnable[3]), westSocket);
+
+  // Dimension-ordered routers
+  // -------------------------
 
   // Create mailbox routers
   Vector#(`MailboxMeshYLen,
@@ -362,79 +374,43 @@ module mkMailboxMesh#(
                      routers[y+1][x].bottomOut, routers[y][x].topIn);
   end
 
-  // Connect north links
-  // -------------------
+  // Programmable board router
+  // -------------------------
 
-  // Extract mesh top inputs and outputs
-  List#(In#(Flit)) topInList = Nil;
-  List#(Out#(Flit)) topOutList = Nil;
-  for (Integer x = `MailboxMeshXLen-1; x >= 0; x=x-1) begin
-    topOutList = Cons(routers[`MailboxMeshYLen-1][x].topOut, topOutList);
-    topInList = Cons(routers[`MailboxMeshYLen-1][x].topIn, topInList);
-  end
+  // Programmable router
+  ProgRouter boardRouter <- mkProgRouter(boardId);
 
-  // Connect the outgoing links
-  function In#(Flit) getFlitIn(BoardLink link) = link.flitIn;
-  reduceConnect(mkFlitMerger,
-    topOutList, List::map(getFlitIn, toList(northLink)));
-  
-  // Connect the incoming links
-  function Out#(Flit) getFlitOut(BoardLink link) = link.flitOut;
-  expandConnect(List::map(getFlitOut, toList(northLink)), topInList);
+  // Connect board router to north link
+  connectDirect(boardRouter.flitOut[0], northLink[0].flitIn);
+  connectUsing(mkUGShiftQueue1(QueueOptFmax),
+    northLink[0].flitOut, boardRouter.flitIn[0]);
 
-  // Connect south links
-  // -------------------
+  // Connect board router to south link
+  connectDirect(boardRouter.flitOut[1], southLink[0].flitIn);
+  connectUsing(mkUGShiftQueue1(QueueOptFmax),
+    southLink[0].flitOut, boardRouter.flitIn[1]);
 
-  // Extract mesh bottom inputs and outputs
-  List#(In#(Flit)) botInList = Nil;
-  List#(Out#(Flit)) botOutList = Nil;
-  for (Integer x = `MailboxMeshXLen-1; x >= 0; x=x-1) begin
-    botOutList = Cons(routers[0][x].bottomOut, botOutList);
-    botInList = Cons(routers[0][x].bottomIn, botInList);
-  end
+  // Connect board router to east link
+  connectDirect(boardRouter.flitOut[2], eastLink[0].flitIn);
+  connectUsing(mkUGShiftQueue1(QueueOptFmax),
+    eastLink[0].flitOut, boardRouter.flitIn[2]);
 
-  // Connect the outgoing links
-  reduceConnect(mkFlitMerger, botOutList,
-    List::map(getFlitIn, toList(southLink)));
-  
-  // Connect the incoming links
-  expandConnect(List::map(getFlitOut, toList(southLink)), botInList);
+  // Connect board router to west link
+  connectDirect(boardRouter.flitOut[3], westLink[0].flitIn);
+  connectUsing(mkUGShiftQueue1(QueueOptFmax),
+    westLink[0].flitOut, boardRouter.flitIn[3]);
 
-  // Connect east links
-  // ------------------
+  // Connect mailbox mesh south rim to board router
+  for (Integer i = 0; i < `MailboxMeshXLen; i=i+1)
+    connectUsing(mkUGShiftQueue1(QueueOptFmax),
+      routers[0][i].bottomOut, boardRouter.flitIn[4+i]);
 
-  // Extract mesh right inputs and outputs
-  List#(In#(Flit)) rightInList = Nil;
-  List#(Out#(Flit)) rightOutList = Nil;
-  for (Integer y = `MailboxMeshYLen-1; y >= 0; y=y-1) begin
-    rightOutList = Cons(routers[y][`MailboxMeshXLen-1].rightOut, rightOutList);
-    rightInList = Cons(routers[y][`MailboxMeshXLen-1].rightIn, rightInList);
-  end
-
-  // Connect the outgoing links
-  reduceConnect(mkFlitMerger,
-    rightOutList, List::map(getFlitIn, toList(eastLink)));
-  
-  // Connect the incoming links
-  expandConnect(List::map(getFlitOut, toList(eastLink)), rightInList);
-
-  // Connect west links
-  // ------------------
-
-   // Extract mesh right inputs and outputs
-  List#(In#(Flit)) leftInList = Nil;
-  List#(Out#(Flit)) leftOutList = Nil;
-  for (Integer y = `MailboxMeshYLen-1; y >= 0; y=y-1) begin
-    leftOutList = Cons(routers[y][0].leftOut, leftOutList);
-    leftInList = Cons(routers[y][0].leftIn, leftInList);
-  end
-
-  // Connect the outgoing links
-  reduceConnect(mkFlitMerger,
-    leftOutList, List::map(getFlitIn, toList(westLink)));
-  
-  // Connect the incoming links
-  expandConnect(List::map(getFlitOut, toList(westLink)), leftInList);
+  // Connect board router to mailbox mesh south rim
+  function In#(Flit) getBottomIn(MeshRouter r) = r.bottomIn;
+  Vector#(`MailboxMeshXLen, In#(Flit)) southRimInPorts =
+    map(getBottomIn, routers[0]);
+  for (Integer i = 0; i < `MailboxMeshXLen; i=i+1)
+    connectDirect(boardRouter.flitOut[4+i], southRimInPorts[i]);
 
   // Detect inter-board activity
   // ---------------------------
@@ -465,13 +441,31 @@ module mkMailboxMesh#(
     idle.idle.interBoardActivity(activityReg);
   endrule
 
-`ifndef SIMULATE
+  // Interfaces
+  // ----------
+
+  function In#(t) getIn(InPort#(t) p) = p.in;
+
+  `ifndef SIMULATE
   function AvalonMac getMac(BoardLink link) = link.avalonMac;
   interface north = Vector::map(getMac, northLink);
   interface south = Vector::map(getMac, southLink);
   interface east = Vector::map(getMac, eastLink);
   interface west = Vector::map(getMac, westLink);
-`endif
+  `endif
+
+  // Requests to off-chip memory
+  interface dramReqs = boardRouter.ramReqs;
+
+  // Responses from off-chip memory
+  interface dramResps = boardRouter.ramResps;
+
+  // Fetcher activities
+  interface activities = boardRouter.activities;
+
+  // Performance counters
+  interface ProgRouterPerfCounters progRouterPerfCounters =
+    boardRouter.perfCounters;
 
 endmodule
 

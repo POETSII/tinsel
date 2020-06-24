@@ -212,6 +212,14 @@ module onBOut#(function u f(t x), BOut#(t) out) (BOut#(u));
   method u value = f(out.value);
 endmodule
 
+// Convert BOut to Out
+function Out#(t) fromBOut(BOut#(t) out) =
+  interface Out
+    method Action tryGet = out.get;
+    method Bool valid = out.valid;
+    method t value = out.value;
+  endinterface;
+
 // A null In port accepts and discards all inputs
 module mkNullIn (In#(t));
   method Action tryPut(u val); endmethod
@@ -246,6 +254,14 @@ function BOut#(t) enableBOut(Bool en, BOut#(t) out) =
     method Action get = out.get;
     method Bool valid = en && out.valid;
     method t value = out.value;
+  endinterface;
+
+// Convert queue to BOut interface
+function BOut#(t) queueToBOut(SizedQueue#(n, t) q) =
+  interface BOut
+    method Action get = q.deq;
+    method Bool valid = q.canDeq && q.canPeek;
+    method t value = q.dataOut;
   endinterface;
 
 // =============================================================================
@@ -396,7 +412,7 @@ module mkMergeTreeB#(MergeMethod m, module#(SizedQueue#(d, t)) mkQ,
     xs = List::cons(x, xs);
   end
 
-  let out <- mkMergeTreeList(m, mkQ, xs);
+  let out <- mkMergeTreeList(m, mkQ, List::reverse(xs));
   return out;
 endmodule
 
@@ -578,7 +594,7 @@ module mkDeserialiser (Deserialiser#(typeIn, typeOut))
 endmodule
 
 // =============================================================================
-// Expansion and reduction connectors
+// Reduction connectors
 // =============================================================================
 
 // Reduce a list of interfaces down to a given number of interfaces,
@@ -649,33 +665,6 @@ module reduceConnect#(
     end
   end
 
-endmodule
-
-// Connect 'from' ports to 'to' ports,
-// where 'length(from)' may be less than 'length(to)'.
-// Works by wiring null to any unused 'to' ports.
-module expandConnect#(List#(Out#(t)) from, List#(In#(t)) to) ()
-         provisos (Bits#(t, twidth));
-
-  // Count inputs and outputs
-  Integer numFrom = List::length(from);
-  Integer numTo = List::length(to);
-  Integer q = numTo/numFrom;
-
-  for (Integer i = 0; i < numTo; i=i+1) begin
-    if (q == 0) begin
-      // Connect input
-      connectUsing(mkUGShiftQueue1(QueueOptFmax), from[i], to[i]);
-    end else if ((i%q) == 0) begin
-      // Connect input
-      connectUsing(mkUGShiftQueue1(QueueOptFmax), from[i/q], to[i]);
-    end else begin
-      // Connect terminator
-      BOut#(t) nullOut <- mkNullBOut;
-      connectDirect(nullOut, to[i]);
-    end
-  end
-  
 endmodule
 
 endpackage

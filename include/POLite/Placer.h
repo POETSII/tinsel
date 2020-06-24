@@ -5,11 +5,23 @@
 #include <stdint.h>
 #include <metis.h>
 #include <POLite/Graph.h>
+#include <queue>
+#include <omp.h>
 
 typedef uint32_t PartitionId;
 
 // Partition and place a graph on a 2D mesh
 struct Placer {
+  // Select between different methods
+  enum Method {
+    Default,
+    Metis,
+    Random,
+    Direct,
+    BFS
+  };
+  const Method defaultMethod=Metis;
+
   // The graph being placed
   Graph* graph;
 
@@ -41,8 +53,40 @@ struct Placer {
   uint32_t* yCoordSaved;
   uint64_t savedCost;
 
+  // Random numbers
+  unsigned int seed;
+  void setRand(unsigned int s) { seed = s; };
+  int getRand() { return rand_r(&seed); }
+
+  // Controls which strategy is used
+  Method method = Default;
+
+  // Select placer method
+  void chooseMethod()
+  {
+    auto e = getenv("POLITE_PLACER");
+    if (e) {
+      if (!strcmp(e, "metis"))
+        method=Metis;
+      else if (!strcmp(e, "random"))
+        method=Random;
+      else if (!strcmp(e, "direct"))
+        method=Direct;
+      else if (!strcmp(e, "bfs"))
+        method=BFS;
+      else if (!strcmp(e, "default") || *e == '\0')
+        method=Default;
+      else {
+        fprintf(stderr, "Don't understand placer method : %s\n", e);
+        exit(EXIT_FAILURE);
+      }
+    }
+    if (method == Default)
+      method = defaultMethod;
+  }
+
   // Partition the graph using Metis
-  void partition() {
+  void partitionMetis() {
     // Compute total number of edges
     uint32_t numEdges = 0;
     for (uint32_t i = 0; i < graph->incoming->numElems; i++) {
@@ -116,6 +160,96 @@ struct Placer {
     free(parts);
   }
 
+  // Partition the graph randomly
+  void partitionRandom() {
+    uint32_t numVertices = graph->incoming->numElems;
+    uint32_t numParts = width * height;
+
+    // Populate result array
+    for (uint32_t i = 0; i < numVertices; i++) {
+      partitions[i] = getRand() % numParts;
+    }
+  }
+
+  // Partition the graph using direct mapping
+  void partitionDirect() {
+    uint32_t numVertices = graph->incoming->numElems;
+    uint32_t numParts = width * height;
+    uint32_t partSize = (numVertices + numParts) / numParts;
+
+    // Populate result array
+    for (uint32_t i = 0; i < numVertices; i++) {
+      partitions[i] = i / partSize;
+    }
+  }
+
+  // Partition the graph using repeated BFS
+  void partitionBFS() {
+    uint32_t numVertices = graph->incoming->numElems;
+    uint32_t numParts = width * height;
+    uint32_t partSize = (numVertices + numParts) / numParts;
+
+    // Visited bit for each vertex
+    bool* seen = new bool [numVertices];
+    memset(seen, 0, numVertices);
+
+    // Next vertex to visit
+    uint32_t nextUnseen = 0;
+
+    // Next partition id
+    uint32_t nextPart = 0;
+
+    while (nextUnseen < numVertices) {
+      // Frontier
+      std::queue<uint32_t> frontier;
+      uint32_t count = 0;
+
+      while (nextUnseen < numVertices && count < partSize) {
+        // Sized-bounded BFS from nextUnseen
+        frontier.push(nextUnseen);
+        while (count < partSize && !frontier.empty()) {
+          uint32_t v = frontier.front();
+          frontier.pop();
+          if (!seen[v]) {
+            seen[v] = true;
+            partitions[v] = nextPart;
+            count++;
+            // Add unvisited neighbours of v to the frontier
+            Seq<uint32_t>* dests = graph->outgoing->elems[v];
+            for (uint32_t i = 0; i < dests->numElems; i++) {
+              uint32_t w = dests->elems[i];
+              if (!seen[w]) frontier.push(w);
+            }
+          }
+        }
+        while (nextUnseen < numVertices && seen[nextUnseen]) nextUnseen++;
+      }
+
+      nextPart++;
+    }
+
+    delete [] seen;
+  }
+
+  void partition()
+  {
+    switch(method){
+    case Default:
+    case Metis:
+      partitionMetis();
+      break;
+    case Random:
+      partitionRandom();
+      break;
+    case Direct:
+      partitionDirect();
+      break;
+    case BFS:
+      partitionBFS();
+      break;
+    }
+  }
+
   // Create subgraph for each partition
   void computeSubgraphs() {
     uint32_t numPartitions = width*height;
@@ -179,7 +313,7 @@ struct Placer {
     // Random mapping
     for (uint32_t y = 0; y < height; y++) {
       for (uint32_t x = 0; x < width; x++) {
-        int index = rand() % numPartitions;
+        int index = getRand() % numPartitions;
         PartitionId p = pids[index];
         mapping[y][x] = p;
         xCoord[p] = x;
@@ -295,6 +429,8 @@ struct Placer {
     graph = g;
     width = w;
     height = h;
+    // Random seed
+    setRand(1 + omp_get_thread_num());
     // Allocate the partitions array
     partitions = new PartitionId [g->incoming->numElems];
     // Allocate subgraphs
@@ -316,6 +452,8 @@ struct Placer {
     yCoord = new uint32_t [width*height];
     xCoordSaved = new uint32_t [width*height];
     yCoordSaved = new uint32_t [width*height];
+    // Pick a placement method, or select default
+    chooseMethod();
     // Partition the graph using Metis
     partition();
     // Compute subgraphs, one per partition

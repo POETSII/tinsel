@@ -166,13 +166,22 @@ INLINE uint32_t tinselAccId(
            uint32_t tileX, uint32_t tileY)
 {
   uint32_t addr;
-  addr = 0x4;
+  addr = 0x8;
   addr = (addr << TinselMeshYBits) | boardY;
   addr = (addr << TinselMeshXBits) | boardX;
   addr = (addr << TinselMailboxMeshYBits) | tileY;
   addr = (addr << TinselMailboxMeshXBits) | tileX;
   addr = addr << (TinselLogCoresPerMailbox+TinselLogThreadsPerCore);
   return addr;
+}
+
+// Special address to signify use of routing key
+INLINE uint32_t tinselUseRoutingKey()
+{
+  // Special address to signify use of routing key
+  return 1 <<
+    (TinselMailboxMeshYBits + TinselMailboxMeshXBits +
+     TinselMeshXBits + TinselMeshYBits + 2);
 }
 
 #endif
