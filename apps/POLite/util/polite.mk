@@ -51,7 +51,7 @@ $(HL)/%.o:
 
 $(BUILD)/run: $(RUN_CPP) $(RUN_H) $(HL)/*.o
 	g++ -std=c++11 -O2 -I $(INC) -I $(HL) -o $(BUILD)/run $(RUN_CPP) $(HL)/*.o \
-	  -lmetis -fno-exceptions
+	  -lmetis -fno-exceptions -fopenmp
 
 $(BUILD)/sim: $(RUN_CPP) $(RUN_H) $(HL)/sim/*.o
 	g++ -O2 -I $(INC) -I $(HL) -o $(BUILD)/sim $(RUN_CPP) $(HL)/sim/*.o \
