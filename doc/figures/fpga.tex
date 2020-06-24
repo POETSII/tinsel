@@ -14,15 +14,6 @@
   \definecolor{myorange}{RGB}{197,90,17}
   \definecolor{mygreen}{RGB}{84,130,53}
 
-  \node[fill=gray!20,rounded corners,
-        minimum width=6.3cm,minimum height=4.8cm] (border0)
-    at (4.5,2.0) {};
-  \node[fill=white,rounded corners,
-        minimum width=5.8cm,minimum height=4.1cm] (border1)
-    at (4.5,1.8) {};
-  \node[fill=none,color=black] at (4.5,6.4)
-    {\footnotesize{inter-FPGA reliable links}};
-
   \node[fill=myblue,rounded corners] (tile00)
      at (0,0) {\footnotesize{tile}};
   \node[rectangle,sharp corners,fill=black] (router00)
@@ -123,16 +114,16 @@
   \draw[arrows=-,color=mygreen] (tile13) to (mem13);
 
   \node[rounded corners,fill=mygreen]
-    (ram0) at (1.7,-1.6) {\footnotesize{off-chip RAM}};
+    (ram0) at (1.3,-1.8) {\footnotesize{off-chip RAM}};
 
-  \draw[arrows=-,color=mygreen] (mem00) to ([xshift=-7mm]ram0.north);
-  \draw[arrows=-,color=mygreen] (mem01) to ([xshift=-5mm]ram0.north);
-  \draw[arrows=-,color=mygreen] (mem02) to ([xshift=-3mm]ram0.north);
-  \draw[arrows=-,color=mygreen] (mem03) to ([xshift=-1mm]ram0.north);
-  \draw[arrows=-,color=mygreen] (mem10) to ([xshift=7mm]ram0.north);
-  \draw[arrows=-,color=mygreen] (mem11) to ([xshift=5mm]ram0.north);
-  \draw[arrows=-,color=mygreen] (mem12) to ([xshift=3mm]ram0.north);
-  \draw[arrows=-,color=mygreen] (mem13) to ([xshift=1mm]ram0.north);
+  \draw[arrows=-,color=mygreen] (mem00) to ([xshift=-3mm]ram0.north);
+  \draw[arrows=-,color=mygreen] (mem01) to ([xshift=-1mm]ram0.north);
+  \draw[arrows=-,color=mygreen] (mem02) to ([xshift=1mm]ram0.north);
+  \draw[arrows=-,color=mygreen] (mem03) to ([xshift=3mm]ram0.north);
+  \draw[arrows=-,color=mygreen] (mem10) to ([xshift=11mm]ram0.north);
+  \draw[arrows=-,color=mygreen] (mem11) to ([xshift=9mm]ram0.north);
+  \draw[arrows=-,color=mygreen] (mem12) to ([xshift=7mm]ram0.north);
+  \draw[arrows=-,color=mygreen] (mem13) to ([xshift=5mm]ram0.north);
 
   \coordinate[] (south0b) at (4.3, -0.9) {};
   \coordinate[] (south0a) at (-0.83, -0.9) {};
@@ -282,16 +273,16 @@
   \draw[arrows=-,color=mygreen] (tile33) to (memb13);
 
   \node[rounded corners,fill=mygreen]
-    (ram1) at (7.57,-1.6) {\footnotesize{off-chip RAM}};
+    (ram1) at (7.97,-1.8) {\footnotesize{off-chip RAM}};
 
-  \draw[arrows=-,color=mygreen] (memb00) to ([xshift=-7mm]ram1.north);
-  \draw[arrows=-,color=mygreen] (memb01) to ([xshift=-5mm]ram1.north);
-  \draw[arrows=-,color=mygreen] (memb02) to ([xshift=-3mm]ram1.north);
-  \draw[arrows=-,color=mygreen] (memb03) to ([xshift=-1mm]ram1.north);
-  \draw[arrows=-,color=mygreen] (memb10) to ([xshift=7mm]ram1.north);
-  \draw[arrows=-,color=mygreen] (memb11) to ([xshift=5mm]ram1.north);
-  \draw[arrows=-,color=mygreen] (memb12) to ([xshift=3mm]ram1.north);
-  \draw[arrows=-,color=mygreen] (memb13) to ([xshift=1mm]ram1.north);
+  \draw[arrows=-,color=mygreen] (memb00) to ([xshift=-11mm]ram1.north);
+  \draw[arrows=-,color=mygreen] (memb01) to ([xshift=-9mm]ram1.north);
+  \draw[arrows=-,color=mygreen] (memb02) to ([xshift=-7mm]ram1.north);
+  \draw[arrows=-,color=mygreen] (memb03) to ([xshift=-5mm]ram1.north);
+  \draw[arrows=-,color=mygreen] (memb10) to ([xshift=3mm]ram1.north);
+  \draw[arrows=-,color=mygreen] (memb11) to ([xshift=1mm]ram1.north);
+  \draw[arrows=-,color=mygreen] (memb12) to ([xshift=-1mm]ram1.north);
+  \draw[arrows=-,color=mygreen] (memb13) to ([xshift=-3mm]ram1.north);
 
 
 
@@ -359,33 +350,20 @@
   \coordinate[] (south2c) at (4.7, -2.3) {};
   \draw[arrows=-,color=black] (south2b) to (south2c);
 
-  \draw[arrows=-,color=black] (router00.west) to
-    ([xshift=-2.3mm]router00.west);
-  \draw[arrows=-,color=black] (router01.west) to
-    ([xshift=-2.3mm]router01.west);
-  \draw[arrows=-,color=black] (router02.west) to
-    ([xshift=-2.3mm]router02.west);
-  \draw[arrows=-,color=black] (router03.west) to
-    ([xshift=-2.3mm]router03.west);
+  \node[rounded corners,fill=myorange,minimum height=0.5cm] (boardrouter)
+   at (4.63cm,-1.8cm) {\footnotesize{board}\\[-1mm]\footnotesize{router}};
 
-  \draw[arrows=-,color=black] (router30.east) to
-    ([xshift=14.4mm]router30.east);
-  \draw[arrows=-,color=black] (router31.east) to
-    ([xshift=14.4mm]router31.east);
-  \draw[arrows=-,color=black] (router32.east) to
-    ([xshift=14.4mm]router32.east);
-  \draw[arrows=-,color=black] (router33.east) to
-    ([xshift=14.4mm]router33.east);
+  \node[rounded corners,fill=gray!20, text=black,minimum width=5.25cm] (links)
+    at (4.63cm, -3.2cm) {\footnotesize{inter-FPGA reliable links}};
 
-  \draw[arrows=-,color=black] (router03.north) to
-    ([yshift=2mm]router03.north);
-  \draw[arrows=-,color=black] (router13.north) to
-    ([yshift=2mm]router13.north);
-  \draw[arrows=-,color=black] (router23.north) to
-    ([yshift=2mm]router23.north);
-  \draw[arrows=-,color=black] (router33.north) to
-    ([yshift=2mm]router33.north);
+  \draw[arrows=-,color=black] (links.north) to (boardrouter.south);
+
+  % Is the board router connected to off-chip RAM?
+  \draw[arrows=-,color=mygreen] (ram0.east) to (boardrouter.west);
+  \draw[arrows=-,color=mygreen] (ram1.west) to (boardrouter.east);
+
 
 \end{tikzpicture}
+
 
 \end{document}

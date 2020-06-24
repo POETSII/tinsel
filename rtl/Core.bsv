@@ -25,6 +25,7 @@ import FPUOps       :: *;
 import InstrMem     :: *;
 import DCacheTypes  :: *;
 import IdleDetector :: *;
+import ProgRouter   :: *;
 
 // ============================================================================
 // Control/status registers (CSRs) supported
@@ -60,15 +61,17 @@ import IdleDetector :: *;
 // Performance Counter CSRs (Optional)
 // ============================================================================
 
-// Name            | CSR    | R/W | Function
-// --------------- | ------ | --- | --------
-// PerfCount       | 0xc07  | W   | Reset(0)/Start(1)/Stop(2) all counters
-// MissCount       | 0xc08  | R   | Cache miss count
-// HitCount        | 0xc09  | R   | Cache hit count
-// WritebackCount  | 0xc0a  | R   | Cache writeback count
-// CPUIdleCount    | 0xc0b  | R   | CPU idle-cycle count (lower 32 bits)
-// CPUIdleCountU   | 0xc0c  | R   | CPU idle-cycle count (upper 8 bits)
-// CycleU          | 0xc0d  | R   | Cycle counter (upper 8 bits)
+// Name                | CSR    | R/W | Function
+// ------------------- | ------ | --- | --------
+// PerfCount           | 0xc07  | W   | Reset(0)/Start(1)/Stop(2) all counters
+// MissCount           | 0xc08  | R   | Cache miss count
+// HitCount            | 0xc09  | R   | Cache hit count
+// WritebackCount      | 0xc0a  | R   | Cache writeback count
+// CPUIdleCount        | 0xc0b  | R   | CPU idle-cycle count (lower 32 bits)
+// CPUIdleCountU       | 0xc0c  | R   | CPU idle-cycle count (upper 8 bits)
+// CycleU              | 0xc0d  | R   | Cycle counter (upper 8 bits)
+// ProgRouterSent      | 0xc0e  | R   | Msgs sent by ProgRouter
+// ProgRouterSentInter | 0xc0f  | R   | Inter-board msgs sent by ProgRouter
 
 // ============================================================================
 // Types
@@ -505,12 +508,13 @@ endfunction
 // ============================================================================
 
 interface Core;
-  interface DCacheClient       dcacheClient;
-  interface MailboxClient      mailboxClient;
-  interface DebugLinkClient    debugLinkClient;
-  interface FPUClient          fpuClient;
-  interface InstrMemClient     instrMemClient;
-  interface IdleDetectorClient idleClient;
+  interface DCacheClient         dcacheClient;
+  interface MailboxClient        mailboxClient;
+  interface DebugLinkClient      debugLinkClient;
+  interface FPUClient            fpuClient;
+  interface InstrMemClient       instrMemClient;
+  interface IdleDetectorClient   idleClient;
+  interface ProgRouterPerfClient progRouterPerfClient;
 
   // Each core can see its board id
   (* always_ready, always_enabled *)
@@ -676,18 +680,27 @@ module mkCore#(CoreId myId) (Core);
   Reg#(Bit#(32)) hitCount       <- mkConfigReg(0);
   Reg#(Bit#(32)) writebackCount <- mkConfigReg(0);
   Reg#(Bit#(40)) cpuIdleCount   <- mkConfigReg(0);
+  // Only core zero maintains the following two counters
+  Reg#(Bit#(32)) progRouterSent <- mkConfigReg(0);
+  Reg#(Bit#(32)) progRouterSentInterBoard <- mkConfigReg(0);
 
   // Indexable vector of performance counters
-  Vector#(6, Bit#(32)) perfCounters =
+  Vector#(8, Bit#(32)) perfCounters =
     vector(missCount, hitCount, writebackCount, cpuIdleCount[31:0],
              zeroExtend(cpuIdleCount[39:32]),
-             zeroExtend(cycleCount[39:32]));
+             zeroExtend(cycleCount[39:32]),
+             myId == 0 ? progRouterSent : ?,
+             myId == 0 ? progRouterSentInterBoard : ?);
 
   // Increment wires
   Wire#(Bool) incMissCountWire      <- mkDWire(False);
   Wire#(Bool) incHitCountWire       <- mkDWire(False);
   Wire#(Bool) incWritebackCountWire <- mkDWire(False);
   Wire#(Bool) incCPUIdleCountWire   <- mkDWire(False);
+  Wire#(Bit#(LogFetchersPerProgRouter))
+    incProgRouterSent <- mkBypassWire;
+  Wire#(Bit#(LogFetchersPerProgRouter))
+    incProgRouterSentInterBoard <- mkBypassWire;
 
   // Update performance counters
   rule updatePerfCounters;
@@ -696,11 +709,20 @@ module mkCore#(CoreId myId) (Core);
       hitCount       <= 0;
       writebackCount <= 0;
       cpuIdleCount   <= 0;
+      if (myId == 0) begin
+        progRouterSent <= 0;
+        progRouterSentInterBoard <= 0;
+      end
     end else if (perfCountEnabled) begin
       if (incMissCountWire) missCount <= missCount+1;
       if (incHitCountWire) hitCount <= hitCount+1;
       if (incWritebackCountWire) writebackCount <= writebackCount+1;
       if (incCPUIdleCountWire) cpuIdleCount <= cpuIdleCount+1;
+      if (myId == 0) begin
+        progRouterSent <= progRouterSent + zeroExtend(incProgRouterSent);
+        progRouterSentInterBoard <= progRouterSentInterBoard +
+          zeroExtend(incProgRouterSentInterBoard);
+      end
     end
   endrule
   `endif
@@ -1319,6 +1341,19 @@ module mkCore#(CoreId myId) (Core);
       mailbox.idleDetectedStage2(pulse);
     endmethod
     method Bool idleStage1Ack = mailbox.idleStage1Ack;
+  endinterface
+
+  interface ProgRouterPerfClient progRouterPerfClient;
+    method Action incSent(Bit#(LogFetchersPerProgRouter) amount);
+      `ifdef EnablePerfCount
+        incProgRouterSent <= amount;
+      `endif
+    endmethod
+    method Action incSentInterBoard(Bit#(LogFetchersPerProgRouter) amount);
+      `ifdef EnablePerfCount
+        incProgRouterSentInterBoard <= amount;
+      `endif
+    endmethod
   endinterface
 
 endmodule

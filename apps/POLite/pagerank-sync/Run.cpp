@@ -28,7 +28,8 @@ int main(int argc, char **argv)
   net.read(argv[1]);
   printf(" done\n");
 
-  // Print max fan-out
+  // Print fan-out
+  printf("Min fan-out = %d\n", net.minFanOut());
   printf("Max fan-out = %d\n", net.maxFanOut());
   
   // Create nodes in POETS graph

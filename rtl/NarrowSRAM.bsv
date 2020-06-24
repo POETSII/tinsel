@@ -1,22 +1,21 @@
 // SPDX-License-Identifier: BSD-2-Clause
 package NarrowSRAM;
 
-import DCacheTypes :: *;
-import Util        :: *;
+import Util :: *;
 
 // ============================================================================
 // Types
 // ============================================================================
 
 // SRAM request id
-typedef Bit#(`LogDCachesPerDRAM) SRAMReqId;
+typedef Bit#(TLog#(TAdd#(`DCachesPerDRAM,`FetchersPerProgRouter))) SRAMReqId;
 
 // SRAM load request
 typedef struct {
   SRAMReqId id;
   Bit#(`SRAMAddrWidth) addr;
   Bit#(`SRAMBurstWidth) burst;
-  InflightDCacheReqInfo info;
+  Bit#(`BeatWidth) info;
 } SRAMLoadReq deriving (Bits);
 
 // SRAM store request
@@ -31,7 +30,7 @@ typedef struct {
 typedef struct {
   SRAMReqId id;
   Bit#(`SRAMDataWidth) data;
-  InflightDCacheReqInfo info;
+  Bit#(`BeatWidth) info;
 } SRAMResp deriving (Bits);
 
 // ============================================================================
@@ -140,7 +139,6 @@ module mkSRAM#(RAMId id) (SRAM);
         resp.id = req.id;
         resp.data = pack(elems);
         resp.info = req.info;
-        resp.info.beat = truncate(loadBurstCount);
         resps.enq(resp);
         inFlightCount.dec;
       end
@@ -243,7 +241,7 @@ endinterface
 typedef struct {
   SRAMReqId id;
   Bit#(`SRAMBurstWidth) burst;
-  InflightDCacheReqInfo info;
+  Bit#(`BeatWidth) info;
 } SRAMInFlightReq deriving (Bits);
 
 // SRAM Implementation

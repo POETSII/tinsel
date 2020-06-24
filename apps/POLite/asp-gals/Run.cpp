@@ -51,7 +51,8 @@ int main(int argc, char**argv)
   // Create random set of source nodes
   uint32_t numSources = NUM_SOURCES*32;
   uint32_t sources[numSources];
-  randomSet(numSources, sources, graph.numDevices);
+  //randomSet(numSources, sources, graph.numDevices);
+  for (int i = 0; i < numSources; i++) sources[i] = i;
 
   // Initialise devices
   for (PDeviceId i = 0; i < graph.numDevices; i++) {
@@ -102,7 +103,9 @@ int main(int argc, char**argv)
   // Display time
   timersub(&finish, &start, &diff);
   double duration = (double) diff.tv_sec + (double) diff.tv_usec / 1000000.0;
+  #ifndef POLITE_DUMP_STATS
   printf("Time = %lf\n", duration);
+  #endif
 
   return 0;
 }

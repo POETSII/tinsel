@@ -43,7 +43,6 @@ typedef struct {
 typedef struct {
   DCacheReq req;
   Way way;
-  Bit#(`LogBeatsPerLine) beat;
 } InflightDCacheReqInfo deriving (Bits);
 
 endpackage

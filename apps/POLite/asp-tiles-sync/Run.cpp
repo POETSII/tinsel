@@ -135,11 +135,11 @@ int main(int argc, char**argv)
   double duration;
   timersub(&finishCompute, &startCompute, &diff);
   duration = (double) diff.tv_sec + (double) diff.tv_usec / 1000000.0;
-  printf("Time (compute) = %lf\n", duration);
+  printf("Time (compute, including stats transfer over UART) = %lf\n", duration);
   gettimeofday(&finishAll, NULL);
   timersub(&finishAll, &startAll, &diff);
   duration = (double) diff.tv_sec + (double) diff.tv_usec / 1000000.0;
-  printf("Time (all) = %lf\n", duration);
+  printf("Time (all, including stats transfer over UART) = %lf\n", duration);
 
   return 0;
 }

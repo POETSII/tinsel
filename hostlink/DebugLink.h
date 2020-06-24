@@ -8,6 +8,13 @@
 #include "BoardCtrl.h"
 #include "DebugLinkFormat.h"
 
+// DebugLinkH parameters
+struct DebugLinkParams {
+  uint32_t numBoxesX;
+  uint32_t numBoxesY;
+  bool useExtraSendSlot;
+};
+
 class DebugLink {
 
   // Location of this box with full box mesh
@@ -46,7 +53,7 @@ class DebugLink {
   int meshYLen;
 
   // Constructor
-  DebugLink(uint32_t numBoxesX, uint32_t numBoxesY);
+  DebugLink(DebugLinkParams params);
 
   // On given board, set destination core and thread
   void setDest(uint32_t boardX, uint32_t boardY,

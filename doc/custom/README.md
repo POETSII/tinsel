@@ -74,6 +74,7 @@ custom accelerator or a mailbox.
 ```sv
 typedef struct packed {
   logic acc;
+  logic isKey;
   logic host;
   logic hostDir;
   logic [`TinselMeshYBits-1:0] boardY;

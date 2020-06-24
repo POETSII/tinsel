@@ -161,6 +161,16 @@ p["SRAMLatency"] = 8
 p["SRAMLogMaxInFlight"] = 5
 p["SRAMStoreLatency"] = 2
 
+# Programmable router parameters:
+p["LogRoutingEntryLen"] = 5 # Number of beats in a routing table entry
+p["ProgRouterMaxBurst"] = 4
+p["FetcherLogIndQueueSize"] = 1
+p["FetcherLogBeatBufferSize"] = 5
+p["FetcherLogFlitBufferSize"] = 5
+p["FetcherLogMsgsPerFlitBuffer"] = (
+  p["FetcherLogFlitBufferSize"] - p["LogMaxFlitsPerMsg"])
+p["FetcherMsgsPerFlitBuffer"] = 2 ** p["FetcherLogMsgsPerFlitBuffer"]
+
 # Enable performance counters
 p["EnablePerfCount"] = True
 
@@ -178,7 +188,7 @@ p["BoxMesh"] = ('{'
 p["UseCustomAccelerator"] = False
 
 # Clock frequency (in MHz)
-p["ClockFreq"] = 225
+p["ClockFreq"] = 215
 
 #==============================================================================
 # Derived Parameters
@@ -300,6 +310,7 @@ p["ThreadsPerBoard"] = 2 ** p["LogThreadsPerBoard"]
 
 # Cores per board
 p["LogCoresPerBoard"] = p["LogCoresPerMailbox"] + p["LogMailboxesPerBoard"]
+p["LogCoresPerBoard1"] = p["LogCoresPerBoard"] + 1
 p["CoresPerBoard"] = 2**p["LogCoresPerBoard"]
 
 # Threads per core
@@ -356,9 +367,20 @@ p["LogBytesPerSRAMPartition"] = p["LogBytesPerSRAM"] - p["LogThreadsPerSRAM"]
 # DRAM base and length
 p["DRAMBase"] = 3 * (2 ** p["LogBytesPerSRAM"])
 p["DRAMGlobalsLength"] = 2 ** (p["LogBytesPerDRAM"] - 1) - p["DRAMBase"]
+p["POLiteDRAMGlobalsLength"] = 2 ** 14
+p["POLiteProgRouterBase"] = p["DRAMBase"] + p["POLiteDRAMGlobalsLength"]
+p["POLiteProgRouterLength"] = (p["DRAMGlobalsLength"] -
+                                 p["POLiteDRAMGlobalsLength"])
+
+# POLite globals
 
 # Number of FPGA boards per box (including bridge board)
 p["BoardsPerBox"] = p["MeshXLenWithinBox"] * p["MeshYLenWithinBox"] + 1
+
+# Parameters for programmable routers
+# (and the routing-record fetchers they contain)
+p["FetchersPerProgRouter"] = 4 + p["MailboxMeshXLen"]
+p["LogFetcherFlitBufferSize"] = 5
 
 #==============================================================================
 # Main 

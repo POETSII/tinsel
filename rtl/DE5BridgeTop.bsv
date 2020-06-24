@@ -12,9 +12,10 @@
 //   1. DA: Destination address (4 bytes)
 //   2. NM: Number of messages that follow minus one (4 bytes)
 //   3. FM: Number of flit payloads per message minus one (1 byte)
-//   4. Padding (7 bytes)
-//   5. (NM+1)*(FM+1) flit payloads ((NM+1)*(FM+1)*BytesPerFlit bytes)
-//   6. Goto step 1
+//   4. Padding (3 bytes)
+//   5. Routing key (optional, 4 bytes)
+//   6. (NM+1)*(FM+1) flit payloads ((NM+1)*(FM+1)*BytesPerFlit bytes)
+//   7. Goto step 1
 //
 // The format of the data stream in the FPGA->PC direction is simply
 // raw flit payloads.
@@ -161,6 +162,7 @@ module de5BridgeTop (DE5BridgeTop);
   Reg#(Bit#(32)) fromPCIeDA    <- mkConfigRegU;
   Reg#(Bit#(32)) fromPCIeNM    <- mkConfigRegU;
   Reg#(Bit#(8))  fromPCIeFM    <- mkConfigRegU;
+  Reg#(Bit#(32))  fromPCIeKey   <- mkConfigRegU;
   Reg#(Bit#(1))  toLinkState   <- mkConfigReg(0);
 
   Reg#(Bit#(32)) messageCount  <- mkConfigReg(0);
@@ -182,6 +184,7 @@ module de5BridgeTop (DE5BridgeTop);
         fromPCIeDA <= data[31:0];
         fromPCIeNM <= data[63:32];
         fromPCIeFM <= data[95:88];
+        fromPCIeKey <= data[127:96];
         toLinkState <= 1;
         fromPCIe.get;
       end
@@ -203,6 +206,10 @@ module de5BridgeTop (DE5BridgeTop);
         Flit flit;
         flit.dest.addr = unpack(truncate(fromPCIeDA[31:`LogThreadsPerMailbox]));
         flit.dest.threads = pack(destThreads);
+        // If address says to use routing key, then use it
+        if (flit.dest.addr.isKey) begin
+          flit.dest.threads = zeroExtend(fromPCIeKey);
+        end
         flit.payload = fromPCIe.value;
         flit.notFinalFlit = True;
         flit.isIdleToken = False;
