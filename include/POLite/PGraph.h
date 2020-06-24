@@ -796,6 +796,7 @@ template <typename DeviceType,
     boards.place(placerEffort);
 
     // For each board
+    #pragma omp parallel for collapse(2)
     for (uint32_t boardY = 0; boardY < numBoardsY; boardY++) {
       for (uint32_t boardX = 0; boardX < numBoardsX; boardX++) {
         // Partition into subgraphs, one per mailbox

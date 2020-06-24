@@ -6,6 +6,7 @@
 #include <metis.h>
 #include <POLite/Graph.h>
 #include <queue>
+#include <omp.h>
 
 typedef uint32_t PartitionId;
 
@@ -51,6 +52,11 @@ struct Placer {
   uint32_t* xCoordSaved;
   uint32_t* yCoordSaved;
   uint64_t savedCost;
+
+  // Random numbers
+  unsigned int seed;
+  void setRand(unsigned int s) { seed = s; };
+  int getRand() { return rand_r(&seed); }
 
   // Controls which strategy is used
   Method method = Default;
@@ -160,9 +166,8 @@ struct Placer {
     uint32_t numParts = width * height;
 
     // Populate result array
-    srand(0);
     for (uint32_t i = 0; i < numVertices; i++) {
-      partitions[i] = rand() % numParts;
+      partitions[i] = getRand() % numParts;
     }
   }
 
@@ -308,7 +313,7 @@ struct Placer {
     // Random mapping
     for (uint32_t y = 0; y < height; y++) {
       for (uint32_t x = 0; x < width; x++) {
-        int index = rand() % numPartitions;
+        int index = getRand() % numPartitions;
         PartitionId p = pids[index];
         mapping[y][x] = p;
         xCoord[p] = x;
@@ -424,6 +429,8 @@ struct Placer {
     graph = g;
     width = w;
     height = h;
+    // Random seed
+    setRand(1 + omp_get_thread_num());
     // Allocate the partitions array
     partitions = new PartitionId [g->incoming->numElems];
     // Allocate subgraphs
