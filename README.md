@@ -36,7 +36,7 @@ Released on 2 Dec 2019 and maintained in the
 [tinsel-0.7.1 branch](https://github.com/POETSII/tinsel/tree/tinsel-0.7.1).
 (Local hardware multicast.)
 * [v0.8](https://github.com/POETSII/tinsel/releases/tag/v0.8):
-Released on 24 Jun 2020 and maintained in the
+Released on 1 Jul 2020 and maintained in the
 [master branch](https://github.com/POETSII/tinsel/).
 (Global hardware multicast.)
 
