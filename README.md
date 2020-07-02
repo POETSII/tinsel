@@ -5,7 +5,8 @@ message-passing architecture designed for FPGA clusters.  It is being
 developed as part of the [POETS
 Project](https://poets-project.org/about) (Partial Ordered Event
 Triggered Systems).  Further background can be found in our [FPL 2019
-paper](doc/fpl-2019-paper.pdf).  If you're a POETS Partner, you can
+paper](doc/fpl-2019-paper.pdf) and our [ASAP 2020
+paper](doc/asap-2020-paper.pdf).  If you're a POETS Partner, you can
 access a machine running Tinsel in the [POETS
 Cloud](https://github.com/POETSII/poets-cloud).  
 
@@ -1352,7 +1353,9 @@ be set, to control some aspects of POLite behaviour.
 for hardware evaluation purposes. It occupies a single, simple point
 in a wider, richer design space.  In particular, it doesn't support
 dynamic creation of vertices and edges, and it hasn't been optimised
-to deal with highly non-uniform fanouts.
+to deal with highly non-uniform fanouts (i.e. where some vertices have
+tiny fanouts and others have huge fanouts; this could be alleviated by
+adding fanout as a vertex weight for METIS partitioning).
 
 ## A. DE5-Net Synthesis Report
 
