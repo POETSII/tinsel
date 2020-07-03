@@ -166,7 +166,7 @@ for no_states in range(10, run_max, run_step):
     response = subprocess.check_output(['make'])
 
     still_running = True
-    timeout_time = int(((0.0005 * (no_states ** 2)) - (0.06 * no_states) + 17) * 6)
+    timeout_time = int(((0.0000000003 * ((no_obs * no_states) ** 2)) + (0.0001 * (no_obs * no_states)) + 16) * 3)
     print('Timeout -> {}s'.format(timeout_time))
 
     if 'error' in str(response.lower()):

@@ -9,7 +9,7 @@
 /*****************************************************
  * Genomic Imputation - Batch Processing Version
  * ***************************************************
- * This code streams target ahplotypes from the X86 side
+ * This code streams target haplotypes from the X86 side
  * USAGE:
  * To Be Completed ...
  * 
