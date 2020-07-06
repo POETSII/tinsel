@@ -52,6 +52,7 @@ int main() {
     }
     
     // Add induction edges
+    // Forward Connections
     for (uint32_t x = 0; x < NOOFOBS-1; x++) {
         for (uint32_t y = 0; y < NOOFSTATES; y++) {
             
@@ -62,9 +63,20 @@ int main() {
         }
     }
     
+    // Backward Connections
+    for (uint32_t x = 1; x < NOOFOBS; x++) {
+        for (uint32_t y = 0; y < NOOFSTATES; y++) {
+            
+            for (uint32_t z = 0; z < NOOFSTATES; z++) {
+                graph->addEdge(mesh[y][x], 1, mesh[z][x-1]);
+            }
+
+        }
+    }
+    
     // Add termination edges
     for (uint32_t y = 0; y < NOOFSTATES-1; y++) {
-        graph->addEdge(mesh[y][NOOFOBS-1], 0, mesh[NOOFSTATES-1][NOOFOBS-1]);
+        graph->addEdge(mesh[y][NOOFOBS-1], 2, mesh[NOOFSTATES-1][NOOFOBS-1]);
     }
     
     // Prepare mapping from graph to hardware
@@ -99,20 +111,27 @@ int main() {
             graph->devices[mesh[y][x]]->state.sentflags = 0;
             
             // Initialise Counters
-            graph->devices[mesh[y][x]]->state.indreccount = 0;
+            graph->devices[mesh[y][x]]->state.aindreccount = 0;
+            graph->devices[mesh[y][x]]->state.bindreccount = 0;
             graph->devices[mesh[y][x]]->state.finreccount = 0;
             
-            //Initialise Message Pointer and Matrix Elements
+            // Initialise known values
             if (x == 0) {
                 graph->devices[mesh[y][x]]->state.initprob = init_prob[y];
             }
+            if (x == NOOFOBS-1) {
+                graph->devices[mesh[y][x]]->state.initprob = 1;
+            }
             
             graph->devices[mesh[y][x]]->state.transprob = (1.0 / NOOFSTATES);
+            
             graph->devices[mesh[y][x]]->state.emisprob = 0.9999;
 
             // Initialise Values
-            graph->devices[mesh[y][x]]->state.alpha = 0;
-            graph->devices[mesh[y][x]]->state.answer = 0;
+            graph->devices[mesh[y][x]]->state.alpha = 0.0;
+            graph->devices[mesh[y][x]]->state.beta = 0.0;
+            graph->devices[mesh[y][x]]->state.posterior = 1.0;
+            graph->devices[mesh[y][x]]->state.answer = 0.0;
             
         }
     }
@@ -175,6 +194,8 @@ int main() {
 
         // Receive final value of each device
         for (uint32_t i = 0; i < (NOOFSTATES*NOOFOBS); i++) {
+            
+            //printf("%d received \n", i);
             
             // Receive message
             PMessage<None, ImpMessage> msg;

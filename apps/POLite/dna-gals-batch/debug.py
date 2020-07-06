@@ -9,9 +9,9 @@ import threading
 # global vars
 seed(1)
 run_max = 4001
-run_step = 10
+run_step = 1
 no_sym = 4
-obs_ratio = 0.1
+obs_ratio = 1
 true_fbalgo = 0
 
 '''
@@ -42,7 +42,7 @@ if os.path.exists('results.csv'):
 with open('results.csv', "a") as f:
     f.write("States,Observations,Panel_Size,Map_Time,Init_Time,Proc_Time\n")
 
-for no_states in range(30, run_max, run_step):
+for no_states in range(5, run_max, run_step):
 
     trans_prob = []
     emis_prob = []

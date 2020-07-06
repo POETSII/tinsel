@@ -10,9 +10,11 @@
  * Edit values between here ->
  * ************************************************/
 
-#define NOOFSTATES (10)
+#define NOOFSTATES (3)
 #define NOOFSYM (4)
-#define NOOFOBS (10)
+#define NOOFOBS (4)
+
+#define IMPDEBUG (1)
 
 /***************************************************
  * <- And here
