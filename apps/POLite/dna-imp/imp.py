@@ -1,17 +1,24 @@
-import subprocess
+#import subprocess
 import os
-import numpy as np
-import time
+#import numpy as np
+#import time
 from random import seed
-from random import randint
+from random import random
+from random import uniform
 
 # global vars
 seed(1)
-run_max = 10001
+run_max = 11
 run_step = 1
-no_sym = 4
 obs_ratio = 10
-true_fbalgo = 0
+# 1 in every . .
+targ_mark_ratio = 10
+
+# model vars
+minor_allele_prob = 0.2
+targ_minor_allele_prob = 0.001
+eff_pop_size = 1000000
+epsilon = 10000
 
 '''
 init_prob = np.random.random(no_states)
@@ -41,25 +48,15 @@ if os.path.exists('results.csv'):
 with open('results.csv', "a") as f:
     f.write("States,Observations,Panel_Size,Proc_Time\n")
 
-for no_states in range(2, run_max, run_step):
+for no_states in range(10, run_max, run_step):
 
-    trans_prob = []
-    emis_prob = []
+    no_obs = no_states * obs_ratio
 
-    no_obs = int(no_states * obs_ratio)
+    no_targmark = 2
 
-    init_prob = np.random.random(no_states)
-    init_prob /= init_prob.sum()
-
-    for _ in range(no_states):
-        row = np.random.random(no_states)
-        row /= row.sum()
-        trans_prob.append(row)
-
-    for _ in range(no_states):
-        row = np.random.random(no_sym)
-        row /= row.sum()
-        emis_prob.append(row)
+    for observation in range(1, no_obs - 1):
+        if observation % targ_mark_ratio == 0:
+            no_targmark = no_targmark + 1
 
     with open('model.cpp', "w") as f:
         f.write("// SPDX-License-Identifier: BSD-2-Clause\n")
@@ -70,33 +67,17 @@ for no_states in range(2, run_max, run_step):
         f.write(' * ************************************************/\n')
         f.write('\n')
         f.write('// Model\n')
-        f.write('// M -> Observable Symbols in HMM\n')
-        f.write('uint32_t observation[NOOFOBS] = { ')
-        for dim in range(0, no_obs):
-            f.write(str(randint(0, no_sym - 1)))
-            if dim < no_obs - 1:
-                f.write(', ')
-            else:
-                f.write(' ')
-        f.write('};\n')
         f.write('\n')
-        f.write('// pi -> Initial Probabilities \n')
-        f.write('float init_prob[NOOFSTATES] = { ')
-        for dim in range(0, no_states):
-            f.write(str(init_prob[dim]))
-            if dim < no_states - 1:
-                f.write(', ')
-            else:
-                f.write(' ')
-        f.write('};\n')
-        f.write('\n')
-        f.write('// alpha -> Transition Probabilities \n')
-        f.write('float trans_prob[NOOFSTATES][NOOFSTATES] = {\n')
+        f.write('// HMM States Labels\n')
+        f.write('const uint8_t hmm_labels[NOOFSTATES][NOOFOBS] = { \n')
         for dim1 in range(0, no_states):
             f.write('    { ')
-            for dim2 in range(0, no_states):
-                f.write(str(trans_prob[dim1][dim2]))
-                if dim2 < no_states - 1:
+            for dim2 in range(0, no_obs):
+                if random() > minor_allele_prob:
+                    f.write('0')
+                else:
+                    f.write('1')
+                if dim2 < no_obs - 1:
                     f.write(', ')
                 else:
                     f.write(' ')
@@ -106,23 +87,38 @@ for no_states in range(2, run_max, run_step):
                 f.write('},\n')
         f.write('};\n')
         f.write('\n')
-        f.write('// b -> Emission Probabilities \n')
-        f.write('float emis_prob[NOOFSTATES][NOOFSYM] = {\n')
-        for dim1 in range(0, no_states):
+        f.write('// Target Markers \n')
+        f.write('const uint32_t observation[NOOFTARGMARK][2] = { \n')
+        for dim in range(0, no_targmark):
             f.write('    { ')
-            for dim2 in range(0, no_sym):
-                if true_fbalgo:
-                    f.write(str(emis_prob[dim1][dim2]))
-                else:
-                    f.write('0.9999')
-                if dim2 < no_sym - 1:
-                    f.write(', ')
-                else:
-                    f.write(' ')
-            if dim1 == no_states - 1:
+            if dim == 0:
+                f.write('0')
+            elif dim == no_targmark - 1:
+                f.write(str(no_obs - 1))
+            else:
+                f.write(str(dim * targ_mark_ratio))
+
+            f.write(', ')
+            if random() > targ_minor_allele_prob:
+                f.write('0 ')
+            else:
+                f.write('1 ')
+
+            if dim == no_targmark - 1:
                 f.write('}\n')
             else:
                 f.write('},\n')
+
+        f.write('};\n')
+        f.write('\n')
+        f.write('// dm -> Genetic Distances \n')
+        f.write('const float dm[NOOFOBS-1] = {\n')
+        for dim1 in range(0, no_obs - 1):
+            f.write(str(format(uniform(0.0000000135741, 0.0000045218641), '.15f')))
+            if dim == no_obs - 2:
+                f.write('\n')
+            else:
+                f.write(',\n')
         f.write('};\n')
         f.write('\n')
         f.write('/***************************************************\n')
@@ -145,17 +141,21 @@ for no_states in range(2, run_max, run_step):
         f.write(' * ************************************************/\n')
         f.write('\n')
         f.write('#define NOOFSTATES (' + str(no_states) + ')\n')
-        f.write('#define NOOFSYM (' + str(no_sym) + ')\n')
         f.write('#define NOOFOBS (' + str(no_obs) + ')\n')
+        f.write('#define NOOFTARGMARK (' + str(no_targmark) + ')\n')
+        f.write('#define NE (' + str(eff_pop_size) + ')\n')
+        f.write('#define ERRORRATE (' + str(epsilon) + ')\n')
+        f.write('\n')
+        f.write('// Pre-processor Switches\n')
+        f.write('//#define PRINTDIAG (1)\n')
         f.write('\n')
         f.write('/***************************************************\n')
         f.write(' * <- And here\n')
         f.write(' * ************************************************/\n')
         f.write('\n')
-        f.write('extern uint32_t observation[NOOFOBS];\n')
-        f.write('extern float init_prob[NOOFSTATES];\n')
-        f.write('extern float trans_prob[NOOFSTATES][NOOFSTATES];\n')
-        f.write('extern float emis_prob[NOOFSTATES][NOOFSYM];\n')
+        f.write('extern const uint32_t observation[NOOFTARGMARK][2];\n')
+        f.write('extern const float dm[NOOFOBS-1];\n')
+        f.write('extern const uint8_t hmm_labels[NOOFSTATES][NOOFOBS];\n')
         f.write('\n')
         f.write('#endif\n')
         f.write('\n')
@@ -173,3 +173,4 @@ for no_states in range(2, run_max, run_step):
 
 
     time.sleep(10)
+
