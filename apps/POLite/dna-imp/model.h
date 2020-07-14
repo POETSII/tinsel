@@ -10,9 +10,9 @@
  * Edit values between here ->
  * ************************************************/
 
-#define NOOFSTATES (10)
-#define NOOFOBS (100)
-#define NOOFTARGMARK (11)
+#define NOOFSTATES (8)
+#define NOOFOBS (80)
+#define NOOFTARGMARK (9)
 #define NE (1000000)
 #define ERRORRATE (10000)
 

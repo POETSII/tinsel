@@ -28,43 +28,51 @@ int main()
     static float hmm[NOOFSTATES][NOOFOBS] = {0.0f};
     static int32_t i, j, k, l;
     static float prev_a_sum = 0.0f;
-    static float p_fwd = 0.0f;
-    static float p_bwd = 0.0f;
     static float emis_prob = 0.0f;
     static float tau_m = 0.0f;
     static float allele_probs[NOOFOBS][2] = {0.0f};
     static float posterior_total = 0.0f;
+    static float genetic_distance = 0.0f;
     
     // Record start time
     auto start = std::chrono::high_resolution_clock::now();
     
     // Forward part of the algorithm
     
-    // For every observation
-    for (i = 0; i < NOOFOBS; ++i) {
+    // For every observation in the target haplotype
+    for (i = 0; i < NOOFTARGMARK; ++i) {
+        
+        //calculate genetic distance between target haplotype observations
+        genetic_distance = 0.0f;
+        
+        for (k = (observation[i-1][0] + 1); k <= observation[i][0]; ++k) {
+            
+            genetic_distance += dm[k];
+            
+        }
         
         for (j = 0; j < NOOFSTATES; ++j) {
             
-            if (i == 0) {
+            if (observation[i][0] == 0) {
                 
                 prev_a_sum = 1.0f / NOOFSTATES;
                 
             }
             else {
                 
-                tau_m = (1 - exp((-4 * NE * dm[i-1]) / NOOFSTATES));
+                tau_m = (1 - exp((-4 * NE * genetic_distance) / NOOFSTATES));
                 prev_a_sum = 0.0f;
                 
                 for (k = 0; k < NOOFSTATES; ++k) {
                     
                     if (j != k) {
                         
-                        prev_a_sum += fwd[k][i-1] * (tau_m / NOOFSTATES);
+                        prev_a_sum += fwd[k][observation[i-1][0]] * (tau_m / NOOFSTATES);
                     
                     }
                     else {
                         
-                        prev_a_sum += fwd[k][i-1] * ((1 - tau_m) + (tau_m / NOOFSTATES));
+                        prev_a_sum += fwd[k][observation[i-1][0]] * ((1 - tau_m) + (tau_m / NOOFSTATES));
                         
                     }
                     
@@ -72,8 +80,42 @@ int main()
                 
             }
             
-            emis_prob = emission_prob(i, hmm_labels[j][i]);
-            fwd[j][i] = emis_prob * prev_a_sum;
+            emis_prob = emission_prob(observation[i][0], hmm_labels[j][observation[i][0]]);
+            fwd[j][observation[i][0]] = emis_prob * prev_a_sum;
+            
+        }
+        
+        if (i != 0) {
+        
+            // Calculate intermediate observations using linear interpolation
+            for (k = (observation[i-1][0] + 1); k <= (observation[i][0] - 1); ++k) {
+            
+                for (l = 0; l < NOOFSTATES; ++l) {
+                    
+                    
+                    //FOR DEBUG ONLY
+                    //static float current_dm = 0.0f;
+                    //static float last_hmm_alpha = 0.0f;
+                    //static float curr_hmm_alpha = 0.0f;
+                    
+                    //static float distance_ratio = 0.0f;
+                    //static float overall_dist = 0.0f;
+                    
+                    //current_dm = dm[k];
+                    //last_hmm_alpha = fwd[l][observation[i-1][0]];
+                    //curr_hmm_alpha = fwd[l][observation[i][0]];
+                    //distance_ratio = current_dm / genetic_distance;
+                    //overall_dist = last_hmm_alpha - curr_hmm_alpha;
+                    
+                    //fwd[l][k] = fwd[l][k-1] - ((distance_ratio) * (overall_dist));
+                    
+                    
+                    fwd[l][k] = fwd[l][k-1] - ((dm[k] / genetic_distance) * (fwd[l][observation[i-1][0]] - fwd[l][observation[i][0]]));
+                    
+                }
+                
+            }
+        
         }
         
     }
@@ -81,35 +123,49 @@ int main()
     
     // Backward part of the algorithm
     
-    for (i = NOOFOBS-1; i >= 0; --i) {
+    for (i = NOOFTARGMARK-1; i >= 0; --i) {
+        
+        
+        if (i != NOOFTARGMARK-1) {
+            
+            //calculate genetic distance between target haplotype observations
+            genetic_distance = 0.0f;
+            
+            for (k = (observation[i][0] + 1); k <= observation[i+1][0]; ++k) {
+                
+                genetic_distance += dm[k];
+                
+            }
+        
+        }
      
         for (j = 0; j < NOOFSTATES; ++j) {
             
-            if (i == NOOFOBS-1) {
+            if (i == NOOFTARGMARK-1) {
                 
                 for (k = 0; k < NOOFSTATES; ++k) {
                     
-                    bwd[j][i] = 1;
+                    bwd[j][observation[i][0]] = 1;
                     
                 }
                 
             }
             else {
                 
-                tau_m = (1 - exp((-4 * NE * dm[i]) / NOOFSTATES));
+                tau_m = (1 - exp((-4 * NE * genetic_distance) / NOOFSTATES));
                 
                 for (k = 0; k < NOOFSTATES; ++k) {
                     
-                    emis_prob = emission_prob(i+1, hmm_labels[k][i+1]);
+                    emis_prob = emission_prob(observation[i+1][0], hmm_labels[k][observation[i+1][0]]);
                     
                     if (j != k) {
                         
-                        bwd[j][i] += (tau_m / NOOFSTATES) * emis_prob * bwd[k][i+1];
+                        bwd[j][observation[i][0]] += (tau_m / NOOFSTATES) * emis_prob * bwd[k][observation[i+1][0]];
                     
                     }
                     else {
                         
-                        bwd[j][i] += ((1 - tau_m) + (tau_m / NOOFSTATES)) * emis_prob * bwd[k][i+1];
+                        bwd[j][observation[i][0]] += ((1 - tau_m) + (tau_m / NOOFSTATES)) * emis_prob * bwd[k][observation[i+1][0]];
                         
                     }
                 
@@ -120,7 +176,39 @@ int main()
             }
             
         }
-   
+        
+        if (i != NOOFTARGMARK-1) {
+        
+            // Calculate intermediate observations using linear interpolation
+            for (k = (observation[i+1][0] - 1); k >= (observation[i][0] + 1); --k) {
+            
+                for (l = 0; l < NOOFSTATES; ++l) {
+                    
+
+                    //FOR DEBUG ONLY
+                    //static float current_dm = 0.0f;
+                    //static float last_hmm_alpha = 0.0f;
+                    //static float curr_hmm_alpha = 0.0f;
+                    
+                    //static float distance_ratio = 0.0f;
+                    //static float overall_dist = 0.0f;
+                    
+                    //current_dm = dm[k];
+                    //last_hmm_alpha = bwd[l][observation[i+1][0]];
+                    //curr_hmm_alpha = bwd[l][observation[i][0]];
+                    //distance_ratio = current_dm / genetic_distance;
+                    //overall_dist = last_hmm_alpha - curr_hmm_alpha;
+                    
+                    //bwd[l][k] = bwd[l][k+1] - ((distance_ratio) * (overall_dist));
+ 
+                    bwd[l][k] = bwd[l][k+1] - ((dm[k] / genetic_distance) * (bwd[l][observation[i+1][0]] - bwd[l][observation[i][0]]));
+                    
+                }
+                
+            }
+        
+        }
+        
     }
     
     
@@ -170,7 +258,8 @@ int main()
     auto finish = std::chrono::high_resolution_clock::now();        
  
     std::chrono::duration<double> elapsed = finish - start;
-    
+  
+#ifdef PRINTDIAG
 
     std::cout << "Forward Algorithm:\n";
     
@@ -184,7 +273,7 @@ int main()
         
         std::cout << "\n";
     }
-    
+   
     std::cout << "Backward Algorithm:\n";
     
     for(i = 0; i < NOOFSTATES; ++i) {
@@ -234,10 +323,13 @@ int main()
     std::cout << "\n";
     
     std::cout << "Time = " << elapsed.count() << "\n";
-    
+
+
+#else
      
     std::cout << elapsed.count();
-
+    
+#endif
     
     return 0;
 }
