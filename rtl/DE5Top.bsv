@@ -22,6 +22,7 @@ import InstrMem     :: *;
 import NarrowSRAM   :: *;
 import OffChipRAM   :: *;
 import IdleDetector :: *;
+import Connections  :: *;
 
 // ============================================================================
 // Interface
@@ -45,6 +46,8 @@ interface DE5Top;
   interface JtagUartAvalon jtagIfc;
   (* always_ready, always_enabled *)
   method Action setBoardId(Bit#(4) id);
+  (* always_ready, always_enabled *)
+  method Action setTemperature(Bit#(8) temp);
 endinterface
 
 `endif
@@ -60,6 +63,9 @@ module de5Top (DE5Top);
   `else
   Wire#(Bit#(4)) localBoardId <- mkDWire(?);
   `endif
+
+  // Temperature register
+  Reg#(Bit#(8)) temperature <- mkReg(128);
 
   // Create off-chip RAMs
   Vector#(`DRAMsPerBoard, OffChipRAM) rams;
@@ -109,10 +115,6 @@ module de5Top (DE5Top);
     for (Integer j = 0; j < `DCachesPerDRAM; j=j+1)
       connectCoresToDCache(map(dcacheClient, cores[i][j]), dcaches[i][j]);
 
-  // Connect data caches to DRAM
-  for (Integer i = 0; i < `DRAMsPerBoard; i=i+1)
-    connectDCachesToOffChipRAM(dcaches[i], rams[i]);
-
   // Create FPUs
   Vector#(`FPUsPerBoard, FPU) fpus;
   for (Integer i = 0; i < `FPUsPerBoard; i=i+1)
@@ -132,14 +134,11 @@ module de5Top (DE5Top);
   // Create DebugLink interface
   function DebugLinkClient getDebugLinkClient(Core core) = core.debugLinkClient;
   DebugLink debugLink <-
-    mkDebugLink(localBoardId, map(getDebugLinkClient, vecOfCores));
+    mkDebugLink(localBoardId, temperature,
+      map(getDebugLinkClient, vecOfCores));
 
   // Create idle-detector
   IdleDetector idle <- mkIdleDetector;
-
-  // Connect cores to idle-detector
-  function idleClient(core) = core.idleClient;
-  connectCoresToIdleDetector(map(idleClient, vecOfCores), idle);
 
   // Create mailboxes
   Vector#(`MailboxMeshYLen,
@@ -148,6 +147,13 @@ module de5Top (DE5Top);
   for (Integer y = 0; y < `MailboxMeshYLen; y=y+1)
     for (Integer x = 0; x < `MailboxMeshXLen; x=x+1)
       mailboxes[y][x] <- mkMailboxAcc(debugLink.getBoardId(), x, y);
+
+  // Initialise mailbox send slots
+  rule initSendSlots;
+    for (Integer y = 0; y < `MailboxMeshYLen; y=y+1)
+      for (Integer x = 0; x < `MailboxMeshXLen; x=x+1)
+        mailboxes[y][x].initSendSlots(debugLink.useExtraSendSlot);
+  endrule
 
   // Connect cores to mailboxes
   for (Integer y = 0; y < `MailboxMeshYLen; y=y+1)
@@ -161,13 +167,27 @@ module de5Top (DE5Top);
       connectCoresToMailbox(map(mailboxClient, cs), mailboxes[y][x]);
     end
 
-  // Create mesh of mailboxes
+  // Create network-on-chip
   function MailboxNet mailboxNet(Mailbox mbox) = mbox.net;
-  ExtNetwork net <- mkMailboxMesh(
-                      debugLink.getBoardId(),
-                      debugLink.linkEnable,
-                      map(map(mailboxNet), mailboxes),
-                      idle);
+  NoC noc <- mkNoC(
+    debugLink.getBoardId(),
+    debugLink.linkEnable,
+    map(map(mailboxNet), mailboxes),
+    idle);
+
+  // Connect cores and ProgRouter fetchers to idle-detector
+  function idleClient(core) = core.idleClient;
+  connectClientsToIdleDetector(
+    map(idleClient, vecOfCores), noc.activities, idle);
+
+  // Connections to off-chip RAMs
+  for (Integer i = 0; i < `DRAMsPerBoard; i=i+1)
+    connectClientsToOffChipRAM(dcaches[i],
+      noc.dramReqs[i], noc.dramResps[i], rams[i]);
+
+  // Connects ProgRouter performance counters to cores
+  connectProgRouterPerfCountersToCores(noc.progRouterPerfCounters,
+    concat(concat(cores)));
 
   // Set board ids
   rule setBoardIds;
@@ -193,12 +213,15 @@ module de5Top (DE5Top);
   interface dramIfcs = map(getDRAMExtIfc, rams);
   interface sramIfcs = concat(map(getSRAMExtIfcs, rams));
   interface jtagIfc  = debugLink.jtagAvalon;
-  interface northMac = net.north;
-  interface southMac = net.south;
-  interface eastMac  = net.east;
-  interface westMac  = net.west;
+  interface northMac = noc.north;
+  interface southMac = noc.south;
+  interface eastMac  = noc.east;
+  interface westMac  = noc.west;
   method Action setBoardId(Bit#(4) id);
     localBoardId <= id;
+  endmethod
+  method Action setTemperature(Bit#(8) temp);
+    temperature <= temp;
   endmethod
   `endif
 endmodule

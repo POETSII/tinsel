@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <sys/time.h>
 #include <config.h>
 #include <DebugLink.h>
 
@@ -14,6 +15,13 @@
 // Connections to PCIeStream
 #define PCIESTREAM      "pciestream"
 #define PCIESTREAM_SIM  "tinsel.b-1.1"
+
+// HostLink parameters
+struct HostLinkParams {
+  uint32_t numBoxesX;
+  uint32_t numBoxesY;
+  bool useExtraSendSlot;
+};
 
 class HostLink {
   // Lock file for acquring exclusive access to PCIeStream
@@ -28,8 +36,19 @@ class HostLink {
   char***** lineBuffer;
   int**** lineBufferLen;
 
+  // Send buffer, for bulk sending over PCIe
+  char* sendBuffer;
+  int sendBufferLen;
+
+  // Request an extra send slot when bringing up Tinsel FPGAs
+  bool useExtraSendSlot;
+
   // Internal constructor
-  void constructor(uint32_t numBoxesX, uint32_t numBoxesY);
+  void constructor(HostLinkParams params);
+
+  // Internal helper for sending messages
+  bool sendHelper(uint32_t dest, uint32_t numFlits, void* payload,
+         bool block, uint32_t key);
  public:
   // Dimensions of board mesh
   int meshXLen;
@@ -38,10 +57,14 @@ class HostLink {
   // Constructors
   HostLink();
   HostLink(uint32_t numBoxesX, uint32_t numBoxesY);
+  HostLink(HostLinkParams params);
 
   // Destructor
   ~HostLink();
  
+  // Power-on self test
+  bool powerOnSelfTest();
+
   // Debug links
   // -----------
 
@@ -57,14 +80,37 @@ class HostLink {
   // Try to send a message (non-blocking, returns true on success)
   bool trySend(uint32_t dest, uint32_t numFlits, void* msg);
 
-  // Receive a flit (blocking)
-  void recv(void* flit);
+  // Send a message using routing key (blocking by default)
+  bool keySend(uint32_t key, uint32_t numFlits, void* msg, bool block = true);
+
+  // Try to send using routing key (non-blocking, returns true on success)
+  bool keyTrySend(uint32_t key, uint32_t numFlits, void* msg);
+
+  // Receive a max-sized message (blocking)
+  void recv(void* msg);
 
   // Can receive a flit without blocking?
   bool canRecv();
 
   // Receive a message (blocking), given size of message in bytes
   void recvMsg(void* msg, uint32_t numBytes);
+
+  // Bulk send and receive
+  // ---------------------
+
+  // Receive multiple max-sized messages (blocking)
+  void recvBulk(int numMsgs, void* msgs);
+
+  // Receive multiple messages (blocking), given size of each message
+  void recvMsgs(int numMsgs, int msgSize, void* msgs);
+
+  // When enabled, use buffer for sending messages, permitting bulk writes
+  // The buffer must be flushed to ensure data is sent
+  // Currently, only blocking sends are supported in this mode
+  bool useSendBuffer;
+
+  // Flush the send buffer (when send buffering is enabled)
+  void flush();
 
   // Address construction/deconstruction
   // -----------------------------------

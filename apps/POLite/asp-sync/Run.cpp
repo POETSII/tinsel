@@ -19,9 +19,11 @@ int main(int argc, char**argv)
   // Read network
   EdgeList net;
   net.read(argv[1]);
-
+  
   // Print max fan-out
   printf("Max fan-out = %d\n", net.maxFanOut());
+  printf("Min fan-out = %d\n", net.minFanOut());
+  assert(net.minFanOut() > 0);
 
   // Check that parameters make sense
   assert(32*N <= net.numNodes);
@@ -82,7 +84,7 @@ int main(int argc, char**argv)
 
   // Accumulate sum at each device
   for (uint32_t i = 0; i < graph.numDevices; i++) {
-    PMessage<None, ASPMessage> msg;
+    PMessage<ASPMessage> msg;
     hostLink.recvMsg(&msg, sizeof(msg));
     if (i == 0) {
       // Stop timer
@@ -97,7 +99,9 @@ int main(int argc, char**argv)
   // Display time
   timersub(&finish, &start, &diff);
   double duration = (double) diff.tv_sec + (double) diff.tv_usec / 1000000.0;
+  #ifndef POLITE_DUMP_STATS
   printf("Time = %lf\n", duration);
+  #endif
 
   return 0;
 }

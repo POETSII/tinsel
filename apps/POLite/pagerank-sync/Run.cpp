@@ -28,7 +28,8 @@ int main(int argc, char **argv)
   net.read(argv[1]);
   printf(" done\n");
 
-  // Print max fan-out
+  // Print fan-out
+  printf("Min fan-out = %d\n", net.minFanOut());
   printf("Max fan-out = %d\n", net.maxFanOut());
   
   // Create nodes in POETS graph
@@ -77,7 +78,7 @@ int main(int argc, char **argv)
   politeSaveStats(&hostLink, "stats.txt");
 
   // Wait for response
-  PMessage<None, PageRankMessage> msg;
+  PMessage<PageRankMessage> msg;
   for (uint32_t i = 0; i < graph.numDevices; i++) {
     hostLink.recvMsg(&msg, sizeof(msg));
     gscore += msg.payload.val;

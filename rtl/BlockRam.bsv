@@ -47,6 +47,10 @@ interface BlockRamTrueMixed#
   method dataB dataOutB;
 endinterface
 
+// Non-mixed-width variant
+typedef BlockRamTrueMixed#(addr, data, addr, data)
+  BlockRamTrue#(type addr, type data);
+
 // True dual-port mixed-width block RAM with byte-enables
 // (Port B has the byte enables and must be smaller than port A)
 interface BlockRamTrueMixedByteEn#
@@ -80,6 +84,10 @@ typedef enum {
 typedef struct {
   ReadDuringWrite readDuringWrite;
 
+  // Implementation style
+  // Defaults to "AUTO", but can be "MLAB" or "M20K"
+  String style;
+
   // Is the data output registered? (i.e. two cycle read latency)
   Bool registerDataOut;
 
@@ -93,8 +101,9 @@ BlockRamOpts defaultBlockRamOpts =
   BlockRamOpts {
     readDuringWrite: DontCare,
     //readDuringWrite: OldData,
+    style: "AUTO",
     registerDataOut: True,
-    initFile:        Invalid
+    initFile: Invalid
   };
 
 // =========================
@@ -153,6 +162,7 @@ import "BVI" AlteraBlockRam =
         tagged Valid .str: return (str + ".mif");
       endcase;
     parameter DEV_FAMILY = `DeviceFamily;
+    parameter STYLE = opts.style;
 
     method read(RD_ADDR) enable (RE) clocked_by(clk);
     method write(WR_ADDR, DI) enable (WE) clocked_by(clk);
@@ -234,6 +244,7 @@ import "BVI" AlteraBlockRam =
         tagged Valid .x: return (x + ".mif");
       endcase;
     parameter DEV_FAMILY = `DeviceFamily;
+    parameter STYLE = opts.style;
 
     method read(RD_ADDR) enable (RE) clocked_by(clk);
     method write(WR_ADDR, DI, BE) enable (WE) clocked_by(clk);
@@ -255,6 +266,16 @@ import "BVI" AlteraBlockRam =
 // ====================================
 // True dual-port mixed-width block RAM
 // ====================================
+
+module mkBlockRamTrueMixed
+         (BlockRamTrueMixed#(addrA, dataA, addrB, dataB))
+         provisos(Bits#(addrA, addrWidthA), Bits#(dataA, dataWidthA),
+                  Bits#(addrB, addrWidthB), Bits#(dataB, dataWidthB),
+                  Bounded#(addrA), Bounded#(addrB),
+                  Add#(addrWidthA, aExtra, addrWidthB),
+                  Mul#(TExp#(aExtra), dataWidthB, dataWidthA));
+  let ram <- mkBlockRamTrueMixedOpts(defaultBlockRamOpts); return ram;
+endmodule
 
 `ifdef SIMULATE
 
@@ -369,6 +390,7 @@ import "BVI" AlteraBlockRamTrueMixed =
         tagged Valid .x: return (x + ".mif");
       endcase;
     parameter DEV_FAMILY = `DeviceFamily;
+    parameter STYLE = opts.style;
 
     // Port A
     method putA(WE_A, ADDR_A, DI_A) enable (EN_A) clocked_by(clk);
@@ -501,6 +523,7 @@ import "BVI" AlteraBlockRamTrueMixedBE =
         tagged Valid .x: return (x + ".mif");
       endcase;
     parameter DEV_FAMILY = `DeviceFamily;
+    parameter STYLE = opts.style;
 
     // Port A
     method putA(WE_A, ADDR_A, DI_A) enable (EN_A) clocked_by(clk);

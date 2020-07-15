@@ -8,6 +8,13 @@
 #include "BoardCtrl.h"
 #include "DebugLinkFormat.h"
 
+// DebugLinkH parameters
+struct DebugLinkParams {
+  uint32_t numBoxesX;
+  uint32_t numBoxesY;
+  bool useExtraSendSlot;
+};
+
 class DebugLink {
 
   // Location of this box with full box mesh
@@ -46,7 +53,7 @@ class DebugLink {
   int meshYLen;
 
   // Constructor
-  DebugLink(uint32_t numBoxesX, uint32_t numBoxesY);
+  DebugLink(DebugLinkParams params);
 
   // On given board, set destination core and thread
   void setDest(uint32_t boardX, uint32_t boardY,
@@ -61,6 +68,12 @@ class DebugLink {
   // Receive byte (StdOut)
   void get(uint32_t* boardX, uint32_t* boardY,
              uint32_t* coreId, uint32_t* threadId, uint8_t* byte);
+
+  // Read temperature of given board
+  int32_t getBoardTemp(uint32_t boardX, uint32_t boardY);
+
+  // Read temperature of given bridge
+  int32_t getBridgeTemp(uint32_t boxX, uint32_t boxY);
 
   // Is a data available for reading?
   bool canGet();

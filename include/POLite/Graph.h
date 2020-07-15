@@ -9,7 +9,6 @@
 typedef uint32_t NodeId;
 typedef int32_t PinId;
 typedef uint32_t NodeLabel;
-typedef int32_t EdgeLabel; // TODO: generalise
 
 struct Graph {
   // Incoming and outgoing edges
@@ -21,10 +20,6 @@ struct Graph {
   // Invariant: this sequence always has the same structure as 'outgoing'
   Seq<Seq<PinId>*>* pins;
 
-  // Each edge has a label
-  // Invariant: this sequence always has the same structure as 'outgoing'
-  Seq<Seq<EdgeLabel>*>* edgeLabels;
-
   // Each node has a label
   Seq<NodeLabel>* labels;
 
@@ -34,7 +29,6 @@ struct Graph {
     incoming = new Seq<Seq<NodeId>*> (initialCapacity);
     outgoing = new Seq<Seq<NodeId>*> (initialCapacity);
     pins = new Seq<Seq<PinId>*> (initialCapacity);
-    edgeLabels = new Seq<Seq<EdgeLabel>*> (initialCapacity);
     labels = new Seq<NodeLabel> (initialCapacity);
   }
 
@@ -44,12 +38,10 @@ struct Graph {
       delete incoming->elems[i];
       delete outgoing->elems[i];
       delete pins->elems[i];
-      delete edgeLabels->elems[i];
     }
     delete incoming;
     delete outgoing;
     delete pins;
-    delete edgeLabels;
     delete labels;
   }
 
@@ -59,7 +51,6 @@ struct Graph {
     incoming->append(new Seq<NodeId> (initialCapacity));
     outgoing->append(new Seq<NodeId> (initialCapacity));
     pins->append(new Seq<PinId> (initialCapacity));
-    edgeLabels->append(new Seq<EdgeLabel> (initialCapacity));
     labels->append(incoming->numElems - 1);
     return incoming->numElems - 1;
   }
@@ -74,7 +65,6 @@ struct Graph {
   void addEdge(NodeId x, NodeId y) {
     outgoing->elems[x]->append(y);
     pins->elems[x]->append(0);
-    edgeLabels->elems[x]->append(0);
     incoming->elems[y]->append(x);
   }
 
@@ -82,15 +72,6 @@ struct Graph {
   void addEdge(NodeId x, PinId p, NodeId y) {
     outgoing->elems[x]->append(y);
     pins->elems[x]->append(p);
-    edgeLabels->elems[x]->append(0);
-    incoming->elems[y]->append(x);
-  }
-
-  // Add labelled edge using given output pin
-  void addLabelledEdge(EdgeLabel label, NodeId x, PinId p, NodeId y) {
-    outgoing->elems[x]->append(y);
-    pins->elems[x]->append(p);
-    edgeLabels->elems[x]->append(label);
     incoming->elems[y]->append(x);
   }
 

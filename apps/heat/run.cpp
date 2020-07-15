@@ -96,7 +96,8 @@ int main()
   // 2D grid
   int NX = X_LEN*8;
   int NY = Y_LEN*8;
-  int grid[NY][NX];
+  int** grid = new int* [NY];
+  for (int i = 0; i < NY; i++) grid[i] = new int [NX];
 
   // Initialise 2D grid
   for (int y = 0; y < NY; y++)
@@ -107,7 +108,7 @@ int main()
     // Fill 2D grid
     for (int i = 0; i < 8*X_LEN*Y_LEN; i++) {
       HostMsg msg;
-      hostLink.recv(&msg);
+      hostLink.recvMsg(&msg, sizeof(HostMsg));
       for (int j = 0; j < 8; j++)
         grid[msg.y][msg.x+j] = msg.temps[j];
     }

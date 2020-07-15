@@ -10,8 +10,7 @@ int main()
   int host = tinselHostId();
 
   // Get pointers to mailbox message slots
-  volatile int* msgIn = tinselSlot(0);
-  volatile int* msgOut = tinselSlot(1);
+  volatile int* msgOut = tinselSendSlot();
 
   uint32_t startTime = tinselCycleCount();
   for (int i = 0; i < 40000; i++) {

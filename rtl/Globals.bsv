@@ -13,31 +13,40 @@ typedef Bit#(`LogCoresPerBoard) CoreId;
 typedef struct {
   Bit#(`MeshYBits) y;
   Bit#(`MeshXBits) x;
-} BoardId deriving (Eq, Bits);
+} BoardId deriving (Eq, Bits, FShow);
 
 // Network address
 // Note: If 'host' bit is valid, then once the message reaches the
-// destionation board, it is routed either left or right depending
+// destination board, it is routed either left or right depending
 // the contents of the host bit.  This is to support bridge boards
 // connected at the east/west rims of the FPGA mesh.
+// The 'isKey' bit means that the destination is a routing key, held
+// in the botom 32 bits of the 'NetAddr'.
 // The 'acc' bit means message is routed to a custom accelerator rather
 // than a mailbox.
 typedef struct {
   Bool acc;
+  Bool isKey;
   Option#(Bit#(1)) host;
   BoardId board;
-  CoreId core;
-  ThreadId thread;
-} NetAddr deriving (Bits);
+  MailboxId mbox;
+} MailboxNetAddr deriving (Bits, FShow);
+
+typedef struct {
+  MailboxNetAddr addr;
+  Bit#(`ThreadsPerMailbox) threads;
+} NetAddr deriving (Bits, FShow);
 
 // Mailbox id
 typedef struct {
   Bit#(`MailboxMeshYBits) y;
   Bit#(`MailboxMeshXBits) x;
-} MailboxId deriving (Bits, Eq);
+} MailboxId deriving (Bits, Eq, FShow);
 
-function MailboxId getMailboxId(NetAddr addr) =
-  unpack(truncateLSB(addr.core));
+function MailboxId getMailboxId(NetAddr addr) = addr.addr.mbox;
+
+// Extract routing key from network address
+function Bit#(32) getRoutingKeyRaw(NetAddr addr) = truncate(pack(addr));
 
 // ============================================================================
 // Messages
@@ -60,7 +69,7 @@ typedef struct {
   Bool notFinalFlit;
   // Is this a special packet for idle-detection?
   Bool isIdleToken;
-} Flit deriving (Bits);
+} Flit deriving (Bits, FShow);
 
 // A padded flit is a multiple of 64 bits
 // (i.e. the data width of the 10G MAC interface)

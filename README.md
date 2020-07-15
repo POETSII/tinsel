@@ -1,11 +1,10 @@
-# Tinsel 0.6.1
+# Tinsel 0.8
 
 Tinsel is a [RISC-V](https://riscv.org/)-based manythread
 message-passing architecture designed for FPGA clusters.  It is being
 developed as part of the [POETS
 Project](https://poets-project.org/about) (Partial Ordered Event
-Triggered Systems).  This manual describes the Tinsel architecture and
-associated APIs.  Further background can be found in our [FPL 2019
+Triggered Systems).  Further background can be found in our [FPL 2019
 paper](doc/fpl-2019-paper.pdf).  If you're a POETS Partner, you can
 access a machine running Tinsel in the [POETS
 Cloud](https://github.com/POETSII/poets-cloud).  
@@ -27,10 +26,19 @@ Released on 10 Sep 2018 and maintained in the
 * [v0.5](https://github.com/POETSII/tinsel/releases/tag/v0.5):
 Released on 8 Jan 2019 and maintained in the
 [tinsel-0.5.1 branch](https://github.com/POETSII/tinsel/tree/tinsel-0.5.1).
-(Hardware idle-detection.)
+(Hardware termination-detection.)
 * [v0.6](https://github.com/POETSII/tinsel/releases/tag/v0.6):
-Released on 11 Apr 2019 and maintained in the master branch.
+Released on 11 Apr 2019 and maintained in the
+[tinsel-0.6.3 branch](https://github.com/POETSII/tinsel/tree/tinsel-0.6.3).
 (Multi-box cluster.)
+* [v0.7](https://github.com/POETSII/tinsel/releases/tag/v0.7):
+Released on 2 Dec 2019 and maintained in the
+[tinsel-0.7.1 branch](https://github.com/POETSII/tinsel/tree/tinsel-0.7.1).
+(Local hardware multicast.)
+* [v0.8](https://github.com/POETSII/tinsel/releases/tag/v0.8):
+Released on 24 Jun 2020 and maintained in the
+[master branch](https://github.com/POETSII/tinsel/).
+(Global hardware multicast.)
 
 ## Contents
 
@@ -40,8 +48,9 @@ Released on 11 Apr 2019 and maintained in the master branch.
 * [4. Tinsel Cache](#4-tinsel-cache)
 * [5. Tinsel Mailbox](#5-tinsel-mailbox)
 * [6. Tinsel Network](#6-tinsel-network)
-* [7. Tinsel HostLink](#7-tinsel-hostlink)
-* [8. POLite API](#8-polite-api)
+* [7. Tinsel Router](#7-tinsel-router)
+* [8. Tinsel HostLink](#8-tinsel-hostlink)
+* [9. POLite API](#9-polite-api)
 
 ## Appendices
 
@@ -57,23 +66,18 @@ Released on 11 Apr 2019 and maintained in the master branch.
 ## 1. Overview
 
 On the [POETS Project](https://poets-project.org/about), we are
-looking at ways to accelerate applications that can be expressed as
-large numbers of small processes communicating by message-passing.
-Our first attempt is based around a manythread RISC-V architecture
-called Tinsel running on an FPGA cluster.  Tinsel aims to support
-irregular applications that have heavy memory and communication
-demands, but fairly modest compute requrements.  The main features are:
+looking at ways to accelerate applications that are naturally
+expressed as a large number of small processes communicating by
+message-passing.  Our first attempt is based around a manythread
+RISC-V architecture called Tinsel, running on an FPGA cluster.  The
+main features are:
 
   * **Multithreading**.  A critical aspect of the design
     is to tolerate latency as cleanly as possible.  This includes the
-    latencies arising from: floating-point on Stratix V FPGAs
-    (tens of cycles); off-chip memories; deep pipelines
-    (keeping Fmax high); and sharing of resources between cores
+    latencies arising from floating-point on Stratix V FPGAs
+    (tens of cycles), off-chip memories, deep pipelines
+    (keeping Fmax high), and sharing of resources between cores
     (such as caches, mailboxes, and FPUs).
-
-  * **Caches**.  To keep the programming model simple, we have opted
-    to use thread-partitioned data caches to optimise access to
-    off-chip memory rather than DMA. 
 
   * **Message-passing**. Although there is a requirement to support a
     large amount of memory, it is not necessary to provide the
@@ -82,10 +86,21 @@ demands, but fairly modest compute requrements.  The main features are:
     instructions for sending and receiving messages 
     between any two threads in the cluster.
 
-  * **Hardware termination detection**.  This significantly simplifies
-    application development in pure message-passing systems.
-    It automatically detects convergence in asynchronous applications,
-    and can be used to advance time in synchronous ones. 
+  * **Hardware termination-detection**.  A global termination event is
+    triggered when every thread indicates termination and no messages
+    are in-flight.  Termination can be interpreted as termination of a
+    time step, or termination of the application, supporting
+    both synchronous and asynchronous event-driven systems.
+
+  * **Local hardware multicast**.  Threads can send a message to
+    multiple collocated destination threads simultaneously, greatly reducing
+    the number of inter-thread messages in applications exhibiting good
+    locality of communication.
+
+  * **Global hardware multicast**.  Programmable routers
+    automatically propagate messages to any number of destination
+    threads distributed throughout the cluster, minimising inter-FPGA
+    bandwidth usage for distributed fanouts.
 
   * **Host communication**. Tinsel threads communicate with x86
     machines distributed throughout the FPGA cluster, for command and
@@ -95,7 +110,7 @@ demands, but fairly modest compute requrements.  The main features are:
     include custom accelerators written in SystemVerilog.
 
 This repository also includes a prototype high-level vertex-centric
-programming API for Tinsel, called [POLite](#8-polite-api).
+programming API for Tinsel, called [POLite](#9-polite-api).
 
 ## 2. High-Level Structure
 
@@ -122,10 +137,13 @@ accelerators](doc/custom) in tiles.
 
 #### Tinsel FPGA
 
-Each FPGA contains two *Tinsel Slices*, with each slice typically
+Each FPGA contains two *Tinsel Slices*, with each slice by default
 comprising eight tiles connected to one 4GB DDR3 DIMM and two 8MB
 QDRII+ SRAMs.  All tiles are connected together via a routers to form
-a 2D NoC.  At the edges of the NoC are the inter-FPGA links.
+a 2D NoC.  The NoC is connected to the inter-FPGA links using a
+*per-board programmable router*.  Note that the per-board router also
+has connections to off-chip memory: this is where the programmable
+routing tables are stored.
 
 <img align="center" src="doc/figures/fpga.png">
 
@@ -359,16 +377,17 @@ A *cache flush* function is provided that evicts all cache lines
 owned by the calling thread.
 
 ```c
-// Full cache flush
-// (Issues flush request for every line, and waits until all requests are done)
+// Full cache flush (non-blocking)
 inline void tinselCacheFlush();
 
-// Flush given cache line
-// (Issues flush request, but doesn't wait until request is done)
+// Flush given cache line (non-blocking)
 inline void tinselFlushLine(uint32_t lineNum, uint32_t way)
 ```
 
-These functions are implemented using the following CSR.
+These functions do not block until the flushed lines have reached
+memory (that can be acheived by issuing a subsequent load instruction
+and waiting for the response).  The flush functions are implemented
+using the following CSR.
 
   CSR Name     | CSR    | R/W | Function
   ------------ | ------ | --- | --------
@@ -383,7 +402,7 @@ structure of each cache.
   `LogDCachesPerDRAM`      |       3 | Caches per DRAM
   `DCacheLogWordsPerBeat`  |       3 | Number of 32-bit words per beat
   `DCacheLogBeatsPerLine`  |       0 | Beats per cache line
-  `DCacheLogNumWays`       |       3 | Cache lines in each associative set
+  `DCacheLogNumWays`       |       4 | Cache lines in each associative set
   `DCacheLogSetsPerThread` |       2 | Associative sets per thread
   `LogBeatsPerDRAM`        |      26 | Size of DRAM
 
@@ -405,28 +424,47 @@ has reached the destination or none of it has.  As one would expect,
 shorter messages consume less bandwidth than longer ones.  The size of
 a flit is defined by `LogWordsPerFlit`.
 
-At the heart of a mailbox is a memory-mapped *scratchpad* that
-stores both incoming and outgoing messages.  Each thread has access to
-space for several messages in the scratchpad, defined by
-`LogMsgsPerThread`.  As well as storing messages, the scratchpad may
-also be used as a small thread-local general-purpose memory.
+At the heart of a mailbox is a memory-mapped *scratchpad* that stores
+both incoming and outgoing messages.  The capacity of the scratchpad
+is defined by `LogMsgsPerMailbox`.  Each thread connected to the
+mailbox has one or two message slots reserved for sending messages.
+(By default, only a single send slot is reserved; the extra send slot
+may be optionally reserved at power-up via a parameter to the
+[HostLink](#8-tinsel-hostlink) constructor.)  The addresses of these
+slots are obtained using the following Tinsel API calls.
+
+```c
+// Get pointer to thread's message slot reserved for sending
+volatile void* tinselSendSlot();
+
+// Get pointer to thread's extra message slot reserved for sending
+// (Assumes that HostLink has requested the extra slot)
+volatile void* tinselSendSlotExtra();
+```
 
 Once a thread has written a message to the scratchpad, it can trigger
 a *send* operation, provided that the `CanSend` CSR returns true.  It
 does so by: (1) writing the number of flits in the message to the
 `SendLen` CSR; (2) writing the address of the message in the
-scratchpad to the `SendPtr` CSR; and (3) writing the destination
-thread id to the `Send` CSR.
+scratchpad to the `SendPtr` CSR; (3) writing the destination mailbox
+id to the `SendDest` CSR; (4) invoking the `Send` custom instruction,
+whose two operands combine to form a 64-bit mask idenfitying the
+destination threads on the target mailbox.  The format of a mailbox id
+is defined in [Appendix E](#e-tinsel-address-structure).
 
   CSR Name   | CSR    | R/W | Function
   ---------- | ------ | --- | --------
   `CanSend`  | 0x803  | R   | 1 if can send, 0 otherwise
   `SendLen`  | 0x806  | W   | Set message length for send
   `SendPtr`  | 0x807  | W   | Set message pointer for send
-  `Send`     | 0x808  | W   | Send message to supplied destination
+  `SendDest` | 0x808  | W   | Set destination mailbox for send
 
-The [Tinsel API](#f-tinsel-api) provides wrapper functions for accessing
-these CSRs.
+  Instruction | Opcode                                  | Function
+  ----------- | --------------------------------------- | --------
+  `Send`      | `0000000 <rs2> <rs1> 000 00000 0001000` | Send message
+
+The [Tinsel API](#f-tinsel-api) provides wrapper functions for these
+custom CSRs and instructions.
 
 ```c
 // Determine if calling thread can send a message
@@ -436,71 +474,57 @@ inline uint32_t tinselCanSend();
 // (A message of length n is comprised of n+1 flits)
 inline void tinselSetLen(uint32_t n);
 
-// Send message at address to destination
+// Send message to multiple threads on the given mailbox.
+void tinselMulticast(
+  uint32_t mboxDest,      // Destination mailbox
+  uint32_t destMaskHigh,  // Destination bit mask (high bits)
+  uint32_t destMaskLow,   // Destination bit mask (low bits)
+  volatile void* addr);   // Message pointer
+
+// Send message at address to destination thread id
 // (Address must be aligned on message boundary)
 inline void tinselSend(uint32_t dest, volatile void* addr);
-
-// Get pointer to nth message-aligned slot in mailbox scratchpad
-inline volatile void* tinselSlot(uint32_t n);
 ```
 
-Several things to note:
+Two things to note:
 
 * After sending a message, a thread must not modify the
 contents of that message while `tinselCanSend()` returns false,
 otherwise the in-flight message could be corrupted.
 
-* The `SendLen` and `SendPtr` CSRs are persistent: if two consecutive
-send operations wish to use the same length and address then the CSRs
-need only be written once.
+* The `SendLen`, `SendPtr` and `SendDest` CSRs are persistent: if two
+consecutive send operations wish to use the same length, pointer, and
+mailbox id then the CSRs need only be written once.
 
-* The scratchpad pointer must be aligned on a max-message-size
-boundary, which we refer to as a message *slot*. The `tinselSlot`
-function yields a pointer to the nth slot in the calling thread's mailbox.
-
-To *receive* a message, a thread must first *allocate* a slot in the
-scratchpad for an incoming message to be stored.  Allocating a slot
-can be viewed as transferring ownership of that slot from the software
-to the hardware.  This is done by writing the address of the slot to
-the `Alloc` CSR.  Multiple slots can be allocated, bounded by
-`LogMsgsPerThread`, creating a receive buffer of the desired capacity.
-
-The hardware may use any one of the allocated slots to store an
-incoming message, but as soon as a slot is used it will be
-automatically *deallocated*.  Now, provided the `CanRecv` CSR returns
-true, the `Recv` CSR can be read, yielding a pointer to the slot
-containing a received message.  Receiving a message can be viewed as
-transferring ownership of a slot from the hardware to the software.
-As soon as the thread is finished with the message, it can
-*reallocate* it, restoring capacity to the receive buffer.  On
-power-up, no slots are allocated for receiving messages, i.e. all
-slots are owned by software and none by hardware.
+All the other message slots, i.e. those not reserved for sending, are
+used by the hardware for receiving messages.  To receive a message, a
+thread first checks that the `CanRecv` CSR returns true, and if so,
+reads the `Recv` CSR, yielding a pointer to the slot containing the
+received message.  As soon as the thread is finished with the message,
+it can *free* it by writing the address of the slot to the `Free` CSR,
+allowing the hardware to recycle that slot for a new future message.
 
  CSR Name   | CSR    | R/W | Function
  ---------- | ------ | --- | --------
- `Alloc`    | 0x802  | W   | Allocate slot in scratchpad for receiving a message
+ `Free`     | 0x802  | W   | Free space used by message in scratchpad
  `CanRecv`  | 0x805  | R   | 1 if can receive, 0 otherwise
  `Recv`     | 0x809  | R   | Return pointer to a received message
 
 Again, the [Tinsel API](#f-tinsel-api) hides these low-level CSRs.
 
 ```c
-// Give mailbox permission to use given slot to store an incoming message
-inline void tinselAlloc(volatile void* addr);
-
 // Determine if calling thread can receive a message
 inline uint32_t tinselCanRecv();
 
 // Receive message
 inline volatile void* tinselRecv();
+
+// Indicate that we've finished with the given message.
+void tinselFree(void* addr);
 ```
 
-When more than one slot contains an incoming message, `tinselRecv()`
-will select the one with the lowest address.  This means that the
-order in which messages are received by software is not neccesarily
-equal to the order in which they arrived at the mailbox.  Given the
-*partially-ordered* nature of POETS, we feel that this is a reasonable
-property.
+For futher details about hardware multicasting, see the original
+feature proposal: [PIP 22](doc/PIP-0022-mailbox-local-multicast.md).
 
 Sometimes, a thread may wish to wait until it can send or receive.  To
 avoid busy waiting on the `tinselCanSend()` and `tinselCanRecv()`
@@ -526,20 +550,13 @@ typedef enum {TINSEL_CAN_SEND = 1, TINSEL_CAN_RECV = 2} TinselWakeupCond;
 inline void tinselWaitUntil(TinselWakeupCond cond);
 ```
 
-One of the main goals of the mailbox is to support efficient software
-multicasting: when a message is received, it can be forwarded on to
-multiple destinations without having to serialise the message contents
-into and out of the 32-bit core.  The mailbox scratchpad has a
-flit-sized port on the network side, providing much more efficient
-access to messages than is possible from the core.
-
 Tinsel also provides a function 
 
 ```c++
   int tinselIdle(bool vote);
 ```
 
-which blocks until either
+for global termination detection, which blocks until either
 
   1. a message is available to receive, or
 
@@ -552,8 +569,10 @@ feature allows efficient termination detection in asynchronous
 applications and efficient barrier synchronisation in synchronous
 applications.  The voting mechanism additionally allows termination to
 be detected in synchronous applications, e.g. all threads in the
-system are stable since the last time step.  For more details, see the
-original feature proposal: [PIP 13](doc/PIP-0013-idle-detection.md).
+system are stable since the last time step.  Note that a message is
+considered undelivered until it is *received and freed*.  For more
+background, see the original feature proposal: [PIP
+13](doc/PIP-0013-idle-detection.md).
 
 A summary of synthesis-time parameters introduced in this section:
 
@@ -562,7 +581,7 @@ A summary of synthesis-time parameters introduced in this section:
   `LogCoresPerMailbox`     |       2 | Number of cores sharing a mailbox
   `LogWordsPerFlit`        |       2 | Number of 32-bit words in a flit
   `LogMaxFlitsPerMsg`      |       2 | Max number of flits in a message
-  `LogMsgsPerThread`       |       4 | Number of slots per thread in scratchpad
+  `LogMsgsPerMailbox`      |       9 | Number of slots in the mailbox
 
 ## 6. Tinsel Network
 
@@ -614,12 +633,13 @@ The full board mesh is comprised of multiple smaller meshes (of size
 A *globally unique thread id*, as returned by `tinselId()`, has the
 following structure from MSB to LSB.
 
-  Field                 | Width  
-  --------------------- | ------------
-  Board Y coord         | `MeshYBits`
-  Board X coord         | `MeshXBits`
-  Board-local core id   | `LogCoresPerBoard`
-  Core-local thread id  | `LogThreadsPerCore`
+  Field                   | Width
+  ----------------------- | ------------
+  Board Y coord           | `MeshYBits`
+  Board X coord           | `MeshXBits`
+  Mailbox Y coord         | `MailboxMeshYBits`
+  Mailbox X coord         | `MailboxMeshXBits`
+  Mailbox-local thread id | `LogThreadsPerMailbox`
 
 Each board-to-board communication port is implemented on top of a
 *10Gbps ethernet MAC*, which automatically detects and drops packets
@@ -631,7 +651,208 @@ communication.  And since we are using the links point-to-point,
 almost all of the ethernet header fields can be used for our own
 purposes, resulting in very little overhead on the wire.
 
-## 7. Tinsel HostLink
+## 7. Tinsel Router
+
+Tinsel provides a programmable router on each FPGA board to support
+*global* multicasting.  Programmable routers automatically propagate
+messages to any number of destination threads distributed throughout
+the cluster, minimising inter-FPGA bandwidth usage for distributed
+fanouts, and offloading work from the cores.  Further background can
+be found in [PIP 24](doc/PIP-0024-global-multicast.md).
+
+To support programmable routers, the destination component of a
+message is generalised so that it can be (1) a thread id; or (2) a
+*routing key*.  A message, sent by a thread, containing a routing
+key as a destination will go to a per-board router on the same
+FPGA.  The router will use the key as an index into a DRAM-based
+routing table and automatically propagate the message towards all the
+destinations associated with that key. 
+
+A **routing key** is a 32-bit value consisting of a board-local *ram
+id*, a *pointer*, and a *size*:
+
+```sv
+// 32-bit routing key (MSB to LSB)
+typedef struct {
+  // Which off-chip RAM on this board?
+  Bit#(`LogDRAMsPerBoard) ram;
+  // Pointer to array of routing beats containing routing records
+  Bit#(`LogBeatsPerDRAM) ptr;
+  // Number of beats in the array
+  Bit#(`LogRoutingEntryLen) numBeats;
+} RoutingKey;
+```
+
+To send a message using a routing key as the destination, a new Tinsel
+API call is provided:
+
+```c
+// Send message at addr using given routing key 
+inline void tinselKeySend(uint32_t key, volatile void* addr);
+```
+
+When a message reaches the per-board router, the `ptr` field of the
+routing key is used as an index into DRAM, where a sequence of 256-bit
+**routing beats** are found.  The `numBeats` field of the routing key
+indicates how many contiguous routing beats there are.  The value of
+`numBeats` may be zero, in which case there are no destinations
+associated with the key.
+
+A routing beat consists of a *size* and a sequence of five 48-bit
+*routing chunks*:
+
+```sv
+// 256-bit routing beat (aligned, MSB to LSB)
+typedef struct {
+  // Number of routing records present in this beat
+  Bit#(16) size;
+  // Five 48-bit record chunks
+  Vector#(5, Bit#(48)) chunks;
+} RoutingBeat;
+```
+
+The *size* must lie in the range 1 to 5 inclusive (0 is disallowed).
+A **routing record** consists of one or two routing chunks, depending
+on the **record type**.
+
+All byte orderings are little endian.  For example, the order of bytes
+in a routing beat is as follows.
+
+Byte | Contents
+---- | --------
+31:  | Upper byte of size (i.e. number of records in beat)
+30:  | Lower byte of size
+29:  | Upper byte of first chunk
+...  | ...
+24:  | Lower byte of first chunk
+23:  | Upper byte of second chunk
+...  | ...
+18:  | Lower byte of second chunk
+17:  | Upper byte of third chunk
+...  | ...
+12:  | Lower byte of third chunk
+11:  | Upper byte of fourth chunk
+...  | ...
+ 6:  | Lower byte of fourth chunk
+ 5:  | Upper byte of fifth chunk
+...  | ...
+ 0:  | Lower byte of fifth chunk
+
+Clearly, both routing keys and routing beats have a maximum size.
+However, in principle there is no limit to the number of records
+associated with a key, due to the possibility of *indirection records*
+(see below).
+
+There are five types of routing record, defined below.
+
+**48-bit Unicast Router-to-Mailbox (URM1):**
+
+```sv
+typedef struct {
+  // Record type (URM1 == 0)
+  Bit#(3) tag;
+  // Mailbox destination
+  Bit#(4) mbox;
+  // Mailbox-local thread identifier
+  Bit#(6) thread;
+  // Unused
+  Bit#(3) unused;
+  // Local key. The first word of the message
+  // payload is overwritten with this.
+  Bit#(32) localKey;
+} URM1Record;
+```
+
+The `localKey` can be used for anything, but might encode the
+destination thread-local device identifier, or edge identifier, or
+both.  The `mbox` field is currently 4 bits (two Y bits followed by
+two X bits), but there are spare bits available to increase the size
+of this field in future if necessary.
+
+**96-bit Unicast Router-to-Mailbox (URM2):**
+
+```sv
+typedef struct {
+  // Record type (URM2 == 1)
+  Bit#(3) tag;
+  // Mailbox destination
+  Bit#(4) mbox;
+  // Mailbox-local thread identifier
+  Bit#(6) thread;
+  // Currently unused
+  Bit#(19) unused;
+  // Local key. The first two words of the message
+  // payload is overwritten with this.
+  Bit#(64) localKey;
+} URM2Record;
+```
+
+This is the same as a URM1 record except the local key is 64-bits in
+size.
+
+**48-bit Router-to-Router (RR):**
+
+```sv
+typedef struct {
+  // Record type (RR == 2)
+  Bit#(3) tag;
+  // Direction (N,S,E,W == 0,1,2,3)
+  Bit#(2) dir;
+  // Currently unused
+  Bit#(11) unused;
+  // New 32-bit routing key that will replace the one in the
+  // current message for the next hop of the message's journey
+  Bit#(32) newKey;
+} RRRecord;
+```
+
+The `newKey` field will replace the key in the current message for the
+next hop of the message's journey.  Introducing a new key at each hop
+simplifies the mapping process (keeping it quick).
+
+**96-bit Multicast Router-to-Mailbox (MRM):**
+
+```sv
+typedef struct {
+  // Record type (MRM == 3)
+  Bit#(3) tag;
+  // Mailbox destination
+  Bit#(4) mbox;
+  // Currently unused
+  Bit#(9) unused;
+  // Local key. The least-significant half-word
+  // of the message is replaced with this
+  Bit#(16) localKey;
+  // Mailbox-local destination mask
+  Bit#(64) destMask;
+} MRMRecord;
+```
+
+**48-bit Indirection (IND):**
+
+```sv
+// 48-bit Indirection (IND) record
+// Note the restrictions on IND records:
+// 1. At most one IND record per key lookup
+// 2. A max-sized key lookup must contain an IND record
+typedef struct {
+  // Record type (IND == 4)
+  Bit#(3) tag;
+  // Currently unused
+  Bit#(13) unused;
+  // New 32-bit routing key for new set of records on current router
+  Bit#(32) newKey;
+} INDRecord;
+```
+
+Indirection records can be used to handle large fanouts, which exceed
+the number of bits available in the size portion of the routing key.
+
+Finally, it is worth noting that when using programmable routers,
+there is an added responsibility for the programmer to use a
+deadlock-free routing scheme, such as dimension-ordered routing.
+
+## 8. Tinsel HostLink
 
 *HostLink* is the means by which Tinsel cores running on a mesh of
 FPGA boards communicate with a *host PC*.  It comprises three main
@@ -639,7 +860,7 @@ communication channels:
 
 * An FPGA *bridge board* that connects the host PC inside a POETS box
 (PCI Express) to the FPGA mesh (SFP+).  Using this high-bandwidth
-channel (10Gbps), the host PC can efficiently send messages to any
+channel (2 x 10Gbps), the host PC can efficiently send messages to any
 Tinsel thread and vice-versa.
 
 * A set of *debug links* connecting the host PC inside a POETS box to
@@ -654,34 +875,45 @@ each FPGA's *power management module* via separate USB UART cables.
 These connections can be used to power-on/power-off each FPGA and to
 monitor power consumption, temperature, and fan tachometer.
 
-HostLink supports multiple POETS boxes, but requires that one of these
-boxes is designated as the **master box**.  Currently, all messages
-are injected/extracted to/from the FPGA network via the master box's
-bridge board.
-
-A Tinsel application typically consists of two programs: one which
-runs on the RISC-V cores, linked against the [Tinsel
+HostLink allows multiple POETS boxes to be used to run an application,
+but requires that one of these boxes is designated as the **master
+box**.  A Tinsel application typically consists of two programs: one
+which runs on the RISC-V cores, linked against the [Tinsel
 API](#f-tinsel-api), and the other which runs on the host PC of the
 master box, linked against the [HostLink API](#g-hostlink-api).  The
 HostLink API is implemented as a C++ class called `HostLink`.  The
 constructor for this class first powers up all the worker FPGAs (which
-are by default powered down).  On power-up the FPGAs are automatically
-programmed using the Tinsel bit-file residing in flash memory, and are
-ready to be used within a few seconds, as soon as the `HostLink`
-constructor returns.
+are by default powered down).  On power-up, the FPGAs are
+automatically programmed using the Tinsel bit-file residing in flash
+memory, and are ready to be used within a few seconds, as soon as the
+`HostLink` constructor returns.
 
 The `HostLink` constructor is overloaded:
 
 ```cpp
 HostLink::HostLink();
 HostLink::HostLink(uint32_t numBoxesX, uint32_t numBoxesY);
+HostLink::HostLink(HostLinkParams params);
 ```
 
 If it is called without any arguments, then it assumes that a single
-box is to be used.  Alternatively, the user may request multiple
-boxes by specifying the width and height of the box sub-mesh they
-wish to use.  (The box from which the application is started is
-considered as the origin of this sub-mesh.)
+box is to be used.  Alternatively, the user may request multiple boxes
+by specifying the width and height of the box sub-mesh they wish to
+use.  (The box from which the application is started, i.e. the master
+box, is considered as the the origin of this sub-mesh.)  The most
+general constructor takes a `HostLinkParams` structure as an argument,
+which allows additional options to be specified.
+
+```cpp
+// HostLink parameters
+struct HostLinkParams {
+  // Number of boxes to use (default is 1x1)
+  uint32_t numBoxesX;
+  uint32_t numBoxesY;
+  // Enable use of tinselSendSlotExtra() on threads (default is false)
+  bool useExtraSendSlot;
+};
+```
 
 HostLink methods for sending and receiving messages on the host PC are
 as follows.
@@ -693,28 +925,56 @@ bool HostLink::send(uint32_t dest, uint32_t numFlits, void* msg);
 // Try to send a message (non-blocking, returns true on success)
 bool HostLink::trySend(uint32_t dest, uint32_t numFlits, void* msg);
 
-// Receive a flit (blocking)
-void HostLink::recv(void* flit);
+// Receive a max-sized message (blocking)
+// Buffer must be at least 1<<LogBytesPerMsg bytes in size
+void HostLink::recv(void* msg);
 
-// Can receive a flit without blocking?
+// Can receive a message without blocking?
 bool HostLink::canRecv();
 
 // Receive a message (blocking), given size of message in bytes
+// Any bytes beyond numBytes up to the next message boundary will be ignored
 void HostLink::recvMsg(void* msg, uint32_t numBytes);
+
+// Send a message using routing key (blocking)
+bool HostLink::keySend(uint32_t key, uint32_t numFlits, void* msg);
+
+// Try to send using routing key (non-blocking, returns true on success)
+bool HostLink::keyTrySend(uint32_t key, uint32_t numFlits, void* msg);
 ```
 
-Although the `send` method allows a message consisting of multiple
-flits to be sent, the `recv` method only returns a single flit at a
-time and does not indicate the number of flits present in the message
-currently being received.  The length of a message, if not statically
-known, must therefore be encoded in the message contents.  Flits
-belonging to the same message will be received contiguously, in order.
-If the length of the message is known statically, `recvMsg` can be
-used and any bytes beyond `numBytes` up to the next flit boundary will
-be ignored.  This is useful when a `struct` is being used to hold
-messages, in which case the second argument to `recvMsg` is simply the
-`sizeof` the `struct`.  The `recvMsg` function assumes that the size
-of the struct is less than or equal to the maximum message size.
+The `send` method allows a message consisting of multiple flits to be
+sent. The `recv` method reads a single max-sized message, padded with
+zeroes if the actual message received contains fewer than the maximum
+number of flits.  If the length of the message is known statically,
+`recvMsg` can be used and any bytes beyond `numBytes` up to the next
+message boundary will be ignored.  This is useful when a `struct` is
+being used to hold messages, in which case the second argument to
+`recvMsg` is simply the `sizeof` the `struct`.  The `recvMsg` function
+assumes that the size of the struct is less than or equal to the
+maximum message size.
+
+There is also support for bulk sending and receving of messages. For
+bulk receiving, `recvBulk` and `recvMsgs` generalise `recv` and
+`recvMsg` respectively.  For bulk sending, enable the `useSendBuffer`
+member variable, and call `flush` to ensure that messages actually get
+sent.
+
+```cpp
+// Receive multiple max-sized messages (blocking)
+void HostLink::recvBulk(int numMsgs, void* msgs);
+
+// Receive multiple messages (blocking), given size of each message
+void HostLink::recvMsgs(int numMsgs, int msgSize, void* msgs);
+
+// When enabled, use buffer for sending messages, permitting bulk writes
+// The buffer must be flushed to ensure data is sent
+// Currently, only blocking sends are supported in this mode
+bool HostLink::useSendBuffer;
+
+// Flush the send buffer (when send buffering is enabled)
+void HostLink::flush();
+```
 
 These methods for sending a receiving messages work by connecting to a
 local [PCIeStream deamon](/hostlink/pciestreamd.cpp) via a UNIX domain
@@ -865,7 +1125,7 @@ not be called.  When the application returns from `main()`, all but
 one thread on each core are killed and the remaining threads reenter
 the boot loader.
 
-## 8. POLite API
+## 9. POLite API
 
 POLite is a layer of abstraction that takes care of mapping arbitrary
 task graphs onto the Tinsel overlay, completely hiding architectural
@@ -1039,14 +1299,24 @@ by each thread.
 After mapping, POLite writes the graph into cluster memory and
 triggers execution.  By default, vertex states are written into the
 off-chip QDRII+ SRAMs, and edge lists are written in the DDR3 DRAMs.
-This behaviour can be inverted by setting `graph.mapVerticesToDRAM` to
-`true`.  Once the application is up and running, the host and the
-graph vertices can continue to communicate: any vertex can send
-messages to the host via the `HostPin` or the `finish` handler, and
-the host can send messages to any vertex.
+This default behaviour can be modified by adjusting the following
+flags of the `PGraph` class.
+
+  Flag                     | Default
+  ------------------------ | -------
+  `mapVerticesToDRAM`      | `false`
+  `mapInEdgeHeadersToDRAM` | `true`
+  `mapInEdgeRestToDRAM`    | `true`
+  `mapOutEdgesToDRAM`      | `true`
+
+A value of `true` means "map to DRAM", while `false` means "map to
+(off-chip) SRAM".  Once the application is up and running, the host
+and the graph vertices can continue to communicate: any vertex can
+send messages to the host via the `HostPin` or the `finish` handler,
+and the host can send messages to any vertex.
 
 **Softswitch**. Central to POLite is an event loop running on each
-Tinsel thread, which we call **the softswitch** as it effectively
+Tinsel thread, which we call the softswitch as it effectively
 context-switches between vertices mapped to the same thread.  The
 softswitch has four main responsibilities: (1) to maintain a queue of
 vertices wanting to send; (2) to implement multicast sends over a pin
@@ -1055,15 +1325,34 @@ messages efficiently between vertices running on the same thread and
 on different threads; and (4) to invoke the vertex handlers when
 required, to meet the semantics of the POLite library.
 
-**Limitations**. POLite provides several important features of the
-vertex-centric paradigm, but there are some limitations. One of the
-features of the Pregel framework is the ability for vertices to add
-and remove vertices and edges at runtime -- but currently, POLite only
-supports static graphs.  Multicasting is currently implemented by
-sending directly to each destination one-at-a-time.  For large
-fan-outs, a hierarchical multicast (where messages get forked at
-intermediate stages along the way to the destinations) could reduce
-communication costs significantly.
+**POLite static parameters**. The following macros can be defined,
+before the first instance of `#include <POLite.h>`, to control some
+aspects of POLite behaviour.
+
+  Macro                     | Meaning
+  ---------                 | -------
+  `POLITE_NUM_PINS`         | Max number of pins per vertex (default 1)
+  `POLITE_DUMP_STATS`       | Dump stats upon completion
+  `POLITE_COUNT_MSGS`       | Include message counts in stats dump
+  `POLITE_EDGES_PER_HEADER` | Lower this for large edge states (default 6)
+
+**POLite dynamic parameters**.  The following environment variables can
+be set, to control some aspects of POLite behaviour.
+
+  Environment variable | Meaning
+  -------------------- | -------
+  `HOSTLINK_BOXES_X`   | Size of box mesh to use in X dimension
+  `HOSTLINK_BOXES_Y`   | Size of box mesh to use in Y dimension
+  `POLITE_BOARDS_X`    | Size of board mesh to use in X dimension
+  `POLITE_BOARDS_Y`    | Size of board mesh to use in Y dimension
+  `POLITE_CHATTY`      | Set to `1` to enable emission of mapper stats
+  `POLITE_PLACER`      | Use `metis`, `random`, `bfs`, or `direct` placement
+
+**Limitations**. POLite is primarily intended as a prototype library
+for hardware evaluation purposes. It occupies a single, simple point
+in a wider, richer design space.  In particular, it doesn't support
+dynamic creation of vertices and edges, and it hasn't been optimised
+to deal with highly non-uniform fanouts.
 
 ## A. DE5-Net Synthesis Report
 
@@ -1072,7 +1361,7 @@ The default Tinsel configuration on a single DE5-Net board contains:
   * 64 cores
   * 16 threads per core
   * (1024 threads in total)
-  * 16 mailboxes
+  * 16 multicast-capable mailboxes
   * 16 caches
   * 16 floating-point units
   * 2D network-on-chip
@@ -1080,13 +1369,11 @@ The default Tinsel configuration on a single DE5-Net board contains:
   * four QDRII+ SRAM controllers
   * four 10Gbps reliable links
   * one termination/idle detector
+  * one 8x8 programmable router
   * a JTAG UART
 
-The clock frequency is 250MHz and the resource utilisation is *61% of
-the DE5-Net*.
-
-A Tinsel configuration similar to the one above but with **128 cores**
-(2048 threads in total) clocks at 210MHz and uses 88% of the DE5-Net.
+The clock frequency is 215MHz and the resource utilisation is 84% of
+the DE5-Net.
 
 ## B. Tinsel Parameters
 
@@ -1100,7 +1387,7 @@ A Tinsel configuration similar to the one above but with **128 cores**
   `LogDCachesPerDRAM`      |       3 | Caches per DRAM
   `DCacheLogWordsPerBeat`  |       3 | Number of 32-bit words per beat
   `DCacheLogBeatsPerLine`  |       0 | Beats per cache line
-  `DCacheLogNumWays`       |       3 | Cache lines in each associative set
+  `DCacheLogNumWays`       |       4 | Cache lines in each associative set
   `DCacheLogSetsPerThread` |       2 | Associative sets per thread
   `LogBeatsPerDRAM`        |      26 | Size of DRAM
   `SRAMAddrWidth`          |      20 | Address width of each off-chip SRAM
@@ -1108,21 +1395,24 @@ A Tinsel configuration similar to the one above but with **128 cores**
   `LogCoresPerMailbox`     |       2 | Number of cores sharing a mailbox
   `LogWordsPerFlit`        |       2 | Number of 32-bit words in a flit
   `LogMaxFlitsPerMsg`      |       2 | Max number of flits in a message
-  `LogMsgsPerThread`       |       4 | Number of slots per thread in scratchpad
+  `LogMsgsPerMailbox`      |       9 | Number of message slots in the mailbox
   `LogMailboxesPerBoard`   |       4 | Number of mailboxes per FPGA board
   `MeshXBits`              |       3 | Number of bits in mesh X coordinate
   `MeshYBits`              |       3 | Number of bits in mesh Y coordinate
   `MeshXLenWithinBox`      |       3 | Boards in X dimension within box
   `MeshYLenWithinBox`      |       2 | Boards in Y dimension within box
   `EnablePerfCount`        |    True | Enable performance counters
+  `ClockFreq`              |     215 | Clock frequency in MHz
+
+A full list of parameters can be found in [config.py](config.py).
 
 ## C. Tinsel Memory Map
 
   Region                  | Description
   ----------------------- | -----------
-  `0x00000000-0x000003ff` | Reserved
-  `0x00000400-0x000007ff` | Thread-local mailbox scratchpad
-  `0x00000800-0x000fffff` | Reserved
+  `0x00000000-0x00007fff` | Reserved
+  `0x00008000-0x0000ffff` | Mailbox
+  `0x00010000-0x007fffff` | Reserved
   `0x00800000-0x00ffffff` | Cached off-chip SRAM A
   `0x01000000-0x017fffff` | Cached off-chip SRAM B
   `0x01800000-0x7fffffff` | Cached off-chip DRAM
@@ -1151,13 +1441,13 @@ separate memory regions (which they are not).
   ------------ | ------ | --- | --------
   `InstrAddr`  | 0x800  | W   | Set address for instruction write
   `Instr`      | 0x801  | W   | Write to instruction memory
-  `Alloc`      | 0x802  | W   | Alloc space for new message in scratchpad
+  `Free`       | 0x802  | W   | Free space used by message in scratchpad
   `CanSend`    | 0x803  | R   | 1 if can send, 0 otherwise
   `HartId`     | 0xf14  | R   | Globally unique hardware thread id
   `CanRecv`    | 0x805  | R   | 1 if can receive, 0 otherwise
   `SendLen`    | 0x806  | W   | Set message length for send
   `SendPtr`    | 0x807  | W   | Set message pointer for send
-  `Send`       | 0x808  | W   | Send message to supplied destination
+  `SendDest`   | 0x808  | W   | Set destination mailbox id for send
   `Recv`       | 0x809  | R   | Return pointer to message received
   `WaitUntil`  | 0x80a  | W   | Sleep until can-send or can-recv
   `FromUart`   | 0x80b  | R   | Try to read byte from StdIn
@@ -1173,28 +1463,42 @@ separate memory regions (which they are not).
 
 Optional performance-counter CSRs (when `EnablePerfCount` is `True`):
 
-  Name             | CSR    | R/W | Function
-  ---------------- | ------ | --- | --------
-  `PerfCount`      | 0xc07  | W   | Reset(0)/Start(1)/Stop(2) all counters
-  `MissCount`      | 0xc08  | R   | Cache miss count
-  `HitCount`       | 0xc09  | R   | Cache hit count
-  `WritebackCount` | 0xc0a  | R   | Cache writeback count
-  `CPUIdleCount`   | 0xc0b  | R   | CPU idle-cycle count (lower 32 bits)
-  `CPUIdleCountU`  | 0xc0c  | R   | CPU idle-cycle count (upper 8 bits)
-  `CycleU`         | 0xc0d  | R   | Cycle counter (upper 8 bits)
+ Name                  | CSR    | R/W | Function
+ ----------------      | ------ | --- | --------
+ `PerfCount`           | 0xc07  | W   | Reset(0)/Start(1)/Stop(2) all counters
+ `MissCount`           | 0xc08  | R   | Cache miss count
+ `HitCount`            | 0xc09  | R   | Cache hit count
+ `WritebackCount`      | 0xc0a  | R   | Cache writeback count
+ `CPUIdleCount`        | 0xc0b  | R   | CPU idle-cycle count (lower 32 bits)
+ `CPUIdleCountU`       | 0xc0c  | R   | CPU idle-cycle count (upper 8 bits)
+ `CycleU`              | 0xc0d  | R   | Cycle counter (upper 8 bits)
+ `ProgRouterSent`      | 0xc0e  | R   | Total msgs sent by ProgRouter
+ `ProgRouterSentInter` | 0xc0f  | R   | Inter-board msgs sent by ProgRouter
 
+Note that `ProgRouterSent` and `ProgRouterSentInter` are only valid
+from thread zero on each board.
+
+Tinsel also supports the following custom instructions.
+
+  Instruction | Opcode                                  | Function
+  ----------- | --------------------------------------- | --------
+  `Send`      | `0000000 <rs2> <rs1> 000 00000 0001000` | Send message
 
 ## E. Tinsel Address Structure
 
 A globally unique thread id has the following structure from MSB to
 LSB.
 
-  Field                 | Width  
-  --------------------- | ------------
-  Board Y coord         | `MeshYBits`
-  Board X coord         | `MeshXBits`
-  Board-local core id   | `LogCoresPerBoard`
-  Core-local thread id  | `LogThreadsPerCore`
+  Field                   | Width  
+  ----------------------- | ------------
+  Board Y coord           | `MeshYBits`
+  Board X coord           | `MeshXBits`
+  Mailbox Y coord         | `MailboxMeshYBits`
+  Mailbox X coord         | `MailboxMeshXBits`
+  Mailbox-local thread id | `LogThreadsPerMailbox`
+
+A globally unique mailbox id is exactly the same, except it is missing
+the mailbox-local thread id component.
 
 ## F. Tinsel API
 
@@ -1208,31 +1512,49 @@ inline uint32_t tinselCycleCount();
 // Write 32-bit word to instruction memory
 inline void tinselWriteInstr(uint32_t addr, uint32_t word);
 
-// Cache flush
+// Cache flush (non-blocking)
 inline void tinselCacheFlush();
 
-// Get pointer to nth message-aligned slot in mailbox scratchpad
-inline volatile void* tinselSlot(uint32_t n);
-
-// Determine if calling thread can send a message
-inline uint32_t tinselCanSend();
+// Cache line flush (non-blocking)
+inline void tinselFlushLine(uint32_t lineNum, uint32_t way);
 
 // Set message length for send operation
 // (A message of length n is comprised of n+1 flits)
 inline void tinselSetLen(uint32_t n);
 
-// Send message at address to destination
+// Get pointer to thread's message slot reserved for sending
+volatile void* tinselSendSlot();
+
+// Get pointer to thread's extra message slot reserved for sending
+// (Assumes that HostLink has requested the extra slot)
+volatile void* tinselSendSlotExtra();
+
+// Determine if calling thread can send a message
+inline uint32_t tinselCanSend();
+
+// Send message to multiple threads on the given mailbox.
+// (Address must be aligned on message boundary)
+inline void tinselMulticast(
+  uint32_t mboxDest,      // Destination mailbox
+  uint32_t destMaskHigh,  // Destination bit mask (high bits)
+  uint32_t destMaskLow,   // Destination bit mask (low bits)
+  volatile void* addr);   // Message pointer
+
+// Send message at address to destination thread id
 // (Address must be aligned on message boundary)
 inline void tinselSend(uint32_t dest, volatile void* addr);
 
-// Give mailbox permission to use given slot to store an incoming message
-inline void tinselAlloc(volatile void* addr);
+// Send message at address using given routing key
+inline void tinselKeySend(uint32_t key, volatile void* addr);
 
 // Determine if calling thread can receive a message
 inline uint32_t tinselCanRecv();
 
 // Receive message
 inline volatile void* tinselRecv();
+
+// Indicate that we've finished with the given message.
+inline void tinselFree(void* addr);
 
 // Thread can be woken by a logical-OR of these events
 typedef enum {TINSEL_CAN_SEND = 1, TINSEL_CAN_RECV = 2} TinselWakeupCond;
@@ -1304,6 +1626,14 @@ inline uint32_t tinselCPUIdleCountU();
 // Read cycle counter (upper 8 bits)
 inline uint32_t tinselCycleCountU();
 
+// Performance counter: number of messages emitted by ProgRouter
+// (Only valid from thread zero on each board)
+inline uint32_t tinselProgRouterSent();
+
+// Performance counter: number of inter-board messages emitted by ProgRouter
+// (Only valid from thread zero on each board)
+inline uint32_t tinselProgRouterSentInterBoard();
+
 // Address construction
 inline uint32_t tinselToAddr(
          uint32_t boardX, uint32_t boardY,
@@ -1351,15 +1681,39 @@ class HostLink {
   // Try to send a message (non-blocking, returns true on success)
   bool trySend(uint32_t dest, uint32_t numFlits, void* msg);
 
-  // Receive a flit (blocking)
-  void recv(void* flit);
+  // Receive a single max-sized message (blocking)
+  // Buffer must be at least 1<<LogBytesPerMsg bytes in size
+  void recv(void* msg);
 
-  // Can receive a flit without blocking?
+  // Can receive a message without blocking?
   bool canRecv();
 
   // Receive a message (blocking), given size of message in bytes
-  // Any bytes beyond numBytes up to the next flit boundary will be ignored
+  // Any bytes beyond numBytes up to the next message boundary will be ignored
   void recvMsg(void* msg, uint32_t numBytes);
+
+  // Send a message using routing key (blocking by default)
+  bool keySend(uint32_t key, uint32_t numFlits, void* msg, bool block = true);
+
+  // Try to send using routing key (non-blocking, returns true on success)
+  bool keyTrySend(uint32_t key, uint32_t numFlits, void* msg);
+
+  // Bulk send and receive
+  // ---------------------
+
+  // Receive multiple max-sized messages (blocking)
+  void recvBulk(int numMsgs, void* msgs);
+
+  // Receive multiple messages (blocking), given size of each message
+  void recvMsgs(int numMsgs, int msgSize, void* msgs);
+
+  // When enabled, use buffer for sending messages, permitting bulk writes
+  // The buffer must be flushed to ensure data is sent
+  // Currently, only blocking sends are supported in this mode
+  bool useSendBuffer;
+
+  // Flush the send buffer (when send buffering is enabled)
+  void flush();
 
   // Address construction/deconstruction
   // -----------------------------------
@@ -1410,14 +1764,24 @@ class HostLink {
   // Trigger application execution on all started threads on given core
   void goOne(uint32_t meshX, uint32_t meshY, uint32_t coreId);
 };
+
+// HostLink parameters (used by the most general HostLink constructor)
+struct HostLinkParams {
+  // Number of boxes to use (default is 1x1)
+  uint32_t numBoxesX;
+  uint32_t numBoxesY;
+  // Enable use of tinselSendSlotExtra() on threads (default is false)
+  bool useExtraSendSlot;
+};
 ```
 
 ```cpp
 class DebugLink {
  public:
 
-  // Constructor
+  // Constructors
   DebugLink(uint32_t numBoxesX, uint32_t numBoxesY);
+  DebugLink(DebugLinkParams params);
 
   // On given board, set destination core and thread
   void setDest(uint32_t boardX, uint32_t boardY,

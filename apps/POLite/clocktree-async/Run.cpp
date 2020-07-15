@@ -31,6 +31,9 @@ int main(int argc, char** argv)
 
   // Create POETS graph
   PGraph<ClockTreeDevice, ClockTreeState, None, ClockTreeMessage> graph;
+  graph.mapVerticesToDRAM = true;
+  graph.mapInEdgesToDRAM = true;
+  graph.mapOutEdgesToDRAM = true;
 
   // Number of devices in tree
   int numDevices = size(d, b);
@@ -77,7 +80,7 @@ int main(int argc, char** argv)
   gettimeofday(&start, NULL);
 
   // Receive message
-  PMessage<None, ClockTreeMessage> msg;
+  PMessage<ClockTreeMessage> msg;
   hostLink.recvMsg(&msg, sizeof(msg));
   gettimeofday(&finish, NULL);
 
@@ -90,7 +93,9 @@ int main(int argc, char** argv)
   // Display time
   timersub(&finish, &start, &diff);
   double duration = (double) diff.tv_sec + (double) diff.tv_usec / 1000000.0;
+  #ifndef POLITE_DUMP_STATS
   printf("Time = %lf\n", duration);
+  #endif
 
   return 0;
 }

@@ -18,14 +18,16 @@
 // The implementation below is based on Safra's termination detection
 // algorithm (EWD998).
 
-import Mailbox   :: *;
-import Globals   :: *;
-import Interface :: *;
-import Queue     :: *;
-import Vector    :: *;
-import ConfigReg :: *;
-import Util      :: *;
-import DReg      :: *;
+import Mailbox    :: *;
+import Globals    :: *;
+import Interface  :: *;
+import Queue      :: *;
+import Vector     :: *;
+import ConfigReg  :: *;
+import Util       :: *;
+import DReg       :: *;
+import ProgRouter :: *;
+import Assert     :: *;
 
 // The total number of messages sent by all threads on an FPGA minus
 // the total number of messages received by all threads on an FPGA.
@@ -39,6 +41,8 @@ typedef struct {
   Bool done;
   // Vote flag
   Bool vote;
+  // Stage 1 token
+  Bool stage1;
   // In-flight message count
   MsgCount count;
 } IdleToken deriving (Bits);
@@ -52,6 +56,22 @@ typedef struct {
 // enabled again. The two rounds are required to avoid a machine that
 // has returned from tinselIdle() from sending a message to a machine
 // that has not yet returned from tinselIdle().
+
+// Overall, the three stages of idle detection are:
+//
+// Stage 0:
+//   * Master sends idle token to all boards
+//   * Board holds idle token until it sees all threads in tinselIdle() call
+//   * Board sends token back to master
+// Stage 1:
+//   * If idle detected at master, master sends done token to all boards
+//   * On reciept, board informs cores
+//   * Core sends ack when no threads in call to tinselIdle()
+//   * When all acks recieved, board sends token back to master
+// Stage 2:
+//   * Master sends out release tokens
+//   * Board receives release token and responds immediately
+//   * Board tells cores to re-enable mailbox operations
 
 // The signals we watch in order to detect termination, as well as the
 // signals we trigger when it is detected.
@@ -84,6 +104,11 @@ interface IdleSignals;
   // Acknowledgement from cores that stage 1 has completed
   (* always_ready, always_enabled *)
   method Action ackStage1(Bool pulse);
+
+  // Pulse indicating inter-board activity
+  // Used in the barrier release phase
+  (* always_ready, always_enabled *)
+  method Action interBoardActivity(Bool pulse);
 endinterface
 
 // The idle detector itself is designed to connect onto mailbox (0,0).
@@ -111,6 +136,15 @@ module mkIdleDetector (IdleDetector);
 
   // Goes high when multi-flit message being processed
   Reg#(Bool) multiFlit <- mkConfigReg(False);
+
+  // Have the threads been released from the barrier?
+  SetReset released <- mkSetReset(False);
+
+  // Idle detection states
+  // 0: waiting to forward the idle token
+  // 1: waiting for stage 1 ack
+  // 2: waiting for second done token
+  Reg#(Bit#(2)) state <- mkConfigReg(0);
 
   // Forward flits
   rule forward;
@@ -141,12 +175,6 @@ module mkIdleDetector (IdleDetector);
     end
   endrule
 
-  // Idle detection states
-  // 0: waiting to forward the idle token
-  // 1: waiting for stage 1 ack 
-  // 2: waiting for second done token
-  Reg#(Bit#(2)) state <- mkConfigReg(0);
-
   // FPGA colour (white or black);
   Reg#(Bool) black <- mkConfigReg(False);
 
@@ -162,6 +190,9 @@ module mkIdleDetector (IdleDetector);
 
   // Ack from cores that stage 1 is complete
   Wire#(Bool) ackStage1Wire <- mkBypassWire;
+
+  // Indicates messages arriving from another board
+  Wire#(Bool) interBoardActivityWire <- mkBypassWire;
 
   // This wire is pulsed when token is forwarded
   Wire#(Bool) tokenForwarded <- mkDWire(False);
@@ -183,17 +214,21 @@ module mkIdleDetector (IdleDetector);
     token.black = black;
     token.vote = voteWire;
     token.done = in.done;
+    token.stage1 = in.stage1;
     token.count = countWire;
     // Construct flit containing output token
     Flit outFlit;
     outFlit.isIdleToken = True;
     outFlit.dest =
       NetAddr {
-        acc: False,
-        host: option(True, 0),
-        board: BoardId { y: 0, x: 0 },
-        core: 0,
-        thread: 0
+        addr: MailboxNetAddr {
+          acc: False,
+          isKey: False,
+          host: option(True, 0),
+          board: BoardId { y: 0, x: 0 },
+          mbox: MailboxId { y: 0, x: 0 }
+        },
+        threads: 0
       };
     outFlit.notFinalFlit = False;
     outFlit.payload = zeroExtend(pack(token));
@@ -209,8 +244,8 @@ module mkIdleDetector (IdleDetector);
           state <= 2;
         end
       end else if (state == 2) begin
-        detectedStage2Reg <= True;
         state <= 0;
+        released.clear;
         tokenInQueue.deq;
         tokenOutQueue.enq(outFlit);
       end
@@ -224,6 +259,16 @@ module mkIdleDetector (IdleDetector);
     end
   endrule
  
+  // We release threads from the barrier as soon as any message
+  // arrives to the board.  The existence of any message at this
+  // point implies that the release phase is underway.
+  rule doRelease;
+    if (state == 2 && !released.value && interBoardActivityWire) begin
+      detectedStage2Reg <= True;
+      released.set;
+    end
+  endrule
+
   interface IdleSignals idle;
     method Action activeIn(Bool active);
       activeWire <= active;
@@ -244,6 +289,11 @@ module mkIdleDetector (IdleDetector);
     method Action ackStage1(Bool pulse);
       ackStage1Wire <= pulse;
     endmethod
+
+    method Action interBoardActivity(Bool pulse);
+      interBoardActivityWire <= pulse;
+    endmethod
+
   endinterface
 
   interface In netFlitIn = netInPort.in;
@@ -252,33 +302,6 @@ module mkIdleDetector (IdleDetector);
   interface In mboxFlitIn = mboxInPort.in;
   interface Out mboxFlitOut = mboxOutPort.out;
 
-endmodule
-
-// Pipelined reduction tree
-module mkPipelinedReductionTree#(
-         function a reduce(a x, a y),
-         a init,
-         List#(a) xs)
-       (a) provisos(Bits#(a, _));
-  Integer len = List::length(xs);
-  if (len == 0)
-    return error("mkSumList applied to empty list");
-  else if (len == 1)
-    return xs[0];
-  else begin
-    List#(a) ys = xs;
-    List#(a) reduced = Nil;
-    for (Integer i = 0; i < len; i=i+2) begin
-      Reg#(a) r <- mkConfigReg(init);
-      rule assignOut;
-        r <= reduce(ys[0], ys[1]);
-      endrule
-      ys = List::drop(2, ys);
-      reduced = Cons(readReg(r), reduced);
-    end
-    a res <- mkPipelinedReductionTree(reduce, init, reduced);
-    return res;
-  end
 endmodule
 
 interface IdleDetectorClient;
@@ -295,22 +318,33 @@ interface IdleDetectorClient;
   method Bool idleStage1Ack;
 endinterface
 
-// Connect cores to idle detector
-module connectCoresToIdleDetector#(
-         Vector#(n, IdleDetectorClient) core, IdleDetector detector) ()
-           provisos (Log#(n, log_n), Add#(log_n, 1, m), Add#(_a, m, 62));
+// Connect cores and fetchers to idle detector
+module connectClientsToIdleDetector#(
+         Vector#(`CoresPerBoard, IdleDetectorClient) core,
+         Vector#(`FetchersPerProgRouter, FetcherActivity) fetcher,
+         IdleDetector detector) ()
+           provisos (Mul#(2, `CoresPerBoard, n));
+
+  staticAssert(2**`LogCoresPerBoard1 > `CoresPerBoard+`FetchersPerProgRouter,
+    "connectCoresToIdleDetector: insufficient width");
 
   // Sum "incSent" wires from each core
-  Vector#(n, Bit#(m)) incSents = newVector;
-  for (Integer i = 0; i < valueOf(n); i=i+1)
+  Vector#(n, Bit#(`LogCoresPerBoard1)) incSents = replicate(0);
+  for (Integer i = 0; i < `CoresPerBoard; i=i+1)
     incSents[i] = zeroExtend(core[i].incSent);
-  Bit#(m) incSent <- mkPipelinedReductionTree( \+ , 0, toList(incSents));
+  for (Integer i = 0; i < `FetchersPerProgRouter; i=i+1)
+    incSents[`CoresPerBoard+i] = zeroExtend(fetcher[i].incSent);
+  Bit#(`LogCoresPerBoard1) incSent <-
+    mkPipelinedReductionTree( \+ , 0, toList(incSents));
 
   // Sum "incRecv" wires from each core
-  Vector#(n, Bit#(m)) incRecvs = newVector;
-  for (Integer i = 0; i < valueOf(n); i=i+1)
+  Vector#(n, Bit#(`LogCoresPerBoard1)) incRecvs = replicate(0);
+  for (Integer i = 0; i < `CoresPerBoard; i=i+1)
     incRecvs[i] = zeroExtend(core[i].incReceived);
-  Bit#(m) incRecv <- mkPipelinedReductionTree( \+ , 0, toList(incRecvs));
+  for (Integer i = 0; i < `FetchersPerProgRouter; i=i+1)
+    incRecvs[`CoresPerBoard+i] = zeroExtend(fetcher[i].incReceived);
+  Bit#(`LogCoresPerBoard1) incRecv <-
+    mkPipelinedReductionTree( \+ , 0, toList(incRecvs));
 
   // Maintain the total count
   Reg#(MsgCount) count <- mkConfigReg(0);
@@ -321,16 +355,18 @@ module connectCoresToIdleDetector#(
   endrule
 
   // OR the "active" wires from each core
-  Vector#(n, Bool) actives = newVector;
-  for (Integer i = 0; i < valueOf(n); i=i+1)
+  Vector#(n, Bool) actives = replicate(False);
+  for (Integer i = 0; i < `CoresPerBoard; i=i+1)
     actives[i] = core[i].active;
+  for (Integer i = 0; i < `FetchersPerProgRouter; i=i+1)
+    actives[`CoresPerBoard+i] = fetcher[i].active;
   Bool anyActive <- mkPipelinedReductionTree( \|| , True, toList(actives));
 
-  // OR the "vote" wires from each core
-  Vector#(n, Bool) votes = newVector;
-  for (Integer i = 0; i < valueOf(n); i=i+1)
+  // AND the "vote" wires from each core
+  Vector#(n, Bool) votes = replicate(True);
+  for (Integer i = 0; i < `CoresPerBoard; i=i+1)
     votes[i] = core[i].vote;
-  Bool unanamous <- mkPipelinedReductionTree( \&& , False, toList(votes));
+  Bool voteDecision <- mkPipelinedReductionTree( \&& , False, toList(votes));
 
   // Register the result
   Reg#(Bool) active <- mkConfigReg(True);
@@ -338,24 +374,25 @@ module connectCoresToIdleDetector#(
   
   rule updateActive;
     active <= anyActive;
-    vote <= unanamous;
+    vote <= voteDecision;
   endrule
 
   // Counter number of stage 1 acks
-  Reg#(Bit#(m)) numAcks <- mkConfigReg(0);
+  Reg#(Bit#(`LogCoresPerBoard1)) numAcks <- mkConfigReg(0);
 
   // Sum stage 1 ack wires from each core
-  Vector#(n, Bit#(m)) incAcks = newVector;
-  for (Integer i = 0; i < valueOf(n); i=i+1)
+  Vector#(`CoresPerBoard, Bit#(`LogCoresPerBoard1)) incAcks = newVector;
+  for (Integer i = 0; i < `CoresPerBoard; i=i+1)
     incAcks[i] = zeroExtend(pack(core[i].idleStage1Ack));
-  Bit#(m) incAck <- mkPipelinedReductionTree( \+ , 0, toList(incAcks));
+  Bit#(`LogCoresPerBoard1) incAck <-
+    mkPipelinedReductionTree( \+ , 0, toList(incAcks));
 
   // Stage 1 output ack
   Wire#(Bool) stage1AckWire <- mkDWire(False);
 
   rule updateAcks;
-    Bit#(m) total = numAcks + incAck;
-    if (total == fromInteger(valueOf(n))) begin
+    Bit#(`LogCoresPerBoard1) total = numAcks + incAck;
+    if (total == `CoresPerBoard) begin
       numAcks <= 0;
       stage1AckWire <= True;
     end else begin
@@ -371,7 +408,7 @@ module connectCoresToIdleDetector#(
     detector.idle.voteIn(vote);
     detector.idle.ackStage1(stage1AckWire);
 
-    for (Integer i = 0; i < valueOf(n); i=i+1) begin
+    for (Integer i = 0; i < `CoresPerBoard; i=i+1) begin
       core[i].idleDetectedStage1(detector.idle.detectedStage1);
       core[i].idleVoteStage1(detector.idle.voteStage1);
       core[i].idleDetectedStage2(detector.idle.detectedStage2);
@@ -401,9 +438,9 @@ interface IdleDetectMaster;
   (* always_ready, always_enabled *)
   method Action enabled(
     Bool en,
-    Bit#(`MeshXBits) xLen,
-    Bit#(`MeshYBits) yLen,
-    Bit#(TAdd#(`MeshXBits, `MeshYBits)) numBoards);
+    Bit#(`MeshXBits1) xLen,
+    Bit#(`MeshYBits1) yLen,
+    Bit#(TAdd#(`MeshXBits1, `MeshYBits1)) numBoards);
 endinterface
 
 module mkIdleDetectMaster (IdleDetectMaster);
@@ -433,9 +470,9 @@ module mkIdleDetectMaster (IdleDetectMaster);
   Wire#(Bool) enableWire <- mkBypassWire;
 
   // X and Y dimensions of the board mesh
-  Wire#(Bit#(`MeshXBits)) meshXLen <- mkBypassWire;
-  Wire#(Bit#(`MeshYBits)) meshYLen <- mkBypassWire;
-  Wire#(Bit#(TAdd#(`MeshXBits, `MeshYBits))) meshBoards <- mkBypassWire;
+  Wire#(Bit#(`MeshXBits1)) meshXLen <- mkBypassWire;
+  Wire#(Bit#(`MeshYBits1)) meshYLen <- mkBypassWire;
+  Wire#(Bit#(TAdd#(`MeshXBits1, `MeshYBits1))) meshBoards <- mkBypassWire;
 
   // Update local message count
   rule updateLocalCount;
@@ -464,11 +501,11 @@ module mkIdleDetectMaster (IdleDetectMaster);
   Wire#(Bool) disableHostMsgsWire <- mkDWire(False);
 
   // For iterating over the worker boards
-  Reg#(Bit#(`MeshXBits)) boardX <- mkConfigReg(0);
-  Reg#(Bit#(`MeshYBits)) boardY <- mkConfigReg(0);
+  Reg#(Bit#(`MeshXBits1)) boardX <- mkConfigReg(0);
+  Reg#(Bit#(`MeshYBits1)) boardY <- mkConfigReg(0);
 
   // Count responses from worker boards
-  Reg#(Bit#(TAdd#(`MeshXBits, `MeshYBits))) respCount <- mkConfigReg(0);
+  Reg#(Bit#(TAdd#(`MeshXBits1, `MeshYBits1))) respCount <- mkConfigReg(0);
 
   // Are any responses so far black?
   Reg#(Bool) anyBlack <- mkConfigReg(False);
@@ -482,17 +519,21 @@ module mkIdleDetectMaster (IdleDetectMaster);
     IdleToken token;
     token.black = False;
     token.done = False;
+    token.stage1 = False;
     token.count = 0;
     token.vote = currentVote;
     // Construct flit
     Flit flit;
     flit.dest =
       NetAddr {
-        acc: False,
-        host: option(False, 0),
-        board: BoardId { y: boardY, x: boardX },
-        core: 0,
-        thread: 0
+        addr: MailboxNetAddr {
+          acc: False,
+          isKey: False,
+          host: option(False, 0),
+          board: BoardId { y: truncate(boardY), x: truncate(boardX) },
+          mbox: MailboxId { y: 0, x: 0 }
+        },
+        threads: 0
       };
     flit.payload = ?;
     flit.notFinalFlit = False;
@@ -505,6 +546,7 @@ module mkIdleDetectMaster (IdleDetectMaster);
       if (flitOutPort.canPut) begin
         // Send probe
         if (state != 0) token.done = True;
+        if (state == 1) token.stage1 = True;
         flit.payload = zeroExtend(pack(token));
         flitOutPort.put(flit);
 
@@ -569,9 +611,9 @@ module mkIdleDetectMaster (IdleDetectMaster);
   method Action decCount = decWire.send;
   method Action enabled(
       Bool en,
-      Bit#(`MeshXBits) xLen,
-      Bit#(`MeshYBits) yLen,
-      Bit#(TAdd#(`MeshXBits, `MeshYBits)) numBoards);
+      Bit#(`MeshXBits1) xLen,
+      Bit#(`MeshYBits1) yLen,
+      Bit#(TAdd#(`MeshXBits1, `MeshYBits1)) numBoards);
 
     enableWire <= en;
     meshXLen <= xLen;

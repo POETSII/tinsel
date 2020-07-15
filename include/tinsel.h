@@ -10,13 +10,13 @@
 // Control/status registers
 #define CSR_INSTR_ADDR  "0x800"
 #define CSR_INSTR       "0x801"
-#define CSR_ALLOC       "0x802"
+#define CSR_FREE        "0x802"
 #define CSR_CAN_SEND    "0x803"
 #define CSR_HART_ID     "0xf14"
 #define CSR_CAN_RECV    "0x805"
 #define CSR_SEND_LEN    "0x806"
 #define CSR_SEND_PTR    "0x807"
-#define CSR_SEND        "0x808"
+#define CSR_SEND_DEST   "0x808"
 #define CSR_RECV        "0x809"
 #define CSR_WAIT_UNTIL  "0x80a"
 #define CSR_FROM_UART   "0x80b"
@@ -28,13 +28,15 @@
 #define CSR_FLUSH       "0xc01"
 
 // Performance counter CSRs
-#define CSR_PERFCOUNT     "0xc07"
-#define CSR_MISSCOUNT     "0xc08"
-#define CSR_HITCOUNT      "0xc09"
-#define CSR_WBCOUNT       "0xc0a"
-#define CSR_CPUIDLECOUNT  "0xc0b"
-#define CSR_CPUIDLECOUNTU "0xc0c"
-#define CSR_CYCLEU        "0xc0d"
+#define CSR_PERFCOUNT           "0xc07"
+#define CSR_MISSCOUNT           "0xc08"
+#define CSR_HITCOUNT            "0xc09"
+#define CSR_WBCOUNT             "0xc0a"
+#define CSR_CPUIDLECOUNT        "0xc0b"
+#define CSR_CPUIDLECOUNTU       "0xc0c"
+#define CSR_CYCLEU              "0xc0d"
+#define CSR_PROGROUTERSENT      "0xc0e"
+#define CSR_PROGROUTERSENTINTER "0xc0f"
 
 // Get globally unique thread id of caller
 INLINE uint32_t tinselId()
@@ -52,27 +54,19 @@ INLINE uint32_t tinselCycleCount()
   return n;
 }
 
-// Flush cache line
+// Flush cache line (non-blocking)
 INLINE void tinselFlushLine(uint32_t lineNum, uint32_t way)
 {
   uint32_t arg = (lineNum << TinselDCacheLogNumWays) | way;
   asm volatile("csrrw zero, " CSR_FLUSH ", %0" : : "r"(arg));
 }
 
-// Cache flush
+// Cache flush (non-blocking)
 INLINE void tinselCacheFlush()
 {
   for (uint32_t i = 0; i < (1<<TinselDCacheLogSetsPerThread); i++)
     for (uint32_t j = 0; j < (1<<TinselDCacheLogNumWays); j++)
       tinselFlushLine(i, j);
-  // Load from each off-chip RAM to ensure that flushes have fully propagated
-  volatile uint8_t* base;
-  // Load from DRAM
-  base = (uint8_t*) TinselDRAMBase; base[0];
-  // Load from SRAM A
-  base = (uint8_t*) ((uint32_t) 1 << TinselLogBytesPerSRAM); base[0];
-  // Load from SRAM B
-  base = (uint8_t*) ((uint32_t) 2 << TinselLogBytesPerSRAM); base[0];
 }
 
 // Write a word to instruction memory
@@ -119,10 +113,32 @@ INLINE void tinselKillThread()
   asm volatile("csrrw zero, " CSR_KILL_THREAD ", zero\n");
 }
 
-// Give mailbox permission to use given address to store an message
-INLINE void tinselAlloc(volatile void* addr)
+// Tell mailbox that given message slot is no longer needed
+INLINE void tinselFree(volatile void* addr)
 {
-  asm volatile("csrrw zero, " CSR_ALLOC ", %0" : : "r"(addr));
+  asm volatile("csrrw zero, " CSR_FREE ", %0" : : "r"(addr));
+}
+
+// Get pointer to thread's message slot reserved for sending
+INLINE volatile void* tinselSendSlot()
+{
+  volatile char* mb_scratchpad_base =
+    (volatile char*) (1 << TinselLogBytesPerMailbox);
+  uint32_t threadId = tinselId() &
+    ((1<<TinselLogThreadsPerMailbox) - 1);
+  return mb_scratchpad_base + (threadId << TinselLogBytesPerMsg);
+}
+
+// Get pointer to thread's extra message slot reserved for sending
+// (Assumes that HostLink has requested the extra slot)
+INLINE volatile void* tinselSendSlotExtra()
+{
+  volatile char* mb_scratchpad_base =
+    (volatile char*) (1 << TinselLogBytesPerMailbox);
+  uint32_t threadId = tinselId() &
+    ((1<<TinselLogThreadsPerMailbox) - 1);
+  return mb_scratchpad_base +
+           ((TinselThreadsPerMailbox+threadId) << TinselLogBytesPerMsg);
 }
 
 // Determine if calling thread can send a message
@@ -148,11 +164,36 @@ INLINE void tinselSetLen(int n)
   asm volatile("csrrw zero, " CSR_SEND_LEN ", %0" : : "r"(n));
 }
 
+// Send message to multiple threads on the given mailbox
+INLINE void tinselMulticast(
+  uint32_t mboxDest,      // Destination mailbox
+  uint32_t destMaskHigh,  // Destination bit mask (high bits)
+  uint32_t destMaskLow,   // Destination bit mask (low bits)
+  volatile void* addr)    // Message pointer
+{
+  asm volatile("csrrw zero, " CSR_SEND_PTR ", %0" : : "r"(addr) : "memory");
+  asm volatile("csrrw zero, " CSR_SEND_DEST ", %0" : : "r"(mboxDest));
+  // Opcode: 0000000 rs2 rs1 000 rd 0001000, with rd=0, rs1=x10, rs2=x11
+  asm volatile(
+    "mv x10, %0\n"
+    "mv x11, %1\n"
+    ".word 0x00b50008\n" : : "r"(destMaskHigh), "r"(destMaskLow)
+                           : "x10", "x11");
+}
+
 // Send message at addr to dest
 INLINE void tinselSend(int dest, volatile void* addr)
 {
-  asm volatile("csrrw zero, " CSR_SEND_PTR ", %0" : : "r"(addr));
-  asm volatile("csrrw zero, " CSR_SEND ", %0" : : "r"(dest));
+  uint32_t threadId = dest & 0x3f;
+  uint32_t high = threadId >= 32 ? (1 << (threadId-32)) : 0;
+  uint32_t low = threadId < 32 ? (1 << threadId) : 0;
+  tinselMulticast(dest >> 6, high, low, addr);
+}
+
+// Send message at addr using given routing key
+INLINE void tinselKeySend(int key, volatile void* addr)
+{
+  tinselMulticast(tinselUseRoutingKey(), 0, key, addr);
 }
 
 // Receive message
@@ -249,7 +290,7 @@ INLINE uint32_t tinselWritebackCount()
   return n;
 }
 
-// Performance counter:: get the CPU-idle count
+// Performance counter: get the CPU-idle count
 INLINE uint32_t tinselCPUIdleCount()
 {
   uint32_t n;
@@ -270,6 +311,22 @@ INLINE uint32_t tinselCycleCountU()
 {
   uint32_t n;
   asm volatile ("csrrw %0, " CSR_CYCLEU ", zero" : "=r"(n));
+  return n;
+}
+
+// Performance counter: number of messages emitted by ProgRouter
+INLINE uint32_t tinselProgRouterSent()
+{
+  uint32_t n;
+  asm volatile ("csrrw %0, " CSR_PROGROUTERSENT ", zero" : "=r"(n));
+  return n;
+}
+
+// Performance counter: number of inter-board messages emitted by ProgRouter
+INLINE uint32_t tinselProgRouterSentInterBoard()
+{
+  uint32_t n;
+  asm volatile ("csrrw %0, " CSR_PROGROUTERSENTINTER ", zero" : "=r"(n));
   return n;
 }
 

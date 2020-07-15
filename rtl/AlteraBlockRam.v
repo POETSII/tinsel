@@ -41,6 +41,7 @@ module AlteraBlockRam (
   parameter DO_REG       = "UNREGISTERED"; // Or: "CLOCK0"
   parameter INIT_FILE    = "UNUSED";
   parameter DEV_FAMILY   = "Stratix V";
+  parameter STYLE        = "AUTO";
 
   input  CLK;
   input  [DATA_WIDTH-1:0] DI;
@@ -104,7 +105,8 @@ module AlteraBlockRam (
     altsyncram_component.widthad_b = ADDR_WIDTH,
     altsyncram_component.width_a = DATA_WIDTH,
     altsyncram_component.width_b = DATA_WIDTH,
-    altsyncram_component.width_byteena_a = BE_WIDTH;
+    altsyncram_component.width_byteena_a = BE_WIDTH,
+    altsyncram_component.ram_block_type = STYLE;
 
 endmodule
 
@@ -139,6 +141,7 @@ module AlteraBlockRamTrueMixed (
   parameter DO_REG_B     = "UNREGISTERED"; // Or: "CLOCK0"
   parameter DEV_FAMILY   = "Stratix V";
   parameter INIT_FILE    = "UNUSED";
+  parameter STYLE        = "AUTO";
 
   input   [ADDR_WIDTH_A-1:0]  ADDR_A;
   input   [ADDR_WIDTH_B-1:0]  ADDR_B;
@@ -213,7 +216,8 @@ module AlteraBlockRamTrueMixed (
     altsyncram_component.width_b = DATA_WIDTH_B,
     altsyncram_component.width_byteena_a = 1,
     altsyncram_component.width_byteena_b = 1,
-    altsyncram_component.wrcontrol_wraddress_reg_b = "CLOCK0";
+    altsyncram_component.wrcontrol_wraddress_reg_b = "CLOCK0",
+    altsyncram_component.ram_block_type = STYLE;
 
 endmodule
 
@@ -250,6 +254,7 @@ module AlteraBlockRamTrueMixedBE (
   parameter DO_REG_B     = "UNREGISTERED"; // Or: "CLOCK0"
   parameter DEV_FAMILY   = "Stratix V";
   parameter INIT_FILE    = "UNUSED";
+  parameter STYLE        = "AUTO";
 
   input   [ADDR_WIDTH_A-1:0]  ADDR_A;
   input   [ADDR_WIDTH_B-1:0]  ADDR_B;
@@ -328,6 +333,7 @@ module AlteraBlockRamTrueMixedBE (
     altsyncram_component.width_b = DATA_WIDTH_B,
     altsyncram_component.width_byteena_a = 1,
     altsyncram_component.width_byteena_b = BE_WIDTH,
-    altsyncram_component.wrcontrol_wraddress_reg_b = "CLOCK0";
+    altsyncram_component.wrcontrol_wraddress_reg_b = "CLOCK0",
+    altsyncram_component.ram_block_type = STYLE;
 
 endmodule

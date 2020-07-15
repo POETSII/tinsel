@@ -12,7 +12,8 @@ package Mailbox;
 // these cores.  Mailboxes can be connected together to form a network,
 // allowing messages to be sent between any two threads on the same
 // network.  Threads read and write messages via a memory-mapped
-// scratchpad within a mailbox.  
+// scratchpad within a mailbox.  We refer to an aligned message-sized
+// block in the scracthpad as a "message slot".
 //
 //                                                     
 //                 +----------------------------------+
@@ -26,13 +27,13 @@ package Mailbox;
 //              <--------->| Transmit Unit |          |
 //    Group        |       +---------------+          |<----- Flit in
 //     of          |                                  | 
-//    cores        |       +--------------+           |-----> Flit out
-//              <--------->| Receive Unit |           |
-//                 |       +--------------+           |
+//    cores        |       +----------------+         |-----> Flit out
+//              <--------->| Receive Unit   |         |
+//                 |       +----------------+         |
 //                 |                                  |
-//                 |       +---------------+          | 
-//              <--------->| Allocate Unit |          | 
-//                 |       +---------------+          |
+//                 |       +-----------+              | 
+//              <--------->| Free Unit |              | 
+//                 |       +-----------+              |
 //                 |                                  | 
 //                 +----------------------------------+
 //                                              
@@ -42,48 +43,55 @@ package Mailbox;
 // 
 // The scratchpad is a mixed-width dual-port block RAM with a 32-bit bus
 // on the core side and a flit-sized bus on the network side (a
-// message is comprised of several flits).  The scratchpad is
-// partitioned by thread id.  The number of 32-bit words available to
-// each thread is:
+// message is comprised of several flits).  The size of the mailbox
+// is in 32-bit words is
 //
-//   2^LogMsgsPerThread * 2^LogMaxFlitsPerMsg * 2^LogWordsPerFlit.
+//   2^LogMsgSlotsPerMailbox * 2^LogMaxFlitsPerMsg * 2^LogWordsPerFlit.
+//
+// The first ThreadsPerMailbox message slots are reserved for message
+// sending (one send slot per thread).  All other slots are used as
+// a receive buffer.
 // 
-// One attraction of using a scratchpad is that a message can be forwarded
-// (recieved and sent) without serialising it through the 32-bit core.
+// One attraction of using a unified scratchpad for send and receive
+// is that a message can be forwarded (recieved and sent) without
+// serialising it through the 32-bit core.
 // 
 // Transmit Unit
 // -------------
 //
-// The Transmit Unit accepts requests for a message-sized block
-// (aligned) in the scratchpad to be sent to a given destination.
-// When the Transmit Unit eventually sends the message, it will
-// produce a response, notifying the thread that made the request.
+// The Transmit Unit accepts requests for a message slot in the
+// scratchpad to be sent to a given destination.  When the Transmit
+// Unit eventually sends the message, it will produce a response,
+// notifying the thread that made the request.
 //
 // Receive Unit
 // ------------
 // 
-// The Receive Unit contains a status register for each thread served by the
-// mailbox.  The status register contains a bit-vector specifying which
-// message-sized blocks (aligned) in the scratchpad can be used to store
-// an incoming message.  When a message arrives for a given thread:
-// 
-//   1. the first hot bit in that thread's status vector is used to determine 
-//      the location for the message in the scratchpad;
-//   2. the message is written to the scratchpad and
-//      the first hot bit in the status vector is cleared;
-//   3. a notification (or alert) is sent to the thread indicating
-//      the location of the new message in the scratchpad.
+// The Receive Unit contains a queue for each thread served by the
+// mailbox.  Each queue holds message-pointers into the scratchpad.
+// When a message arrives, it is written into the next free message
+// slot in the scratchpad, and pointer to that slot will be inserted
+// into one or more queues as indicated by the destination address(es)
+// of the message (which can be a unicast or multicast address).
 //
-// If there are no hot bits in the status vector for the receiving
-// thread, backpressure is applied to the network.
+// In addition, a reference count will be maintained for each message
+// slot indicating the total number of pointers to that slot in all
+// the queues.  When a message arrives, the reference count will be
+// incremented accordingly.  A linked list of unused message slots is
+// maintained in the reference count memory.
 //
-// Allocate Unit
-// -------------
+// If any thread's queue is full, backpressure is applied to the network.
 //
-// A thread can set bits in its status vector by sending an "allocate"
-// request.  In this way, a thread can allocate locations for incoming
-// messages in the scratchpad, giving the Receive Unit permission to
-// overwrite the values at these locations.
+// Free Unit
+// ---------
+//
+// When a thread indicates that it no longer needs the contents of a
+// message slot, it will issue a "free" request.  This request will
+// cause the slot's reference count to be decremented.  When the
+// reference count reaches 0, the the hardware can reclaim that
+// message slot for a future incoming message.  This is achieved by
+// pushing a pointer to the slot into the linked list of unused
+// message slots, maintained in the reference count memory.
 
 // =============================================================================
 // Imports
@@ -93,12 +101,12 @@ import Vector       :: *;
 import Queue        :: *;
 import Interface    :: *;
 import BlockRam     :: *;
-import ArrayOfSet   :: *;
 import ConfigReg    :: *;
 import Util         :: *;
 import Globals      :: *;
 import DReg         :: *;
 import FlitMerger   :: *;
+import QueueArray   :: *;
 
 // =============================================================================
 // Types
@@ -107,38 +115,17 @@ import FlitMerger   :: *;
 // A single Mailbox may be shared my several multi-threaded cores
 typedef Bit#(`LogThreadsPerMailbox) MailboxClientId;
 
-// Thread-local word address in scratchpad memory
-typedef TAdd#(`LogMsgsPerThread,
-          TAdd#(`LogMaxFlitsPerMsg, `LogWordsPerFlit))
-            MailboxThreadWordAddrBits;
-typedef Bit#(MailboxThreadWordAddrBits) MailboxThreadWordAddr;
-
-// Thread-local flit address in scratchpad memory
-typedef Bit#(`LogFlitsPerThread) MailboxThreadFlitAddr;
-
-// Thread-local message address in scratchpad memory
-typedef Bit#(`LogMsgsPerThread) MailboxThreadMsgAddr;
-
-// Word address in scratchpad memory
-typedef TAdd#(`LogThreadsPerMailbox, MailboxThreadWordAddrBits)
-          MailboxWordAddrBits;
-typedef Bit#(MailboxWordAddrBits) MailboxWordAddr;
+// 32-bit word address in scratchpad memory
+typedef Bit#(`LogWordsPerMailbox) MailboxWordAddr;
 
 // Flit address in scratchpad memory
-typedef TAdd#(`LogThreadsPerMailbox, `LogFlitsPerThread) MailboxFlitAddrBits;
-typedef Bit#(MailboxFlitAddrBits) MailboxFlitAddr;
+typedef Bit#(`LogFlitsPerMailbox) MailboxFlitAddr;
 
 // Message address in scratchpad memory
-typedef TAdd#(`LogThreadsPerMailbox, `LogMsgsPerThread) MailboxMsgAddrBits;
-typedef Bit#(MailboxMsgAddrBits) MailboxMsgAddr;
+typedef Bit#(`LogMsgsPerMailbox) MailboxMsgAddr;
 
-// Status memory
-// (The status vector for a thread indicates the message-aligned
-// locations in the scractpad that can be used to store incoming
-// messages)
-typedef Bit#(`LogThreadsPerMailbox) StatusVectorIndex;
-typedef Bit#(TExp#(`LogMsgsPerThread)) StatusVector;
-typedef Bit#(TAdd#(`LogThreadsPerMailbox, `LogMsgsPerThread)) StatusBitIndex;
+// Reference count
+typedef Bit#(TAdd#(`LogThreadsPerMailbox, 1)) RefCount;
 
 // Scratchpad request
 typedef struct {
@@ -147,7 +134,7 @@ typedef struct {
   // Operation
   Bool isStore;
   // Thread-local word address
-  MailboxThreadWordAddr wordAddr;
+  MailboxWordAddr wordAddr;
   // For store operation: data to write
   Bit#(32) data;
   // For store operation: byte enables
@@ -168,8 +155,8 @@ typedef struct {
 typedef struct {
   // Source of request
   MailboxClientId id;
-  // Thread-local message address
-  MailboxThreadMsgAddr msgIndex;
+  // Message address
+  MailboxMsgAddr msgIndex;
   // Message length
   MsgLen len;
   // Destination thread
@@ -182,23 +169,24 @@ typedef struct {
   MailboxClientId id;
 } TransmitResp deriving (Bits);
 
-// Allocation request
-// (Request to allocate space for a message)
+// Request to receive unit
+typedef SleepStatus ReceiveReq;
+
+// Response from receive unit
+typedef struct {
+  // Pointer to message received, for "receive" command
+  MailboxMsgAddr data;
+  // Status
+  SleepStatus status;
+} ReceiveResp deriving (Bits, FShow);
+
+// Request to "free" unit
 typedef struct {
   // Source of request
   MailboxClientId id;
-  // Thread-local address for message
-  MailboxThreadMsgAddr msgIndex;
-} AllocReq deriving (Bits);
-
-// Receive notification
-// (Notification that a message has been received)
-typedef struct {
-  // Message destination
-  MailboxClientId id;
-  // Index of message scratchpad
-  Bit#(`LogMsgsPerThread) index;
-} ReceiveAlert deriving (Bits);
+  // Message slot to free
+  MailboxMsgAddr slot;
+} FreeReq deriving (Bits);
 
 // Transmit pipeline token
 typedef struct {
@@ -206,18 +194,49 @@ typedef struct {
   Bool notFinalFlit;
 } TransmitToken deriving (Bits);
 
+// Type of elements residing in the multicast queues
+typedef struct {
+  // Pointer to message in scratchpad
+  MailboxMsgAddr slot;
+  // Destination threads
+  Bit#(`ThreadsPerCore) dests;
+} MulticastBufferEntry deriving (Bits);
+
+// A bit vector of events that can cause a sleeping thread to wake up
+// Bit 0: can-send
+// Bit 1: can-receive
+// Bit 2: idle, vote false
+// Bit 3: idle, vote true
+typedef Bit#(4) WakeEvent;
+
+// Operation of thread in sleep queue
+typedef enum { CanRecvOp, RecvOp, WaitUntilOp } SleepOp
+  deriving (Bits, Eq, FShow);
+
+// Status of thread in sleep queue
+typedef struct {
+  // Id of thread
+  ThreadId id;
+  // Operation
+  SleepOp op;
+  // If WaitUntilOp, the event(s) that the thread is waiting for
+  WakeEvent wakeEvent;
+  // Is there is an incoming message for the thread?
+  Bool canRecv;
+} SleepStatus deriving (Bits, FShow);
+
 // =============================================================================
 // Functions
 // =============================================================================
 
 // Convert byte address to message index
-function MailboxThreadMsgAddr byteAddrToMsgIndex(Bit#(32) addr);
-  MailboxThreadMsgAddr msgAddr = truncate(addr[31:`LogBytesPerMsg]);
+function MailboxMsgAddr byteAddrToMsgIndex(Bit#(32) addr);
+  MailboxMsgAddr msgAddr = truncate(addr[31:`LogBytesPerMsg]);
   return msgAddr;
 endfunction
 
 // Convert message address to byte address
-function Bit#(32) msgAddrToByteAddr(MailboxThreadMsgAddr msgAddr);
+function Bit#(32) msgAddrToByteAddr(MailboxMsgAddr msgAddr);
   Bit#(`LogWordsPerFlit) wordOffset = 0;
   Bit#(`LogMaxFlitsPerMsg) flitOffset = 0;
   return {0, msgAddr, flitOffset, wordOffset, 2'b0};
@@ -234,11 +253,22 @@ interface Mailbox;
   // Core-side interfaces to transmit unit
   interface In#(TransmitReq)      txReqIn;
   interface BOut#(TransmitResp)   txRespOut;
-  // Core-side interfaces to receive unit
-  interface In#(AllocReq)         allocReqIn;
-  interface BOut#(ReceiveAlert)   rxAlertOut;
+  // Core-side interfaces to receive unit (one per core)
+  interface Vector#(`CoresPerMailbox, ReceiveReqResp) rxReqResp;
+  // Core-side interfaces to free unit
+  interface In#(FreeReq)          freeReqIn;
+  (* always_ready *) method Bit#(1) freeDone;
   // Network-side interface
   interface MailboxNet            net;
+  // Initialise send slots (use extra send slot?)
+  (* always_ready, always_enabled *)
+  method Action initSendSlots(Option#(Bool) useExtraSendSlot);
+endinterface
+
+// Combined receive request/response interface
+interface ReceiveReqResp;
+  interface In#(ReceiveReq)    rxReqIn;
+  interface BOut#(ReceiveResp) rxRespOut;
 endinterface
 
 interface MailboxNet;
@@ -257,33 +287,63 @@ module mkMailbox (Mailbox);
   BlockRamTrueMixedBE#(MailboxFlitAddr, FlitPayload, MailboxWordAddr, Bit#(32))
     scratchpad <- mkBlockRamTrueMixedBE;
 
-  // Alert buffer (to notify threads about received messages)
-  `define LogAlertBufferLen 4
-  SizedQueue#(`LogAlertBufferLen, ReceiveAlert) alertBuffer <-
-    mkUGSizedQueuePrefetch;
-
-  // Receive status: bit-vector per thread specifying which message-sized
-  // blocks (aligned) in the scratchpad can be used to hold incoming messages
-  ArrayOfSet#(`LogThreadsPerMailbox, `LogMsgsPerThread) statusMem <-
-    mkArrayOfSet;
-
   // Request & response ports
-  InPort#(ScratchpadReq)   spadReqPort   <- mkInPort;
-  InPort#(TransmitReq)     txReqPort     <- mkInPort;
-  InPort#(Flit)            flitInPort    <- mkInPort;
-  InPort#(AllocReq)        allocReqPort  <- mkInPort;
+  InPort#(ScratchpadReq) spadReqPort  <- mkInPort;
+  InPort#(TransmitReq)   txReqPort    <- mkInPort;
+  InPort#(FreeReq)       freeReqPort  <- mkInPort;
+  InPort#(Flit)          flitInPort   <- mkInPort;
+  Vector#(`CoresPerMailbox, InPort#(ReceiveReq)) rxReqPorts <-
+    replicateM(mkInPort);
+
+  // Initialise free slots
+  // =====================
+
+  // Set of currently-unused message slots
+  // By default, the first ThreadsPerMailbox slots are reserved for sending
+  // Optionally, the first 2*ThreadsPerMailbox slots are reserved for sending
+  SizedQueue#(`LogMsgsPerMailbox, Bit#(`LogMsgsPerMailbox))
+    freeSlots <- mkUGSizedQueuePrefetch;
+
+  // Reserve extra send slot?
+  Wire#(Option#(Bool)) useExtraSendSlot <- mkBypassWire;
+
+  // State of free slot initialiser
+  Reg#(Bit#(1)) freeSlotsInitState <- mkConfigReg(0);
+
+  // Have the free slots been initialised yet?
+  Reg#(Bool) freeSlotsInitDone <- mkConfigReg(False);
+
+  // Next slot to insert into free slot queue
+  Reg#(Bit#(`LogMsgsPerMailbox)) freeSlotsInitNext <- mkConfigRegU;
+
+  // Wait until config option available, which tells us how
+  // many slots to reserve for sending
+  rule initFreeSlots0 (freeSlotsInitState == 0);
+    if (useExtraSendSlot.valid) begin
+      freeSlotsInitNext <= useExtraSendSlot.value ?
+        fromInteger(2*`ThreadsPerMailbox) : `ThreadsPerMailbox;
+      freeSlotsInitState <= 1;
+    end
+  endrule
+
+  // Initialise free slots
+  rule initFreeSlots1 (!freeSlotsInitDone && freeSlotsInitState == 1);
+    freeSlots.enq(freeSlotsInitNext);
+    freeSlotsInitNext <= freeSlotsInitNext + 1;
+    if (freeSlotsInitNext == fromInteger(2**`LogMsgsPerMailbox - 1))
+      freeSlotsInitDone <= True;
+  endrule
 
   // Message access unit
   // ===================
 
   // There is a conflict between the transmit and receive pipelines:
-  // "receive" needs to write a message to the scratchpad while
-  // "transmit" needs to read a message.  The message access unit
-  // resolves this conflict: read takes priorty over write and the
-  // write wire must only be asserted when the read wire is low.
+  // "receive" needs to write a flit to the scratchpad while
+  // "transmit" needs to read a flit.  The message access unit
+  // resolves this conflict: write takes priorty over read.
+  // The read wires must not be written when the write wire is set.
 
   // Control wires for modifying messages in scratchpad
-  Wire#(Bool) flitReadWire  <- mkDWire(False);
   Wire#(Bool) flitWriteWire <- mkDWire(False);
   Reg#(Bool) flitWriteReg <- mkRegU;
   Wire#(MailboxFlitAddr) flitReadIndexWire <- mkDWire(0);
@@ -304,124 +364,147 @@ module mkMailbox (Mailbox);
   // Receive Unit
   // ============
 
-  // State
-  Reg#(Bit#(2))      recvState      <- mkConfigReg(0);
-  Reg#(Flit)         flitBuffer     <- mkConfigRegU;
-  Reg#(Flit)         receive3Input  <- mkVReg;
-  Reg#(MsgLen)       recvFlitCount  <- mkConfigReg(0);
-  Reg#(ReceiveAlert) receive4Input  <- mkVReg;
+  // Track which flit in a message is currently being received
+  Reg#(MsgLen) recvFlitCount <- mkConfigReg(0);
 
-  // Keep track of the number of in-flight flits being received
-  Count#(TAdd#(`LogAlertBufferLen, 1)) inFlightRecvs <-
-    mkCount(2 ** `LogAlertBufferLen);
+  // RAM containing reference count for every message slot
+  BlockRamOpts refCountOpts = defaultBlockRamOpts;
+  refCountOpts.registerDataOut = False;
+  BlockRamTrueMixed#(MailboxMsgAddr, RefCount, MailboxMsgAddr, RefCount)
+    refCount <- mkBlockRamTrueMixedOpts(refCountOpts);
 
-  // Argument passed to the call of "statusMem.get" on previous
-  // clock cycle, if there was one
-  Reg#(Maybe#(Bit#(`LogThreadsPerMailbox))) prevGet <-
-    mkDReg(Invalid);
+  // Signals for triggering a ref count update
+  Reg#(Bool) setRefCount <- mkDReg(False);
+  Reg#(RefCount) refCountReg <- mkConfigRegU;
+  Reg#(Bit#(`LogMsgsPerMailbox)) refCountSlot <- mkConfigRegU;
 
-  // Are we processing the first flit of a message?
-  Reg#(Bool) firstFlit <- mkConfigReg(True);
+  // Multicast buffer
+  Vector#(`CoresPerMailbox,
+    SizedQueue#(`LogMulticastBufferSize, MulticastBufferEntry))
+      mcastBuffer <- replicateM(mkUGSizedQueue);
 
-  // Inputs to receive stage 3
-  Reg#(Bool) receive3Fire <- mkDReg(False);
-  Reg#(Bool) receive3FirstFlit <- mkConfigRegU;
-
-  // The index in the scratchpad that the message is being written to
-  Reg#(Bit#(`LogMsgsPerThread)) destIndex <- mkConfigRegU;
-
-  rule receive0 (recvState == 0);
+  rule receive0;
     let flit = flitInPort.value;
-    flitBuffer <= flit;
-    // The stall condition ensures that "statusMem.get" and
-    // "statusMem.tryGet" are not called with the same argument
-    // within two consecutive cycles (see ArrayOfSet.bsv)
-    Bool stall = prevGet == Valid(truncate(pack(flit.dest)));
+    // Determine destination threads
+    Bit#(`ThreadsPerMailbox) destThreads = flit.dest.threads;
+    // Determine if flit can be received
+    Bool canRecv = True;
+    for (Integer i = 0; i < `CoresPerMailbox; i=i+1)
+      canRecv = canRecv && mcastBuffer[i].notFull;
+    canRecv = canRecv && freeSlots.canPeek && freeSlots.canDeq;
+    let slot = freeSlots.dataOut;
     // Try to consume an incoming flit
-    if (flitInPort.canGet && inFlightRecvs.notFull) begin
-      if (firstFlit) begin
-        if (!stall) begin
-          flitInPort.get;
-          inFlightRecvs.inc;
-          statusMem.tryGet(truncate(pack(flit.dest)));
-          recvState <= 1;
+    if (flitInPort.canGet && canRecv) begin
+      flitInPort.get;
+      // Write flit to next free slot
+      flitWriteWire <= True;
+      flitWriteIndexWire <= { slot, recvFlitCount };
+      flitWriteDataReg <= flit.payload;
+      // Is this the final flit of a message?
+      if (! flit.notFinalFlit) begin
+        recvFlitCount <= 0;
+        // Slot is no longer free
+        freeSlots.deq;
+        // Put pointer to new message into buffer
+        Vector#(`CoresPerMailbox, Bit#(`ThreadsPerCore))
+          vecDestThreads = unpack(destThreads);
+        for (Integer i = 0; i < `CoresPerMailbox; i=i+1) begin
+          MulticastBufferEntry mcastEntry =
+            MulticastBufferEntry { dests: vecDestThreads[i], slot: slot };
+          if (vecDestThreads[i] != 0) mcastBuffer[i].enq(mcastEntry);
         end
-      end else begin
-        flitInPort.get;
-        recvState <= 2;
+        // Set ref count for new slot
+        refCountReg <= pack(countOnes(destThreads));
+        refCountSlot <= slot;
+        setRefCount <= True;
+      end else
+        recvFlitCount <= recvFlitCount + 1;
+    end
+  endrule
+
+  rule updateRefCount (setRefCount);
+    refCount.putA(True, refCountSlot, refCountReg);
+  endrule
+
+  // Populate multicast queues
+  // -------------------------
+
+  // Multicast queues (one per thread)
+  Vector#(`CoresPerMailbox,
+    QueueArray#(`LogThreadsPerCore,
+                  `LogMsgPtrQueueSize,
+                    Bit#(`LogMsgsPerMailbox))) mcastQueues <-
+      replicateM(mkQueueArray);
+
+  for (Integer i = 0; i < `CoresPerMailbox; i=i+1) begin
+    // State
+    Reg#(Bit#(2)) mcastState <- mkConfigReg(0);
+    Reg#(Bit#(`ThreadsPerCore)) mcastDests <- mkConfigRegU;
+    Reg#(Bit#(`LogMsgsPerMailbox)) mcastSlot <- mkConfigRegU;
+    Reg#(Bit#(`LogThreadsPerCore)) mcastDest <- mkConfigRegU;
+  
+    // State machine to consume mcastBuffer, and update mcastQueues
+    rule mcast0 (mcastState == 0);
+      if (mcastBuffer[i].canPeek && mcastBuffer[i].canDeq) begin
+        mcastBuffer[i].deq;
+        mcastDests <= mcastBuffer[i].dataOut.dests;
+        mcastSlot <= mcastBuffer[i].dataOut.slot;
+        mcastState <= 1;
       end
-    end
-  endrule
+    endrule
 
-  rule receive1 (recvState == 1);
-    recvState <= 2;
-  endrule
+    rule mcast1 (mcastState == 1);
+      mcastDest <= truncate(pack(countZerosLSB(mcastDests)));
+      let firstHot = mcastDests & -mcastDests;
+      mcastDests <= mcastDests & ~firstHot;
+      mcastState <= 2;
+    endrule
 
-  rule receive2 (recvState == 2);
-    Bool retry = False;
-    if (firstFlit) begin
-      // Do we have somewhere to put the incoming message?
-      if (statusMem.canGet) begin
-        statusMem.get;
-        prevGet <= Valid(truncate(pack(flitBuffer.dest)));
-        recvState <= 0;
-      end else begin
-        // If not, retry the lookup
-        statusMem.tryGet(truncate(pack(flitBuffer.dest)));
-        recvState <= 1;
-        retry = True;
+    rule mcast2 (mcastState == 2);
+      if (mcastQueues[i].canEnq) begin
+        mcastQueues[i].enq(mcastDest, mcastSlot);
+        mcastState <= mcastDests == 0 ? 0 : 1;
       end
-    end else
-      recvState <= 0;
-    if (!retry) begin
-      // Trigger receive stage 3
-      receive3Fire <= True;
-      receive3FirstFlit <= firstFlit;
-      // We may have finished processing this message,
-      // in which case reset firstFlit back to True
-      firstFlit <= !flitBuffer.notFinalFlit;
-    end
-  endrule
+    endrule
+  end
 
-  rule receive3 (receive3Fire);
-    let flit = flitBuffer;
-    let index = receive3FirstFlit ? statusMem.itemOut : destIndex;
-    if (receive3FirstFlit) destIndex <= statusMem.itemOut;
-    // Update scratchpad
-    flitWriteWire      <= True;
-    flitWriteIndexWire <= { truncate(pack(flit.dest)), index, recvFlitCount };
-    flitWriteDataReg   <= flit.payload;
-    // Update flit count
-    if (!flit.notFinalFlit) begin
-      recvFlitCount <= 0;
-      // Trigger next stage
-      ReceiveAlert alert;
-      alert.id = truncate(pack(flit.dest));
-      alert.index = index;
-      receive4Input <= alert;
-    end else
-      recvFlitCount <= recvFlitCount+1;
-  endrule
+  // Serve requests to the receive unit
+  // ----------------------------------
 
-  rule receive4;
-    ReceiveAlert alert = receive4Input;
-    // Issue response
-    myAssert(alertBuffer.notFull, "Mailbox: alertBuffer overflow");
-    alertBuffer.enq(alert);
-  endrule
+  // Response buffers for receive unit
+  Vector#(`CoresPerMailbox, Queue#(ReceiveResp))
+    recvRespQueues <- replicateM(mkUGQueue);
 
-  // Allocation request & response
-  // =============================
-  //
-  // Allocate space in scratchpad for a message
+  // Serve requests to the receive unit
+  for (Integer i = 0; i < `CoresPerMailbox; i=i+1) begin
 
-  rule allocHandler;
-    if (allocReqPort.canGet && statusMem.canPut) begin
-      AllocReq req = allocReqPort.value;
-      statusMem.put(req.id, req.msgIndex);
-      allocReqPort.get;
-    end
-  endrule
+    // State machine
+    Reg#(Bit#(2)) serveState <- mkConfigReg(0);
+
+    rule serveReceive (rxReqPorts[i].canGet && recvRespQueues[i].notFull);
+      // View request
+      ReceiveReq req = rxReqPorts[i].value;
+      // Prepare response
+      ReceiveResp resp;
+      resp.status = req;
+      resp.status.canRecv = mcastQueues[i].canDeq;
+      resp.data = mcastQueues[i].itemOut;
+      // State machine
+      if (serveState == 0) begin
+        mcastQueues[i].tryDeq(req.id);
+        serveState <= req.op == RecvOp ? 1 : 2;
+      end else if (serveState == 1) begin
+        myAssert(mcastQueues[i].canDeq, "Receiving when not ready");
+        mcastQueues[i].doDeq;
+        serveState <= 2;
+      end else if (serveState == 2) begin
+        recvRespQueues[i].enq(resp);
+        rxReqPorts[i].get;
+        serveState <= 0;
+      end
+    endrule
+
+  end
 
   // Transmit Unit
   // =============
@@ -463,7 +546,6 @@ module mkMailbox (Mailbox);
       end else
         transmitFlitCount <= transmitFlitCount+1;
       // Read message from scratchpad
-      flitReadWire      <= True;
       flitReadIndexWire <=
         { truncate(req.id), req.msgIndex, transmitFlitCount };
       // Trigger next stage
@@ -494,8 +576,8 @@ module mkMailbox (Mailbox);
     transmitBuffer.enq(flit);
   endrule
   
-  // Scratchpad interface
-  // ====================
+  // Scratchpad
+  // ==========
 
   // Response buffer
   `define LogScratchpadBufferLen 4
@@ -515,7 +597,7 @@ module mkMailbox (Mailbox);
     if (spadReqPort.canGet && inFlightScratchpadReqs.notFull) begin
       spadReqPort.get;
       ScratchpadReq req = spadReqPort.value;
-      MailboxWordAddr addr = {truncate(req.id), req.wordAddr};
+      MailboxWordAddr addr = req.wordAddr;
       scratchpad.putB(req.isStore, addr, req.data, req.byteEn);
       inFlightScratchpadReqs.inc;
       // Trigger next stage
@@ -538,21 +620,55 @@ module mkMailbox (Mailbox);
     scratchpadRespBuffer.enq(resp);
   endrule
 
+  // Free Unit
+  // =========
+
+  // Current state
+  // Consume one request every two cycles
+  Reg#(Bit#(1)) freeState <- mkReg(0);
+
+  // This register is pulsed when the final reference
+  // to a message slot is freed
+  Reg#(Bit#(1)) freeDoneReg <- mkDReg(0);
+
+  rule free (freeReqPort.canGet && freeSlotsInitDone);
+    FreeReq req = freeReqPort.value;
+    // Process request in two cycles
+    let count = refCount.dataOutB;
+    if (freeState == 0) begin
+      freeState <= 1;
+    end else begin
+      freeReqPort.get;
+      if (count == 1) begin
+        myAssert(freeSlots.notFull, "Mailbox: freeSlots full!");
+        freeSlots.enq(req.slot);
+        freeDoneReg <= 1;
+      end
+      freeState <= 0;
+    end
+    refCount.putB(freeState == 1, req.slot, count-1);
+  endrule
+
   // Interfaces
   // ==========
 
-  interface In txReqIn    = txReqPort.in;
-  interface In allocReqIn = allocReqPort.in;
-  interface In spadReqIn  = spadReqPort.in;
+  function ReceiveReqResp mkReceiveReqResp(Integer i) =
+    interface ReceiveReqResp
+      interface rxReqIn = rxReqPorts[i].in;
+      interface rxRespOut =
+        interface BOut
+          method Action get = recvRespQueues[i].deq;
+          method Bool valid = recvRespQueues[i].canDeq;
+          method ReceiveResp value = recvRespQueues[i].dataOut;
+        endinterface;
+    endinterface;
 
-  interface BOut rxAlertOut;
-    method Action get;
-      alertBuffer.deq;
-      inFlightRecvs.dec;
-    endmethod
-    method Bool valid = alertBuffer.canDeq;
-    method ReceiveAlert value = alertBuffer.dataOut;
-  endinterface
+  interface In txReqIn   = txReqPort.in;
+  interface In freeReqIn = freeReqPort.in;
+  interface In spadReqIn = spadReqPort.in;
+
+  interface rxReqResp = genWith(mkReceiveReqResp);
+  method Bit#(1) freeDone = freeDoneReg;
 
   interface BOut txRespOut;
     method Action get;
@@ -584,13 +700,17 @@ module mkMailbox (Mailbox);
     endinterface
   endinterface
 
+  method Action initSendSlots(Option#(Bool) useExtra);
+    useExtraSendSlot <= useExtra;
+  endmethod
+
 endmodule
 
 // =============================================================================
 // Mailbox client
 // =============================================================================
 
-// The interface implemented by a mailbox client (e.g. a Tinsel core)
+// The interface between a core and a mailbox
 interface MailboxClient;
   // Scratchpad
   interface Out#(ScratchpadReq) spadReqOut;
@@ -599,22 +719,13 @@ interface MailboxClient;
   interface Out#(TransmitReq)   txReqOut;
   interface In#(TransmitResp)   txRespIn;
   // Receive unit
-  interface Out#(AllocReq)      allocReqOut;
-  interface In#(ReceiveAlert)   rxAlertIn;
+  interface Out#(ReceiveReq)    rxReqOut;
+  interface In#(ReceiveResp)    rxRespIn;
+  // Free unit
+  interface Out#(FreeReq)       freeReqOut;
+  (* always_ready, always_enabled *)
+  method Action freeDone(Bit#(1) done);
 endinterface
-
-// A bit vector of events that can cause a sleeping thread to wake up
-// Bit 0: can-send
-// Bit 1: can-receive
-// Bit 2: idle, vote false
-// Bit 3: idle, vote true
-typedef Bit#(4) WakeEvent;
-
-// Pair containing thread id and wake event
-typedef struct {
-  ThreadId id;
-  WakeEvent wakeEvent;
-} ThreadEventPair deriving (Bits);
 
 // =============================================================================
 // Mailbox client unit
@@ -627,28 +738,24 @@ interface MailboxClientUnit;
   interface OutPort#(ScratchpadReq) scratchpadReq;
   interface InPort#(ScratchpadResp) scratchpadResp;
 
-  // Allocate request
-  interface OutPort#(AllocReq) allocateReq;
+  // Response port for receive requests
+  interface Out#(ReceiveResp) respOut;
 
-  // Prepare for mailbox access by given thread
-  method Action prepare(ThreadId id);
-  // Is a send/receive possible on prepared thread?
-  // (Valid on 2nd cycle after call to "prepare")
-  method Bool canSend;
-  method Bool canRecv;
-  // Trigger send/receive
-  // (Must only be called on 2nd cycle after call to "prepare")
-  method Action recv;
+  // Wakeup port for sleep requests
+  interface Out#(SleepStatus) wakeup;
+
+  // For free requests
+  interface OutPort#(FreeReq) freeReq;
+
+  // Can given thread send?
+  method Bool canSend(ThreadId id);
+
+  // Trigger send
   method Action send(ThreadId id, MsgLen len,
-                       NetAddr dest, MailboxThreadMsgAddr addr);
-  // Scratchpad address of message received
-  // (Valid on 2nd cycle after call to "recv")
-  method Bit#(32) recvAddr;
+                       NetAddr dest, MailboxMsgAddr addr);
 
   // Suspend thread until event(s)
-  method Action sleep(ThreadId id, WakeEvent e);
-  // Port used to indicate when a thread should be woken
-  interface Out#(ThreadEventPair) wakeup;
+  method Action sleep(ThreadId id, WakeEvent e, SleepOp op);
 
   // Goes high when idle release phase (stage 1) in progress
   method Bool idleReleaseInProgress;
@@ -667,6 +774,8 @@ interface MailboxClientUnit;
   (* always_ready, always_enabled *)
   method Action idleDetectedStage2(Bool pulse);
   method Bool idleStage1Ack;
+  (* always_ready, always_enabled *)
+  method Bit#(1) incReceived;
 endinterface
 
 import "BDPI" function Bit#(32) getBoardId();
@@ -675,14 +784,17 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
   // Ports
   OutPort#(ScratchpadReq)   scratchpadReqPort  <- mkOutPort;
   InPort#(ScratchpadResp)   scratchpadRespPort <- mkInPort;
-  OutPort#(AllocReq)        allocReqPort       <- mkOutPort;
   OutPort#(TransmitReq)     transmitPort       <- mkOutPort;
   InPort#(TransmitResp)     transmitRespPort   <- mkInPort;
-  InPort#(ReceiveAlert)     alertPort          <- mkInPort;
-  OutPort#(ThreadEventPair) wakeupPort         <- mkOutPort;
+  OutPort#(ReceiveReq)      recvReqPort        <- mkOutPort;
+  InPort#(ReceiveResp)      recvRespPort       <- mkInPort;
+  OutPort#(FreeReq)         freeReqPort        <- mkOutPort;
+  OutPort#(SleepStatus)     wakeupPort         <- mkOutPort;
+  OutPort#(ReceiveResp)     respPort           <- mkOutPort;
 
   // Sleep queue (threads sit in here while waiting for events)
-  SizedQueue#(`LogThreadsPerCore, ThreadEventPair) sleepQueue <- mkUGSizedQueue;
+  SizedQueue#(`LogThreadsPerCore, SleepStatus) sleepQueue <-
+    mkUGSizedQueuePrefetch;
 
   // Transmit logic
   // ==============
@@ -718,50 +830,13 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
   // Receive logic
   // =============
 
-  // One set of unread message-pointers per thread
-  ArrayOfSet#(`LogThreadsPerCore,
-              `LogMsgsPerThread) unread <- mkArrayOfSet;
-
-  // Receive unit state
-  Reg#(Bit#(1))      recvState <- mkConfigReg(0);
-  Reg#(ReceiveAlert) alertReg  <- mkConfigRegU;
-
-  rule receive0 (recvState == 0);
-    if (alertPort.canGet) begin
-      alertPort.get;
-      alertReg <= alertPort.value;
-      recvState <= 1;
-    end
-  endrule
-
-  rule receive1 (recvState == 1);
-    if (unread.canPut) begin
-      unread.put(truncate(alertReg.id), alertReg.index);
-      recvState <= 0;
-    end
-  endrule
-
-  // Status unit
-  // ===========
-  //
-  // Determine can-send and can-recv status for each thread.  There is a
-  // conflict between the call to "prepare" and the wakeup unit.  The
-  // status unit resolves this conflict, giving priority to the
-  // "prepare" method.
-
-  // When read unit is triggered by call to "prepare"
-  Wire#(Bool)     doPrepare <- mkDWire(False);
-  Wire#(ThreadId) prepareId <- mkDWire(?);
-
-  // Flag indicating whether client thread can send
-  Reg#(Bool) canSendReg1 <- mkConfigReg(False);
-  Reg#(Bool) canSendReg2 <- mkConfigReg(False);
-
-  rule statusUnit;
-    ThreadId id = doPrepare ? prepareId : sleepQueue.dataOut.id;
-    unread.tryGet(id);
-    canSendReg1 <= canThreadSend[id].value;
-    canSendReg2 <= canSendReg1;
+  // Pass receive responses back to the core
+  rule respond (recvRespPort.canGet &&
+                  recvRespPort.value.status.op != WaitUntilOp &&
+                    respPort.canPut);
+    ReceiveResp resp = recvRespPort.value;
+    respPort.put(resp);
+    recvRespPort.get;
   endrule
 
   // Sleep unit
@@ -773,15 +848,17 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
 
   // Signals from the sleep method
   Wire#(Bool) doSleep <- mkDWire(False);
-  Wire#(ThreadEventPair) sleepThread <- mkDWire(?);
+  Wire#(SleepStatus) sleepThread <- mkDWire(?);
 
   // Signals from the wakeup unit
   Wire#(Bool) doRequeue <- mkDWire(False);
-  Reg#(ThreadEventPair) wakeupReg <- mkRegU;
+  Wire#(Bool) doResumeSleep <- mkDWire(False);
+  Wire#(SleepStatus) resumeSleepWire <- mkDWire(?);
 
-  rule sleepUnit (doSleep || doRequeue);
+  rule sleepUnit (doSleep || doResumeSleep || doRequeue);
     myAssert(sleepQueue.notFull, "MailboxClientUnit: sleep violation");
-    sleepQueue.enq(doSleep ? sleepThread : wakeupReg);
+    sleepQueue.enq(doSleep ? sleepThread :
+      (doResumeSleep ? resumeSleepWire : sleepQueue.dataOut));
   endrule
 
   // Idle detection (see IdleDetector.bsv)
@@ -830,75 +907,67 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
   // each sleeping thread if the events it is waiting for are
   // satisfied.
 
-  // Buffer for the active events
-  Reg#(WakeEvent) eventMatchReg <- mkRegU;
-
-  // State machine control
-  Reg#(Bit#(2)) wakeupState <- mkReg(0);
-  Reg#(Bool) wakeup2Fire <- mkDReg(False);
-
-  rule wakeup0 (!doPrepare && wakeupState == 0 &&
-                  sleepQueue.canPeek && sleepQueue.canDeq);
+  // Iterate over sleep queue, looking for threads to wake up
+  rule wakeup1 (sleepQueue.canPeek && sleepQueue.canDeq);
     let thread = sleepQueue.dataOut;
-    sleepQueue.deq;
-    wakeupReg <= thread;
-    wakeupState <= 1;
-  endrule
-
-  rule wakeup1 (wakeupState == 1);
-    wakeupState <= 2;
-    wakeup2Fire <= True;
-  endrule
-
-  rule wakeup2 (wakeupState == 2);
+    let canSend = canThreadSend[thread.id].value;
     // Select only the bits of the event that match
-    let eventMatchNow = wakeupReg.wakeEvent &
+    let eventMatch = thread.wakeEvent &
           {pack(idleStage1Reg && voteStage1Reg),
            pack(idleStage1Reg),
-           pack(unread.canGet),
-           pack(canSendReg2)};
-    let eventMatch = wakeup2Fire ? eventMatchNow : eventMatchReg;
-    eventMatchReg <= eventMatch;
+           pack(thread.canRecv),
+           pack(canSend)};
     // Should a wakeup be sent?
     Bool wakeupCond = eventMatch != 0;
-    // When wakeup port is ready
-    if (wakeupPort.canPut) begin
-      let wakeup = wakeupReg;
-      wakeup.wakeEvent = eventMatch;
-      if (wakeupCond) begin
-        // Send wakeup
-        wakeupPort.put(wakeup);
-        wakeupState <= 0;
-        if (wakeupReg.wakeEvent[2] == 1) numIdleWaiters.dec;
-        if (wakeupReg.wakeEvent[3] == 1) idleVotes.dec;
-      end else if (!doSleep) begin
-        // Retry later
-        doRequeue <= True;
-        wakeupState <= 0;
+    if (thread.op != WaitUntilOp) begin
+      if (recvReqPort.canPut) begin
+        recvReqPort.put(thread);
+        sleepQueue.deq;
       end
+    end else if (wakeupCond) begin
+      // When wakeup port is ready
+      if (wakeupPort.canPut) begin
+        // Send wakeup
+        if (thread.wakeEvent[2] == 1) numIdleWaiters.dec;
+        if (thread.wakeEvent[3] == 1) idleVotes.dec;
+        thread.wakeEvent = eventMatch;
+        wakeupPort.put(thread);
+        sleepQueue.deq;
+      end 
+    // If thread can't receive but wants to,
+    // we need to make a new receive request
+    end else if (!thread.canRecv && thread.wakeEvent[1] == 1) begin
+      if (recvReqPort.canPut) begin
+        recvReqPort.put(thread);
+        sleepQueue.deq;
+      end
+    end else if (!doSleep && !doResumeSleep) begin
+      // Retry later
+      doRequeue <= True;
+      sleepQueue.deq;
     end
   endrule
+
+  // Pass receive responses for wakeup unit back into sleep queue
+  rule wakeup2 (recvRespPort.canGet &&
+                  recvRespPort.value.status.op == WaitUntilOp && !doSleep);
+    ReceiveResp resp = recvRespPort.value;
+    resumeSleepWire <= resp.status;
+    doResumeSleep <= True;
+    recvRespPort.get;
+  endrule
+ 
+  // Decrement receive count (for idle-detection)
+  Wire#(Bit#(1)) incReceivedWire <- mkBypassWire;
 
   // Methods
   // =======
 
-  method Action prepare(ThreadId id);
-    doPrepare <= True;
-    prepareId <= id;
-  endmethod
-
-  method Bool canRecv = unread.canGet;
-
-  method Action recv;
-    myAssert(unread.canGet, "MailboxClientUnit: recv violation");
-    unread.get;
-  endmethod
-
-  method Bool canSend = canSendReg2;
+  method Bool canSend(ThreadId id) = canThreadSend[id].value;
 
   method Action send(ThreadId id, MsgLen len,
-                       NetAddr dest, MailboxThreadMsgAddr addr);
-    myAssert(canSendReg2, "MailboxClientUnit: send violation");
+                       NetAddr dest, MailboxMsgAddr addr);
+    myAssert(canThreadSend[id].value, "MailboxClientUnit: send violation");
     // Construct transmit request
     TransmitReq req;
     req.id = {truncate(myId), id};
@@ -912,13 +981,12 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
     canThreadSend[id].clear;
   endmethod
 
-  method Bit#(32) recvAddr = msgAddrToByteAddr(unread.itemOut);
-
-  method Action sleep(ThreadId id, WakeEvent e);
+  method Action sleep(ThreadId id, WakeEvent e, SleepOp op);
     if (e[2] == 1) numIdleWaiters.inc;
     if (e[3] == 1) idleVotes.inc;
     doSleep <= True;
-    sleepThread <= ThreadEventPair { id: id, wakeEvent: e };
+    sleepThread <= SleepStatus
+      { id: id, wakeEvent: e, canRecv: False, op: op };
   endmethod
 
   method Bool idleReleaseInProgress = idleDetected;
@@ -941,27 +1009,33 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
 
   method Bool idleStage1Ack = stage1AckWire;
 
+  method Bit#(1) incReceived = incReceivedWire;
 
   // Interfaces
   // ==========
 
   interface scratchpadReq  = scratchpadReqPort;
   interface scratchpadResp = scratchpadRespPort;
-  interface allocateReq    = allocReqPort;
+  interface respOut        = respPort.out;
+  interface wakeup         = wakeupPort.out;
+  interface freeReq        = freeReqPort;
 
   interface MailboxClient client;
     // Scratchpad
-    interface spadReqOut  = scratchpadReqPort.out;
-    interface spadRespIn  = scratchpadRespPort.in;
+    interface spadReqOut = scratchpadReqPort.out;
+    interface spadRespIn = scratchpadRespPort.in;
     // Transmit unit
-    interface txReqOut    = transmitPort.out;
-    interface txRespIn    = transmitRespPort.in;
+    interface txReqOut = transmitPort.out;
+    interface txRespIn = transmitRespPort.in;
     // Receive unit
-    interface allocReqOut = allocReqPort.out;
-    interface rxAlertIn   = alertPort.in;
+    interface rxReqOut = recvReqPort.out;
+    interface rxRespIn = recvRespPort.in;
+    // Free unit
+    interface freeReqOut = freeReqPort.out;
+    method Action freeDone(Bit#(1) done);
+      incReceivedWire <= done;
+    endmethod
   endinterface
-
-  interface wakeup = wakeupPort.out;
 
 endmodule
 
@@ -988,12 +1062,16 @@ module connectCoresToMailbox#(
                   map(txReqOut, clients));
   connectUsing(mkUGQueue, txReqs, server.txReqIn);
 
-  // Connect allocation requests
-  function allocReqOut(client) = client.allocReqOut;
-  let allocReqs <- mkMergeTree(Fair,
-                     mkUGShiftQueue1(QueueOptFmax),
-                     map(allocReqOut, clients));
-  connectUsing(mkUGQueue, allocReqs, server.allocReqIn);
+  // Connect receive requests
+  for (Integer i = 0; i < `CoresPerMailbox; i=i+1)
+    connectUsing(mkUGQueue, clients[i].rxReqOut, server.rxReqResp[i].rxReqIn);
+
+  // Connect free requests
+  function freeReqOut(client) = client.freeReqOut;
+  let freeReqs <- mkMergeTree(Fair,
+                    mkUGShiftQueue1(QueueOptFmax),
+                    map(freeReqOut, clients));
+  connectUsing(mkUGQueue, freeReqs, server.freeReqIn);
 
   // Connect scratchpad responses
   function Bit#(`LogCoresPerMailbox) spadRespKey(ScratchpadResp resp) =
@@ -1015,15 +1093,19 @@ module connectCoresToMailbox#(
                    map(txRespIn, clients));
   connectDirect(server.txRespOut, txResps);
 
-  // Connect receive-alerts
-  function Bit#(`LogCoresPerMailbox) alertRespKey(ReceiveAlert alert) =
-    truncateLSB(alert.id);
-  function rxAlertIn(client) = client.rxAlertIn;
-  let rxAlerts <- mkResponseDistributor(
-                    alertRespKey,
-                    mkUGShiftQueue1(QueueOptFmax),
-                    map(rxAlertIn, clients));
-  connectDirect(server.rxAlertOut, rxAlerts);
+  // Connect receive responses
+  for (Integer i = 0; i < `CoresPerMailbox; i=i+1)
+    connectDirect(server.rxReqResp[i].rxRespOut, clients[i].rxRespIn);
+
+  // Connect free responses
+  rule freeOne;
+    clients[0].freeDone(server.freeDone);
+  endrule
+  for (Integer i = 1; i < `CoresPerMailbox; i=i+1) begin
+    rule freeRest;
+      clients[i].freeDone(0);
+    endrule
+  end
 endmodule
 
 // =============================================================================
@@ -1093,14 +1175,16 @@ import "BVI" ExternalTinselAccelerator =
 
 `ifndef UseCustomAccelerator
 
-module mkMailboxAcc#(BoardId boardId, Integer tileX, Integer tileY) (Mailbox);
+module mkMailboxAcc#(BoardId boardId,
+         Integer tileX, Integer tileY) (Mailbox);
   Mailbox mbox <- mkMailbox;
   return mbox;
 endmodule
 
 `else
 
-module mkMailboxAcc#(BoardId boardId, Integer tileX, Integer tileY) (Mailbox);
+module mkMailboxAcc#(BoardId boardId,
+         Integer tileX, Integer tileY) (Mailbox);
   // Instantiate standard mailbox
   Mailbox mbox <- mkMailbox;
 
@@ -1164,8 +1248,8 @@ module mkMailboxAcc#(BoardId boardId, Integer tileX, Integer tileY) (Mailbox);
   interface BOut spadRespOut = mbox.spadRespOut;
   interface In   txReqIn     = mbox.txReqIn;
   interface BOut txRespOut   = mbox.txRespOut;
-  interface In   allocReqIn  = mbox.allocReqIn;
-  interface BOut rxAlertOut  = mbox.rxAlertOut;
+  interface rxReqResp        = mbox.rxReqResp;
+  interface In   freeReqIn   = mbox.freeReqIn;
 
   interface MailboxNet net;
     interface In flitIn = inPort.in;

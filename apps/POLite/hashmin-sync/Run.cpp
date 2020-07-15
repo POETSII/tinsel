@@ -69,7 +69,7 @@ int main(int argc, char**argv)
   // Receive final distance to each vertex
   for (uint32_t i = 0; i < graph.numDevices; i++) {
     // Receive message
-    PMessage<None, int32_t> msg;
+    PMessage<int32_t> msg;
     hostLink.recvMsg(&msg, sizeof(msg));
     if (i == 0) gettimeofday(&finish, NULL);
     // Accumulate
@@ -82,7 +82,9 @@ int main(int argc, char**argv)
   // Display time
   timersub(&finish, &start, &diff);
   double duration = (double) diff.tv_sec + (double) diff.tv_usec / 1000000.0;
+  #ifndef POLITE_DUMP_STATS
   printf("Time = %lf\n", duration);
+  #endif
 
   return 0;
 }

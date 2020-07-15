@@ -3,8 +3,11 @@
 #define _NETWORK_H_
 
 #include <stdio.h>
-#include <stdlib.h>
 #include <stdint.h>
+#include <assert.h>
+#include <iostream>
+#include <fstream>
+#include <vector>
 
 struct EdgeList {
   // Number of nodes and edges
@@ -18,50 +21,42 @@ struct EdgeList {
   // Read network from file
   void read(const char* filename)
   {
-    // Read edges
-    FILE* fp = fopen(filename, "rt");
-    if (fp == NULL) {
-      fprintf(stderr, "Can't open '%s'\n", filename);
-      exit(EXIT_FAILURE);
-    }
+    std::fstream file(filename, std::ios_base::in);
+    std::vector<uint32_t> vec;
 
     // Count number of nodes and edges
     numEdges = 0;
     numNodes = 0;
-    int ret;
-    while (1) {
-      uint32_t src, dst;
-      ret = fscanf(fp, "%d %d", &src, &dst);
-      if (ret == EOF) break;
+    uint32_t numInts = 0;
+    uint32_t val;
+    while (file >> val) {
+      vec.push_back(val);
+      numNodes = val >= numNodes ? val+1 : numNodes;
       numEdges++;
-      numNodes = src >= numNodes ? src+1 : numNodes;
-      numNodes = dst >= numNodes ? dst+1 : numNodes;
     }
-    rewind(fp);
+    assert((numEdges&1) == 0);
+    numEdges >>= 1;
 
     uint32_t* count = (uint32_t*) calloc(numNodes, sizeof(uint32_t));
-    for (int i = 0; i < numEdges; i++) {
-      uint32_t src, dst;
-      ret = fscanf(fp, "%d %d", &src, &dst);
-      count[src]++;
+    for (int i = 0; i < vec.size(); i+=2) {
+      count[vec[i]]++;
     }
 
     // Create mapping from node id to neighbours
     neighbours = (uint32_t**) calloc(numNodes, sizeof(uint32_t*));
-    rewind(fp);
     for (int i = 0; i < numNodes; i++) {
       neighbours[i] = (uint32_t*) calloc(count[i]+1, sizeof(uint32_t));
       neighbours[i][0] = count[i];
     }
-    for (int i = 0; i < numEdges; i++) {
-      uint32_t src, dst;
-      ret = fscanf(fp, "%d %d", &src, &dst);
+    for (int i = 0; i < vec.size(); i+=2) {
+      uint32_t src = vec[i];
+      uint32_t dst = vec[i+1];
       neighbours[src][count[src]--] = dst;
     }
  
     // Release
     free(count);
-    fclose(fp);
+    file.close();
   }
 
   // Determine max fan-out
@@ -73,6 +68,17 @@ struct EdgeList {
     }
     return max;
   }
+
+  // Determine min fan-out
+  uint32_t minFanOut() {
+    uint32_t min = ~0;
+    for (uint32_t i = 0; i < numNodes; i++) {
+      uint32_t numNeighbours = neighbours[i][0];
+      if (numNeighbours < min) min = numNeighbours;
+    }
+    return min;
+  }
+
 };
 
 #endif

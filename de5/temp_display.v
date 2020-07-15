@@ -30,7 +30,8 @@ module temp_display(
   output wire [6:0] HEX0_D,
   output wire HEX0_DP,
   output wire [6:0] HEX1_D,
-  output wire HEX1_DP
+  output wire HEX1_DP,
+  output wire [7:0] sample
 );
 
 // Seven segment displays
@@ -38,6 +39,7 @@ module temp_display(
 
 // Value displayed on the seven segs
 reg [7:0] display_reg = 0;
+assign sample = display_reg;
 
 // Decimal points (active low)
 assign HEX0_DP = 1;

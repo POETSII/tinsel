@@ -20,26 +20,25 @@ clean:
 	make -C apps/ping clean
 	make -C apps/custom clean
 	make -C apps/ring clean
-	make -C apps/ring/general clean
-	make -C apps/flood1 clean
-	make -C apps/flood2 clean
-	make -C apps/inter clean
-	make -C apps/benchmarks clean
 	make -C apps/linkrate clean
-	make -C apps/linktest clean
 	make -C apps/multiprog clean
 	make -C apps/sync clean
-	make -C apps/web clean
-	make -C apps/exchange clean
+	make -C apps/temps clean
 	make -C apps/POLite/heat-gals clean
 	make -C apps/POLite/heat-sync clean
+	make -C apps/POLite/heat-cube-sync clean
+	make -C apps/POLite/heat-grid-sync clean
 	make -C apps/POLite/asp-gals clean
 	make -C apps/POLite/asp-sync clean
-	make -C apps/POLite/asp-pc clean
 	make -C apps/POLite/pagerank-sync clean
 	make -C apps/POLite/pagerank-gals clean
+	make -C apps/POLite/sssp-sync clean
 	make -C apps/POLite/sssp-async clean
-	make -C apps/POLite/ping-test clean
 	make -C apps/POLite/clocktree-async clean
+	make -C apps/POLite/izhikevich-gals clean
+	make -C apps/POLite/izhikevich-sync clean
+	make -C apps/POLite/pressure-sync clean
+	make -C apps/POLite/hashmin-sync clean
+	make -C apps/POLite/progrouters clean
 	make -C bin clean
 	make -C tests clean

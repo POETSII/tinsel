@@ -21,6 +21,9 @@
 #include <string.h>
 #include <signal.h>
 
+// Send buffer size (in flits)
+#define SEND_BUFFER_SIZE 8192
+
 // Function to connect to a PCIeStream UNIX domain socket
 static int connectToPCIeStream(const char* socketPath)
 {
@@ -57,9 +60,11 @@ static int connectToPCIeStream(const char* socketPath)
 }
 
 // Internal constructor
-void HostLink::constructor(uint32_t numBoxesX, uint32_t numBoxesY)
+void HostLink::constructor(HostLinkParams p)
 {
-  if (numBoxesX > TinselBoxMeshXLen || numBoxesY > TinselBoxMeshYLen) {
+  useExtraSendSlot = p.useExtraSendSlot;
+
+  if (p.numBoxesX > TinselBoxMeshXLen || p.numBoxesY > TinselBoxMeshYLen) {
     fprintf(stderr, "Number of boxes requested exceeds those available\n");
     exit(EXIT_FAILURE);
   }
@@ -89,7 +94,11 @@ void HostLink::constructor(uint32_t numBoxesX, uint32_t numBoxesY)
   #endif
 
   // Create DebugLink
-  debugLink = new DebugLink(numBoxesX, numBoxesY);
+  DebugLinkParams debugLinkParams;
+  debugLinkParams.numBoxesX = p.numBoxesX;
+  debugLinkParams.numBoxesY = p.numBoxesY;
+  debugLinkParams.useExtraSendSlot = p.useExtraSendSlot;
+  debugLink = new DebugLink(debugLinkParams);
 
   // Set board mesh dimensions
   meshXLen = debugLink->meshXLen;
@@ -123,6 +132,17 @@ void HostLink::constructor(uint32_t numBoxesX, uint32_t numBoxesY)
       }
     }
   }
+
+  // Initialise send buffer
+  useSendBuffer = false;
+  sendBuffer = new char [(1<<TinselLogBytesPerFlit) * SEND_BUFFER_SIZE];
+  sendBufferLen = 0;
+
+  // Run the self test
+  if (! powerOnSelfTest()) {
+    fprintf(stderr, "Power-on self test failed.  Please try again.\n");
+    exit(EXIT_FAILURE);
+  }
 }
 
 HostLink::HostLink()
@@ -131,12 +151,25 @@ HostLink::HostLink()
   int x = str ? atoi(str) : 1;
   str = getenv("HOSTLINK_BOXES_Y");
   int y = str ? atoi(str) : 1;
-  constructor(x, y);
+  HostLinkParams params;
+  params.numBoxesX = x;
+  params.numBoxesY = y;
+  params.useExtraSendSlot = false;
+  constructor(params);
 }
 
 HostLink::HostLink(uint32_t numBoxesX, uint32_t numBoxesY)
 {
-  constructor(numBoxesX, numBoxesY);
+  HostLinkParams params;
+  params.numBoxesX = numBoxesX;
+  params.numBoxesY = numBoxesY;
+  params.useExtraSendSlot = false;
+  constructor(params);
+}
+
+HostLink::HostLink(HostLinkParams params)
+{
+  constructor(params);
 }
 
 // Destructor
@@ -159,6 +192,9 @@ HostLink::~HostLink()
   }
   delete [] lineBuffer;
   delete [] lineBufferLen;
+
+  // Free send buffer
+  delete [] sendBuffer;
 
   // Close debug link
   delete debugLink;
@@ -201,9 +237,12 @@ void HostLink::fromAddr(uint32_t addr, uint32_t* meshX, uint32_t* meshY,
   *meshY = addr;
 }
 
-// Inject a message via PCIe (blocking by default)
-bool HostLink::send(uint32_t dest, uint32_t numFlits, void* payload, bool block)
+// Internal helper for sending messages
+bool HostLink::sendHelper(uint32_t dest, uint32_t numFlits, void* payload,
+       bool block, uint32_t key)
 {
+  assert(useSendBuffer ? block : true);
+
   // Ensure that MaxFlitsPerMsg is not violated
   assert(numFlits > 0 && numFlits <= TinselMaxFlitsPerMsg);
 
@@ -211,65 +250,144 @@ bool HostLink::send(uint32_t dest, uint32_t numFlits, void* payload, bool block)
   // (Because PCIeStream currently has this assumption)
   assert(TinselLogBytesPerFlit == 4);
 
-  // Message buffer
-  uint32_t buffer[4*(TinselMaxFlitsPerMsg+1)];
+  if (useSendBuffer) {
+    // Flush the buffer when we run out of space
+    if ((sendBufferLen + numFlits + 1) >= SEND_BUFFER_SIZE) flush();
 
-  // Fill in the message header
-  // (See DE5BridgeTop.bsv for details)
-  buffer[0] = dest;
-  buffer[1] = 0;
-  buffer[2] = (numFlits-1) << 24;
-  buffer[3] = 0;
+    // Message buffer
+    uint32_t* buffer = (uint32_t*) &sendBuffer[16*sendBufferLen];
 
-  // Bytes in payload
-  int payloadBytes = numFlits*16;
+    // Fill in the message header
+    // (See DE5BridgeTop.bsv for details)
+    buffer[0] = dest;
+    buffer[1] = 0;
+    buffer[2] = (numFlits-1) << 24;
+    buffer[3] = key;
 
-  // Fill in message payload
-  memcpy(&buffer[4], payload, payloadBytes);
+    // Fill in message payload
+    memcpy(&buffer[4], payload, numFlits*16);
 
-  // Total bytes to send, including header
-  int totalBytes = 16+payloadBytes;
+    // Update buffer
+    sendBufferLen += 1 + numFlits;
 
-  // Write to the socket
-  if (block) {
-    socketBlockingPut(pcieLink, (char*) buffer, totalBytes);
     return true;
   }
   else {
-    return socketPut(pcieLink, (char*) buffer, totalBytes) == 1;
+    assert(sendBufferLen == 0);
+
+    // Message buffer
+    uint32_t buffer[4*(TinselMaxFlitsPerMsg+1)];
+
+    // Fill in the message header
+    // (See DE5BridgeTop.bsv for details)
+    buffer[0] = dest;
+    buffer[1] = 0;
+    buffer[2] = (numFlits-1) << 24;
+    buffer[3] = 0;
+
+    // Bytes in payload
+    int payloadBytes = numFlits*16;
+
+    // Fill in message payload
+    memcpy(&buffer[4], payload, payloadBytes);
+
+    // Total bytes to send, including header
+    int totalBytes = 16+payloadBytes;
+
+    // Write to the socket
+    if (block) {
+      socketBlockingPut(pcieLink, (char*) buffer, totalBytes);
+      return true;
+    }
+    else {
+      return socketPut(pcieLink, (char*) buffer, totalBytes) == 1;
+    }
+  }
+}
+
+
+// Inject a message via PCIe (blocking by default)
+bool HostLink::send(uint32_t dest, uint32_t numFlits, void* msg, bool block)
+{
+  return sendHelper(dest, numFlits, msg, block, 0);
+}
+
+// Flush the send buffer
+void HostLink::flush()
+{
+  assert(useSendBuffer);
+  if (sendBufferLen > 0) {
+    socketBlockingPut(pcieLink, sendBuffer, sendBufferLen * 16);
+    sendBufferLen = 0;
   }
 }
 
 // Try to send a message (non-blocking, returns true on success)
 bool HostLink::trySend(uint32_t dest, uint32_t numFlits, void* msg)
 {
-  return send(dest, numFlits, msg, false);
+  return sendHelper(dest, numFlits, msg, false, 0);
 }
 
-// Receive a flit via PCIe (blocking)
-void HostLink::recv(void* flit)
+// Send a message using routing key (blocking by default)
+bool HostLink::keySend(uint32_t key, uint32_t numFlits,
+       void* msg, bool block)
 {
-  int numBytes = 1 << TinselLogBytesPerFlit;
-  uint8_t* ptr = (uint8_t*) flit;
-  socketBlockingGet(pcieLink, (char*) ptr, numBytes);
+  uint32_t useRoutingKey = 1 << (
+    TinselLogThreadsPerCore + TinselLogCoresPerMailbox +
+    TinselMailboxMeshXBits + TinselMailboxMeshYBits +
+    TinselMeshXBits + TinselMeshYBits + 2);
+  return sendHelper(useRoutingKey, numFlits, msg, block, key);
+}
+
+// Try to send using routing key (non-blocking, returns true on success)
+bool HostLink::keyTrySend(uint32_t key, uint32_t numFlits, void* msg)
+{
+  uint32_t useRoutingKey = 1 << (
+    TinselLogThreadsPerCore + TinselLogCoresPerMailbox +
+    TinselMailboxMeshXBits + TinselMailboxMeshYBits +
+    TinselMeshXBits + TinselMeshYBits + 2);
+  return sendHelper(useRoutingKey, numFlits, msg, false, key);
+}
+
+// Receive a message via PCIe (blocking)
+void HostLink::recv(void* msg)
+{
+  int numBytes = 1 << TinselLogBytesPerMsg;
+  socketBlockingGet(pcieLink, (char*) msg, numBytes);
 }
 
 // Receive a message (blocking), given size of message in bytes
 void HostLink::recvMsg(void* msg, uint32_t numBytes)
 {
-  // Number of flits needed to hold message of size numBytes
-  int numFlits = 1 + ((numBytes-1) >> TinselLogBytesPerFlit);
-
   // Number of padding bytes that need to be received but not stored
-  int paddingBytes = (numFlits << TinselLogBytesPerFlit) - numBytes;
+  int paddingBytes = (1 << TinselLogBytesPerMsg) - numBytes;
 
   // Fill message
   uint8_t* ptr = (uint8_t*) msg;
   socketBlockingGet(pcieLink, (char*) ptr, numBytes);
 
   // Discard padding bytes
-  uint8_t padding[1 << TinselLogBytesPerFlit];
+  uint8_t padding[1 << TinselLogBytesPerMsg];
   socketBlockingGet(pcieLink, (char*) padding, paddingBytes);
+}
+
+// Receive multiple messages (blocking)
+void HostLink::recvBulk(int numMsgs, void* msgs)
+{
+  int numBytes = numMsgs * (1 << TinselLogBytesPerMsg);
+  socketBlockingGet(pcieLink, (char*) msgs, numBytes);
+}
+
+// Receive multiple messages (blocking), given size of each message
+void HostLink::recvMsgs(int numMsgs, int msgSize, void* msgs)
+{
+  int numBytes = numMsgs * (1 << TinselLogBytesPerMsg);
+  uint8_t* buffer = new uint8_t [numBytes];
+  uint8_t* ptr = (uint8_t*) msgs;
+  socketBlockingGet(pcieLink, (char*) buffer, numBytes);
+  for (int i = 0; i < numMsgs; i++)
+    memcpy(&ptr[i*msgSize], &buffer[i*(1<<TinselLogBytesPerMsg)], msgSize);
+  delete [] buffer;
 }
 
 // Can receive a flit without blocking?
@@ -354,7 +472,7 @@ void HostLink::boot(const char* codeFilename, const char* dataFilename)
 
   // Send start command
   uint32_t started = 0;
-  uint8_t flit[4 << TinselLogWordsPerFlit];
+  uint32_t msg[1 << TinselLogWordsPerMsg];
   for (int x = 0; x < meshXLen; x++) {
     for (int y = 0; y < meshYLen; y++) {
       for (int i = 0; i < (1 << TinselLogCoresPerBoard); i++) {
@@ -364,7 +482,7 @@ void HostLink::boot(const char* codeFilename, const char* dataFilename)
         while (1) {
           bool ok = trySend(dest, 1, &req);
           if (canRecv()) {
-            recv(flit);
+            recv(msg);
             started++;
           }
           if (ok) break;
@@ -375,7 +493,7 @@ void HostLink::boot(const char* codeFilename, const char* dataFilename)
 
   // Wait for all start responses
   while (started < numCores) {
-    recv(flit);
+    recv(msg);
     started++;
   }
 }
@@ -461,8 +579,8 @@ void HostLink::startOne(uint32_t meshX, uint32_t meshY,
   send(dest, 1, &req);
 
   // Wait for start response
-  uint8_t flit[4 << TinselLogWordsPerFlit];
-  recv(flit);
+  uint32_t msg[1 << TinselLogWordsPerMsg];
+  recv(msg);
 }
 
 // Trigger application execution on all started threads on given core
@@ -498,6 +616,70 @@ void HostLink::store(uint32_t meshX, uint32_t meshY,
     uint32_t numFlits = 1 + (sendWords >> 2);
     send(toAddr(meshX, meshY, coreId, 0), numFlits, &req);
   }
+}
+
+// Power-on self test
+bool HostLink::powerOnSelfTest()
+{
+  const double timeout = 3.0;
+
+  // Need to check that we get a response within a given time
+  struct timeval start, finish, diff;
+
+  // Boot request to load data from memory
+  // (The test involves reading from QDRII+ SRAMs on each board)
+  BootReq req;
+  req.cmd = LoadCmd;
+  req.numArgs = 1;
+  req.args[0] = 1;
+
+  // Flit buffer to store responses
+  uint32_t msg[1 << TinselLogWordsPerMsg];
+
+  // Count number of responses received
+  int count = 0;
+
+  // Send request and consume responses
+  for (int ram = 1; ram <= 2; ram++) {
+    for (int y = 0; y < meshYLen; y++) {
+      for (int x = 0; x < meshXLen; x++) {
+        // Request a word from SRAM
+        uint32_t addr = ram << TinselLogBytesPerSRAM;
+        setAddr(x, y, 0, addr);
+        gettimeofday(&start, NULL);
+        while (1) {
+          bool ok = trySend(toAddr(x, y, 0, 0), 1, &req);
+          if (canRecv()) {
+            recv(msg);
+            count++;
+          }
+          if (ok) break;
+          gettimeofday(&finish, NULL);
+          timersub(&finish, &start, &diff);
+          double duration = (double) diff.tv_sec +
+                            (double) diff.tv_usec / 1000000.0;
+          if (duration > timeout) return false;
+        }
+      }
+    }
+  }
+
+  // Consume remaining responses
+  gettimeofday(&start, NULL);
+  while (count < (2*meshXLen*meshYLen)) {
+    if (canRecv()) {
+      recv(msg);
+      count++;
+      gettimeofday(&start, NULL);
+    }
+    gettimeofday(&finish, NULL);
+    timersub(&finish, &start, &diff);
+    double duration = (double) diff.tv_sec +
+                      (double) diff.tv_usec / 1000000.0;
+    if (duration > timeout) return false;
+  }
+
+  return true;
 }
 
 // Redirect UART StdOut to given file

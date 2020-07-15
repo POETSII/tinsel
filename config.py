@@ -46,7 +46,7 @@ p["LogBeatsPerLine"] = 0
 p["DCacheLogSetsPerThread"] = 2
 
 # Log of number of ways per set in set-associative data cache
-p["DCacheLogNumWays"] = 3
+p["DCacheLogNumWays"] = 4
 
 # Number of DRAMs per FPGA board
 p["LogDRAMsPerBoard"] = 1
@@ -66,8 +66,8 @@ p["LogWordsPerFlit"] = 2
 # Max flits per message
 p["LogMaxFlitsPerMsg"] = 2
 
-# Space available per thread in mailbox scratchpad
-p["LogMsgsPerThread"] = 4
+# Space available in mailbox scratchpad
+p["LogMsgsPerMailbox"] = 9
 
 # Number of cores sharing a mailbox
 p["LogCoresPerMailbox"] = 2
@@ -86,6 +86,12 @@ p["MailboxMeshYLen"] = 2 ** p["MailboxMeshYBits"]
 
 # Number of mailboxes per board
 p["LogMailboxesPerBoard"] = p["MailboxMeshXBits"] + p["MailboxMeshYBits"]
+
+# Size of multicast queues in mailbox
+p["LogMsgPtrQueueSize"] = 6
+
+# Size of multicast serialisation buffer
+p["LogMulticastBufferSize"] = 9
 
 # Maximum size of boot loader (in bytes)
 p["MaxBootImageBytes"] = 576
@@ -110,9 +116,11 @@ p["MacLatency"] = 100
 
 # Number of bits in mesh X coord (board id)
 p["MeshXBits"] = 3
+p["MeshXBits1"] = p["MeshXBits"] + 1
 
 # Number of bits in mesh Y coord (board id)
 p["MeshYBits"] = 3
+p["MeshYBits1"] = p["MeshYBits"] + 1
 
 # Number of bits in mesh X coord within a box (DIP switches)
 p["MeshXBitsWithinBox"] = 2
@@ -153,6 +161,16 @@ p["SRAMLatency"] = 8
 p["SRAMLogMaxInFlight"] = 5
 p["SRAMStoreLatency"] = 2
 
+# Programmable router parameters:
+p["LogRoutingEntryLen"] = 5 # Number of beats in a routing table entry
+p["ProgRouterMaxBurst"] = 4
+p["FetcherLogIndQueueSize"] = 1
+p["FetcherLogBeatBufferSize"] = 5
+p["FetcherLogFlitBufferSize"] = 5
+p["FetcherLogMsgsPerFlitBuffer"] = (
+  p["FetcherLogFlitBufferSize"] - p["LogMaxFlitsPerMsg"])
+p["FetcherMsgsPerFlitBuffer"] = 2 ** p["FetcherLogMsgsPerFlitBuffer"]
+
 # Enable performance counters
 p["EnablePerfCount"] = True
 
@@ -168,6 +186,9 @@ p["BoxMesh"] = ('{'
 
 # Enable custom accelerators (experimental feature)
 p["UseCustomAccelerator"] = False
+
+# Clock frequency (in MHz)
+p["ClockFreq"] = 215
 
 #==============================================================================
 # Derived Parameters
@@ -227,6 +248,11 @@ p["DCachesPerDRAM"] = 2**p["LogDCachesPerDRAM"]
 # Flits per message
 p["MaxFlitsPerMsg"] = 2**p["LogMaxFlitsPerMsg"]
 
+# Mailbox size
+p["LogFlitsPerMailbox"] = p["LogMsgsPerMailbox"] + p["LogMaxFlitsPerMsg"]
+p["LogWordsPerMailbox"] = p["LogFlitsPerMailbox"] + p["LogWordsPerFlit"]
+p["LogBytesPerMailbox"] = p["LogWordsPerMailbox"] + 2
+
 # Words per flit
 p["WordsPerFlit"] = 2**p["LogWordsPerFlit"]
 
@@ -242,25 +268,17 @@ p["LogWordsPerMsg"] = p["LogWordsPerFlit"] + p["LogMaxFlitsPerMsg"]
 # Bytes per message
 p["LogBytesPerMsg"] = p["LogWordsPerMsg"] + 2
 
-# Space available per thread in mailbox scratchpad
-p["MsgSlotsPerThread"] = 2**p["LogMsgsPerThread"]
-
-# Number of bytes per message
-p["LogBytesPerMsg"] = p["LogWordsPerMsg"] + 2
-
-# Number of flits per thread in scratchpad
-p["LogFlitsPerThread"] = p["LogMsgsPerThread"] + p["LogMaxFlitsPerMsg"]
-
 # Number of cores sharing a mailbox
 p["CoresPerMailbox"] = 2 ** p["LogCoresPerMailbox"]
 
 # Number of threads sharing a mailbox
 p["LogThreadsPerMailbox"] = p["LogCoresPerMailbox"]+p["LogThreadsPerCore"]
+p["ThreadsPerMailbox"] = 2**p["LogThreadsPerMailbox"]
 
 # Base of off-chip memory-mapped region in bytes
 p["LogOffChipRAMBaseAddr"] = (1+p["LogWordsPerFlit"]+2+
                                 p["LogMaxFlitsPerMsg"]+
-                                p["LogMsgsPerThread"])
+                                p["LogMsgsPerMailbox"])
 
 # Size of mailbox transmit buffer
 p["LogTransmitBufferLen"] = (p["LogMaxFlitsPerMsg"]
@@ -292,6 +310,7 @@ p["ThreadsPerBoard"] = 2 ** p["LogThreadsPerBoard"]
 
 # Cores per board
 p["LogCoresPerBoard"] = p["LogCoresPerMailbox"] + p["LogMailboxesPerBoard"]
+p["LogCoresPerBoard1"] = p["LogCoresPerBoard"] + 1
 p["CoresPerBoard"] = 2**p["LogCoresPerBoard"]
 
 # Threads per core
@@ -348,9 +367,20 @@ p["LogBytesPerSRAMPartition"] = p["LogBytesPerSRAM"] - p["LogThreadsPerSRAM"]
 # DRAM base and length
 p["DRAMBase"] = 3 * (2 ** p["LogBytesPerSRAM"])
 p["DRAMGlobalsLength"] = 2 ** (p["LogBytesPerDRAM"] - 1) - p["DRAMBase"]
+p["POLiteDRAMGlobalsLength"] = 2 ** 14
+p["POLiteProgRouterBase"] = p["DRAMBase"] + p["POLiteDRAMGlobalsLength"]
+p["POLiteProgRouterLength"] = (p["DRAMGlobalsLength"] -
+                                 p["POLiteDRAMGlobalsLength"])
+
+# POLite globals
 
 # Number of FPGA boards per box (including bridge board)
 p["BoardsPerBox"] = p["MeshXLenWithinBox"] * p["MeshYLenWithinBox"] + 1
+
+# Parameters for programmable routers
+# (and the routing-record fetchers they contain)
+p["FetchersPerProgRouter"] = 4 + p["MailboxMeshXLen"]
+p["LogFetcherFlitBufferSize"] = 5
 
 #==============================================================================
 # Main 

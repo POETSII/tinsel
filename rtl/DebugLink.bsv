@@ -13,16 +13,18 @@ package DebugLink;
 // Commands sent from the host PC to DebugLink typically consist of a
 // few bytes over the JTAG UART.
 //
-//   QueryIn: tag (1 byte), board offset (1 byte), edge disable (1 byte)
-//   -------------------------------------------------------------------
+//   QueryIn: tag (1 byte), board offset (1 byte), config (1 byte)
+//   -------------------------------------------------------------
 //
 //   Sets the X offset (offset[3:0]) and the Y offset (offset[7:4])
 //   of the board id (to support multiple boxes).
 //   Disable the specified inter-FPGA links:
-//     * disable[0]: disable links on north side of box
-//     * disable[1]: disable links on south side of box
-//     * disable[2]: disable links on east side of box
-//     * disable[3]: disable links on west side of box
+//     * config[0]: disable links on north side of box
+//     * config[1]: disable links on south side of box
+//     * config[2]: disable links on east side of box
+//     * config[3]: disable links on west side of box
+//   Enable extra send slot:
+//     * config[4]: reserve extra send slot
 //   Responds with a QueryOut (see below).
 //
 //   SetDest: tag (1 byte), thread id (1 byte), core id (1 byte)
@@ -37,6 +39,11 @@ package DebugLink;
 //   -------------------------------------
 //
 //   The 8-bit payload gets sent to the destination core(s).
+//
+//   TempIn: tag (1 byte)
+//   --------------------
+//
+//   Request the FPGA temperature.
 //
 // Commands sent from DebugLink to the host PC over the JTAG UART are
 // as follows.
@@ -56,6 +63,10 @@ package DebugLink;
 //
 //   A byte sent by a thread is forwarded to the host.
 //
+//   TempOut: tag (1 byte), payload (1 byte)
+//   ---------------------------------------
+//
+//   Actual temperature in celsius is payload - 128.
 
 // =============================================================================
 // Imports
@@ -73,12 +84,14 @@ import ConfigReg :: *;
 // DebugLink commands
 // =============================================================================
 
-typedef Bit#(2) DebugLinkCmd;
+typedef Bit#(3) DebugLinkCmd;
 DebugLinkCmd cmdQueryIn  = 0;
 DebugLinkCmd cmdQueryOut = 0;
 DebugLinkCmd cmdSetDest  = 1;
 DebugLinkCmd cmdStdIn    = 2;
 DebugLinkCmd cmdStdOut   = 2;
+DebugLinkCmd cmdTempIn   = 4;
+DebugLinkCmd cmdTempOut  = 4;
 
 // =============================================================================
 // Types
@@ -191,13 +204,18 @@ interface DebugLink;
   // Get board id via DebugLink
   (* always_ready, always_enabled *)
   method BoardId getBoardId();
-  // Optionally disable each inter-FPGA link via DebugLink
+  // Config option: disable each inter-FPGA link via DebugLink
+  // (Allows sanboxing of boxes or groups of boxes)
   (* always_ready, always_enabled *)
   method Vector#(4, Bool) linkEnable;
+  // Config option: reserve extra send slot per thread in mailbox
+  (* always_ready, always_enabled *)
+  method Option#(Bool) useExtraSendSlot;
 endinterface
 
 module mkDebugLink#(
     Bit#(4) boardIdWithinBox,
+    Bit#(8) temperature,
     Vector#(n, DebugLinkClient) cores) (DebugLink);
 
   // The board offset (in a multi-box setup) received via DebugLink
@@ -211,6 +229,11 @@ module mkDebugLink#(
   // An enable line for each inter-FPGA link on the board
   // (Initially, all disabled)
   Reg#(Vector#(4, Bool)) linkEnableReg <- mkConfigReg(replicate(False));
+
+  // Config option: reserve extra send slot in mailbox?
+  // Use a chain of registers to aid propagation on chip
+  Vector#(3, Reg#(Option#(Bool))) useExtraSendSlotReg <-
+     replicateM(mkConfigReg(Option {valid : False, value: False}));
 
   // Ports
   InPort#(Bit#(8)) fromJtag <- mkInPort;
@@ -270,15 +293,21 @@ module mkDebugLink#(
   // Command
   Reg#(DebugLinkCmd) recvCmd <- mkConfigReg(0);
 
-  // Respond to query command?
-  Reg#(Bool) respondQuery <- mkConfigReg(False);
+  // Respond to command?
+  Reg#(Bool) respondFlag <- mkConfigReg(False);
+  Reg#(DebugLinkCmd) respondCmd <- mkConfigRegU;
 
-  rule uartRecv (fromJtag.canGet && toBusPort.canPut && !respondQuery);
+  rule uartRecv (fromJtag.canGet && toBusPort.canPut && !respondFlag);
     fromJtag.get;
     if (recvState == 0) begin
       DebugLinkCmd cmd = truncate(fromJtag.value);
-      recvCmd <= cmd;
-      recvState <= 1;
+      if (cmd == cmdTempIn) begin
+        respondFlag <= True;
+        respondCmd <= cmdTempIn;
+      end else begin
+        recvCmd <= cmd;
+        recvState <= 1;
+      end
     end else if (recvState == 1) begin
       if (recvCmd == cmdQueryIn) begin
         boardOffset <= fromJtag.value;
@@ -313,7 +342,11 @@ module mkDebugLink#(
         // Disable west link?
         if (x == 0 && edgeEn[3] == 1) linkEn[3] = False;
         linkEnableReg <= linkEn;
-        respondQuery <= True;
+        // Reserve extra send slot?
+        useExtraSendSlotReg[2] <=
+          Option {valid: True, value: fromJtag.value[4] == 1};
+        respondFlag <= True;
+        respondCmd <= cmdQueryIn;
         recvState <= 0;
       end else begin
         recvDestCore <= fromJtag.value;
@@ -332,21 +365,34 @@ module mkDebugLink#(
   Reg#(DebugLinkFlit) sendFlit <- mkConfigRegU;
 
   // Send QueryOut command
-  rule uartSendQueryOut (toJtag.canPut && respondQuery);
-    if (sendState == 0) begin
-      // Send QueryOut
-      toJtag.put(zeroExtend(cmdQueryOut));
-      sendState <= 1;
-    end else begin
-      // Send QueryOut payload
-      toJtag.put(1 + zeroExtend(pack(boardIdWithinBox)));
-      sendState <= 0;
-      respondQuery <= False;
+  rule uartSendQueryOut (toJtag.canPut && respondFlag);
+    if (respondCmd == cmdQueryIn) begin
+      if (sendState == 0) begin
+        // Send QueryOut
+        toJtag.put(zeroExtend(cmdQueryOut));
+        sendState <= 1;
+      end else begin
+        // Send QueryOut payload
+        toJtag.put(1 + zeroExtend(pack(boardIdWithinBox)));
+        sendState <= 0;
+        respondFlag <= False;
+      end
+    end else if (respondCmd == cmdTempIn) begin
+      if (sendState == 0) begin
+        // Send TempOut
+        toJtag.put(zeroExtend(cmdTempOut));
+        sendState <= 1;
+      end else begin
+        // Send temperature
+        toJtag.put(temperature);
+        sendState <= 0;
+        respondFlag <= False;
+      end
     end
   endrule
 
   // Send StdOut command
-  rule uartSendStdOut (toJtag.canPut && !respondQuery);
+  rule uartSendStdOut (toJtag.canPut && !respondFlag);
     if (sendState == 0) begin
       if (fromBusPort.canGet) begin
         fromBusPort.get;
@@ -372,6 +418,11 @@ module mkDebugLink#(
     end
   endrule
 
+  // Propagate extra send slot option through chain of registers (for timing)
+  rule chain;
+    for (Integer i = 0; i < 2; i=i+1)
+      useExtraSendSlotReg[i] <= useExtraSendSlotReg[i+1];
+  endrule
 
   `ifndef SIMULATE
   interface jtagAvalon = uart.jtagAvalon;
@@ -379,7 +430,7 @@ module mkDebugLink#(
 
   method BoardId getBoardId() = boardId;
   method Vector#(4, Bool) linkEnable = linkEnableReg;
-
+  method Option#(Bool) useExtraSendSlot = useExtraSendSlotReg[0];
 endmodule
 
 endpackage

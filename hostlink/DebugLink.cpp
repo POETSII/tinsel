@@ -60,10 +60,10 @@ void DebugLink::putPacket(int x, int y, BoardCtrlPkt* pkt)
 }
 
 // Constructor
-DebugLink::DebugLink(uint32_t numBoxesX, uint32_t numBoxesY)
+DebugLink::DebugLink(DebugLinkParams p)
 {
-  boxMeshXLen = numBoxesX;
-  boxMeshYLen = numBoxesY;
+  boxMeshXLen = p.numBoxesX;
+  boxMeshYLen = p.numBoxesY;
   get_tryNextX = 0;
   get_tryNextY = 0;
 
@@ -105,11 +105,11 @@ DebugLink::DebugLink(uint32_t numBoxesX, uint32_t numBoxesY)
                     "But is has a box X coordinate of %i\n", thisBoxX);
     exit(EXIT_FAILURE);
   }
-  if ((thisBoxX+numBoxesX-1) >= TinselBoxMeshXLen ||
-      (thisBoxY+numBoxesY-1) >= TinselBoxMeshYLen) {
+  if ((thisBoxX+p.numBoxesX-1) >= TinselBoxMeshXLen ||
+      (thisBoxY+p.numBoxesY-1) >= TinselBoxMeshYLen) {
     fprintf(stderr, "Requested box sub-mesh of size %ix%i "
                     "is not valid from box %s\n",
-                    numBoxesX, numBoxesY, hostname);
+                    p.numBoxesX, p.numBoxesY, hostname);
     exit(EXIT_FAILURE);
   }
 
@@ -187,6 +187,8 @@ DebugLink::DebugLink(uint32_t numBoxesX, uint32_t numBoxesY)
       if (y == 0) pkt.payload[2] |= 2;
       if (thisBoxX == 0 && boxMeshXLen == 1) pkt.payload[2] |= 4;
       if (thisBoxX == 1 && boxMeshXLen == 1) pkt.payload[2] |= 8;
+      // Reserve extra send slot?
+      pkt.payload[2] |= p.useExtraSendSlot ? 0x10 : 0;
       // Send commands to each board
       for (int b = 0; b < TinselBoardsPerBox; b++) {
         pkt.linkId = b;
@@ -324,6 +326,30 @@ bool DebugLink::canGet()
     for (int y = 0; y < boxMeshYLen; y++)
       if (socketCanGet(conn[y][x])) return true;
   return false;
+}
+
+// Read temperature of given board
+int32_t DebugLink::getBoardTemp(uint32_t boardX, uint32_t boardY)
+{
+  BoardCtrlPkt pkt;
+  pkt.linkId = linkId[boardY][boardX];
+  pkt.payload[0] = DEBUGLINK_TEMP_IN;
+  putPacket(boxX[boardY][boardX], boxY[boardY][boardX], &pkt);
+  getPacket(boxX[boardY][boardX], boxY[boardY][boardX], &pkt);
+  assert(pkt.payload[0] == DEBUGLINK_TEMP_OUT);
+  return ((int32_t) pkt.payload[1]) - 128;
+}
+
+// Read temperature of given bridge
+int32_t DebugLink::getBridgeTemp(uint32_t boxX, uint32_t boxY)
+{
+  BoardCtrlPkt pkt;
+  pkt.linkId = bridge[boxY][boxX];
+  pkt.payload[0] = DEBUGLINK_TEMP_IN;
+  putPacket(boxX, boxY, &pkt);
+  getPacket(boxX, boxY, &pkt);
+  assert(pkt.payload[0] == DEBUGLINK_TEMP_OUT);
+  return ((int32_t) pkt.payload[1]) - 128;
 }
 
 // Destructor

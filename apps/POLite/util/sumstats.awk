@@ -10,10 +10,12 @@ BEGIN {
   cacheCount = 0;
   coreCount = 0;
   cacheLineSize = 32;
-  intraThreadSendCount = 0;
-  interThreadSendCount = 0;
-  interBoardSendCount = 0;
-  fmax = 245000000;
+  msgsReceived = 0;
+  msgsSent = 0;
+  progRouterSent = 0;
+  progRouterSentInter = 0;
+  blockedSends = 0;
+  fmax = 215000000;
   if (boardsX == "" || boardsY == "") {
     boardsX = 3;
     boardsY = 2;
@@ -48,13 +50,18 @@ BEGIN {
         coreCount = coreCount+1;
       }
       # Per-thread message counts
-      else if (match($0, /(.*) LS:(.*),TS:(.*),BS:(.*)/, fields)) {
-        ls=strtonum("0x"fields[2]);
-        ts=strtonum("0x"fields[3]);
-        bs=strtonum("0x"fields[4]);
-        intraThreadSendCount = intraThreadSendCount+ls;
-        interThreadSendCount = interThreadSendCount+ts;
-        interBoardSendCount = interBoardSendCount+bs;
+      else if (match($0, /(.*) MS:(.*),MR:(.*),PR:(.*),PRI:(.*),BL:(.*)/,
+                 fields)) {
+        ms=strtonum("0x"fields[2]);
+        mr=strtonum("0x"fields[3]);
+        pr=strtonum("0x"fields[4]);
+        pri=strtonum("0x"fields[5]);
+        bl=strtonum("0x"fields[6]);
+        msgsSent = msgsSent + ms;
+        msgsReceived = msgsReceived + mr;
+        progRouterSent = progRouterSent + pr;
+        progRouterSentInter = progRouterSentInter + pri;
+        blockedSends = blockedSends + bl;
       }
     }
   }
@@ -70,7 +77,14 @@ END {
   bytes = cacheLineSize * (missCount + writebackCount)
   print "Off-chip memory (GBytes/s): ", ((1/time) * bytes)/1000000000
   print "CPU util (%): ", (1-(cpuIdleCount/cycleCount))*100
-  print "Intra-thread messages: ", intraThreadSendCount
-  print "Inter-thread messages: ", interThreadSendCount
-  print "Inter-board messages: ", interBoardSendCount
+  print "Msgs received: ", msgsReceived
+  print "Msgs sent by threads: ", msgsSent
+  print "Msgs injected by ProgRouter:", progRouterSent
+  print "Inter-board msgs:", progRouterSentInter
+  print "Blocked sends:", blockedSends
+  print ""
+  print "Notes:"
+  print "  * ProgRouter injections includes inter-board msgs"
+  print "  * Memory bandwidth does not include lookups by ProgRouter"
+  print "  * If runtime > 40s approx, hit/miss counts may overflow"
 }

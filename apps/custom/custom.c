@@ -13,7 +13,7 @@ int main()
   int acc = tinselAccId(0, 0, 0, 0);
 
   // Get pointers to mailbox message slot
-  volatile int* msgOut = tinselSlot(0);
+  volatile int* msgOut = tinselSendSlot();
 
   // This message goes to the accelerator
   // The accelerator replies to the address in the first word of the

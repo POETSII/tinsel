@@ -12,9 +12,10 @@
 //   1. DA: Destination address (4 bytes)
 //   2. NM: Number of messages that follow minus one (4 bytes)
 //   3. FM: Number of flit payloads per message minus one (1 byte)
-//   4. Padding (7 bytes)
-//   5. (NM+1)*(FM+1) flit payloads ((NM+1)*(FM+1)*BytesPerFlit bytes)
-//   6. Goto step 1
+//   4. Padding (3 bytes)
+//   5. Routing key (optional, 4 bytes)
+//   6. (NM+1)*(FM+1) flit payloads ((NM+1)*(FM+1)*BytesPerFlit bytes)
+//   7. Goto step 1
 //
 // The format of the data stream in the FPGA->PC direction is simply
 // raw flit payloads.
@@ -68,6 +69,8 @@ interface DE5BridgeTop;
   // Reset request
   (* always_enabled, always_ready *)
   method Bool resetReq;
+  (* always_ready, always_enabled *)
+  method Action setTemperature(Bit#(8) temp);
 endinterface
 
 `endif
@@ -122,6 +125,9 @@ module de5BridgeTop (DE5BridgeTop);
   // Is the idle detected enabled
   Reg#(Bool) idleDetectedEnabled <- mkConfigReg(False);
 
+  // Temperature of this board
+  Reg#(Bit#(8)) temperature <- mkConfigReg(128);
+
   // Merge off-board input streams
   // -----------------------------
 
@@ -137,14 +143,16 @@ module de5BridgeTop (DE5BridgeTop);
 
   rule split (linkOutBuffer.notEmpty);
     Flit flit = linkOutBuffer.dataOut;
+    // If board Y coord is even (or it's an idle token), emit on lower link
+    if (flit.dest.addr.board.y[0] == 0 || flit.isIdleToken) begin
+      if (toLinkB.canPut) begin
+        linkOutBuffer.deq;
+        toLinkB.put(flit);
+      end
     // If board Y coord is odd, emit on higher link
-    if (flit.dest.board.y[0] == 1 && toLinkA.canPut) begin
+    end else if (toLinkA.canPut) begin
       linkOutBuffer.deq;
       toLinkA.put(flit);
-    // If board Y coord is even, emit on lower link
-    end else if (flit.dest.board.y[0] == 0 && toLinkB.canPut) begin
-      linkOutBuffer.deq;
-      toLinkB.put(flit);
     end
   endrule
 
@@ -154,6 +162,7 @@ module de5BridgeTop (DE5BridgeTop);
   Reg#(Bit#(32)) fromPCIeDA    <- mkConfigRegU;
   Reg#(Bit#(32)) fromPCIeNM    <- mkConfigRegU;
   Reg#(Bit#(8))  fromPCIeFM    <- mkConfigRegU;
+  Reg#(Bit#(32))  fromPCIeKey   <- mkConfigRegU;
   Reg#(Bit#(1))  toLinkState   <- mkConfigReg(0);
 
   Reg#(Bit#(32)) messageCount  <- mkConfigReg(0);
@@ -175,6 +184,7 @@ module de5BridgeTop (DE5BridgeTop);
         fromPCIeDA <= data[31:0];
         fromPCIeNM <= data[63:32];
         fromPCIeFM <= data[95:88];
+        fromPCIeKey <= data[127:96];
         toLinkState <= 1;
         fromPCIe.get;
       end
@@ -187,8 +197,19 @@ module de5BridgeTop (DE5BridgeTop);
       toLinkState <= 0;
     end else begin
       if (fromPCIe.canGet && linkOutBuffer.notFull) begin
+        // Determine flit destination address
+        Bit#(6) destThread = fromPCIeDA[`LogThreadsPerMailbox-1:0];
+        Vector#(64, Bool) destThreads = newVector();
+        for (Integer i = 0; i < 64; i=i+1)
+          destThreads[i] = destThread == fromInteger(i);
+        // Construct flit
         Flit flit;
-        flit.dest = unpack(truncate(fromPCIeDA));
+        flit.dest.addr = unpack(truncate(fromPCIeDA[31:`LogThreadsPerMailbox]));
+        flit.dest.threads = pack(destThreads);
+        // If address says to use routing key, then use it
+        if (flit.dest.addr.isKey) begin
+          flit.dest.threads = zeroExtend(fromPCIeKey);
+        end
         flit.payload = fromPCIe.value;
         flit.notFinalFlit = True;
         flit.isIdleToken = False;
@@ -210,27 +231,50 @@ module de5BridgeTop (DE5BridgeTop);
     end
   endrule
 
+  // We always send a message-sized message to the host
+  // When a message is less than that size, we emit padding
+  Reg#(Bit#(`LogMaxFlitsPerMsg)) toPCIePadding <- mkReg(0);
+
+  // Count the flits in a message going to the host
+  Reg#(Bit#(`LogMaxFlitsPerMsg)) toPCIeFlitCount <- mkReg(0);
+
   // Connect 10G link to PCIe stream and idle detector
-  rule fromLinkRule (fromLink.canGet);
+  rule fromLinkRule;
     Flit flit = fromLink.value;
-    if (flit.isIdleToken) begin
-      if (toDetector.canPut) begin
-        toDetector.put(flit);
-        fromLink.get;
+    if (toPCIePadding == 0) begin
+      if (fromLink.canGet) begin
+        if (flit.isIdleToken) begin
+          if (toDetector.canPut) begin
+            toDetector.put(flit);
+            fromLink.get;
+          end
+        end else begin
+          if (toPCIe.canPut) begin
+            toPCIe.put(flit.payload);
+            fromLink.get;
+            if (flit.notFinalFlit) begin
+              toPCIeFlitCount <= toPCIeFlitCount+1;
+            end else begin
+              toPCIePadding <=
+                fromInteger (`MaxFlitsPerMsg-1) - toPCIeFlitCount;
+              toPCIeFlitCount <= 0;
+              detector.decCount;
+            end
+          end
+        end
       end
     end else begin
       if (toPCIe.canPut) begin
-        toPCIe.put(flit.payload);
-        fromLink.get;
-        if (!flit.notFinalFlit) detector.decCount;
+        toPCIe.put(0);
+        toPCIePadding <= toPCIePadding-1;
       end
     end
   endrule
 
   // Dimensions of the board mesh (received over the UART)
-  Reg#(Bit#(`MeshXBits)) meshXLen <- mkConfigReg(0);
-  Reg#(Bit#(`MeshYBits)) meshYLen <- mkConfigReg(0);
-  Reg#(Bit#(TAdd#(`MeshXBits, `MeshYBits))) meshBoards <- mkConfigReg(0);
+  Reg#(Bit#(`MeshXBits1)) meshXLen <- mkConfigReg(0);
+  Reg#(Bit#(`MeshYBits1)) meshYLen <- mkConfigReg(0);
+  Reg#(Bit#(TAdd#(`MeshXBits1, `MeshYBits1))) meshBoards <- mkConfigReg(0);
 
   // Is idle-detection currently enabled
   Reg#(Bool) idleDetectorEnabled <- mkConfigReg(False);
@@ -270,16 +314,19 @@ module de5BridgeTop (DE5BridgeTop);
 
   rule uartReceive0 (fromJtag.canGet && uartState == 0);
     fromJtag.get;
-    uartState <= 1;
     cmd <= fromJtag.value;
+    if (fromJtag.value == 4) // Temperature query
+      uartState <= 3;
+    else // Standard query
+      uartState <= 1;
   endrule
 
   rule uartReceive1 (fromJtag.canGet && uartState == 1);
     fromJtag.get;
     if (cmd != 0) begin
       idleDetectorEnabled <= True;
-      Bit#(`MeshXBits) xLen = truncate(fromJtag.value[3:0]);
-      Bit#(`MeshYBits) yLen = truncate(fromJtag.value[7:4]);
+      Bit#(`MeshXBits1) xLen = truncate(fromJtag.value[3:0]);
+      Bit#(`MeshYBits1) yLen = truncate(fromJtag.value[7:4]);
       meshYLen <= yLen;
       meshXLen <= xLen;
       meshBoards <= zeroExtend(xLen) * zeroExtend(yLen);
@@ -293,12 +340,12 @@ module de5BridgeTop (DE5BridgeTop);
   endrule
 
   rule uartRespond0 (toJtag.canPut && uartState == 3);
-    toJtag.put(0);
+    toJtag.put(cmd == 4 ? 4 : 0);
     uartState <= 4;
   endrule
 
   rule uartRespond1 (toJtag.canPut && uartState == 4);
-    toJtag.put(0);
+    toJtag.put(cmd == 4 ? temperature : 0);
     uartState <= 0;
   endrule
 
@@ -309,6 +356,9 @@ module de5BridgeTop (DE5BridgeTop);
   interface macA = linkA.avalonMac;
   interface macB = linkB.avalonMac;
   interface jtagAvalon = uart.jtagAvalon;
+  method Action setTemperature(Bit#(8) temp);
+    temperature <= temp;
+  endmethod
   `endif
 
 endmodule
