@@ -16,7 +16,7 @@ HL = $(TINSEL_ROOT)/hostlink
 all: DebugLink.o HostLink.o MemFileReader.o jtag/UART.o pciestreamd \
      sim/DebugLink.o sim/HostLink.o sim/MemFileReader.o sim/UART.o \
      SocketUtils.o sim/SocketUtils.o udsock boardctrld \
-     sim/boardctrld
+     sim/boardctrld fancheck
 
 pciestreamd: pciestreamd.cpp 
 	g++ -Wall -I $(HL) -O2 pciestreamd.cpp -o pciestreamd
