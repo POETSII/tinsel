@@ -14,6 +14,15 @@
 #include <SocketUtils.h>
 #include <DebugLink.h>
 
+// If the fan tach is below this threshold then we report an error
+#define FAN_TACH_THRESHOLD 2500
+
+// Email address to use for error report
+#define EMAIL_ADDR "mn416@cam.ac.uk"
+
+// SMTP server for email
+#define SMTP_SERVER "ppsw.cam.ac.uk"
+
 // Open connect to FPGA power board
 int powerBoardInit(char* dev)
 {
@@ -145,9 +154,9 @@ bool reportViaEmail(int fpgaNum, int fanTach)
   gethostname(hostname, sizeof(hostname));
   hostname[sizeof(hostname)-1] = '\0';
   // Send email
-  FILE* fp = popen("msmtp -f mn416@cam.ac.uk"
-                   " --host=ppsw.cam.ac.uk"
-                   " mn416@cam.ac.uk", "w");
+  FILE* fp = popen("msmtp -f " EMAIL_ADDR
+                   " --host=" SMTP_SERVER
+                   " " EMAIL_ADDR, "w");
   if (fp == NULL) return false;
   fprintf(fp, "Subject: Fan tach check failed on %s\n", hostname);
   fprintf(fp, "FPGA %i had tach of %i\n", fpgaNum, fanTach);
@@ -191,15 +200,16 @@ int main()
 {
   char buffer[1024];
   int conn = powerup();
-  sleep(3); // More time for fans get up to speed
+  sleep(5); // More time for fans get up to speed
   for (int i = 0; i < 6; i++) {
+    // TODO: remove assumption on how udev assigns devices to names
     snprintf(buffer, sizeof(buffer), "/dev/ttyACM%d", i);
     int fd = powerBoardInit(buffer);
     powerBoardPutCmd(fd, (char*) "f?", buffer, sizeof(buffer));
     int tach = atoi(buffer);
-    printf("FPGA %i: tach=%i\n", i, tach);
+    printf("Device %i: tach=%i\n", i, tach);
     close(fd);
-    if (tach < 6000) { // For testing purposes...
+    if (tach < FAN_TACH_THRESHOLD) {
       printf("Tach too low: reporting error\n");
       reportViaEmail(i, tach);
       close(conn);
