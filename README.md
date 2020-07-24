@@ -231,14 +231,15 @@ The core fetches instructions from an *instruction memory* implemented
 using on-chip block RAM.  The size of this memory is controlled by the
 synthesis-time parameter `LogInstrsPerCore`.  All threads in a core
 share the same instruction memory.  If the `SharedInstrMem` parameter
-is `True` then each instruction memory will be shared by up to two
-cores, using the dual-port feature of block RAMs. Otherwise, if it is
-`False` then each core will have its own instruction memory.  The
-initial contents of the memory is specified in the FPGA bitstream and
-typically contains a boot loader.  The instruction memory is not
-memory-mapped (i.e. not accessible via load/store instructions) but
-two CSRs are provided for writing instructions into the memory:
-`InstrAddr` and `Instr`.
+is `True` then each instruction memory will be shared by two cores,
+using the dual-port feature of block RAMs (specifically, cores with
+ids 0 and 1 in a tile share the RAM, as do cores with ids 2 and 3, and
+so on).  Otherwise, if it is `False` then each core will have its own
+instruction memory.  The initial contents of the memory is specified
+in the FPGA bitstream and typically contains a boot loader.  The
+instruction memory is not memory-mapped (i.e. not accessible via
+load/store instructions) but two CSRs are provided for writing
+instructions into the memory: `InstrAddr` and `Instr`.
 
   CSR Name    | CSR    | R/W | Function
   ----------- | ------ | --- | --------
