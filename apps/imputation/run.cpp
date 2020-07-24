@@ -34,6 +34,7 @@ int main()
             for (coreID = 0u; coreID < TinselCoresPerBoard; coreID++) {
                
                 // Write HMM into lower two cores in tile
+                // This may be reduced to only two writes given the instruction memory sharing. Needs Investigating JPM.
                 
                 // Core 0 in tile
                 hostLink.loadInstrsOntoCore("code_0.v", boardX, boardY, coreID);
@@ -58,8 +59,6 @@ int main()
                 // Core 3 in tile
                 hostLink.loadInstrsOntoCore("code_1.v", boardX, boardY, coreID);
                 hostLink.loadDataViaCore("data_1.v", boardX, boardY, coreID);
-                
-                coreID++;
  
             }
         }
