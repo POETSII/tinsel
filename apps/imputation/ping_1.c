@@ -3,6 +3,12 @@
 
 #include <tinsel.h>
 
+/*****************************************************
+ * Linear Interpolation Node
+ * ***************************************************
+ * This code performs the linear interpolation for imputation
+ * ****************************************************/
+
 uint32_t incVal = 2;
 
 int main()

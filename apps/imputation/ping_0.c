@@ -3,6 +3,12 @@
 
 #include <tinsel.h>
 
+/*****************************************************
+ * Hidden Markov Model Node
+ * ***************************************************
+ * This code performs the stephens and li model for imputation
+ * ****************************************************/
+
 uint32_t incVal = 1;
 
 int main()
