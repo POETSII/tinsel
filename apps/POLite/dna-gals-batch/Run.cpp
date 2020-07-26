@@ -174,7 +174,7 @@ int main() {
         timersub(&finish_proc, &start_proc, &diff_proc);
         double proc_duration = (double) diff_proc.tv_sec + (double) diff_proc.tv_usec / 1000000.0;
         
-        total_time = ((upper_count << 32) + lower_count) / 240000000.0;
+        total_time = ((upper_count << 32) + lower_count) / (TinselClockFreq * 1000000.0);
            
         //printf("%f\n", result);
         #ifdef CYCDEBUG
