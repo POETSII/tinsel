@@ -97,6 +97,9 @@ int main()
     // Construct Ping Message
 
     uint32_t ping[1 << TinselLogWordsPerMsg];
+    uint64_t total_count = 0u;
+    uint64_t upper_count = 0u;
+    double total_time = 0.0f;
     ping[0] = 100;
     
     // Send Ping to all threads
@@ -132,7 +135,10 @@ int main()
                     for (mailboxLocalThreadID = 0u; mailboxLocalThreadID < TinselThreadsPerMailbox; mailboxLocalThreadID++) {
                 
                         hostLink.recv(ping);
-                        printf("Got response %x\n", ping[0]);
+                        upper_count = ping[1];
+                        total_count = ((upper_count << 32) + ping[0]);
+                        total_time = total_count / (TinselClockFreq * 1000000.0);
+                        printf("Upper Count: %ld, Lower Count: %ld, Total Count: %ld, Total Time: %lf\n", upper_count, ping[0], total_count, total_time);
             
                     }
                 }
