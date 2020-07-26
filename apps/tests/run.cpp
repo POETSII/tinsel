@@ -28,7 +28,21 @@ int main()
     uint32_t threadID = 0u;
     
     HostLink hostLink;
+    
+    // Load Ping_0 onto Core 0
+    hostLink.loadInstrsOntoCore("code_0.v", 0, 0, 0);
+    hostLink.loadDataViaCore("data_0.v", 0, 0, 0);
+    
+    // Start 16 threads on Core 0
+    hostLink.startOne(0, 0, 0, 16);
+    
+    // Trigger Execution on Core 0
+    hostLink.goOne(0, 0, 0);
+    
+    
   
+    /*
+    // Write All Cores on All Boards in a single box
     for (boardY = 0u; boardY < TinselMeshYLenWithinBox; boardY++) {
         for (boardX = 0u; boardX < TinselMeshXLenWithinBox; boardX++) {
             for (coreID = 0u; coreID < TinselCoresPerBoard; coreID++) {
@@ -63,7 +77,7 @@ int main()
             }
         }
     }
-
+    */
 
     printf("Starting\n");
 
@@ -80,9 +94,11 @@ int main()
     }
     */
     
-    hostLink.startAll();
+    // Start all threads on all cores
+    //hostLink.startAll();
     
-    // Trigger Application Execution
+    /*
+    // Trigger Application Execution On All Cores In A Single Box
     
     for (boardY = 0u; boardY < TinselMeshYLenWithinBox; boardY++) {
         for (boardX = 0u; boardX < TinselMeshXLenWithinBox; boardX++) {
@@ -93,7 +109,8 @@ int main()
             }
         }
     }
-
+    */
+    /*
     // Construct Ping Message
 
     uint32_t ping[1 << TinselLogWordsPerMsg];
@@ -145,6 +162,12 @@ int main()
             }
         }
     }
+    */
+    
+    uint32_t msg[1 << TinselLogWordsPerMsg];
+
+    hostLink.recv(msg);
+    printf("Final Value: %d\n", msg[0]);
 
     return 0;
 }
