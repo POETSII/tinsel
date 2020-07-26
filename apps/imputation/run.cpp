@@ -68,7 +68,7 @@ int main()
     printf("Starting\n");
 
     // Start Cores
-
+    /*
     for (boardY = 0u; boardY < TinselMeshYLenWithinBox; boardY++) {
         for (boardX = 0u; boardX < TinselMeshXLenWithinBox; boardX++) {
             for (coreID = 0u; coreID < TinselCoresPerBoard; coreID++) {
@@ -78,6 +78,9 @@ int main()
             }
         }
     }
+    */
+    
+    hostLink.startAll();
     
     // Trigger Application Execution
     

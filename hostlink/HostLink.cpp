@@ -583,6 +583,46 @@ void HostLink::startOne(uint32_t meshX, uint32_t meshY,
   recv(msg);
 }
 
+// Start all threads
+void HostLink::startAll()
+{
+
+  // Request to boot loader
+  BootReq req;
+
+  // Total number of cores
+  const uint32_t numCores =
+    (meshXLen*meshYLen) << TinselLogCoresPerBoard;
+    
+    
+  // Send start command
+  uint32_t started = 0;
+  uint32_t msg[1 << TinselLogWordsPerMsg];
+  for (int x = 0; x < meshXLen; x++) {
+    for (int y = 0; y < meshYLen; y++) {
+      for (int i = 0; i < (1 << TinselLogCoresPerBoard); i++) {
+        uint32_t dest = toAddr(x, y, i, 0);
+        req.cmd = StartCmd;
+        req.args[0] = (1<<TinselLogThreadsPerCore)-1;
+        while (1) {
+          bool ok = trySend(dest, 1, &req);
+          if (canRecv()) {
+            recv(msg);
+            started++;
+          }
+          if (ok) break;
+        }
+      }
+    }
+  }
+
+  // Wait for all start responses
+  while (started < numCores) {
+    recv(msg);
+    started++;
+  }
+}
+
 // Trigger application execution on all started threads on given core
 void HostLink::goOne(uint32_t meshX, uint32_t meshY, uint32_t coreId)
 {
