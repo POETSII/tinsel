@@ -16,7 +16,7 @@ HL = $(TINSEL_ROOT)/hostlink
 all: DebugLink.o HostLink.o MemFileReader.o jtag/UART.o pciestreamd \
      sim/DebugLink.o sim/HostLink.o sim/MemFileReader.o sim/UART.o \
      SocketUtils.o sim/SocketUtils.o udsock boardctrld \
-     sim/boardctrld
+     sim/boardctrld fancheck
 
 pciestreamd: pciestreamd.cpp 
 	g++ -Wall -I $(HL) -O2 pciestreamd.cpp -o pciestreamd
@@ -37,6 +37,9 @@ sim/boardctrld: boardctrld.cpp sim/PowerLink.o JtagAtlantic.h \
 
 udsock: udsock.c
 	gcc -Wall -O2 udsock.c -o udsock
+
+fancheck: fancheck.cpp SocketUtils.o
+	g++ -I . -O fancheck.cpp SocketUtils.o -o fancheck
 
 # HostLink dependencies
 DEPS = $(INC)/config.h $(INC)/boot.h \
@@ -62,5 +65,5 @@ $(INC)/config.h: $(TINSEL_ROOT)/config.py
 
 .PHONY: clean
 clean:
-	rm -f *.o pciestreamd udsock boardctrld jtag/*.o
+	rm -f *.o pciestreamd udsock boardctrld fancheck jtag/*.o
 	rm -rf sim
