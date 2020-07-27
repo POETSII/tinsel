@@ -158,6 +158,9 @@ class HostLink {
   void startOne(uint32_t meshX, uint32_t meshY,
          uint32_t coreId, uint32_t numThreads);
 
+  // Start all threads on all cores
+  void startAll();
+
   // Trigger application execution on all started threads on given core
   void goOne(uint32_t meshX, uint32_t meshY, uint32_t coreId);
 

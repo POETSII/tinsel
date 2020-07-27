@@ -405,10 +405,6 @@ void HostLink::boot(const char* codeFilename, const char* dataFilename)
   // Request to boot loader
   BootReq req;
 
-  // Total number of cores
-  const uint32_t numCores =
-    (meshXLen*meshYLen) << TinselLogCoresPerBoard;
-
   // Step 1: load code into instruction memory
   // -----------------------------------------
 
@@ -471,31 +467,7 @@ void HostLink::boot(const char* codeFilename, const char* dataFilename)
   // -------------------
 
   // Send start command
-  uint32_t started = 0;
-  uint32_t msg[1 << TinselLogWordsPerMsg];
-  for (int x = 0; x < meshXLen; x++) {
-    for (int y = 0; y < meshYLen; y++) {
-      for (int i = 0; i < (1 << TinselLogCoresPerBoard); i++) {
-        uint32_t dest = toAddr(x, y, i, 0);
-        req.cmd = StartCmd;
-        req.args[0] = (1<<TinselLogThreadsPerCore)-1;
-        while (1) {
-          bool ok = trySend(dest, 1, &req);
-          if (canRecv()) {
-            recv(msg);
-            started++;
-          }
-          if (ok) break;
-        }
-      }
-    }
-  }
-
-  // Wait for all start responses
-  while (started < numCores) {
-    recv(msg);
-    started++;
-  }
+  startAll();
 }
 
 // Trigger to start application execution
@@ -581,6 +553,44 @@ void HostLink::startOne(uint32_t meshX, uint32_t meshY,
   // Wait for start response
   uint32_t msg[1 << TinselLogWordsPerMsg];
   recv(msg);
+}
+
+// Start all threads on all cores
+void HostLink::startAll()
+{
+  // Request to boot loader
+  BootReq req;
+
+  // Total number of cores
+  const uint32_t numCores =
+    (meshXLen*meshYLen) << TinselLogCoresPerBoard;
+
+  // Send start command
+  uint32_t started = 0;
+  uint32_t msg[1 << TinselLogWordsPerMsg];
+  for (int x = 0; x < meshXLen; x++) {
+    for (int y = 0; y < meshYLen; y++) {
+      for (int i = 0; i < (1 << TinselLogCoresPerBoard); i++) {
+        uint32_t dest = toAddr(x, y, i, 0);
+        req.cmd = StartCmd;
+        req.args[0] = (1<<TinselLogThreadsPerCore)-1;
+        while (1) {
+          bool ok = trySend(dest, 1, &req);
+          if (canRecv()) {
+            recv(msg);
+            started++;
+          }
+          if (ok) break;
+        }
+      }
+    }
+  }
+
+  // Wait for all start responses
+  while (started < numCores) {
+    recv(msg);
+    started++;
+  }
 }
 
 // Trigger application execution on all started threads on given core
