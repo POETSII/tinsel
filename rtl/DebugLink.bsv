@@ -56,7 +56,6 @@ package DebugLink;
 //   detect a tinsel board (distingushing it, for example, from a host
 //   board which returns a 0 payload) and also to discover the board id.
 //
-//
 //   StdOut: tag (1 byte), thread id (1 byte),
 //           core id (1 byte), payload (1 byte)
 //   ------------------------------------------
@@ -67,6 +66,11 @@ package DebugLink;
 //   ---------------------------------------
 //
 //   Actual temperature in celsius is payload - 128.
+//
+//   Overheat: tag (1 byte)
+//   ----------------------
+//
+//   FPGA is overheating.
 
 // =============================================================================
 // Imports
@@ -92,6 +96,13 @@ DebugLinkCmd cmdStdIn    = 2;
 DebugLinkCmd cmdStdOut   = 2;
 DebugLinkCmd cmdTempIn   = 4;
 DebugLinkCmd cmdTempOut  = 4;
+DebugLinkCmd cmdOverheat = 5;
+
+// If the FPGA temperature rises above this threshold we send an
+// emergency sthudown message over debug link.  To convert this
+// temperature to Celsuis, subtract 128.
+// (XXX: For testing, let's use a threshold of 50C...)
+`define TemperatureThreshold 178
 
 // =============================================================================
 // Types
@@ -364,6 +375,9 @@ module mkDebugLink#(
   // Flit being forwarded
   Reg#(DebugLinkFlit) sendFlit <- mkConfigRegU;
 
+  // Have we sent an emergency overheat message?
+  Reg#(Bool) overheatMsgSent <- mkConfigReg(False);
+
   // Send QueryOut command
   rule uartSendQueryOut (toJtag.canPut && respondFlag);
     if (respondCmd == cmdQueryIn) begin
@@ -394,7 +408,10 @@ module mkDebugLink#(
   // Send StdOut command
   rule uartSendStdOut (toJtag.canPut && !respondFlag);
     if (sendState == 0) begin
-      if (fromBusPort.canGet) begin
+      if (!overheatMsgSent && temperature > `TemperatureThreshold) begin
+        overheatMsgSent <= True;
+        toJtag.put(zeroExtend(cmdOverheat));
+      end else if (fromBusPort.canGet) begin
         fromBusPort.get;
         if (! fromBusPort.value.isBroadcast) begin
           // Send StdOut
