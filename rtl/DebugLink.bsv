@@ -308,6 +308,9 @@ module mkDebugLink#(
   Reg#(Bool) respondFlag <- mkConfigReg(False);
   Reg#(DebugLinkCmd) respondCmd <- mkConfigRegU;
 
+  // Check temperature to avoid overheating?
+  Reg#(Bool) checkTemperature <- mkConfigReg(False);
+
   rule uartRecv (fromJtag.canGet && toBusPort.canPut && !respondFlag);
     fromJtag.get;
     if (recvState == 0) begin
@@ -358,6 +361,8 @@ module mkDebugLink#(
           Option {valid: True, value: fromJtag.value[4] == 1};
         respondFlag <= True;
         respondCmd <= cmdQueryIn;
+        // Start checking temperature after first query command
+        checkTemperature <= True;
         recvState <= 0;
       end else begin
         recvDestCore <= fromJtag.value;
@@ -408,7 +413,8 @@ module mkDebugLink#(
   // Send StdOut command
   rule uartSendStdOut (toJtag.canPut && !respondFlag);
     if (sendState == 0) begin
-      if (!overheatMsgSent && temperature > `TemperatureThreshold) begin
+      if (checkTemperature && !overheatMsgSent &&
+            temperature > `TemperatureThreshold) begin
         overheatMsgSent <= True;
         toJtag.put(zeroExtend(cmdOverheat));
       end else if (fromBusPort.canGet) begin
