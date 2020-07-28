@@ -8,23 +8,28 @@
  * ***************************************************
  * This code performs the stephens and li model for imputation
  * ****************************************************/
+ 
 
-uint32_t incVal = 1;
 
 int main()
 {
-  // Get host id
-  int host = tinselHostId();
+    
+    uint32_t me = tinselId();
+    uint32_t local = me % (1 << TinselLogThreadsPerMailbox);
+    
+    // Get host id
+    int host = tinselHostId();
 
-  // Get pointers to mailbox message slot
-  volatile int* msgOut = tinselSendSlot();
+    // Get pointers to mailbox message slot
+    volatile int* msgOut = tinselSendSlot();
 
-  tinselWaitUntil(TINSEL_CAN_RECV);
-  volatile int* msgIn = tinselRecv();
-  tinselWaitUntil(TINSEL_CAN_SEND);
-  msgOut[0] = msgIn[0]+incVal;
-  tinselFree(msgIn);
-  tinselSend(host, msgOut);
+    tinselWaitUntil(TINSEL_CAN_RECV);
+    volatile int* msgIn = tinselRecv();
+    tinselWaitUntil(TINSEL_CAN_SEND);
+    msgOut[0] = 0u;
+    msgOut[1] = local;
+    tinselFree(msgIn);
+    tinselSend(host, msgOut);
 
   return 0;
 }
