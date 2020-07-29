@@ -22,6 +22,7 @@
 #include <stdint.h>
 #include <assert.h>
 #include <poll.h>
+#include <pwd.h>
 #include <errno.h>
 #include <config.h>
 #include "jtag/UARTBuffer.h"
@@ -45,6 +46,20 @@
 
 // Functions
 // ---------
+
+// Try to reduce privilege
+void reducePrivilege()
+{
+  if (getuid() == 0) {
+    passwd* entry = getpwnam("daemon");
+    if (entry) {
+      if (setgid(entry->pw_gid) != 0)
+        fprintf(stderr, "Unable to drop group privilege\n");
+      if (setuid(entry->pw_uid) != 0)
+        fprintf(stderr, "Unable to drop user privilege\n");
+    }
+  }
+}
 
 // Create listening socket
 int createListener()
@@ -89,7 +104,7 @@ int createListener()
 }
 
 // Send an email reporting overheating
-bool reportOverheat()
+bool reportOverheat(int linkId)
 {
   // Get host name
   char hostname[256];
@@ -101,7 +116,7 @@ bool reportOverheat()
                    " --host=" SMTP_SERVER
                    " " EMAIL_ADDR, "w");
   if (fp == NULL) return false;
-  fprintf(fp, "Subject: FPGA overheating on %s\n", hostname);
+  fprintf(fp, "Subject: FPGA %i overheating on %s\n", linkId, hostname);
   fclose(fp);
   return true;
 }
@@ -168,9 +183,11 @@ void server(int conn, int numBoards, UARTBuffer* uartLinks)
         uint8_t cmd = uartLinks[i].peek();
         if (cmd == DEBUGLINK_OVERHEAT) {
           // Report overheating issue via email
-          reportOverheat();
+          reportOverheat(i);
           // Emergency shutdown
-          return;
+          // return;
+          // For now, just report the problem
+          uartLinks[i].get(); didGet = true;
         }
         else {
           uint8_t numBytes = fromDebugLinkSize(cmd);
@@ -207,6 +224,9 @@ void server(int conn, int numBoards, UARTBuffer* uartLinks)
 
 int main(int argc, char* argv[])
 {
+  // Drop root privileges if necessary
+  reducePrivilege();
+
   // Ignore SIGPIPE
   signal(SIGPIPE, SIG_IGN);
 
