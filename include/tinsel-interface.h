@@ -90,8 +90,31 @@ INLINE uint32_t tinselHostId()
                      TinselLogCoresPerBoard + TinselLogThreadsPerCore);
 }
 
-// Return pointer to base of thread's DRAM partition
+// Given thread id, return base address of thread's partition in DRAM
+INLINE uint32_t tinselHeapBaseGeneric(uint32_t id)
+{
+  uint32_t partId = id & (TinselThreadsPerDRAM-1);
+  uint32_t addr = TinselBytesPerDRAM -
+                    ((partId+1) << TinselLogBytesPerDRAMPartition);
+  // Use the partition-interleaved translation
+  addr |= 0x80000000;
+  return addr;
+}
+
+// Given thread id, return base address of thread's partition in SRAM
+INLINE uint32_t tinselHeapBaseSRAMGeneric(uint32_t id)
+{
+  uint32_t partId = id & (TinselThreadsPerDRAM-1);
+  uint32_t addr = (1 << TinselLogBytesPerSRAM)
+                + (partId << TinselLogBytesPerSRAMPartition);
+  return addr;
+}
+
+// Return pointer to base of calling thread's DRAM partition
 INLINE void* tinselHeapBase();
+
+// Return pointer to base of calling thread's SRAM partition
+INLINE void* tinselHeapBaseSRAM();
 
 // Reset performance counters
 INLINE void tinselPerfCountReset();

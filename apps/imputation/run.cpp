@@ -20,7 +20,7 @@
  * ****************************************************/
  
 const uint8_t XKEYS = TinselMeshXLenWithinBox * TinselMailboxMeshXLen;
-const uint8_t YKEYS = TinselMeshYLenWithinBox * TinselMailboxMeshYLen;
+const uint8_t YKEYS = TinselMeshYLenWithinBox;
 const uint8_t ROWSPERCORE = 2u;
 
 int main()
@@ -124,18 +124,16 @@ int main()
                             dest.mrm = mrmRecord;
                             
                             destsRow1.append(dest);
-                            
-                            // Create key row0
-                            columnKey[(boardX * TinselMailboxMeshXLen) + mailboxX][(boardY * TinselMailboxMeshYLen) + mailboxY][0u] = progRouterMesh.addDestsFromBoardXY(boardX, boardY, &destsRow0);
-                            
-                            // Create key row1
-                            columnKey[(boardX * TinselMailboxMeshXLen) + mailboxX][(boardY * TinselMailboxMeshYLen) + mailboxY][1u] = progRouterMesh.addDestsFromBoardXY(boardX, boardY, &destsRow1);
                     
                     }
                 //}
             //}
             
-    
+                // Create key row0
+                columnKey[(boardX * TinselMailboxMeshXLen) + mailboxX][boardY][0u] = progRouterMesh.addDestsFromBoardXY(boardX, boardY, &destsRow0);
+                
+                // Create key row1
+                columnKey[(boardX * TinselMailboxMeshXLen) + mailboxX][boardY][1u] = progRouterMesh.addDestsFromBoardXY(boardX, boardY, &destsRow1);
 
             
             }
@@ -143,26 +141,76 @@ int main()
         }
     }
     
-    uint32_t x = 0u;
-    uint32_t y = 0u;
+    uint32_t baseAddress = 0u;
     
-    for (y = 0u; y < YKEYS; y++) {
-        for (x = 0u; x < XKEYS; x++) {
+    // Store Keys in local cores *JPM this could be merged with above loop structutre after confirming correct
+    
+    for (boardY = 0u; boardY < TinselMeshYLenWithinBox; boardY++) {
+        for (boardX = 0u; boardX < TinselMeshXLenWithinBox; boardX++) {
+            for (mailboxY = 0u; mailboxY < TinselMailboxMeshYLen; mailboxY++) {
+                for (mailboxX = 0u; mailboxX < TinselMailboxMeshXLen; mailboxX++) {
+                    
+                    coreID = (mailboxY * TinselMailboxMeshXLen * TinselCoresPerMailbox) + (mailboxX * TinselCoresPerMailbox);
+                    
+                    for (mailboxLocalThreadID = 0u; mailboxLocalThreadID < 16u; mailboxLocalThreadID++) {
+                    
+                        // Construct ThreadID
+                        threadID = boardY;
+                        threadID = (threadID << TinselMeshXBits) + boardX;
+                        threadID = (threadID << TinselMailboxMeshYBits) + mailboxY;
+                        threadID = (threadID << TinselMailboxMeshXBits) + mailboxX;
+                        threadID = (threadID << TinselLogThreadsPerMailbox) + mailboxLocalThreadID;
+                        
+                        baseAddress = tinselHeapBaseGeneric(threadID);
+                                                
+                        
+                        //printf("CoreID: %d, ThreadID: %X, baseAddress: %X\n", coreID, threadID, baseAddress);
+                        
+                        hostLink.setAddr(boardX, boardY, coreID, baseAddress);
+                        
+                        if (mailboxLocalThreadID < 8u ) {
+                            hostLink.store(boardX, boardY, coreID, 1u, &columnKey[(boardX * TinselMailboxMeshXLen) + mailboxX][boardY][0u]);
+                            printf("ThreadID: %X, Key: %X\n", threadID, columnKey[(boardX * TinselMailboxMeshXLen) + mailboxX][boardY][0u]);
+                        }
+                        else {
+                            hostLink.store(boardX, boardY, coreID, 1u, &columnKey[(boardX * TinselMailboxMeshXLen) + mailboxX][boardY][1u]);
+                            printf("ThreadID: %X, Key: %X\n", threadID, columnKey[(boardX * TinselMailboxMeshXLen) + mailboxX][boardY][1u]);
+                        }
+                    
+                    }
+                    
+                    // Core 1 for the same mailbox...
+                    coreID++;
+                    
+                    for (mailboxLocalThreadID = 16u; mailboxLocalThreadID < 32u; mailboxLocalThreadID++) {
+                    
+                        // Construct ThreadID
+                        threadID = boardY;
+                        threadID = (threadID << TinselMeshXBits) + boardX;
+                        threadID = (threadID << TinselMailboxMeshYBits) + mailboxY;
+                        threadID = (threadID << TinselMailboxMeshXBits) + mailboxX;
+                        threadID = (threadID << TinselLogThreadsPerMailbox) + mailboxLocalThreadID;
+                        
+                        baseAddress = tinselHeapBaseGeneric(threadID);
+                        
+                        hostLink.setAddr(boardX, boardY, coreID, baseAddress);
+                        
+                        if (mailboxLocalThreadID < 24u ) {
+                            hostLink.store(boardX, boardY, coreID, 1u, &columnKey[(boardX * TinselMailboxMeshXLen) + mailboxX][boardY][0u]);
+                        }
+                        else {
+                            hostLink.store(boardX, boardY, coreID, 1u, &columnKey[(boardX * TinselMailboxMeshXLen) + mailboxX][boardY][1u]);
+                        }
+                    
+                    }
+                      
             
-            if (x != XKEYS-1) {
-                printf("%X, ", columnKey[x][y][0]);
-                printf("%X, ", columnKey[x][y][1]);
+                }
             }
-            else {
-                printf("%X, ", columnKey[x][y][0]);
-                printf("%X\n", columnKey[x][y][1]);
-            }
-            
         }
     }
-
     
-    //printf("Starting\n");
+    printf("Starting\n");
 
     // Start Cores
     /*
@@ -177,7 +225,7 @@ int main()
     }
     */
     
-    /*
+    
     hostLink.startAll();
     
     // Trigger Application Execution
@@ -191,12 +239,14 @@ int main()
             }
         }
     }
-
+    
+    
+    
     // Construct Ping Message
 
     uint32_t ping[1 << TinselLogWordsPerMsg];
-    ping[0] = 100;
     
+    /*
     // Send Ping to all threads
     
     for (boardY = 0u; boardY < TinselMeshYLenWithinBox; boardY++) {
@@ -220,6 +270,7 @@ int main()
             }
         }
     }
+    */
     
     // Receive responses from all threads
     
@@ -227,17 +278,38 @@ int main()
         for (boardX = 0u; boardX < TinselMeshXLenWithinBox; boardX++) {
             for (mailboxY = 0u; mailboxY < TinselMailboxMeshYLen; mailboxY++) {
                 for (mailboxX = 0u; mailboxX < TinselMailboxMeshXLen; mailboxX++) {
-                    for (mailboxLocalThreadID = 0u; mailboxLocalThreadID < TinselThreadsPerMailbox; mailboxLocalThreadID++) {
+                    for (mailboxLocalThreadID = 0u; mailboxLocalThreadID < (TinselThreadsPerMailbox/2u); mailboxLocalThreadID++) {
                 
                         hostLink.recv(ping);
-                        printf("ThreadID: %d has SW Type: %d\n", ping[1], ping[0]);
+                        printf("ThreadID: %X has Key: %X\n", ping[0], ping[1]);
             
                     }
                 }
             }
         }
     }
-    */
+    
+    printf("Keys:\n");
+    
+    uint32_t x = 0u;
+    uint32_t y = 0u;
+    
+    for (y = 0u; y < YKEYS; y++) {
+        for (x = 0u; x < XKEYS; x++) {
+            
+            if (x != XKEYS-1) {
+                printf("%X, ", columnKey[x][y][0]);
+                printf("%X, ", columnKey[x][y][1]);
+            }
+            else {
+                printf("%X, ", columnKey[x][y][0]);
+                printf("%X\n", columnKey[x][y][1]);
+            }
+            
+        }
+    }
+    
+    
 
     return 0;
 }
