@@ -230,11 +230,7 @@ INLINE int tinselIdle(int vote)
 INLINE void* tinselHeapBase()
 {
   uint32_t me = tinselId();
-  uint32_t partId = me & (TinselThreadsPerDRAM-1);
-  uint32_t addr = TinselBytesPerDRAM -
-                    ((partId+1) << TinselLogBytesPerDRAMPartition);
-  // Use the partition-interleaved translation
-  addr |= 0x80000000;
+  uint32_t addr = tinselHeapBaseGeneric(me);
   return (void*) addr;
 }
 
@@ -242,9 +238,7 @@ INLINE void* tinselHeapBase()
 INLINE void* tinselHeapBaseSRAM()
 {
   uint32_t me = tinselId();
-  uint32_t partId = me & (TinselThreadsPerDRAM-1);
-  uint32_t addr = (1 << TinselLogBytesPerSRAM)
-                + (partId << TinselLogBytesPerSRAMPartition);
+  uint32_t addr = tinselHeapBaseSRAMGeneric(me);
   return (void*) addr;
 }
 
