@@ -1597,10 +1597,16 @@ inline uint32_t tinselBridgeId(uint32_t x, uint32_t y);
 // Get address of host PC in same box as calling thread.
 inline uint32_t tinselMyBridgeId();
 
-// Return pointer to base of thread's DRAM partition
+// Given thread id, return base address of thread's partition in DRAM
+inline uint32_t tinselHeapBaseGeneric(uint32_t id);
+
+// Given thread id, return base address of thread's partition in SRAM
+inline uint32_t tinselHeapBaseSRAMGeneric(uint32_t id);
+
+// Return pointer to base of calling thread's DRAM partition
 inline void* tinselHeapBase();
 
-// Return pointer to base of thread's SRAM partition
+// Return pointer to base of calling thread's SRAM partition
 inline void* tinselHeapBaseSRAM();
 
 // Reset performance counters
