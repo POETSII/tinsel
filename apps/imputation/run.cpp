@@ -28,8 +28,6 @@ int main()
 
     uint8_t boardX = 0u;
     uint8_t boardY = 0u;
-    uint8_t destBoardX = 0u;
-    uint8_t destBoardY = 0u;
     uint8_t mailboxX = 0u;
     uint8_t mailboxY = 0u;
     uint8_t coreID = 0u;
@@ -93,53 +91,83 @@ int main()
     
     const uint32_t row0 = 0x00FF00FFu;
     const uint32_t row1 = 0xFF00FF00u;
+    uint8_t destBoardY = 0u;
+    
+    printf("\nSample threads for lower source Y board intended to go to the second row:\n\n");
     
     // Iterate over source boards
-    for (boardY = 0u; boardY < TinselMeshYLenWithinBox; boardY++) {
-        for (boardX = 0u; boardX < TinselMeshXLenWithinBox; boardX++) {
-            
-            for (mailboxX = 0u; mailboxX < TinselMailboxMeshXLen; mailboxX++) {
-            // Iterate over destination boards
-            //for (destBoardY = 0u; destBoardY < TinselMeshYLenWithinBox; destBoardY++) {
-                //for (destBoardX = 0u; destBoardX < TinselMeshXLenWithinBox; destBoardX++) {
+    for (boardX = 0u; boardX < TinselMeshXLenWithinBox; boardX++) {
+        for (mailboxX = 0u; mailboxX < TinselMailboxMeshXLen; mailboxX++) {
+            for (boardY = 0u; boardY < TinselMeshYLenWithinBox; boardY++) {
+                for (destBoardY = 0u; destBoardY < TinselMeshYLenWithinBox; destBoardY++) {
                     for (mailboxY = 0u; mailboxY < TinselMailboxMeshYLen; mailboxY++) {
+                                                                                    
+                        // Construct destination the mailbox
+                        dest.mbox = destBoardY;
+                        dest.mbox = (dest.mbox << TinselMeshXBits) + boardX;
+                        dest.mbox = (dest.mbox << TinselMailboxMeshYBits) + mailboxY;
+                        dest.mbox = (dest.mbox << TinselMailboxMeshXBits) + mailboxX;
                         
-                    
-                            // Construct the mailbox
-                            dest.mbox = boardY;
-                            dest.mbox = (dest.mbox << TinselMeshXBits) + boardX;
-                            dest.mbox = (dest.mbox << TinselMailboxMeshYBits) + mailboxY;
-                            dest.mbox = (dest.mbox << TinselMailboxMeshXBits) + mailboxX;
+                        // Construct destination threads for row 1
+                        mrmRecord.threadMaskLow = row1;
+                        mrmRecord.threadMaskHigh = 0u;
+                        dest.mrm = mrmRecord;
+                        
+                        if ((mailboxX == 0u) && (boardX == 0u) && (boardY == 0u)) {
+                            printf("BoardX: %d BoardY: %d mailboxX: %d mailboxY: %d threads: %X added to key 1\n", boardX, destBoardY, mailboxX, mailboxY, row1);
+                        }
+                        destsRow1.append(dest);
+                        
+                        // Do not include last row
+                        if (!((mailboxX == TinselMailboxMeshXLen - 1u) && (boardX == TinselMeshXLenWithinBox - 1u))) {                            
                             
+                            // Construct destination the mailbox
+                            
+                            // If the mailbox is the last in the x-axis for the current board
+                            if (mailboxX == TinselMailboxMeshXLen - 1u) {
+                                dest.mbox = destBoardY;
+                                dest.mbox = (dest.mbox << TinselMeshXBits) + boardX + 1u;
+                                dest.mbox = (dest.mbox << TinselMailboxMeshYBits) + mailboxY;
+                                dest.mbox = (dest.mbox << TinselMailboxMeshXBits) + 0u;
+                            }
+                            else {
+                                dest.mbox = destBoardY;
+                                dest.mbox = (dest.mbox << TinselMeshXBits) + boardX;
+                                dest.mbox = (dest.mbox << TinselMailboxMeshYBits) + mailboxY;
+                                dest.mbox = (dest.mbox << TinselMailboxMeshXBits) + mailboxX + 1u;                                   
+                            }
+                            
+                            // Construct destination threads for row 0
                             mrmRecord.threadMaskLow = row0;
                             mrmRecord.threadMaskHigh = 0u;
-                            
                             dest.mrm = mrmRecord;
                             
+                            // Append this information into the destination sequence
                             destsRow0.append(dest);
-                            
-                            mrmRecord.threadMaskLow = row1;
-                            mrmRecord.threadMaskHigh = 0u;
-                            
-                            dest.mrm = mrmRecord;
-                            
-                            destsRow1.append(dest);
+                        
+                        }
                     
                     }
-                //}
-            //}
-            
-                // Create key row0
-                columnKey[(boardX * TinselMailboxMeshXLen) + mailboxX][boardY][0u] = progRouterMesh.addDestsFromBoardXY(boardX, boardY, &destsRow0);
+                }
                 
-                // Create key row1
-                columnKey[(boardX * TinselMailboxMeshXLen) + mailboxX][boardY][1u] = progRouterMesh.addDestsFromBoardXY(boardX, boardY, &destsRow1);
-
+                // Create key row0 -> row1
+                columnKey[(boardX * TinselMailboxMeshXLen) + mailboxX][boardY][0u] = progRouterMesh.addDestsFromBoardXY(boardX, boardY, &destsRow1);
+                
+                destsRow1.clear();
+                
+                if (!((mailboxX == TinselMailboxMeshXLen - 1u) && (boardX == TinselMeshXLenWithinBox - 1u))) {
+                    // Create key row1 -> row0 next mailbox
+                    columnKey[(boardX * TinselMailboxMeshXLen) + mailboxX][boardY][1u] = progRouterMesh.addDestsFromBoardXY(boardX, boardY, &destsRow0);
+                }
+                
+                destsRow0.clear();
             
             }
             
         }
     }
+    
+    printf("\nKeys as being written out of the x86 host machine:\n\n");
     
     uint32_t baseAddress = 0u;
     
@@ -197,9 +225,11 @@ int main()
                         
                         if (mailboxLocalThreadID < 24u ) {
                             hostLink.store(boardX, boardY, coreID, 1u, &columnKey[(boardX * TinselMailboxMeshXLen) + mailboxX][boardY][0u]);
+                            printf("ThreadID: %X, Key: %X\n", threadID, columnKey[(boardX * TinselMailboxMeshXLen) + mailboxX][boardY][0u]);
                         }
                         else {
                             hostLink.store(boardX, boardY, coreID, 1u, &columnKey[(boardX * TinselMailboxMeshXLen) + mailboxX][boardY][1u]);
+                            printf("ThreadID: %X, Key: %X\n", threadID, columnKey[(boardX * TinselMailboxMeshXLen) + mailboxX][boardY][1u]);
                         }
                     
                     }
@@ -210,8 +240,6 @@ int main()
         }
     }
     
-    printf("Starting\n");
-
     // Start Cores
     /*
     for (boardY = 0u; boardY < TinselMeshYLenWithinBox; boardY++) {
@@ -225,6 +253,7 @@ int main()
     }
     */
     
+    printf("\nKeys as received back from nodes:\n\n");
     
     hostLink.startAll();
     
@@ -243,8 +272,8 @@ int main()
     
     
     // Construct Ping Message
-
-    uint32_t ping[1 << TinselLogWordsPerMsg];
+    
+    uint32_t msg[1 << TinselLogWordsPerMsg];
     
     /*
     // Send Ping to all threads
@@ -280,8 +309,9 @@ int main()
                 for (mailboxX = 0u; mailboxX < TinselMailboxMeshXLen; mailboxX++) {
                     for (mailboxLocalThreadID = 0u; mailboxLocalThreadID < (TinselThreadsPerMailbox/2u); mailboxLocalThreadID++) {
                 
-                        hostLink.recv(ping);
-                        printf("ThreadID: %X has Key: %X\n", ping[0], ping[1]);
+                        hostLink.recv(msg);
+                        printf("ThreadID: %X has Key: %X\n", msg[0], msg[1]);
+                        //printf("ThreadID: %X LocalID: %d Row: %d MailboxX: %d MailboxY: %d BoardX: %d BoardY: %d\n", msg[0], msg[1], msg[2], msg[3], msg[4], msg[5], msg[6]);
             
                     }
                 }
@@ -289,10 +319,17 @@ int main()
         }
     }
     
-    printf("Keys:\n");
-    
     uint32_t x = 0u;
     uint32_t y = 0u;
+    /*
+    for (x = 0u; x < 128u; x++) {
+        hostLink.recv(msg);
+        //printf("ThreadID: %X LocalID: %d Row: %d MailboxX: %d MailboxY: %d BoardX: %d BoardY: %d Message: %d\n", msg[0], msg[1], msg[2], msg[3], msg[4], msg[5], msg[6], msg[7]);
+        //printf("ThreadID: %X has Key: %X\n", msg[0], msg[1]);
+    }
+    */
+    
+    printf("\nKeys. Two per column as there are two source Y board in a box. The last key is not used:\n\n");
     
     for (y = 0u; y < YKEYS; y++) {
         for (x = 0u; x < XKEYS; x++) {
@@ -309,7 +346,5 @@ int main()
         }
     }
     
-    
-
     return 0;
 }
