@@ -302,7 +302,7 @@ int main()
     */
     
     // Receive responses from all threads
-    
+    /*
     for (boardY = 0u; boardY < TinselMeshYLenWithinBox; boardY++) {
         for (boardX = 0u; boardX < TinselMeshXLenWithinBox; boardX++) {
             for (mailboxY = 0u; mailboxY < TinselMailboxMeshYLen; mailboxY++) {
@@ -318,16 +318,16 @@ int main()
             }
         }
     }
-    
+    */
     uint32_t x = 0u;
     uint32_t y = 0u;
-    /*
+    
     for (x = 0u; x < 128u; x++) {
         hostLink.recv(msg);
-        //printf("ThreadID: %X LocalID: %d Row: %d MailboxX: %d MailboxY: %d BoardX: %d BoardY: %d Message: %d\n", msg[0], msg[1], msg[2], msg[3], msg[4], msg[5], msg[6], msg[7]);
+        printf("ThreadID: %X LocalID: %d Row: %d MailboxX: %d MailboxY: %d BoardX: %d BoardY: %d Message: %d\n", msg[0], msg[1], msg[2], msg[3], msg[4], msg[5], msg[6], msg[7]);
         //printf("ThreadID: %X has Key: %X\n", msg[0], msg[1]);
     }
-    */
+    
     
     printf("\nKeys. Two per column as there are two source Y board in a box. The last key is not used:\n\n");
     
