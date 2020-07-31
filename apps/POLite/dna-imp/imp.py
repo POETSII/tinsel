@@ -7,9 +7,9 @@ from random import uniform
 
 # global vars
 seed(1)
-run_max = 11
+run_max = 129
 run_step = 1
-obs_ratio = 10
+obs_ratio = 1
 # 1 in every . .
 targ_mark_ratio = 10
 
@@ -47,7 +47,7 @@ if os.path.exists('results.csv'):
 with open('results.csv', "a") as f:
     f.write("States,Observations,Panel_Size,Proc_Time\n")
 
-for no_states in range(10, run_max, run_step):
+for no_states in range(128, run_max, run_step):
 
     no_obs = no_states * obs_ratio
 

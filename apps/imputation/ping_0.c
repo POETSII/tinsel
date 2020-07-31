@@ -30,7 +30,8 @@ int main()
     uint8_t boardY = (me >> (TinselLogThreadsPerMailbox + TinselMailboxMeshXBits + TinselMailboxMeshYBits + TinselMeshXBits)) % (1 << TinselMeshYBits);
     
     uint32_t* baseAddress = tinselHeapBase();
-    uint32_t key = *baseAddress;
+    uint32_t key = baseAddress[0];
+    
     
     // Get host id
     int host = tinselHostId();
