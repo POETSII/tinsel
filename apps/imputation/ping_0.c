@@ -34,8 +34,8 @@ int main()
     // Get host id
     int host = tinselHostId();
     
-    // If first row
-    //if ((row == 0u) && (mailboxX == 0u) && (boardX == 0u)) {
+     //If first row
+    if ((row == 0u) && (mailboxX == 0u) && (boardX == 0u)) {
     
         // Get pointers to mailbox message slot
         volatile int* msgOut = tinselSendSlot();
@@ -44,14 +44,14 @@ int main()
         //volatile int* msgIn = tinselRecv();
         tinselWaitUntil(TINSEL_CAN_SEND);
         msgOut[0] = me;
-        msgOut[1] = key;
+        msgOut[1] = 0x69u;
         //tinselFree(msgIn);
-        //tinselKeySend(key, msgOut);
-        tinselSend(host, msgOut);
+        tinselKeySend(key, msgOut);
+        //tinselSend(host, msgOut);
     
-    //}
+    }
     
-    /*
+    
     // Get pointers to mailbox message slot
     volatile int* msgOut = tinselSendSlot();
 
@@ -59,16 +59,10 @@ int main()
     volatile int* msgIn = tinselRecv();
     tinselWaitUntil(TINSEL_CAN_SEND);
     msgOut[0] = me;
-    msgOut[1] = localThreadID;
-    msgOut[2] = row;
-    msgOut[3] = mailboxX;
-    msgOut[4] = mailboxY;
-    msgOut[5] = boardX;
-    msgOut[6] = boardY;
-    msgOut[7] = msgIn[0];
+    msgOut[1] = msgIn[1];
     tinselFree(msgIn);
     tinselSend(host, msgOut);
-    */
+    
 
   return 0;
 }
