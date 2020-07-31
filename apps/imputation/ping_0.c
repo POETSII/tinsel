@@ -9,6 +9,7 @@
  * This code performs the stephens and li model for imputation
  * ****************************************************/
  
+#define NULL 0
 
 
 int main()
@@ -65,8 +66,15 @@ int main()
     // If a node in between
     else {
         
-        tinselWaitUntil(TINSEL_CAN_RECV);
-        volatile int* msgIn = tinselRecv();
+        uint8_t recCnt = 0u;
+        
+        volatile int* msgIn = NULL;
+        
+        for (recCnt = 0u; recCnt < 128u; recCnt++) {
+            tinselWaitUntil(TINSEL_CAN_RECV);
+            msgIn = tinselRecv();
+        }
+        
         tinselWaitUntil(TINSEL_CAN_SEND);
         msgOut[0] = me;
         msgOut[1] = msgIn[1] + 1u;

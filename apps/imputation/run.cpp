@@ -260,7 +260,7 @@ int main()
     hostLink.startAll();
     
     // Trigger Application Execution in reverse order to avoid race condition
-    
+    /*
     for (boardX = 0u; boardX < TinselMeshXLenWithinBox; boardX++) {
         for (boardY = 0u; boardY < TinselMeshYLenWithinBox; boardY++) {
             for (coreID = 0u; coreID < TinselCoresPerBoard; coreID++) {
@@ -270,7 +270,9 @@ int main()
             }
         }
     }
+    */
     
+    hostLink.go();
     
     
     // Construct Ping Message
