@@ -29,6 +29,19 @@ int main()
     uint8_t boardX = (me >> (TinselLogThreadsPerMailbox + TinselMailboxMeshXBits + TinselMailboxMeshYBits)) % (1 << TinselMeshXBits);
     uint8_t boardY = (me >> (TinselLogThreadsPerMailbox + TinselMailboxMeshXBits + TinselMailboxMeshYBits + TinselMeshXBits)) % (1 << TinselMeshYBits);
     
+    uint8_t threadY;
+    if (localThreadID < 16u) {
+        threadY = localThreadID % 8u;
+    }
+    else {
+        threadY = 8u + (localThreadID % 8u);
+    }
+                            
+    uint32_t stateNo = (((TinselMeshYLenWithinBox - 1u) - boardY) * (TinselMailboxMeshYLen) * ((TinselThreadsPerMailbox/2)/2)) 
+                     + (((TinselMailboxMeshYLen - 1u) - mailboxY) * ((TinselThreadsPerMailbox/2)/2))
+                     + threadY;
+                     
+    
     uint32_t* baseAddress = tinselHeapBase();
     uint32_t key = baseAddress[0];
     
@@ -59,7 +72,7 @@ int main()
         volatile int* msgIn = tinselRecv();
         tinselWaitUntil(TINSEL_CAN_SEND);
         msgOut[0] = me;
-        msgOut[1] = msgIn[1] + 1u;
+        msgOut[1] = stateNo;
         tinselFree(msgIn);
         tinselSend(host, msgOut);
     
