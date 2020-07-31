@@ -259,13 +259,13 @@ int main()
     
     hostLink.startAll();
     
-    // Trigger Application Execution
+    // Trigger Application Execution in reverse order to avoid race condition
     
-    for (boardY = 0u; boardY < TinselMeshYLenWithinBox; boardY++) {
-        for (boardX = 0u; boardX < TinselMeshXLenWithinBox; boardX++) {
+    for (boardX = 0u; boardX < TinselMeshXLenWithinBox; boardX++) {
+        for (boardY = 0u; boardY < TinselMeshYLenWithinBox; boardY++) {
             for (coreID = 0u; coreID < TinselCoresPerBoard; coreID++) {
                
-                hostLink.goOne(boardX, boardY, coreID);
+                hostLink.goOne(((TinselMeshXLenWithinBox - 1u) - boardX), boardY, ((TinselCoresPerBoard - 1u) - coreID));
             
             }
         }
@@ -327,7 +327,7 @@ int main()
     for (x = 0u; x < 128u; x++) {
         hostLink.recv(msg);
         //printf("ThreadID: %X LocalID: %d Row: %d MailboxX: %d MailboxY: %d BoardX: %d BoardY: %d Message: %d\n", msg[0], msg[1], msg[2], msg[3], msg[4], msg[5], msg[6], msg[7]);
-        printf("ThreadID: %X has Key: %X\n", msg[0], msg[1]);
+        printf("ThreadID: %X has value: %d\n", msg[0], msg[1]);
     }
     
     

@@ -34,35 +34,46 @@ int main()
     // Get host id
     int host = tinselHostId();
     
+    // Get pointers to mailbox message slot
+    volatile int* msgOut = tinselSendSlot();
+    
      //If first row
     if ((row == 0u) && (mailboxX == 0u) && (boardX == 0u)) {
-    
-        // Get pointers to mailbox message slot
-        volatile int* msgOut = tinselSendSlot();
 
         //tinselWaitUntil(TINSEL_CAN_RECV);
         //volatile int* msgIn = tinselRecv();
         tinselWaitUntil(TINSEL_CAN_SEND);
         msgOut[0] = me;
-        msgOut[1] = 0x69u;
+        msgOut[1] = 0u;
         //tinselFree(msgIn);
         tinselKeySend(key, msgOut);
         //tinselSend(host, msgOut);
     
     }
-    
-    
-    // Get pointers to mailbox message slot
-    volatile int* msgOut = tinselSendSlot();
+    // If last row
+    else if ((row == 1u) && (mailboxX == 3u) && (boardX == 2u)) {
 
-    tinselWaitUntil(TINSEL_CAN_RECV);
-    volatile int* msgIn = tinselRecv();
-    tinselWaitUntil(TINSEL_CAN_SEND);
-    msgOut[0] = me;
-    msgOut[1] = msgIn[1];
-    tinselFree(msgIn);
-    tinselSend(host, msgOut);
+        tinselWaitUntil(TINSEL_CAN_RECV);
+        volatile int* msgIn = tinselRecv();
+        tinselWaitUntil(TINSEL_CAN_SEND);
+        msgOut[0] = me;
+        msgOut[1] = msgIn[1] + 1u;
+        tinselFree(msgIn);
+        tinselSend(host, msgOut);
     
+    }
+    // If a node in between
+    else {
+        
+        tinselWaitUntil(TINSEL_CAN_RECV);
+        volatile int* msgIn = tinselRecv();
+        tinselWaitUntil(TINSEL_CAN_SEND);
+        msgOut[0] = me;
+        msgOut[1] = msgIn[1] + 1u;
+        tinselFree(msgIn);
+        tinselKeySend(key, msgOut);
+        
+    }
 
   return 0;
 }
