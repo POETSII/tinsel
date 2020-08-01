@@ -43,8 +43,7 @@ int main()
                      + (((TinselMailboxMeshYLen - 1u) - mailboxY) * ((TinselThreadsPerMailbox/2u)/2u))
                      + threadY;
     
-    uint32_t observationNo = (boardX * (TinselMailboxMeshXLen) * ((TinselThreadsPerMailbox/2u)/16u)) + (mailboxX * ((TinselThreadsPerMailbox/2u)/16u));
-                     
+    uint32_t observationNo = (boardX * (TinselMailboxMeshXLen) * ((TinselThreadsPerMailbox/2u)/16u)) + (mailboxX * ((TinselThreadsPerMailbox/2u)/16u)) + row;                
     
     uint32_t* baseAddress = tinselHeapBase();
     uint32_t key = *baseAddress;
@@ -64,24 +63,24 @@ int main()
     volatile ImpMessage* msgOut = tinselSendSlot();
     
      //If first row
-    if ((row == 0u) && (mailboxX == 0u) && (boardX == 0u)) {
+    if (observationNo == 0u) {
 
         //tinselWaitUntil(TINSEL_CAN_RECV);
         //volatile int* msgIn = tinselRecv();
         tinselWaitUntil(TINSEL_CAN_SEND);
-        msgOut->threadID = me;
+        msgOut->threadID = observationNo;
         //tinselFree(msgIn);
         tinselKeySend(key, msgOut);
         //tinselSend(host, msgOut);
     
     }
     // If last row
-    else if ((row == 0u) && (mailboxX == 1u) && (boardX == 0u)) {
+    else if (observationNo == 23u) {
 
         tinselWaitUntil(TINSEL_CAN_RECV);
         volatile int* msgIn = tinselRecv();
         tinselWaitUntil(TINSEL_CAN_SEND);
-        msgOut->threadID = me;
+        msgOut->threadID = observationNo;
         msgOut->val = diff;
         tinselFree(msgIn);
         tinselSend(host, msgOut);

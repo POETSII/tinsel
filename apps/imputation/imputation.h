@@ -25,6 +25,15 @@ typedef struct {
     
 } ImpMessage;
 
+typedef struct {
+    
+    // Observation Number
+    uint32_t observationNo;
+    // State Number
+    uint32_t stateNo;
+    
+} HostMessage;
+
 
 /***************************************************
  * <- And here
