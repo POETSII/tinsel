@@ -82,9 +82,29 @@ const uint8_t hmm_labels[NOOFSTATES][NOOFOBS] = {
 // Target Markers 
 const uint32_t observation[NOOFTARGMARK][2] = { 
     { 0, 0 },
+    { 1, 0 },
+    { 2, 0 },
+    { 3, 0 },
+    { 4, 0 },
+    { 5, 0 },
+    { 6, 0 },
+    { 7, 1 },
+    { 8, 0 },
+    { 9, 0 },
     { 10, 0 },
+    { 11, 0 },
+    { 12, 1 },
+    { 13, 0 },
+    { 14, 0 },
+    { 15, 0 },
+    { 16, 0 },
+    { 17, 0 },
+    { 18, 0 },
+    { 19, 1 },
     { 20, 0 },
-    { 24, 0 }
+    { 21, 0 },
+    { 22, 0 },
+    { 23, 0 }
 };
 
 // dm -> Genetic Distances 

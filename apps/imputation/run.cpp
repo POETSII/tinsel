@@ -35,7 +35,7 @@ int main()
     uint8_t mailboxX = 0u;
     uint8_t mailboxY = 0u;
     uint8_t coreID = 0u;
-    uint16_t mailboxLocalThreadID = 0u;
+    uint8_t mailboxLocalThreadID = 0u;
     uint32_t threadID = 0u;
     
     HostLink hostLink;
@@ -228,6 +228,9 @@ int main()
                     uint32_t* same1UPtr = (uint32_t*) same1Ptr;
                     uint32_t* diff1UPtr = (uint32_t*) diff1Ptr;
                     
+                    //getObservationNumber()
+                    //getStateNumber()
+                    //Send match/mismatch for maj/min allele
                     
                     for (mailboxLocalThreadID = 0u; mailboxLocalThreadID < 16u; mailboxLocalThreadID++) {
                     

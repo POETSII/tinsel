@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BSD-2-Clause
 // Respond to ping command by incrementing received value by 1
 
-#include <tinsel.h>
 #include "imputation.h"
 
 /*****************************************************
@@ -18,9 +17,9 @@ int main()
 * Node Initialisation
 * ***************************************************/
     uint32_t me = tinselId();
+    uint8_t row = 0u;
     
     uint8_t localThreadID = me % (1 << TinselLogThreadsPerMailbox);
-    uint8_t row = 0u;
     
     if (((localThreadID >= 8u) && (localThreadID <= 15)) || ((localThreadID >= 24u) && (localThreadID <= 31))) {
         row = 1u;
@@ -43,7 +42,8 @@ int main()
                      + (((TinselMailboxMeshYLen - 1u) - mailboxY) * ((TinselThreadsPerMailbox/2u)/2u))
                      + threadY;
     
-    uint32_t observationNo = (boardX * (TinselMailboxMeshXLen) * ((TinselThreadsPerMailbox/2u)/16u)) + (mailboxX * ((TinselThreadsPerMailbox/2u)/16u)) + row;                
+    //uint32_t observationNo = (boardX * (TinselMailboxMeshXLen) * ((TinselThreadsPerMailbox/2u)/16u)) + (mailboxX * ((TinselThreadsPerMailbox/2u)/16u)) + row; 
+    uint32_t observationNo = getObservationNumber(boardX, mailboxX, localThreadID);
     
     uint32_t* baseAddress = tinselHeapBase();
     uint32_t key = *baseAddress;

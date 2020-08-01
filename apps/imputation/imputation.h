@@ -3,18 +3,23 @@
 #define _IMPUTATION_H_
 
 #include <stdint.h>
+#include <tinsel.h>
 
 // Parameters
 
 /***************************************************
  * Edit values between here ->
  * ************************************************/
- 
+
+// Model Parameters
+
 #define NOOFSTATES (128)
 #define NOOFOBS (24)
-#define NOOFTARGMARK (4)
+#define NOOFTARGMARK (24)
 #define NE (1000000)
 #define ERRORRATE (10000)
+
+// Message Structures
 
 typedef struct {
     
@@ -33,6 +38,31 @@ typedef struct {
     uint32_t stateNo;
     
 } HostMessage;
+
+// Useful Inline Functions
+
+// Get globally unique thread id of caller
+INLINE uint32_t getObservationNumber(uint8_t boardX, uint8_t mailboxX, uint8_t localThreadID)
+{
+    uint32_t observationNo;
+    uint8_t row = 0u;
+    
+    if (((localThreadID >= 8u) && (localThreadID <= 15)) || ((localThreadID >= 24u) && (localThreadID <= 31))) {
+        row = 1u;
+    }
+    
+    observationNo = (boardX * (TinselMailboxMeshXLen) * ((TinselThreadsPerMailbox/2u)/16u)) + (mailboxX * ((TinselThreadsPerMailbox/2u)/16u)) + row;
+    
+    return observationNo;
+}
+
+// Get globally unique thread id of caller
+INLINE uint32_t getStateNumber()
+{
+
+    
+    return stateNo;
+}
 
 
 /***************************************************
