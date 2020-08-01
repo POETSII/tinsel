@@ -2,6 +2,7 @@
 // Respond to ping command by incrementing received value by 1
 
 #include <tinsel.h>
+#include "imputation.h"
 
 /*****************************************************
  * Hidden Markov Model Node
@@ -11,10 +12,11 @@
  
 #define NULL 0
 
-
 int main()
 {
-    
+/*****************************************************
+* Node Initialisation
+* ***************************************************/
     uint32_t me = tinselId();
     
     uint8_t localThreadID = me % (1 << TinselLogThreadsPerMailbox);
@@ -37,20 +39,29 @@ int main()
         threadY = 8u + (localThreadID % 8u);
     }
                             
-    uint32_t stateNo = (((TinselMeshYLenWithinBox - 1u) - boardY) * (TinselMailboxMeshYLen) * ((TinselThreadsPerMailbox/2)/2)) 
-                     + (((TinselMailboxMeshYLen - 1u) - mailboxY) * ((TinselThreadsPerMailbox/2)/2))
+    uint32_t stateNo = (((TinselMeshYLenWithinBox - 1u) - boardY) * (TinselMailboxMeshYLen) * ((TinselThreadsPerMailbox/2u)/2u)) 
+                     + (((TinselMailboxMeshYLen - 1u) - mailboxY) * ((TinselThreadsPerMailbox/2u)/2u))
                      + threadY;
+    
+    uint32_t observationNo = (boardX * (TinselMailboxMeshXLen) * ((TinselThreadsPerMailbox/2u)/16u)) + (mailboxX * ((TinselThreadsPerMailbox/2u)/16u));
                      
     
     uint32_t* baseAddress = tinselHeapBase();
-    uint32_t key = baseAddress[0];
+    uint32_t key = *baseAddress;
+    
+    float same = *(float*)(baseAddress + 1u);
+    float diff = *(float*)(baseAddress + 2u);
+    
+/*****************************************************
+* Node Functionality
+* ***************************************************/
     
     
     // Get host id
     int host = tinselHostId();
     
     // Get pointers to mailbox message slot
-    volatile int* msgOut = tinselSendSlot();
+    volatile ImpMessage* msgOut = tinselSendSlot();
     
      //If first row
     if ((row == 0u) && (mailboxX == 0u) && (boardX == 0u)) {
@@ -58,21 +69,20 @@ int main()
         //tinselWaitUntil(TINSEL_CAN_RECV);
         //volatile int* msgIn = tinselRecv();
         tinselWaitUntil(TINSEL_CAN_SEND);
-        msgOut[0] = me;
-        msgOut[1] = 0u;
+        msgOut->threadID = me;
         //tinselFree(msgIn);
         tinselKeySend(key, msgOut);
         //tinselSend(host, msgOut);
     
     }
     // If last row
-    else if ((row == 1u) && (mailboxX == 3u) && (boardX == 2u)) {
+    else if ((row == 0u) && (mailboxX == 1u) && (boardX == 0u)) {
 
         tinselWaitUntil(TINSEL_CAN_RECV);
         volatile int* msgIn = tinselRecv();
         tinselWaitUntil(TINSEL_CAN_SEND);
-        msgOut[0] = me;
-        msgOut[1] = stateNo;
+        msgOut->threadID = me;
+        msgOut->val = diff;
         tinselFree(msgIn);
         tinselSend(host, msgOut);
     
@@ -90,8 +100,7 @@ int main()
         }
         
         tinselWaitUntil(TINSEL_CAN_SEND);
-        msgOut[0] = me;
-        msgOut[1] = msgIn[1] + 1u;
+        msgOut->threadID = me;
         tinselFree(msgIn);
         tinselKeySend(key, msgOut);
         

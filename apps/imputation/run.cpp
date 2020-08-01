@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: BSD-2-Clause
-#define TINSEL (1)
+#define TINSEL (1u)
 
+#include "model.h"
 #include <HostLink.h>
+#include <math.h>
 #include "../../include/POLite/ProgRouters.h"
 
 /*****************************************************
@@ -18,6 +20,8 @@
  * scp -r C:\Users\drjor\Documents\tinsel\apps\imputation jordmorr@fielding.cl.cam.ac.uk:~/tinsel/apps
  * scp jordmorr@fielding.cl.cam.ac.uk:~/tinsel/apps/POLite/imputation/results.csv C:\Users\drjor\Documents\tinsel\apps\imputation
  * ****************************************************/
+ 
+//#define PRINTDEBUG (1u) 
  
 const uint8_t XKEYS = TinselMeshXLenWithinBox * TinselMailboxMeshXLen;
 const uint8_t YKEYS = TinselMeshYLenWithinBox;
@@ -93,8 +97,10 @@ int main()
     const uint32_t row1 = 0xFF00FF00u;
     uint8_t destBoardY = 0u;
     
+#ifdef PRINTDEBUG    
     printf("\nSample threads for lower source Y board intended to go to the second row:\n\n");
-    
+#endif    
+
     // Iterate over source boards
     for (boardX = 0u; boardX < TinselMeshXLenWithinBox; boardX++) {
         for (mailboxX = 0u; mailboxX < TinselMailboxMeshXLen; mailboxX++) {
@@ -112,12 +118,12 @@ int main()
                         mrmRecord.threadMaskLow = row1;
                         mrmRecord.threadMaskHigh = 0u;
                         dest.mrm = mrmRecord;
-                        
+#ifdef PRINTDEBUG                        
                         if ((mailboxX == 0u) && (boardX == 0u) && (boardY == 0u)) {
                             printf("BoardX: %d BoardY: %d mailboxX: %d mailboxY: %d threads: %X added to key 1\n", boardX, destBoardY, mailboxX, mailboxY, row1);
                         }
-                        destsRow1.append(dest);
-                        
+#endif                        
+                        destsRow1.append(dest);                       
                         // Do not include last row
                         if (!((mailboxX == TinselMailboxMeshXLen - 1u) && (boardX == TinselMeshXLenWithinBox - 1u))) {                            
                             
@@ -180,6 +186,44 @@ int main()
                     
                     coreID = (mailboxY * TinselMailboxMeshXLen * TinselCoresPerMailbox) + (mailboxX * TinselCoresPerMailbox);
                     
+                    uint32_t observationNo = (boardX * (TinselMailboxMeshXLen) * ((TinselThreadsPerMailbox/2u)/16u)) + (mailboxX * ((TinselThreadsPerMailbox/2u)/16u));
+                    
+                    float tau_m0;
+                    float same0;
+                    float diff0;
+                    
+                    float* same0Ptr;
+                    float* diff0Ptr;
+                    
+                    uint32_t* same0UPtr;
+                    uint32_t* diff0UPtr;
+                    
+                    // Tau M Values
+                    if (observationNo != 0u) {
+                        
+                        tau_m0 = (1 - exp((-4 * NE * dm[observationNo - 1u]) / NOOFSTATES));
+                        same0 = tau_m0 / NOOFSTATES;
+                        diff0 = (1 - tau_m0) + (tau_m0 / NOOFSTATES);
+
+                        same0Ptr = &same0;
+                        diff0Ptr = &diff0;
+                        
+                        same0UPtr = (uint32_t*) same0Ptr;
+                        diff0UPtr = (uint32_t*) diff0Ptr;
+                        
+                        //printf("same trans prob = %.10f\n", *(float*)same0UPtr);
+                        //printf("diff trans prob = %f\n", *(float*)diff0UPtr);
+                        
+                    }
+                    
+                    float tau_m1 = (1 - exp((-4 * NE * dm[observationNo]) / NOOFSTATES));
+                    
+                    // Transition probabilites for same and different haplotypes for both observations
+                    
+                    float same1 = tau_m1 / NOOFSTATES;
+                    float diff1 = (1 - tau_m1) + (tau_m1 / NOOFSTATES);
+                    
+                    
                     for (mailboxLocalThreadID = 0u; mailboxLocalThreadID < 16u; mailboxLocalThreadID++) {
                     
                         // Construct ThreadID
@@ -199,10 +243,29 @@ int main()
                         if (mailboxLocalThreadID < 8u ) {
                             hostLink.store(boardX, boardY, coreID, 1u, &columnKey[(boardX * TinselMailboxMeshXLen) + mailboxX][boardY][0u]);
                             printf("ThreadID: %X, Key: %X\n", threadID, columnKey[(boardX * TinselMailboxMeshXLen) + mailboxX][boardY][0u]);
+                            //printf("Observation No = %d\n", observationNo);
+                            
+                            //CALCULATE THE TAU
+                            //CALCULATE THE TRANSITION PROBABILITIES
+                            //STORE IT HERE
+                            
+                            if (observationNo != 0u) {
+                                hostLink.store(boardX, boardY, coreID, 1u, same0UPtr);
+                                hostLink.store(boardX, boardY, coreID, 1u, diff0UPtr);
+                            }
+                            
                         }
                         else {
                             hostLink.store(boardX, boardY, coreID, 1u, &columnKey[(boardX * TinselMailboxMeshXLen) + mailboxX][boardY][1u]);
                             printf("ThreadID: %X, Key: %X\n", threadID, columnKey[(boardX * TinselMailboxMeshXLen) + mailboxX][boardY][1u]);
+                            //printf("Observation No = %d\n", observationNo + 1u);
+                            
+                            //CALCULATE THE TAU
+                            //CALCULATE THE TRANSITION PROBABILITIES
+                            //STORE IT HERE
+                            
+                            hostLink.store(boardX, boardY, coreID, 1u, same0UPtr);
+                            hostLink.store(boardX, boardY, coreID, 1u, diff0UPtr);
                         }
                     
                     }
@@ -226,10 +289,22 @@ int main()
                         if (mailboxLocalThreadID < 24u ) {
                             hostLink.store(boardX, boardY, coreID, 1u, &columnKey[(boardX * TinselMailboxMeshXLen) + mailboxX][boardY][0u]);
                             printf("ThreadID: %X, Key: %X\n", threadID, columnKey[(boardX * TinselMailboxMeshXLen) + mailboxX][boardY][0u]);
+                            //printf("Observation No = %d\n", observationNo);
+                            //CALCULATE THE TAU
+                            //CALCULATE THE TRANSITION PROBABILITIES
+                            //STORE IT HERE
+                            hostLink.store(boardX, boardY, coreID, 1u, same0UPtr);
+                            hostLink.store(boardX, boardY, coreID, 1u, diff0UPtr);
                         }
                         else {
                             hostLink.store(boardX, boardY, coreID, 1u, &columnKey[(boardX * TinselMailboxMeshXLen) + mailboxX][boardY][1u]);
                             printf("ThreadID: %X, Key: %X\n", threadID, columnKey[(boardX * TinselMailboxMeshXLen) + mailboxX][boardY][1u]);
+                            //printf("Observation No = %d\n", observationNo + 1u);
+                            //CALCULATE THE TAU
+                            //CALCULATE THE TRANSITION PROBABILITIES
+                            //STORE IT HERE
+                            hostLink.store(boardX, boardY, coreID, 1u, same0UPtr);
+                            hostLink.store(boardX, boardY, coreID, 1u, diff0UPtr);
                         }
                     
                     }
@@ -253,9 +328,8 @@ int main()
     }
     */
     
+    // Write the keys to the routers
     progRouterMesh.write(&hostLink);
-    
-    printf("\nKeys as received back from nodes:\n\n");
     
     hostLink.startAll();
     
@@ -277,7 +351,8 @@ int main()
     
     // Construct Ping Message
     
-    uint32_t msg[1 << TinselLogWordsPerMsg];
+    //uint32_t msg[1 << TinselLogWordsPerMsg];
+    ImpMessage msg;
     
     /*
     // Send Ping to all threads
@@ -327,12 +402,13 @@ int main()
     uint32_t y = 0u;
     
     for (x = 0u; x < 128u; x++) {
-        hostLink.recv(msg);
+        //hostLink.recv(msg);
+        hostLink.recvMsg(&msg, sizeof(msg));
         //printf("ThreadID: %X LocalID: %d Row: %d MailboxX: %d MailboxY: %d BoardX: %d BoardY: %d Message: %d\n", msg[0], msg[1], msg[2], msg[3], msg[4], msg[5], msg[6], msg[7]);
-        printf("ThreadID: %X has value: %d\n", msg[0], msg[1]);
+        printf("ThreadID: %X has value: %.10f\n", msg.threadID, msg.val);
     }
     
-    
+#ifdef PRINTDEBUG    
     printf("\nKeys. Two per column as there are two source Y board in a box. The last key is not used:\n\n");
     
     for (y = 0u; y < YKEYS; y++) {
@@ -349,6 +425,6 @@ int main()
             
         }
     }
-    
+#endif    
     return 0;
 }

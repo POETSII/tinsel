@@ -13,7 +13,6 @@
  * ****************************************************/
 
 #include "model.h"
-
 #include <iostream>
 #include <chrono>
 #include <cassert>
