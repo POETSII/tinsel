@@ -186,7 +186,7 @@ int main()
                     
                     coreID = (mailboxY * TinselMailboxMeshXLen * TinselCoresPerMailbox) + (mailboxX * TinselCoresPerMailbox);
                     
-                    uint32_t observationNo = (boardX * (TinselMailboxMeshXLen) * ((TinselThreadsPerMailbox/2u)/16u)) + (mailboxX * ((TinselThreadsPerMailbox/2u)/16u));
+                    uint32_t observationPair = (boardX * (TinselMailboxMeshXLen) * ((TinselThreadsPerMailbox/2u)/16u)) + (mailboxX * ((TinselThreadsPerMailbox/2u)/16u));
                     
                     // Transition probabilites for same and different haplotypes for both observations
                     
@@ -201,9 +201,9 @@ int main()
                     uint32_t* diff0UPtr;
                     
                     // Tau M Values
-                    if (observationNo != 0u) {
+                    if (observationPair != 0u) {
                         
-                        tau_m0 = (1 - exp((-4 * NE * dm[observationNo - 1u]) / NOOFSTATES));
+                        tau_m0 = (1 - exp((-4 * NE * dm[observationPair - 1u]) / NOOFSTATES));
                         same0 = tau_m0 / NOOFSTATES;
                         diff0 = (1 - tau_m0) + (tau_m0 / NOOFSTATES);
 
@@ -218,7 +218,7 @@ int main()
                         
                     }
                     
-                    float tau_m1 = (1 - exp((-4 * NE * dm[observationNo]) / NOOFSTATES));
+                    float tau_m1 = (1 - exp((-4 * NE * dm[observationPair]) / NOOFSTATES));
                     float same1 = tau_m1 / NOOFSTATES;
                     float diff1 = (1 - tau_m1) + (tau_m1 / NOOFSTATES);
                     
@@ -228,11 +228,18 @@ int main()
                     uint32_t* same1UPtr = (uint32_t*) same1Ptr;
                     uint32_t* diff1UPtr = (uint32_t*) diff1Ptr;
                     
-                    //getObservationNumber()
-                    //getStateNumber()
-                    //Send match/mismatch for maj/min allele
-                    
                     for (mailboxLocalThreadID = 0u; mailboxLocalThreadID < 16u; mailboxLocalThreadID++) {
+                        
+                        //printf("Obs No = %d, State No = %d\n", getObservationNumber(boardX, mailboxX, mailboxLocalThreadID), getStateNumber(boardY, mailboxY, mailboxLocalThreadID));
+                        
+                        uint32_t observationNo = getObservationNumber(boardX, mailboxX, mailboxLocalThreadID);
+                        uint32_t stateNo = getStateNumber(boardY, mailboxY, mailboxLocalThreadID);
+                        uint32_t match = 0u;
+                        
+                        // if markers match
+                        if (hmm_labels[stateNo][observationNo] == observation[observationNo][1]) {
+                            match = 1u;
+                        }
                     
                         // Construct ThreadID
                         threadID = boardY;
@@ -250,14 +257,15 @@ int main()
                         
                         if (mailboxLocalThreadID < 8u ) {
                             hostLink.store(boardX, boardY, coreID, 1u, &columnKey[(boardX * TinselMailboxMeshXLen) + mailboxX][boardY][0u]);
+                            hostLink.store(boardX, boardY, coreID, 1u, &match);
                             //printf("ThreadID: %X, Key: %X\n", threadID, columnKey[(boardX * TinselMailboxMeshXLen) + mailboxX][boardY][0u]);
-                            //printf("Observation No = %d\n", observationNo);
+                            //printf("Observation No = %d\n", observationPair);
                             
                             //CALCULATE THE TAU
                             //CALCULATE THE TRANSITION PROBABILITIES
                             //STORE IT HERE
                             
-                            if (observationNo != 0u) {
+                            if (observationPair != 0u) {
                                 hostLink.store(boardX, boardY, coreID, 1u, same0UPtr);
                                 hostLink.store(boardX, boardY, coreID, 1u, diff0UPtr);
                             }
@@ -265,8 +273,9 @@ int main()
                         }
                         else {
                             hostLink.store(boardX, boardY, coreID, 1u, &columnKey[(boardX * TinselMailboxMeshXLen) + mailboxX][boardY][1u]);
+                            hostLink.store(boardX, boardY, coreID, 1u, &match);
                             //printf("ThreadID: %X, Key: %X\n", threadID, columnKey[(boardX * TinselMailboxMeshXLen) + mailboxX][boardY][1u]);
-                            //printf("Observation No = %d\n", observationNo + 1u);
+                            //printf("Observation No = %d\n", observationPair + 1u);
                             
                             //CALCULATE THE TAU
                             //CALCULATE THE TRANSITION PROBABILITIES
@@ -282,6 +291,15 @@ int main()
                     coreID++;
                     
                     for (mailboxLocalThreadID = 16u; mailboxLocalThreadID < 32u; mailboxLocalThreadID++) {
+                        
+                        uint32_t observationNo = getObservationNumber(boardX, mailboxX, mailboxLocalThreadID);
+                        uint32_t stateNo = getStateNumber(boardY, mailboxY, mailboxLocalThreadID);
+                        uint32_t match = 0u;
+                        
+                        // if markers match
+                        if (hmm_labels[stateNo][observationNo] == observation[observationNo][1]) {
+                            match = 1u;
+                        }
                     
                         // Construct ThreadID
                         threadID = boardY;
@@ -296,8 +314,9 @@ int main()
                         
                         if (mailboxLocalThreadID < 24u ) {
                             hostLink.store(boardX, boardY, coreID, 1u, &columnKey[(boardX * TinselMailboxMeshXLen) + mailboxX][boardY][0u]);
+                            hostLink.store(boardX, boardY, coreID, 1u, &match);
                             //printf("ThreadID: %X, Key: %X\n", threadID, columnKey[(boardX * TinselMailboxMeshXLen) + mailboxX][boardY][0u]);
-                            //printf("Observation No = %d\n", observationNo);
+                            //printf("Observation No = %d\n", observationPair);
                             //CALCULATE THE TAU
                             //CALCULATE THE TRANSITION PROBABILITIES
                             //STORE IT HERE
@@ -306,8 +325,9 @@ int main()
                         }
                         else {
                             hostLink.store(boardX, boardY, coreID, 1u, &columnKey[(boardX * TinselMailboxMeshXLen) + mailboxX][boardY][1u]);
+                            hostLink.store(boardX, boardY, coreID, 1u, &match);
                             //printf("ThreadID: %X, Key: %X\n", threadID, columnKey[(boardX * TinselMailboxMeshXLen) + mailboxX][boardY][1u]);
-                            //printf("Observation No = %d\n", observationNo + 1u);
+                            //printf("Observation No = %d\n", observationPair + 1u);
                             //CALCULATE THE TAU
                             //CALCULATE THE TRANSITION PROBABILITIES
                             //STORE IT HERE
@@ -413,7 +433,7 @@ int main()
         //hostLink.recv(msg);
         hostLink.recvMsg(&msg, sizeof(msg));
         //printf("ThreadID: %X LocalID: %d Row: %d MailboxX: %d MailboxY: %d BoardX: %d BoardY: %d Message: %d\n", msg[0], msg[1], msg[2], msg[3], msg[4], msg[5], msg[6], msg[7]);
-        printf("Observation: %d has returned value: %.10f\n", msg.threadID, msg.val);
+        printf("State No: %d has returned matched: %d\n", msg.threadID, msg.val);
     }
     
 #ifdef PRINTDEBUG    

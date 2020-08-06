@@ -26,7 +26,7 @@ typedef struct {
     // threadID
     uint32_t threadID;
     // float value
-    float val;
+    uint32_t val;
     
 } ImpMessage;
 
@@ -57,9 +57,22 @@ INLINE uint32_t getObservationNumber(uint8_t boardX, uint8_t mailboxX, uint8_t l
 }
 
 // Get globally unique thread id of caller
-INLINE uint32_t getStateNumber()
+INLINE uint32_t getStateNumber(uint8_t boardY, uint8_t mailboxY, uint8_t localThreadID)
 {
 
+    uint8_t threadY;
+    uint32_t stateNo;
+    
+    if (localThreadID < 16u) {
+        threadY = localThreadID % 8u;
+    }
+    else {
+        threadY = 8u + (localThreadID % 8u);
+    }
+                            
+    stateNo = (((TinselMeshYLenWithinBox - 1u) - boardY) * (TinselMailboxMeshYLen) * ((TinselThreadsPerMailbox/2u)/2u)) 
+                     + (((TinselMailboxMeshYLen - 1u) - mailboxY) * ((TinselThreadsPerMailbox/2u)/2u))
+                     + threadY;
     
     return stateNo;
 }

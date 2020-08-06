@@ -17,39 +17,24 @@ int main()
 * Node Initialisation
 * ***************************************************/
     uint32_t me = tinselId();
-    uint8_t row = 0u;
-    
     uint8_t localThreadID = me % (1 << TinselLogThreadsPerMailbox);
     
-    if (((localThreadID >= 8u) && (localThreadID <= 15)) || ((localThreadID >= 24u) && (localThreadID <= 31))) {
-        row = 1u;
-    }
-    
+    // Derived Values
     uint8_t mailboxX = (me >> TinselLogThreadsPerMailbox) % (1 << TinselMailboxMeshXBits);
     uint8_t mailboxY = (me >> (TinselLogThreadsPerMailbox + TinselMailboxMeshXBits)) % (1 << TinselMailboxMeshYBits);
     uint8_t boardX = (me >> (TinselLogThreadsPerMailbox + TinselMailboxMeshXBits + TinselMailboxMeshYBits)) % (1 << TinselMeshXBits);
     uint8_t boardY = (me >> (TinselLogThreadsPerMailbox + TinselMailboxMeshXBits + TinselMailboxMeshYBits + TinselMeshXBits)) % (1 << TinselMeshYBits);
     
-    uint8_t threadY;
-    if (localThreadID < 16u) {
-        threadY = localThreadID % 8u;
-    }
-    else {
-        threadY = 8u + (localThreadID % 8u);
-    }
-                            
-    uint32_t stateNo = (((TinselMeshYLenWithinBox - 1u) - boardY) * (TinselMailboxMeshYLen) * ((TinselThreadsPerMailbox/2u)/2u)) 
-                     + (((TinselMailboxMeshYLen - 1u) - mailboxY) * ((TinselThreadsPerMailbox/2u)/2u))
-                     + threadY;
-    
-    //uint32_t observationNo = (boardX * (TinselMailboxMeshXLen) * ((TinselThreadsPerMailbox/2u)/16u)) + (mailboxX * ((TinselThreadsPerMailbox/2u)/16u)) + row; 
+    // Model location values
+    uint32_t stateNo = getStateNumber(boardY, mailboxY, localThreadID);
     uint32_t observationNo = getObservationNumber(boardX, mailboxX, localThreadID);
     
+    // Received values
     uint32_t* baseAddress = tinselHeapBase();
     uint32_t key = *baseAddress;
-    
-    float same = *(float*)(baseAddress + 1u);
-    float diff = *(float*)(baseAddress + 2u);
+    uint32_t match = *(baseAddress + 1u);
+    float same = *(float*)(baseAddress + 2u);
+    float diff = *(float*)(baseAddress + 3u);
     
 /*****************************************************
 * Node Functionality
@@ -80,8 +65,8 @@ int main()
         tinselWaitUntil(TINSEL_CAN_RECV);
         volatile int* msgIn = tinselRecv();
         tinselWaitUntil(TINSEL_CAN_SEND);
-        msgOut->threadID = observationNo;
-        msgOut->val = diff;
+        msgOut->threadID = stateNo;
+        msgOut->val = match;
         tinselFree(msgIn);
         tinselSend(host, msgOut);
     
