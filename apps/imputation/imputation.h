@@ -23,10 +23,9 @@
 
 typedef struct {
     
-    // threadID
-    uint32_t observationNo;
+    // stateNo
     uint32_t stateNo;
-    // float value
+    // alpha
     float alpha;
     
 } ImpMessage;
@@ -37,6 +36,8 @@ typedef struct {
     uint32_t observationNo;
     // State Number
     uint32_t stateNo;
+    // alpha
+    float alpha;
     
 } HostMessage;
 

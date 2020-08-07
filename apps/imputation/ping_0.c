@@ -8,7 +8,7 @@
  * ***************************************************
  * This code performs the stephens and li model for imputation
  * 
- * USE ARRAYS FOR MATCH / ALPHAS TO PUSH THE PROCESSING TO MESSAGE TIME IN FAVOUR OF POETS
+ * USE ARRAYS FOR match / ALPHAS TO PUSH THE PROCESSING TO MESSAGE TIME IN FAVOUR OF POETS
  * ****************************************************/
  
 #define NULL 0
@@ -36,8 +36,8 @@ int main()
     uint32_t fwdKey = *baseAddress;
     uint32_t bwdKey = *(baseAddress + 1u);
     uint32_t match = *(baseAddress + 2u);
-    float same = *(float*)(baseAddress + 3u);
-    float diff = *(float*)(baseAddress + 4u);
+    float fwdSame = *(float*)(baseAddress + 3u);
+    float fwdDiff = *(float*)(baseAddress + 4u);
     
 /*****************************************************
 * Node Functionality
@@ -47,12 +47,11 @@ int main()
     // Get host id
     int host = tinselHostId();
     
-    // Get pointers to mailbox message slot
-    volatile ImpMessage* msgOut = tinselSendSlot();
-    
     if (observationNo == 22u) {
         
-        msgOut->observationNo = observationNo;
+        // Get pointers to mailbox message slot
+        volatile ImpMessage* msgOut = tinselSendSlot();
+        
         msgOut->stateNo = stateNo;
         msgOut->alpha = 69.0f;
         
@@ -64,6 +63,8 @@ int main()
     }
     else if (observationNo == 0u) {
         
+        // Get pointers to mailbox message slot
+        volatile HostMessage* msgOut = tinselSendSlot();
         volatile ImpMessage* msgIn = NULL;
         
         tinselWaitUntil(TINSEL_CAN_RECV);
@@ -81,12 +82,13 @@ int main()
     }
     else {
         
+        // Get pointers to mailbox message slot
+        volatile ImpMessage* msgOut = tinselSendSlot();
         volatile ImpMessage* msgIn = NULL;
         
         tinselWaitUntil(TINSEL_CAN_RECV);
         msgIn = tinselRecv();
         
-        msgOut->observationNo = observationNo;
         msgOut->stateNo = stateNo;
         msgOut->alpha = msgIn->alpha;
         
@@ -138,10 +140,10 @@ int main()
             msgIn = tinselRecv();
             
             if (msgIn->stateNo == stateNo) {
-                alpha += msgIn->alpha * same;
+                alpha += msgIn->alpha * fwdSame;
             }
             else {
-                alpha += msgIn->alpha * diff;
+                alpha += msgIn->alpha * fwdDiff;
             }
             
         }

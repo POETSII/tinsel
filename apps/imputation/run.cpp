@@ -441,7 +441,7 @@ int main()
     // Construct Ping Message
     
     //uint32_t msg[1 << TinselLogWordsPerMsg];
-    ImpMessage msg;
+    HostMessage msg;
     
     /*
     // Send Ping to all threads
