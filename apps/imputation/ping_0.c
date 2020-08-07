@@ -33,10 +33,11 @@ int main()
     
     // Received values
     uint32_t* baseAddress = tinselHeapBase();
-    uint32_t key = *baseAddress;
-    uint32_t match = *(baseAddress + 1u);
-    float same = *(float*)(baseAddress + 2u);
-    float diff = *(float*)(baseAddress + 3u);
+    uint32_t fwdKey = *baseAddress;
+    uint32_t bwdKey = *(baseAddress + 1u);
+    uint32_t match = *(baseAddress + 2u);
+    float same = *(float*)(baseAddress + 3u);
+    float diff = *(float*)(baseAddress + 4u);
     
 /*****************************************************
 * Node Functionality
@@ -49,6 +50,55 @@ int main()
     // Get pointers to mailbox message slot
     volatile ImpMessage* msgOut = tinselSendSlot();
     
+    if (observationNo == 22u) {
+        
+        msgOut->observationNo = observationNo;
+        msgOut->stateNo = stateNo;
+        msgOut->alpha = 69.0f;
+        
+        tinselWaitUntil(TINSEL_CAN_SEND);
+        
+        // Propagate to previous column
+        tinselKeySend(bwdKey, msgOut);
+        
+    }
+    else if (observationNo == 0u) {
+        
+        volatile ImpMessage* msgIn = NULL;
+        
+        tinselWaitUntil(TINSEL_CAN_RECV);
+        msgIn = tinselRecv();
+        
+        msgOut->observationNo = observationNo;
+        msgOut->stateNo = stateNo;
+        msgOut->alpha = msgIn->alpha;
+        
+        tinselWaitUntil(TINSEL_CAN_SEND);
+        
+        // Propagate to previous column
+        tinselSend(host, msgOut);
+        
+    }
+    else {
+        
+        volatile ImpMessage* msgIn = NULL;
+        
+        tinselWaitUntil(TINSEL_CAN_RECV);
+        msgIn = tinselRecv();
+        
+        msgOut->observationNo = observationNo;
+        msgOut->stateNo = stateNo;
+        msgOut->alpha = msgIn->alpha;
+        
+        tinselWaitUntil(TINSEL_CAN_SEND);
+        
+        // Propagate to previous column
+        tinselKeySend(bwdKey, msgOut);
+        
+    }
+    
+    
+    /*
      //If first row
     if (observationNo == 0u) {
         
@@ -70,7 +120,7 @@ int main()
         msgOut->alpha = alpha;
         
         // Propagate to next column
-        tinselKeySend(key, msgOut);
+        tinselKeySend(fwdKey, msgOut);
     
     }
     // If a node in between
@@ -113,7 +163,7 @@ int main()
         // Else send the alpha out to the host
         if (observationNo != 23u) {
             tinselWaitUntil(TINSEL_CAN_SEND);
-            tinselKeySend(key, msgOut);
+            tinselKeySend(fwdKey, msgOut);
         }
         
         tinselFree(msgIn);
@@ -121,7 +171,7 @@ int main()
     
     tinselWaitUntil(TINSEL_CAN_SEND);
     tinselSend(host, msgOut);
-
+    */
   return 0;
 }
 

@@ -82,12 +82,15 @@ int main()
     
     // Array to store keys
     
-    uint32_t columnKey[XKEYS][YKEYS][ROWSPERCORE] = {0u};
+    uint32_t fwdColumnKey[XKEYS][YKEYS][ROWSPERCORE] = {0u};
+    uint32_t bwdColumnKey[XKEYS][YKEYS][ROWSPERCORE] = {0u};
     
     PRoutingDest dest;
     PRoutingDestMRM mrmRecord;
-    Seq<PRoutingDest> destsRow0;
-    Seq<PRoutingDest> destsRow1;
+    Seq<PRoutingDest> fwdDestsRow0;
+    Seq<PRoutingDest> fwdDestsRow1;
+    Seq<PRoutingDest> bwdDestsRow0;
+    Seq<PRoutingDest> bwdDestsRow1;
     
     dest.kind = PRDestKindMRM;
     
@@ -107,7 +110,8 @@ int main()
             for (boardY = 0u; boardY < TinselMeshYLenWithinBox; boardY++) {
                 for (destBoardY = 0u; destBoardY < TinselMeshYLenWithinBox; destBoardY++) {
                     for (mailboxY = 0u; mailboxY < TinselMailboxMeshYLen; mailboxY++) {
-                                                                                    
+                              
+                        // FORWARD KEYS
                         // Construct destination the mailbox
                         dest.mbox = destBoardY;
                         dest.mbox = (dest.mbox << TinselMeshXBits) + boardX;
@@ -118,12 +122,9 @@ int main()
                         mrmRecord.threadMaskLow = row1;
                         mrmRecord.threadMaskHigh = 0u;
                         dest.mrm = mrmRecord;
-#ifdef PRINTDEBUG                        
-                        if ((mailboxX == 0u) && (boardX == 0u) && (boardY == 0u)) {
-                            printf("BoardX: %d BoardY: %d mailboxX: %d mailboxY: %d threads: %X added to key 1\n", boardX, destBoardY, mailboxX, mailboxY, row1);
-                        }
-#endif                        
-                        destsRow1.append(dest);                       
+                        
+                        fwdDestsRow1.append(dest);   
+                    
                         // Do not include last row
                         if (!((mailboxX == TinselMailboxMeshXLen - 1u) && (boardX == TinselMeshXLenWithinBox - 1u))) {                            
                             
@@ -149,24 +150,80 @@ int main()
                             dest.mrm = mrmRecord;
                             
                             // Append this information into the destination sequence
-                            destsRow0.append(dest);
+                            fwdDestsRow0.append(dest);
                         
                         }
-                    
+                        
+                        // BACKWARD KEYS
+                        // Construct destination the mailbox
+                        dest.mbox = destBoardY;
+                        dest.mbox = (dest.mbox << TinselMeshXBits) + boardX;
+                        dest.mbox = (dest.mbox << TinselMailboxMeshYBits) + mailboxY;
+                        dest.mbox = (dest.mbox << TinselMailboxMeshXBits) + mailboxX;
+                        
+                        // Construct destination threads for row 0
+                        mrmRecord.threadMaskLow = row0;
+                        mrmRecord.threadMaskHigh = 0u;
+                        dest.mrm = mrmRecord;
+                        
+                        bwdDestsRow0.append(dest);
+                        
+                        // Do not include first row
+                        if (!((mailboxX == 0u) && (boardX == 0u))) {                            
+                            
+                            // Construct destination the mailbox
+                            
+                            // If the mailbox is the first in the x-axis for the current board
+                            if (mailboxX == 0u) {
+                                dest.mbox = destBoardY;
+                                dest.mbox = (dest.mbox << TinselMeshXBits) + boardX - 1u;
+                                dest.mbox = (dest.mbox << TinselMailboxMeshYBits) + mailboxY;
+                                dest.mbox = (dest.mbox << TinselMailboxMeshXBits) + (TinselMailboxMeshXLen - 1u);
+                            }
+                            else {
+                                dest.mbox = destBoardY;
+                                dest.mbox = (dest.mbox << TinselMeshXBits) + boardX;
+                                dest.mbox = (dest.mbox << TinselMailboxMeshYBits) + mailboxY;
+                                dest.mbox = (dest.mbox << TinselMailboxMeshXBits) + (mailboxX - 1u);                                   
+                            }
+                            
+                            // Construct destination threads for row 1
+                            mrmRecord.threadMaskLow = row1;
+                            mrmRecord.threadMaskHigh = 0u;
+                            dest.mrm = mrmRecord;
+                            
+                            // Append this information into the destination sequence
+                            bwdDestsRow1.append(dest);
+                        
+                        }
                     }
                 }
                 
-                // Create key row0 -> row1
-                columnKey[(boardX * TinselMailboxMeshXLen) + mailboxX][boardY][0u] = progRouterMesh.addDestsFromBoardXY(boardX, boardY, &destsRow1);
+                // Create forward key row0 -> row1
+                fwdColumnKey[(boardX * TinselMailboxMeshXLen) + mailboxX][boardY][0u] = progRouterMesh.addDestsFromBoardXY(boardX, boardY, &fwdDestsRow1);
                 
-                destsRow1.clear();
+                fwdDestsRow1.clear();
                 
+                // Create forward key row1 -> row0 next mailbox
                 if (!((mailboxX == TinselMailboxMeshXLen - 1u) && (boardX == TinselMeshXLenWithinBox - 1u))) {
                     // Create key row1 -> row0 next mailbox
-                    columnKey[(boardX * TinselMailboxMeshXLen) + mailboxX][boardY][1u] = progRouterMesh.addDestsFromBoardXY(boardX, boardY, &destsRow0);
+                    fwdColumnKey[(boardX * TinselMailboxMeshXLen) + mailboxX][boardY][1u] = progRouterMesh.addDestsFromBoardXY(boardX, boardY, &fwdDestsRow0);
                 }
                 
-                destsRow0.clear();
+                fwdDestsRow0.clear();
+                
+                // Create backward key row1 -> row0
+                bwdColumnKey[(boardX * TinselMailboxMeshXLen) + mailboxX][boardY][1u] = progRouterMesh.addDestsFromBoardXY(boardX, boardY, &bwdDestsRow0);
+                
+                bwdDestsRow0.clear();
+                
+                // Create backward key row0 -> row1 previous mailbox
+                if (!((mailboxX == 0u) && (boardX == 0u))) {
+                    // Create key row1 -> row0 previous mailbox
+                    bwdColumnKey[(boardX * TinselMailboxMeshXLen) + mailboxX][boardY][0u] = progRouterMesh.addDestsFromBoardXY(boardX, boardY, &bwdDestsRow1);
+                }
+                
+                bwdDestsRow1.clear();
             
             }
             
@@ -256,9 +313,10 @@ int main()
                         hostLink.setAddr(boardX, boardY, coreID, baseAddress);
                         
                         if (mailboxLocalThreadID < 8u ) {
-                            hostLink.store(boardX, boardY, coreID, 1u, &columnKey[(boardX * TinselMailboxMeshXLen) + mailboxX][boardY][0u]);
+                            hostLink.store(boardX, boardY, coreID, 1u, &fwdColumnKey[(boardX * TinselMailboxMeshXLen) + mailboxX][boardY][0u]);
+                            hostLink.store(boardX, boardY, coreID, 1u, &bwdColumnKey[(boardX * TinselMailboxMeshXLen) + mailboxX][boardY][0u]);
                             hostLink.store(boardX, boardY, coreID, 1u, &match);
-                            //printf("ThreadID: %X, Key: %X\n", threadID, columnKey[(boardX * TinselMailboxMeshXLen) + mailboxX][boardY][0u]);
+                            //printf("ThreadID: %X, Key: %X\n", threadID, fwdColumnKey[(boardX * TinselMailboxMeshXLen) + mailboxX][boardY][0u]);
                             //printf("Observation No = %d\n", observationPair);
                             
                             //CALCULATE THE TAU
@@ -272,9 +330,10 @@ int main()
                             
                         }
                         else {
-                            hostLink.store(boardX, boardY, coreID, 1u, &columnKey[(boardX * TinselMailboxMeshXLen) + mailboxX][boardY][1u]);
+                            hostLink.store(boardX, boardY, coreID, 1u, &fwdColumnKey[(boardX * TinselMailboxMeshXLen) + mailboxX][boardY][1u]);
+                            hostLink.store(boardX, boardY, coreID, 1u, &bwdColumnKey[(boardX * TinselMailboxMeshXLen) + mailboxX][boardY][1u]);
                             hostLink.store(boardX, boardY, coreID, 1u, &match);
-                            //printf("ThreadID: %X, Key: %X\n", threadID, columnKey[(boardX * TinselMailboxMeshXLen) + mailboxX][boardY][1u]);
+                            //printf("ThreadID: %X, Key: %X\n", threadID, fwdColumnKey[(boardX * TinselMailboxMeshXLen) + mailboxX][boardY][1u]);
                             //printf("Observation No = %d\n", observationPair + 1u);
                             
                             //CALCULATE THE TAU
@@ -313,9 +372,10 @@ int main()
                         hostLink.setAddr(boardX, boardY, coreID, baseAddress);
                         
                         if (mailboxLocalThreadID < 24u ) {
-                            hostLink.store(boardX, boardY, coreID, 1u, &columnKey[(boardX * TinselMailboxMeshXLen) + mailboxX][boardY][0u]);
+                            hostLink.store(boardX, boardY, coreID, 1u, &fwdColumnKey[(boardX * TinselMailboxMeshXLen) + mailboxX][boardY][0u]);
+                            hostLink.store(boardX, boardY, coreID, 1u, &bwdColumnKey[(boardX * TinselMailboxMeshXLen) + mailboxX][boardY][0u]);
                             hostLink.store(boardX, boardY, coreID, 1u, &match);
-                            //printf("ThreadID: %X, Key: %X\n", threadID, columnKey[(boardX * TinselMailboxMeshXLen) + mailboxX][boardY][0u]);
+                            //printf("ThreadID: %X, Key: %X\n", threadID, fwdColumnKey[(boardX * TinselMailboxMeshXLen) + mailboxX][boardY][0u]);
                             //printf("Observation No = %d\n", observationPair);
                             //CALCULATE THE TAU
                             //CALCULATE THE TRANSITION PROBABILITIES
@@ -324,9 +384,10 @@ int main()
                             hostLink.store(boardX, boardY, coreID, 1u, diff0UPtr);
                         }
                         else {
-                            hostLink.store(boardX, boardY, coreID, 1u, &columnKey[(boardX * TinselMailboxMeshXLen) + mailboxX][boardY][1u]);
+                            hostLink.store(boardX, boardY, coreID, 1u, &fwdColumnKey[(boardX * TinselMailboxMeshXLen) + mailboxX][boardY][1u]);
+                            hostLink.store(boardX, boardY, coreID, 1u, &bwdColumnKey[(boardX * TinselMailboxMeshXLen) + mailboxX][boardY][1u]);
                             hostLink.store(boardX, boardY, coreID, 1u, &match);
-                            //printf("ThreadID: %X, Key: %X\n", threadID, columnKey[(boardX * TinselMailboxMeshXLen) + mailboxX][boardY][1u]);
+                            //printf("ThreadID: %X, Key: %X\n", threadID, fwdColumnKey[(boardX * TinselMailboxMeshXLen) + mailboxX][boardY][1u]);
                             //printf("Observation No = %d\n", observationPair + 1u);
                             //CALCULATE THE TAU
                             //CALCULATE THE TRANSITION PROBABILITIES
@@ -428,6 +489,7 @@ int main()
     
     uint32_t x = 0u;
     uint32_t y = 0u;
+    /*
     float result[NOOFSTATES][NOOFOBS] = {0.0f};
     
     for (x = 0u; x < NOOFSTATES; x++) {
@@ -445,25 +507,41 @@ int main()
             printf("%.3e ", result[y][x]);
         }
         printf("\n");
+    }*/
+    
+    float result[NOOFSTATES];
+
+    for (y = 0u; y < NOOFSTATES; y++) {
+        //hostLink.recv(msg);
+        hostLink.recvMsg(&msg, sizeof(msg));
+        //printf("ThreadID: %X LocalID: %d Row: %d MailboxX: %d MailboxY: %d BoardX: %d BoardY: %d Message: %d\n", msg[0], msg[1], msg[2], msg[3], msg[4], msg[5], msg[6], msg[7]);
+        //printf("State No: %d has returned alpha: %0.10f\n", msg.observationNo, msg.alpha);
+        result[msg.stateNo] = msg.alpha;
     }
     
-#ifdef PRINTDEBUG    
+    for (y = 0u; y < NOOFSTATES; y++) {
+        printf("%.3e\n", result[y]);
+    }
+    
+    
+    
+//#ifdef PRINTDEBUG    
     printf("\nKeys. Two per column as there are two source Y board in a box. The last key is not used:\n\n");
     
     for (y = 0u; y < YKEYS; y++) {
         for (x = 0u; x < XKEYS; x++) {
             
             if (x != XKEYS-1) {
-                printf("%X, ", columnKey[x][y][0]);
-                printf("%X, ", columnKey[x][y][1]);
+                printf("%X, ", bwdColumnKey[x][y][0]);
+                printf("%X, ", bwdColumnKey[x][y][1]);
             }
             else {
-                printf("%X, ", columnKey[x][y][0]);
-                printf("%X\n", columnKey[x][y][1]);
+                printf("%X, ", bwdColumnKey[x][y][0]);
+                printf("%X\n", bwdColumnKey[x][y][1]);
             }
             
         }
     }
-#endif    
+//#endif    
     return 0;
 }
