@@ -7,6 +7,8 @@
  * Hidden Markov Model Node
  * ***************************************************
  * This code performs the stephens and li model for imputation
+ * 
+ * USE ARRAYS FOR MATCH / ALPHAS TO PUSH THE PROCESSING TO MESSAGE TIME IN FAVOUR OF POETS
  * ****************************************************/
  
 #define NULL 0
@@ -49,46 +51,76 @@ int main()
     
      //If first row
     if (observationNo == 0u) {
-
-        //tinselWaitUntil(TINSEL_CAN_RECV);
-        //volatile int* msgIn = tinselRecv();
+        
+        // Calculate initial probability
+        float alpha = 1.0f / NOOFSTATES;
+        
+        // Multiply alpha by emission probability
+        if (match == 1u) {
+            alpha = alpha * (1.0f - (1.0f / ERRORRATE));
+        }
+        else {
+            alpha = alpha * (1.0f / ERRORRATE);
+        }
+        
+        // Prepare message to send
         tinselWaitUntil(TINSEL_CAN_SEND);
-        msgOut->threadID = observationNo;
-        //tinselFree(msgIn);
+        msgOut->observationNo = observationNo;
+        msgOut->stateNo = stateNo;
+        msgOut->alpha = alpha;
+        
+        // Propagate to next column
         tinselKeySend(key, msgOut);
-        //tinselSend(host, msgOut);
-    
-    }
-    // If last row
-    else if (observationNo == 23u) {
-
-        tinselWaitUntil(TINSEL_CAN_RECV);
-        volatile int* msgIn = tinselRecv();
-        tinselWaitUntil(TINSEL_CAN_SEND);
-        msgOut->threadID = stateNo;
-        msgOut->val = match;
-        tinselFree(msgIn);
-        tinselSend(host, msgOut);
     
     }
     // If a node in between
     else {
         
         uint8_t recCnt = 0u;
+        float alpha = 0.0f;
         
-        volatile int* msgIn = NULL;
+        
+        // Accumulate Alpha
+        volatile ImpMessage* msgIn = NULL;
         
         for (recCnt = 0u; recCnt < 128u; recCnt++) {
             tinselWaitUntil(TINSEL_CAN_RECV);
             msgIn = tinselRecv();
+            
+            if (msgIn->stateNo == stateNo) {
+                alpha += msgIn->alpha * same;
+            }
+            else {
+                alpha += msgIn->alpha * diff;
+            }
+            
         }
         
-        tinselWaitUntil(TINSEL_CAN_SEND);
-        msgOut->threadID = me;
-        tinselFree(msgIn);
-        tinselKeySend(key, msgOut);
+        // Multiply Alpha by Emission Probability
+        if (match == 1u) {
+            alpha = alpha * (1.0f - (1.0f / ERRORRATE));
+        }
+        else {
+            alpha = alpha * (1.0f / ERRORRATE);
+        }
         
+        // Prepare the alphas for sending
+        msgOut->observationNo = observationNo;
+        msgOut->stateNo = stateNo;
+        msgOut->alpha = alpha;
+        
+        // If we are an intermediate node propagate the alpha to the next column
+        // Else send the alpha out to the host
+        if (observationNo != 23u) {
+            tinselWaitUntil(TINSEL_CAN_SEND);
+            tinselKeySend(key, msgOut);
+        }
+        
+        tinselFree(msgIn);
     }
+    
+    tinselWaitUntil(TINSEL_CAN_SEND);
+    tinselSend(host, msgOut);
 
   return 0;
 }

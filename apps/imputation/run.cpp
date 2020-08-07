@@ -204,8 +204,8 @@ int main()
                     if (observationPair != 0u) {
                         
                         tau_m0 = (1 - exp((-4 * NE * dm[observationPair - 1u]) / NOOFSTATES));
-                        same0 = tau_m0 / NOOFSTATES;
-                        diff0 = (1 - tau_m0) + (tau_m0 / NOOFSTATES);
+                        same0 = (1 - tau_m0) + (tau_m0 / NOOFSTATES);
+                        diff0 = tau_m0 / NOOFSTATES;
 
                         same0Ptr = &same0;
                         diff0Ptr = &diff0;
@@ -219,8 +219,8 @@ int main()
                     }
                     
                     float tau_m1 = (1 - exp((-4 * NE * dm[observationPair]) / NOOFSTATES));
-                    float same1 = tau_m1 / NOOFSTATES;
-                    float diff1 = (1 - tau_m1) + (tau_m1 / NOOFSTATES);
+                    float same1 = (1 - tau_m1) + (tau_m1 / NOOFSTATES);
+                    float diff1 = tau_m1 / NOOFSTATES;
                     
                     float* same1Ptr = &same1;
                     float* diff1Ptr = &diff1;
@@ -428,12 +428,23 @@ int main()
     
     uint32_t x = 0u;
     uint32_t y = 0u;
+    float result[NOOFSTATES][NOOFOBS] = {0.0f};
     
-    for (x = 0u; x < 128u; x++) {
-        //hostLink.recv(msg);
-        hostLink.recvMsg(&msg, sizeof(msg));
-        //printf("ThreadID: %X LocalID: %d Row: %d MailboxX: %d MailboxY: %d BoardX: %d BoardY: %d Message: %d\n", msg[0], msg[1], msg[2], msg[3], msg[4], msg[5], msg[6], msg[7]);
-        printf("State No: %d has returned matched: %d\n", msg.threadID, msg.val);
+    for (x = 0u; x < NOOFSTATES; x++) {
+        for (y = 0u; y < NOOFOBS; y++) {
+            //hostLink.recv(msg);
+            hostLink.recvMsg(&msg, sizeof(msg));
+            //printf("ThreadID: %X LocalID: %d Row: %d MailboxX: %d MailboxY: %d BoardX: %d BoardY: %d Message: %d\n", msg[0], msg[1], msg[2], msg[3], msg[4], msg[5], msg[6], msg[7]);
+            //printf("State No: %d has returned alpha: %0.10f\n", msg.observationNo, msg.alpha);
+            result[msg.stateNo][msg.observationNo] = msg.alpha;
+        }
+    }
+    
+    for (y = 0u; y < NOOFSTATES; y++) {
+        for (x = 0u; x < NOOFOBS; x++) {
+            printf("%.3e ", result[y][x]);
+        }
+        printf("\n");
     }
     
 #ifdef PRINTDEBUG    
