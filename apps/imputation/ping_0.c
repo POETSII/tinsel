@@ -47,12 +47,14 @@ int main()
     // Get host id
     int host = tinselHostId();
     
-    float beta = 1.0f;
+    float beta = 0.0f;
     
     // Get pointers to mailbox message slot
     volatile ImpMessage* msgOut = tinselSendSlot();
     
     if (observationNo == 23u) {
+        
+        beta = 1.0f;
         
         msgOut->observationNo = observationNo;
         msgOut->stateNo = stateNo;
@@ -64,39 +66,45 @@ int main()
         tinselKeySend(bwdKey, msgOut);
         
     }
-    else if (observationNo == 0u) {
-        
-        volatile ImpMessage* msgIn = NULL;
-        
-        tinselWaitUntil(TINSEL_CAN_RECV);
-        msgIn = tinselRecv();
-        
-        msgOut->observationNo = observationNo;
-        msgOut->stateNo = stateNo;
-        msgOut->val = msgIn->val;
-        
-        tinselWaitUntil(TINSEL_CAN_SEND);
-        
-        // Propagate to previous column
-        tinselSend(host, msgOut);
-        
-    }
     else {
         
         volatile ImpMessage* msgIn = NULL;
         
-        tinselWaitUntil(TINSEL_CAN_RECV);
-        msgIn = tinselRecv();
+        //tinselWaitUntil(TINSEL_CAN_RECV);
+        //msgIn = tinselRecv();
+        
+        uint8_t recCnt = 0u;
+        
+        for (recCnt = 0u; recCnt < 128u; recCnt++) {
+            tinselWaitUntil(TINSEL_CAN_RECV);
+            msgIn = tinselRecv();
+            
+            if (msgIn->stateNo == stateNo) {
+                //beta += msgIn->value * bwdSame * emission_prob;
+                beta += msgIn->val * bwdSame;
+            }
+            else {
+                //beta += msgIn->value * bwdDiff * emission_prob;
+                beta += msgIn->val * bwdDiff;
+            }
+            
+        }
         
         msgOut->observationNo = observationNo;
         msgOut->stateNo = stateNo;
-        msgOut->val = msgIn->val;
+        msgOut->val = beta;
         
         tinselWaitUntil(TINSEL_CAN_SEND);
         
-        // Propagate to previous column
-        tinselKeySend(bwdKey, msgOut);
-        
+        if (observationNo != 0u) {
+            // Propagate to previous column
+            tinselKeySend(bwdKey, msgOut);
+        }
+        else {
+            tinselSend(host, msgOut);
+        }
+
+        tinselFree(msgIn);
     }
     
     
