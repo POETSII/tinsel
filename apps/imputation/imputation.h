@@ -19,6 +19,8 @@
 #define NE (1000000)
 #define ERRORRATE (10000)
 
+#define NULL 0
+
 // Message Structures
 
 typedef struct {
@@ -27,7 +29,7 @@ typedef struct {
     uint32_t observationNo;
     uint32_t stateNo;
     // float value
-    float alpha;
+    float val;
     
 } ImpMessage;
 

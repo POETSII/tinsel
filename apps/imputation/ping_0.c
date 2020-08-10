@@ -10,8 +10,6 @@
  * 
  * USE ARRAYS FOR MATCH / ALPHAS TO PUSH THE PROCESSING TO MESSAGE TIME IN FAVOUR OF POETS
  * ****************************************************/
- 
-#define NULL 0
 
 int main()
 {
@@ -36,8 +34,10 @@ int main()
     uint32_t fwdKey = *baseAddress;
     uint32_t bwdKey = *(baseAddress + 1u);
     uint32_t match = *(baseAddress + 2u);
-    float same = *(float*)(baseAddress + 3u);
-    float diff = *(float*)(baseAddress + 4u);
+    float fwdSame = *(float*)(baseAddress + 3u);
+    float fwdDiff = *(float*)(baseAddress + 4u);
+    float bwdSame = *(float*)(baseAddress + 5u);
+    float bwdDiff = *(float*)(baseAddress + 6u);
     
 /*****************************************************
 * Node Functionality
@@ -50,11 +50,11 @@ int main()
     // Get pointers to mailbox message slot
     volatile ImpMessage* msgOut = tinselSendSlot();
     
-    if (observationNo == 22u) {
+    if (observationNo == 23u) {
         
         msgOut->observationNo = observationNo;
         msgOut->stateNo = stateNo;
-        msgOut->alpha = 69.0f;
+        msgOut->val = bwdDiff;
         
         tinselWaitUntil(TINSEL_CAN_SEND);
         
@@ -71,7 +71,7 @@ int main()
         
         msgOut->observationNo = observationNo;
         msgOut->stateNo = stateNo;
-        msgOut->alpha = msgIn->alpha;
+        msgOut->val = msgIn->val;
         
         tinselWaitUntil(TINSEL_CAN_SEND);
         
@@ -88,7 +88,7 @@ int main()
         
         msgOut->observationNo = observationNo;
         msgOut->stateNo = stateNo;
-        msgOut->alpha = msgIn->alpha;
+        msgOut->val = msgIn->val;
         
         tinselWaitUntil(TINSEL_CAN_SEND);
         

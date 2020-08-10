@@ -247,15 +247,15 @@ int main()
                     
                     // Transition probabilites for same and different haplotypes for both observations
                     
-                    float tau_m0;
-                    float same0;
-                    float diff0;
+                    float tau_m0 = 0u;
+                    float same0 = 0u;
+                    float diff0 = 0u;
                     
-                    float* same0Ptr;
-                    float* diff0Ptr;
+                    float* same0Ptr = &same0;
+                    float* diff0Ptr = &diff0;
                     
-                    uint32_t* same0UPtr;
-                    uint32_t* diff0UPtr;
+                    uint32_t* same0UPtr = (uint32_t*) same0Ptr;
+                    uint32_t* diff0UPtr = (uint32_t*) diff0Ptr;
                     
                     // Tau M Values
                     if (observationPair != 0u) {
@@ -263,12 +263,6 @@ int main()
                         tau_m0 = (1 - exp((-4 * NE * dm[observationPair - 1u]) / NOOFSTATES));
                         same0 = (1 - tau_m0) + (tau_m0 / NOOFSTATES);
                         diff0 = tau_m0 / NOOFSTATES;
-
-                        same0Ptr = &same0;
-                        diff0Ptr = &diff0;
-                        
-                        same0UPtr = (uint32_t*) same0Ptr;
-                        diff0UPtr = (uint32_t*) diff0Ptr;
                         
                         //printf("same trans prob = %.10f\n", *(float*)same0UPtr);
                         //printf("diff trans prob = %f\n", *(float*)diff0UPtr);
@@ -284,6 +278,28 @@ int main()
                     
                     uint32_t* same1UPtr = (uint32_t*) same1Ptr;
                     uint32_t* diff1UPtr = (uint32_t*) diff1Ptr;
+                    
+                    float tau_m2 = 0u;
+                    float same2 = 0u;
+                    float diff2 = 0u;
+                    
+                    float* same2Ptr = &same2;
+                    float* diff2Ptr = &diff2;
+                    
+                    uint32_t* same2UPtr = (uint32_t*) same2Ptr;
+                    uint32_t* diff2UPtr = (uint32_t*) diff2Ptr;
+                    
+                    // THIS ASSUMES AN EVEN NUMBER OF OBSERVATIONS AND WILL NEED CHANGING IF ODD NUMBERS OF OBSERVATIONS ARE USED
+                    if ((observationPair != (NOOFOBS - 1u))) {
+                        
+                        tau_m2 = (1 - exp((-4 * NE * dm[observationPair + 1u]) / NOOFSTATES));
+                        same2 = (1 - tau_m2) + (tau_m2 / NOOFSTATES);
+                        diff2 = tau_m2 / NOOFSTATES;
+                        
+                        //printf("same trans prob = %.10f\n", *(float*)same2UPtr);
+                        //printf("diff trans prob = %f\n", *(float*)diff2UPtr);
+                        
+                    }
                     
                     for (mailboxLocalThreadID = 0u; mailboxLocalThreadID < 16u; mailboxLocalThreadID++) {
                         
@@ -319,14 +335,13 @@ int main()
                             //printf("ThreadID: %X, Key: %X\n", threadID, fwdColumnKey[(boardX * TinselMailboxMeshXLen) + mailboxX][boardY][0u]);
                             //printf("Observation No = %d\n", observationPair);
                             
-                            //CALCULATE THE TAU
-                            //CALCULATE THE TRANSITION PROBABILITIES
-                            //STORE IT HERE
+                            // Forward transition propbabilties
+                            hostLink.store(boardX, boardY, coreID, 1u, same0UPtr);
+                            hostLink.store(boardX, boardY, coreID, 1u, diff0UPtr);
                             
-                            if (observationPair != 0u) {
-                                hostLink.store(boardX, boardY, coreID, 1u, same0UPtr);
-                                hostLink.store(boardX, boardY, coreID, 1u, diff0UPtr);
-                            }
+                            // Backward Transistion Probabilites
+                            hostLink.store(boardX, boardY, coreID, 1u, same1UPtr);
+                            hostLink.store(boardX, boardY, coreID, 1u, diff1UPtr);                            
                             
                         }
                         else {
@@ -336,12 +351,13 @@ int main()
                             //printf("ThreadID: %X, Key: %X\n", threadID, fwdColumnKey[(boardX * TinselMailboxMeshXLen) + mailboxX][boardY][1u]);
                             //printf("Observation No = %d\n", observationPair + 1u);
                             
-                            //CALCULATE THE TAU
-                            //CALCULATE THE TRANSITION PROBABILITIES
-                            //STORE IT HERE
-                            
+                            // Forward transition propbabilties
                             hostLink.store(boardX, boardY, coreID, 1u, same1UPtr);
                             hostLink.store(boardX, boardY, coreID, 1u, diff1UPtr);
+                            
+                            // Backward Transistion Probabilites
+                            hostLink.store(boardX, boardY, coreID, 1u, same2UPtr);
+                            hostLink.store(boardX, boardY, coreID, 1u, diff2UPtr); 
                         }
                     
                     }
@@ -377,11 +393,14 @@ int main()
                             hostLink.store(boardX, boardY, coreID, 1u, &match);
                             //printf("ThreadID: %X, Key: %X\n", threadID, fwdColumnKey[(boardX * TinselMailboxMeshXLen) + mailboxX][boardY][0u]);
                             //printf("Observation No = %d\n", observationPair);
-                            //CALCULATE THE TAU
-                            //CALCULATE THE TRANSITION PROBABILITIES
-                            //STORE IT HERE
+                            
+                            // Forward transition propbabilties
                             hostLink.store(boardX, boardY, coreID, 1u, same0UPtr);
                             hostLink.store(boardX, boardY, coreID, 1u, diff0UPtr);
+                            
+                            // Backward Transistion Probabilites
+                            hostLink.store(boardX, boardY, coreID, 1u, same1UPtr);
+                            hostLink.store(boardX, boardY, coreID, 1u, diff1UPtr); 
                         }
                         else {
                             hostLink.store(boardX, boardY, coreID, 1u, &fwdColumnKey[(boardX * TinselMailboxMeshXLen) + mailboxX][boardY][1u]);
@@ -389,11 +408,14 @@ int main()
                             hostLink.store(boardX, boardY, coreID, 1u, &match);
                             //printf("ThreadID: %X, Key: %X\n", threadID, fwdColumnKey[(boardX * TinselMailboxMeshXLen) + mailboxX][boardY][1u]);
                             //printf("Observation No = %d\n", observationPair + 1u);
-                            //CALCULATE THE TAU
-                            //CALCULATE THE TRANSITION PROBABILITIES
-                            //STORE IT HERE
+
+                            // Forward transition propbabilties
                             hostLink.store(boardX, boardY, coreID, 1u, same1UPtr);
                             hostLink.store(boardX, boardY, coreID, 1u, diff1UPtr);
+                            
+                            // Backward Transistion Probabilites
+                            hostLink.store(boardX, boardY, coreID, 1u, same2UPtr);
+                            hostLink.store(boardX, boardY, coreID, 1u, diff2UPtr);;
                         }
                     
                     }
@@ -516,7 +538,7 @@ int main()
         hostLink.recvMsg(&msg, sizeof(msg));
         //printf("ThreadID: %X LocalID: %d Row: %d MailboxX: %d MailboxY: %d BoardX: %d BoardY: %d Message: %d\n", msg[0], msg[1], msg[2], msg[3], msg[4], msg[5], msg[6], msg[7]);
         //printf("State No: %d has returned alpha: %0.10f\n", msg.observationNo, msg.alpha);
-        result[msg.stateNo] = msg.alpha;
+        result[msg.stateNo] = msg.val;
     }
     
     for (y = 0u; y < NOOFSTATES; y++) {
