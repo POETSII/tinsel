@@ -47,6 +47,8 @@ int main()
     // Get host id
     int host = tinselHostId();
     
+    float beta = 1.0f;
+    
     // Get pointers to mailbox message slot
     volatile ImpMessage* msgOut = tinselSendSlot();
     
@@ -54,7 +56,7 @@ int main()
         
         msgOut->observationNo = observationNo;
         msgOut->stateNo = stateNo;
-        msgOut->val = bwdDiff;
+        msgOut->val = beta;
         
         tinselWaitUntil(TINSEL_CAN_SEND);
         
