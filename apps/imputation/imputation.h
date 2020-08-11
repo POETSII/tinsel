@@ -25,16 +25,20 @@
 
 typedef struct {
     
-    // threadID
-    uint32_t observationNo;
-    uint32_t stateNo;
-    // float value
+    // Float value
     float val;
+    // If Matched
+    uint32_t match;
+    // State number
+    uint32_t stateNo;
+    
     
 } ImpMessage;
 
 typedef struct {
     
+    // Float value
+    float val;
     // Observation Number
     uint32_t observationNo;
     // State Number

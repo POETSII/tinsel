@@ -56,7 +56,7 @@ int main()
         
         beta = 1.0f;
         
-        msgOut->observationNo = observationNo;
+        msgOut->match = match;
         msgOut->stateNo = stateNo;
         msgOut->val = beta;
         
@@ -70,27 +70,35 @@ int main()
         
         volatile ImpMessage* msgIn = NULL;
         
-        //tinselWaitUntil(TINSEL_CAN_RECV);
-        //msgIn = tinselRecv();
-        
         uint8_t recCnt = 0u;
+        uint8_t mtcCnt = 0u;
+        
+        float emissionProb = 0.0f; 
         
         for (recCnt = 0u; recCnt < 128u; recCnt++) {
             tinselWaitUntil(TINSEL_CAN_RECV);
             msgIn = tinselRecv();
             
-            if (msgIn->stateNo == stateNo) {
-                //beta += msgIn->value * bwdSame * emission_prob;
-                beta += msgIn->val * bwdSame;
+            if (msgIn->match == 1u) {
+                mtcCnt++;
+                emissionProb = (1.0f - (1.0f / ERRORRATE));
             }
             else {
-                //beta += msgIn->value * bwdDiff * emission_prob;
-                beta += msgIn->val * bwdDiff;
+                emissionProb = (1.0f / ERRORRATE);
+            }
+            
+            if (msgIn->stateNo == stateNo) {
+                beta += msgIn->val * bwdSame * emissionProb;
+                //beta += msgIn->val * bwdSame;
+            }
+            else {
+                beta += msgIn->val * bwdDiff * emissionProb;
+                //beta += msgIn->val * bwdDiff;
             }
             
         }
         
-        msgOut->observationNo = observationNo;
+        msgOut->match = match;
         msgOut->stateNo = stateNo;
         msgOut->val = beta;
         
@@ -100,12 +108,19 @@ int main()
             // Propagate to previous column
             tinselKeySend(bwdKey, msgOut);
         }
-        else {
-            tinselSend(host, msgOut);
-        }
 
         tinselFree(msgIn);
     }
+    
+    volatile HostMessage* msgHost = tinselSendSlot();;
+    
+    msgHost->observationNo = observationNo;
+    msgHost->stateNo = stateNo;
+    msgHost->val = beta;
+        
+    tinselWaitUntil(TINSEL_CAN_SEND);
+    
+    tinselSend(host, msgHost);
     
     
     /*

@@ -463,7 +463,7 @@ int main()
     // Construct Ping Message
     
     //uint32_t msg[1 << TinselLogWordsPerMsg];
-    ImpMessage msg;
+    HostMessage msg;
     
     /*
     // Send Ping to all threads
@@ -511,7 +511,7 @@ int main()
     
     uint32_t x = 0u;
     uint32_t y = 0u;
-    /*
+    
     float result[NOOFSTATES][NOOFOBS] = {0.0f};
     
     for (x = 0u; x < NOOFSTATES; x++) {
@@ -520,7 +520,7 @@ int main()
             hostLink.recvMsg(&msg, sizeof(msg));
             //printf("ThreadID: %X LocalID: %d Row: %d MailboxX: %d MailboxY: %d BoardX: %d BoardY: %d Message: %d\n", msg[0], msg[1], msg[2], msg[3], msg[4], msg[5], msg[6], msg[7]);
             //printf("State No: %d has returned alpha: %0.10f\n", msg.observationNo, msg.alpha);
-            result[msg.stateNo][msg.observationNo] = msg.alpha;
+            result[msg.stateNo][msg.observationNo] = msg.val;
         }
     }
     
@@ -529,8 +529,9 @@ int main()
             printf("%.3e ", result[y][x]);
         }
         printf("\n");
-    }*/
+    }
     
+    /*
     float result[NOOFSTATES];
 
     for (y = 0u; y < NOOFSTATES; y++) {
@@ -543,8 +544,9 @@ int main()
     
     for (y = 0u; y < NOOFSTATES; y++) {
         printf("%.3e\n", result[y]);
+        //printf("%d\n", result[y]);
     }
-    
+    */
     
     
 //#ifdef PRINTDEBUG    
