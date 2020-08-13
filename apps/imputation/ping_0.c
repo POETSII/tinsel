@@ -46,87 +46,12 @@ int main()
     
     // Get host id
     int host = tinselHostId();
-    /*
-    
-    float beta = 0.0f;
-    
-    if (observationNo == 23u) {
-      
-        // Get pointers to mailbox message slot
-        volatile ImpMessage* msgOut = tinselSendSlot();
-        
-        beta = 1.0f;
-        
-        tinselWaitUntil(TINSEL_CAN_SEND);
-        msgOut->match = match;
-        msgOut->stateNo = stateNo;
-        msgOut->val = beta;
-        
-        // Propagate to previous column
-        tinselKeySend(bwdKey, msgOut);
-        
-    }
-    else {
-      
-        // Get pointers to mailbox message slot
-        volatile ImpMessage* msgOut = tinselSendSlot();
-        
-        uint8_t recCnt = 0u;
-        uint8_t mtcCnt = 0u;
-        
-        float emissionProb = 0.0f; 
-        
-        for (recCnt = 0u; recCnt < 128u; recCnt++) {
-            
-            tinselWaitUntil(TINSEL_CAN_RECV);
-            volatile ImpMessage* msgIn = tinselRecv();
-            
-            if (msgIn->match == 1u) {
-                mtcCnt++;
-                emissionProb = (1.0f - (1.0f / ERRORRATE));
-            }
-            else {
-                emissionProb = (1.0f / ERRORRATE);
-            }
-            
-            if (msgIn->stateNo == stateNo) {
-                beta += msgIn->val * bwdSame * emissionProb;
-                //beta += msgIn->val * bwdSame;
-            }
-            else {
-                beta += msgIn->val * bwdDiff * emissionProb;
-                //beta += msgIn->val * bwdDiff;
-            }
-            
-            tinselFree(msgIn);
-            
-        }
-        
-        tinselWaitUntil(TINSEL_CAN_SEND);
-        msgOut->match = match;
-        msgOut->stateNo = stateNo;
-        msgOut->val = beta;
-        
-        if (observationNo != 0u) {
-            // Propagate to previous column
-            tinselKeySend(bwdKey, msgOut);
-        }
-
-    }
-    
-    volatile HostMessage* msgHost = tinselSendSlot();;
-        
-    tinselWaitUntil(TINSEL_CAN_SEND);
-    msgHost->observationNo = observationNo;
-    msgHost->stateNo = stateNo;
-    msgHost->val = beta;
-    
-    tinselSend(host, msgHost);
-    */
     
     float alpha = 0.0f;
+    float beta = 0.0f;
+
     
-     //If first row
+    // Startup for forward algorithm
     if (observationNo == 0u) {
         
         // Get pointers to mailbox message slot
@@ -156,6 +81,7 @@ int main()
         volatile HostMessage* msgHost = tinselSendSlot();
 
         tinselWaitUntil(TINSEL_CAN_SEND);
+        msgHost->msgType = FORWARD;
         msgHost->observationNo = observationNo;
         msgHost->stateNo = stateNo;
         msgHost->val = alpha;
@@ -163,69 +89,154 @@ int main()
         tinselSend(host, msgHost);
     
     }
-    // If a node in between
-    else {
+    
+    // Startup for backward algorithm
+    if (observationNo == (NOOFOBS - 1u)) {
+      
+        // Get pointers to mailbox message slot
+        volatile ImpMessage* msgOut = tinselSendSlot();
         
-        uint8_t recCnt = 0u;
+        beta = 1.0f;
         
-        while (1u) {
-            tinselWaitUntil(TINSEL_CAN_RECV);
-            volatile ImpMessage* msgIn = tinselRecv();
+        tinselWaitUntil(TINSEL_CAN_SEND);
+        msgOut->msgType = BACKWARD;
+        msgOut->match = match;
+        msgOut->stateNo = stateNo;
+        msgOut->val = beta;
+        
+        // Propagate to previous column
+        tinselKeySend(bwdKey, msgOut);
+        
+        volatile HostMessage* msgHost = tinselSendSlot();
+
+        tinselWaitUntil(TINSEL_CAN_SEND);
+        msgHost->msgType = BACKWARD;
+        msgHost->observationNo = observationNo;
+        msgHost->stateNo = stateNo;
+        msgHost->val = beta;
+
+        tinselSend(host, msgHost);
+        
+    }
+        
+    uint8_t fwdRecCnt = 0u;
+    uint8_t bwdRecCnt = 0u;
+    
+    while (1u) {
+        tinselWaitUntil(TINSEL_CAN_RECV);
+        volatile ImpMessage* msgIn = tinselRecv();
+        
+        // Handle forward messages
+        if (msgIn->msgType == FORWARD) {
             
-            if (msgIn->msgType == FORWARD) {
+            fwdRecCnt++;
+        
+            if (msgIn->stateNo == stateNo) {
+                alpha += msgIn->val * fwdSame;
+            }
+            else {
+                alpha += msgIn->val * fwdDiff;
+            }
             
-                if (msgIn->stateNo == stateNo) {
-                    alpha += msgIn->val * fwdSame;
+            if (fwdRecCnt == (NOOFSTATES - 1u)) {
+                
+                // Multiply Alpha by Emission Probability
+                if (match == 1u) {
+                    alpha = alpha * (1.0f - (1.0f / ERRORRATE));
                 }
                 else {
-                    alpha += msgIn->val * fwdDiff;
+                    alpha = alpha * (1.0f / ERRORRATE);
                 }
                 
-                recCnt++;
-                
-                tinselFree(msgIn);
-                
-            
-                if (recCnt == (NOOFSTATES - 1u)) {
+                // If we are an intermediate node propagate the alpha to the next column
+                // Else send the alpha out to the host
+                if (observationNo != 23u) {
                     
-                    // Multiply Alpha by Emission Probability
-                    if (match == 1u) {
-                        alpha = alpha * (1.0f - (1.0f / ERRORRATE));
-                    }
-                    else {
-                        alpha = alpha * (1.0f / ERRORRATE);
-                    }
+                    // Get pointers to mailbox message slot
+                    volatile ImpMessage* msgOut = tinselSendSlot();
                     
-                    // If we are an intermediate node propagate the alpha to the next column
-                    // Else send the alpha out to the host
-                    if (observationNo != 23u) {
-                        
-                        // Get pointers to mailbox message slot
-                        volatile ImpMessage* msgOut = tinselSendSlot();
-                        
-                        tinselWaitUntil(TINSEL_CAN_SEND);
-                        msgOut->stateNo = stateNo;
-                        msgOut->val = alpha;
-                        
-                        tinselKeySend(fwdKey, msgOut);
-                    }
-                    
-                    // Send to host
-                    volatile HostMessage* msgHost = tinselSendSlot();
-
                     tinselWaitUntil(TINSEL_CAN_SEND);
-                    msgHost->observationNo = observationNo;
-                    msgHost->stateNo = stateNo;
-                    msgHost->val = alpha;
-
-                    tinselSend(host, msgHost);
-                
+                    msgOut->msgType = FORWARD;
+                    msgOut->stateNo = stateNo;
+                    msgOut->val = alpha;
+                    
+                    tinselKeySend(fwdKey, msgOut);
                 }
+                
+                // Send to host
+                volatile HostMessage* msgHost = tinselSendSlot();
+
+                tinselWaitUntil(TINSEL_CAN_SEND);
+                msgHost->msgType = FORWARD;
+                msgHost->observationNo = observationNo;
+                msgHost->stateNo = stateNo;
+                msgHost->val = alpha;
+
+                tinselSend(host, msgHost);
             
             }
         
         }
         
+        // Handle forward messages
+        if (msgIn->msgType == BACKWARD) {
+            
+            bwdRecCnt++;
+            
+            float emissionProb = 0.0f;
+         
+            if (msgIn->match == 1u) {
+                emissionProb = (1.0f - (1.0f / ERRORRATE));
+            }
+            else {
+                emissionProb = (1.0f / ERRORRATE);
+            }
+            
+            if (msgIn->stateNo == stateNo) {
+                
+                beta += msgIn->val * bwdSame * emissionProb;
+                
+            }
+            else {
+                
+                beta += msgIn->val * bwdDiff * emissionProb;
+                
+            }
+            
+            if (bwdRecCnt == (NOOFSTATES - 1u)) {
+                
+                if (observationNo != 0u) {
+                    
+                    // Get pointers to mailbox message slot
+                    volatile ImpMessage* msgOut = tinselSendSlot();
+
+                    tinselWaitUntil(TINSEL_CAN_SEND);
+                    msgOut->msgType = BACKWARD;
+                    msgOut->match = match;
+                    msgOut->stateNo = stateNo;
+                    msgOut->val = beta;
+                    
+                    // Propagate to previous column
+                    tinselKeySend(bwdKey, msgOut);
+                }
+                
+                volatile HostMessage* msgHost = tinselSendSlot();;
+
+                tinselWaitUntil(TINSEL_CAN_SEND);
+                msgHost->msgType = BACKWARD;
+                msgHost->observationNo = observationNo;
+                msgHost->stateNo = stateNo;
+                msgHost->val = beta;
+
+                tinselSend(host, msgHost);
+            
+            }
+            
+        }
+        
+        // Free message slot
+        tinselFree(msgIn);
+    
     }
     
   return 0;

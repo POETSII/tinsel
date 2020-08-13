@@ -44,6 +44,8 @@ typedef struct {
 
 typedef struct {
     
+    // Message Type
+    uint32_t msgType;
     // Float value
     float val;
     // Observation Number
