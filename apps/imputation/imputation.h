@@ -19,12 +19,19 @@
 #define NE (1000000)
 #define ERRORRATE (10000)
 
-#define NULL 0
+#define FORWARD (0u)
+#define BACKWARD (1u)
+
+#define NULL 0u
 
 // Message Structures
 
 typedef struct {
     
+    // Spacer for multicast key
+    uint16_t blank;
+    // Message Type
+    uint16_t msgType;
     // Float value
     float val;
     // If Matched

@@ -549,7 +549,7 @@ int main()
     */
     
     
-//#ifdef PRINTDEBUG    
+#ifdef PRINTDEBUG    
     printf("\nKeys. Two per column as there are two source Y board in a box. The last key is not used:\n\n");
     
     for (y = 0u; y < YKEYS; y++) {
@@ -566,6 +566,6 @@ int main()
             
         }
     }
-//#endif    
+#endif    
     return 0;
 }
