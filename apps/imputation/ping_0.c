@@ -145,11 +145,22 @@ int main()
         
         // Prepare message to send
         tinselWaitUntil(TINSEL_CAN_SEND);
+        msgOut->msgType = FORWARD;
         msgOut->stateNo = stateNo;
         msgOut->val = alpha;
         
         // Propagate to next column
         tinselKeySend(fwdKey, msgOut);
+        
+        // Send to host
+        volatile HostMessage* msgHost = tinselSendSlot();
+
+        tinselWaitUntil(TINSEL_CAN_SEND);
+        msgHost->observationNo = observationNo;
+        msgHost->stateNo = stateNo;
+        msgHost->val = alpha;
+
+        tinselSend(host, msgHost);
     
     }
     // If a node in between
@@ -157,53 +168,65 @@ int main()
         
         uint8_t recCnt = 0u;
         
-        for (recCnt = 0u; recCnt < 128u; recCnt++) {
+        while (1u) {
             tinselWaitUntil(TINSEL_CAN_RECV);
             volatile ImpMessage* msgIn = tinselRecv();
             
-            if (msgIn->stateNo == stateNo) {
-                alpha += msgIn->val * fwdSame;
+            if (msgIn->msgType == FORWARD) {
+            
+                if (msgIn->stateNo == stateNo) {
+                    alpha += msgIn->val * fwdSame;
+                }
+                else {
+                    alpha += msgIn->val * fwdDiff;
+                }
+                
+                recCnt++;
+                
+                tinselFree(msgIn);
+                
+            
+                if (recCnt == (NOOFSTATES - 1u)) {
+                    
+                    // Multiply Alpha by Emission Probability
+                    if (match == 1u) {
+                        alpha = alpha * (1.0f - (1.0f / ERRORRATE));
+                    }
+                    else {
+                        alpha = alpha * (1.0f / ERRORRATE);
+                    }
+                    
+                    // If we are an intermediate node propagate the alpha to the next column
+                    // Else send the alpha out to the host
+                    if (observationNo != 23u) {
+                        
+                        // Get pointers to mailbox message slot
+                        volatile ImpMessage* msgOut = tinselSendSlot();
+                        
+                        tinselWaitUntil(TINSEL_CAN_SEND);
+                        msgOut->stateNo = stateNo;
+                        msgOut->val = alpha;
+                        
+                        tinselKeySend(fwdKey, msgOut);
+                    }
+                    
+                    // Send to host
+                    volatile HostMessage* msgHost = tinselSendSlot();
+
+                    tinselWaitUntil(TINSEL_CAN_SEND);
+                    msgHost->observationNo = observationNo;
+                    msgHost->stateNo = stateNo;
+                    msgHost->val = alpha;
+
+                    tinselSend(host, msgHost);
+                
+                }
+            
             }
-            else {
-                alpha += msgIn->val * fwdDiff;
-            }
-            
-            tinselFree(msgIn);
-            
-        }
         
-        // Multiply Alpha by Emission Probability
-        if (match == 1u) {
-            alpha = alpha * (1.0f - (1.0f / ERRORRATE));
-        }
-        else {
-            alpha = alpha * (1.0f / ERRORRATE);
-        }
-        
-        // If we are an intermediate node propagate the alpha to the next column
-        // Else send the alpha out to the host
-        if (observationNo != 23u) {
-            
-            // Get pointers to mailbox message slot
-            volatile ImpMessage* msgOut = tinselSendSlot();
-            
-            tinselWaitUntil(TINSEL_CAN_SEND);
-            msgOut->stateNo = stateNo;
-            msgOut->val = alpha;
-            
-            tinselKeySend(fwdKey, msgOut);
         }
         
     }
-    
-    volatile HostMessage* msgHost = tinselSendSlot();
-    
-    tinselWaitUntil(TINSEL_CAN_SEND);
-    msgHost->observationNo = observationNo;
-    msgHost->stateNo = stateNo;
-    msgHost->val = alpha;
-    
-    tinselSend(host, msgHost);
     
   return 0;
 }
