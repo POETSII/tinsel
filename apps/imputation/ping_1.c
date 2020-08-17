@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BSD-2-Clause
 // Respond to ping command by incrementing received value by 2
 
-#include <tinsel.h>
+#include "imputation.h"
 
 /*****************************************************
  * Linear Interpolation Node
@@ -12,23 +12,46 @@
 int main()
 {
     
+/*****************************************************
+* Node Initialisation
+* ***************************************************/
     uint32_t me = tinselId();
-    uint32_t local = me % (1 << TinselLogThreadsPerMailbox);
+    uint8_t localThreadID = me % (1 << TinselLogThreadsPerMailbox);
     
-    // Get host id
-    int host = tinselHostId();
+    // Derived Values
+    uint8_t mailboxX = (me >> TinselLogThreadsPerMailbox) % (1 << TinselMailboxMeshXBits);
+    uint8_t mailboxY = (me >> (TinselLogThreadsPerMailbox + TinselMailboxMeshXBits)) % (1 << TinselMailboxMeshYBits);
+    uint8_t boardX = (me >> (TinselLogThreadsPerMailbox + TinselMailboxMeshXBits + TinselMailboxMeshYBits)) % (1 << TinselMeshXBits);
+    uint8_t boardY = (me >> (TinselLogThreadsPerMailbox + TinselMailboxMeshXBits + TinselMailboxMeshYBits + TinselMeshXBits)) % (1 << TinselMeshYBits);
+    
+    // Model location values
+    uint32_t stateNo = getStateNumber(boardY, mailboxY, localThreadID);
+    uint32_t observationNo = getObservationNumber(boardX, mailboxX, localThreadID);
+    
+    // Received values
+    uint32_t* baseAddress = tinselHeapBase();
 
-    // Get pointers to mailbox message slot
-    volatile int* msgOut = tinselSendSlot();
+/*****************************************************
+* Node Functionality
+* ***************************************************/
 
-    tinselWaitUntil(TINSEL_CAN_RECV);
-    volatile int* msgIn = tinselRecv();
-    tinselWaitUntil(TINSEL_CAN_SEND);
-    msgOut[0] = 1u;
-    msgOut[1] = local;
-    tinselFree(msgIn);
-    tinselSend(host, msgOut);
+    float dm[LINRATIO] = {0.0f};
+    float alpha[LINRATIO] = {0.0f};
+    float beta[LINRATIO] = {0.0f};
+    
+    // Calculate total genetic distance
+    
+    float totalDistance = 0.0f;
+    
+    for (uint32_t x = 0u; x < LINRATIO; x++) {
+        
+        totalDistance += dm[x];
+        
+    }
+    
+    
+    
 
-  return 0;
+    return 0;
 }
 

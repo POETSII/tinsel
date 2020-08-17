@@ -245,6 +245,10 @@ int main()
                     
                     uint32_t observationPair = (boardX * (TinselMailboxMeshXLen) * ((TinselThreadsPerMailbox/2u)/16u)) + (mailboxX * ((TinselThreadsPerMailbox/2u)/16u));
                     
+                    // Variables to caluclate total genetic distance
+                    uint32_t currentIndex = 0u;
+                    float geneticDistance = 0.0f;
+                    
                     // Transition probabilites for same and different haplotypes for both observations
                     
                     float tau_m0 = 0u;
@@ -260,7 +264,16 @@ int main()
                     // Tau M Values
                     if (observationPair != 0u) {
                         
-                        tau_m0 = (1 - exp((-4 * NE * dm[observationPair - 1u]) / NOOFSTATES));
+                        // Caluclate total genetic distance
+                        currentIndex = (observationPair - 1u) * LINRATIO;
+                        geneticDistance = 0.0f;
+                        for (uint32_t x = 0u; x < LINRATIO; x++) {
+                            
+                            geneticDistance += dm[currentIndex + x];
+                            
+                        }
+                        
+                        tau_m0 = (1 - exp((-4 * NE * geneticDistance) / NOOFSTATES));
                         same0 = (1 - tau_m0) + (tau_m0 / NOOFSTATES);
                         diff0 = tau_m0 / NOOFSTATES;
                         
@@ -269,7 +282,17 @@ int main()
                         
                     }
                     
-                    float tau_m1 = (1 - exp((-4 * NE * dm[observationPair]) / NOOFSTATES));
+                    // Caluclate total genetic distance
+                    currentIndex = (observationPair) * LINRATIO;
+                    geneticDistance = 0.0f;
+                    
+                    for (uint32_t x = 0u; x < LINRATIO; x++) {
+                        
+                        geneticDistance += dm[currentIndex + x];
+                        
+                    }
+                    
+                    float tau_m1 = (1 - exp((-4 * NE * geneticDistance) / NOOFSTATES));
                     float same1 = (1 - tau_m1) + (tau_m1 / NOOFSTATES);
                     float diff1 = tau_m1 / NOOFSTATES;
                     
@@ -290,9 +313,19 @@ int main()
                     uint32_t* diff2UPtr = (uint32_t*) diff2Ptr;
                     
                     // THIS ASSUMES AN EVEN NUMBER OF OBSERVATIONS AND WILL NEED CHANGING IF ODD NUMBERS OF OBSERVATIONS ARE USED
-                    if ((observationPair != (NOOFOBS - 1u))) {
+                    if ((observationPair != (NOOFTARGMARK - 1u))) {
                         
-                        tau_m2 = (1 - exp((-4 * NE * dm[observationPair + 1u]) / NOOFSTATES));
+                        // Caluclate total genetic distance
+                        currentIndex = (observationPair + 1u) * LINRATIO;
+                        geneticDistance = 0.0f;
+                        
+                        for (uint32_t x = 0u; x < LINRATIO; x++) {
+                            
+                            geneticDistance += dm[currentIndex + x];
+                            
+                        }
+                        
+                        tau_m2 = (1 - exp((-4 * NE * geneticDistance) / NOOFSTATES));
                         same2 = (1 - tau_m2) + (tau_m2 / NOOFSTATES);
                         diff2 = tau_m2 / NOOFSTATES;
                         
@@ -513,11 +546,11 @@ int main()
     uint32_t y = 0u;
     uint8_t msgType = 0u;
     
-    float result[NOOFSTATES][NOOFOBS][2u] = {0.0f};
+    float result[NOOFSTATES][NOOFTARGMARK][2u] = {0.0f};
     
     for (msgType = 0u; msgType < 2; msgType++) {
         for (x = 0u; x < NOOFSTATES; x++) {
-            for (y = 0u; y < NOOFOBS; y++) {
+            for (y = 0u; y < NOOFTARGMARK; y++) {
                 //hostLink.recv(msg);
                 hostLink.recvMsg(&msg, sizeof(msg));
                 //printf("ThreadID: %X LocalID: %d Row: %d MailboxX: %d MailboxY: %d BoardX: %d BoardY: %d Message: %d\n", msg[0], msg[1], msg[2], msg[3], msg[4], msg[5], msg[6], msg[7]);
@@ -529,7 +562,7 @@ int main()
     
     printf("Forward Probabilities: \n");
     for (y = 0u; y < NOOFSTATES; y++) {
-        for (x = 0u; x < NOOFOBS; x++) {
+        for (x = 0u; x < NOOFTARGMARK; x++) {
             printf("%.3e ", result[y][x][0u]);
         }
         printf("\n");
@@ -537,7 +570,7 @@ int main()
     
     printf("Backward Probabilities: \n");
     for (y = 0u; y < NOOFSTATES; y++) {
-        for (x = 0u; x < NOOFOBS; x++) {
+        for (x = 0u; x < NOOFTARGMARK; x++) {
             printf("%.3e ", result[y][x][1u]);
         }
         printf("\n");

@@ -91,7 +91,7 @@ int main()
     }
     
     // Startup for backward algorithm
-    if (observationNo == (NOOFOBS - 1u)) {
+    if (observationNo == (NOOFTARGMARK - 1u)) {
       
         // Get pointers to mailbox message slot
         volatile ImpMessage* msgOut = tinselSendSlot();
