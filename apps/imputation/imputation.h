@@ -20,6 +20,7 @@
 #define NE (1000000)
 #define ERRORRATE (10000)
 
+//MsgTypes
 #define FORWARD (0u)
 #define BACKWARD (1u)
 
@@ -64,7 +65,7 @@ INLINE uint32_t getObservationNumber(uint8_t boardX, uint8_t mailboxX, uint8_t l
     uint32_t observationNo;
     uint8_t row = 0u;
     
-    if (((localThreadID >= 8u) && (localThreadID <= 15)) || ((localThreadID >= 24u) && (localThreadID <= 31))) {
+    if (((localThreadID >= 8u) && (localThreadID <= 15)) || ((localThreadID >= 24u) && (localThreadID <= 31)) || ((localThreadID >= 48u) && (localThreadID <= 55)) || ((localThreadID >= 56u) && (localThreadID <= 63))) {
         row = 1u;
     }
     

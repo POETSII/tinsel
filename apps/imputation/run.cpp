@@ -334,6 +334,7 @@ int main()
                         
                     }
                     
+                    // Core 0 -> HMM
                     for (mailboxLocalThreadID = 0u; mailboxLocalThreadID < 16u; mailboxLocalThreadID++) {
                         
                         //printf("Obs No = %d, State No = %d\n", getObservationNumber(boardX, mailboxX, mailboxLocalThreadID), getStateNumber(boardY, mailboxY, mailboxLocalThreadID));
@@ -395,7 +396,7 @@ int main()
                     
                     }
                     
-                    // Core 1 for the same mailbox...
+                    // // Core 1 -> HMM
                     coreID++;
                     
                     for (mailboxLocalThreadID = 16u; mailboxLocalThreadID < 32u; mailboxLocalThreadID++) {
@@ -452,7 +453,106 @@ int main()
                         }
                     
                     }
-                      
+                    
+                    // Core 2 -> Linear Interpolation
+                    coreID++;
+                    
+                    for (mailboxLocalThreadID = 32u; mailboxLocalThreadID < 48u; mailboxLocalThreadID++) {
+                        
+                        // Construct ThreadID
+                        threadID = boardY;
+                        threadID = (threadID << TinselMeshXBits) + boardX;
+                        threadID = (threadID << TinselMailboxMeshYBits) + mailboxY;
+                        threadID = (threadID << TinselMailboxMeshXBits) + mailboxX;
+                        threadID = (threadID << TinselLogThreadsPerMailbox) + mailboxLocalThreadID;
+                        
+                        baseAddress = tinselHeapBaseGeneric(threadID);
+                                                
+                        
+                        //printf("CoreID: %d, ThreadID: %X, baseAddress: %X\n", coreID, threadID, baseAddress);
+                        
+                        hostLink.setAddr(boardX, boardY, coreID, baseAddress);
+                        
+                        if (mailboxLocalThreadID < 40u ) {
+                            
+                            float dmSingle = 0.0f;
+                            float* dmPtr = &dmSingle;
+                            uint32_t* dmUPtr = (uint32_t*) dmPtr;
+                            
+                            for (uint32_t x = 0u; x < LINRATIO; x++) {
+                                
+                                dmSingle = dm[(observationPair * LINRATIO) + x];
+                                hostLink.store(boardX, boardY, coreID, 1u, dmUPtr);
+                                
+                            }
+                            
+                        }
+                        else {
+                            
+                            float dmSingle = 0.0f;
+                            float* dmPtr = &dmSingle;
+                            uint32_t* dmUPtr = (uint32_t*) dmPtr;
+                            
+                            for (uint32_t x = 0u; x < LINRATIO; x++) {
+                                
+                                dmSingle = dm[((observationPair + 1u) * LINRATIO) + x];
+                                hostLink.store(boardX, boardY, coreID, 1u, dmUPtr);
+                                
+                            }
+                            
+                        }
+                        
+                    }
+                    
+                    // Core 3 -> Linear Interpolation
+                    coreID++;
+                    
+                    for (mailboxLocalThreadID = 48u; mailboxLocalThreadID < 64u; mailboxLocalThreadID++) {
+                        
+                        // Construct ThreadID
+                        threadID = boardY;
+                        threadID = (threadID << TinselMeshXBits) + boardX;
+                        threadID = (threadID << TinselMailboxMeshYBits) + mailboxY;
+                        threadID = (threadID << TinselMailboxMeshXBits) + mailboxX;
+                        threadID = (threadID << TinselLogThreadsPerMailbox) + mailboxLocalThreadID;
+                        
+                        baseAddress = tinselHeapBaseGeneric(threadID);
+                                                
+                        
+                        //printf("CoreID: %d, ThreadID: %X, baseAddress: %X\n", coreID, threadID, baseAddress);
+                        
+                        hostLink.setAddr(boardX, boardY, coreID, baseAddress);
+                        
+                        if (mailboxLocalThreadID < 40u ) {
+                            
+                            float dmSingle = 0.0f;
+                            float* dmPtr = &dmSingle;
+                            uint32_t* dmUPtr = (uint32_t*) dmPtr;
+                            
+                            for (uint32_t x = 0u; x < LINRATIO; x++) {
+                                
+                                dmSingle = dm[(observationPair * LINRATIO) + x];
+                                hostLink.store(boardX, boardY, coreID, 1u, dmUPtr);
+                                
+                            }
+                            
+                        }
+                        else {
+                            
+                            float dmSingle = 0.0f;
+                            float* dmPtr = &dmSingle;
+                            uint32_t* dmUPtr = (uint32_t*) dmPtr;
+                            
+                            for (uint32_t x = 0u; x < LINRATIO; x++) {
+                                
+                                dmSingle = dm[((observationPair + 1u) * LINRATIO) + x];
+                                hostLink.store(boardX, boardY, coreID, 1u, dmUPtr);
+                                
+                            }
+                            
+                        }
+                        
+                    }
             
                 }
             }
@@ -546,7 +646,7 @@ int main()
     uint32_t y = 0u;
     uint8_t msgType = 0u;
     
-    float result[NOOFSTATES][NOOFTARGMARK][2u] = {0.0f};
+    float result[NOOFSTATES][NOOFOBS][2u] = {0.0f};
     
     for (msgType = 0u; msgType < 2; msgType++) {
         for (x = 0u; x < NOOFSTATES; x++) {
@@ -555,14 +655,18 @@ int main()
                 hostLink.recvMsg(&msg, sizeof(msg));
                 //printf("ThreadID: %X LocalID: %d Row: %d MailboxX: %d MailboxY: %d BoardX: %d BoardY: %d Message: %d\n", msg[0], msg[1], msg[2], msg[3], msg[4], msg[5], msg[6], msg[7]);
                 //printf("State No: %d has returned alpha: %0.10f\n", msg.observationNo, msg.alpha);
-                result[msg.stateNo][msg.observationNo][msg.msgType] = msg.val;
+                if (msg.msgType < 2u) {
+                    
+                    result[msg.stateNo][msg.observationNo * (LINRATIO + 1u)][msg.msgType] = msg.val;
+    
+                }
             }
         }
     }
     
     printf("Forward Probabilities: \n");
     for (y = 0u; y < NOOFSTATES; y++) {
-        for (x = 0u; x < NOOFTARGMARK; x++) {
+        for (x = 0u; x < NOOFOBS; x++) {
             printf("%.3e ", result[y][x][0u]);
         }
         printf("\n");
@@ -570,7 +674,7 @@ int main()
     
     printf("Backward Probabilities: \n");
     for (y = 0u; y < NOOFSTATES; y++) {
-        for (x = 0u; x < NOOFTARGMARK; x++) {
+        for (x = 0u; x < NOOFOBS; x++) {
             printf("%.3e ", result[y][x][1u]);
         }
         printf("\n");
