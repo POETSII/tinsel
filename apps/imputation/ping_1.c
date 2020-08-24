@@ -48,6 +48,9 @@ int main()
     }
     
     uint8_t recFlags = 0u;
+    
+    // Get host id
+    int host = tinselHostId();
 
 /*****************************************************
 * Node Functionality
@@ -60,10 +63,59 @@ int main()
     float prevBeta = 0.0f;
     float nextBeta = 0.0f;
     
+    uint8_t recCnt = 0u;
+    uint32_t matchVal[2];
+    
     while(1) {
         tinselWaitUntil(TINSEL_CAN_RECV);
         volatile ImpMessage* msgIn = tinselRecv();
         
+        //if (msgIn->msgType == FORWARD) {
+            
+            matchVal[recCnt] = recCnt; //msgIn->match;
+            
+            recCnt++;
+            if (recCnt == 2u) {
+                
+                if (observationNo != 23u) {
+                    
+                    for (uint32_t x = 0u; x < LINRATIO; x++) {
+                        
+                        // Send to host
+                        volatile HostMessage* msgHost = tinselSendSlot();
+
+                        tinselWaitUntil(TINSEL_CAN_SEND);
+                        msgHost->msgType = FWDLIN;
+                        msgHost->observationNo = observationNo * (LINRATIO + 1u) + 1u + x;
+                        msgHost->stateNo = stateNo;
+                        msgHost->val = 111111111111.1111f;
+
+                        tinselSend(host, msgHost);
+                        
+                    }
+                
+                    for (uint32_t x = 0u; x < LINRATIO; x++) {
+                        
+                        // Send to host
+                        volatile HostMessage* msgHost = tinselSendSlot();
+
+                        tinselWaitUntil(TINSEL_CAN_SEND);
+                        msgHost->msgType = BWDLIN;
+                        msgHost->observationNo = observationNo * (LINRATIO + 1u) + 1u + x;
+                        msgHost->stateNo = stateNo;
+                        msgHost->val = 111111111111.1111f;
+
+                        tinselSend(host, msgHost);
+                        
+                    }
+                
+                }
+                
+            }
+        //}
+        
+        
+        /*
         // Handle forward messages
         if (msgIn->msgType == FORWARD) {
             
@@ -87,6 +139,21 @@ int main()
                     
                 }
                 
+                for (uint32_t x = 0u; x < LINRATIO; x++) {
+                    
+                    // Send to host
+                    volatile HostMessage* msgHost = tinselSendSlot();
+
+                    tinselWaitUntil(TINSEL_CAN_SEND);
+                    msgHost->msgType = FWDLIN;
+                    msgHost->observationNo = observationNo + x + 1u;
+                    msgHost->stateNo = stateNo;
+                    msgHost->val = alpha[x];
+
+                    tinselSend(host, msgHost);
+                    
+                }
+                
             }
             
         }
@@ -94,7 +161,7 @@ int main()
         // Handle backward messages
         if (msgIn->msgType == BACKWARD) {
         
-            if (msgIn->match == 1u) {
+            if (msgIn->match == 0u) {
                 nextBeta = msgIn->val;
                 recFlags |= NEXTB;
             }
@@ -114,10 +181,25 @@ int main()
                     
                 }
                 
+                for (uint32_t x = 0u; x < LINRATIO; x++) {
+                    
+                    // Send to host
+                    volatile HostMessage* msgHost = tinselSendSlot();
+
+                    tinselWaitUntil(TINSEL_CAN_SEND);
+                    msgHost->msgType = BWDLIN;
+                    msgHost->observationNo = observationNo + x + 1u;
+                    msgHost->stateNo = stateNo;
+                    msgHost->val = beta[x];
+
+                    tinselSend(host, msgHost);
+                    
+                }
+                
             }
             
             
-        }
+        }*/
         
         // Free message slot
         tinselFree(msgIn);

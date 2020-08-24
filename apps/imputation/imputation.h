@@ -23,8 +23,13 @@
 //MsgTypes
 #define FORWARD (0u)
 #define BACKWARD (1u)
+#define FWDLIN (2u)
+#define BWDLIN (3u)
 
-#define NULL 0u
+#define NULL (0u)
+
+#define NEXTLINODEOFFSET (32u)
+#define PREVLINODEOFFSET (24u)
 
 // Message Structures
 
@@ -65,7 +70,7 @@ INLINE uint32_t getObservationNumber(uint8_t boardX, uint8_t mailboxX, uint8_t l
     uint32_t observationNo;
     uint8_t row = 0u;
     
-    if (((localThreadID >= 8u) && (localThreadID <= 15)) || ((localThreadID >= 24u) && (localThreadID <= 31)) || ((localThreadID >= 48u) && (localThreadID <= 55)) || ((localThreadID >= 56u) && (localThreadID <= 63))) {
+    if (((localThreadID >= 8u) && (localThreadID <= 15)) || ((localThreadID >= 24u) && (localThreadID <= 31)) || ((localThreadID >= 40u) && (localThreadID <= 47u)) || ((localThreadID >= 56u) && (localThreadID <= 63))) {
         row = 1u;
     }
     
@@ -81,7 +86,7 @@ INLINE uint32_t getStateNumber(uint8_t boardY, uint8_t mailboxY, uint8_t localTh
     uint8_t threadY;
     uint32_t stateNo;
     
-    if (localThreadID < 16u) {
+    if ((localThreadID < 16u) || (localThreadID >= 32u && localThreadID < 48u)) {
         threadY = localThreadID % 8u;
     }
     else {

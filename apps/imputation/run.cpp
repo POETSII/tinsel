@@ -650,7 +650,7 @@ int main()
     
     for (msgType = 0u; msgType < 2; msgType++) {
         for (x = 0u; x < NOOFSTATES; x++) {
-            for (y = 0u; y < NOOFTARGMARK; y++) {
+            for (y = 0u; y < NOOFOBS; y++) {
                 //hostLink.recv(msg);
                 hostLink.recvMsg(&msg, sizeof(msg));
                 //printf("ThreadID: %X LocalID: %d Row: %d MailboxX: %d MailboxY: %d BoardX: %d BoardY: %d Message: %d\n", msg[0], msg[1], msg[2], msg[3], msg[4], msg[5], msg[6], msg[7]);
@@ -659,6 +659,14 @@ int main()
                     
                     result[msg.stateNo][msg.observationNo * (LINRATIO + 1u)][msg.msgType] = msg.val;
     
+                }
+                else {
+                    if (msg.msgType == FWDLIN) {
+                        result[msg.stateNo][msg.observationNo][0u] = msg.val;
+                    }
+                    else {
+                        result[msg.stateNo][msg.observationNo][1u] = msg.val;
+                    }
                 }
             }
         }

@@ -54,9 +54,6 @@ int main()
     // Startup for forward algorithm
     if (observationNo == 0u) {
         
-        // Get pointers to mailbox message slot
-        volatile ImpMessage* msgOut = tinselSendSlot();
-        
         // Calculate initial probability
         alpha = 1.0f / NOOFSTATES;
         
@@ -68,7 +65,10 @@ int main()
             alpha = alpha * (1.0f / ERRORRATE);
         }
         
-        // Prepare message to send
+        // Get pointers to mailbox message slot
+        volatile ImpMessage* msgOut = tinselSendSlot();
+        
+        // Prepare message to send to HMM node
         tinselWaitUntil(TINSEL_CAN_SEND);
         msgOut->msgType = FORWARD;
         msgOut->stateNo = stateNo;
@@ -76,6 +76,15 @@ int main()
         
         // Propagate to next column
         tinselKeySend(fwdKey, msgOut);
+        
+        // Prepare message for interpolation node
+        tinselWaitUntil(TINSEL_CAN_SEND);
+        
+        // Set match to represent same observation number
+        msgOut->match = 1u;
+        
+        // Propagate to next linear interpolation node
+        tinselSend((me + NEXTLINODEOFFSET), msgOut);
         
         // Send to host
         volatile HostMessage* msgHost = tinselSendSlot();
@@ -117,6 +126,12 @@ int main()
 
         tinselSend(host, msgHost);
         
+        // Prepare message for interpolation node
+        tinselWaitUntil(TINSEL_CAN_SEND);
+
+        // Propagate to next linear interpolation node
+        tinselSend((me + PREVLINODEOFFSET), msgOut);
+        
     }
         
     uint8_t fwdRecCnt = 0u;
@@ -150,7 +165,7 @@ int main()
                 
                 // If we are an intermediate node propagate the alpha to the next column
                 // Else send the alpha out to the host
-                if (observationNo != 23u) {
+                if (observationNo != (NOOFTARGMARK - 1u)) {
                     
                     // Get pointers to mailbox message slot
                     volatile ImpMessage* msgOut = tinselSendSlot();
@@ -161,6 +176,29 @@ int main()
                     msgOut->val = alpha;
                     
                     tinselKeySend(fwdKey, msgOut);
+                    
+                    // Prepare message for next interpolation node
+                    tinselWaitUntil(TINSEL_CAN_SEND);
+                    
+                    // Set match to represent same observation number
+                    msgOut->match = 1u;
+
+                    // Propagate to next linear interpolation node
+                    tinselSend((me + NEXTLINODEOFFSET), msgOut);
+                    
+                    // Prepare message for previous interpolation node
+                    tinselWaitUntil(TINSEL_CAN_SEND);
+                    
+                    // Set match to represent different observation number
+                    msgOut->match = 0u;
+
+                    // Propagate to previous linear interpolation node
+                    if (((localThreadID >= 8u) && (localThreadID <= 15)) || ((localThreadID >= 24u) && (localThreadID <= 31))) {
+                        tinselSend((me + PREVLINODEOFFSET), msgOut);
+                    }
+                    else {
+                        tinselSend((me - PREVLINODEOFFSET), msgOut);
+                    }
                 }
                 
                 // Send to host
@@ -218,6 +256,29 @@ int main()
                     
                     // Propagate to previous column
                     tinselKeySend(bwdKey, msgOut);
+                    
+                    // Prepare message for previous interpolation node
+                    tinselWaitUntil(TINSEL_CAN_SEND);
+                    
+                    // Set match to indicate different observation number
+                    msgOut->match = 0u;
+                    
+                    // Propagate to previous linear interpolation node
+                    if (((localThreadID >= 8u) && (localThreadID <= 15)) || ((localThreadID >= 24u) && (localThreadID <= 31))) {
+                        tinselSend((me + PREVLINODEOFFSET), msgOut);
+                    }
+                    else {
+                        tinselSend((me - PREVLINODEOFFSET), msgOut);
+                    }
+                    
+                    // Prepare message for next interpolation node
+                    tinselWaitUntil(TINSEL_CAN_SEND);
+                    
+                    // Set match to indicate different observation number
+                    msgOut->match = 1u;
+                    
+                    // Propagate to next linear interpolation node
+                    tinselSend((me + NEXTLINODEOFFSET), msgOut);
                 }
                 
                 volatile HostMessage* msgHost = tinselSendSlot();;
