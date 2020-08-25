@@ -291,7 +291,7 @@ int main()
                     tinselWaitUntil(TINSEL_CAN_SEND);
                     
                     // Set match to indicate different observation number
-                    msgOut->match = 1u;
+                    msgOut->match = 0u;
                     
                     // Propagate to next linear interpolation node
                     if (((localThreadID >= 8u) && (localThreadID <= 15)) || ((localThreadID >= 24u) && (localThreadID <= 31))) {
@@ -332,7 +332,7 @@ int main()
                 msgOut->msgType = BACKWARD;
                 msgOut->stateNo = stateNo;
                 msgOut->val = beta;
-                msgOut->match = 0u;
+                msgOut->match = 1u;
                 
                 tinselSend((me + NEXTLINODEOFFSET), msgOut);
                 

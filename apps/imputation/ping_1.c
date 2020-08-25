@@ -58,6 +58,7 @@ int main()
     
     float alpha[LINRATIO] = {0.0f};
     float beta[LINRATIO] = {0.0f};
+    //float gamma[LINRATIO] = {0.0f, 1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f};
     float prevAlpha = 0.0f;
     float nextAlpha = 0.0f;
     float prevBeta = 0.0f;
@@ -69,7 +70,7 @@ int main()
     while(1) {
         tinselWaitUntil(TINSEL_CAN_RECV);
         volatile ImpMessage* msgIn = tinselRecv();
-        
+        /*
         //if (msgIn->msgType == BACKWARD) {
             
             matchVal[recCnt] = recCnt; //msgIn->match;
@@ -114,10 +115,10 @@ int main()
                 }
                 
             }
-        //}
+        //}*/
         
         
-        /*
+        
         // Handle forward messages
         if (msgIn->msgType == FORWARD) {
             
@@ -137,8 +138,9 @@ int main()
                 
                 for (uint32_t x = 0u; x < LINRATIO; x++) {
                     
-                    alpha[x] = prevAlpha - ((dmLocal[x] * totalDistance) * totalDiff);
-                    
+                    alpha[x] = prevAlpha - ((dmLocal[x] / totalDistance) * totalDiff);
+                    prevAlpha = alpha[x];
+
                 }
                 
                 for (uint32_t x = 0u; x < LINRATIO; x++) {
@@ -148,7 +150,7 @@ int main()
 
                     tinselWaitUntil(TINSEL_CAN_SEND);
                     msgHost->msgType = FWDLIN;
-                    msgHost->observationNo = observationNo + x + 1u;
+                    msgHost->observationNo = observationNo * (LINRATIO + 1u) + 1u + x;
                     msgHost->stateNo = stateNo;
                     msgHost->val = alpha[x];
 
@@ -163,7 +165,7 @@ int main()
         // Handle backward messages
         if (msgIn->msgType == BACKWARD) {
         
-            if (msgIn->match == 0u) {
+            if (msgIn->match == 1u) {
                 nextBeta = msgIn->val;
                 recFlags |= NEXTB;
             }
@@ -190,9 +192,10 @@ int main()
 
                     tinselWaitUntil(TINSEL_CAN_SEND);
                     msgHost->msgType = BWDLIN;
-                    msgHost->observationNo = observationNo + x + 1u;
+                    msgHost->observationNo = observationNo * (LINRATIO + 1u) + 1u + x;
                     msgHost->stateNo = stateNo;
-                    msgHost->val = beta[x];
+                    //msgHost->val = beta[x];
+                    msgHost->val = 00000.00000f;
 
                     tinselSend(host, msgHost);
                     
@@ -201,7 +204,7 @@ int main()
             }
             
             
-        }*/
+        }
         
         // Free message slot
         tinselFree(msgIn);
