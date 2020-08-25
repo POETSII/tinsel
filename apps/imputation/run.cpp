@@ -646,19 +646,21 @@ int main()
     uint32_t y = 0u;
     uint8_t msgType = 0u;
     
+    uint32_t noReceived = 0u;
+    
     float result[NOOFSTATES][NOOFOBS][2u] = {0.0f};
     
-    //for (msgType = 0u; msgType < 2; msgType++) {
+    for (msgType = 0u; msgType < 2; msgType++) {
         for (x = 0u; x < NOOFSTATES; x++) {
             for (y = 0u; y < NOOFOBS; y++) {
                 //hostLink.recv(msg);
                 hostLink.recvMsg(&msg, sizeof(msg));
+                noReceived++;
                 //printf("ThreadID: %X LocalID: %d Row: %d MailboxX: %d MailboxY: %d BoardX: %d BoardY: %d Message: %d\n", msg[0], msg[1], msg[2], msg[3], msg[4], msg[5], msg[6], msg[7]);
                 //printf("State No: %d has returned alpha: %0.10f\n", msg.observationNo, msg.alpha);
                 if (msg.msgType < 2u) {
                     
-                    //result[msg.stateNo][msg.observationNo * (LINRATIO + 1u)][msg.msgType] = msg.val;
-                    result[msg.stateNo][msg.observationNo * (LINRATIO + 1u)][0u] = msg.val;
+                    result[msg.stateNo][msg.observationNo * (LINRATIO + 1u)][msg.msgType] = msg.val;
     
                 }
                 else {
@@ -669,17 +671,9 @@ int main()
                         result[msg.stateNo][msg.observationNo][1u] = msg.val;
                     }
                 }
-                    /*
-                printf("Forward Probabilities: \n");
-                for (y = 0u; y < NOOFSTATES; y++) {
-                    for (x = 0u; x < NOOFOBS; x++) {
-                        printf("%.3e ", result[y][x][0u]);
-                    }
-                    printf("\n");
-                }*/
             }
         }
-    //}
+    }
     
     printf("Forward Probabilities: \n");
     for (y = 0u; y < NOOFSTATES; y++) {
