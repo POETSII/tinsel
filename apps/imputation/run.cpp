@@ -648,7 +648,7 @@ int main()
     
     float result[NOOFSTATES][NOOFOBS][2u] = {0.0f};
     
-    for (msgType = 0u; msgType < 2; msgType++) {
+    //for (msgType = 0u; msgType < 2; msgType++) {
         for (x = 0u; x < NOOFSTATES; x++) {
             for (y = 0u; y < NOOFOBS; y++) {
                 //hostLink.recv(msg);
@@ -657,7 +657,8 @@ int main()
                 //printf("State No: %d has returned alpha: %0.10f\n", msg.observationNo, msg.alpha);
                 if (msg.msgType < 2u) {
                     
-                    result[msg.stateNo][msg.observationNo * (LINRATIO + 1u)][msg.msgType] = msg.val;
+                    //result[msg.stateNo][msg.observationNo * (LINRATIO + 1u)][msg.msgType] = msg.val;
+                    result[msg.stateNo][msg.observationNo * (LINRATIO + 1u)][0u] = msg.val;
     
                 }
                 else {
@@ -668,9 +669,17 @@ int main()
                         result[msg.stateNo][msg.observationNo][1u] = msg.val;
                     }
                 }
+                    /*
+                printf("Forward Probabilities: \n");
+                for (y = 0u; y < NOOFSTATES; y++) {
+                    for (x = 0u; x < NOOFOBS; x++) {
+                        printf("%.3e ", result[y][x][0u]);
+                    }
+                    printf("\n");
+                }*/
             }
         }
-    }
+    //}
     
     printf("Forward Probabilities: \n");
     for (y = 0u; y < NOOFSTATES; y++) {

@@ -70,12 +70,13 @@ int main()
         tinselWaitUntil(TINSEL_CAN_RECV);
         volatile ImpMessage* msgIn = tinselRecv();
         
-        //if (msgIn->msgType == FORWARD) {
+        if (msgIn->msgType == FORWARD) {
             
             matchVal[recCnt] = recCnt; //msgIn->match;
             
             recCnt++;
             if (recCnt == 2u) {
+                //multiple times through here
                 
                 if (observationNo != 23u) {
                     
@@ -93,7 +94,7 @@ int main()
                         tinselSend(host, msgHost);
                         
                     }
-                
+                    /*
                     for (uint32_t x = 0u; x < LINRATIO; x++) {
                         
                         // Send to host
@@ -107,12 +108,12 @@ int main()
 
                         tinselSend(host, msgHost);
                         
-                    }
+                    }*/
                 
                 }
                 
             }
-        //}
+        }
         
         
         /*
