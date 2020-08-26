@@ -152,7 +152,8 @@ int main()
                     msgHost->msgType = FWDLIN;
                     msgHost->observationNo = observationNo * (LINRATIO + 1u) + 1u + x;
                     msgHost->stateNo = stateNo;
-                    msgHost->val = alpha[x];
+                    //msgHost->val = alpha[x];
+                    msgHost->val = dmLocal[x]; //JPM
 
                     tinselSend(host, msgHost);
                     
@@ -181,7 +182,8 @@ int main()
                 
                 for (uint32_t x = 0u; x < LINRATIO; x++) {
                     
-                    beta[(LINRATIO - 1u) - x] = nextBeta - ((dmLocal[(LINRATIO - 1u) - x] * totalDistance) * totalDiff);
+                    beta[x] = nextBeta - ((dmLocal[(LINRATIO - 1u) - x] / totalDistance) * totalDiff);
+                    nextBeta = beta[x];
                     
                 }
                 
@@ -195,7 +197,8 @@ int main()
                     msgHost->observationNo = observationNo * (LINRATIO + 1u) + 1u + x;
                     msgHost->stateNo = stateNo;
                     //msgHost->val = beta[x];
-                    msgHost->val = 00000.00000f;
+                    //msgHost->val = 00000.00000f;
+                    msgHost->val = dmLocal[x]; //JPM
 
                     tinselSend(host, msgHost);
                     

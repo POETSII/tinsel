@@ -523,7 +523,7 @@ int main()
                         
                         hostLink.setAddr(boardX, boardY, coreID, baseAddress);
                         
-                        if (mailboxLocalThreadID < 40u ) {
+                        if (mailboxLocalThreadID < 56u ) {
                             
                             float dmSingle = 0.0f;
                             float* dmPtr = &dmSingle;
