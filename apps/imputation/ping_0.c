@@ -93,9 +93,7 @@ int main()
         msgHost->msgType = FORWARD;
         msgHost->observationNo = observationNo;
         msgHost->stateNo = stateNo;
-        //msgHost->val = alpha;
-        
-        msgHost->val = 0.0f; //JPM
+        msgHost->val = alpha;
 
         tinselSend(host, msgHost);
     
@@ -132,9 +130,7 @@ int main()
         msgHost->msgType = BACKWARD;
         msgHost->observationNo = observationNo;
         msgHost->stateNo = stateNo;
-        //msgHost->val = beta;
-        
-        msgHost->val = 0.0f; //JPM
+        msgHost->val = beta;
 
         tinselSend(host, msgHost);
         
@@ -242,9 +238,7 @@ int main()
                 msgHost->msgType = FORWARD;
                 msgHost->observationNo = observationNo;
                 msgHost->stateNo = stateNo;
-                //msgHost->val = alpha;
-                
-                msgHost->val = 0.0f; //JPM
+                msgHost->val = alpha;
 
                 tinselSend(host, msgHost);
             
@@ -348,9 +342,7 @@ int main()
                 msgHost->msgType = BACKWARD;
                 msgHost->observationNo = observationNo;
                 msgHost->stateNo = stateNo;
-                //msgHost->val = beta;
-                
-                msgHost->val = 0.0f; //JPM
+                msgHost->val = beta;
 
                 tinselSend(host, msgHost);
             

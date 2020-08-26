@@ -479,7 +479,7 @@ int main()
                             float* dmPtr = &dmSingle;
                             uint32_t* dmUPtr = (uint32_t*) dmPtr;
                             
-                            for (uint32_t x = 0u; x < LINRATIO; x++) {
+                            for (uint32_t x = 0u; x < (LINRATIO + 1u); x++) {
                                 
                                 dmSingle = dm[(observationPair * LINRATIO) + x];
                                 hostLink.store(boardX, boardY, coreID, 1u, dmUPtr);
@@ -493,7 +493,7 @@ int main()
                             float* dmPtr = &dmSingle;
                             uint32_t* dmUPtr = (uint32_t*) dmPtr;
                             
-                            for (uint32_t x = 0u; x < LINRATIO; x++) {
+                            for (uint32_t x = 0u; x < (LINRATIO + 1u); x++) {
                                 
                                 dmSingle = dm[((observationPair + 1u) * LINRATIO) + x];
                                 hostLink.store(boardX, boardY, coreID, 1u, dmUPtr);
@@ -529,7 +529,7 @@ int main()
                             float* dmPtr = &dmSingle;
                             uint32_t* dmUPtr = (uint32_t*) dmPtr;
                             
-                            for (uint32_t x = 0u; x < LINRATIO; x++) {
+                            for (uint32_t x = 0u; x < (LINRATIO + 1u); x++) {
                                 
                                 dmSingle = dm[(observationPair * LINRATIO) + x];
                                 hostLink.store(boardX, boardY, coreID, 1u, dmUPtr);
@@ -543,7 +543,7 @@ int main()
                             float* dmPtr = &dmSingle;
                             uint32_t* dmUPtr = (uint32_t*) dmPtr;
                             
-                            for (uint32_t x = 0u; x < LINRATIO; x++) {
+                            for (uint32_t x = 0u; x < (LINRATIO + 1u); x++) {
                                 
                                 dmSingle = dm[((observationPair + 1u) * LINRATIO) + x];
                                 hostLink.store(boardX, boardY, coreID, 1u, dmUPtr);

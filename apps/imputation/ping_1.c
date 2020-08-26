@@ -37,10 +37,10 @@ int main()
     uint32_t* baseAddress = tinselHeapBase();
     
     // Populate local genetic distances and calculate total genetic distance
-    float dmLocal[LINRATIO] = {0.0f};
+    float dmLocal[LINRATIO + 1u] = {0.0f};
     float totalDistance = 0.0f;
     
-    for (uint32_t x = 0u; x < LINRATIO; x++) {
+    for (uint32_t x = 0u; x < (LINRATIO + 1u); x++) {
         
         dmLocal[x] = *(float*)(baseAddress + x);;
         totalDistance += dmLocal[x];
@@ -152,8 +152,7 @@ int main()
                     msgHost->msgType = FWDLIN;
                     msgHost->observationNo = observationNo * (LINRATIO + 1u) + 1u + x;
                     msgHost->stateNo = stateNo;
-                    //msgHost->val = alpha[x];
-                    msgHost->val = dmLocal[x]; //JPM
+                    msgHost->val = alpha[x];
 
                     tinselSend(host, msgHost);
                     
@@ -196,9 +195,8 @@ int main()
                     msgHost->msgType = BWDLIN;
                     msgHost->observationNo = observationNo * (LINRATIO + 1u) + 1u + x;
                     msgHost->stateNo = stateNo;
-                    //msgHost->val = beta[x];
+                    msgHost->val = beta[x];
                     //msgHost->val = 00000.00000f;
-                    msgHost->val = dmLocal[x]; //JPM
 
                     tinselSend(host, msgHost);
                     
