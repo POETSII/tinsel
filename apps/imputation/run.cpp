@@ -76,8 +76,6 @@ int main()
     
     // Generate and transmit pre-execution data
     
-    
-
     // Generate multicast keys
     
     // Array to store keys

@@ -39,10 +39,10 @@ $(HL)/%.o:
 	make -C $(HL)
 
 run: run.cpp $(HL)/*.o
-	g++ -O2 -I $(INC) -I $(HL) -o run run.cpp $(HL)/*.o
+	g++ -O2 -I $(INC) -I $(HL) -o run run.cpp model.cpp $(HL)/*.o
 
 sim: run.cpp $(HL)/sim/*.o
-	g++ -O2 -I $(INC) -I $(HL) -o sim run.cpp $(HL)/sim/*.o
+	g++ -O2 -I $(INC) -I $(HL) -o sim run.cpp model.cpp $(HL)/sim/*.o
 
 .PHONY: clean
 clean:
