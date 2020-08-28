@@ -184,10 +184,8 @@ void server(int conn, int numBoards, UARTBuffer* uartLinks)
         if (cmd == DEBUGLINK_OVERHEAT) {
           // Report overheating issue via email
           reportOverheat(i);
-          // Emergency shutdown
-          return;
-          // Carry on
-          // uartLinks[i].get(); didGet = true;
+          // return; // Emergency shutdown
+          uartLinks[i].get(); didGet = true; // Carry on
         }
         else {
           uint8_t numBytes = fromDebugLinkSize(cmd);
