@@ -131,8 +131,8 @@ int main()
                         // Construct destination the mailbox for the previous board
                         dest.mbox = boardPath[board - 1u][1u];
                         dest.mbox = (dest.mbox << TinselMeshXBits) + boardPath[board - 1u][0u];
-                        dest.mbox = (dest.mbox << TinselMailboxMeshYBits) + mailboxPath[TinselCoresPerBoard - 1u][1u];
-                        dest.mbox = (dest.mbox << TinselMailboxMeshXBits) + mailboxPath[TinselCoresPerBoard - 1u][0u];
+                        dest.mbox = (dest.mbox << TinselMailboxMeshYBits) + mailboxPath[TinselMailboxesPerBoard - 1u][1u];
+                        dest.mbox = (dest.mbox << TinselMailboxMeshXBits) + mailboxPath[TinselMailboxesPerBoard - 1u][0u];
 
                         // Construct destination threads
                         mrmRecord.threadMaskLow = 0x0;
@@ -249,36 +249,75 @@ int main()
     hostLink.go();
     
     HostMessage msg;
-/*
+
     uint32_t result[NOOFOBS][8u];
+    //uint32_t recCnt = 0u;
      
     for (uint32_t y = 0u; y < 8u; y++) {
         for (uint32_t x = 0u; x < NOOFOBS; x++) {
         
             hostLink.recvMsg(&msg, sizeof(msg));
+            //recCnt++;
             
             result[msg.observationNo][msg.stateNo] = msg.msgType;
         
             //printf("ObsNo: %d, Key: %X \n", msg.observationNo, msg.stateNo);
+            /*
+            FILE * fp;
+
+            fp = fopen ("results.csv","w");
+            
+            for (uint32_t y = 0u; y < 8u; y++) {
+                for (uint32_t x = 0u; x < NOOFOBS; x++) {
+
+                    //printf("%X ", result[x][y]);
+                    if (x != NOOFOBS - 1u) {
+                        fprintf(fp, "%X,", result[x][y]);
+                    }
+                    else {
+                        fprintf(fp, "%X", result[x][y]);
+                    }
+
+                }
+
+                fprintf(fp, "\n");
+
+            }
+            
+            fclose (fp);
+            
+            printf("Rec = %d\n", recCnt);
+            */
         
         }
     
     }
+    
+    for (uint32_t y = 0u; y < 8u; y++) {
+        for (uint32_t x = 0u; x < NOOFOBS; x++) {
+        
+            
+            printf("%X ", result[x][y]);
+        
+        }
+        printf("\n");
+    }
   
-          
+/*          
     for (uint32_t x = 0u; x < NOOFOBS; x++) {
         
         for (uint32_t y = 0u; y < 8u; y++) {
 
             printf("RETURNED -> Global Col: %d, Global Row: %d, Key: %X\n", x, y, result[x][y]);
+            
 
         }
 
     }
 */
 
-    hostLink.recvMsg(&msg, sizeof(msg));
-    printf("ObsNo: %d, Key: %X \n", msg.observationNo, msg.stateNo);
+    //hostLink.recvMsg(&msg, sizeof(msg));
+    //printf("ObsNo: %d, Key: %X \n", msg.observationNo, msg.stateNo);
     
 #ifdef PRINTDEBUG   
     printf("\nKeys. The last key is not used:\n\n");

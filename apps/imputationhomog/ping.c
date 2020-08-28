@@ -53,7 +53,7 @@ int main()
         
         // Propagate to next column
         tinselKeySend(bwdKey, msgOut);
-        /*
+        
         volatile HostMessage* msgHost = tinselSendSlot();
         
         // Prepare message to send to HMM node
@@ -64,7 +64,7 @@ int main()
         msgHost->val = 0.0f;
 
         tinselSend(host, msgHost);
-        */
+        
     }
     else if (observationNo == 0u) {
         
@@ -99,7 +99,7 @@ int main()
         msgOut->val = msgIn->val;
         
         tinselKeySend(bwdKey, msgOut);
-        /*
+        
         volatile HostMessage* msgHost = tinselSendSlot();
 
         // Prepare message to send to HMM node
@@ -110,7 +110,7 @@ int main()
         msgHost->val = 0.0f;
 
         tinselSend(host, msgHost);
-        */
+        
     }
 
     return 0;

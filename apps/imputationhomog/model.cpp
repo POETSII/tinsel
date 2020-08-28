@@ -406,7 +406,7 @@ const float dm[NOOFOBS-1] = {
 // Cluster Layout
 
 // Intraboard Mailbox Connections per Board 
-const uint8_t mailboxPath[TinselCoresPerBoard][2u] = { 
+const uint8_t mailboxPath[TinselMailboxesPerBoard][2u] = { 
     { 0, 0 },
     { 0, 1 },
     { 0, 2 },
