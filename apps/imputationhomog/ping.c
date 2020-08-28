@@ -20,12 +20,16 @@ int main()
     uint32_t observationNo = *baseAddress;
     uint32_t fwdKey = *(baseAddress + 1u);
     uint32_t bwdKey = *(baseAddress + 2u);
+    float bwdSame = *(float*)(baseAddress + 3u);
+    float bwdDiff = *(float*)(baseAddress + 4u);
+    float fwdSame = *(float*)(baseAddress + 5u);
+    float fwdDiff = *(float*)(baseAddress + 6u);
 
     
     // Get host id
     int host = tinselHostId();
     
-/*   
+   
     // Get pointers to mailbox message slot
     volatile HostMessage* msgHost = tinselSendSlot();
 
@@ -34,11 +38,11 @@ int main()
     msgHost->msgType = bwdKey;
     msgHost->observationNo = observationNo;
     msgHost->stateNo = hwRow;
-    msgHost->val = 0.0f;
+    msgHost->val = fwdDiff;
 
     tinselSend(host, msgHost);
-*/    
     
+/*    
     // Startup for forward algorithm
     if (observationNo == (NOOFOBS - 1u)) {
         
@@ -112,7 +116,7 @@ int main()
         tinselSend(host, msgHost);
         
     }
-
+*/
     return 0;
 }
 

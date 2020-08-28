@@ -22,7 +22,7 @@
  * ****************************************************/
  
 const uint8_t COLSPERCORE = 2u;
-const uint8_t THREADSPERcol = 8U;
+const uint8_t THREADSPERCOL = 8U;
 const uint32_t XKEYS = (TinselBoardsPerBox - 1u) * TinselCoresPerBoard * COLSPERCORE;
 //const uint8_t YKEYS = 8u;
 
@@ -57,6 +57,9 @@ int main()
         for (uint8_t mailbox = 0u; mailbox < TinselMailboxesPerBoard; mailbox++) {
             
             for (uint8_t col = 0u; col < (TinselCoresPerMailbox * COLSPERCORE); col++) {
+                
+                //Global Column Number
+                uint32_t globalColumn = (board * TinselCoresPerMailbox * COLSPERCORE * TinselMailboxesPerBoard) + (mailbox * TinselCoresPerMailbox * COLSPERCORE) + col;
             
                 // FORWARD KEYS
                 
@@ -75,7 +78,7 @@ int main()
                         // Construct destination threads
                         mrmRecord.threadMaskLow = 0xFF;
                         mrmRecord.threadMaskHigh = 0u;
-                        //printf("Global Col: %d, ", ((board * TinselCoresPerMailbox * COLSPERCORE * TinselMailboxesPerBoard) + (mailbox * TinselCoresPerMailbox * COLSPERCORE) + col));
+                        //printf("Global Col: %d, ", (globalColumn));
                         //printf("boardX: %d, boardY: %d, mailboxX: %d, mailboxY: %d, col: %d, ThreadMaskLow: %X, ThreadMaskHigh: %X\n", boardPath[board + 1u][0u], boardPath[board + 1u][1u], mailboxPath[0u][0u], mailboxPath[0u][1u], col, mrmRecord.threadMaskLow, mrmRecord.threadMaskHigh);
                         dest.mrm = mrmRecord;
                         
@@ -94,7 +97,7 @@ int main()
                         // Construct destination threads
                         mrmRecord.threadMaskLow = 0xFF;
                         mrmRecord.threadMaskHigh = 0u;
-                        //printf("Global Col: %d, ", ((board * TinselCoresPerMailbox * COLSPERCORE * TinselMailboxesPerBoard) + (mailbox * TinselCoresPerMailbox * COLSPERCORE) + col));
+                        //printf("Global Col: %d, ", (globalColumn));
                         //printf("boardX: %d, boardY: %d, mailboxX: %d, mailboxY: %d, col: %d, ThreadMaskLow: %X, ThreadMaskHigh: %X\n", boardPath[board][0u], boardPath[board][1u], mailboxPath[mailbox + 1u][0u], mailboxPath[mailbox + 1u][1u], col, mrmRecord.threadMaskLow, mrmRecord.threadMaskHigh);
                         dest.mrm = mrmRecord;
                     
@@ -112,7 +115,7 @@ int main()
                         uint64_t threadMask = 0xFF;
                         mrmRecord.threadMaskLow = uint32_t(threadMask << ((col + 1u) * 8u));
                         mrmRecord.threadMaskHigh = uint32_t((threadMask << ((col + 1u) * 8u)) >> 32u);
-                        //printf("Global Col: %d, ", ((board * TinselCoresPerMailbox * COLSPERCORE * TinselMailboxesPerBoard) + (mailbox * TinselCoresPerMailbox * COLSPERCORE) + col));
+                        //printf("Global Col: %d, ", (globalColumn));
                         //printf("boardX: %d, boardY: %d, mailboxX: %d, mailboxY: %d, col: %d, ThreadMaskLow: %X, ThreadMaskHigh: %X\n", boardPath[board][0u], boardPath[board][1u], mailboxPath[mailbox][0u], mailboxPath[mailbox][1u], col, mrmRecord.threadMaskLow, mrmRecord.threadMaskHigh);
                         dest.mrm = mrmRecord;
                     
@@ -137,7 +140,7 @@ int main()
                         // Construct destination threads
                         mrmRecord.threadMaskLow = 0x0;
                         mrmRecord.threadMaskHigh = 0xFF000000;
-                        printf("Global Col: %d, ", ((board * TinselCoresPerMailbox * COLSPERCORE * TinselMailboxesPerBoard) + (mailbox * TinselCoresPerMailbox * COLSPERCORE) + col));
+                        printf("Global Col: %d, ", (globalColumn));
                         printf("boardX: %d, boardY: %d, mailboxX: %d, mailboxY: %d, col: %d, ThreadMaskLow: %X, ThreadMaskHigh: %X\n", boardPath[board - 1u][0u], boardPath[board - 1u][1u], mailboxPath[TinselCoresPerBoard - 1u][0u], mailboxPath[TinselCoresPerBoard - 1u][1u], col, mrmRecord.threadMaskLow, mrmRecord.threadMaskHigh);
                         dest.mrm = mrmRecord;
                         
@@ -156,7 +159,7 @@ int main()
                         // Construct destination threads
                         mrmRecord.threadMaskLow = 0x0;
                         mrmRecord.threadMaskHigh = 0xFF000000;
-                        printf("Global Col: %d, ", ((board * TinselCoresPerMailbox * COLSPERCORE * TinselMailboxesPerBoard) + (mailbox * TinselCoresPerMailbox * COLSPERCORE) + col));
+                        printf("Global Col: %d, ", (globalColumn));
                         printf("boardX: %d, boardY: %d, mailboxX: %d, mailboxY: %d, col: %d, ThreadMaskLow: %X, ThreadMaskHigh: %X\n", boardPath[board][0u], boardPath[board][1u], mailboxPath[mailbox - 1u][0u], mailboxPath[mailbox - 1u][1u], col, mrmRecord.threadMaskLow, mrmRecord.threadMaskHigh);
                         dest.mrm = mrmRecord;
                     
@@ -174,7 +177,7 @@ int main()
                         uint64_t threadMask = 0xFF00000000000000;
                         mrmRecord.threadMaskLow = uint32_t(threadMask >> (((((TinselCoresPerMailbox * COLSPERCORE)-1u) - col) + 1u) * 8u));
                         mrmRecord.threadMaskHigh = uint32_t((threadMask >> (((((TinselCoresPerMailbox * COLSPERCORE)-1u) - col) + 1u) * 8u)) >> 32u);
-                        printf("Global Col: %d, ", ((board * TinselCoresPerMailbox * COLSPERCORE * TinselMailboxesPerBoard) + (mailbox * TinselCoresPerMailbox * COLSPERCORE) + col));
+                        printf("Global Col: %d, ", (globalColumn));
                         printf("boardX: %d, boardY: %d, mailboxX: %d, mailboxY: %d, col: %d, ThreadMaskLow: %X, ThreadMaskHigh: %X\n", boardPath[board][0u], boardPath[board][1u], mailboxPath[mailbox][0u], mailboxPath[mailbox][1u], col, mrmRecord.threadMaskLow, mrmRecord.threadMaskHigh);
                         dest.mrm = mrmRecord;
                     
@@ -187,9 +190,9 @@ int main()
                 if (!((board == TinselBoardsPerBox - 2u) && (mailbox == TinselMailboxesPerBoard - 1u) && (col == (TinselCoresPerMailbox * COLSPERCORE) - 1u))) {
 
                     // Create forward key
-                    fwdColumnKey[(board * TinselCoresPerMailbox * COLSPERCORE * TinselMailboxesPerBoard) + (mailbox * TinselCoresPerMailbox * COLSPERCORE) + col] = progRouterMesh.addDestsFromBoardXY(boardPath[board][0u], boardPath[board][1u], &fwdDests);
-                    //printf("Key: %X\n", fwdColumnKey[(board * TinselCoresPerMailbox * COLSPERCORE * TinselMailboxesPerBoard) + (mailbox * TinselCoresPerMailbox * COLSPERCORE) + col]);
-                    //fwdColumnKey[(board * TinselCoresPerMailbox * COLSPERCORE * TinselMailboxesPerBoard) + (mailbox * TinselCoresPerMailbox * COLSPERCORE) + col] = 1u;
+                    fwdColumnKey[globalColumn] = progRouterMesh.addDestsFromBoardXY(boardPath[board][0u], boardPath[board][1u], &fwdDests);
+                    //printf("Key: %X\n", fwdColumnKey[globalColumn]);
+                    //fwdColumnKey[globalColumn] = 1u;
                 
                 }
                 
@@ -199,15 +202,94 @@ int main()
                 if (!((board == 0u) && (mailbox == 0u) && (col == 0u))) {
 
                     // Create forward key
-                    bwdColumnKey[(board * TinselCoresPerMailbox * COLSPERCORE * TinselMailboxesPerBoard) + (mailbox * TinselCoresPerMailbox * COLSPERCORE) + col] = progRouterMesh.addDestsFromBoardXY(boardPath[board][0u], boardPath[board][1u], &bwdDests);
-                    printf("Key: %X\n", bwdColumnKey[(board * TinselCoresPerMailbox * COLSPERCORE * TinselMailboxesPerBoard) + (mailbox * TinselCoresPerMailbox * COLSPERCORE) + col]);
-                    //fwdColumnKey[(board * TinselCoresPerMailbox * COLSPERCORE * TinselMailboxesPerBoard) + (mailbox * TinselCoresPerMailbox * COLSPERCORE) + col] = 1u;
+                    bwdColumnKey[globalColumn] = progRouterMesh.addDestsFromBoardXY(boardPath[board][0u], boardPath[board][1u], &bwdDests);
+                    printf("Key: %X\n", bwdColumnKey[globalColumn]);
+                    //fwdColumnKey[globalColumn] = 1u;
                 
                 }
                 
                 bwdDests.clear();
                 
-                for (uint32_t thread = 0u; thread < THREADSPERcol; thread++) {
+                // Transition probabilites for same and different haplotypes for both observations
+                
+                float tau_m0 = 0u;
+                float same0 = 0u;
+                float diff0 = 0u;
+                
+                float* same0Ptr = &same0;
+                float* diff0Ptr = &diff0;
+                
+                uint32_t* same0UPtr = (uint32_t*) same0Ptr;
+                uint32_t* diff0UPtr = (uint32_t*) diff0Ptr;
+                
+                // Tau M Values
+                if (globalColumn != 0u) {
+                    
+                    /*
+                    // Caluclate total genetic distance
+                    currentIndex = (observationPair - 1u) * LINRATIO;
+                    geneticDistance = 0.0f;
+                    for (uint32_t x = 0u; x < LINRATIO; x++) {
+                        
+                        geneticDistance += dm[currentIndex + x];
+                        
+                    }
+                    */
+                    
+                    tau_m0 = (1 - exp((-4 * NE * dm[globalColumn - 1u]) / NOOFSTATES));
+                    same0 = (1 - tau_m0) + (tau_m0 / NOOFSTATES);
+                    diff0 = tau_m0 / NOOFSTATES;
+                    
+                    //printf("same trans prob = %.10f\n", *(float*)same0UPtr);
+                    //printf("diff trans prob = %f\n", *(float*)diff0UPtr);
+                    
+                }
+                
+                /*
+                // Caluclate total genetic distance
+                currentIndex = (observationPair) * LINRATIO;
+                geneticDistance = 0.0f;
+                
+                for (uint32_t x = 0u; x < LINRATIO; x++) {
+                    
+                    geneticDistance += dm[currentIndex + x];
+                    
+                }
+                */
+                
+                float tau_m1 = 0u;
+                float same1 = 0u;
+                float diff1 = 0u;
+                
+                float* same1Ptr = &same1;
+                float* diff1Ptr = &diff1;
+                
+                uint32_t* same1UPtr = (uint32_t*) same1Ptr;
+                uint32_t* diff1UPtr = (uint32_t*) diff1Ptr;
+                
+                if ((globalColumn != (NOOFOBS - 1u))) {
+                    
+                    /*
+                    // Caluclate total genetic distance
+                    currentIndex = (globalColumn + 1u) * LINRATIO;
+                    geneticDistance = 0.0f;
+                    
+                    for (uint32_t x = 0u; x < LINRATIO; x++) {
+                        
+                        geneticDistance += dm[currentIndex + x];
+                        
+                    }*/
+                    
+                    tau_m1 = (1 - exp((-4 * NE * dm[globalColumn] ) / NOOFSTATES));
+                    same1 = (1 - tau_m1) + (tau_m1 / NOOFSTATES);
+                    diff1 = tau_m1 / NOOFSTATES;
+                    
+                    //printf("same trans prob = %.10f\n", *(float*)same2UPtr);
+                    //printf("diff trans prob = %f\n", *(float*)diff2UPtr);
+                    
+                }
+                
+                for (uint32_t thread = 0u; thread < THREADSPERCOL; thread++) {
                 
                     uint32_t threadID = 0u;
                     
@@ -221,15 +303,23 @@ int main()
                     uint8_t coreID = (mailboxPath[mailbox][1u] * TinselMailboxMeshXLen * TinselCoresPerMailbox) + (mailboxPath[mailbox][0u] * TinselCoresPerMailbox);
                     
                     // For debug store col number
-                    uint32_t obsNo = (board * TinselCoresPerMailbox * COLSPERCORE * TinselMailboxesPerBoard) + (mailbox * TinselCoresPerMailbox * COLSPERCORE) + col;
+                    uint32_t obsNo = globalColumn;
 
                     uint32_t baseAddress = tinselHeapBaseGeneric(threadID);
                     
                     hostLink.setAddr(boardPath[board][0u], boardPath[board][1u], coreID, baseAddress);
                     
                     hostLink.store(boardPath[board][0u], boardPath[board][1u], coreID, 1u, &obsNo);
-                    hostLink.store(boardPath[board][0u], boardPath[board][1u], coreID, 1u, &fwdColumnKey[(board * TinselCoresPerMailbox * COLSPERCORE * TinselMailboxesPerBoard) + (mailbox * TinselCoresPerMailbox * COLSPERCORE) + col]);
-                    hostLink.store(boardPath[board][0u], boardPath[board][1u], coreID, 1u, &bwdColumnKey[(board * TinselCoresPerMailbox * COLSPERCORE * TinselMailboxesPerBoard) + (mailbox * TinselCoresPerMailbox * COLSPERCORE) + col]);
+                    hostLink.store(boardPath[board][0u], boardPath[board][1u], coreID, 1u, &fwdColumnKey[globalColumn]);
+                    hostLink.store(boardPath[board][0u], boardPath[board][1u], coreID, 1u, &bwdColumnKey[globalColumn]);
+                    
+                    // Backward transition propbabilties
+                    hostLink.store(boardPath[board][0u], boardPath[board][1u], coreID, 1u, same0UPtr);
+                    hostLink.store(boardPath[board][0u], boardPath[board][1u], coreID, 1u, diff0UPtr);
+                    
+                    // Forward transistion Probabilites
+                    hostLink.store(boardPath[board][0u], boardPath[board][1u], coreID, 1u, same1UPtr);
+                    hostLink.store(boardPath[board][0u], boardPath[board][1u], coreID, 1u, diff1UPtr);
                     
                 
                 }
@@ -250,44 +340,14 @@ int main()
     
     HostMessage msg;
 
-    uint32_t result[NOOFOBS][8u];
-    //uint32_t recCnt = 0u;
+    float result[NOOFOBS][8u];
      
     for (uint32_t y = 0u; y < 8u; y++) {
         for (uint32_t x = 0u; x < NOOFOBS; x++) {
         
             hostLink.recvMsg(&msg, sizeof(msg));
-            //recCnt++;
             
-            result[msg.observationNo][msg.stateNo] = msg.msgType;
-        
-            //printf("ObsNo: %d, Key: %X \n", msg.observationNo, msg.stateNo);
-            /*
-            FILE * fp;
-
-            fp = fopen ("results.csv","w");
-            
-            for (uint32_t y = 0u; y < 8u; y++) {
-                for (uint32_t x = 0u; x < NOOFOBS; x++) {
-
-                    //printf("%X ", result[x][y]);
-                    if (x != NOOFOBS - 1u) {
-                        fprintf(fp, "%X,", result[x][y]);
-                    }
-                    else {
-                        fprintf(fp, "%X", result[x][y]);
-                    }
-
-                }
-
-                fprintf(fp, "\n");
-
-            }
-            
-            fclose (fp);
-            
-            printf("Rec = %d\n", recCnt);
-            */
+            result[msg.observationNo][msg.stateNo] = msg.val;
         
         }
     
@@ -297,7 +357,7 @@ int main()
         for (uint32_t x = 0u; x < NOOFOBS; x++) {
         
             
-            printf("%X ", result[x][y]);
+            printf("%e ", result[x][y]);
         
         }
         printf("\n");
