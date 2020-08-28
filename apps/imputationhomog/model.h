@@ -13,7 +13,7 @@
 // Pre-processor Switches
 //#define PRINTDIAG (1)
 
-extern const uint32_t observation[NOOFTARGMARK][2u];
+extern const uint32_t observation[NOOFOBS][2];
 extern const float dm[NOOFOBS-1];
 extern const uint8_t hmm_labels[NOOFSTATES][NOOFOBS];
 extern const uint8_t mailboxPath[TinselMailboxesPerBoard][2u];
