@@ -186,7 +186,7 @@ int main()
     hostLink.go();
     
     HostMessage msg;
-/*
+
     uint32_t result[NOOFOBS][8u];
      
     for (uint32_t y = 0u; y < 8u; y++) {
@@ -212,10 +212,10 @@ int main()
         }
 
     }
-*/
 
-    hostLink.recvMsg(&msg, sizeof(msg));
-    printf("ObsNo: %d, Key: %X \n", msg.observationNo, msg.stateNo);
+
+    //hostLink.recvMsg(&msg, sizeof(msg));
+    //printf("ObsNo: %d, Key: %X \n", msg.observationNo, msg.stateNo);
     
 #ifdef PRINTDEBUG   
     printf("\nKeys. The last key is not used:\n\n");
