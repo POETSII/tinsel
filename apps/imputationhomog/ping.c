@@ -18,12 +18,13 @@ int main()
     // Received values
     uint32_t* baseAddress = tinselHeapBase();
     uint32_t observationNo = *baseAddress;
-    uint32_t fwdKey = *(baseAddress + 1u);
-    uint32_t bwdKey = *(baseAddress + 2u);
-    float bwdSame = *(float*)(baseAddress + 3u);
-    float bwdDiff = *(float*)(baseAddress + 4u);
-    float fwdSame = *(float*)(baseAddress + 5u);
-    float fwdDiff = *(float*)(baseAddress + 6u);
+    uint32_t match = *(baseAddress + 1u);
+    uint32_t fwdKey = *(baseAddress + 2u);
+    uint32_t bwdKey = *(baseAddress + 3u);
+    float bwdSame = *(float*)(baseAddress + 4u);
+    float bwdDiff = *(float*)(baseAddress + 5u);
+    float fwdSame = *(float*)(baseAddress + 6u);
+    float fwdDiff = *(float*)(baseAddress + 7u);
 
     
     // Get host id
@@ -35,7 +36,7 @@ int main()
 
     // Prepare message to send to HMM node
     tinselWaitUntil(TINSEL_CAN_SEND);
-    msgHost->msgType = bwdKey;
+    msgHost->msgType = match;
     msgHost->observationNo = observationNo;
     msgHost->stateNo = hwRow;
     msgHost->val = fwdDiff;

@@ -290,7 +290,16 @@ int main()
                 }
                 
                 for (uint32_t thread = 0u; thread < THREADSPERCOL; thread++) {
-                
+                    
+                    //Create match value from model
+                    
+                    uint32_t match = 0u;
+                    
+                    // if markers match
+                    if (hmm_labels[thread][globalColumn] == observation[globalColumn][1]) {
+                        match = 1u;
+                    }
+            
                     uint32_t threadID = 0u;
                     
                     // Construct ThreadID
@@ -310,6 +319,7 @@ int main()
                     hostLink.setAddr(boardPath[board][0u], boardPath[board][1u], coreID, baseAddress);
                     
                     hostLink.store(boardPath[board][0u], boardPath[board][1u], coreID, 1u, &obsNo);
+                    hostLink.store(boardPath[board][0u], boardPath[board][1u], coreID, 1u, &match);
                     hostLink.store(boardPath[board][0u], boardPath[board][1u], coreID, 1u, &fwdColumnKey[globalColumn]);
                     hostLink.store(boardPath[board][0u], boardPath[board][1u], coreID, 1u, &bwdColumnKey[globalColumn]);
                     
@@ -340,14 +350,14 @@ int main()
     
     HostMessage msg;
 
-    float result[NOOFOBS][8u];
+    uint32_t result[NOOFOBS][8u];
      
     for (uint32_t y = 0u; y < 8u; y++) {
         for (uint32_t x = 0u; x < NOOFOBS; x++) {
         
             hostLink.recvMsg(&msg, sizeof(msg));
             
-            result[msg.observationNo][msg.stateNo] = msg.val;
+            result[msg.observationNo][msg.stateNo] = msg.msgType;
         
         }
     
@@ -357,7 +367,7 @@ int main()
         for (uint32_t x = 0u; x < NOOFOBS; x++) {
         
             
-            printf("%e ", result[x][y]);
+            printf("%d ", result[x][y]);
         
         }
         printf("\n");
