@@ -6,7 +6,7 @@
  * ************************************************/
 
 // HMM Model
-
+/*
 // HMM States Labels
 const uint8_t hmm_labels[NOOFSTATES][NOOFOBS] = { 
     { 0,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,1,0 },
@@ -400,6 +400,8 @@ const float dm[NOOFOBS-1] = {
 0.000001108695991,
 0.000004428544523
 };
+
+*/
 
 // Cluster Layout
 

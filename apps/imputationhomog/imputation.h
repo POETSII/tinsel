@@ -13,8 +13,8 @@
 
 // Model Parameters
 
-#define NOOFSTATES (128)
-#define NOOFOBS (231)
+#define NOOFSTATES (8)
+#define NOOFOBS (768)
 #define NOOFTARGMARK (24)
 #define LINRATIO (9)
 #define NE (1000000)
