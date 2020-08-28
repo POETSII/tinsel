@@ -19,18 +19,19 @@ int main()
     uint32_t* baseAddress = tinselHeapBase();
     uint32_t observationNo = *baseAddress;
     uint32_t fwdKey = *(baseAddress + 1u);
+    uint32_t bwdKey = *(baseAddress + 2u);
 
     
     // Get host id
     int host = tinselHostId();
     
-/*    
+/*   
     // Get pointers to mailbox message slot
     volatile HostMessage* msgHost = tinselSendSlot();
 
     // Prepare message to send to HMM node
     tinselWaitUntil(TINSEL_CAN_SEND);
-    msgHost->msgType = fwdKey;
+    msgHost->msgType = bwdKey;
     msgHost->observationNo = observationNo;
     msgHost->stateNo = hwRow;
     msgHost->val = 0.0f;
@@ -39,7 +40,7 @@ int main()
 */    
     
     // Startup for forward algorithm
-    if (observationNo == 0u) {
+    if (observationNo == (NOOFOBS - 1u)) {
         
         // Get pointers to mailbox message slot
         volatile ImpMessage* msgOut = tinselSendSlot();
@@ -51,21 +52,21 @@ int main()
         msgOut->val = 0.0f;
         
         // Propagate to next column
-        tinselKeySend(fwdKey, msgOut);
-        
+        tinselKeySend(bwdKey, msgOut);
+        /*
         volatile HostMessage* msgHost = tinselSendSlot();
-
+        
         // Prepare message to send to HMM node
         tinselWaitUntil(TINSEL_CAN_SEND);
-        msgHost->msgType = fwdKey;
+        msgHost->msgType = bwdKey;
         msgHost->observationNo = observationNo;
         msgHost->stateNo = hwRow;
         msgHost->val = 0.0f;
 
         tinselSend(host, msgHost);
-        
+        */
     }
-    else if (observationNo == (NOOFOBS - 1u)) {
+    else if (observationNo == 0u) {
         
         tinselWaitUntil(TINSEL_CAN_RECV);
         volatile ImpMessage* msgIn = tinselRecv();
@@ -75,7 +76,7 @@ int main()
         
         // Prepare message to send to HMM node
         tinselWaitUntil(TINSEL_CAN_SEND);
-        msgHost->msgType = FORWARD;
+        msgHost->msgType = bwdKey;
         msgHost->observationNo = observationNo;
         msgHost->stateNo = hwRow;
         msgHost->val = 0.0f;
@@ -97,19 +98,19 @@ int main()
         msgOut->stateNo = msgIn->stateNo;
         msgOut->val = msgIn->val;
         
-        tinselKeySend(fwdKey, msgOut);
-        
+        tinselKeySend(bwdKey, msgOut);
+        /*
         volatile HostMessage* msgHost = tinselSendSlot();
 
         // Prepare message to send to HMM node
         tinselWaitUntil(TINSEL_CAN_SEND);
-        msgHost->msgType = fwdKey;
+        msgHost->msgType = bwdKey;
         msgHost->observationNo = observationNo;
         msgHost->stateNo = hwRow;
         msgHost->val = 0.0f;
 
         tinselSend(host, msgHost);
-        
+        */
     }
 
     return 0;

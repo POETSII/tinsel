@@ -46,16 +46,11 @@ int main()
     PRoutingDest dest;
     PRoutingDestMRM mrmRecord;
     Seq<PRoutingDest> fwdDests;
-    //Seq<PRoutingDest> fwdDestscol1;
     Seq<PRoutingDest> bwdDests;
-    //Seq<PRoutingDest> bwdDestscol1;
     
     dest.kind = PRDestKindMRM;
     
     mrmRecord.key = 0u;
-    
-    //const uint32_t col0 = 0x00FF00FFu;
-    //const uint32_t col1 = 0xFF00FF00u;
     
     for (uint8_t board = 0u; board < (TinselBoardsPerBox - 1u); board++) {
     
@@ -80,8 +75,8 @@ int main()
                         // Construct destination threads
                         mrmRecord.threadMaskLow = 0xFF;
                         mrmRecord.threadMaskHigh = 0u;
-                        printf("Global Col: %d, ", ((board * TinselCoresPerMailbox * COLSPERCORE * TinselMailboxesPerBoard) + (mailbox * TinselCoresPerMailbox * COLSPERCORE) + col));
-                        printf("boardX: %d, boardY: %d, mailboxX: %d, mailboxY: %d, col: %d, ThreadMaskLow: %X, ThreadMaskHigh: %X\n", boardPath[board + 1u][0u], boardPath[board + 1u][1u], mailboxPath[0u][0u], mailboxPath[0u][1u], col, mrmRecord.threadMaskLow, mrmRecord.threadMaskHigh);
+                        //printf("Global Col: %d, ", ((board * TinselCoresPerMailbox * COLSPERCORE * TinselMailboxesPerBoard) + (mailbox * TinselCoresPerMailbox * COLSPERCORE) + col));
+                        //printf("boardX: %d, boardY: %d, mailboxX: %d, mailboxY: %d, col: %d, ThreadMaskLow: %X, ThreadMaskHigh: %X\n", boardPath[board + 1u][0u], boardPath[board + 1u][1u], mailboxPath[0u][0u], mailboxPath[0u][1u], col, mrmRecord.threadMaskLow, mrmRecord.threadMaskHigh);
                         dest.mrm = mrmRecord;
                         
                     }
@@ -99,8 +94,8 @@ int main()
                         // Construct destination threads
                         mrmRecord.threadMaskLow = 0xFF;
                         mrmRecord.threadMaskHigh = 0u;
-                        printf("Global Col: %d, ", ((board * TinselCoresPerMailbox * COLSPERCORE * TinselMailboxesPerBoard) + (mailbox * TinselCoresPerMailbox * COLSPERCORE) + col));
-                        printf("boardX: %d, boardY: %d, mailboxX: %d, mailboxY: %d, col: %d, ThreadMaskLow: %X, ThreadMaskHigh: %X\n", boardPath[board][0u], boardPath[board][1u], mailboxPath[mailbox + 1u][0u], mailboxPath[mailbox + 1u][1u], col, mrmRecord.threadMaskLow, mrmRecord.threadMaskHigh);
+                        //printf("Global Col: %d, ", ((board * TinselCoresPerMailbox * COLSPERCORE * TinselMailboxesPerBoard) + (mailbox * TinselCoresPerMailbox * COLSPERCORE) + col));
+                        //printf("boardX: %d, boardY: %d, mailboxX: %d, mailboxY: %d, col: %d, ThreadMaskLow: %X, ThreadMaskHigh: %X\n", boardPath[board][0u], boardPath[board][1u], mailboxPath[mailbox + 1u][0u], mailboxPath[mailbox + 1u][1u], col, mrmRecord.threadMaskLow, mrmRecord.threadMaskHigh);
                         dest.mrm = mrmRecord;
                     
                 }
@@ -117,31 +112,100 @@ int main()
                         uint64_t threadMask = 0xFF;
                         mrmRecord.threadMaskLow = uint32_t(threadMask << ((col + 1u) * 8u));
                         mrmRecord.threadMaskHigh = uint32_t((threadMask << ((col + 1u) * 8u)) >> 32u);
-                        printf("Global Col: %d, ", ((board * TinselCoresPerMailbox * COLSPERCORE * TinselMailboxesPerBoard) + (mailbox * TinselCoresPerMailbox * COLSPERCORE) + col));
-                        printf("boardX: %d, boardY: %d, mailboxX: %d, mailboxY: %d, col: %d, ThreadMaskLow: %X, ThreadMaskHigh: %X\n", boardPath[board][0u], boardPath[board][1u], mailboxPath[mailbox][0u], mailboxPath[mailbox][1u], col, mrmRecord.threadMaskLow, mrmRecord.threadMaskHigh);
+                        //printf("Global Col: %d, ", ((board * TinselCoresPerMailbox * COLSPERCORE * TinselMailboxesPerBoard) + (mailbox * TinselCoresPerMailbox * COLSPERCORE) + col));
+                        //printf("boardX: %d, boardY: %d, mailboxX: %d, mailboxY: %d, col: %d, ThreadMaskLow: %X, ThreadMaskHigh: %X\n", boardPath[board][0u], boardPath[board][1u], mailboxPath[mailbox][0u], mailboxPath[mailbox][1u], col, mrmRecord.threadMaskLow, mrmRecord.threadMaskHigh);
                         dest.mrm = mrmRecord;
                     
                 }
                 
                 fwdDests.append(dest);
                 
-                //printf("No of Dests: %d\n", fwdDests.numElems);
+                // BACKWARD KEYS
+                
+                // If we are the first col on the current board
+                if ( (col == 0u) && (mailbox == 0u) ) {
+                    
+                    // If we arent in the first col for the box
+                    if ( !(board == 0u) ) {
+                        
+                        // Construct destination the mailbox for the previous board
+                        dest.mbox = boardPath[board - 1u][1u];
+                        dest.mbox = (dest.mbox << TinselMeshXBits) + boardPath[board - 1u][0u];
+                        dest.mbox = (dest.mbox << TinselMailboxMeshYBits) + mailboxPath[TinselCoresPerBoard - 1u][1u];
+                        dest.mbox = (dest.mbox << TinselMailboxMeshXBits) + mailboxPath[TinselCoresPerBoard - 1u][0u];
+
+                        // Construct destination threads
+                        mrmRecord.threadMaskLow = 0x0;
+                        mrmRecord.threadMaskHigh = 0xFF000000;
+                        printf("Global Col: %d, ", ((board * TinselCoresPerMailbox * COLSPERCORE * TinselMailboxesPerBoard) + (mailbox * TinselCoresPerMailbox * COLSPERCORE) + col));
+                        printf("boardX: %d, boardY: %d, mailboxX: %d, mailboxY: %d, col: %d, ThreadMaskLow: %X, ThreadMaskHigh: %X\n", boardPath[board - 1u][0u], boardPath[board - 1u][1u], mailboxPath[TinselCoresPerBoard - 1u][0u], mailboxPath[TinselCoresPerBoard - 1u][1u], col, mrmRecord.threadMaskLow, mrmRecord.threadMaskHigh);
+                        dest.mrm = mrmRecord;
+                        
+                    }
+                    
+                }
+                // If we are the first col in the current mailbox
+                else if (col == 0u) {
+                    
+                        // Construct destination the next mailbox
+                        dest.mbox = boardPath[board][1u];
+                        dest.mbox = (dest.mbox << TinselMeshXBits) + boardPath[board][0u];
+                        dest.mbox = (dest.mbox << TinselMailboxMeshYBits) + mailboxPath[mailbox - 1u][1u];
+                        dest.mbox = (dest.mbox << TinselMailboxMeshXBits) + mailboxPath[mailbox - 1u][0u];
+                        
+                        // Construct destination threads
+                        mrmRecord.threadMaskLow = 0x0;
+                        mrmRecord.threadMaskHigh = 0xFF000000;
+                        printf("Global Col: %d, ", ((board * TinselCoresPerMailbox * COLSPERCORE * TinselMailboxesPerBoard) + (mailbox * TinselCoresPerMailbox * COLSPERCORE) + col));
+                        printf("boardX: %d, boardY: %d, mailboxX: %d, mailboxY: %d, col: %d, ThreadMaskLow: %X, ThreadMaskHigh: %X\n", boardPath[board][0u], boardPath[board][1u], mailboxPath[mailbox - 1u][0u], mailboxPath[mailbox - 1u][1u], col, mrmRecord.threadMaskLow, mrmRecord.threadMaskHigh);
+                        dest.mrm = mrmRecord;
+                    
+                }
+                // If we are just a regular col
+                else {
+                    
+                        // Construct destination the same mailbox
+                        dest.mbox = boardPath[board][1u];
+                        dest.mbox = (dest.mbox << TinselMeshXBits) + boardPath[board][0u];
+                        dest.mbox = (dest.mbox << TinselMailboxMeshYBits) + mailboxPath[mailbox][1u];
+                        dest.mbox = (dest.mbox << TinselMailboxMeshXBits) + mailboxPath[mailbox][0u];
+                        
+                        // Construct destination threads for next col (hence + 8u)
+                        uint64_t threadMask = 0xFF00000000000000;
+                        mrmRecord.threadMaskLow = uint32_t(threadMask >> (((((TinselCoresPerMailbox * COLSPERCORE)-1u) - col) + 1u) * 8u));
+                        mrmRecord.threadMaskHigh = uint32_t((threadMask >> (((((TinselCoresPerMailbox * COLSPERCORE)-1u) - col) + 1u) * 8u)) >> 32u);
+                        printf("Global Col: %d, ", ((board * TinselCoresPerMailbox * COLSPERCORE * TinselMailboxesPerBoard) + (mailbox * TinselCoresPerMailbox * COLSPERCORE) + col));
+                        printf("boardX: %d, boardY: %d, mailboxX: %d, mailboxY: %d, col: %d, ThreadMaskLow: %X, ThreadMaskHigh: %X\n", boardPath[board][0u], boardPath[board][1u], mailboxPath[mailbox][0u], mailboxPath[mailbox][1u], col, mrmRecord.threadMaskLow, mrmRecord.threadMaskHigh);
+                        dest.mrm = mrmRecord;
+                    
+                }
+                
+                bwdDests.append(dest);
+                
                 
                 // If we arent in the last col
                 if (!((board == TinselBoardsPerBox - 2u) && (mailbox == TinselMailboxesPerBoard - 1u) && (col == (TinselCoresPerMailbox * COLSPERCORE) - 1u))) {
 
                     // Create forward key
                     fwdColumnKey[(board * TinselCoresPerMailbox * COLSPERCORE * TinselMailboxesPerBoard) + (mailbox * TinselCoresPerMailbox * COLSPERCORE) + col] = progRouterMesh.addDestsFromBoardXY(boardPath[board][0u], boardPath[board][1u], &fwdDests);
-                    printf("Key: %X\n", fwdColumnKey[(board * TinselCoresPerMailbox * COLSPERCORE * TinselMailboxesPerBoard) + (mailbox * TinselCoresPerMailbox * COLSPERCORE) + col]);
+                    //printf("Key: %X\n", fwdColumnKey[(board * TinselCoresPerMailbox * COLSPERCORE * TinselMailboxesPerBoard) + (mailbox * TinselCoresPerMailbox * COLSPERCORE) + col]);
                     //fwdColumnKey[(board * TinselCoresPerMailbox * COLSPERCORE * TinselMailboxesPerBoard) + (mailbox * TinselCoresPerMailbox * COLSPERCORE) + col] = 1u;
                 
                 }
                 
-                //printf("col: ");
-                
-                //printf("%d\n", ((board * TinselCoresPerMailbox * COLSPERCORE * TinselMailboxesPerBoard) + (mailbox * TinselCoresPerMailbox * COLSPERCORE) + col));
-                
                 fwdDests.clear();
+                
+                // If we arent in the first col
+                if (!((board == 0u) && (mailbox == 0u) && (col == 0u))) {
+
+                    // Create forward key
+                    bwdColumnKey[(board * TinselCoresPerMailbox * COLSPERCORE * TinselMailboxesPerBoard) + (mailbox * TinselCoresPerMailbox * COLSPERCORE) + col] = progRouterMesh.addDestsFromBoardXY(boardPath[board][0u], boardPath[board][1u], &bwdDests);
+                    printf("Key: %X\n", bwdColumnKey[(board * TinselCoresPerMailbox * COLSPERCORE * TinselMailboxesPerBoard) + (mailbox * TinselCoresPerMailbox * COLSPERCORE) + col]);
+                    //fwdColumnKey[(board * TinselCoresPerMailbox * COLSPERCORE * TinselMailboxesPerBoard) + (mailbox * TinselCoresPerMailbox * COLSPERCORE) + col] = 1u;
+                
+                }
+                
+                bwdDests.clear();
                 
                 for (uint32_t thread = 0u; thread < THREADSPERcol; thread++) {
                 
@@ -158,8 +222,6 @@ int main()
                     
                     // For debug store col number
                     uint32_t obsNo = (board * TinselCoresPerMailbox * COLSPERCORE * TinselMailboxesPerBoard) + (mailbox * TinselCoresPerMailbox * COLSPERCORE) + col;
-                    
-                    //printf("ThreadID: %d, coreID %d, obsNo:%d \n", threadID, coreID, obsNo);
 
                     uint32_t baseAddress = tinselHeapBaseGeneric(threadID);
                     
@@ -167,6 +229,7 @@ int main()
                     
                     hostLink.store(boardPath[board][0u], boardPath[board][1u], coreID, 1u, &obsNo);
                     hostLink.store(boardPath[board][0u], boardPath[board][1u], coreID, 1u, &fwdColumnKey[(board * TinselCoresPerMailbox * COLSPERCORE * TinselMailboxesPerBoard) + (mailbox * TinselCoresPerMailbox * COLSPERCORE) + col]);
+                    hostLink.store(boardPath[board][0u], boardPath[board][1u], coreID, 1u, &bwdColumnKey[(board * TinselCoresPerMailbox * COLSPERCORE * TinselMailboxesPerBoard) + (mailbox * TinselCoresPerMailbox * COLSPERCORE) + col]);
                     
                 
                 }
@@ -186,7 +249,7 @@ int main()
     hostLink.go();
     
     HostMessage msg;
-
+/*
     uint32_t result[NOOFOBS][8u];
      
     for (uint32_t y = 0u; y < 8u; y++) {
@@ -212,10 +275,10 @@ int main()
         }
 
     }
+*/
 
-
-    //hostLink.recvMsg(&msg, sizeof(msg));
-    //printf("ObsNo: %d, Key: %X \n", msg.observationNo, msg.stateNo);
+    hostLink.recvMsg(&msg, sizeof(msg));
+    printf("ObsNo: %d, Key: %X \n", msg.observationNo, msg.stateNo);
     
 #ifdef PRINTDEBUG   
     printf("\nKeys. The last key is not used:\n\n");
