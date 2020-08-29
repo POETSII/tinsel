@@ -56,7 +56,6 @@ package DebugLink;
 //   detect a tinsel board (distingushing it, for example, from a host
 //   board which returns a 0 payload) and also to discover the board id.
 //
-//
 //   StdOut: tag (1 byte), thread id (1 byte),
 //           core id (1 byte), payload (1 byte)
 //   ------------------------------------------
@@ -67,6 +66,11 @@ package DebugLink;
 //   ---------------------------------------
 //
 //   Actual temperature in celsius is payload - 128.
+//
+//   Overheat: tag (1 byte)
+//   ----------------------
+//
+//   FPGA is overheating.
 
 // =============================================================================
 // Imports
@@ -92,6 +96,12 @@ DebugLinkCmd cmdStdIn    = 2;
 DebugLinkCmd cmdStdOut   = 2;
 DebugLinkCmd cmdTempIn   = 4;
 DebugLinkCmd cmdTempOut  = 4;
+DebugLinkCmd cmdOverheat = 5;
+
+// If the FPGA temperature rises above this threshold we send an
+// emergency sthudown message over debug link.  To convert this
+// temperature to Celsuis, subtract 128.
+`define TemperatureThreshold 208
 
 // =============================================================================
 // Types
@@ -297,6 +307,9 @@ module mkDebugLink#(
   Reg#(Bool) respondFlag <- mkConfigReg(False);
   Reg#(DebugLinkCmd) respondCmd <- mkConfigRegU;
 
+  // Check temperature to avoid overheating?
+  Reg#(Bool) checkTemperature <- mkConfigReg(False);
+
   rule uartRecv (fromJtag.canGet && toBusPort.canPut && !respondFlag);
     fromJtag.get;
     if (recvState == 0) begin
@@ -347,6 +360,8 @@ module mkDebugLink#(
           Option {valid: True, value: fromJtag.value[4] == 1};
         respondFlag <= True;
         respondCmd <= cmdQueryIn;
+        // Start checking temperature after first query command
+        checkTemperature <= True;
         recvState <= 0;
       end else begin
         recvDestCore <= fromJtag.value;
@@ -363,6 +378,9 @@ module mkDebugLink#(
 
   // Flit being forwarded
   Reg#(DebugLinkFlit) sendFlit <- mkConfigRegU;
+
+  // Have we sent an emergency overheat message?
+  Reg#(Bool) overheatMsgSent <- mkConfigReg(False);
 
   // Send QueryOut command
   rule uartSendQueryOut (toJtag.canPut && respondFlag);
@@ -394,7 +412,11 @@ module mkDebugLink#(
   // Send StdOut command
   rule uartSendStdOut (toJtag.canPut && !respondFlag);
     if (sendState == 0) begin
-      if (fromBusPort.canGet) begin
+      if (checkTemperature && !overheatMsgSent &&
+            temperature > `TemperatureThreshold) begin
+        overheatMsgSent <= True;
+        toJtag.put(zeroExtend(cmdOverheat));
+      end else if (fromBusPort.canGet) begin
         fromBusPort.get;
         if (! fromBusPort.value.isBroadcast) begin
           // Send StdOut
