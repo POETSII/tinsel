@@ -1,4 +1,4 @@
-# Tinsel 0.8.1
+# Tinsel 0.8.2
 
 Tinsel is a [RISC-V](https://riscv.org/)-based manythread
 message-passing architecture designed for FPGA clusters.  It is being

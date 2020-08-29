@@ -66,7 +66,7 @@ module ExternalTinselAccelerator
   assign out_data = outQueueData;
 
   // State machine
-  always @(negedge clk) begin
+  always @(posedge clk) begin
     if (rst_n == 0) begin
       inQueueFull <= 0;
       outQueueFull <= 0;
