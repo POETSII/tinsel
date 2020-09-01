@@ -14,9 +14,9 @@
 // Model Parameters
 
 #define NOOFSTATES (8)
-#define NOOFOBS (768)
-#define NOOFTARGMARK (24)
-#define LINRATIO (9)
+#define NOOFOBS (7671)
+#define NOOFTARGMARK (768)
+#define LINRATIO (10)
 #define NE (1000000)
 #define ERRORRATE (10000)
 

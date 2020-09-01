@@ -140,8 +140,10 @@ int main()
                         // Construct destination threads
                         mrmRecord.threadMaskLow = 0x0;
                         mrmRecord.threadMaskHigh = 0xFF000000;
+#ifdef PRINTDEBUG
                         printf("Global Col: %d, ", (globalColumn));
                         printf("boardX: %d, boardY: %d, mailboxX: %d, mailboxY: %d, col: %d, ThreadMaskLow: %X, ThreadMaskHigh: %X\n", boardPath[board - 1u][0u], boardPath[board - 1u][1u], mailboxPath[TinselCoresPerBoard - 1u][0u], mailboxPath[TinselCoresPerBoard - 1u][1u], col, mrmRecord.threadMaskLow, mrmRecord.threadMaskHigh);
+#endif                        
                         dest.mrm = mrmRecord;
                         
                     }
@@ -159,8 +161,10 @@ int main()
                         // Construct destination threads
                         mrmRecord.threadMaskLow = 0x0;
                         mrmRecord.threadMaskHigh = 0xFF000000;
+#ifdef PRINTDEBUG
                         printf("Global Col: %d, ", (globalColumn));
                         printf("boardX: %d, boardY: %d, mailboxX: %d, mailboxY: %d, col: %d, ThreadMaskLow: %X, ThreadMaskHigh: %X\n", boardPath[board][0u], boardPath[board][1u], mailboxPath[mailbox - 1u][0u], mailboxPath[mailbox - 1u][1u], col, mrmRecord.threadMaskLow, mrmRecord.threadMaskHigh);
+#endif                        
                         dest.mrm = mrmRecord;
                     
                 }
@@ -177,8 +181,10 @@ int main()
                         uint64_t threadMask = 0xFF00000000000000;
                         mrmRecord.threadMaskLow = uint32_t(threadMask >> (((((TinselCoresPerMailbox * COLSPERCORE)-1u) - col) + 1u) * 8u));
                         mrmRecord.threadMaskHigh = uint32_t((threadMask >> (((((TinselCoresPerMailbox * COLSPERCORE)-1u) - col) + 1u) * 8u)) >> 32u);
+#ifdef PRINTDEBUG
                         printf("Global Col: %d, ", (globalColumn));
                         printf("boardX: %d, boardY: %d, mailboxX: %d, mailboxY: %d, col: %d, ThreadMaskLow: %X, ThreadMaskHigh: %X\n", boardPath[board][0u], boardPath[board][1u], mailboxPath[mailbox][0u], mailboxPath[mailbox][1u], col, mrmRecord.threadMaskLow, mrmRecord.threadMaskHigh);
+#endif                        
                         dest.mrm = mrmRecord;
                     
                 }
@@ -203,7 +209,9 @@ int main()
 
                     // Create forward key
                     bwdColumnKey[globalColumn] = progRouterMesh.addDestsFromBoardXY(boardPath[board][0u], boardPath[board][1u], &bwdDests);
+#ifdef PRINTDEBUG
                     printf("Key: %X\n", bwdColumnKey[globalColumn]);
+#endif
                     //fwdColumnKey[globalColumn] = 1u;
                 
                 }
@@ -225,37 +233,21 @@ int main()
                 // Tau M Values
                 if (globalColumn != 0u) {
                     
-                    /*
                     // Caluclate total genetic distance
-                    currentIndex = (observationPair - 1u) * LINRATIO;
-                    geneticDistance = 0.0f;
+                    uint32_t currentIndex = (globalColumn - 1u) * LINRATIO;
+                    float geneticDistance = 0.0f;
                     for (uint32_t x = 0u; x < LINRATIO; x++) {
                         
                         geneticDistance += dm[currentIndex + x];
                         
                     }
-                    */
                     
-                    tau_m0 = (1 - exp((-4 * NE * dm[globalColumn - 1u]) / NOOFSTATES));
+                    tau_m0 = (1 - exp((-4 * NE * geneticDistance) / NOOFSTATES));
                     same0 = (1 - tau_m0) + (tau_m0 / NOOFSTATES);
                     diff0 = tau_m0 / NOOFSTATES;
                     
-                    //printf("same trans prob = %.10f\n", *(float*)same0UPtr);
-                    //printf("diff trans prob = %f\n", *(float*)diff0UPtr);
                     
                 }
-                
-                /*
-                // Caluclate total genetic distance
-                currentIndex = (observationPair) * LINRATIO;
-                geneticDistance = 0.0f;
-                
-                for (uint32_t x = 0u; x < LINRATIO; x++) {
-                    
-                    geneticDistance += dm[currentIndex + x];
-                    
-                }
-                */
                 
                 float tau_m1 = 0u;
                 float same1 = 0u;
@@ -267,25 +259,20 @@ int main()
                 uint32_t* same1UPtr = (uint32_t*) same1Ptr;
                 uint32_t* diff1UPtr = (uint32_t*) diff1Ptr;
                 
-                if ((globalColumn != (NOOFOBS - 1u))) {
+                if ((globalColumn != (NOOFTARGMARK - 1u))) {
                     
-                    /*
                     // Caluclate total genetic distance
-                    currentIndex = (globalColumn + 1u) * LINRATIO;
-                    geneticDistance = 0.0f;
-                    
+                    uint32_t currentIndex = globalColumn * LINRATIO;
+                    float geneticDistance = 0.0f;
                     for (uint32_t x = 0u; x < LINRATIO; x++) {
                         
                         geneticDistance += dm[currentIndex + x];
                         
-                    }*/
+                    }
                     
-                    tau_m1 = (1 - exp((-4 * NE * dm[globalColumn] ) / NOOFSTATES));
+                    tau_m1 = (1 - exp((-4 * NE * currentIndex ) / NOOFSTATES));
                     same1 = (1 - tau_m1) + (tau_m1 / NOOFSTATES);
                     diff1 = tau_m1 / NOOFSTATES;
-                    
-                    //printf("same trans prob = %.10f\n", *(float*)same2UPtr);
-                    //printf("diff trans prob = %f\n", *(float*)diff2UPtr);
                     
                 }
                 
@@ -296,7 +283,7 @@ int main()
                     uint32_t match = 0u;
                     
                     // if markers match
-                    if (hmm_labels[thread][globalColumn] == observation[globalColumn][1]) {
+                    if (hmm_labels[thread][globalColumn * LINRATIO] == observation[globalColumn * LINRATIO][1]) {
                         match = 1u;
                     }
             
@@ -323,11 +310,11 @@ int main()
                     hostLink.store(boardPath[board][0u], boardPath[board][1u], coreID, 1u, &fwdColumnKey[globalColumn]);
                     hostLink.store(boardPath[board][0u], boardPath[board][1u], coreID, 1u, &bwdColumnKey[globalColumn]);
                     
-                    // Backward transition propbabilties
+                    // Forward transition propbabilties
                     hostLink.store(boardPath[board][0u], boardPath[board][1u], coreID, 1u, same0UPtr);
                     hostLink.store(boardPath[board][0u], boardPath[board][1u], coreID, 1u, diff0UPtr);
                     
-                    // Forward transistion Probabilites
+                    // Backward transistion Probabilites
                     hostLink.store(boardPath[board][0u], boardPath[board][1u], coreID, 1u, same1UPtr);
                     hostLink.store(boardPath[board][0u], boardPath[board][1u], coreID, 1u, diff1UPtr);
                     
@@ -344,37 +331,75 @@ int main()
     // Write the keys to the routers
     progRouterMesh.write(&hostLink);
     
+    printf("Launching\n");
     // Load the correct code into the cores
     hostLink.boot("code.v", "data.v");
     hostLink.go();
     
     HostMessage msg;
 
-    uint32_t result[NOOFOBS][8u];
+    float result[NOOFTARGMARK][8u][2u];
+    //uint32_t recCnt = 0u;
      
-    for (uint32_t y = 0u; y < 8u; y++) {
-        for (uint32_t x = 0u; x < NOOFOBS; x++) {
-        
-            hostLink.recvMsg(&msg, sizeof(msg));
+    for (uint8_t msgType = 0u; msgType < 2; msgType++) {
+        for (uint32_t y = 0u; y < 8u; y++) {
+            for (uint32_t x = 0u; x < NOOFTARGMARK; x++) {
+                
+                //recCnt++;
+                hostLink.recvMsg(&msg, sizeof(msg));
+                //printf("Message received cnt = %d\n", recCnt);
+                
+                if (msg.msgType < 2u) {
+                    
+                    result[msg.observationNo][msg.stateNo][msg.msgType] = msg.val;
+    
+                }
             
-            result[msg.observationNo][msg.stateNo] = msg.msgType;
+            }
         
         }
-    
     }
-    
+   
+    //Create a file pointer
+    FILE * fp;
+    /* open the file for writing*/
+    fp = fopen ("results.csv","w");
+
+    fprintf(fp, "Forward Probabilities: \n");
     for (uint32_t y = 0u; y < 8u; y++) {
-        for (uint32_t x = 0u; x < NOOFOBS; x++) {
+        for (uint32_t x = 0u; x < NOOFTARGMARK; x++) {
         
-            
-            printf("%d ", result[x][y]);
+            if (x != (NOOFTARGMARK - 1u) ) {
+                fprintf(fp, "%e,", result[x][y][0u]);
+            }
+            else {
+                fprintf(fp, "%e", result[x][y][0u]);
+            }
         
         }
-        printf("\n");
+        fprintf(fp, "\n");
     }
+
+    fprintf(fp, "Backward Probabilities: \n");
+    for (uint32_t y = 0u; y < 8u; y++) {
+        for (uint32_t x = 0u; x < NOOFTARGMARK; x++) {
+        
+            if (x != (NOOFTARGMARK - 1u) ) {
+                fprintf(fp, "%e,", result[x][y][1u]);
+            }
+            else {
+                fprintf(fp, "%e", result[x][y][1u]);
+            }
+        
+        }
+        fprintf(fp, "\n");
+    }
+
+    /* close the file*/  
+    fclose (fp);
   
 /*          
-    for (uint32_t x = 0u; x < NOOFOBS; x++) {
+    for (uint32_t x = 0u; x < NOOFTARGMARK; x++) {
         
         for (uint32_t y = 0u; y < 8u; y++) {
 
@@ -403,10 +428,6 @@ int main()
             
         }
 #endif
- 
-    //hostLink.recvMsg(&msg, sizeof(msg));
-
-    //printf("ObsNo: %d, State: %d \n", msg.observationNo, msg.stateNo);
 
     return 0;
 }
