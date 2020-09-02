@@ -48,8 +48,8 @@ int main()
     
     float alpha = 0.0f;
     float beta = 0.0f;
-    float alphaLin[9] = {0.0f};
-    float betaLin[9] = {0.0f};
+    float alphaLin[LINRATIO - 1u] = {0.0f};
+    float betaLin[LINRATIO - 1u] = {0.0f};
     
     float prevAlpha = 0.0f;
     float nextAlpha = 0.0f;
@@ -328,9 +328,9 @@ int main()
             
             for (uint32_t x = 0u; x < (LINRATIO - 1u); x++) {
                 
-                //alphaLin[x] = prevAlpha - ((dmLocal[x] / totalDistance) * totalDiff);
-                //prevAlpha = alphaLin[x];
-                alphaLin[x] = (float)(observationNo + x + 1u);
+                alphaLin[x] = prevAlpha - ((dmLocal[x] / totalDistance) * totalDiff);
+                alphaLin[x] = prevAlpha - ((dmLocal[x] / totalDistance) * totalDiff);
+                prevAlpha = alphaLin[x];
 
             }
             
@@ -370,9 +370,8 @@ int main()
             
             for (uint32_t x = 0u; x < (LINRATIO - 1u); x++) {
                 
-                //betaLin[x] = nextBeta - ((dmLocal[(LINRATIO - 1u) - x] / totalDistance) * totalDiff);
-                //nextBeta = betaLin[x];
-                betaLin[x] = 69.0f;
+                betaLin[x] = nextBeta - ((dmLocal[(LINRATIO - 2u) - x] / totalDistance) * totalDiff);
+                nextBeta = betaLin[x];
                 
             }
             
@@ -385,7 +384,7 @@ int main()
                 msgHost->msgType = BWDLIN;
                 msgHost->observationNo = (observationNo * LINRATIO) + 1u + x;
                 msgHost->stateNo = stateNo;
-                msgHost->val = betaLin[x];
+                msgHost->val = betaLin[(LINRATIO - 2u) - x];
                 //msgHost->val = 00000.00000f;
 
                 tinselSend(host, msgHost);
