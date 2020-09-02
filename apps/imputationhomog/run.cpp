@@ -60,6 +60,9 @@ int main()
                 
                 //Global Column Number
                 uint32_t globalColumn = (board * TinselCoresPerMailbox * COLSPERCORE * TinselMailboxesPerBoard) + (mailbox * TinselCoresPerMailbox * COLSPERCORE) + col;
+                
+                //Base Thread
+                uint32_t prevBaseThread = 0u;
             
                 // FORWARD KEYS
                 
@@ -136,6 +139,8 @@ int main()
                         dest.mbox = (dest.mbox << TinselMeshXBits) + boardPath[board - 1u][0u];
                         dest.mbox = (dest.mbox << TinselMailboxMeshYBits) + mailboxPath[TinselMailboxesPerBoard - 1u][1u];
                         dest.mbox = (dest.mbox << TinselMailboxMeshXBits) + mailboxPath[TinselMailboxesPerBoard - 1u][0u];
+                        
+                        prevBaseThread = (dest.mbox << TinselLogThreadsPerMailbox) + (7u * 8u);
 
                         // Construct destination threads
                         mrmRecord.threadMaskLow = 0x0;
@@ -158,6 +163,8 @@ int main()
                         dest.mbox = (dest.mbox << TinselMailboxMeshYBits) + mailboxPath[mailbox - 1u][1u];
                         dest.mbox = (dest.mbox << TinselMailboxMeshXBits) + mailboxPath[mailbox - 1u][0u];
                         
+                        prevBaseThread = (dest.mbox << TinselLogThreadsPerMailbox) + (7u * 8u);
+                        
                         // Construct destination threads
                         mrmRecord.threadMaskLow = 0x0;
                         mrmRecord.threadMaskHigh = 0xFF000000;
@@ -176,6 +183,8 @@ int main()
                         dest.mbox = (dest.mbox << TinselMeshXBits) + boardPath[board][0u];
                         dest.mbox = (dest.mbox << TinselMailboxMeshYBits) + mailboxPath[mailbox][1u];
                         dest.mbox = (dest.mbox << TinselMailboxMeshXBits) + mailboxPath[mailbox][0u];
+                        
+                        prevBaseThread = (dest.mbox << TinselLogThreadsPerMailbox) + ((col - 1u) * 8u);
                         
                         // Construct destination threads for next col (hence + 8u)
                         uint64_t threadMask = 0xFF00000000000000;
@@ -286,6 +295,8 @@ int main()
                     if (hmm_labels[thread][globalColumn * LINRATIO] == observation[globalColumn * LINRATIO][1]) {
                         match = 1u;
                     }
+                    
+                    uint32_t prevThread = prevBaseThread + thread;
             
                     uint32_t threadID = 0u;
                     
@@ -318,6 +329,20 @@ int main()
                     hostLink.store(boardPath[board][0u], boardPath[board][1u], coreID, 1u, same1UPtr);
                     hostLink.store(boardPath[board][0u], boardPath[board][1u], coreID, 1u, diff1UPtr);
                     
+                    hostLink.store(boardPath[board][0u], boardPath[board][1u], coreID, 1u, &prevThread);
+                    
+                    // Local genetic distances from map
+                    float dmSingle = 0.0f;
+                    float* dmPtr = &dmSingle;
+                    uint32_t* dmUPtr = (uint32_t*) dmPtr;
+                    
+                    for (uint32_t x = 0u; x < LINRATIO; x++) {
+                        
+                        dmSingle = dm[(globalColumn * LINRATIO) + x];
+                        hostLink.store(boardPath[board][0u], boardPath[board][1u], coreID, 1u, dmUPtr);
+                        
+                    }
+                    
                 
                 }
                 
@@ -338,12 +363,12 @@ int main()
     
     HostMessage msg;
 
-    float result[NOOFTARGMARK][8u][2u];
+    float result[NOOFOBS][8u][2u];
     //uint32_t recCnt = 0u;
      
     for (uint8_t msgType = 0u; msgType < 2; msgType++) {
         for (uint32_t y = 0u; y < 8u; y++) {
-            for (uint32_t x = 0u; x < NOOFTARGMARK; x++) {
+            for (uint32_t x = 0u; x < NOOFOBS; x++) {
                 
                 //recCnt++;
                 hostLink.recvMsg(&msg, sizeof(msg));
@@ -367,9 +392,9 @@ int main()
 
     fprintf(fp, "Forward Probabilities: \n");
     for (uint32_t y = 0u; y < 8u; y++) {
-        for (uint32_t x = 0u; x < NOOFTARGMARK; x++) {
+        for (uint32_t x = 0u; x < NOOFOBS; x++) {
         
-            if (x != (NOOFTARGMARK - 1u) ) {
+            if (x != (NOOFOBS - 1u) ) {
                 fprintf(fp, "%e,", result[x][y][0u]);
             }
             else {
@@ -382,9 +407,9 @@ int main()
 
     fprintf(fp, "Backward Probabilities: \n");
     for (uint32_t y = 0u; y < 8u; y++) {
-        for (uint32_t x = 0u; x < NOOFTARGMARK; x++) {
+        for (uint32_t x = 0u; x < NOOFOBS; x++) {
         
-            if (x != (NOOFTARGMARK - 1u) ) {
+            if (x != (NOOFOBS - 1u) ) {
                 fprintf(fp, "%e,", result[x][y][1u]);
             }
             else {
