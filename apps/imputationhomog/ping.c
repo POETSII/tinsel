@@ -328,8 +328,9 @@ int main()
             
             for (uint32_t x = 0u; x < (LINRATIO - 1u); x++) {
                 
-                alphaLin[x] = prevAlpha - ((dmLocal[x] / totalDistance) * totalDiff);
-                prevAlpha = alphaLin[x];
+                //alphaLin[x] = prevAlpha - ((dmLocal[x] / totalDistance) * totalDiff);
+                //prevAlpha = alphaLin[x];
+                alphaLin[x] = (float)(observationNo + x + 1u);
 
             }
             
@@ -348,6 +349,10 @@ int main()
                 
             }
             
+            //Clear the ready flags to prevent re-transmission
+            rdyFlags &= (~PREVA);
+            rdyFlags &= (~NEXTA);
+            
         }
         
         // Handle backward messages
@@ -365,8 +370,9 @@ int main()
             
             for (uint32_t x = 0u; x < (LINRATIO - 1u); x++) {
                 
-                betaLin[x] = nextBeta - ((dmLocal[(LINRATIO - 1u) - x] / totalDistance) * totalDiff);
-                nextBeta = betaLin[x];
+                //betaLin[x] = nextBeta - ((dmLocal[(LINRATIO - 1u) - x] / totalDistance) * totalDiff);
+                //nextBeta = betaLin[x];
+                betaLin[x] = 69.0f;
                 
             }
             
@@ -385,6 +391,10 @@ int main()
                 tinselSend(host, msgHost);
                 
             }
+            
+            //Clear the ready flags to prevent re-transmission
+            rdyFlags &= (~PREVB);
+            rdyFlags &= (~NEXTB);
             
         }
         

@@ -363,27 +363,46 @@ int main()
     
     HostMessage msg;
 
-    float result[NOOFOBS][8u][2u];
-    //uint32_t recCnt = 0u;
-     
+    float result[NOOFOBS][8u][2u] = {0.0f};
+    uint32_t recCnt = 0u;
+    
+    //Create a file pointer
+    FILE * fp1;
+    /* open the file for writing*/
+    fp1 = fopen ("resultsstream.csv","w");
+    
+    fprintf(fp1, "msgType,obsNo,stateNo,val\n");
+    
     for (uint8_t msgType = 0u; msgType < 2; msgType++) {
         for (uint32_t y = 0u; y < 8u; y++) {
             for (uint32_t x = 0u; x < NOOFOBS; x++) {
                 
-                //recCnt++;
+                recCnt++;
                 hostLink.recvMsg(&msg, sizeof(msg));
-                //printf("Message received cnt = %d\n", recCnt);
                 
                 if (msg.msgType < 2u) {
                     
                     result[msg.observationNo][msg.stateNo][msg.msgType] = msg.val;
+                    fprintf(fp1, "%d,%d,%d,%e\n", msg.msgType, msg.observationNo, msg.stateNo, msg.val);
     
+                }
+                else {
+                    if (msg.msgType == FWDLIN) {
+                        result[msg.observationNo][msg.stateNo][0u] = msg.val;
+                        fprintf(fp1, "0,%d,%d,%e\n", msg.observationNo, msg.stateNo, msg.val);
+                    }
+                    else {
+                        result[msg.observationNo][msg.stateNo][1u] = msg.val;
+                        fprintf(fp1, "0,%d,%d,%e\n", msg.observationNo, msg.stateNo, msg.val);
+                    }
                 }
             
             }
         
         }
     }
+    
+    fclose (fp1);
    
     //Create a file pointer
     FILE * fp;
