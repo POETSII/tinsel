@@ -270,7 +270,7 @@ int main()
                         
                     }
                     
-                    tau_m1 = (1 - exp((-4 * NE * currentIndex ) / NOOFSTATES));
+                    tau_m1 = (1 - exp((-4 * NE * geneticDistance ) / NOOFSTATES));
                     same1 = (1 - tau_m1) + (tau_m1 / NOOFSTATES);
                     diff1 = tau_m1 / NOOFSTATES;
                     

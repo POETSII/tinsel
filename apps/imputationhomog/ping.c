@@ -34,7 +34,7 @@ int main()
     /*
     // Send to host
     volatile HostMessage* msgHost = tinselSendSlot();
-
+    
     tinselWaitUntil(TINSEL_CAN_SEND);
     msgHost->msgType = FORWARD;
     msgHost->observationNo = observationNo;
@@ -141,15 +141,6 @@ int main()
             else {
                 alpha += msgIn->val * fwdDiff;
             }
-            
-            /*
-            if (msgIn->stateNo == stateNo) {
-                alpha += 1u * fwdSame;
-            }
-            else {
-                alpha += 1u * fwdDiff;
-            }
-            */
             
             if (fwdRecCnt == NOOFSTATES) {
                 
