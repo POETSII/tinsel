@@ -101,7 +101,7 @@ DebugLinkCmd cmdOverheat = 5;
 // If the FPGA temperature rises above this threshold we send an
 // emergency sthudown message over debug link.  To convert this
 // temperature to Celsuis, subtract 128.
-`define TemperatureThreshold 208
+`define TemperatureThreshold 213
 
 // =============================================================================
 // Types
