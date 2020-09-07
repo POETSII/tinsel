@@ -51,12 +51,12 @@ int main()
     float alphaLin[LINRATIO - 1u] = {0.0f};
     float betaLin[LINRATIO - 1u] = {0.0f};
     
-    float prevAlpha = 0.0f;
-    float nextAlpha = 0.0f;
-    float prevBeta = 0.0f;
-    float nextBeta = 0.0f;
+    float prevAlpha[1] = {0.0f};
+    float nextAlpha[1] = {0.0f};
+    float prevBeta[1] = {0.0f};
+    float nextBeta[1] = {0.0f};
     
-    uint8_t rdyFlags = 0u;
+    uint8_t rdyFlags[1] = {0u};
     /*
     // Send to host
     volatile HostMessage* msgHost = tinselSendSlot();
@@ -95,8 +95,8 @@ int main()
             alpha[0] = alpha[0] * (1.0f / ERRORRATE);
         }
         
-        prevAlpha = alpha[0];
-        rdyFlags |= PREVA;
+        prevAlpha[0] = alpha[0];
+        rdyFlags[0] |= PREVA;
         
         // Get pointers to mailbox message slot
         volatile ImpMessage* msgOut = tinselSendSlot();
@@ -140,8 +140,8 @@ int main()
         // Propagate to previous column
         tinselKeySend(bwdKey, msgOut);
         
-        prevBeta = beta[0];
-        rdyFlags |= PREVB;
+        prevBeta[0] = beta[0];
+        rdyFlags[0] |= PREVB;
         
         // Propagate beta to previous thread as prev beta
         
@@ -196,8 +196,8 @@ int main()
                 }
                 
                 // Previous alpha has been calculated
-                prevAlpha = alpha[0];
-                rdyFlags |= PREVA;
+                prevAlpha[0] = alpha[0];
+                rdyFlags[0] |= PREVA;
                 
                 // If we are an intermediate node propagate the alpha to the next column
                 // Else send the alpha out to the host
@@ -269,8 +269,8 @@ int main()
             
             if (bwdRecCnt == NOOFHWROWS) {
                 
-                prevBeta = beta[0];
-                rdyFlags |= PREVB;
+                prevBeta[0] = beta[0];
+                rdyFlags[0] |= PREVB;
                 
                 if (observationNo != 0u) {
                     
@@ -316,21 +316,21 @@ int main()
         // Handle forward messages
         if (msgIn->msgType == FWDLIN) {
             
-            nextAlpha = msgIn->val;
-            rdyFlags |= NEXTA;
+            nextAlpha[0] = msgIn->val;
+            rdyFlags[0] |= NEXTA;
             
         }
         
         // If we have both values for linear interpolation
-        if ((rdyFlags & PREVA) && (rdyFlags & NEXTA)) {
+        if ((rdyFlags[0] & PREVA) && (rdyFlags[0] & NEXTA)) {
             
-            float totalDiff = prevAlpha - nextAlpha;
+            float totalDiff = prevAlpha[0] - nextAlpha[0];
             
             for (uint32_t x = 0u; x < (LINRATIO - 1u); x++) {
                 
-                alphaLin[x] = prevAlpha - ((dmLocal[x] / totalDistance) * totalDiff);
-                alphaLin[x] = prevAlpha - ((dmLocal[x] / totalDistance) * totalDiff);
-                prevAlpha = alphaLin[x];
+                alphaLin[x] = prevAlpha[0] - ((dmLocal[x] / totalDistance) * totalDiff);
+                alphaLin[x] = prevAlpha[0] - ((dmLocal[x] / totalDistance) * totalDiff);
+                prevAlpha[0] = alphaLin[x];
 
             }
             
@@ -350,28 +350,28 @@ int main()
             }
             
             //Clear the ready flags to prevent re-transmission
-            rdyFlags &= (~PREVA);
-            rdyFlags &= (~NEXTA);
+            rdyFlags[0] &= (~PREVA);
+            rdyFlags[0] &= (~NEXTA);
             
         }
         
         // Handle backward messages
         if (msgIn->msgType == BWDLIN) {
         
-            nextBeta = msgIn->val;
-            rdyFlags |= NEXTB;
+            nextBeta[0] = msgIn->val;
+            rdyFlags[0] |= NEXTB;
 
         }
         
         // If we have received both values for linear interpolation
-        if ((rdyFlags & PREVB) && (rdyFlags & NEXTB)) {
+        if ((rdyFlags[0] & PREVB) && (rdyFlags[0] & NEXTB)) {
             
-            float totalDiff = nextBeta - prevBeta;
+            float totalDiff = nextBeta[0] - prevBeta[0];
             
             for (uint32_t x = 0u; x < (LINRATIO - 1u); x++) {
                 
-                betaLin[x] = nextBeta - ((dmLocal[(LINRATIO - 2u) - x] / totalDistance) * totalDiff);
-                nextBeta = betaLin[x];
+                betaLin[x] = nextBeta[0] - ((dmLocal[(LINRATIO - 2u) - x] / totalDistance) * totalDiff);
+                nextBeta[0] = betaLin[x];
                 
             }
             
@@ -392,8 +392,8 @@ int main()
             }
             
             //Clear the ready flags to prevent re-transmission
-            rdyFlags &= (~PREVB);
-            rdyFlags &= (~NEXTB);
+            rdyFlags[0] &= (~PREVB);
+            rdyFlags[0] &= (~NEXTB);
             
         }
         
