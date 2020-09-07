@@ -18,7 +18,7 @@ int main()
     // Get thread id
     int me = tinselId();
     uint8_t localThreadID = me % (1 << TinselLogThreadsPerMailbox);
-    uint8_t stateNo = localThreadID % 8u;
+    uint8_t HWRowNo = localThreadID % 8u;
 
     // Received values
     uint32_t* baseAddress = tinselHeapBase();
@@ -64,7 +64,7 @@ int main()
     tinselWaitUntil(TINSEL_CAN_SEND);
     msgHost->msgType = FORWARD;
     msgHost->observationNo = observationNo;
-    msgHost->stateNo = stateNo;
+    msgHost->stateNo = HWRowNo;
     msgHost->val = localThreadID;
 
     tinselSend(host, msgHost);
@@ -75,7 +75,7 @@ int main()
     tinselWaitUntil(TINSEL_CAN_SEND);
     msgHost->msgType = BACKWARD;
     msgHost->observationNo = observationNo;
-    msgHost->stateNo = stateNo;
+    msgHost->stateNo = HWRowNo;
     msgHost->val = prevThread;
 
     tinselSend(host, msgHost);
@@ -85,7 +85,7 @@ int main()
     if (observationNo == 0u) {
         
         // Calculate initial probability
-        alpha = 1.0f / NOOFSTATES;
+        alpha = 1.0f / NOOFHWROWS;
         
         // Multiply alpha by emission probability
         if (match == 1u) {
@@ -104,7 +104,7 @@ int main()
         // Prepare message to send to HMM node
         tinselWaitUntil(TINSEL_CAN_SEND);
         msgOut->msgType = FORWARD;
-        msgOut->stateNo = stateNo;
+        msgOut->stateNo = HWRowNo;
         msgOut->val = alpha;
         
         // Propagate to next column
@@ -116,7 +116,7 @@ int main()
         tinselWaitUntil(TINSEL_CAN_SEND);
         msgHost->msgType = FORWARD;
         msgHost->observationNo = observationNo * LINRATIO;
-        msgHost->stateNo = stateNo;
+        msgHost->stateNo = HWRowNo;
         msgHost->val = alpha;
 
         tinselSend(host, msgHost);
@@ -134,7 +134,7 @@ int main()
         tinselWaitUntil(TINSEL_CAN_SEND);
         msgOut->msgType = BACKWARD;
         msgOut->match = match;
-        msgOut->stateNo = stateNo;
+        msgOut->stateNo = HWRowNo;
         msgOut->val = beta;
         
         // Propagate to previous column
@@ -148,7 +148,7 @@ int main()
         tinselWaitUntil(TINSEL_CAN_SEND);
         msgOut->msgType = BWDLIN;
         msgOut->match = match;
-        msgOut->stateNo = stateNo;
+        msgOut->stateNo = HWRowNo;
         msgOut->val = beta;
         
         // Propagate to previous column
@@ -159,7 +159,7 @@ int main()
         tinselWaitUntil(TINSEL_CAN_SEND);
         msgHost->msgType = BACKWARD;
         msgHost->observationNo = observationNo * LINRATIO;
-        msgHost->stateNo = stateNo;
+        msgHost->stateNo = HWRowNo;
         msgHost->val = beta;
 
         tinselSend(host, msgHost);
@@ -178,14 +178,14 @@ int main()
             
             fwdRecCnt++;
             
-            if (msgIn->stateNo == stateNo) {
+            if (msgIn->stateNo == HWRowNo) {
                 alpha += msgIn->val * fwdSame;
             }
             else {
                 alpha += msgIn->val * fwdDiff;
             }
             
-            if (fwdRecCnt == NOOFSTATES) {
+            if (fwdRecCnt == NOOFHWROWS) {
                 
                 // Multiply Alpha by Emission Probability
                 if (match == 1u) {
@@ -208,7 +208,7 @@ int main()
                     
                     tinselWaitUntil(TINSEL_CAN_SEND);
                     msgOut->msgType = FORWARD;
-                    msgOut->stateNo = stateNo;
+                    msgOut->stateNo = HWRowNo;
                     msgOut->val = alpha;
                     
                     tinselKeySend(fwdKey, msgOut);
@@ -222,7 +222,7 @@ int main()
                 
                 tinselWaitUntil(TINSEL_CAN_SEND);
                 msgOut->msgType = FWDLIN;
-                msgOut->stateNo = stateNo;
+                msgOut->stateNo = HWRowNo;
                 msgOut->val = alpha;
                 
                 tinselSend(prevThread, msgOut);
@@ -233,7 +233,7 @@ int main()
                 tinselWaitUntil(TINSEL_CAN_SEND);
                 msgHost->msgType = FORWARD;
                 msgHost->observationNo = observationNo * LINRATIO;
-                msgHost->stateNo = stateNo;
+                msgHost->stateNo = HWRowNo;
                 msgHost->val = alpha;
 
                 tinselSend(host, msgHost);
@@ -256,7 +256,7 @@ int main()
                 emissionProb = (1.0f / ERRORRATE);
             }
             
-            if (msgIn->stateNo == stateNo) {
+            if (msgIn->stateNo == HWRowNo) {
                 
                 beta += msgIn->val * bwdSame * emissionProb;
                 
@@ -267,7 +267,7 @@ int main()
                 
             }
             
-            if (bwdRecCnt == NOOFSTATES) {
+            if (bwdRecCnt == NOOFHWROWS) {
                 
                 prevBeta = beta;
                 rdyFlags |= PREVB;
@@ -280,7 +280,7 @@ int main()
                     tinselWaitUntil(TINSEL_CAN_SEND);
                     msgOut->msgType = BACKWARD;
                     msgOut->match = match;
-                    msgOut->stateNo = stateNo;
+                    msgOut->stateNo = HWRowNo;
                     msgOut->val = beta;
                     
                     // Propagate to previous column
@@ -291,7 +291,7 @@ int main()
                     tinselWaitUntil(TINSEL_CAN_SEND);
                     msgOut->msgType = BWDLIN;
                     msgOut->match = match;
-                    msgOut->stateNo = stateNo;
+                    msgOut->stateNo = HWRowNo;
                     msgOut->val = beta;
                     
                     // Propagate to previous column
@@ -304,7 +304,7 @@ int main()
                 tinselWaitUntil(TINSEL_CAN_SEND);
                 msgHost->msgType = BACKWARD;
                 msgHost->observationNo = observationNo * LINRATIO;
-                msgHost->stateNo = stateNo;
+                msgHost->stateNo = HWRowNo;
                 msgHost->val = beta;
 
                 tinselSend(host, msgHost);
@@ -342,7 +342,7 @@ int main()
                 tinselWaitUntil(TINSEL_CAN_SEND);
                 msgHost->msgType = FWDLIN;
                 msgHost->observationNo = (observationNo * LINRATIO) + 1u + x;
-                msgHost->stateNo = stateNo;
+                msgHost->stateNo = HWRowNo;
                 msgHost->val = alphaLin[x];
 
                 tinselSend(host, msgHost);
@@ -383,7 +383,7 @@ int main()
                 tinselWaitUntil(TINSEL_CAN_SEND);
                 msgHost->msgType = BWDLIN;
                 msgHost->observationNo = (observationNo * LINRATIO) + 1u + x;
-                msgHost->stateNo = stateNo;
+                msgHost->stateNo = HWRowNo;
                 msgHost->val = betaLin[(LINRATIO - 2u) - x];
                 //msgHost->val = 00000.00000f;
 

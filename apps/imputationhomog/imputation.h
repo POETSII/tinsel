@@ -13,7 +13,9 @@
 
 // Model Parameters
 
-#define NOOFSTATES (8)
+#define NOOFHWCOLSPERCORE (2)
+#define NOOFSTATES (16)
+#define NOOFHWROWS (8)
 #define NOOFOBS (7671)
 #define NOOFTARGMARK (768)
 #define LINRATIO (10)

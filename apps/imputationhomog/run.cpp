@@ -21,9 +21,7 @@
  * scp jordmorr@fielding.cl.cam.ac.uk:~/tinsel/apps/imputationhomog/results.csv C:\Users\drjor\Documents\tinsel\apps\imputationhomog
  * ****************************************************/
  
-const uint8_t COLSPERCORE = 2u;
-const uint8_t THREADSPERCOL = 8U;
-const uint32_t XKEYS = (TinselBoardsPerBox - 1u) * TinselCoresPerBoard * COLSPERCORE;
+const uint32_t XKEYS = (TinselBoardsPerBox - 1u) * TinselCoresPerBoard * NOOFHWCOLSPERCORE;
 //const uint8_t YKEYS = 8u;
 
 int main()
@@ -56,10 +54,10 @@ int main()
     
         for (uint8_t mailbox = 0u; mailbox < TinselMailboxesPerBoard; mailbox++) {
             
-            for (uint8_t col = 0u; col < (TinselCoresPerMailbox * COLSPERCORE); col++) {
+            for (uint8_t col = 0u; col < (TinselCoresPerMailbox * NOOFHWCOLSPERCORE); col++) {
                 
                 //Global Column Number
-                uint32_t globalColumn = (board * TinselCoresPerMailbox * COLSPERCORE * TinselMailboxesPerBoard) + (mailbox * TinselCoresPerMailbox * COLSPERCORE) + col;
+                uint32_t globalColumn = (board * TinselCoresPerMailbox * NOOFHWCOLSPERCORE * TinselMailboxesPerBoard) + (mailbox * TinselCoresPerMailbox * NOOFHWCOLSPERCORE) + col;
                 
                 //Base Thread
                 uint32_t prevBaseThread = 0u;
@@ -67,7 +65,7 @@ int main()
                 // FORWARD KEYS
                 
                 // If we are the last col on the current board
-                if ( (col == ((TinselCoresPerMailbox * COLSPERCORE) - 1u)) && (mailbox == TinselMailboxesPerBoard - 1u) ) {
+                if ( (col == ((TinselCoresPerMailbox * NOOFHWCOLSPERCORE) - 1u)) && (mailbox == TinselMailboxesPerBoard - 1u) ) {
                     
                     // If we arent in the last col for the box
                     if ( !(board == TinselBoardsPerBox - 2u) ) {
@@ -89,7 +87,7 @@ int main()
                     
                 }
                 // If we are the last col in the current mailbox
-                else if ( col == ((TinselCoresPerMailbox * COLSPERCORE) - 1u) ) {
+                else if ( col == ((TinselCoresPerMailbox * NOOFHWCOLSPERCORE) - 1u) ) {
                     
                         // Construct destination the next mailbox
                         dest.mbox = boardPath[board][1u];
@@ -188,8 +186,8 @@ int main()
                         
                         // Construct destination threads for next col (hence + 8u)
                         uint64_t threadMask = 0xFF00000000000000;
-                        mrmRecord.threadMaskLow = uint32_t(threadMask >> (((((TinselCoresPerMailbox * COLSPERCORE)-1u) - col) + 1u) * 8u));
-                        mrmRecord.threadMaskHigh = uint32_t((threadMask >> (((((TinselCoresPerMailbox * COLSPERCORE)-1u) - col) + 1u) * 8u)) >> 32u);
+                        mrmRecord.threadMaskLow = uint32_t(threadMask >> (((((TinselCoresPerMailbox * NOOFHWCOLSPERCORE)-1u) - col) + 1u) * 8u));
+                        mrmRecord.threadMaskHigh = uint32_t((threadMask >> (((((TinselCoresPerMailbox * NOOFHWCOLSPERCORE)-1u) - col) + 1u) * 8u)) >> 32u);
 #ifdef PRINTDEBUG
                         printf("Global Col: %d, ", (globalColumn));
                         printf("boardX: %d, boardY: %d, mailboxX: %d, mailboxY: %d, col: %d, ThreadMaskLow: %X, ThreadMaskHigh: %X\n", boardPath[board][0u], boardPath[board][1u], mailboxPath[mailbox][0u], mailboxPath[mailbox][1u], col, mrmRecord.threadMaskLow, mrmRecord.threadMaskHigh);
@@ -202,7 +200,7 @@ int main()
                 
                 
                 // If we arent in the last col
-                if (!((board == TinselBoardsPerBox - 2u) && (mailbox == TinselMailboxesPerBoard - 1u) && (col == (TinselCoresPerMailbox * COLSPERCORE) - 1u))) {
+                if (!((board == TinselBoardsPerBox - 2u) && (mailbox == TinselMailboxesPerBoard - 1u) && (col == (TinselCoresPerMailbox * NOOFHWCOLSPERCORE) - 1u))) {
 
                     // Create forward key
                     fwdColumnKey[globalColumn] = progRouterMesh.addDestsFromBoardXY(boardPath[board][0u], boardPath[board][1u], &fwdDests);
@@ -251,9 +249,9 @@ int main()
                         
                     }
                     
-                    tau_m0 = (1 - exp((-4 * NE * geneticDistance) / NOOFSTATES));
-                    same0 = (1 - tau_m0) + (tau_m0 / NOOFSTATES);
-                    diff0 = tau_m0 / NOOFSTATES;
+                    tau_m0 = (1 - exp((-4 * NE * geneticDistance) / NOOFHWROWS));
+                    same0 = (1 - tau_m0) + (tau_m0 / NOOFHWROWS);
+                    diff0 = tau_m0 / NOOFHWROWS;
                     
                     
                 }
@@ -279,13 +277,13 @@ int main()
                         
                     }
                     
-                    tau_m1 = (1 - exp((-4 * NE * geneticDistance ) / NOOFSTATES));
-                    same1 = (1 - tau_m1) + (tau_m1 / NOOFSTATES);
-                    diff1 = tau_m1 / NOOFSTATES;
+                    tau_m1 = (1 - exp((-4 * NE * geneticDistance ) / NOOFHWROWS));
+                    same1 = (1 - tau_m1) + (tau_m1 / NOOFHWROWS);
+                    diff1 = tau_m1 / NOOFHWROWS;
                     
                 }
                 
-                for (uint32_t thread = 0u; thread < THREADSPERCOL; thread++) {
+                for (uint32_t thread = 0u; thread < NOOFHWROWS; thread++) {
                     
                     //Create match value from model
                     
