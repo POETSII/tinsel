@@ -11,18 +11,22 @@
  * Edit values between here ->
  * ************************************************/
 
-// Model Parameters
-
-#define NOOFHWCOLSPERCORE (2)
-#define NOOFSTATES (16)
+// Hardware Parameters
 #define NOOFHWROWS (8)
+#define NOOFHWCOLSPERCORE (2)
+
+// Model Parameters
+#define NOOFSTATES (16)
 #define NOOFOBS (7671)
 #define NOOFTARGMARK (768)
 #define LINRATIO (10)
 #define NE (1000000)
 #define ERRORRATE (10000)
 
-//MsgTypes
+// Calculated Parameters
+#define NOOFSTATEPANELS (2)
+
+// MsgTypes
 #define FORWARD (0u)
 #define BACKWARD (1u)
 #define FWDLIN (2u)

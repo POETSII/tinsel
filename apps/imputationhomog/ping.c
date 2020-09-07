@@ -17,7 +17,9 @@ int main()
 {
     // Get thread id
     int me = tinselId();
-    uint8_t localThreadID = me % (1 << TinselLogThreadsPerMailbox);
+    uint8_t localThreadID = me % (1u << TinselLogThreadsPerMailbox);
+    
+    // Calculate model parameters
     uint8_t HWRowNo = localThreadID % 8u;
 
     // Received values
@@ -46,17 +48,17 @@ int main()
     // Get host id
     int host = tinselHostId();
     
-    float alpha[1] = {0.0f};
-    float beta[1] = {0.0f};
-    float alphaLin[LINRATIO - 1u] = {0.0f};
-    float betaLin[LINRATIO - 1u] = {0.0f};
+    float alpha[NOOFSTATEPANELS] = {0.0f};
+    float beta[NOOFSTATEPANELS] = {0.0f};
+    float alphaLin[NOOFSTATEPANELS][LINRATIO - 1u];
+    float betaLin[NOOFSTATEPANELS][LINRATIO - 1u];
     
-    float prevAlpha[1] = {0.0f};
-    float nextAlpha[1] = {0.0f};
-    float prevBeta[1] = {0.0f};
-    float nextBeta[1] = {0.0f};
+    float prevAlpha[NOOFSTATEPANELS] = {0.0f};
+    float nextAlpha[NOOFSTATEPANELS] = {0.0f};
+    float prevBeta[NOOFSTATEPANELS] = {0.0f};
+    float nextBeta[NOOFSTATEPANELS] = {0.0f};
     
-    uint8_t rdyFlags[1] = {0u};
+    uint8_t rdyFlags[NOOFSTATEPANELS] = {0u};
     /*
     // Send to host
     volatile HostMessage* msgHost = tinselSendSlot();
@@ -328,9 +330,9 @@ int main()
             
             for (uint32_t x = 0u; x < (LINRATIO - 1u); x++) {
                 
-                alphaLin[x] = prevAlpha[0] - ((dmLocal[x] / totalDistance) * totalDiff);
-                alphaLin[x] = prevAlpha[0] - ((dmLocal[x] / totalDistance) * totalDiff);
-                prevAlpha[0] = alphaLin[x];
+                alphaLin[0][x] = prevAlpha[0] - ((dmLocal[x] / totalDistance) * totalDiff);
+                alphaLin[0][x] = prevAlpha[0] - ((dmLocal[x] / totalDistance) * totalDiff);
+                prevAlpha[0] = alphaLin[0][x];
 
             }
             
@@ -343,7 +345,7 @@ int main()
                 msgHost->msgType = FWDLIN;
                 msgHost->observationNo = (observationNo * LINRATIO) + 1u + x;
                 msgHost->stateNo = HWRowNo;
-                msgHost->val = alphaLin[x];
+                msgHost->val = alphaLin[0][x];
 
                 tinselSend(host, msgHost);
                 
@@ -370,8 +372,8 @@ int main()
             
             for (uint32_t x = 0u; x < (LINRATIO - 1u); x++) {
                 
-                betaLin[x] = nextBeta[0] - ((dmLocal[(LINRATIO - 2u) - x] / totalDistance) * totalDiff);
-                nextBeta[0] = betaLin[x];
+                betaLin[0][x] = nextBeta[0] - ((dmLocal[(LINRATIO - 2u) - x] / totalDistance) * totalDiff);
+                nextBeta[0] = betaLin[0][x];
                 
             }
             
@@ -384,7 +386,7 @@ int main()
                 msgHost->msgType = BWDLIN;
                 msgHost->observationNo = (observationNo * LINRATIO) + 1u + x;
                 msgHost->stateNo = HWRowNo;
-                msgHost->val = betaLin[(LINRATIO - 2u) - x];
+                msgHost->val = betaLin[0][(LINRATIO - 2u) - x];
                 //msgHost->val = 00000.00000f;
 
                 tinselSend(host, msgHost);
