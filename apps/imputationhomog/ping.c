@@ -109,7 +109,7 @@ int main()
             // Prepare message to send to HMM node
             tinselWaitUntil(TINSEL_CAN_SEND);
             msgOut->msgType = FORWARD;
-            msgOut->stateNo = (y * 8u) + HWRowNo;
+            msgOut->stateNo = (y * NOOFHWROWS) + HWRowNo;
             msgOut->val = alpha[y];
             
             // Propagate to next column
@@ -121,7 +121,7 @@ int main()
             tinselWaitUntil(TINSEL_CAN_SEND);
             msgHost->msgType = FORWARD;
             msgHost->observationNo = observationNo * LINRATIO;
-            msgHost->stateNo = (y * 8u) + HWRowNo;
+            msgHost->stateNo = (y * NOOFHWROWS) + HWRowNo;
             msgHost->val = alpha[y];
 
             tinselSend(host, msgHost);
@@ -143,7 +143,7 @@ int main()
             tinselWaitUntil(TINSEL_CAN_SEND);
             msgOut->msgType = BACKWARD;
             msgOut->match = match;
-            msgOut->stateNo = (y * 8u) + HWRowNo;
+            msgOut->stateNo = (y * NOOFHWROWS) + HWRowNo;
             msgOut->val = beta[y];
             
             // Propagate to previous column
@@ -157,7 +157,7 @@ int main()
             tinselWaitUntil(TINSEL_CAN_SEND);
             msgOut->msgType = BWDLIN;
             msgOut->match = match;
-            msgOut->stateNo = (y * 8u) + HWRowNo;
+            msgOut->stateNo = (y * NOOFHWROWS) + HWRowNo;
             msgOut->val = beta[y];
             
             // Propagate to previous column
@@ -168,7 +168,7 @@ int main()
             tinselWaitUntil(TINSEL_CAN_SEND);
             msgHost->msgType = BACKWARD;
             msgHost->observationNo = observationNo * LINRATIO;
-            msgHost->stateNo = (y * 8u) + HWRowNo;
+            msgHost->stateNo = (y * NOOFHWROWS) + HWRowNo;
             msgHost->val = beta[y];
 
             //tinselSend(host, msgHost);
@@ -185,7 +185,7 @@ int main()
         tinselWaitUntil(TINSEL_CAN_RECV);
         volatile ImpMessage* msgIn = tinselRecv();
         
-        uint32_t index = (uint32_t)(msgIn->stateNo / 8u);
+        uint32_t index = (uint32_t)(msgIn->stateNo / NOOFHWROWS);
         
         // Handle forward messages
         if (msgIn->msgType == FORWARD) {
@@ -194,7 +194,7 @@ int main()
             
             for (uint32_t y = 0u; y < NOOFSTATEPANELS; y++) {
             
-                if (msgIn->stateNo == ((y * 8u) + HWRowNo)) {
+                if (msgIn->stateNo == ((y * NOOFHWROWS) + HWRowNo)) {
                     alpha[y] += msgIn->val * fwdSame;
                 }
                 else {
@@ -224,7 +224,7 @@ int main()
                         
                         tinselWaitUntil(TINSEL_CAN_SEND);
                         msgOut->msgType = FORWARD;
-                        msgOut->stateNo = (y * 8u) + HWRowNo;
+                        msgOut->stateNo = (y * NOOFHWROWS) + HWRowNo;
                         msgOut->val = alpha[y];
                         
                         tinselKeySend(fwdKey, msgOut);
@@ -238,7 +238,7 @@ int main()
                     
                     tinselWaitUntil(TINSEL_CAN_SEND);
                     msgOut->msgType = FWDLIN;
-                    msgOut->stateNo = (y * 8u) + HWRowNo;
+                    msgOut->stateNo = (y * NOOFHWROWS) + HWRowNo;
                     msgOut->val = alpha[y];
                     
                     tinselSend(prevThread, msgOut);
@@ -249,7 +249,7 @@ int main()
                     tinselWaitUntil(TINSEL_CAN_SEND);
                     msgHost->msgType = FORWARD;
                     msgHost->observationNo = observationNo * LINRATIO;
-                    msgHost->stateNo = (y * 8u) + HWRowNo;
+                    msgHost->stateNo = (y * NOOFHWROWS) + HWRowNo;
                     msgHost->val = alpha[y];
 
                     tinselSend(host, msgHost);
@@ -276,7 +276,7 @@ int main()
             
             for (uint32_t y = 0u; y < NOOFSTATEPANELS; y++) {
             
-                if (msgIn->stateNo == ((y * 8u) + HWRowNo)) {
+                if (msgIn->stateNo == ((y * NOOFHWROWS) + HWRowNo)) {
                     
                     beta[y] += msgIn->val * bwdSame * emissionProb;
                     
@@ -300,7 +300,7 @@ int main()
                         tinselWaitUntil(TINSEL_CAN_SEND);
                         msgOut->msgType = BACKWARD;
                         msgOut->match = match;
-                        msgOut->stateNo = (y * 8u) + HWRowNo;
+                        msgOut->stateNo = (y * NOOFHWROWS) + HWRowNo;
                         msgOut->val = beta[y];
                         
                         // Propagate to previous column
@@ -311,7 +311,7 @@ int main()
                         tinselWaitUntil(TINSEL_CAN_SEND);
                         msgOut->msgType = BWDLIN;
                         msgOut->match = match;
-                        msgOut->stateNo = (y * 8u) + HWRowNo;
+                        msgOut->stateNo = (y * NOOFHWROWS) + HWRowNo;
                         msgOut->val = beta[y];
                         
                         // Propagate to previous column
@@ -324,7 +324,7 @@ int main()
                     tinselWaitUntil(TINSEL_CAN_SEND);
                     msgHost->msgType = BACKWARD;
                     msgHost->observationNo = observationNo * LINRATIO;
-                    msgHost->stateNo = (y * 8u) + HWRowNo;
+                    msgHost->stateNo = (y * NOOFHWROWS) + HWRowNo;
                     msgHost->val = beta[y];
 
                     //tinselSend(host, msgHost);
@@ -363,7 +363,7 @@ int main()
                 tinselWaitUntil(TINSEL_CAN_SEND);
                 msgHost->msgType = FWDLIN;
                 msgHost->observationNo = (observationNo * LINRATIO) + 1u + x;
-                msgHost->stateNo = (index * 8u) + HWRowNo;
+                msgHost->stateNo = (index * NOOFHWROWS) + HWRowNo;
                 msgHost->val = alphaLin[index][x];
 
                 tinselSend(host, msgHost);
@@ -404,7 +404,7 @@ int main()
                 tinselWaitUntil(TINSEL_CAN_SEND);
                 msgHost->msgType = BWDLIN;
                 msgHost->observationNo = (observationNo * LINRATIO) + 1u + x;
-                msgHost->stateNo = (index * 8u) + HWRowNo;
+                msgHost->stateNo = (index * NOOFHWROWS) + HWRowNo;
                 msgHost->val = betaLin[index][(LINRATIO - 2u) - x];
                 //msgHost->val = 00000.00000f;
 
