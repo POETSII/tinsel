@@ -249,9 +249,9 @@ int main()
                         
                     }
                     
-                    tau_m0 = (1 - exp((-4 * NE * geneticDistance) / NOOFHWROWS));
-                    same0 = (1 - tau_m0) + (tau_m0 / NOOFHWROWS);
-                    diff0 = tau_m0 / NOOFHWROWS;
+                    tau_m0 = (1 - exp((-4 * NE * geneticDistance) / NOOFSTATES));
+                    same0 = (1 - tau_m0) + (tau_m0 / NOOFSTATES);
+                    diff0 = tau_m0 / NOOFSTATES;
                     
                     
                 }
@@ -277,9 +277,9 @@ int main()
                         
                     }
                     
-                    tau_m1 = (1 - exp((-4 * NE * geneticDistance ) / NOOFHWROWS));
-                    same1 = (1 - tau_m1) + (tau_m1 / NOOFHWROWS);
-                    diff1 = tau_m1 / NOOFHWROWS;
+                    tau_m1 = (1 - exp((-4 * NE * geneticDistance ) / NOOFSTATES));
+                    same1 = (1 - tau_m1) + (tau_m1 / NOOFSTATES);
+                    diff1 = tau_m1 / NOOFSTATES;
                     
                 }
                 
@@ -361,7 +361,18 @@ int main()
     
     HostMessage msg;
 
-    float result[NOOFOBS][8u][2u] = {0.0f};
+    float result[NOOFOBS][NOOFSTATES][2u];
+    
+    for (uint8_t msgType = 0u; msgType < 2; msgType++) {
+        for (uint32_t y = 0u; y < NOOFSTATES; y++) {
+            for (uint32_t x = 0u; x < NOOFOBS; x++) {
+                
+                result[x][y][msgType] = 0.0f;
+                
+            }
+        }
+    }
+    
     uint32_t recCnt = 0u;
     
     //Create a file pointer
@@ -371,12 +382,13 @@ int main()
     
     fprintf(fp1, "msgType,obsNo,stateNo,val\n");
     
-    for (uint8_t msgType = 0u; msgType < 2; msgType++) {
-        for (uint32_t y = 0u; y < 8u; y++) {
+    //for (uint8_t msgType = 0u; msgType < 2; msgType++) {
+        for (uint32_t y = 0u; y < NOOFSTATES; y++) {
             for (uint32_t x = 0u; x < NOOFOBS; x++) {
                 
                 recCnt++;
                 hostLink.recvMsg(&msg, sizeof(msg));
+                printf("%d\n", recCnt);
                 
                 if (msg.msgType < 2u) {
                     
@@ -394,11 +406,54 @@ int main()
                         fprintf(fp1, "0,%d,%d,%e\n", msg.observationNo, msg.stateNo, msg.val);
                     }
                 }
+                /*
+                if (recCnt > 145000u) {
+                
+                    // Temporary file write
+                    //Create a file pointer
+                    FILE * fp;
+                    // open the file for writing
+                    fp = fopen ("results.csv","w");
+
+                    fprintf(fp, "Forward Probabilities: \n");
+                    for (uint32_t y = 0u; y < NOOFSTATES; y++) {
+                        for (uint32_t x = 0u; x < NOOFOBS; x++) {
+                        
+                            if (x != (NOOFOBS - 1u) ) {
+                                fprintf(fp, "%e,", result[x][y][0u]);
+                            }
+                            else {
+                                fprintf(fp, "%e", result[x][y][0u]);
+                            }
+                        
+                        }
+                        fprintf(fp, "\n");
+                    }
+
+                    fprintf(fp, "Backward Probabilities: \n");
+                    for (uint32_t y = 0u; y < NOOFSTATES; y++) {
+                        for (uint32_t x = 0u; x < NOOFOBS; x++) {
+                        
+                            if (x != (NOOFOBS - 1u) ) {
+                                fprintf(fp, "%e,", result[x][y][1u]);
+                            }
+                            else {
+                                fprintf(fp, "%e", result[x][y][1u]);
+                            }
+                        
+                        }
+                        fprintf(fp, "\n");
+                    }
+
+                    // close the file  
+                    fclose (fp);
+                    */
+                }
             
             }
         
-        }
-    }
+        //}
+    //}
     
     fclose (fp1);
    
@@ -408,7 +463,7 @@ int main()
     fp = fopen ("results.csv","w");
 
     fprintf(fp, "Forward Probabilities: \n");
-    for (uint32_t y = 0u; y < 8u; y++) {
+    for (uint32_t y = 0u; y < NOOFSTATES; y++) {
         for (uint32_t x = 0u; x < NOOFOBS; x++) {
         
             if (x != (NOOFOBS - 1u) ) {
@@ -423,7 +478,7 @@ int main()
     }
 
     fprintf(fp, "Backward Probabilities: \n");
-    for (uint32_t y = 0u; y < 8u; y++) {
+    for (uint32_t y = 0u; y < NOOFSTATES; y++) {
         for (uint32_t x = 0u; x < NOOFOBS; x++) {
         
             if (x != (NOOFOBS - 1u) ) {

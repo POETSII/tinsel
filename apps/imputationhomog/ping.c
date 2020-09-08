@@ -25,6 +25,7 @@ int main()
     // Received values
     uint32_t* baseAddress = tinselHeapBase();
     uint32_t observationNo = *baseAddress;
+    // JPM THERE NEEDS TO BE MULTIPLE MATCH VALUES
     uint32_t match = *(baseAddress + 1u);
     uint32_t fwdKey = *(baseAddress + 2u);
     uint32_t bwdKey = *(baseAddress + 3u);
@@ -86,159 +87,174 @@ int main()
     // Startup for forward algorithm
     if (observationNo == 0u) {
         
-        // Calculate initial probability
-        alpha[0] = 1.0f / NOOFHWROWS;
-        
-        // Multiply alpha by emission probability
-        if (match == 1u) {
-            alpha[0] = alpha[0] * (1.0f - (1.0f / ERRORRATE));
-        }
-        else {
-            alpha[0] = alpha[0] * (1.0f / ERRORRATE);
-        }
-        
-        prevAlpha[0] = alpha[0];
-        rdyFlags[0] |= PREVA;
-        
-        // Get pointers to mailbox message slot
-        volatile ImpMessage* msgOut = tinselSendSlot();
-        
-        // Prepare message to send to HMM node
-        tinselWaitUntil(TINSEL_CAN_SEND);
-        msgOut->msgType = FORWARD;
-        msgOut->stateNo = HWRowNo;
-        msgOut->val = alpha[0];
-        
-        // Propagate to next column
-        tinselKeySend(fwdKey, msgOut);
-        
-        // Send to host
-        volatile HostMessage* msgHost = tinselSendSlot();
+        for (uint32_t y = 0u; y < NOOFSTATEPANELS; y++) {
+            
+            // Calculate initial probability
+            alpha[y] = 1.0f / NOOFSTATES;
+            
+            // Multiply alpha by emission probability
+            if (match == 1u) {
+                alpha[y] = alpha[y] * (1.0f - (1.0f / ERRORRATE));
+            }
+            else {
+                alpha[y] = alpha[y] * (1.0f / ERRORRATE);
+            }
+            
+            prevAlpha[y] = alpha[y];
+            rdyFlags[y] |= PREVA;
+            
+            // Get pointers to mailbox message slot
+            volatile ImpMessage* msgOut = tinselSendSlot();
+            
+            // Prepare message to send to HMM node
+            tinselWaitUntil(TINSEL_CAN_SEND);
+            msgOut->msgType = FORWARD;
+            msgOut->stateNo = (y * 8u) + HWRowNo;
+            msgOut->val = alpha[y];
+            
+            // Propagate to next column
+            tinselKeySend(fwdKey, msgOut);
+            
+            // Send to host
+            volatile HostMessage* msgHost = tinselSendSlot();
 
-        tinselWaitUntil(TINSEL_CAN_SEND);
-        msgHost->msgType = FORWARD;
-        msgHost->observationNo = observationNo * LINRATIO;
-        msgHost->stateNo = HWRowNo;
-        msgHost->val = alpha[0];
+            tinselWaitUntil(TINSEL_CAN_SEND);
+            msgHost->msgType = FORWARD;
+            msgHost->observationNo = observationNo * LINRATIO;
+            msgHost->stateNo = (y * 8u) + HWRowNo;
+            msgHost->val = alpha[y];
 
-        tinselSend(host, msgHost);
+            tinselSend(host, msgHost);
+        
+        }
     
     }
     
     // Startup for backward algorithm
     if (observationNo == (NOOFTARGMARK - 1u)) {
+        
+        for (uint32_t y = 0u; y < NOOFSTATEPANELS; y++) {
       
-        // Get pointers to mailbox message slot
-        volatile ImpMessage* msgOut = tinselSendSlot();
-        
-        beta[0] = 1.0f;
-        
-        tinselWaitUntil(TINSEL_CAN_SEND);
-        msgOut->msgType = BACKWARD;
-        msgOut->match = match;
-        msgOut->stateNo = HWRowNo;
-        msgOut->val = beta[0];
-        
-        // Propagate to previous column
-        tinselKeySend(bwdKey, msgOut);
-        
-        prevBeta[0] = beta[0];
-        rdyFlags[0] |= PREVB;
-        
-        // Propagate beta to previous thread as prev beta
-        
-        tinselWaitUntil(TINSEL_CAN_SEND);
-        msgOut->msgType = BWDLIN;
-        msgOut->match = match;
-        msgOut->stateNo = HWRowNo;
-        msgOut->val = beta[0];
-        
-        // Propagate to previous column
-        tinselSend(prevThread, msgOut);
+            // Get pointers to mailbox message slot
+            volatile ImpMessage* msgOut = tinselSendSlot();
+            
+            beta[y] = 1.0f;
+            
+            tinselWaitUntil(TINSEL_CAN_SEND);
+            msgOut->msgType = BACKWARD;
+            msgOut->match = match;
+            msgOut->stateNo = (y * 8u) + HWRowNo;
+            msgOut->val = beta[y];
+            
+            // Propagate to previous column
+            //tinselKeySend(bwdKey, msgOut);
+            
+            prevBeta[y] = beta[y];
+            rdyFlags[y] |= PREVB;
+            
+            // Propagate beta to previous thread as prev beta
+            
+            tinselWaitUntil(TINSEL_CAN_SEND);
+            msgOut->msgType = BWDLIN;
+            msgOut->match = match;
+            msgOut->stateNo = (y * 8u) + HWRowNo;
+            msgOut->val = beta[y];
+            
+            // Propagate to previous column
+            //tinselSend(prevThread, msgOut);
 
-        volatile HostMessage* msgHost = tinselSendSlot();
+            volatile HostMessage* msgHost = tinselSendSlot();
 
-        tinselWaitUntil(TINSEL_CAN_SEND);
-        msgHost->msgType = BACKWARD;
-        msgHost->observationNo = observationNo * LINRATIO;
-        msgHost->stateNo = HWRowNo;
-        msgHost->val = beta[0];
+            tinselWaitUntil(TINSEL_CAN_SEND);
+            msgHost->msgType = BACKWARD;
+            msgHost->observationNo = observationNo * LINRATIO;
+            msgHost->stateNo = (y * 8u) + HWRowNo;
+            msgHost->val = beta[y];
 
-        tinselSend(host, msgHost);
+            //tinselSend(host, msgHost);
+        
+        }
         
     }
+    
         
     uint8_t fwdRecCnt = 0u;
-    uint8_t bwdRecCnt = 0u;
+    uint8_t bwdRecCnt[NOOFSTATEPANELS] = {0u};
     
     while (1u) {
         tinselWaitUntil(TINSEL_CAN_RECV);
         volatile ImpMessage* msgIn = tinselRecv();
+        
+        uint32_t index = (uint32_t)(msgIn->stateNo / 8u);
         
         // Handle forward messages
         if (msgIn->msgType == FORWARD) {
             
             fwdRecCnt++;
             
-            if (msgIn->stateNo == HWRowNo) {
-                alpha[0] += msgIn->val * fwdSame;
-            }
-            else {
-                alpha[0] += msgIn->val * fwdDiff;
-            }
+            for (uint32_t y = 0u; y < NOOFSTATEPANELS; y++) {
             
-            if (fwdRecCnt == NOOFHWROWS) {
-                
-                // Multiply Alpha by Emission Probability
-                if (match == 1u) {
-                    alpha[0] = alpha[0] * (1.0f - (1.0f / ERRORRATE));
+                if (msgIn->stateNo == ((y * 8u) + HWRowNo)) {
+                    alpha[y] += msgIn->val * fwdSame;
                 }
                 else {
-                    alpha[0] = alpha[0] * (1.0f / ERRORRATE);
+                    alpha[y] += msgIn->val * fwdDiff;
                 }
                 
-                // Previous alpha has been calculated
-                prevAlpha[0] = alpha[0];
-                rdyFlags[0] |= PREVA;
-                
-                // If we are an intermediate node propagate the alpha to the next column
-                // Else send the alpha out to the host
-                if (observationNo != (NOOFTARGMARK - 1u)) {
+                if (fwdRecCnt == NOOFSTATES) {
+                    
+                    // Multiply Alpha by Emission Probability
+                    if (match == 1u) {
+                        alpha[y] = alpha[y] * (1.0f - (1.0f / ERRORRATE));
+                    }
+                    else {
+                        alpha[y] = alpha[y] * (1.0f / ERRORRATE);
+                    }
+                    
+                    // Previous alpha has been calculated
+                    prevAlpha[y] = alpha[y];
+                    rdyFlags[y] |= PREVA;
+                    
+                    // If we are an intermediate node propagate the alpha to the next column
+                    // Else send the alpha out to the host
+                    if (observationNo != (NOOFTARGMARK - 1u)) {
+                        
+                        // Get pointers to mailbox message slot
+                        volatile ImpMessage* msgOut = tinselSendSlot();
+                        
+                        tinselWaitUntil(TINSEL_CAN_SEND);
+                        msgOut->msgType = FORWARD;
+                        msgOut->stateNo = (y * 8u) + HWRowNo;
+                        msgOut->val = alpha[y];
+                        
+                        tinselKeySend(fwdKey, msgOut);
+                        
+                    }
+                    
+                    // Propagte alpha to previous thread as next alpha
                     
                     // Get pointers to mailbox message slot
                     volatile ImpMessage* msgOut = tinselSendSlot();
                     
                     tinselWaitUntil(TINSEL_CAN_SEND);
-                    msgOut->msgType = FORWARD;
-                    msgOut->stateNo = HWRowNo;
-                    msgOut->val = alpha[0];
+                    msgOut->msgType = FWDLIN;
+                    msgOut->stateNo = (y * 8u) + HWRowNo;
+                    msgOut->val = alpha[y];
                     
-                    tinselKeySend(fwdKey, msgOut);
+                    tinselSend(prevThread, msgOut);
                     
+                    // Send to host
+                    volatile HostMessage* msgHost = tinselSendSlot();
+
+                    tinselWaitUntil(TINSEL_CAN_SEND);
+                    msgHost->msgType = FORWARD;
+                    msgHost->observationNo = observationNo * LINRATIO;
+                    msgHost->stateNo = (y * 8u) + HWRowNo;
+                    msgHost->val = alpha[y];
+
+                    tinselSend(host, msgHost);
+                
                 }
-                
-                // Propagte alpha to previous thread as next alpha
-                
-                // Get pointers to mailbox message slot
-                volatile ImpMessage* msgOut = tinselSendSlot();
-                
-                tinselWaitUntil(TINSEL_CAN_SEND);
-                msgOut->msgType = FWDLIN;
-                msgOut->stateNo = HWRowNo;
-                msgOut->val = alpha[0];
-                
-                tinselSend(prevThread, msgOut);
-                
-                // Send to host
-                volatile HostMessage* msgHost = tinselSendSlot();
-
-                tinselWaitUntil(TINSEL_CAN_SEND);
-                msgHost->msgType = FORWARD;
-                msgHost->observationNo = observationNo * LINRATIO;
-                msgHost->stateNo = HWRowNo;
-                msgHost->val = alpha[0];
-
-                tinselSend(host, msgHost);
             
             }
         
@@ -247,7 +263,7 @@ int main()
         // Handle backward messages
         if (msgIn->msgType == BACKWARD) {
             
-            bwdRecCnt++;
+            bwdRecCnt[index]++;
             
             float emissionProb = 0.0f;
          
@@ -258,81 +274,84 @@ int main()
                 emissionProb = (1.0f / ERRORRATE);
             }
             
-            if (msgIn->stateNo == HWRowNo) {
-                
-                beta[0] += msgIn->val * bwdSame * emissionProb;
-                
-            }
-            else {
-                
-                beta[0] += msgIn->val * bwdDiff * emissionProb;
-                
-            }
+            for (uint32_t y = 0u; y < NOOFSTATEPANELS; y++) {
             
-            if (bwdRecCnt == NOOFHWROWS) {
-                
-                prevBeta[0] = beta[0];
-                rdyFlags[0] |= PREVB;
-                
-                if (observationNo != 0u) {
+                if (msgIn->stateNo == ((y * 8u) + HWRowNo)) {
                     
-                    // Get pointers to mailbox message slot
-                    volatile ImpMessage* msgOut = tinselSendSlot();
-
-                    tinselWaitUntil(TINSEL_CAN_SEND);
-                    msgOut->msgType = BACKWARD;
-                    msgOut->match = match;
-                    msgOut->stateNo = HWRowNo;
-                    msgOut->val = beta[0];
+                    beta[y] += msgIn->val * bwdSame * emissionProb;
                     
-                    // Propagate to previous column
-                    tinselKeySend(bwdKey, msgOut);
-                    
-                    // Propagate beta to previous thread as prev beta
-                    
-                    tinselWaitUntil(TINSEL_CAN_SEND);
-                    msgOut->msgType = BWDLIN;
-                    msgOut->match = match;
-                    msgOut->stateNo = HWRowNo;
-                    msgOut->val = beta[0];
-                    
-                    // Propagate to previous column
-                    tinselSend(prevThread, msgOut);
-
                 }
+                else {
+                    
+                    beta[y] += msgIn->val * bwdDiff * emissionProb;
+                    
+                }
+                
+                if (bwdRecCnt[y] == NOOFHWROWS) {
+                    
+                    prevBeta[y] = beta[y];
+                    rdyFlags[y] |= PREVB;
+                    
+                    if (observationNo != 0u) {
+                        
+                        // Get pointers to mailbox message slot
+                        volatile ImpMessage* msgOut = tinselSendSlot();
 
-                volatile HostMessage* msgHost = tinselSendSlot();;
+                        tinselWaitUntil(TINSEL_CAN_SEND);
+                        msgOut->msgType = BACKWARD;
+                        msgOut->match = match;
+                        msgOut->stateNo = (y * 8u) + HWRowNo;
+                        msgOut->val = beta[y];
+                        
+                        // Propagate to previous column
+                        //tinselKeySend(bwdKey, msgOut);
+                        
+                        // Propagate beta to previous thread as prev beta
+                        
+                        tinselWaitUntil(TINSEL_CAN_SEND);
+                        msgOut->msgType = BWDLIN;
+                        msgOut->match = match;
+                        msgOut->stateNo = (y * 8u) + HWRowNo;
+                        msgOut->val = beta[y];
+                        
+                        // Propagate to previous column
+                        //tinselSend(prevThread, msgOut);
 
-                tinselWaitUntil(TINSEL_CAN_SEND);
-                msgHost->msgType = BACKWARD;
-                msgHost->observationNo = observationNo * LINRATIO;
-                msgHost->stateNo = HWRowNo;
-                msgHost->val = beta[0];
+                    }
 
-                tinselSend(host, msgHost);
+                    volatile HostMessage* msgHost = tinselSendSlot();;
+
+                    tinselWaitUntil(TINSEL_CAN_SEND);
+                    msgHost->msgType = BACKWARD;
+                    msgHost->observationNo = observationNo * LINRATIO;
+                    msgHost->stateNo = (y * 8u) + HWRowNo;
+                    msgHost->val = beta[y];
+
+                    //tinselSend(host, msgHost);
+                
+                }
             
             }
-            
         }
         
         // Handle forward messages
         if (msgIn->msgType == FWDLIN) {
             
-            nextAlpha[0] = msgIn->val;
-            rdyFlags[0] |= NEXTA;
+            nextAlpha[index] = msgIn->val;
+            rdyFlags[index] |= NEXTA;
             
         }
         
         // If we have both values for linear interpolation
-        if ((rdyFlags[0] & PREVA) && (rdyFlags[0] & NEXTA)) {
+        if ((rdyFlags[index] & PREVA) && (rdyFlags[index] & NEXTA)) {
             
-            float totalDiff = prevAlpha[0] - nextAlpha[0];
+            float totalDiff = prevAlpha[index] - nextAlpha[index];
             
             for (uint32_t x = 0u; x < (LINRATIO - 1u); x++) {
                 
-                alphaLin[0][x] = prevAlpha[0] - ((dmLocal[x] / totalDistance) * totalDiff);
-                alphaLin[0][x] = prevAlpha[0] - ((dmLocal[x] / totalDistance) * totalDiff);
-                prevAlpha[0] = alphaLin[0][x];
+                alphaLin[index][x] = prevAlpha[index] - ((dmLocal[x] / totalDistance) * totalDiff);
+                alphaLin[index][x] = prevAlpha[index] - ((dmLocal[x] / totalDistance) * totalDiff);
+                prevAlpha[index] = alphaLin[index][x];
 
             }
             
@@ -344,36 +363,36 @@ int main()
                 tinselWaitUntil(TINSEL_CAN_SEND);
                 msgHost->msgType = FWDLIN;
                 msgHost->observationNo = (observationNo * LINRATIO) + 1u + x;
-                msgHost->stateNo = HWRowNo;
-                msgHost->val = alphaLin[0][x];
+                msgHost->stateNo = (index * 8u) + HWRowNo;
+                msgHost->val = alphaLin[index][x];
 
                 tinselSend(host, msgHost);
                 
             }
             
-            //Clear the ready flags to prevent re-transmission
-            rdyFlags[0] &= (~PREVA);
-            rdyFlags[0] &= (~NEXTA);
+            // Clear the ready flags to prevent re-transmission
+            rdyFlags[index] &= (~PREVA);
+            rdyFlags[index] &= (~NEXTA);
             
         }
         
         // Handle backward messages
         if (msgIn->msgType == BWDLIN) {
         
-            nextBeta[0] = msgIn->val;
-            rdyFlags[0] |= NEXTB;
+            nextBeta[index] = msgIn->val;
+            rdyFlags[index] |= NEXTB;
 
         }
         
         // If we have received both values for linear interpolation
-        if ((rdyFlags[0] & PREVB) && (rdyFlags[0] & NEXTB)) {
+        if ((rdyFlags[index] & PREVB) && (rdyFlags[index] & NEXTB)) {
             
-            float totalDiff = nextBeta[0] - prevBeta[0];
+            float totalDiff = nextBeta[index] - prevBeta[index];
             
             for (uint32_t x = 0u; x < (LINRATIO - 1u); x++) {
                 
-                betaLin[0][x] = nextBeta[0] - ((dmLocal[(LINRATIO - 2u) - x] / totalDistance) * totalDiff);
-                nextBeta[0] = betaLin[0][x];
+                betaLin[index][x] = nextBeta[index] - ((dmLocal[(LINRATIO - 2u) - x] / totalDistance) * totalDiff);
+                nextBeta[index] = betaLin[index][x];
                 
             }
             
@@ -385,17 +404,17 @@ int main()
                 tinselWaitUntil(TINSEL_CAN_SEND);
                 msgHost->msgType = BWDLIN;
                 msgHost->observationNo = (observationNo * LINRATIO) + 1u + x;
-                msgHost->stateNo = HWRowNo;
-                msgHost->val = betaLin[0][(LINRATIO - 2u) - x];
+                msgHost->stateNo = (index * 8u) + HWRowNo;
+                msgHost->val = betaLin[index][(LINRATIO - 2u) - x];
                 //msgHost->val = 00000.00000f;
 
-                tinselSend(host, msgHost);
+                //tinselSend(host, msgHost);
                 
             }
             
             //Clear the ready flags to prevent re-transmission
-            rdyFlags[0] &= (~PREVB);
-            rdyFlags[0] &= (~NEXTB);
+            rdyFlags[index] &= (~PREVB);
+            rdyFlags[index] &= (~NEXTB);
             
         }
         
