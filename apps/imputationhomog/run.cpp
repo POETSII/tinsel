@@ -403,11 +403,11 @@ int main()
                     }
                     else {
                         result[msg.observationNo][msg.stateNo][1u] = msg.val;
-                        fprintf(fp1, "0,%d,%d,%e\n", msg.observationNo, msg.stateNo, msg.val);
+                        fprintf(fp1, "1,%d,%d,%e\n", msg.observationNo, msg.stateNo, msg.val);
                     }
                 }
-                /*
-                if (recCnt > 145000u) {
+                
+                if (recCnt > 165000u) {
                 
                     // Temporary file write
                     //Create a file pointer
@@ -447,12 +447,12 @@ int main()
 
                     // close the file  
                     fclose (fp);
-                    */
+                    
                 }
             
             }
         
-        //}
+        }
     //}
     
     fclose (fp1);

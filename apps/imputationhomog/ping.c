@@ -113,7 +113,7 @@ int main()
             msgOut->val = alpha[y];
             
             // Propagate to next column
-            tinselKeySend(fwdKey, msgOut);
+            //tinselKeySend(fwdKey, msgOut);
             
             // Send to host
             volatile HostMessage* msgHost = tinselSendSlot();
@@ -124,7 +124,7 @@ int main()
             msgHost->stateNo = (y * NOOFHWROWS) + HWRowNo;
             msgHost->val = alpha[y];
 
-            tinselSend(host, msgHost);
+            //tinselSend(host, msgHost);
         
         }
     
@@ -147,7 +147,17 @@ int main()
             msgOut->val = beta[y];
             
             // Propagate to previous column
-            //tinselKeySend(bwdKey, msgOut);
+            tinselKeySend(bwdKey, msgOut);
+            
+            volatile HostMessage* msgHost = tinselSendSlot();
+
+            tinselWaitUntil(TINSEL_CAN_SEND);
+            msgHost->msgType = BACKWARD;
+            msgHost->observationNo = observationNo * LINRATIO;
+            msgHost->stateNo = (y * NOOFHWROWS) + HWRowNo;
+            msgHost->val = beta[y];
+
+            tinselSend(host, msgHost);
             
             prevBeta[y] = beta[y];
             rdyFlags[y] |= PREVB;
@@ -161,17 +171,7 @@ int main()
             msgOut->val = beta[y];
             
             // Propagate to previous column
-            //tinselSend(prevThread, msgOut);
-
-            volatile HostMessage* msgHost = tinselSendSlot();
-
-            tinselWaitUntil(TINSEL_CAN_SEND);
-            msgHost->msgType = BACKWARD;
-            msgHost->observationNo = observationNo * LINRATIO;
-            msgHost->stateNo = (y * NOOFHWROWS) + HWRowNo;
-            msgHost->val = beta[y];
-
-            //tinselSend(host, msgHost);
+            tinselSend(prevThread, msgOut);
         
         }
         
@@ -179,7 +179,7 @@ int main()
     
         
     uint8_t fwdRecCnt = 0u;
-    uint8_t bwdRecCnt[NOOFSTATEPANELS] = {0u};
+    uint8_t bwdRecCnt = 0u;
     
     while (1u) {
         tinselWaitUntil(TINSEL_CAN_RECV);
@@ -227,7 +227,7 @@ int main()
                         msgOut->stateNo = (y * NOOFHWROWS) + HWRowNo;
                         msgOut->val = alpha[y];
                         
-                        tinselKeySend(fwdKey, msgOut);
+                        //tinselKeySend(fwdKey, msgOut);
                         
                     }
                     
@@ -241,7 +241,7 @@ int main()
                     msgOut->stateNo = (y * NOOFHWROWS) + HWRowNo;
                     msgOut->val = alpha[y];
                     
-                    tinselSend(prevThread, msgOut);
+                    //tinselSend(prevThread, msgOut);
                     
                     // Send to host
                     volatile HostMessage* msgHost = tinselSendSlot();
@@ -252,7 +252,7 @@ int main()
                     msgHost->stateNo = (y * NOOFHWROWS) + HWRowNo;
                     msgHost->val = alpha[y];
 
-                    tinselSend(host, msgHost);
+                    //tinselSend(host, msgHost);
                 
                 }
             
@@ -263,7 +263,7 @@ int main()
         // Handle backward messages
         if (msgIn->msgType == BACKWARD) {
             
-            bwdRecCnt[index]++;
+            bwdRecCnt++;
             
             float emissionProb = 0.0f;
          
@@ -287,7 +287,7 @@ int main()
                     
                 }
                 
-                if (bwdRecCnt[y] == NOOFHWROWS) {
+                if (bwdRecCnt == NOOFSTATES) {
                     
                     prevBeta[y] = beta[y];
                     rdyFlags[y] |= PREVB;
@@ -304,7 +304,7 @@ int main()
                         msgOut->val = beta[y];
                         
                         // Propagate to previous column
-                        //tinselKeySend(bwdKey, msgOut);
+                        tinselKeySend(bwdKey, msgOut);
                         
                         // Propagate beta to previous thread as prev beta
                         
@@ -315,7 +315,7 @@ int main()
                         msgOut->val = beta[y];
                         
                         // Propagate to previous column
-                        //tinselSend(prevThread, msgOut);
+                        tinselSend(prevThread, msgOut);
 
                     }
 
@@ -327,7 +327,7 @@ int main()
                     msgHost->stateNo = (y * NOOFHWROWS) + HWRowNo;
                     msgHost->val = beta[y];
 
-                    //tinselSend(host, msgHost);
+                    tinselSend(host, msgHost);
                 
                 }
             
@@ -350,7 +350,6 @@ int main()
             for (uint32_t x = 0u; x < (LINRATIO - 1u); x++) {
                 
                 alphaLin[index][x] = prevAlpha[index] - ((dmLocal[x] / totalDistance) * totalDiff);
-                alphaLin[index][x] = prevAlpha[index] - ((dmLocal[x] / totalDistance) * totalDiff);
                 prevAlpha[index] = alphaLin[index][x];
 
             }
@@ -366,7 +365,7 @@ int main()
                 msgHost->stateNo = (index * NOOFHWROWS) + HWRowNo;
                 msgHost->val = alphaLin[index][x];
 
-                tinselSend(host, msgHost);
+                //tinselSend(host, msgHost);
                 
             }
             
@@ -384,38 +383,42 @@ int main()
 
         }
         
-        // If we have received both values for linear interpolation
-        if ((rdyFlags[index] & PREVB) && (rdyFlags[index] & NEXTB)) {
+        
+        for (uint32_t y = 0u; y < NOOFSTATEPANELS; y++) {
             
-            float totalDiff = nextBeta[index] - prevBeta[index];
-            
-            for (uint32_t x = 0u; x < (LINRATIO - 1u); x++) {
+            // If we have received both values for linear interpolation
+            if ((rdyFlags[y] & PREVB) && (rdyFlags[y] & NEXTB) AND IF MESSAGE TYPE = BACKWARD) {
                 
-                betaLin[index][x] = nextBeta[index] - ((dmLocal[(LINRATIO - 2u) - x] / totalDistance) * totalDiff);
-                nextBeta[index] = betaLin[index][x];
+                float totalDiff = nextBeta[y] - prevBeta[y];
+                
+                for (uint32_t x = 0u; x < (LINRATIO - 1u); x++) {
+                    
+                    betaLin[y][x] = nextBeta[y] - ((dmLocal[(LINRATIO - 2u) - x] / totalDistance) * totalDiff);
+                    nextBeta[y] = betaLin[y][x];
+                    
+                }
+                
+                for (uint32_t x = 0u; x < (LINRATIO - 1u); x++) {
+                    
+                    // Send to host
+                    volatile HostMessage* msgHost = tinselSendSlot();
+
+                    tinselWaitUntil(TINSEL_CAN_SEND);
+                    msgHost->msgType = BWDLIN;
+                    msgHost->observationNo = (observationNo * LINRATIO) + 1u + x;
+                    msgHost->stateNo = (y * NOOFHWROWS) + HWRowNo;
+                    msgHost->val = betaLin[y][(LINRATIO - 2u) - x];
+
+                    tinselSend(host, msgHost);
+                    
+                }
+                
+                // Clear the ready flags to prevent re-transmission
+                rdyFlags[y] &= (~PREVB);
+                rdyFlags[y] &= (~NEXTB);
                 
             }
-            
-            for (uint32_t x = 0u; x < (LINRATIO - 1u); x++) {
-                
-                // Send to host
-                volatile HostMessage* msgHost = tinselSendSlot();
-
-                tinselWaitUntil(TINSEL_CAN_SEND);
-                msgHost->msgType = BWDLIN;
-                msgHost->observationNo = (observationNo * LINRATIO) + 1u + x;
-                msgHost->stateNo = (index * NOOFHWROWS) + HWRowNo;
-                msgHost->val = betaLin[index][(LINRATIO - 2u) - x];
-                //msgHost->val = 00000.00000f;
-
-                //tinselSend(host, msgHost);
-                
-            }
-            
-            //Clear the ready flags to prevent re-transmission
-            rdyFlags[index] &= (~PREVB);
-            rdyFlags[index] &= (~NEXTB);
-            
+        
         }
         
         // Free message slot
