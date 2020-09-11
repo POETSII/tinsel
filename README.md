@@ -40,7 +40,7 @@ Released on 2 Dec 2019 and maintained in the
 * [v0.8](https://github.com/POETSII/tinsel/releases/tag/v0.8):
 Released on 1 Jul 2020 and maintained in the
 [master branch](https://github.com/POETSII/tinsel/).
-(Global hardware multicast.)
+(Distributed hardware multicast.)
 
 ## Contents
 
@@ -99,7 +99,7 @@ main features are:
     the number of inter-thread messages in applications exhibiting good
     locality of communication.
 
-  * **Global hardware multicast**.  Programmable routers
+  * **Distributed hardware multicast**.  Programmable routers
     automatically propagate messages to any number of destination
     threads distributed throughout the cluster, minimising inter-FPGA
     bandwidth usage for distributed fanouts.
@@ -657,11 +657,11 @@ purposes, resulting in very little overhead on the wire.
 ## 7. Tinsel Router
 
 Tinsel provides a programmable router on each FPGA board to support
-*global* multicasting.  Programmable routers automatically propagate
-messages to any number of destination threads distributed throughout
-the cluster, minimising inter-FPGA bandwidth usage for distributed
-fanouts, and offloading work from the cores.  Further background can
-be found in [PIP 24](doc/PIP-0024-global-multicast.md).
+*distributed* multicasting.  Programmable routers automatically
+propagate messages to any number of destination threads distributed
+throughout the cluster, minimising inter-FPGA bandwidth usage for
+distributed fanouts, and offloading work from the cores.  Further
+background can be found in [PIP 24](doc/PIP-0024-global-multicast.md).
 
 To support programmable routers, the destination component of a
 message is generalised so that it can be (1) a thread id; or (2) a
