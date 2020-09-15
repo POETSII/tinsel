@@ -45,6 +45,7 @@ int main(int argc, char *argv[])
 
   // Vertex fanout
   int fanout = atoi(argv[5]);
+  if (undir) fanout /= 2;
 
   // Random seed
   int seed = atoi(argv[6]);
