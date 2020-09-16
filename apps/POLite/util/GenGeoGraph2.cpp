@@ -12,7 +12,7 @@ int undir = true;
 // Count number of edges;
 int numEdges = 0;
 
-// Add edge
+// Add edge to graph
 void addEdge(int src, int dst)
 {
   printf("%d %d\n", src, dst); numEdges++;
@@ -62,8 +62,21 @@ int main(int argc, char *argv[])
     for (int x = 0; x < xLen; x++)
       space[y][x] = v++;
 
-  // For each vertex, pick neighbours
-  // We don't avoid duplicate edges here
+  // Random shuffle of vertices. Not really needed, but dissassociates
+  // vertex ids from the ids of their neighbours.
+  for (int y = 0; y < yLen; y++)
+    for (int x = 0; x < xLen; x++) {
+      // Pick random vertex to swap with
+      int rx = rand() % xLen;
+      int ry = rand() % yLen;
+      // Swap
+      int tmp = space[y][x];
+      space[y][x] = space[ry][rx];
+      space[ry][rx] = tmp;
+    }
+
+  // For each vertex, pick random neighbours within distance
+  // We avoid duplicate edges here, for directed graphs
   for (int y = 0; y < yLen; y++) {
     for (int x = 0; x < xLen; x++) {
       int src = space[y][x];
@@ -71,16 +84,26 @@ int main(int argc, char *argv[])
       // Nearest neighbour edges to ensure graph is connected
       if (x > 0) { addEdge(src, space[y][x-1]); count++; }
       if (y > 0) { addEdge(src, space[y-1][x]); count++; }
-      // Pick neighbours, within distance, at random
+      // Determine box containing possible neighours
       int top = std::max(0, y-dist);
       int bottom = std::min(yLen-1, y+dist);
       int left = std::max(0, x-dist);
       int right = std::min(xLen-1, x+dist);
-      while (count < fanout) {
-        int rx = left + rand() % (right-left);
-        int ry = top + rand() % (bottom-top);
-        addEdge(src, space[ry][rx]);
-        count++;
+      // How many vertices within distance?
+      int size = (bottom-top) * (right-left);
+      // Iterate over box and select neighbours
+      int inc = size / (fanout-count);
+      for (int i = 0; i < size; i += rand() % (2*inc)) {
+        int by = top + i/(right-left);
+        int bx = left + i%(right-left);
+        int dst = space[by][bx];
+        // Avoid duplicate edge with nearest neighbour
+        bool avoid = x > 0 && dst == space[y][x-1] ||
+                       y > 0 && dst == space[y-1][x];
+        if (!avoid) {
+          addEdge(src, dst);
+          count++;
+        }
       }
     }
   }
