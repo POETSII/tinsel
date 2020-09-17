@@ -93,7 +93,7 @@ int main(int argc, char *argv[])
       int size = (bottom-top) * (right-left);
       // Iterate over box and select neighbours
       int inc = size / (fanout-count);
-      for (int i = 0; i < size; i += rand() % (2*inc)) {
+      for (int i = rand()%(2*inc); i < size; i += rand() % (2*inc)) {
         int by = top + i/(right-left);
         int bx = left + i%(right-left);
         int dst = space[by][bx];
