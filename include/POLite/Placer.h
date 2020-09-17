@@ -432,7 +432,6 @@ struct Placer {
     // Random seed
     // OpenMP support disabled for now
     // setRand(1 + omp_get_thread_num());
-    setRand(1);
     // Allocate the partitions array
     partitions = new PartitionId [g->incoming->numElems];
     // Allocate subgraphs
