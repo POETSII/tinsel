@@ -92,8 +92,9 @@ int main(int argc, char *argv[])
       // How many vertices within distance?
       int size = (bottom-top) * (right-left);
       // Iterate over box and select neighbours
-      int inc = size / (fanout-count);
-      for (int i = rand()%(2*inc); i < size; i += rand() % (2*inc)) {
+      int incRange = size / (fanout-count);
+      int i = rand() % (2*incRange);
+      while (i < size) {
         int by = top + i/(right-left);
         int bx = left + i%(right-left);
         int dst = space[by][bx];
@@ -104,6 +105,8 @@ int main(int argc, char *argv[])
           addEdge(src, dst);
           count++;
         }
+        int inc = rand() % (2*incRange);
+        i += inc == 0 ? 1 : inc;
       }
     }
   }
