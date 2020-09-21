@@ -21,7 +21,7 @@ uint64_t** reaching;
 uint64_t** reachingNext;
 
 // Number of 64-bit words in reaching vector
-const uint64_t vectorSize = 1;
+const uint64_t vectorSize = 6;
 
 void readGraph(const char* filename, bool undirected)
 {
@@ -32,17 +32,13 @@ void readGraph(const char* filename, bool undirected)
     exit(EXIT_FAILURE);
   }
 
-  // Note: we use a "pull" algorithm (rather than "push") to
-  // avoid parallel writes to the same address, hence we reverse
-  // the direction of the edges here.
-
   // Count number of nodes and edges
   numEdges = 0;
   numNodes = 0;
   int ret;
   while (1) {
     uint32_t src, dst;
-    ret = fscanf(fp, "%d %d", &dst, &src);
+    ret = fscanf(fp, "%d %d", &src, &dst);
     if (ret == EOF) break;
     numEdges++;
     numNodes = src >= numNodes ? src+1 : numNodes;
@@ -54,7 +50,7 @@ void readGraph(const char* filename, bool undirected)
   uint32_t* count = (uint32_t*) calloc(numNodes, sizeof(uint32_t));
   for (int i = 0; i < numEdges; i++) {
     uint32_t src, dst;
-    ret = fscanf(fp, "%d %d", &dst, &src);
+    ret = fscanf(fp, "%d %d", &src, &dst);
     count[src]++;
     if (undirected) count[dst]++;
   }
@@ -68,7 +64,7 @@ void readGraph(const char* filename, bool undirected)
   }
   for (int i = 0; i < numEdges; i++) {
     uint32_t src, dst;
-    ret = fscanf(fp, "%d %d", &dst, &src);
+    ret = fscanf(fp, "%d %d", &src, &dst);
     neighbours[src][count[src]--] = dst;
     if (undirected) neighbours[dst][count[dst]--] = src;
   }
@@ -130,18 +126,22 @@ uint64_t ssp(uint32_t numSources, uint32_t* sources)
     // For each node, update reaching vector
     queueSize = 0;
     for (int i = 0; i < numNodes; i++) {
+      bool addToQueue = false;
       for (int k = 0; k < vectorSize; k++) {
         uint64_t diff = reachingNext[i][k] & ~reaching[i][k];
         if (diff) {
-          queue[queueSize++] = i;
+          addToQueue = true;
           uint32_t n = __builtin_popcountll(diff);
           sum += n * dist;
           reaching[i][k] |= reachingNext[i][k];
         }
       }
+      if (addToQueue) queue[queueSize++] = i;
     }
     dist++;
   }
+
+  printf("steps: %d\n", dist-1);
 
   return sum;
 }
