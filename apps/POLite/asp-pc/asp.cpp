@@ -21,7 +21,7 @@ uint64_t** reaching;
 uint64_t** reachingNext;
 
 // Number of 64-bit words in reaching vector
-const uint64_t vectorSize = 1;
+const uint64_t vectorSize = 6;
 
 void readGraph(const char* filename, bool undirected)
 {
@@ -164,7 +164,8 @@ int main(int argc, char**argv)
   uint32_t numSources = 64*vectorSize;
   assert(numSources < numNodes);
   uint32_t sources[numSources];
-  randomSet(numSources, sources, numNodes);
+  for (int i = 0; i < numSources; i++) sources[i] = i;
+  //randomSet(numSources, sources, numNodes);
 
   struct timeval start, finish, diff;
 
