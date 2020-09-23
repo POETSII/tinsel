@@ -211,6 +211,11 @@ module de5Top (DE5Top);
 
   `ifndef SIMULATE
     function DRAMExtIfc getDRAMExtIfc(OffChipRAM ram) = ram.extDRAM;
+    `ifdef EnableQDRIISRAM
+       function Vector#(2, SRAMExtIfc)
+         getSRAMExtIfcs(OffChipRAM ram) = ram.extSRAM;
+       interface sramIfcs = concat(map(getSRAMExtIfcs, rams));
+    `endif
     interface dramIfcs = map(getDRAMExtIfc, rams);
     interface jtagIfc  = debugLink.jtagAvalon;
     interface northMac = noc.north;
@@ -223,12 +228,6 @@ module de5Top (DE5Top);
     method Action setTemperature(Bit#(8) temp);
       temperature <= temp;
     endmethod
-
-    `ifdef EnableQDRIISRAM
-       function Vector#(2, SRAMExtIfc)
-         getSRAMExtIfcs(OffChipRAM ram) = ram.extSRAM;
-       interface sramIfcs = concat(map(getSRAMExtIfcs, rams));
-    `endif
   `endif
 
 endmodule
