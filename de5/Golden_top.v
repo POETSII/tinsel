@@ -158,6 +158,7 @@ module Golden_top(
   input wire SFPD_TXFAULT,
   output wire SFPD_TX_p,
 
+`ifdef ENABLE_QDR_SRAMs
   output wire [20:0] QDRIIA_A,
   output wire [1:0] QDRIIA_BWS_n,
   input wire QDRIIA_CQ_n,
@@ -213,6 +214,7 @@ module Golden_top(
   input wire QDRIID_QVLD,
   output wire QDRIID_RPS_n,
   output wire QDRIID_WPS_n,
+`endif
 
   input wire SMA_CLKIN,
   output wire SMA_CLKOUT,
@@ -377,10 +379,12 @@ assign SFPD_MOD2_SDA = 1'bz;
 assign SFPD_TXDISABLE = 1'b0;
 assign SPFD_RATESEL = 2'b00;
 
+`ifdef ENABLE_QDR_SRAMs
 assign QDRIIA_ODT = 1'b0;
 assign QDRIIB_ODT = 1'b0;
 assign QDRIIC_ODT = 1'b0;
 assign QDRIID_ODT = 1'b0;
+`endif
 
 phy phy_inst (
   .pll_ref_clk(SFP_REFCLK_p),

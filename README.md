@@ -1371,7 +1371,7 @@ The default Tinsel configuration on a single DE5-Net board contains:
   * 16 floating-point units
   * 2D network-on-chip
   * two DDR3 DRAM controllers
-  * four QDRII+ SRAM controllers
+  * four QDRII+ SRAM controllers (optional)
   * four 10Gbps reliable links
   * one termination/idle detector
   * one 8x8 programmable router
