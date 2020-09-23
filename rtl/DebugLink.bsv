@@ -178,6 +178,10 @@ module mkDebugLinkRouter#(Bit#(`LogCoresPerBoard) myId) (DebugLinkRouter);
     toCorePort.put(busInPort.value);
   endrule
 
+  // This fact used to be inferred, but is now needed for the
+  // open-source version of BSC
+  (* mutually_exclusive = "busToBus, coreToBus" *)
+
   // Route flit from bus to bus
   rule busToBus (routeBusToBus || routeBusToCoreAndBus);
     busInPortGet.send;
