@@ -21,8 +21,16 @@ interface OffChipRAM;
   interface In#(DRAMReq) reqIn;
   interface BOut#(DRAMResp) respOut;
   interface DRAMExtIfc extDRAM;
-  interface Vector#(2, SRAMExtIfc) extSRAM;
+  `ifdef EnableQDRIISRAM
+    interface Vector#(2, SRAMExtIfc) extSRAM;
+  `endif
 endinterface
+
+`ifdef EnableQDRIISRAM
+
+// ============================================================================
+// If off-chip SRAMS are enabled
+// ============================================================================
 
 module mkOffChipRAM#(RAMId base) (OffChipRAM);
 
@@ -119,3 +127,18 @@ module mkOffChipRAM#(RAMId base) (OffChipRAM);
     vector(sramA.external, sramB.external);
 
 endmodule
+
+`else
+
+// ============================================================================
+// If off-chip SRAMS are disabled
+// ============================================================================
+
+module mkOffChipRAM#(RAMId base) (OffChipRAM);
+  DRAM dram <- mkDRAM(base);
+  interface reqIn = dram.reqIn;
+  interface respOut = dram.respOut;
+  interface extDRAM = dram.external;
+endmodule
+
+`endif

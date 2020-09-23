@@ -1406,8 +1406,9 @@ the DE5-Net.
   `MeshYBits`              |       3 | Number of bits in mesh Y coordinate
   `MeshXLenWithinBox`      |       3 | Boards in X dimension within box
   `MeshYLenWithinBox`      |       2 | Boards in Y dimension within box
-  `EnablePerfCount`        |    True | Enable performance counters
+  `EnablePerfCount`        |    True | Enable performance counters?
   `ClockFreq`              |     215 | Clock frequency in MHz
+  `EnableQDRIISRAM`        |   False | Enable off-chip QDR-II SRAMs?
 
 A full list of parameters can be found in [config.py](config.py).
 
@@ -1439,6 +1440,10 @@ region `0xc0000000-0xffffffff`, but not both.  This is because the
 address translation to implement interleaving is applied after the
 caches in the memory hierarchy, so the cache considers them as
 separate memory regions (which they are not).
+
+Also note that the off-chip SRAMs are only available if the
+`EnableQDRIISRAM` parameter is set.  If it's not set then the SRAM
+regions are actually just DRAM.
 
 ## D. Tinsel CSRs
 

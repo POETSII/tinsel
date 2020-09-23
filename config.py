@@ -153,7 +153,8 @@ p["FPDivLatency"] = 14
 p["FPConvertLatency"] = 6
 p["FPCompareLatency"] = 3
 
-# SRAM parameters
+# QDR-II SRAM parameters
+p["EnableQDRIISRAM"] = False
 p["SRAMAddrWidth"] = 20
 p["LogBytesPerSRAMBeat"] = 3
 p["SRAMBurstWidth"] = 3

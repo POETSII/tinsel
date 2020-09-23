@@ -517,7 +517,7 @@ S5_DDR3_QSYS u0 (
   .ts_clear_reset(ts_clear),
 
   // SRAMs
-
+`ifdef ENABLE_QDR_SRAMs
   .clk_a_b_c_clk(OSC_50_B4A),
   .clk_d_clk(OSC_50_B8D),
   .reset_a_b_c_reset_n(rst_sram_b_n),
@@ -584,6 +584,7 @@ S5_DDR3_QSYS u0 (
   .qdr_d_status_local_init_done(qdr_d_status_local_init_done),
   .qdr_d_status_local_cal_success(qdr_d_status_local_cal_success),
   .qdr_d_status_local_cal_fail(qdr_d_status_local_cal_fail),
+`endif
 
   .temperature_temp_val(temp2),
   .tinsel_clk_clk(tinsel_clk)
@@ -607,6 +608,7 @@ always @(negedge tinsel_clk) begin
   temp2 <= temp1;
 end
 
+`ifdef ENABLE_QDR_SRAMs
 // Reset SRAMs
 reg [31:0] rst_sram_b_count = 0;
 always @(posedge OSC_50_B4A) begin
@@ -637,5 +639,8 @@ assign LED[3:0] = {
   qdr_c_status_local_cal_success,
   qdr_d_status_local_cal_success
 };
+`else
+assign LED[3:0] = 15;
+`endif
 
 endmodule 

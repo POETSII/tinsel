@@ -2914,3 +2914,4 @@ set_instance_assignment -name GLOBAL_SIGNAL OFF -to u0|qdr_d|p0|umemphy|uread_da
 set_instance_assignment -name GLOBAL_SIGNAL OFF -to u0|qdr_d|p0|umemphy|uread_datapath|reset_n_fifo_wraddress[0] -tag __S5_DDR3_QSYS_qdr_d_p0
 set_instance_assignment -name ENABLE_BENEFICIAL_SKEW_OPTIMIZATION_FOR_NON_GLOBAL_CLOCKS ON -to u0|qdr_d -tag __S5_DDR3_QSYS_qdr_d_p0
 set_instance_assignment -name PLL_COMPENSATION_MODE DIRECT -to u0|qdr_d|pll0|fbout -tag __S5_DDR3_QSYS_qdr_d_p0
+set_global_assignment -name PRE_FLOW_SCRIPT_FILE "quartus_sh:setup-qdr.tcl"

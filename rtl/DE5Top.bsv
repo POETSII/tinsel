@@ -38,7 +38,6 @@ import "BDPI" function Bit#(32) getBoardId();
 
 interface DE5Top;
   interface Vector#(`DRAMsPerBoard, DRAMExtIfc) dramIfcs;
-  interface Vector#(`SRAMsPerBoard, SRAMExtIfc) sramIfcs;
   interface Vector#(`NumNorthSouthLinks, AvalonMac) northMac;
   interface Vector#(`NumNorthSouthLinks, AvalonMac) southMac;
   interface Vector#(`NumEastWestLinks, AvalonMac) eastMac;
@@ -48,6 +47,9 @@ interface DE5Top;
   method Action setBoardId(Bit#(4) id);
   (* always_ready, always_enabled *)
   method Action setTemperature(Bit#(8) temp);
+  `ifdef EnableQDRIISRAM
+    interface Vector#(`SRAMsPerBoard, SRAMExtIfc) sramIfcs;
+  `endif
 endinterface
 
 `endif
@@ -208,22 +210,27 @@ module de5Top (DE5Top);
   `endif
 
   `ifndef SIMULATE
-  function DRAMExtIfc getDRAMExtIfc(OffChipRAM ram) = ram.extDRAM;
-  function Vector#(2, SRAMExtIfc) getSRAMExtIfcs(OffChipRAM ram) = ram.extSRAM;
-  interface dramIfcs = map(getDRAMExtIfc, rams);
-  interface sramIfcs = concat(map(getSRAMExtIfcs, rams));
-  interface jtagIfc  = debugLink.jtagAvalon;
-  interface northMac = noc.north;
-  interface southMac = noc.south;
-  interface eastMac  = noc.east;
-  interface westMac  = noc.west;
-  method Action setBoardId(Bit#(4) id);
-    localBoardId <= id;
-  endmethod
-  method Action setTemperature(Bit#(8) temp);
-    temperature <= temp;
-  endmethod
+    function DRAMExtIfc getDRAMExtIfc(OffChipRAM ram) = ram.extDRAM;
+    interface dramIfcs = map(getDRAMExtIfc, rams);
+    interface jtagIfc  = debugLink.jtagAvalon;
+    interface northMac = noc.north;
+    interface southMac = noc.south;
+    interface eastMac  = noc.east;
+    interface westMac  = noc.west;
+    method Action setBoardId(Bit#(4) id);
+      localBoardId <= id;
+    endmethod
+    method Action setTemperature(Bit#(8) temp);
+      temperature <= temp;
+    endmethod
+
+    `ifdef EnableQDRIISRAM
+       function Vector#(2, SRAMExtIfc)
+         getSRAMExtIfcs(OffChipRAM ram) = ram.extSRAM;
+       interface sramIfcs = concat(map(getSRAMExtIfcs, rams));
+    `endif
   `endif
+
 endmodule
 
 endpackage

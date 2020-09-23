@@ -6,7 +6,7 @@ ifndef QUARTUS_ROOTDIR
 endif
 
 .PHONY: all
-all: 
+all: setup-qdr
 	make -C $(TINSEL_ROOT)/rtl verilog
 	make -C megafuns
 	qsys-generate -syn S5_DDR3_QSYS.qsys
@@ -18,7 +18,7 @@ all:
 	quartus_dse Golden_top.qpf --report fmax_summary
 
 .PHONY: one
-one: 
+one: setup-qdr
 	make -C $(TINSEL_ROOT)/rtl verilog
 	make -C megafuns
 	qsys-generate -syn S5_DDR3_QSYS.qsys
@@ -39,9 +39,14 @@ update-mif:
 download-sof:
 	quartus_pgm Golden_top.cdf
 
+.PHONY: setup-qdr
+setup-qdr: setup-qdr.sh
+	./setup-qdr.sh
+
 .PHONY: clean
 clean:
 	make -C megafuns clean
 	rm -f *.mif *.rpt *.msg *.summary *.sld *.sopcinfo *.jdi
 	rm -f *.pin *.done *.qws *.sof *.csv *.qws *.smsg
 	rm -rf dse* db incremental_db S5_DDR3_QSYS .qsys_edit reconfig_mif
+	rm -f S5_DDR3_QSYS.qsys setup-qdr.tcl
