@@ -107,8 +107,8 @@ DebugLinkCmd cmdOverheat = 5;
 // Celsuis, subtract 128.
 `define TemperatureThreshold 213
 
-// How many consecutive samples passing threshold before reporting an issue
-`define LogOverheatSamples 20
+// Average of the temperature over multiple samples
+`define LogTemperatureSamples 10
 
 // =============================================================================
 // Types
@@ -311,17 +311,21 @@ module mkDebugLink#(
   // Have we sent an emergency overheat message?
   Reg#(Bool) overheatMsgSent <- mkConfigReg(False);
 
-  // Number of consecutive samples that overheating has been detected
-  Reg#(Bit#(`LogOverheatSamples)) overheatCount <- mkConfigReg(0);
+  // Sum of temperature over many samples
+  Reg#(Bit#(TAdd#(`LogTemperatureSamples, 8))) tempSum <- mkConfigReg(0);
+
+  // Number of samples taken
+  Reg#(Bit#(`LogTemperatureSamples)) tempSamples <- mkConfigReg(0);
 
   rule monitorTemperature (checkTemperature && !overheatDetected);
-    if (temperature > `TemperatureThreshold) begin
-      if (allHigh(overheatCount))
+    tempSamples <= tempSamples + 1;
+    if (allHigh(tempSamples)) begin
+      if ((tempSum >> `LogTemperatureSamples) > `TemperatureThreshold)
         overheatDetected <= True;
       else
-        overheatCount <= overheatCount + 1;
+        tempSum <= zeroExtend(temperature);
     end else
-      overheatCount <= 0;
+      tempSum <= tempSum + zeroExtend(temperature);
   endrule
 
   // Receive commands over UART
