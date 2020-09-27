@@ -98,10 +98,17 @@ DebugLinkCmd cmdTempIn   = 4;
 DebugLinkCmd cmdTempOut  = 4;
 DebugLinkCmd cmdOverheat = 5;
 
+// =============================================================================
+// Temperature parameters
+// =============================================================================
+
 // If the FPGA temperature rises above this threshold we send an
-// emergency sthudown message over debug link.  To convert this
-// temperature to Celsuis, subtract 128.
+// overheat message over debug link.  To convert this temperature to
+// Celsuis, subtract 128.
 `define TemperatureThreshold 213
+
+// Average of the temperature over multiple samples
+`define LogTemperatureSamples 10
 
 // =============================================================================
 // Types
@@ -171,6 +178,10 @@ module mkDebugLinkRouter#(Bit#(`LogCoresPerBoard) myId) (DebugLinkRouter);
     toCorePort.put(busInPort.value);
   endrule
 
+  // This fact used to be inferred, but is now needed for the
+  // open-source version of BSC
+  (* mutually_exclusive = "busToBus, coreToBus" *)
+
   // Route flit from bus to bus
   rule busToBus (routeBusToBus || routeBusToCoreAndBus);
     busInPortGet.send;
@@ -188,7 +199,7 @@ module mkDebugLinkRouter#(Bit#(`LogCoresPerBoard) myId) (DebugLinkRouter);
   rule consume (busInPortGet);
     busInPort.get;
   endrule
-  
+
   // Interface
   interface In  busIn    = busInPort.in;
   interface Out busOut   = busOutPort.out;
@@ -288,6 +299,35 @@ module mkDebugLink#(
     boardId <= id;
   endrule
 
+  // Monitor temperature
+  // -------------------
+
+  // Check temperature to avoid overheating?
+  Reg#(Bool) checkTemperature <- mkConfigReg(False);
+
+  // Should we send an emergency overheat message?
+  Reg#(Bool) overheatDetected <- mkConfigReg(False);
+
+  // Have we sent an emergency overheat message?
+  Reg#(Bool) overheatMsgSent <- mkConfigReg(False);
+
+  // Sum of temperature over many samples
+  Reg#(Bit#(TAdd#(`LogTemperatureSamples, 8))) tempSum <- mkConfigReg(0);
+
+  // Number of samples taken
+  Reg#(Bit#(`LogTemperatureSamples)) tempSamples <- mkConfigReg(0);
+
+  rule monitorTemperature (checkTemperature && !overheatDetected);
+    tempSamples <= tempSamples + 1;
+    if (allHigh(tempSamples)) begin
+      if ((tempSum >> `LogTemperatureSamples) > `TemperatureThreshold)
+        overheatDetected <= True;
+      else
+        tempSum <= zeroExtend(temperature);
+    end else
+      tempSum <= tempSum + zeroExtend(temperature);
+  endrule
+
   // Receive commands over UART
   // --------------------------
 
@@ -306,9 +346,6 @@ module mkDebugLink#(
   // Respond to command?
   Reg#(Bool) respondFlag <- mkConfigReg(False);
   Reg#(DebugLinkCmd) respondCmd <- mkConfigRegU;
-
-  // Check temperature to avoid overheating?
-  Reg#(Bool) checkTemperature <- mkConfigReg(False);
 
   rule uartRecv (fromJtag.canGet && toBusPort.canPut && !respondFlag);
     fromJtag.get;
@@ -379,9 +416,6 @@ module mkDebugLink#(
   // Flit being forwarded
   Reg#(DebugLinkFlit) sendFlit <- mkConfigRegU;
 
-  // Have we sent an emergency overheat message?
-  Reg#(Bool) overheatMsgSent <- mkConfigReg(False);
-
   // Send QueryOut command
   rule uartSendQueryOut (toJtag.canPut && respondFlag);
     if (respondCmd == cmdQueryIn) begin
@@ -412,8 +446,7 @@ module mkDebugLink#(
   // Send StdOut command
   rule uartSendStdOut (toJtag.canPut && !respondFlag);
     if (sendState == 0) begin
-      if (checkTemperature && !overheatMsgSent &&
-            temperature > `TemperatureThreshold) begin
+      if (overheatDetected && !overheatMsgSent) begin
         overheatMsgSent <= True;
         toJtag.put(zeroExtend(cmdOverheat));
       end else if (fromBusPort.canGet) begin

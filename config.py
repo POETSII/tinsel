@@ -188,7 +188,7 @@ p["BoxMesh"] = ('{'
 p["UseCustomAccelerator"] = False
 
 # Clock frequency (in MHz)
-p["ClockFreq"] = 215
+p["ClockFreq"] = 210
 
 #==============================================================================
 # Derived Parameters
@@ -210,6 +210,9 @@ p["LogWordsPerLine"] = p["LogWordsPerBeat"]+p["LogBeatsPerLine"]
 
 # Log of number of bytes per data cache line
 p["LogBytesPerLine"] = 2+p["LogWordsPerLine"]
+
+# This constraint is assumed by the cache flush operation
+assert p["DCacheLogNumWays"] <= p["LogBytesPerLine"]
 
 # Number of 32-bit words per data cache line
 p["WordsPerLine"] = 2**p["LogWordsPerLine"]

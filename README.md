@@ -1377,7 +1377,7 @@ The default Tinsel configuration on a single DE5-Net board contains:
   * one 8x8 programmable router
   * a JTAG UART
 
-The clock frequency is 215MHz and the resource utilisation is 84% of
+The clock frequency is 210MHz and the resource utilisation is 84% of
 the DE5-Net.
 
 ## B. Tinsel Parameters
@@ -1407,7 +1407,7 @@ the DE5-Net.
   `MeshXLenWithinBox`      |       3 | Boards in X dimension within box
   `MeshYLenWithinBox`      |       2 | Boards in Y dimension within box
   `EnablePerfCount`        |    True | Enable performance counters
-  `ClockFreq`              |     215 | Clock frequency in MHz
+  `ClockFreq`              |     210 | Clock frequency in MHz
 
 A full list of parameters can be found in [config.py](config.py).
 

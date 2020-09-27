@@ -130,11 +130,11 @@ module mkInPort (InPort#(t))
 
   Wire#(Bool) putWireValid <- mkDWire(False);
   Wire#(t) putWireContents <- mkDWire(?);
-  Wire#(Bool) doGetWire <- mkDWire(False);
+  PulseWire doGetWire <- mkPulseWireOR;
 
   method Bool canGet = putWireValid;
   method Action get;
-    doGetWire <= True;
+    doGetWire.send;
   endmethod
   method t value = putWireContents;
 

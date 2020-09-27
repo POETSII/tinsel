@@ -118,14 +118,21 @@ module mkRouterMux#(
   end
 
   // Generate routing rules
+  // Exclusivity of these rules is no longer detected in the
+  // open-source version of BSC, so we have to be explict
+  Rules routingRules = emptyRules;
   for (Integer i = 0; i < numPorts; i=i+1) begin
-    // Route from input port to destination
-    rule toDest (destPort.canPut && routeToDest[i]);
-      inPort[i].get;
-      destPort.put(inPort[i].value);
-      toDestLock <= inPort[i].value.notFinalFlit ? fromLock[i] : Unlocked;
-    endrule
+    Rules toDestRule = rules
+      // Route from input port to destination
+      rule toDest (destPort.canPut && routeToDest[i]);
+        inPort[i].get;
+        destPort.put(inPort[i].value);
+        toDestLock <= inPort[i].value.notFinalFlit ? fromLock[i] : Unlocked;
+      endrule
+    endrules;
+    routingRules = rJoinMutuallyExclusive(routingRules, toDestRule);
   end
+  addRules(routingRules);
 endmodule
 
 // Mesh router
