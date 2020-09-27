@@ -650,25 +650,28 @@ bool HostLink::powerOnSelfTest()
   int count = 0;
 
   // Send request and consume responses
-  for (int ram = 1; ram <= 2; ram++) {
-    for (int y = 0; y < meshYLen; y++) {
-      for (int x = 0; x < meshXLen; x++) {
-        // Request a word from SRAM
-        uint32_t addr = ram << TinselLogBytesPerSRAM;
-        setAddr(x, y, 0, addr);
-        gettimeofday(&start, NULL);
-        while (1) {
-          bool ok = trySend(toAddr(x, y, 0, 0), 1, &req);
-          if (canRecv()) {
-            recv(msg);
-            count++;
+  for (int slice = 0; slice < 2; slice++) {
+    int core = slice << (TinselLogCoresPerBoard-1);
+    for (int ram = 1; ram <= 2; ram++) {
+      for (int y = 0; y < meshYLen; y++) {
+        for (int x = 0; x < meshXLen; x++) {
+          // Request a word from SRAM
+          uint32_t addr = ram << TinselLogBytesPerSRAM;
+          setAddr(x, y, core, addr);
+          gettimeofday(&start, NULL);
+          while (1) {
+            bool ok = trySend(toAddr(x, y, core, 0), 1, &req);
+            if (canRecv()) {
+              recv(msg);
+              count++;
+            }
+            if (ok) break;
+            gettimeofday(&finish, NULL);
+            timersub(&finish, &start, &diff);
+            double duration = (double) diff.tv_sec +
+                              (double) diff.tv_usec / 1000000.0;
+            if (duration > timeout) return false;
           }
-          if (ok) break;
-          gettimeofday(&finish, NULL);
-          timersub(&finish, &start, &diff);
-          double duration = (double) diff.tv_sec +
-                            (double) diff.tv_usec / 1000000.0;
-          if (duration > timeout) return false;
         }
       }
     }
@@ -676,7 +679,7 @@ bool HostLink::powerOnSelfTest()
 
   // Consume remaining responses
   gettimeofday(&start, NULL);
-  while (count < (2*meshXLen*meshYLen)) {
+  while (count < (4*meshXLen*meshYLen)) {
     if (canRecv()) {
       recv(msg);
       count++;
