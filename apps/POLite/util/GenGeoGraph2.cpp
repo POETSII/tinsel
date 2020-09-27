@@ -84,23 +84,29 @@ int main(int argc, char *argv[])
       // Nearest neighbour edges to ensure graph is connected
       if (x > 0) { addEdge(src, space[y][x-1]); count++; }
       if (y > 0) { addEdge(src, space[y-1][x]); count++; }
+      if (x < xLen-1) { addEdge(src, space[y][x+1]); count++; }
+      if (y < yLen-1) { addEdge(src, space[y+1][x]); count++; }
       // Determine box containing possible neighours
       int top = std::max(0, y-dist);
       int bottom = std::min(yLen-1, y+dist);
       int left = std::max(0, x-dist);
       int right = std::min(xLen-1, x+dist);
+      int width = right+1-left;
+      int height = bottom+1-top;
       // How many vertices within distance?
-      int size = (bottom-top) * (right-left);
+      int size = width * height;
       // Iterate over box and select neighbours
       int incRange = size / (fanout-count);
       int i = rand() % (2*incRange);
-      while (i < size) {
-        int by = top + i/(right-left);
-        int bx = left + i%(right-left);
+      while (i < size && count < fanout) {
+        int by = top + i/width;
+        int bx = left + i%width;
         int dst = space[by][bx];
         // Avoid duplicate edge with nearest neighbour
         bool avoid = x > 0 && dst == space[y][x-1] ||
-                       y > 0 && dst == space[y-1][x];
+                       y > 0 && dst == space[y-1][x] ||
+                         x < xLen-1 && dst == space[y][x+1] ||
+                           y < yLen-1 && dst == space[y+1][x];
         if (!avoid) {
           addEdge(src, dst);
           count++;
