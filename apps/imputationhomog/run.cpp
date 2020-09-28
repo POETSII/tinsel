@@ -382,7 +382,7 @@ int main()
     
     fprintf(fp1, "msgType,obsNo,stateNo,val\n");
     
-    //for (uint8_t msgType = 0u; msgType < 2; msgType++) {
+    for (uint8_t msgType = 0u; msgType < 2; msgType++) {
         for (uint32_t y = 0u; y < NOOFSTATES; y++) {
             for (uint32_t x = 0u; x < NOOFOBS; x++) {
                 
@@ -406,7 +406,7 @@ int main()
                         fprintf(fp1, "1,%d,%d,%e\n", msg.observationNo, msg.stateNo, msg.val);
                     }
                 }
-                
+                /*
                 if (recCnt > 165000u) {
                 
                     // Temporary file write
@@ -448,12 +448,12 @@ int main()
                     // close the file  
                     fclose (fp);
                     
-                }
+                }*/
             
             }
         
         }
-    //}
+    }
     
     fclose (fp1);
    

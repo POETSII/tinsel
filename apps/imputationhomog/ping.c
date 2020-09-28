@@ -41,7 +41,7 @@ int main()
     
     for (uint32_t x = 0u; x < LINRATIO; x++) {
         
-        dmLocal[x] = *(float*)(baseAddress + 9u + x);;
+        dmLocal[x] = *(float*)(baseAddress + 9u + x);
         totalDistance += dmLocal[x];
         
     }
@@ -113,7 +113,7 @@ int main()
             msgOut->val = alpha[y];
             
             // Propagate to next column
-            //tinselKeySend(fwdKey, msgOut);
+            tinselKeySend(fwdKey, msgOut);
             
             // Send to host
             volatile HostMessage* msgHost = tinselSendSlot();
@@ -124,7 +124,7 @@ int main()
             msgHost->stateNo = (y * NOOFHWROWS) + HWRowNo;
             msgHost->val = alpha[y];
 
-            //tinselSend(host, msgHost);
+            tinselSend(host, msgHost);
         
         }
     
@@ -227,7 +227,7 @@ int main()
                         msgOut->stateNo = (y * NOOFHWROWS) + HWRowNo;
                         msgOut->val = alpha[y];
                         
-                        //tinselKeySend(fwdKey, msgOut);
+                        tinselKeySend(fwdKey, msgOut);
                         
                     }
                     
@@ -241,7 +241,7 @@ int main()
                     msgOut->stateNo = (y * NOOFHWROWS) + HWRowNo;
                     msgOut->val = alpha[y];
                     
-                    //tinselSend(prevThread, msgOut);
+                    tinselSend(prevThread, msgOut);
                     
                     // Send to host
                     volatile HostMessage* msgHost = tinselSendSlot();
@@ -252,7 +252,7 @@ int main()
                     msgHost->stateNo = (y * NOOFHWROWS) + HWRowNo;
                     msgHost->val = alpha[y];
 
-                    //tinselSend(host, msgHost);
+                    tinselSend(host, msgHost);
                 
                 }
             
@@ -365,7 +365,7 @@ int main()
                 msgHost->stateNo = (index * NOOFHWROWS) + HWRowNo;
                 msgHost->val = alphaLin[index][x];
 
-                //tinselSend(host, msgHost);
+                tinselSend(host, msgHost);
                 
             }
             
@@ -386,8 +386,9 @@ int main()
         
         for (uint32_t y = 0u; y < NOOFSTATEPANELS; y++) {
             
+            // JPM ADD CHECK WHETHER MSGTYPE = BACKWARD TO PREVENT MULTIPLE CHECKS THROUGH THIS CODE
             // If we have received both values for linear interpolation
-            if ((rdyFlags[y] & PREVB) && (rdyFlags[y] & NEXTB) AND IF MESSAGE TYPE = BACKWARD) {
+            if ((rdyFlags[y] & PREVB) && (rdyFlags[y] & NEXTB)) {
                 
                 float totalDiff = nextBeta[y] - prevBeta[y];
                 
