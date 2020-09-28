@@ -4,7 +4,7 @@
 
 #define POLITE_DUMP_STATS
 #define POLITE_COUNT_MSGS
-#define NUM_ITERATIONS 5
+#define NUM_ITERATIONS 30
 
 #include <POLite.h>
 

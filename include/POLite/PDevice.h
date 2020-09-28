@@ -17,9 +17,9 @@
 // Use this to align on half-cache-line boundary
 #define ALIGNED __attribute__((aligned(1<<(TinselLogBytesPerLine-1))))
 
-// This is a static limit on the fan out of any pin
-#ifndef POLITE_MAX_FANOUT
-#define POLITE_MAX_FANOUT 256
+// This is a static limit on the number of pins per device
+#ifndef POLITE_NUM_PINS
+#define POLITE_NUM_PINS 1
 #endif
 
 // Number of mailbox slots to use for receive buffer
@@ -33,6 +33,8 @@
 
 // Thread-local device id
 typedef uint16_t PLocalDeviceId;
+#define InvalidLocalDevId 0xffff
+#define UnusedLocalDevId 0xfffe
 
 // Thread id
 typedef uint32_t PThreadId;
@@ -57,10 +59,14 @@ inline PLocalDeviceId getLocalDeviceId(PDeviceAddr addr) { return addr >> 19; }
 // What's the max allowed local device address?
 inline uint32_t maxLocalDeviceId() { return 8192; }
 
+// Routing key
+typedef uint16_t Key;
+#define InvalidKey 0xffff
+
 // Pins
 //   No      - means 'not ready to send'
 //   HostPin - means 'send to host'
-//   Pin(n)  - means 'send to applicaiton pin number n'
+//   Pin(n)  - means 'send to application pin number n'
 typedef uint8_t PPin;
 #define No 0
 #define HostPin 1
@@ -92,50 +98,42 @@ template <typename S, typename E, typename M> struct PDevice {
 // Generic device state structure
 template <typename S> struct ALIGNED PState {
   // Pointer to base of neighbours arrays
-  uint16_t neighboursOffset;
+  uint16_t pinBase[POLITE_NUM_PINS];
   // Ready-to-send status
   PPin readyToSend;
   // Custom state
   S state;
 };
 
-// Message structure (labelled edges)
-template <typename E, typename M> struct PMessage {
-  // Target device on receiving thread
+// Message structure
+template <typename M> struct PMessage {
+  // Source-based routing key
+  Key key;
+  // Application message
+  M payload;
+};
+
+// An outgoing edge from a device
+struct POutEdge {
+  // Destination thread
+  uint16_t thread;
+  // Routing key
+  uint16_t key;
+};
+
+// An incoming edge to a device (labelleled)
+template <typename E> struct PInEdge {
+  // Destination device
   PLocalDeviceId devId;
   // Edge info
   E edge;
-  // Application message
-  M payload;
 };
 
-// Message structure (unlabelled edges)
-template <typename M> struct PMessage<None, M> {
+// An incoming edge to a device (unlabelleled)
+template <> struct PInEdge<None> {
   union {
-    // Target device on receiving thread
+    // Destination device
     PLocalDeviceId devId;
-    // Unused
-    None edge;
-  };
-  // Application message
-  M payload;
-};
-
-// Component type of neighbours array
-// For labelleled edges
-template <typename E> struct PNeighbour {
-  // Destination thread and device
-  PDeviceAddr destAddr;
-  // Edge info
-  E edge;
-};
-
-// Component type of neighbours array
-// For unlabelleled
-template <> struct PNeighbour<None> {
-  union {
-    // Destination thread and device
-    PDeviceAddr destAddr;
     // Unused
     None edge;
   };
@@ -161,12 +159,11 @@ template <typename DeviceType,
   uint16_t time;
   // Number of devices in graph
   uint32_t numVertices;
-  // Current neighbour in multicast
-  PTR(PNeighbour<E>) neighbour;
   // Pointer to array of device states
   PTR(PState<S>) devices;
-  // Pointer to base of neighours array
-  PTR(PNeighbour<E>) neighboursBase;
+  // Pointer to base of routing tables
+  PTR(POutEdge) outTableBase;
+  PTR(PInEdge<E>) inTableBase;
   // Array of local device ids are ready to send
   PTR(PLocalDeviceId) senders;
   // This array is accessed in a LIFO manner
@@ -180,8 +177,6 @@ template <typename DeviceType,
   uint32_t interThreadSendCount;
   // Messages sent between threads on different boards
   uint32_t interBoardSendCount;
-  // Number of times sending was blocked
-  uint32_t blockedSends;
   #endif
 
   #ifdef TINSEL
@@ -218,18 +213,23 @@ template <typename DeviceType,
     }
     // Per-thread performance counters
     #ifdef POLITE_COUNT_MSGS
-    printf("LS:%x,TS:%x,BS:%x,BL:%x\n", intraThreadSendCount,
-             interThreadSendCount, interBoardSendCount,
-               blockedSends);
+    printf("LS:%x,TS:%x,BS:%x\n", intraThreadSendCount,
+             interThreadSendCount, interBoardSendCount);
     #endif
   }
 
   // Invoke device handlers
   void run() {
-    // Empty neighbour array
-    PNeighbour<E> empty;
-    empty.destAddr = invalidDeviceAddr();
-    neighbour = &empty;
+    // Current out-going edge in multicast
+    POutEdge* outEdge;
+
+    // Outgoing edge to host
+    POutEdge outHost[2];
+    outHost[0].thread = tinselHostId();
+    outHost[0].key = 0;
+    outHost[1].key = InvalidKey;
+    // Initialise outEdge to null terminator
+    outEdge = &outHost[1];
 
     // Did last call to step handler request a new time step?
     bool active = true;
@@ -250,7 +250,7 @@ template <typename DeviceType,
     }
 
     // Set number of flits per message
-    tinselSetLen((sizeof(PMessage<E,M>)-1) >> TinselLogBytesPerFlit);
+    tinselSetLen((sizeof(PMessage<M>)-1) >> TinselLogBytesPerFlit);
 
     // Allocate some slots for incoming messages
     // (Slot 0 is reserved for outgoing messages)
@@ -259,50 +259,21 @@ template <typename DeviceType,
     // Event loop
     while (1) {
       // Step 1: try to send
-      if (isValidDeviceAddr(neighbour->destAddr)) {
-        PThreadId destThread = getThreadId(neighbour->destAddr);
-        if (destThread == tinselId()) {
-          // Lookup destination device
-          PLocalDeviceId id = getLocalDeviceId(neighbour->destAddr);
-          DeviceType dev = getDevice(id);
-          PPin oldReadyToSend = *dev.readyToSend;
-          // Invoke receive handler
-          PMessage<E,M>* m = (PMessage<E,M>*) tinselSlot(0);
-          dev.recv(&m->payload, &neighbour->edge);
-          // Insert device into a senders array, if not already there
-          if (oldReadyToSend == No && *dev.readyToSend != No)
-             *(sendersTop++) = id;
-          // Move to next neighbour
-          neighbour++;
-          #ifdef POLITE_COUNT_MSGS
-          intraThreadSendCount++;
-          #endif
-        }
-        else if (tinselCanSend()) {
-          // Destination device is on another thread
-          PMessage<E,M>* m = (PMessage<E,M>*) tinselSlot(0);
-          // Copy neighbour edge info into message
-          m->devId = getLocalDeviceId(neighbour->destAddr);
-          if (! std::is_same<E, None>::value)
-            m->edge = neighbour->edge;
+      if (outEdge->key != InvalidKey) {
+        if (tinselCanSend()) {
+          PMessage<M>* m = (PMessage<M>*) tinselSlot(0);
           // Send message
-          PThreadId destThread = getThreadId(neighbour->destAddr);
-          tinselSend(destThread, m);
+          m->key = outEdge->key;
+          tinselSend(outEdge->thread, m);
           #ifdef POLITE_COUNT_MSGS
           interThreadSendCount++;
-          interBoardSendCount +=
-            hopsBetween(destThread, tinselId());
+          interBoardSendCount += hopsBetween(outEdge->thread, tinselId());
           #endif
           // Move to next neighbour
-          neighbour++;
+          outEdge++;
         }
-        else {
-          #ifdef POLITE_COUNT_MSGS
-            blockedSends++;
-          #endif
-          // Go to sleep
-          tinselWaitUntil(TINSEL_CAN_RECV | TINSEL_CAN_SEND);
-        }
+        else
+          tinselWaitUntil(TINSEL_CAN_SEND|TINSEL_CAN_RECV);
       }
       else if (sendersTop != senders) {
         if (tinselCanSend()) {
@@ -310,23 +281,22 @@ template <typename DeviceType,
           PLocalDeviceId src = *(--sendersTop);
           // Lookup device
           DeviceType dev = getDevice(src);
-          PPin pin = *dev.readyToSend - 1;
+          PPin pin = *dev.readyToSend;
           // Invoke send handler
-          PMessage<E,M>* m = (PMessage<E,M>*) tinselSlot(0);
+          PMessage<M>* m = (PMessage<M>*) tinselSlot(0);
           dev.send(&m->payload);
           // Reinsert sender, if it still wants to send
           if (*dev.readyToSend != No) sendersTop++;
-          // Determine neighbours array for sender
-          neighbour = (PNeighbour<E>*) &neighboursBase[
-            (devices[src].neighboursOffset + pin) * POLITE_MAX_FANOUT];
+          // Determine out-edge array for sender
+          if (pin == HostPin)
+            outEdge = outHost;
+          else
+            outEdge = (POutEdge*) &outTableBase[
+              devices[src].pinBase[pin-2]
+            ];
         }
-        else {
-          #ifdef POLITE_COUNT_MSGS
-            blockedSends++;
-          #endif
-          // Go to sleep
-          tinselWaitUntil(TINSEL_CAN_RECV | TINSEL_CAN_SEND);
-        }
+        else
+          tinselWaitUntil(TINSEL_CAN_SEND|TINSEL_CAN_RECV);
       }
       else {
         // Idle detection
@@ -350,20 +320,25 @@ template <typename DeviceType,
 
       // Step 2: try to receive
       while (tinselCanRecv()) {
-        // Receive message
-        PMessage<E,M> *m = (PMessage<E,M>*) tinselRecv();
-        // Lookup destination device
-        PLocalDeviceId id = m->devId;
-        DeviceType dev = getDevice(id);
-        // Was it ready to send?
-        PPin oldReadyToSend = *dev.readyToSend;
-        // Invoke receive handler
-        dev.recv(&m->payload, &m->edge);
-        // Reallocate mailbox slot
-        tinselAlloc(m);
-        // Insert device into a senders array, if not already there
-        if (*dev.readyToSend != No && oldReadyToSend == No)
-          *(sendersTop++) = id;
+        PMessage<M>* inMsg = (PMessage<M>*) tinselRecv();
+        PInEdge<E>* inEdge = &inTableBase[inMsg->key];
+        while (inEdge->devId != InvalidLocalDevId) {
+          // Lookup destination device
+          PLocalDeviceId id = inEdge->devId;
+          DeviceType dev = getDevice(id);
+          // Was it ready to send?
+          PPin oldReadyToSend = *dev.readyToSend;
+          // Invoke receive handler
+          dev.recv(&inMsg->payload, &inEdge->edge);
+          // Insert device into a senders array, if not already there
+          if (*dev.readyToSend != No && oldReadyToSend == No)
+            *(sendersTop++) = id;
+          inEdge++;
+          #ifdef POLITE_COUNT_MSGS
+          intraThreadSendCount++;
+          #endif
+        }
+        tinselAlloc(inMsg);
       }
     }
 
@@ -376,7 +351,7 @@ template <typename DeviceType,
     for (uint32_t i = 0; i < numDevices; i++) {
       DeviceType dev = getDevice(i);
       tinselWaitUntil(TINSEL_CAN_SEND);
-      PMessage<E,M>* m = (PMessage<E,M>*) tinselSlot(0);
+      PMessage<M>* m = (PMessage<M>*) tinselSlot(0);
       if (dev.finish(&m->payload)) tinselSend(tinselHostId(), m);
     }
 

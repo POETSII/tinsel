@@ -98,7 +98,7 @@ int main(int argc, char**argv)
   // Receive final distance to each vertex
   for (uint32_t i = 0; i < graph.numDevices; i++) {
     // Receive message
-    PMessage<Weight, IzhikevichMsg> msg;
+    PMessage<IzhikevichMsg> msg;
     hostLink.recvMsg(&msg, sizeof(msg));
     if (i == 0) gettimeofday(&finish, NULL);
     // Accumulate

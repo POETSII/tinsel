@@ -10,7 +10,7 @@
 #include "RNG.h"
 
 // Number of time steps to run for
-#define NUM_STEPS 100
+#define NUM_STEPS 500
 
 // Vertex state
 struct IzhikevichState {

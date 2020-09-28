@@ -13,7 +13,6 @@ BEGIN {
   intraThreadSendCount = 0;
   interThreadSendCount = 0;
   interBoardSendCount = 0;
-  blockedSends = 0;
   fmax = 240000000;
   if (boardsX == "" || boardsY == "") {
     boardsX = 3;
@@ -49,15 +48,13 @@ BEGIN {
         coreCount = coreCount+1;
       }
       # Per-thread message counts
-      else if (match($0, /(.*) LS:(.*),TS:(.*),BS:(.*),BL:(.*)/, fields)) {
+      else if (match($0, /(.*) LS:(.*),TS:(.*),BS:(.*)/, fields)) {
         ls=strtonum("0x"fields[2]);
         ts=strtonum("0x"fields[3]);
         bs=strtonum("0x"fields[4]);
-        bl=strtonum("0x"fields[5]);
         intraThreadSendCount = intraThreadSendCount+ls;
         interThreadSendCount = interThreadSendCount+ts;
         interBoardSendCount = interBoardSendCount+bs;
-        blockedSends = blockedSends+bl;
       }
     }
   }
@@ -76,8 +73,4 @@ END {
   print "Intra-thread messages: ", intraThreadSendCount
   print "Inter-thread messages: ", interThreadSendCount
   print "Inter-board messages: ", interBoardSendCount
-  print "Blocked sends: ", blockedSends
-  print ""
-  print "Notes:"
-  print "  * If runtime > 40s approx, hit/miss counts may overflow"
 }
