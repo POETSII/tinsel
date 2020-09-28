@@ -25,15 +25,23 @@ int main()
     // Received values
     uint32_t* baseAddress = tinselHeapBase();
     uint32_t observationNo = *baseAddress;
+    uint32_t fwdKey = *(baseAddress + 1u);
+    uint32_t bwdKey = *(baseAddress + 2u);
+    float fwdSame = *(float*)(baseAddress + 3u);
+    float fwdDiff = *(float*)(baseAddress + 4u);
+    float bwdSame = *(float*)(baseAddress + 5u);
+    float bwdDiff = *(float*)(baseAddress + 6u);
+    uint32_t prevThread = *(baseAddress + 7u);
+    
+    
     // JPM THERE NEEDS TO BE MULTIPLE MATCH VALUES
-    uint32_t match = *(baseAddress + 1u);
-    uint32_t fwdKey = *(baseAddress + 2u);
-    uint32_t bwdKey = *(baseAddress + 3u);
-    float fwdSame = *(float*)(baseAddress + 4u);
-    float fwdDiff = *(float*)(baseAddress + 5u);
-    float bwdSame = *(float*)(baseAddress + 6u);
-    float bwdDiff = *(float*)(baseAddress + 7u);
-    uint32_t prevThread = *(baseAddress + 8u);
+    uint32_t match[NOOFSTATEPANELS] = {0u};
+    
+    for (uint32_t x = 0u; x < NOOFSTATEPANELS; x++) {
+    
+        match[x] = *(baseAddress + 8u + x);
+    
+    }
     
     // Populate local genetic distances and calculate total genetic distance
     float dmLocal[LINRATIO] = {0.0f};
@@ -41,7 +49,7 @@ int main()
     
     for (uint32_t x = 0u; x < LINRATIO; x++) {
         
-        dmLocal[x] = *(float*)(baseAddress + 9u + x);
+        dmLocal[x] = *(float*)(baseAddress + 8u + NOOFSTATEPANELS + x);
         totalDistance += dmLocal[x];
         
     }
@@ -93,7 +101,7 @@ int main()
             alpha[y] = 1.0f / NOOFSTATES;
             
             // Multiply alpha by emission probability
-            if (match == 1u) {
+            if (match[y] == 1u) {
                 alpha[y] = alpha[y] * (1.0f - (1.0f / ERRORRATE));
             }
             else {
@@ -142,7 +150,7 @@ int main()
             
             tinselWaitUntil(TINSEL_CAN_SEND);
             msgOut->msgType = BACKWARD;
-            msgOut->match = match;
+            msgOut->match = match[y];
             msgOut->stateNo = (y * NOOFHWROWS) + HWRowNo;
             msgOut->val = beta[y];
             
@@ -166,7 +174,7 @@ int main()
             
             tinselWaitUntil(TINSEL_CAN_SEND);
             msgOut->msgType = BWDLIN;
-            msgOut->match = match;
+            msgOut->match = match[y];
             msgOut->stateNo = (y * NOOFHWROWS) + HWRowNo;
             msgOut->val = beta[y];
             
@@ -204,7 +212,7 @@ int main()
                 if (fwdRecCnt == NOOFSTATES) {
                     
                     // Multiply Alpha by Emission Probability
-                    if (match == 1u) {
+                    if (match[y] == 1u) {
                         alpha[y] = alpha[y] * (1.0f - (1.0f / ERRORRATE));
                     }
                     else {
@@ -299,7 +307,7 @@ int main()
 
                         tinselWaitUntil(TINSEL_CAN_SEND);
                         msgOut->msgType = BACKWARD;
-                        msgOut->match = match;
+                        msgOut->match = match[y];
                         msgOut->stateNo = (y * NOOFHWROWS) + HWRowNo;
                         msgOut->val = beta[y];
                         
@@ -310,7 +318,7 @@ int main()
                         
                         tinselWaitUntil(TINSEL_CAN_SEND);
                         msgOut->msgType = BWDLIN;
-                        msgOut->match = match;
+                        msgOut->match = match[y];
                         msgOut->stateNo = (y * NOOFHWROWS) + HWRowNo;
                         msgOut->val = beta[y];
                         

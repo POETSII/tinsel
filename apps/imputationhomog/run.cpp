@@ -287,11 +287,15 @@ int main()
                     
                     //Create match value from model
                     
-                    uint32_t match = 0u;
+                    uint32_t match[NOOFSTATEPANELS] = {0u};
                     
-                    // if markers match
-                    if (hmm_labels[thread][globalColumn * LINRATIO] == observation[globalColumn * LINRATIO][1]) {
-                        match = 1u;
+                    for (uint32_t x = 0u; x < NOOFSTATEPANELS; x++) {
+                    
+                        // if markers match
+                        if (hmm_labels[(x * NOOFHWROWS) + thread][globalColumn * LINRATIO] == observation[globalColumn * LINRATIO][1]) {
+                            match[x] = 1u;
+                        }
+                    
                     }
                     
                     uint32_t prevThread = prevBaseThread + thread;
@@ -315,7 +319,6 @@ int main()
                     hostLink.setAddr(boardPath[board][0u], boardPath[board][1u], coreID, baseAddress);
                     
                     hostLink.store(boardPath[board][0u], boardPath[board][1u], coreID, 1u, &obsNo);
-                    hostLink.store(boardPath[board][0u], boardPath[board][1u], coreID, 1u, &match);
                     hostLink.store(boardPath[board][0u], boardPath[board][1u], coreID, 1u, &fwdColumnKey[globalColumn]);
                     hostLink.store(boardPath[board][0u], boardPath[board][1u], coreID, 1u, &bwdColumnKey[globalColumn]);
                     
@@ -328,6 +331,12 @@ int main()
                     hostLink.store(boardPath[board][0u], boardPath[board][1u], coreID, 1u, diff1UPtr);
                     
                     hostLink.store(boardPath[board][0u], boardPath[board][1u], coreID, 1u, &prevThread);
+                    
+                    for (uint32_t x = 0u; x < NOOFSTATEPANELS; x++) {
+                    
+                        hostLink.store(boardPath[board][0u], boardPath[board][1u], coreID, 1u, &match[x]);
+                    
+                    }
                     
                     // Local genetic distances from map
                     float dmSingle = 0.0f;
