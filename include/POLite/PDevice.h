@@ -177,6 +177,8 @@ template <typename DeviceType,
   uint32_t interThreadSendCount;
   // Messages sent between threads on different boards
   uint32_t interBoardSendCount;
+  // Number of times we wanted to send but couldn't
+  uint32_t blockedSends;
   #endif
 
   #ifdef TINSEL
@@ -213,8 +215,8 @@ template <typename DeviceType,
     }
     // Per-thread performance counters
     #ifdef POLITE_COUNT_MSGS
-    printf("LS:%x,TS:%x,BS:%x\n", intraThreadSendCount,
-             interThreadSendCount, interBoardSendCount);
+    printf("LS:%x,TS:%x,BS:%x,BL:%x\n", intraThreadSendCount,
+             interThreadSendCount, interBoardSendCount, blockedSends);
     #endif
   }
 
@@ -272,8 +274,12 @@ template <typename DeviceType,
           // Move to next neighbour
           outEdge++;
         }
-        else
+        else {
+          #ifdef POLITE_COUNT_MSGS
+          blockedSends++;
+          #endif
           tinselWaitUntil(TINSEL_CAN_SEND|TINSEL_CAN_RECV);
+        }
       }
       else if (sendersTop != senders) {
         if (tinselCanSend()) {
@@ -295,8 +301,12 @@ template <typename DeviceType,
               devices[src].pinBase[pin-2]
             ];
         }
-        else
+        else {
+          #ifdef POLITE_COUNT_MSGS
+          blockedSends++;
+          #endif
           tinselWaitUntil(TINSEL_CAN_SEND|TINSEL_CAN_RECV);
+        }
       }
       else {
         // Idle detection
