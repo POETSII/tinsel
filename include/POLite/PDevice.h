@@ -62,6 +62,7 @@ inline uint32_t maxLocalDeviceId() { return 8192; }
 // Routing key
 typedef uint16_t Key;
 #define InvalidKey 0xffff
+#define HostKey 0xfffe
 
 // Pins
 //   No      - means 'not ready to send'
@@ -227,8 +228,7 @@ template <typename DeviceType,
 
     // Outgoing edge to host
     POutEdge outHost[2];
-    outHost[0].thread = tinselHostId();
-    outHost[0].key = 0;
+    outHost[0].key = HostKey;
     outHost[1].key = InvalidKey;
     // Initialise outEdge to null terminator
     outEdge = &outHost[1];
@@ -266,7 +266,9 @@ template <typename DeviceType,
           PMessage<M>* m = (PMessage<M>*) tinselSlot(0);
           // Send message
           m->key = outEdge->key;
-          tinselSend(outEdge->thread, m);
+          uint32_t dest =
+            outEdge->key == HostKey ? tinselHostId() : outEdge->thread;
+          tinselSend(dest, m);
           #ifdef POLITE_COUNT_MSGS
           interThreadSendCount++;
           interBoardSendCount += hopsBetween(outEdge->thread, tinselId());
