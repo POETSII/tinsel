@@ -57,7 +57,7 @@ INLINE uint32_t tinselCycleCount()
 // Flush cache line (non-blocking)
 INLINE void tinselFlushLine(uint32_t lineNum, uint32_t way)
 {
-  uint32_t arg = (lineNum << TinselLogBytesPerLine) | way;
+  uint32_t arg = (lineNum << TinselDCacheLogNumWays) | way;
   asm volatile("csrrw zero, " CSR_FLUSH ", %0" : : "r"(arg));
 }
 
