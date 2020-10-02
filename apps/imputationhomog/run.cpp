@@ -21,16 +21,16 @@
  * scp jordmorr@fielding.cl.cam.ac.uk:~/tinsel/apps/imputationhomog/results.csv C:\Users\drjor\Documents\tinsel\apps\imputationhomog
  * ****************************************************/
  
-const uint32_t XKEYS = (TinselBoardsPerBox - 1u) * TinselCoresPerBoard * NOOFHWCOLSPERCORE;
+const uint32_t XKEYS = NOOFBOXES * (TinselBoardsPerBox - 1u) * TinselCoresPerBoard * NOOFHWCOLSPERCORE;
 //const uint8_t YKEYS = 8u;
 
 int main()
 {
     // Create the hostlink (with a single box dimension by default)
-    HostLink hostLink;
+    HostLink hostLink(2, 4);
 
-    // Creat the programmable router mesh with single box dimensions
-    ProgRouterMesh progRouterMesh(TinselMeshXLenWithinBox, TinselMeshYLenWithinBox);
+    // Create the programmable router mesh with single box dimensions
+    ProgRouterMesh progRouterMesh(6, 8);
     
     // Generate and transmit pre-execution data
     
@@ -50,7 +50,7 @@ int main()
     
     mrmRecord.key = 0u;
     
-    for (uint8_t board = 0u; board < (TinselBoardsPerBox - 1u); board++) {
+    for (uint8_t board = 0u; board < (NOOFBOXES * (TinselBoardsPerBox - 1u)); board++) {
     
         for (uint8_t mailbox = 0u; mailbox < TinselMailboxesPerBoard; mailbox++) {
             
@@ -58,6 +58,8 @@ int main()
                 
                 //Global Column Number
                 uint32_t globalColumn = (board * TinselCoresPerMailbox * NOOFHWCOLSPERCORE * TinselMailboxesPerBoard) + (mailbox * TinselCoresPerMailbox * NOOFHWCOLSPERCORE) + col;
+                
+                //printf("Global Col: %d Board: %d Mailbox: %d\n", globalColumn, board, mailbox);
                 
                 //Base Thread
                 uint32_t prevBaseThread = 0u;
@@ -67,8 +69,8 @@ int main()
                 // If we are the last col on the current board
                 if ( (col == ((TinselCoresPerMailbox * NOOFHWCOLSPERCORE) - 1u)) && (mailbox == TinselMailboxesPerBoard - 1u) ) {
                     
-                    // If we arent in the last col for the box
-                    if ( !(board == TinselBoardsPerBox - 2u) ) {
+                    // If we arent in the last col for the setup
+                    if ( !(board == ((NOOFBOXES * (TinselBoardsPerBox - 1u)) - 1u)) ) {
                         
                         // Construct destination the mailbox for the next board
                         dest.mbox = boardPath[board + 1u][1u];
@@ -200,8 +202,8 @@ int main()
                 
                 
                 // If we arent in the last col
-                if (!((board == TinselBoardsPerBox - 2u) && (mailbox == TinselMailboxesPerBoard - 1u) && (col == (TinselCoresPerMailbox * NOOFHWCOLSPERCORE) - 1u))) {
-
+                if (!((board == ((NOOFBOXES * (TinselBoardsPerBox - 1u)) - 1u)) && (mailbox == TinselMailboxesPerBoard - 1u) && (col == (TinselCoresPerMailbox * NOOFHWCOLSPERCORE) - 1u))) {
+                    
                     // Create forward key
                     fwdColumnKey[globalColumn] = progRouterMesh.addDestsFromBoardXY(boardPath[board][0u], boardPath[board][1u], &fwdDests);
                     //printf("Key: %X\n", fwdColumnKey[globalColumn]);

@@ -33,8 +33,6 @@ int main()
     float bwdDiff = *(float*)(baseAddress + 6u);
     uint32_t prevThread = *(baseAddress + 7u);
     
-    
-    // JPM THERE NEEDS TO BE MULTIPLE MATCH VALUES
     uint32_t match[NOOFSTATEPANELS] = {0u};
     
     for (uint32_t x = 0u; x < NOOFSTATEPANELS; x++) {

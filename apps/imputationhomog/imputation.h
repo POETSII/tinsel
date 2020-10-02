@@ -14,11 +14,14 @@
 // Hardware Parameters
 #define NOOFHWROWS (8)
 #define NOOFHWCOLSPERCORE (2)
+#define NOOFBOXES (8)
 
 // Model Parameters
 #define NOOFSTATES (16)
-#define NOOFOBS (7671)
-#define NOOFTARGMARK (768)
+//NOTARGMARK = 768 * NOOFBOXES
+#define NOOFTARGMARK (6144)
+// NOOFOBS = (NOOFTARGMARK * 10) - (LINRATIO - 1)
+#define NOOFOBS (61431)
 #define LINRATIO (10)
 #define NE (1000000)
 #define ERRORRATE (10000)
