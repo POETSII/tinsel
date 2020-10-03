@@ -22,16 +22,23 @@ int main()
     // Calculate model parameters
     uint8_t HWRowNo = localThreadID % 8u;
 
-    // Received values
+    // Received values for hardware layout
     uint32_t* baseAddress = tinselHeapBase();
-    uint32_t observationNo = *baseAddress;
-    uint32_t fwdKey = *(baseAddress + 1u);
-    uint32_t bwdKey = *(baseAddress + 2u);
-    float fwdSame = *(float*)(baseAddress + 3u);
-    float fwdDiff = *(float*)(baseAddress + 4u);
-    float bwdSame = *(float*)(baseAddress + 5u);
-    float bwdDiff = *(float*)(baseAddress + 6u);
-    uint32_t prevThread = *(baseAddress + 7u);
+    
+    // Received values for hardware layout
+    // -------------------------------------------->
+    uint32_t fwdKey = *baseAddress;
+    uint32_t bwdKey = *(baseAddress + 1u);
+    uint32_t prevThread = *(baseAddress + 2u);
+    uint32_t observationNo = *(baseAddress + 3u);
+    // <-------------------------------------------
+    
+    // Received values for each leg
+    // -------------------------------------------->
+    float fwdSame = *(float*)(baseAddress + 4u);
+    float fwdDiff = *(float*)(baseAddress + 5u);
+    float bwdSame = *(float*)(baseAddress + 6u);
+    float bwdDiff = *(float*)(baseAddress + 7u);
     
     uint32_t match[NOOFSTATEPANELS] = {0u};
     
@@ -51,6 +58,8 @@ int main()
         totalDistance += dmLocal[x];
         
     }
+    
+    // <-------------------------------------------
     
     // Get host id
     int host = tinselHostId();

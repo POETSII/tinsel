@@ -28,6 +28,7 @@
 
 // Calculated Parameters
 #define NOOFSTATEPANELS (2)
+#define NOOFLEGS (2)
 
 // MsgTypes
 #define FORWARD (0u)
