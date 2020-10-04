@@ -30,7 +30,7 @@ int main()
     uint32_t fwdKey = *baseAddress;
     uint32_t bwdKey = *(baseAddress + 1u);
     uint32_t prevThread = *(baseAddress + 2u);
-    uint32_t observationNo = *(baseAddress + 3u);
+    uint32_t HWColNo = *(baseAddress + 3u);
     // <-------------------------------------------
     
     // Received values for each leg
@@ -91,14 +91,14 @@ int main()
     uint8_t rdyFlags[NOOFSTATEPANELS][NOOFLEGS] = {{0.0f}};
     
     /*
-    if (observationNo == 1u) {
+    if (HWColNo == 1u) {
         
         // Send to host
         volatile HostMessage* msgHost = tinselSendSlot();
         
         tinselWaitUntil(TINSEL_CAN_SEND);
         msgHost->msgType = FORWARD;
-        msgHost->observationNo = observationNo;
+        msgHost->observationNo = HWColNo;
         msgHost->stateNo = HWRowNo;
         msgHost->val = totalDistance[0];
 
@@ -111,7 +111,7 @@ int main()
     START HERE TO ADD THE NOOFLEGS DIMENSION INTO THE CODE (ALSO CHECK ABOVE IS CORRECT)
     */
     // Startup for forward algorithm
-    if (observationNo == 0u) {
+    if (HWColNo == 0u) {
         
         for (uint32_t y = 0u; y < NOOFSTATEPANELS; y++) {
             
@@ -146,7 +146,7 @@ int main()
 
             tinselWaitUntil(TINSEL_CAN_SEND);
             msgHost->msgType = FORWARD;
-            msgHost->observationNo = observationNo * LINRATIO;
+            msgHost->observationNo = HWColNo * LINRATIO;
             msgHost->stateNo = (y * NOOFHWROWS) + HWRowNo;
             msgHost->val = alpha[y][0];
 
@@ -157,7 +157,7 @@ int main()
     }
     
     // Startup for backward algorithm
-    if (observationNo == (NOOFHWCOLS - 1u)) {
+    if (HWColNo == (NOOFHWCOLS - 1u)) {
         
         for (uint32_t y = 0u; y < NOOFSTATEPANELS; y++) {
       
@@ -179,7 +179,7 @@ int main()
 
             tinselWaitUntil(TINSEL_CAN_SEND);
             msgHost->msgType = BACKWARD;
-            msgHost->observationNo = observationNo * LINRATIO;
+            msgHost->observationNo = HWColNo * LINRATIO;
             msgHost->stateNo = (y * NOOFHWROWS) + HWRowNo;
             msgHost->val = beta[y][0];
 
@@ -243,7 +243,7 @@ int main()
                     
                     // If we are an intermediate node propagate the alpha to the next column
                     // Else send the alpha out to the host
-                    if (observationNo != (NOOFHWCOLS - 1u)) {
+                    if (HWColNo != (NOOFHWCOLS - 1u)) {
                         
                         // Get pointers to mailbox message slot
                         volatile ImpMessage* msgOut = tinselSendSlot();
@@ -274,7 +274,7 @@ int main()
 
                     tinselWaitUntil(TINSEL_CAN_SEND);
                     msgHost->msgType = FORWARD;
-                    msgHost->observationNo = observationNo * LINRATIO;
+                    msgHost->observationNo = HWColNo * LINRATIO;
                     msgHost->stateNo = (y * NOOFHWROWS) + HWRowNo;
                     msgHost->val = alpha[y][0];
 
@@ -318,7 +318,7 @@ int main()
                     prevBeta[y][0] = beta[y][0];
                     rdyFlags[y][0] |= PREVB;
                     
-                    if (observationNo != 0u) {
+                    if (HWColNo != 0u) {
                         
                         // Get pointers to mailbox message slot
                         volatile ImpMessage* msgOut = tinselSendSlot();
@@ -349,7 +349,7 @@ int main()
 
                     tinselWaitUntil(TINSEL_CAN_SEND);
                     msgHost->msgType = BACKWARD;
-                    msgHost->observationNo = observationNo * LINRATIO;
+                    msgHost->observationNo = HWColNo * LINRATIO;
                     msgHost->stateNo = (y * NOOFHWROWS) + HWRowNo;
                     msgHost->val = beta[y][0];
 
@@ -387,7 +387,7 @@ int main()
 
                 tinselWaitUntil(TINSEL_CAN_SEND);
                 msgHost->msgType = FWDLIN;
-                msgHost->observationNo = (observationNo * LINRATIO) + 1u + x;
+                msgHost->observationNo = (HWColNo * LINRATIO) + 1u + x;
                 msgHost->stateNo = (index * NOOFHWROWS) + HWRowNo;
                 msgHost->val = alphaLin[index][0][x];
 
@@ -432,7 +432,7 @@ int main()
 
                     tinselWaitUntil(TINSEL_CAN_SEND);
                     msgHost->msgType = BWDLIN;
-                    msgHost->observationNo = (observationNo * LINRATIO) + 1u + x;
+                    msgHost->observationNo = (HWColNo * LINRATIO) + 1u + x;
                     msgHost->stateNo = (y * NOOFHWROWS) + HWRowNo;
                     msgHost->val = betaLin[y][0][(LINRATIO - 2u) - x];
 
