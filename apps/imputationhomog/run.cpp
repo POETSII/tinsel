@@ -445,6 +445,7 @@ int main()
     hostLink.boot("code.v", "data.v");
     hostLink.go();
     
+    /*
     HostMessage msg;
     float testResults[8u] = {0.0f};
     
@@ -458,17 +459,17 @@ int main()
     for (uint32_t i = 0u; i < 8u; i++) {
         printf("%.15f\n", testResults[i]);
     }
+    */
 
-
-    /*
+    
     
     HostMessage msg;
 
-    float result[NOOFOBS][NOOFSTATES][2u];
+    float result[TEMPNOOFOBS][NOOFSTATES][2u];
     
     for (uint8_t msgType = 0u; msgType < 2; msgType++) {
         for (uint32_t y = 0u; y < NOOFSTATES; y++) {
-            for (uint32_t x = 0u; x < NOOFOBS; x++) {
+            for (uint32_t x = 0u; x < TEMPNOOFOBS; x++) {
                 
                 result[x][y][msgType] = 0.0f;
                 
@@ -487,7 +488,7 @@ int main()
     
     for (uint8_t msgType = 0u; msgType < 2; msgType++) {
         for (uint32_t y = 0u; y < NOOFSTATES; y++) {
-            for (uint32_t x = 0u; x < NOOFOBS; x++) {
+            for (uint32_t x = 0u; x < TEMPNOOFOBS; x++) {
                 
                 recCnt++;
                 hostLink.recvMsg(&msg, sizeof(msg));
@@ -522,9 +523,9 @@ int main()
 
                     fprintf(fp, "Forward Probabilities: \n");
                     for (uint32_t y = 0u; y < NOOFSTATES; y++) {
-                        for (uint32_t x = 0u; x < NOOFOBS; x++) {
+                        for (uint32_t x = 0u; x < TEMPNOOFOBS; x++) {
                         
-                            if (x != (NOOFOBS - 1u) ) {
+                            if (x != (TEMPNOOFOBS - 1u) ) {
                                 fprintf(fp, "%e,", result[x][y][0u]);
                             }
                             else {
@@ -537,9 +538,9 @@ int main()
 
                     fprintf(fp, "Backward Probabilities: \n");
                     for (uint32_t y = 0u; y < NOOFSTATES; y++) {
-                        for (uint32_t x = 0u; x < NOOFOBS; x++) {
+                        for (uint32_t x = 0u; x < TEMPNOOFOBS; x++) {
                         
-                            if (x != (NOOFOBS - 1u) ) {
+                            if (x != (TEMPNOOFOBS - 1u) ) {
                                 fprintf(fp, "%e,", result[x][y][1u]);
                             }
                             else {
@@ -561,7 +562,7 @@ int main()
     }
     
     fclose (fp1);
-   
+    /*
     //Create a file pointer
     FILE * fp;
     // open the file for writing
@@ -569,9 +570,9 @@ int main()
 
     fprintf(fp, "Forward Probabilities: \n");
     for (uint32_t y = 0u; y < NOOFSTATES; y++) {
-        for (uint32_t x = 0u; x < NOOFOBS; x++) {
+        for (uint32_t x = 0u; x < TEMPNOOFOBS; x++) {
         
-            if (x != (NOOFOBS - 1u) ) {
+            if (x != (TEMPNOOFOBS - 1u) ) {
                 fprintf(fp, "%e,", result[x][y][0u]);
             }
             else {
@@ -584,9 +585,9 @@ int main()
 
     fprintf(fp, "Backward Probabilities: \n");
     for (uint32_t y = 0u; y < NOOFSTATES; y++) {
-        for (uint32_t x = 0u; x < NOOFOBS; x++) {
+        for (uint32_t x = 0u; x < TEMPNOOFOBS; x++) {
         
-            if (x != (NOOFOBS - 1u) ) {
+            if (x != (TEMPNOOFOBS - 1u) ) {
                 fprintf(fp, "%e,", result[x][y][1u]);
             }
             else {
