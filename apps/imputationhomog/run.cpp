@@ -6,6 +6,7 @@
 #include <math.h>
 #include "../../include/POLite/ProgRouters.h"
 
+//#define DEBUGRETURNS (1)
 
 /*****************************************************
  * Genomic Imputation - Tinsel Version
@@ -465,11 +466,11 @@ int main()
     
     HostMessage msg;
 
-    float result[TEMPNOOFOBS][NOOFSTATES][2u];
+    static float result[NOOFOBS][NOOFSTATES][2u];
     
     for (uint8_t msgType = 0u; msgType < 2; msgType++) {
         for (uint32_t y = 0u; y < NOOFSTATES; y++) {
-            for (uint32_t x = 0u; x < TEMPNOOFOBS; x++) {
+            for (uint32_t x = 0u; x < NOOFOBS; x++) {
                 
                 result[x][y][msgType] = 0.0f;
                 
@@ -488,7 +489,7 @@ int main()
     
     for (uint8_t msgType = 0u; msgType < 2; msgType++) {
         for (uint32_t y = 0u; y < NOOFSTATES; y++) {
-            for (uint32_t x = 0u; x < TEMPNOOFOBS; x++) {
+            for (uint32_t x = 0u; x < NOOFOBS; x++) {
                 
                 recCnt++;
                 hostLink.recvMsg(&msg, sizeof(msg));
@@ -513,7 +514,7 @@ int main()
                 
 #ifdef DEBUGRETURNS  
 
-                if (recCnt > 165000u) {
+                if (recCnt == 1965936u) {
                 
                     // Temporary file write
                     //Create a file pointer
@@ -523,9 +524,9 @@ int main()
 
                     fprintf(fp, "Forward Probabilities: \n");
                     for (uint32_t y = 0u; y < NOOFSTATES; y++) {
-                        for (uint32_t x = 0u; x < TEMPNOOFOBS; x++) {
+                        for (uint32_t x = 0u; x < NOOFOBS; x++) {
                         
-                            if (x != (TEMPNOOFOBS - 1u) ) {
+                            if (x != (NOOFOBS - 1u) ) {
                                 fprintf(fp, "%e,", result[x][y][0u]);
                             }
                             else {
@@ -535,12 +536,12 @@ int main()
                         }
                         fprintf(fp, "\n");
                     }
-
+                    
                     fprintf(fp, "Backward Probabilities: \n");
                     for (uint32_t y = 0u; y < NOOFSTATES; y++) {
-                        for (uint32_t x = 0u; x < TEMPNOOFOBS; x++) {
+                        for (uint32_t x = 0u; x < NOOFOBS; x++) {
                         
-                            if (x != (TEMPNOOFOBS - 1u) ) {
+                            if (x != (NOOFOBS - 1u) ) {
                                 fprintf(fp, "%e,", result[x][y][1u]);
                             }
                             else {
@@ -550,7 +551,7 @@ int main()
                         }
                         fprintf(fp, "\n");
                     }
-
+                    
                     // close the file  
                     fclose (fp);
                     
@@ -570,9 +571,9 @@ int main()
 
     fprintf(fp, "Forward Probabilities: \n");
     for (uint32_t y = 0u; y < NOOFSTATES; y++) {
-        for (uint32_t x = 0u; x < TEMPNOOFOBS; x++) {
+        for (uint32_t x = 0u; x < NOOFOBS; x++) {
         
-            if (x != (TEMPNOOFOBS - 1u) ) {
+            if (x != (NOOFOBS - 1u) ) {
                 fprintf(fp, "%e,", result[x][y][0u]);
             }
             else {
@@ -585,13 +586,13 @@ int main()
 
     fprintf(fp, "Backward Probabilities: \n");
     for (uint32_t y = 0u; y < NOOFSTATES; y++) {
-        for (uint32_t x = 0u; x < TEMPNOOFOBS; x++) {
+        for (uint32_t x = 0u; x < NOOFOBS; x++) {
         
-            if (x != (TEMPNOOFOBS - 1u) ) {
-                fprintf(fp, "%e,", result[x][y][1u]);
+            if (x != (NOOFOBS - 1u) ) {
+                fprintf(fp, "%e,", result[(NOOFOBS - 1) - x][y][1u]);
             }
             else {
-                fprintf(fp, "%e", result[x][y][1u]);
+                fprintf(fp, "%e", result[(NOOFOBS - 1) - x][y][1u]);
             }
         
         }
@@ -600,9 +601,7 @@ int main()
 
     // close the file 
     fclose (fp);
-
-    //hostLink.recvMsg(&msg, sizeof(msg));
-    //printf("ObsNo: %d, Key: %X \n", msg.observationNo, msg.stateNo);
+    
 
 #ifdef PRINTKEYS   
     printf("\nKeys. The last key is not used:\n\n");

@@ -54,7 +54,9 @@ typedef struct {
     // Float value
     float val;
     // If Matched
-    uint32_t match;
+    uint16_t match;
+    // Leg / HW Level
+    uint16_t leg;
     // State number
     uint32_t stateNo;
     
