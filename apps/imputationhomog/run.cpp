@@ -294,7 +294,9 @@ int main()
     
     }
     
-    //for (uint32_t leg = 0u; leg < NOOFLEGS; leg++) {
+    for (uint32_t leg = 0u; leg < NOOFLEGS; leg++) {
+        
+        uint32_t legOffset = leg * NOOFHWCOLS;
     
         for (uint8_t board = 0u; board < (NOOFBOXES * (TinselBoardsPerBox - 1u)); board++) {
         
@@ -303,7 +305,7 @@ int main()
                 for (uint8_t col = 0u; col < (TinselCoresPerMailbox * NOOFHWCOLSPERCORE); col++) {
                     
                     //Global Column Number
-                    uint32_t globalColumn = (board * TinselCoresPerMailbox * NOOFHWCOLSPERCORE * TinselMailboxesPerBoard) + (mailbox * TinselCoresPerMailbox * NOOFHWCOLSPERCORE) + col;
+                    uint32_t globalColumn = ((board * TinselCoresPerMailbox * NOOFHWCOLSPERCORE * TinselMailboxesPerBoard) + (mailbox * TinselCoresPerMailbox * NOOFHWCOLSPERCORE) + col) + legOffset;
                     
                     // Transition probabilites for same and different haplotypes for both observations
                     
@@ -392,8 +394,8 @@ int main()
                         uint32_t baseAddress = tinselHeapBaseGeneric(threadID);
                         
                         // Increment base address to account for data stored in previous legs and data stored in previous for loops 
-                        //baseAddress += ( ( leg * ( 4u + NOOFSTATEPANELS + LINRATIO ) )  + (4u * sizeof(uint32_t) ) );
-                        baseAddress += (4u * sizeof(uint32_t));
+                        baseAddress += ( ( ( leg * ( 4u + NOOFSTATEPANELS + LINRATIO ) ) * sizeof(uint32_t) )  + (4u * sizeof(uint32_t) ) );
+                        //baseAddress += (4u * sizeof(uint32_t));
                         
                         hostLink.setAddr(boardPath[board][0u], boardPath[board][1u], coreID, baseAddress);
                         
@@ -433,10 +435,7 @@ int main()
         
         }
     
-    //}
-
-
-
+    }
     
     // Write the keys to the routers
     progRouterMesh.write(&hostLink);
@@ -445,6 +444,23 @@ int main()
     // Load the correct code into the cores
     hostLink.boot("code.v", "data.v");
     hostLink.go();
+    
+    HostMessage msg;
+    float testResults[8u] = {0.0f};
+    
+    for (uint32_t i = 0u; i < 8u; i++) {
+        
+        hostLink.recvMsg(&msg, sizeof(msg));
+        testResults[msg.stateNo] = msg.val;
+        
+    }
+
+    for (uint32_t i = 0u; i < 8u; i++) {
+        printf("%.15f\n", testResults[i]);
+    }
+
+
+    /*
     
     HostMessage msg;
 
@@ -601,6 +617,6 @@ int main()
             
         }
 #endif
-
+    */
     return 0;
 }

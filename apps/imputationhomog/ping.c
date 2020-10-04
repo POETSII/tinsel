@@ -35,28 +35,41 @@ int main()
     
     // Received values for each leg
     // -------------------------------------------->
-    float fwdSame = *(float*)(baseAddress + 4u);
-    float fwdDiff = *(float*)(baseAddress + 5u);
-    float bwdSame = *(float*)(baseAddress + 6u);
-    float bwdDiff = *(float*)(baseAddress + 7u);
     
-    uint32_t match[NOOFSTATEPANELS] = {0u};
+    float fwdSame[NOOFLEGS] = {0.0f};
+    float fwdDiff[NOOFLEGS] = {0.0f};
+    float bwdSame[NOOFLEGS] = {0.0f};
+    float bwdDiff[NOOFLEGS] = {0.0f};
     
-    for (uint32_t x = 0u; x < NOOFSTATEPANELS; x++) {
     
-        match[x] = *(baseAddress + 8u + x);
-    
-    }
+    uint32_t match[NOOFSTATEPANELS][NOOFLEGS] = {{0u}};
     
     // Populate local genetic distances and calculate total genetic distance
-    float dmLocal[LINRATIO] = {0.0f};
-    float totalDistance = 0.0f;
+    float dmLocal[LINRATIO][NOOFLEGS] = {{0.0f}};
+    float totalDistance[NOOFLEGS] = {0.0f};
     
-    for (uint32_t x = 0u; x < LINRATIO; x++) {
+    for (uint32_t x = 0u; x < NOOFLEGS; x++) {
         
-        dmLocal[x] = *(float*)(baseAddress + 8u + NOOFSTATEPANELS + x);
-        totalDistance += dmLocal[x];
+        uint32_t legOffset = 4u + (x * (4u + NOOFSTATEPANELS + LINRATIO));
+    
+        fwdSame[x] = *(float*)(baseAddress + legOffset);
+        fwdDiff[x] = *(float*)(baseAddress + legOffset + 1u);
+        bwdSame[x] = *(float*)(baseAddress + legOffset + 2u);
+        bwdDiff[x] = *(float*)(baseAddress + legOffset + 3u);
         
+        for (uint32_t y = 0u; y < NOOFSTATEPANELS; y++) {
+        
+            match[y][x] = *(baseAddress + legOffset + 4u + y);
+        
+        }
+        
+        for (uint32_t y = 0u; y < LINRATIO; y++) {
+            
+            dmLocal[y][x] = *(float*)(baseAddress + legOffset + 4u + NOOFSTATEPANELS + y);
+            totalDistance[x] += dmLocal[y][x];
+            
+        }
+    
     }
     
     // <-------------------------------------------
@@ -64,40 +77,37 @@ int main()
     // Get host id
     int host = tinselHostId();
     
-    float alpha[NOOFSTATEPANELS] = {0.0f};
-    float beta[NOOFSTATEPANELS] = {0.0f};
-    float alphaLin[NOOFSTATEPANELS][LINRATIO - 1u];
-    float betaLin[NOOFSTATEPANELS][LINRATIO - 1u];
+    float alpha[NOOFSTATEPANELS][NOOFLEGS] = {{0.0f}};
+    float beta[NOOFSTATEPANELS][NOOFLEGS] = {{0.0f}};
+    float alphaLin[NOOFSTATEPANELS][NOOFLEGS][LINRATIO - 1u];
+    float betaLin[NOOFSTATEPANELS][NOOFLEGS][LINRATIO - 1u];
     
-    float prevAlpha[NOOFSTATEPANELS] = {0.0f};
-    float nextAlpha[NOOFSTATEPANELS] = {0.0f};
-    float prevBeta[NOOFSTATEPANELS] = {0.0f};
-    float nextBeta[NOOFSTATEPANELS] = {0.0f};
+    float prevAlpha[NOOFSTATEPANELS][NOOFLEGS] = {{0.0f}};
+    float nextAlpha[NOOFSTATEPANELS][NOOFLEGS] = {{0.0f}};
+    float prevBeta[NOOFSTATEPANELS][NOOFLEGS] = {{0.0f}};
+    float nextBeta[NOOFSTATEPANELS][NOOFLEGS] = {{0.0f}};
     
-    uint8_t rdyFlags[NOOFSTATEPANELS] = {0u};
+    uint8_t rdyFlags[NOOFSTATEPANELS][NOOFLEGS] = {0u};
+    
+    
+    if (observationNo == 1u) {
+        
+        // Send to host
+        volatile HostMessage* msgHost = tinselSendSlot();
+        
+        tinselWaitUntil(TINSEL_CAN_SEND);
+        msgHost->msgType = FORWARD;
+        msgHost->observationNo = observationNo;
+        msgHost->stateNo = HWRowNo;
+        msgHost->val = totalDistance[0];
+
+        tinselSend(host, msgHost);
+    
+    }
+    
+    
     /*
-    // Send to host
-    volatile HostMessage* msgHost = tinselSendSlot();
-    
-    tinselWaitUntil(TINSEL_CAN_SEND);
-    msgHost->msgType = FORWARD;
-    msgHost->observationNo = observationNo;
-    msgHost->stateNo = HWRowNo;
-    msgHost->val = localThreadID;
-
-    tinselSend(host, msgHost);
-    
-    // Send to host
-    //volatile HostMessage* msgHost = tinselSendSlot();
-
-    tinselWaitUntil(TINSEL_CAN_SEND);
-    msgHost->msgType = BACKWARD;
-    msgHost->observationNo = observationNo;
-    msgHost->stateNo = HWRowNo;
-    msgHost->val = prevThread;
-
-    tinselSend(host, msgHost);
-    */
+    START HERE TO ADD THE NOOFLEGS DIMENSION INTO THE CODE (ALSO CHECK ABOVE IS CORRECT)
     
     // Startup for forward algorithm
     if (observationNo == 0u) {
@@ -440,7 +450,7 @@ int main()
         // Free message slot
         tinselFree(msgIn);
     
-    }
+    }*/
     return 0;
 }
 

@@ -15,20 +15,21 @@
 #define NOOFHWROWS (8)
 #define NOOFHWCOLSPERCORE (2)
 #define NOOFBOXES (8)
+#define NOOFHWCOLS (6144)
+
+#define NOOFSTATEPANELS (2)
+#define NOOFLEGS (2)
 
 // Model Parameters
 #define NOOFSTATES (16)
 //NOTARGMARK = 768 * NOOFBOXES
-#define NOOFTARGMARK (6144)
+#define NOOFTARGMARK (NOOFHWCOLS * NOOFLEGS)
 // NOOFOBS = (NOOFTARGMARK * 10) - (LINRATIO - 1)
-#define NOOFOBS (61431)
+#define NOOFOBS (122871)
 #define LINRATIO (10)
 #define NE (1000000)
 #define ERRORRATE (10000)
 
-// Calculated Parameters
-#define NOOFSTATEPANELS (2)
-#define NOOFLEGS (2)
 
 // MsgTypes
 #define FORWARD (0u)
