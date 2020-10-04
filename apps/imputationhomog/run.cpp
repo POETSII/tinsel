@@ -562,7 +562,7 @@ int main()
     }
     
     fclose (fp1);
-    /*
+    
     //Create a file pointer
     FILE * fp;
     // open the file for writing
@@ -618,6 +618,6 @@ int main()
             
         }
 #endif
-    */
+    
     return 0;
 }
