@@ -154,6 +154,12 @@ int main()
             tinselSend(host, msgHost);
         
         }
+        
+        // If we are also the first hardware row (Core 0, Thread 0) start the performance counter
+        if (HWRowNo == 0u) {
+            tinselPerfCountReset();
+            tinselPerfCountStart();
+        }
     
     }
     
@@ -501,6 +507,23 @@ int main()
                     
                     betaLin[y][msgIn->leg][x] = nextBeta[y][msgIn->leg] - ((dmLocal[(LINRATIO - 2u) - x][msgIn->leg] / totalDistance[msgIn->leg]) * totalDiff);
                     nextBeta[y][msgIn->leg] = betaLin[y][msgIn->leg][x];
+                    
+                }
+                
+                // Can we stop the performance counter?
+                if ( (HWColNo == 0u) && (HWRowNo == 0u) && (msgIn->leg == (NOOFLEGS - 1u)) && (y == (NOOFSTATEPANELS - 1u)) ) {
+                    uint32_t countLower = tinselCycleCount();
+                    uint32_t countUpper = tinselCycleCountU();
+                    
+                    // Send to host
+                    volatile HostMessage* msgHost = tinselSendSlot();
+
+                    tinselWaitUntil(TINSEL_CAN_SEND);
+                    msgHost->msgType = COUNTS;
+                    msgHost->observationNo = countLower;
+                    msgHost->stateNo = countUpper;
+
+                    tinselSend(host, msgHost);
                     
                 }
                 

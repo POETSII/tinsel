@@ -479,6 +479,9 @@ int main()
     }
     
     uint32_t recCnt = 0u;
+    uint32_t lowerCnt = 0u;
+    uint64_t upperCnt = 0u;
+    double procTime = 0.0f;
     
     //Create a file pointer
     FILE * fp1;
@@ -493,7 +496,7 @@ int main()
                 
                 recCnt++;
                 hostLink.recvMsg(&msg, sizeof(msg));
-                printf("%d\n", recCnt);
+                //printf("%d\n", recCnt);
                 
                 if (msg.msgType < 2u) {
                     
@@ -506,9 +509,15 @@ int main()
                         result[msg.observationNo][msg.stateNo][0u] = msg.val;
                         fprintf(fp1, "0,%d,%d,%e\n", msg.observationNo, msg.stateNo, msg.val);
                     }
-                    else {
+                    else if (msg.msgType == BWDLIN) {
                         result[msg.observationNo][msg.stateNo][1u] = msg.val;
                         fprintf(fp1, "1,%d,%d,%e\n", msg.observationNo, msg.stateNo, msg.val);
+                    }
+                    else {
+                        lowerCnt = msg.observationNo;
+                        upperCnt = msg.stateNo;
+                        
+                        procTime = ((upperCnt << 32) + lowerCnt) / (TinselClockFreq * 1000000.0);
                     }
                 }
                 
@@ -601,6 +610,8 @@ int main()
 
     // close the file 
     fclose (fp);
+    
+    printf("Processing Time = %.15f\n", procTime);
     
 
 #ifdef PRINTKEYS   

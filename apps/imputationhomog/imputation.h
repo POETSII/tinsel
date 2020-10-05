@@ -37,6 +37,7 @@
 #define BACKWARD (1u)
 #define FWDLIN (2u)
 #define BWDLIN (3u)
+#define COUNTS (4u)
 
 #define NULL (0u)
 
