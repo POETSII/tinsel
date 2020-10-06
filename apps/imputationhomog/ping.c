@@ -1,5 +1,6 @@
 #include "imputation.h"
 
+// RdyFlags
 #define PREVA (1u << 0u)
 #define NEXTA (1u << 1u)
 #define PREVB (1u << 2u)
@@ -215,11 +216,19 @@ int main()
     uint8_t fwdRecCnt[NOOFLEGS] = {0u};
     uint8_t bwdRecCnt[NOOFLEGS] = {0u};
     
+    uint32_t fstStatePanel = 0u;
+    uint32_t lstStatePanel = 0u;
+    
     while (1u) {
         tinselWaitUntil(TINSEL_CAN_RECV);
         volatile ImpMessage* msgIn = tinselRecv();
         
         uint32_t index = (uint32_t)(msgIn->stateNo / NOOFHWROWS);
+        
+        // Clear backward linear interpolation check and state panel selection
+        fstStatePanel = 0u;
+        lstStatePanel = 0u;
+        
         
         // Handle forward messages
         if (msgIn->msgType == FORWARD) {
@@ -365,6 +374,10 @@ int main()
                     prevBeta[y][msgIn->leg] = beta[y][msgIn->leg];
                     rdyFlags[y][msgIn->leg] |= PREVB;
                     
+                    // Set backward linear interpolation check
+                    fstStatePanel = 0u;
+                    lstStatePanel = NOOFSTATEPANELS;
+                    
                     // If we are not the first hardware column
                     if (HWColNo != 0u) {
                         
@@ -491,11 +504,15 @@ int main()
         
             nextBeta[index][msgIn->leg] = msgIn->val;
             rdyFlags[index][msgIn->leg] |= NEXTB;
+            
+            // Set backward linear interpolation check
+            fstStatePanel = index;
+            lstStatePanel = index + 1u;
 
         }
         
         
-        for (uint32_t y = 0u; y < NOOFSTATEPANELS; y++) {
+        for (uint32_t y = fstStatePanel; y < lstStatePanel; y++) {
             
             // JPM ADD CHECK WHETHER MSGTYPE = BACKWARD TO PREVENT MULTIPLE CHECKS THROUGH THIS CODE
             // If we have received both values for linear interpolation
