@@ -79,17 +79,47 @@ int main()
     // Get host id
     int host = tinselHostId();
     
-    float alpha[NOOFSTATEPANELS][NOOFLEGS] = {{0.0f}};
-    float beta[NOOFSTATEPANELS][NOOFLEGS] = {{0.0f}};
+    // Declared and intialised seperately to avoid memset error on compilation
+    
+    float alpha[NOOFSTATEPANELS][NOOFLEGS];
+    float beta[NOOFSTATEPANELS][NOOFLEGS];
     float alphaLin[NOOFSTATEPANELS][NOOFLEGS][LINRATIO - 1u];
     float betaLin[NOOFSTATEPANELS][NOOFLEGS][LINRATIO - 1u];
     
-    float prevAlpha[NOOFSTATEPANELS][NOOFLEGS] = {{0.0f}};
-    float nextAlpha[NOOFSTATEPANELS][NOOFLEGS] = {{0.0f}};
-    float prevBeta[NOOFSTATEPANELS][NOOFLEGS] = {{0.0f}};
-    float nextBeta[NOOFSTATEPANELS][NOOFLEGS] = {{0.0f}};
+    float prevAlpha[NOOFSTATEPANELS][NOOFLEGS];
+    float nextAlpha[NOOFSTATEPANELS][NOOFLEGS];
+    float prevBeta[NOOFSTATEPANELS][NOOFLEGS];
+    float nextBeta[NOOFSTATEPANELS][NOOFLEGS];
     
-    uint8_t rdyFlags[NOOFSTATEPANELS][NOOFLEGS] = {{0.0f}};
+    uint8_t rdyFlags[NOOFSTATEPANELS][NOOFLEGS];
+    
+    for (uint32_t statePanel = 0u; statePanel < NOOFSTATEPANELS; statePanel++) {
+        for (uint32_t leg = 0u; leg < NOOFLEGS; leg++) {
+            
+            alpha[statePanel][leg] = 0.0f;
+            beta[statePanel][leg] = 0.0f;
+            
+            prevAlpha[statePanel][leg] = 0.0f;
+            nextAlpha[statePanel][leg] = 0.0f;
+            prevBeta[statePanel][leg] = 0.0f;
+            nextBeta[statePanel][leg] = 0.0f;
+            
+            rdyFlags[statePanel][leg] = 0.0f;
+            
+        }
+    }
+    
+    for (uint32_t statePanel = 0u; statePanel < NOOFSTATEPANELS; statePanel++) {
+        for (uint32_t leg = 0u; leg < NOOFLEGS; leg++) {
+            for (uint32_t linVal = 0u; linVal < (LINRATIO - 1u); linVal++) {
+                
+                alphaLin[statePanel][leg][linVal] = 0.0f;
+                betaLin[statePanel][leg][linVal] = 0.0f;
+                
+            }
+        }
+    }
+        
     
     /*
     if (HWColNo == 1u) {

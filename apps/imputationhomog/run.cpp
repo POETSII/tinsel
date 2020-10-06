@@ -496,7 +496,7 @@ int main()
                 
                 recCnt++;
                 hostLink.recvMsg(&msg, sizeof(msg));
-                //printf("%d\n", recCnt);
+                printf("%d\n", recCnt);
                 
                 if (msg.msgType < 2u) {
                     
