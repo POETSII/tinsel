@@ -227,11 +227,10 @@ int main()
             prevBeta[y][NOOFLEGS - 1u] = beta[y][NOOFLEGS - 1u];
             rdyFlags[y][NOOFLEGS - 1u] |= PREVB;
             
-            // Propagate beta to previous thread as prev beta
-            
             tinselWaitUntil(TINSEL_CAN_SEND);
             msgOut->msgType = BWDLIN;
             msgOut->match = match[y][NOOFLEGS - 1u];
+            msgOut->leg = NOOFLEGS - 1u;
             msgOut->stateNo = (y * NOOFHWROWS) + HWRowNo;
             msgOut->val = beta[y][NOOFLEGS - 1u];
             

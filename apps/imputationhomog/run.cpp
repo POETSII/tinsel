@@ -6,7 +6,7 @@
 #include <math.h>
 #include "../../include/POLite/ProgRouters.h"
 
-//#define DEBUGRETURNS (1)
+#define DEBUGRETURNS (1)
 
 /*****************************************************
  * Genomic Imputation - Tinsel Version
@@ -18,9 +18,9 @@
  * PLEASE NOTE:
  * To Be Completed ...
  * 
- * ssh jordmorr@fielding.cl.cam.ac.uk
- * scp -r C:\Users\drjor\Documents\tinsel\apps\imputationhomog jordmorr@fielding.cl.cam.ac.uk:~/tinsel/apps
- * scp jordmorr@fielding.cl.cam.ac.uk:~/tinsel/apps/imputationhomog/results.csv C:\Users\drjor\Documents\tinsel\apps\imputationhomog
+ * ssh jordmorr@byron.cl.cam.ac.uk
+ * scp -r C:\Users\drjor\Documents\tinsel\apps\imputationhomog jordmorr@byron.cl.cam.ac.uk:~/tinsel/apps
+ * scp jordmorr@byron.cl.cam.ac.uk:~/tinsel/apps/imputationhomog/results.csv C:\Users\drjor\Documents\tinsel\apps\imputationhomog
  * ****************************************************/
  
 const uint32_t XKEYS = NOOFBOXES * (TinselBoardsPerBox - 1u) * TinselCoresPerBoard * NOOFHWCOLSPERCORE;
@@ -496,7 +496,10 @@ int main()
                 
                 recCnt++;
                 hostLink.recvMsg(&msg, sizeof(msg));
-                printf("%d\n", recCnt);
+                
+                if (recCnt > 156000000u) {
+                    printf("%d\n", recCnt);
+                }
                 
                 if (msg.msgType < 2u) {
                     
@@ -523,17 +526,20 @@ int main()
                 
 #ifdef DEBUGRETURNS  
 
-                if (recCnt == 1965936u) {
+                if (recCnt == 157284241u) {
                 
                     // Temporary file write
                     //Create a file pointer
                     FILE * fp;
                     // open the file for writing
                     fp = fopen ("results.csv","w");
+                    
+                    uint32_t obsStart = NOOFOBS - 5000u;
+                    uint32_t obsEnd = NOOFOBS;
 
                     fprintf(fp, "Forward Probabilities: \n");
                     for (uint32_t y = 0u; y < NOOFSTATES; y++) {
-                        for (uint32_t x = 0u; x < NOOFOBS; x++) {
+                        for (uint32_t x = obsStart; x < obsEnd; x++) {
                         
                             if (x != (NOOFOBS - 1u) ) {
                                 fprintf(fp, "%e,", result[x][y][0u]);
@@ -548,7 +554,7 @@ int main()
                     
                     fprintf(fp, "Backward Probabilities: \n");
                     for (uint32_t y = 0u; y < NOOFSTATES; y++) {
-                        for (uint32_t x = 0u; x < NOOFOBS; x++) {
+                        for (uint32_t x = obsStart; x < obsEnd; x++) {
                         
                             if (x != (NOOFOBS - 1u) ) {
                                 fprintf(fp, "%e,", result[x][y][1u]);
@@ -563,6 +569,8 @@ int main()
                     
                     // close the file  
                     fclose (fp);
+                    
+                    printf("File written\n");
                     
                 }
 #endif            
