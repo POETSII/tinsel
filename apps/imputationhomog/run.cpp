@@ -52,6 +52,10 @@ int main()
     
     mrmRecord.key = 0u;
     
+    /********************************************************
+     * HARDWARE LAYER SETUP
+     * *****************************************************/
+    
     for (uint8_t board = 0u; board < (NOOFBOXES * (TinselBoardsPerBox - 1u)); board++) {
     
         for (uint8_t mailbox = 0u; mailbox < TinselMailboxesPerBoard; mailbox++) {
@@ -295,6 +299,10 @@ int main()
     
     }
     
+    /********************************************************
+     * HARDWARE ABSTRACTION LAYER SETUP
+     * *****************************************************/
+    
     for (uint32_t leg = 0u; leg < NOOFLEGS; leg++) {
         
         uint32_t legOffset = leg * NOOFHWCOLS;
@@ -438,6 +446,10 @@ int main()
     
     }
     
+    /********************************************************
+     * WRITE MESH AND START GRAPH
+     * *****************************************************/
+    
     // Write the keys to the routers
     progRouterMesh.write(&hostLink);
     
@@ -462,7 +474,9 @@ int main()
     }
     */
 
-    
+    /********************************************************
+     * RECEIVE RESULTS
+     * *****************************************************/
     
     HostMessage msg;
 
@@ -497,9 +511,9 @@ int main()
                 recCnt++;
                 hostLink.recvMsg(&msg, sizeof(msg));
                 
-                if (recCnt > 156000000u) {
+                //if (recCnt % 1000000u == 0u) {
                     printf("%d\n", recCnt);
-                }
+                //}
                 
                 if (msg.msgType < 2u) {
                     
@@ -526,7 +540,7 @@ int main()
                 
 #ifdef DEBUGRETURNS  
 
-                if (recCnt == 157284241u) {
+                if (recCnt > 15725300u) {
                 
                     // Temporary file write
                     //Create a file pointer
@@ -534,8 +548,8 @@ int main()
                     // open the file for writing
                     fp = fopen ("results.csv","w");
                     
-                    uint32_t obsStart = NOOFOBS - 5000u;
-                    uint32_t obsEnd = NOOFOBS;
+                    uint32_t obsStart = 60000u;
+                    uint32_t obsEnd = 65000u;
 
                     fprintf(fp, "Forward Probabilities: \n");
                     for (uint32_t y = 0u; y < NOOFSTATES; y++) {
@@ -557,10 +571,10 @@ int main()
                         for (uint32_t x = obsStart; x < obsEnd; x++) {
                         
                             if (x != (NOOFOBS - 1u) ) {
-                                fprintf(fp, "%e,", result[x][y][1u]);
+                                fprintf(fp, "%e,", result[(NOOFOBS - 1) - x][y][1u]);
                             }
                             else {
-                                fprintf(fp, "%e", result[x][y][1u]);
+                                fprintf(fp, "%e", result[(NOOFOBS - 1) - x][y][1u]);
                             }
                         
                         }

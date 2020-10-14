@@ -34,7 +34,7 @@ int main()
     uint32_t HWColNo = *(baseAddress + 3u);
     // <-------------------------------------------
     
-    // Received values for each leg
+    // Received values for each panel / leg
     // -------------------------------------------->
     
     float fwdSame[NOOFLEGS];
@@ -137,10 +137,9 @@ int main()
     
     }
     
-    
-    
-    START HERE TO ADD THE NOOFLEGS DIMENSION INTO THE CODE (ALSO CHECK ABOVE IS CORRECT)
     */
+    
+    
     // Startup for forward algorithm
     if (HWColNo == 0u) {
         
@@ -180,7 +179,8 @@ int main()
             msgHost->msgType = FORWARD;
             msgHost->observationNo = 0u;
             msgHost->stateNo = (y * NOOFHWROWS) + HWRowNo;
-            msgHost->val = alpha[y][0];
+            //msgHost->val = alpha[y][0]; JPM
+            msgHost->val = HWColNo;
 
             tinselSend(host, msgHost);
         
@@ -220,7 +220,8 @@ int main()
             msgHost->msgType = BACKWARD;
             msgHost->observationNo = NOOFOBS - 1u;
             msgHost->stateNo = (y * NOOFHWROWS) + HWRowNo;
-            msgHost->val = beta[y][NOOFLEGS - 1u];
+            //msgHost->val = beta[y][NOOFLEGS - 1u]; JPM
+            msgHost->val = HWColNo;
 
             tinselSend(host, msgHost);
             
@@ -356,7 +357,8 @@ int main()
                     msgHost->msgType = FORWARD;
                     msgHost->observationNo = (HWColNo * LINRATIO) + ((msgIn->leg * NOOFHWCOLS) * LINRATIO);
                     msgHost->stateNo = (y * NOOFHWROWS) + HWRowNo;
-                    msgHost->val = alpha[y][msgIn->leg];
+                    //msgHost->val = alpha[y][msgIn->leg]; JPM
+                    msgHost->val = HWColNo;
 
                     tinselSend(host, msgHost);
                     
@@ -472,7 +474,8 @@ int main()
                     msgHost->msgType = BACKWARD;
                     msgHost->observationNo = (HWColNo * LINRATIO) + ((msgIn->leg * NOOFHWCOLS) * LINRATIO);
                     msgHost->stateNo = (y * NOOFHWROWS) + HWRowNo;
-                    msgHost->val = beta[y][msgIn->leg];
+                    //msgHost->val = beta[y][msgIn->leg]; JPM
+                    msgHost->val = HWColNo;
 
                     tinselSend(host, msgHost);
                     
@@ -516,7 +519,8 @@ int main()
                 msgHost->msgType = FWDLIN;
                 msgHost->observationNo = ((msgIn->leg * NOOFHWCOLS) * LINRATIO) + (HWColNo * LINRATIO) + 1u + x;
                 msgHost->stateNo = (index * NOOFHWROWS) + HWRowNo;
-                msgHost->val = alphaLin[index][msgIn->leg][x];
+                //msgHost->val = alphaLin[index][msgIn->leg][x]; JPM
+                msgHost->val = 1u;
 
                 tinselSend(host, msgHost);
                 
@@ -569,7 +573,7 @@ int main()
                     msgHost->observationNo = countLower;
                     msgHost->stateNo = countUpper;
 
-                    tinselSend(host, msgHost);
+                    //tinselSend(host, msgHost);
                     
                 }
                 
@@ -582,7 +586,8 @@ int main()
                     msgHost->msgType = BWDLIN;
                     msgHost->observationNo = ((msgIn->leg * NOOFHWCOLS) * LINRATIO) + (HWColNo * LINRATIO) + 1u + x;
                     msgHost->stateNo = (y * NOOFHWROWS) + HWRowNo;
-                    msgHost->val = betaLin[y][msgIn->leg][(LINRATIO - 2u) - x];
+                    //msgHost->val = betaLin[y][msgIn->leg][(LINRATIO - 2u) - x]; JPM
+                    msgHost->val = 1u;
 
                     tinselSend(host, msgHost);
                     
