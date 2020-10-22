@@ -540,7 +540,7 @@ int main()
                 
 #ifdef DEBUGRETURNS  
 
-                if (recCnt > 15725300u) {
+                if (recCnt > 1982000u) {
                 
                     // Temporary file write
                     //Create a file pointer
