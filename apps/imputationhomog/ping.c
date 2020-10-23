@@ -1,6 +1,18 @@
 #include "imputation.h"
 
-// RdyFlags
+/*****************************************************
+ * Hidden Markov Model and Linear Interpolation Node
+ * ***************************************************
+ * This code performs the stephens and li model for imputation
+ * 
+ * USE ARRAYS FOR MATCH / ALPHAS TO PUSH THE PROCESSING TO MESSAGE TIME IN FAVOUR OF POETS
+ * ****************************************************/
+ 
+/*****************************************************
+* Pre-processor Definitions
+* ***************************************************/
+ 
+ // RdyFlags
 #define PREVA   (1u << 0u)
 #define NEXTA   (1u << 1u)
 #define PREVB   (1u << 2u)
@@ -15,16 +27,12 @@
 // Algorithm Functional Messages
 #define FWDQ    (1u << 8u)
 #define BWDQ    (1u << 9u)
-#define FWDUQ    (1u << 10u)
-#define BWDUQ    (1u << 11u)
+#define FWDUQ   (1u << 10u)
+#define BWDUQ   (1u << 11u)
 
 /*****************************************************
- * Hidden Markov Model and Linear Interpolation Node
- * ***************************************************
- * This code performs the stephens and li model for imputation
- * 
- * USE ARRAYS FOR MATCH / ALPHAS TO PUSH THE PROCESSING TO MESSAGE TIME IN FAVOUR OF POETS
- * ****************************************************/
+* Main Function
+* ***************************************************/
 
 int main()
 {
@@ -322,7 +330,7 @@ int main()
                         
                     }
                     
-                    // Check for forward multicast messages
+                    // Check for backward multicast messages
                     if ((rdyFlags[i][l] & BWDQ) && tinselCanSend()) {
                         
                         // If we are not the first hardware column
@@ -476,7 +484,7 @@ int main()
                         
                     }
                     
-                    // Check for backward linear interpolation host messages
+                    // Check for backward host messages
                     if ((rdyFlags[i][l] & BWDHQ) && tinselCanSend()) {
                         
                         // Send to host
@@ -598,17 +606,113 @@ int main()
                         prevAlpha[y][msgIn->leg] = alpha[y][msgIn->leg];
                         rdyFlags[y][msgIn->leg] |= PREVA;
                         
-                        // Set flags for forward multicast message
-                        rdyFlags[y][msgIn->leg] |= FWDQ;
-                        sendsQueued++;
+                        // Handle forward multicast message send
+                        if (tinselCanSend()) {
+                            
+                            // If we are an intermediate node propagate the alpha to the next hardware column
+                            if (HWColNo != (NOOFHWCOLS - 1u)) {
+                                
+                                // Get pointers to mailbox message slot
+                                volatile ImpMessage* msgOut = tinselSendSlot();
+                                
+                                tinselWaitUntil(TINSEL_CAN_SEND);
+                                msgOut->msgType = FORWARD;
+                                msgOut->leg = msgIn->leg;
+                                msgOut->stateNo = (y * NOOFHWROWS) + HWRowNo;
+                                msgOut->val = alpha[y][msgIn->leg];
+                                
+                                tinselKeySend(fwdKey, msgOut);
+                                
+                            }
+                            // If we are the last hardware column AND we are not the final leg, increase the leg and propagate to the first hardware column
+                            else if (msgIn->leg != NOOFLEGS - 1u) {
+                                
+                                // Get pointers to mailbox message slot
+                                volatile ImpMessage* msgOut = tinselSendSlot();
+                                
+                                tinselWaitUntil(TINSEL_CAN_SEND);
+                                msgOut->msgType = FORWARD;
+                                msgOut->leg = msgIn->leg + 1u;
+                                msgOut->stateNo = (y * NOOFHWROWS) + HWRowNo;
+                                msgOut->val = alpha[y][msgIn->leg];
+                                
+                                tinselKeySend(fwdKey, msgOut);
+                            }
+                            
+                        }
+                        else {
+                            
+                            // Set flags for forward multicast message
+                            rdyFlags[y][msgIn->leg] |= FWDQ;
+                            sendsQueued++;
+                            
+                        }
                         
-                        // Set flags for forward unicast message
-                        rdyFlags[y][msgIn->leg] |= FWDUQ;
-                        sendsQueued++;
+                        // Handle forward unicast message send
+                        if (tinselCanSend()) {
+                            
+                            // If we are not the first hardware column
+                            if (HWColNo != 0u) {
+                            
+                                // Get pointers to mailbox message slot
+                                volatile ImpMessage* msgOut = tinselSendSlot();
+                                
+                                tinselWaitUntil(TINSEL_CAN_SEND);
+                                msgOut->msgType = FWDLIN;
+                                msgOut->leg = msgIn->leg;
+                                msgOut->stateNo = (y * NOOFHWROWS) + HWRowNo;
+                                msgOut->val = alpha[y][msgIn->leg];
+                                
+                                tinselSend(prevThread, msgOut);
+                            
+                            }
+                            // If we are the first hardware column AND we are not the first leg, decrease the leg and propagate to the last hardware column
+                            else if (msgIn->leg != 0u) {
+                                
+                                // Get pointers to mailbox message slot
+                                volatile ImpMessage* msgOut = tinselSendSlot();
+                                
+                                tinselWaitUntil(TINSEL_CAN_SEND);
+                                msgOut->msgType = FWDLIN;
+                                msgOut->leg = msgIn->leg - 1u;
+                                msgOut->stateNo = (y * NOOFHWROWS) + HWRowNo;
+                                msgOut->val = alpha[y][msgIn->leg];
+                                
+                                tinselSend(prevThread, msgOut);
+                            }
+                            
+                        }
+                        else {
+                            
+                            // Set flags for forward unicast message
+                            rdyFlags[y][msgIn->leg] |= FWDUQ;
+                            sendsQueued++; 
                         
-                        // Set flags for forward host message
-                        rdyFlags[y][msgIn->leg] |= FWDHQ;
-                        sendsQueued++;
+                        }
+
+                        // Handle forward hostbound message send
+                        if (tinselCanSend()) {
+                        
+                            // Send to host
+                            volatile HostMessage* msgHost = tinselSendSlot();
+
+                            tinselWaitUntil(TINSEL_CAN_SEND);
+                            msgHost->msgType = FORWARD;
+                            msgHost->observationNo = (HWColNo * LINRATIO) + ((msgIn->leg * NOOFHWCOLS) * LINRATIO);
+                            msgHost->stateNo = (y * NOOFHWROWS) + HWRowNo;
+                            msgHost->val = alpha[y][msgIn->leg];
+                            //msgHost->val = HWColNo;
+
+                            tinselSend(host, msgHost);
+                        
+                        }
+                        else {
+                            
+                            // Set flags for forward host message
+                            rdyFlags[y][msgIn->leg] |= FWDHQ;
+                            sendsQueued++;
+                            
+                        }
                         
                         
                         // If we are the last state panel clear the counter
@@ -658,17 +762,127 @@ int main()
                         fstStatePanel = 0u;
                         lstStatePanel = NOOFSTATEPANELS;
                         
-                        // Set flags for backward message
-                        rdyFlags[y][msgIn->leg] |= BWDQ;
-                        sendsQueued++;
+                        // Handle backward multicast message send
+                        if (tinselCanSend()) {
+                            
+                            // If we are not the first hardware column
+                            if (HWColNo != 0u) {
+                                
+                                // Get pointers to mailbox message slot
+                                volatile ImpMessage* msgOut = tinselSendSlot();
+
+                                tinselWaitUntil(TINSEL_CAN_SEND);
+                                msgOut->msgType = BACKWARD;
+                                msgOut->leg = msgIn->leg;
+                                msgOut->match = match[y][msgIn->leg];
+                                msgOut->stateNo = (y * NOOFHWROWS) + HWRowNo;
+                                msgOut->val = beta[y][msgIn->leg];
+                                
+                                // Propagate to previous column
+                                tinselKeySend(bwdKey, msgOut);
+
+                            }
+                            // If we are the first hardware column and we are not the first leg
+                            else if (msgIn->leg != 0u) {
+                                
+                                // Get pointers to mailbox message slot
+                                volatile ImpMessage* msgOut = tinselSendSlot();
+
+                                tinselWaitUntil(TINSEL_CAN_SEND);
+                                msgOut->msgType = BACKWARD;
+                                msgOut->leg = msgIn->leg - 1u;
+                                msgOut->match = match[y][msgIn->leg];
+                                msgOut->stateNo = (y * NOOFHWROWS) + HWRowNo;
+                                msgOut->val = beta[y][msgIn->leg];
+                                
+                                // Propagate to previous column
+                                tinselKeySend(bwdKey, msgOut);
+                                
+                            }
+                            
+                        }
+                        else {
+                            
+                            // Set flags for backward message
+                            rdyFlags[y][msgIn->leg] |= BWDQ;
+                            sendsQueued++;
+                            
+                        }
                         
-                        // Set flags for backward message
-                        rdyFlags[y][msgIn->leg] |= BWDUQ;
-                        sendsQueued++;
+                        // Handle backward unicast message send
+                        if (tinselCanSend()) {
+                            
+                            // If we are not the first hardware column
+                            if (HWColNo != 0u) {
+                                
+                                // Get pointers to mailbox message slot
+                                volatile ImpMessage* msgOut = tinselSendSlot();
+                                
+                                // Propagate beta to previous thread as prev beta
+                                
+                                tinselWaitUntil(TINSEL_CAN_SEND);
+                                msgOut->msgType = BWDLIN;
+                                msgOut->leg = msgIn->leg;
+                                msgOut->match = match[y][msgIn->leg];
+                                msgOut->stateNo = (y * NOOFHWROWS) + HWRowNo;
+                                msgOut->val = beta[y][msgIn->leg];
+                                
+                                // Propagate to previous column
+                                tinselSend(prevThread, msgOut);
+
+                            }
+                            // If we are the first hardware column and we are not the first leg
+                            else if (msgIn->leg != 0u) {
+                                
+                                // Get pointers to mailbox message slot
+                                volatile ImpMessage* msgOut = tinselSendSlot();
+                                
+                                // Propagate beta to previous thread as prev beta
+                                
+                                tinselWaitUntil(TINSEL_CAN_SEND);
+                                msgOut->msgType = BWDLIN;
+                                msgOut->leg = msgIn->leg - 1u; //JPM DOUBLE CHECK THIS
+                                msgOut->match = match[y][msgIn->leg];
+                                msgOut->stateNo = (y * NOOFHWROWS) + HWRowNo;
+                                msgOut->val = beta[y][msgIn->leg];
+                                
+                                // Propagate to previous column
+                                tinselSend(prevThread, msgOut);
+                                
+                            }
+                            
+                        }
+                        else {
+                            
+                            // Set flags for backward message
+                            rdyFlags[y][msgIn->leg] |= BWDUQ;
+                            sendsQueued++;
                         
-                        // Set flags for backward host message
-                        rdyFlags[y][msgIn->leg] |= BWDHQ;
-                        sendsQueued++;
+                        }
+                        
+                        // Handle backward host message send
+                        if (tinselCanSend()) {
+                            
+                            // Send to host
+                            volatile HostMessage* msgHost = tinselSendSlot();
+
+                            tinselWaitUntil(TINSEL_CAN_SEND);
+                            msgHost->msgType = BACKWARD;
+                            msgHost->observationNo = (HWColNo * LINRATIO) + ((msgIn->leg * NOOFHWCOLS) * LINRATIO);
+                            msgHost->stateNo = (y * NOOFHWROWS) + HWRowNo;
+                            msgHost->val = beta[y][msgIn->leg];
+                            //msgHost->val = HWColNo;
+
+                            tinselSend(host, msgHost);
+                            
+                        }
+                        else {
+                            
+                            // Set flags for backward host message
+                            rdyFlags[y][msgIn->leg] |= BWDHQ;
+                            sendsQueued++;
+                            
+                        }
                         
                         // If we are the last state panel clear the counter
                         if (y == NOOFSTATEPANELS - 1u) {
@@ -701,9 +915,33 @@ int main()
 
                 }
                 
-                // Set flags to transmit forward linear interpolation results back to the host
-                rdyFlags[index][msgIn->leg] |= FLINHQ;
-                sendsQueued += (LINRATIO - 1u);
+                // Handle forward linear interpolation host message send
+                if (tinselCanSend()) {
+                
+                    for (uint32_t x = 0u; x < (LINRATIO - 1u); x++) {
+                            
+                        // Send to host
+                        volatile HostMessage* msgHost = tinselSendSlot();
+
+                        tinselWaitUntil(TINSEL_CAN_SEND);
+                        msgHost->msgType = FWDLIN;
+                        msgHost->observationNo = ((msgIn->leg * NOOFHWCOLS) * LINRATIO) + (HWColNo * LINRATIO) + 1u + x;
+                        msgHost->stateNo = (index * NOOFHWROWS) + HWRowNo;
+                        msgHost->val = alphaLin[index][msgIn->leg][x];
+                        //msgHost->val = 1u;
+
+                        tinselSend(host, msgHost);
+                        
+                    }
+                
+                }
+                else {
+                    
+                    // Set flags to transmit forward linear interpolation results back to the host
+                    rdyFlags[index][msgIn->leg] |= FLINHQ;
+                    sendsQueued += (LINRATIO - 1u);
+                    
+                }
                 
                 
                 // Clear the ready flags to prevent re-transmission
@@ -756,10 +994,34 @@ int main()
                         
                     }
                     
+                    
+                    // Handle backward linear interpolation host message send
+                    if (tinselCanSend()) {
+                        
+                        for (uint32_t x = 0u; x < (LINRATIO - 1u); x++) {
+                            
+                            // Send to host
+                            volatile HostMessage* msgHost = tinselSendSlot();
 
-                    // Set flags to transmit backward linear interpolation results back to the host    
-                    rdyFlags[y][msgIn->leg] |= BLINHQ;
-                    sendsQueued += (LINRATIO - 1u);
+                            tinselWaitUntil(TINSEL_CAN_SEND);
+                            msgHost->msgType = BWDLIN;
+                            msgHost->observationNo = ((msgIn->leg * NOOFHWCOLS) * LINRATIO) + (HWColNo * LINRATIO) + 1u + x;
+                            msgHost->stateNo = (y * NOOFHWROWS) + HWRowNo;
+                            msgHost->val = betaLin[y][msgIn->leg][(LINRATIO - 2u) - x];
+                            //msgHost->val = 1u;
+
+                            tinselSend(host, msgHost);
+                        
+                        }
+                        
+                    }
+                    else {
+                        
+                        // Set flags to transmit backward linear interpolation results back to the host    
+                        rdyFlags[y][msgIn->leg] |= BLINHQ;
+                        sendsQueued += (LINRATIO - 1u);
+                    
+                    }
                         
                     
                     // Clear the ready flags to prevent re-transmission
