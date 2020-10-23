@@ -977,24 +977,6 @@ int main()
                         
                     }
                     
-                    // Can we stop the performance counter?
-                    if ( (HWColNo == 0u) && (HWRowNo == 0u) && (msgIn->leg == (NOOFLEGS - 1u)) && (y == (NOOFSTATEPANELS - 1u)) ) {
-                        uint32_t countLower = tinselCycleCount();
-                        uint32_t countUpper = tinselCycleCountU();
-                        
-                        // Send to host
-                        volatile HostMessage* msgHost = tinselSendSlot();
-
-                        tinselWaitUntil(TINSEL_CAN_SEND);
-                        msgHost->msgType = COUNTS;
-                        msgHost->observationNo = countLower;
-                        msgHost->stateNo = countUpper;
-
-                        //tinselSend(host, msgHost);
-                        
-                    }
-                    
-                    
                     // Handle backward linear interpolation host message send
                     if (tinselCanSend()) {
                         
@@ -1021,6 +1003,24 @@ int main()
                         rdyFlags[y][msgIn->leg] |= BLINHQ;
                         sendsQueued += (LINRATIO - 1u);
                     
+                    }
+                    
+                    
+                    // Can we stop the performance counter?
+                    if ( (HWColNo == 0u) && (HWRowNo == 0u) && (msgIn->leg == (NOOFLEGS - 1u)) && (y == (NOOFSTATEPANELS - 1u)) ) {
+                        uint32_t countLower = tinselCycleCount();
+                        uint32_t countUpper = tinselCycleCountU();
+                        
+                        // Send to host
+                        volatile HostMessage* msgHost = tinselSendSlot();
+
+                        tinselWaitUntil(TINSEL_CAN_SEND);
+                        msgHost->msgType = COUNTS;
+                        msgHost->observationNo = countLower;
+                        msgHost->stateNo = countUpper;
+
+                        tinselSend(host, msgHost);
+                        
                     }
                         
                     

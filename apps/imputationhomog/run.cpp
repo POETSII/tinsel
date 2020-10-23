@@ -504,93 +504,91 @@ int main()
     
     fprintf(fp1, "msgType,obsNo,stateNo,val\n");
     
-    for (uint8_t msgType = 0u; msgType < 2; msgType++) {
-        for (uint32_t y = 0u; y < NOOFSTATES; y++) {
-            for (uint32_t x = 0u; x < NOOFOBS; x++) {
-                
-                recCnt++;
-                hostLink.recvMsg(&msg, sizeof(msg));
-                
-                //if (recCnt % 1000000u == 0u) {
-                    printf("%d\n", recCnt);
-                //}
-                
-                if (msg.msgType < 2u) {
-                    
-                    result[msg.observationNo][msg.stateNo][msg.msgType] = msg.val;
-                    fprintf(fp1, "%d,%d,%d,%e\n", msg.msgType, msg.observationNo, msg.stateNo, msg.val);
+    uint32_t expectedMessages = (NOOFOBS * NOOFSTATES * 2u) + 1u;
     
-                }
-                else {
-                    if (msg.msgType == FWDLIN) {
-                        result[msg.observationNo][msg.stateNo][0u] = msg.val;
-                        fprintf(fp1, "0,%d,%d,%e\n", msg.observationNo, msg.stateNo, msg.val);
-                    }
-                    else if (msg.msgType == BWDLIN) {
-                        result[msg.observationNo][msg.stateNo][1u] = msg.val;
-                        fprintf(fp1, "1,%d,%d,%e\n", msg.observationNo, msg.stateNo, msg.val);
-                    }
-                    else {
-                        lowerCnt = msg.observationNo;
-                        upperCnt = msg.stateNo;
-                        
-                        procTime = ((upperCnt << 32) + lowerCnt) / (TinselClockFreq * 1000000.0);
-                    }
-                }
+    for (uint32_t recMsg = 0u; recMsg < expectedMessages; recMsg++) {
+                
+        recCnt++;
+        hostLink.recvMsg(&msg, sizeof(msg));
+        
+        if (recCnt % 100000u == 0u) {
+            printf("%d\n", recCnt);
+        }
+        
+        if (msg.msgType < 2u) {
+            
+            result[msg.observationNo][msg.stateNo][msg.msgType] = msg.val;
+            fprintf(fp1, "%d,%d,%d,%e\n", msg.msgType, msg.observationNo, msg.stateNo, msg.val);
+
+        }
+        else {
+            if (msg.msgType == FWDLIN) {
+                result[msg.observationNo][msg.stateNo][0u] = msg.val;
+                fprintf(fp1, "0,%d,%d,%e\n", msg.observationNo, msg.stateNo, msg.val);
+            }
+            else if (msg.msgType == BWDLIN) {
+                result[msg.observationNo][msg.stateNo][1u] = msg.val;
+                fprintf(fp1, "1,%d,%d,%e\n", msg.observationNo, msg.stateNo, msg.val);
+            }
+            else {
+                lowerCnt = msg.observationNo;
+                upperCnt = msg.stateNo;
+                
+                procTime = ((upperCnt << 32) + lowerCnt) / (TinselClockFreq * 1000000.0);
+            }
+        }
                 
 #ifdef DEBUGRETURNS  
 
-                if (recCnt > 1982000u) {
-                
-                    // Temporary file write
-                    //Create a file pointer
-                    FILE * fp;
-                    // open the file for writing
-                    fp = fopen ("results.csv","w");
-                    
-                    uint32_t obsStart = 60000u;
-                    uint32_t obsEnd = 65000u;
-
-                    fprintf(fp, "Forward Probabilities: \n");
-                    for (uint32_t y = 0u; y < NOOFSTATES; y++) {
-                        for (uint32_t x = obsStart; x < obsEnd; x++) {
-                        
-                            if (x != (NOOFOBS - 1u) ) {
-                                fprintf(fp, "%e,", result[x][y][0u]);
-                            }
-                            else {
-                                fprintf(fp, "%e", result[x][y][0u]);
-                            }
-                        
-                        }
-                        fprintf(fp, "\n");
-                    }
-                    
-                    fprintf(fp, "Backward Probabilities: \n");
-                    for (uint32_t y = 0u; y < NOOFSTATES; y++) {
-                        for (uint32_t x = obsStart; x < obsEnd; x++) {
-                        
-                            if (x != (NOOFOBS - 1u) ) {
-                                fprintf(fp, "%e,", result[(NOOFOBS - 1) - x][y][1u]);
-                            }
-                            else {
-                                fprintf(fp, "%e", result[(NOOFOBS - 1) - x][y][1u]);
-                            }
-                        
-                        }
-                        fprintf(fp, "\n");
-                    }
-                    
-                    // close the file  
-                    fclose (fp);
-                    
-                    printf("File written\n");
-                    
-                }
-#endif            
-            }
+        if (recCnt > 111982000u) {
         
+            // Temporary file write
+            //Create a file pointer
+            FILE * fp;
+            // open the file for writing
+            fp = fopen ("results.csv","w");
+            
+            uint32_t obsStart = 60000u;
+            uint32_t obsEnd = 65000u;
+
+            fprintf(fp, "Forward Probabilities: \n");
+            for (uint32_t y = 0u; y < NOOFSTATES; y++) {
+                for (uint32_t x = obsStart; x < obsEnd; x++) {
+                
+                    if (x != (NOOFOBS - 1u) ) {
+                        fprintf(fp, "%e,", result[x][y][0u]);
+                    }
+                    else {
+                        fprintf(fp, "%e", result[x][y][0u]);
+                    }
+                
+                }
+                fprintf(fp, "\n");
+            }
+            
+            fprintf(fp, "Backward Probabilities: \n");
+            for (uint32_t y = 0u; y < NOOFSTATES; y++) {
+                for (uint32_t x = obsStart; x < obsEnd; x++) {
+                
+                    if (x != (NOOFOBS - 1u) ) {
+                        fprintf(fp, "%e,", result[(NOOFOBS - 1) - x][y][1u]);
+                    }
+                    else {
+                        fprintf(fp, "%e", result[(NOOFOBS - 1) - x][y][1u]);
+                    }
+                
+                }
+                fprintf(fp, "\n");
+            }
+            
+            // close the file  
+            fclose (fp);
+            
+            printf("File written\n");
+            
         }
+#endif            
+
     }
     
     fclose (fp1);
