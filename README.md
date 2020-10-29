@@ -3,13 +3,20 @@
 Tinsel is a [RISC-V](https://riscv.org/)-based manythread
 message-passing architecture designed for FPGA clusters.  It is being
 developed as part of the [POETS
-Project](https://poets-project.org/about) (Partial Ordered Event
-Triggered Systems).  Further background can be found in our FPL 2019
-[paper](doc/fpl-2019-paper.pdf); and our ASAP 2020
-[paper](doc/asap-2020-paper.pdf) and
-[video](https://sms.cam.ac.uk/media/3258486).  If you're a POETS
-Partner, you can access a machine running Tinsel in the [POETS
-Cloud](https://github.com/POETSII/poets-cloud).  
+project](https://poets-project.org/about) (Partial Ordered Event
+Triggered Systems).  Further background can be found in the following
+papers:
+
+* *Tinsel: a manythread overlay for FPGA clusters*, FPL 2019
+  ([paper](doc/fpl-2019-paper.pdf))
+* *Termination detection for fine-grained message-passing
+  architectures*, ASAP 2020 ([paper](doc/asap-2020-paper.pdf),
+  [video](https://sms.cam.ac.uk/media/3258486))
+* *Hardware multicasting for large unstructured communication patterns
+  in manycore architectures* (available soon)
+
+If you're a POETS partner, you can access a machine running Tinsel in
+the [POETS cloud](https://github.com/POETSII/poets-cloud).
 
 ## Release Log
 
