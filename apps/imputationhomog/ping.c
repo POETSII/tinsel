@@ -30,6 +30,28 @@
 #define FWDUQ   (1u << 10u)
 #define BWDUQ   (1u << 11u)
 
+//GLOBALS
+
+float alpha[NOOFSTATEPANELS][NOOFLEGS] = {{0.0f}};
+float beta[NOOFSTATEPANELS][NOOFLEGS] = {{0.0f}};
+float alphaLin[NOOFSTATEPANELS][NOOFLEGS][LINRATIO - 1u] = {{{0.0f}}};
+float betaLin[NOOFSTATEPANELS][NOOFLEGS][LINRATIO - 1u] = {{{0.0f}}};
+
+float prevAlpha[NOOFSTATEPANELS][NOOFLEGS] = {{0.0f}};
+float nextAlpha[NOOFSTATEPANELS][NOOFLEGS] = {{0.0f}};
+float prevBeta[NOOFSTATEPANELS][NOOFLEGS] = {{0.0f}};
+float nextBeta[NOOFSTATEPANELS][NOOFLEGS] = {{0.0f}};
+
+uint16_t rdyFlags[NOOFSTATEPANELS][NOOFLEGS] = {{0.0f}};
+
+float fwdSame[NOOFLEGS];
+float fwdDiff[NOOFLEGS];
+float bwdSame[NOOFLEGS];
+float bwdDiff[NOOFLEGS];
+
+
+uint16_t match[NOOFSTATEPANELS][NOOFLEGS];
+
 /*****************************************************
 * Main Function
 * ***************************************************/
@@ -56,14 +78,6 @@ int main()
     
     // Received values for each panel / leg
     // -------------------------------------------->
-    
-    float fwdSame[NOOFLEGS];
-    float fwdDiff[NOOFLEGS];
-    float bwdSame[NOOFLEGS];
-    float bwdDiff[NOOFLEGS];
-    
-    
-    uint16_t match[NOOFSTATEPANELS][NOOFLEGS];
     
     // Populate local genetic distances and calculate total genetic distance
     float dmLocal[LINRATIO][NOOFLEGS];
@@ -100,19 +114,7 @@ int main()
     int host = tinselHostId();
     
     // Declared and intialised seperately to avoid memset error on compilation
-    
-    float alpha[NOOFSTATEPANELS][NOOFLEGS];
-    float beta[NOOFSTATEPANELS][NOOFLEGS];
-    float alphaLin[NOOFSTATEPANELS][NOOFLEGS][LINRATIO - 1u];
-    float betaLin[NOOFSTATEPANELS][NOOFLEGS][LINRATIO - 1u];
-    
-    float prevAlpha[NOOFSTATEPANELS][NOOFLEGS];
-    float nextAlpha[NOOFSTATEPANELS][NOOFLEGS];
-    float prevBeta[NOOFSTATEPANELS][NOOFLEGS];
-    float nextBeta[NOOFSTATEPANELS][NOOFLEGS];
-    
-    uint16_t rdyFlags[NOOFSTATEPANELS][NOOFLEGS];
-    
+    /*
     for (uint32_t statePanel = 0u; statePanel < NOOFSTATEPANELS; statePanel++) {
         for (uint32_t leg = 0u; leg < NOOFLEGS; leg++) {
             
@@ -139,7 +141,7 @@ int main()
             }
         }
     }
-        
+    */    
     
     /*
     if (HWColNo == 1u) {
@@ -509,7 +511,7 @@ int main()
                     if ((rdyFlags[i][l] & FLINHQ) && tinselCanSend()) {
                             
                         for (uint32_t x = 0u; x < (LINRATIO - 1u); x++) {
-                                
+                            /*    
                             // Send to host
                             volatile HostMessage* msgHost = tinselSendSlot();
 
@@ -521,7 +523,7 @@ int main()
                             //msgHost->val = 1u;
 
                             tinselSend(host, msgHost);
-                                
+                            */    
                             sendsQueued--;
                             
                         }
@@ -534,7 +536,7 @@ int main()
                     if ((rdyFlags[i][l] & BLINHQ) && tinselCanSend()) {
                             
                         for (uint32_t x = 0u; x < (LINRATIO - 1u); x++) {
-                            
+                            /*
                             // Send to host
                             volatile HostMessage* msgHost = tinselSendSlot();
 
@@ -546,7 +548,7 @@ int main()
                             //msgHost->val = 1u;
 
                             tinselSend(host, msgHost);
-                            
+                            */
                             sendsQueued--;
                         
                         }
@@ -919,7 +921,7 @@ int main()
                 if (tinselCanSend()) {
                 
                     for (uint32_t x = 0u; x < (LINRATIO - 1u); x++) {
-                            
+                        /*    
                         // Send to host
                         volatile HostMessage* msgHost = tinselSendSlot();
 
@@ -931,7 +933,7 @@ int main()
                         //msgHost->val = 1u;
 
                         tinselSend(host, msgHost);
-                        
+                        */
                     }
                 
                 }
@@ -981,10 +983,10 @@ int main()
                     if (tinselCanSend()) {
                         
                         for (uint32_t x = 0u; x < (LINRATIO - 1u); x++) {
-                            
+                            /*
                             // Send to host
                             volatile HostMessage* msgHost = tinselSendSlot();
-
+                            
                             tinselWaitUntil(TINSEL_CAN_SEND);
                             msgHost->msgType = BWDLIN;
                             msgHost->observationNo = ((msgIn->leg * NOOFHWCOLS) * LINRATIO) + (HWColNo * LINRATIO) + 1u + x;
@@ -993,7 +995,7 @@ int main()
                             //msgHost->val = 1u;
 
                             tinselSend(host, msgHost);
-                        
+                            */
                         }
                         
                     }

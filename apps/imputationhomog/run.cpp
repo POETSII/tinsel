@@ -504,14 +504,14 @@ int main()
     
     fprintf(fp1, "msgType,obsNo,stateNo,val\n");
     
-    uint32_t expectedMessages = (NOOFOBS * NOOFSTATES * 2u) + 1u;
+    uint32_t expectedMessages = (NOOFTARGMARK * NOOFSTATES * 2u) + 1u;
     
     for (uint32_t recMsg = 0u; recMsg < expectedMessages; recMsg++) {
                 
         recCnt++;
         hostLink.recvMsg(&msg, sizeof(msg));
         
-        if (recCnt % 100000u == 0u) {
+        if (recCnt % 1000u == 0u) {
             printf("%d\n", recCnt);
         }
         
