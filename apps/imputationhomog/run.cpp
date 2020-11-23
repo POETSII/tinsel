@@ -6,7 +6,7 @@
 #include <math.h>
 #include "../../include/POLite/ProgRouters.h"
 
-#define DEBUGRETURNS (1)
+//#define DEBUGRETURNS (1)
 
 /*****************************************************
  * Genomic Imputation - Tinsel Version
@@ -51,6 +51,10 @@ int main()
     dest.kind = PRDestKindMRM;
     
     mrmRecord.key = 0u;
+	
+    // Start Initialisation Timer
+    struct timeval start_init, finish_init, diff_init;
+    gettimeofday(&start_init, NULL);
     
     /********************************************************
      * HARDWARE LAYER SETUP
@@ -453,10 +457,20 @@ int main()
     // Write the keys to the routers
     progRouterMesh.write(&hostLink);
     
+    // Record init time
+    gettimeofday(&finish_init, NULL);
+    timersub(&finish_init, &start_init, &diff_init);
+    double init_duration = (double) diff_init.tv_sec + (double) diff_init.tv_usec / 1000000.0;
+    
+    printf("Init Time = %0.5f\n", init_duration);
     printf("Launching\n");
     // Load the correct code into the cores
     hostLink.boot("code.v", "data.v");
     hostLink.go();
+    
+    // Start Processing Timer
+    struct timeval start_proc, finish_proc, diff_proc;
+    gettimeofday(&start_proc, NULL);
     
     /*
     HostMessage msg;
@@ -479,7 +493,7 @@ int main()
      * *****************************************************/
     
     HostMessage msg;
-
+    
     static float result[NOOFOBS][NOOFSTATES][2u];
     
     for (uint8_t msgType = 0u; msgType < 2; msgType++) {
@@ -504,16 +518,19 @@ int main()
     
     fprintf(fp1, "msgType,obsNo,stateNo,val\n");
     
-    uint32_t expectedMessages = (NOOFTARGMARK * NOOFSTATES * 2u) + 1u;
+    uint32_t expectedMessages = (NOOFTARGMARK * NOOFSTATES * 2u * NOOFTARGHAPLOTYPES) + 1u;
+    //uint32_t expectedMessages = 1u;
     
     for (uint32_t recMsg = 0u; recMsg < expectedMessages; recMsg++) {
                 
         recCnt++;
         hostLink.recvMsg(&msg, sizeof(msg));
         
-        if (recCnt % 1000u == 0u) {
+        
+        //if (recCnt % 10000u == 0u) {
             printf("%d\n", recCnt);
-        }
+        //}
+
         
         if (msg.msgType < 2u) {
             
@@ -537,6 +554,7 @@ int main()
                 procTime = ((upperCnt << 32) + lowerCnt) / (TinselClockFreq * 1000000.0);
             }
         }
+        
                 
 #ifdef DEBUGRETURNS  
 
@@ -588,8 +606,15 @@ int main()
             
         }
 #endif            
-
+    
     }
+    
+    // Record init time
+    gettimeofday(&finish_proc, NULL);
+    timersub(&finish_proc, &start_proc, &diff_proc);
+    double proc_duration = (double) diff_proc.tv_sec + (double) diff_proc.tv_usec / 1000000.0;
+    printf("Wall Proc Time = %0.5f\n", proc_duration);
+    printf("Cycle Proc Time = %.15f\n", procTime);
     
     fclose (fp1);
     
@@ -630,8 +655,6 @@ int main()
 
     // close the file 
     fclose (fp);
-    
-    printf("Processing Time = %.15f\n", procTime);
     
 
 #ifdef PRINTKEYS   

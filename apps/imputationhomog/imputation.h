@@ -20,6 +20,7 @@
 #define NOOFLEGS (1)
 
 // Model Parameters
+#define NOOFTARGHAPLOTYPES (30u)
 #define NOOFSTATES (8)
 #define NOOFSTATEPANELS (NOOFSTATES / NOOFHWROWS)
 //NOTARGMARK = 768 * NOOFBOXES
@@ -38,6 +39,10 @@
 #define FWDLIN (2u)
 #define BWDLIN (3u)
 #define COUNTS (4u)
+
+//debug
+#define DEBUGMSG (5u)
+#define DEBUGMSG2 (6u)
 
 #define NULL (0u)
 
