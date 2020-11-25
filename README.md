@@ -1,13 +1,22 @@
-# Tinsel 0.8
+# Tinsel 0.8.3
 
 Tinsel is a [RISC-V](https://riscv.org/)-based manythread
 message-passing architecture designed for FPGA clusters.  It is being
 developed as part of the [POETS
-Project](https://poets-project.org/about) (Partial Ordered Event
-Triggered Systems).  Further background can be found in our [FPL 2019
-paper](doc/fpl-2019-paper.pdf).  If you're a POETS Partner, you can
-access a machine running Tinsel in the [POETS
-Cloud](https://github.com/POETSII/poets-cloud).  
+project](https://poets-project.org/about) (Partial Ordered Event
+Triggered Systems).  Further background can be found in the following
+papers:
+
+* *Tinsel: a manythread overlay for FPGA clusters*, FPL 2019
+  ([paper](doc/fpl-2019-paper.pdf))
+* *Termination detection for fine-grained message-passing
+  architectures*, ASAP 2020 ([paper](doc/asap-2020-paper.pdf),
+  [video](https://sms.cam.ac.uk/media/3258486))
+* *Hardware multicasting for large unstructured communication patterns
+  in manycore architectures* (available soon)
+
+If you're a POETS partner, you can access a machine running Tinsel in
+the [POETS cloud](https://github.com/POETSII/poets-cloud).
 
 ## Release Log
 
@@ -36,9 +45,9 @@ Released on 2 Dec 2019 and maintained in the
 [tinsel-0.7.1 branch](https://github.com/POETSII/tinsel/tree/tinsel-0.7.1).
 (Local hardware multicast.)
 * [v0.8](https://github.com/POETSII/tinsel/releases/tag/v0.8):
-Released on 24 Jun 2020 and maintained in the
+Released on 1 Jul 2020 and maintained in the
 [master branch](https://github.com/POETSII/tinsel/).
-(Global hardware multicast.)
+(Distributed hardware multicast.)
 
 ## Contents
 
@@ -97,7 +106,7 @@ main features are:
     the number of inter-thread messages in applications exhibiting good
     locality of communication.
 
-  * **Global hardware multicast**.  Programmable routers
+  * **Distributed hardware multicast**.  Programmable routers
     automatically propagate messages to any number of destination
     threads distributed throughout the cluster, minimising inter-FPGA
     bandwidth usage for distributed fanouts.
@@ -230,14 +239,15 @@ The core fetches instructions from an *instruction memory* implemented
 using on-chip block RAM.  The size of this memory is controlled by the
 synthesis-time parameter `LogInstrsPerCore`.  All threads in a core
 share the same instruction memory.  If the `SharedInstrMem` parameter
-is `True` then each instruction memory will be shared by up to two
-cores, using the dual-port feature of block RAMs. Otherwise, if it is
-`False` then each core will have its own instruction memory.  The
-initial contents of the memory is specified in the FPGA bitstream and
-typically contains a boot loader.  The instruction memory is not
-memory-mapped (i.e. not accessible via load/store instructions) but
-two CSRs are provided for writing instructions into the memory:
-`InstrAddr` and `Instr`.
+is `True` then each instruction memory will be shared by two cores,
+using the dual-port feature of block RAMs (specifically, cores with
+ids 0 and 1 in a tile share the RAM, as do cores with ids 2 and 3, and
+so on).  Otherwise, if it is `False` then each core will have its own
+instruction memory.  The initial contents of the memory is specified
+in the FPGA bitstream and typically contains a boot loader.  The
+instruction memory is not memory-mapped (i.e. not accessible via
+load/store instructions) but two CSRs are provided for writing
+instructions into the memory: `InstrAddr` and `Instr`.
 
   CSR Name    | CSR    | R/W | Function
   ----------- | ------ | --- | --------
@@ -654,11 +664,11 @@ purposes, resulting in very little overhead on the wire.
 ## 7. Tinsel Router
 
 Tinsel provides a programmable router on each FPGA board to support
-*global* multicasting.  Programmable routers automatically propagate
-messages to any number of destination threads distributed throughout
-the cluster, minimising inter-FPGA bandwidth usage for distributed
-fanouts, and offloading work from the cores.  Further background can
-be found in [PIP 24](doc/PIP-0024-global-multicast.md).
+*distributed* multicasting.  Programmable routers automatically
+propagate messages to any number of destination threads distributed
+throughout the cluster, minimising inter-FPGA bandwidth usage for
+distributed fanouts, and offloading work from the cores.  Further
+background can be found in [PIP 24](doc/PIP-0024-global-multicast.md).
 
 To support programmable routers, the destination component of a
 message is generalised so that it can be (1) a thread id; or (2) a
@@ -1352,7 +1362,9 @@ be set, to control some aspects of POLite behaviour.
 for hardware evaluation purposes. It occupies a single, simple point
 in a wider, richer design space.  In particular, it doesn't support
 dynamic creation of vertices and edges, and it hasn't been optimised
-to deal with highly non-uniform fanouts.
+to deal with highly non-uniform fanouts (i.e. where some vertices have
+tiny fanouts and others have huge fanouts; this could be alleviated by
+adding fanout as a vertex weight for METIS partitioning).
 
 ## A. DE5-Net Synthesis Report
 
@@ -1372,7 +1384,7 @@ The default Tinsel configuration on a single DE5-Net board contains:
   * one 8x8 programmable router
   * a JTAG UART
 
-The clock frequency is 215MHz and the resource utilisation is 84% of
+The clock frequency is 210MHz and the resource utilisation is 84% of
 the DE5-Net.
 
 ## B. Tinsel Parameters
@@ -1402,7 +1414,7 @@ the DE5-Net.
   `MeshXLenWithinBox`      |       3 | Boards in X dimension within box
   `MeshYLenWithinBox`      |       2 | Boards in Y dimension within box
   `EnablePerfCount`        |    True | Enable performance counters
-  `ClockFreq`              |     215 | Clock frequency in MHz
+  `ClockFreq`              |     210 | Clock frequency in MHz
 
 A full list of parameters can be found in [config.py](config.py).
 
@@ -1593,10 +1605,16 @@ inline uint32_t tinselBridgeId(uint32_t x, uint32_t y);
 // Get address of host PC in same box as calling thread.
 inline uint32_t tinselMyBridgeId();
 
-// Return pointer to base of thread's DRAM partition
+// Given thread id, return base address of thread's partition in DRAM
+inline uint32_t tinselHeapBaseGeneric(uint32_t id);
+
+// Given thread id, return base address of thread's partition in SRAM
+inline uint32_t tinselHeapBaseSRAMGeneric(uint32_t id);
+
+// Return pointer to base of calling thread's DRAM partition
 inline void* tinselHeapBase();
 
-// Return pointer to base of thread's SRAM partition
+// Return pointer to base of calling thread's SRAM partition
 inline void* tinselHeapBaseSRAM();
 
 // Reset performance counters
@@ -1760,6 +1778,9 @@ class HostLink {
   // Start given number of threads on given core
   void startOne(uint32_t meshX, uint32_t meshY,
          uint32_t coreId, uint32_t numThreads);
+
+  // Start all threads on all cores
+  void startAll();
 
   // Trigger application execution on all started threads on given core
   void goOne(uint32_t meshX, uint32_t meshY, uint32_t coreId);

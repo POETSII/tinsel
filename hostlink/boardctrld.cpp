@@ -22,6 +22,7 @@
 #include <stdint.h>
 #include <assert.h>
 #include <poll.h>
+#include <pwd.h>
 #include <errno.h>
 #include <config.h>
 #include "jtag/UARTBuffer.h"
@@ -37,8 +38,28 @@
 // Default TCP port to listen on
 #define TCP_PORT 10101
 
+// Email address to use to report overheating
+#define EMAIL_ADDR "mn416@cam.ac.uk"
+
+// SMTP server for email
+#define SMTP_SERVER "ppsw.cam.ac.uk"
+
 // Functions
 // ---------
+
+// Try to reduce privilege
+void reducePrivilege()
+{
+  if (getuid() == 0) {
+    passwd* entry = getpwnam("daemon");
+    if (entry) {
+      if (setgid(entry->pw_gid) != 0)
+        fprintf(stderr, "Unable to drop group privilege\n");
+      if (setuid(entry->pw_uid) != 0)
+        fprintf(stderr, "Unable to drop user privilege\n");
+    }
+  }
+}
 
 // Create listening socket
 int createListener()
@@ -80,6 +101,24 @@ int createListener()
   }
 
   return sock;
+}
+
+// Send an email reporting overheating
+bool reportOverheat(int linkId)
+{
+  // Get host name
+  char hostname[256];
+  hostname[0] = '\0';
+  gethostname(hostname, sizeof(hostname));
+  hostname[sizeof(hostname)-1] = '\0';
+  // Send email
+  FILE* fp = popen("msmtp -f " EMAIL_ADDR
+                   " --host=" SMTP_SERVER
+                   " " EMAIL_ADDR, "w");
+  if (fp == NULL) return false;
+  fprintf(fp, "Subject: FPGA %i overheating on %s\n", linkId, hostname);
+  fclose(fp);
+  return true;
 }
 
 void server(int conn, int numBoards, UARTBuffer* uartLinks)
@@ -142,15 +181,23 @@ void server(int conn, int numBoards, UARTBuffer* uartLinks)
       if (uartLinks[i].canGet(1)) {
         pkt.linkId = i;
         uint8_t cmd = uartLinks[i].peek();
-        uint8_t numBytes = fromDebugLinkSize(cmd);
-        if (uartLinks[i].canGet(numBytes)) {
-          for (int j = 0; j < numBytes; j++)
-            pkt.payload[j] = uartLinks[i].peekAt(j);
-          int ok = socketPut(conn, (char*) &pkt, sizeof(BoardCtrlPkt));
-          if (ok < 0) return;
-          if (ok > 0) {
-            for (int j = 0; j < numBytes; j++) uartLinks[i].get();
-            didGet = true;
+        if (cmd == DEBUGLINK_OVERHEAT) {
+          // Report overheating issue via email
+          reportOverheat(i);
+          // return; // Emergency shutdown
+          uartLinks[i].get(); didGet = true; // Carry on
+        }
+        else {
+          uint8_t numBytes = fromDebugLinkSize(cmd);
+          if (uartLinks[i].canGet(numBytes)) {
+            for (int j = 0; j < numBytes; j++)
+              pkt.payload[j] = uartLinks[i].peekAt(j);
+            int ok = socketPut(conn, (char*) &pkt, sizeof(BoardCtrlPkt));
+            if (ok < 0) return;
+            if (ok > 0) {
+              for (int j = 0; j < numBytes; j++) uartLinks[i].get();
+              didGet = true;
+            }
           }
         }
       }
@@ -175,6 +222,9 @@ void server(int conn, int numBoards, UARTBuffer* uartLinks)
 
 int main(int argc, char* argv[])
 {
+  // Drop root privileges if necessary
+  reducePrivilege();
+
   // Ignore SIGPIPE
   signal(SIGPIPE, SIG_IGN);
 
