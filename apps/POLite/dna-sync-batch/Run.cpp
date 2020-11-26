@@ -1,10 +1,25 @@
 // SPDX-License-Identifier: BSD-2-Clause
-#include "Pipeline.h"
+#include "impute.h"
 
 #include <HostLink.h>
 #include <POLite.h>
 #include <EdgeList.h>
 #include <sys/time.h>
+
+/*****************************************************
+ * Genomic Imputation - Batch Processing Version
+ * ***************************************************
+ * This code streams target haplotypes from the X86 side
+ * USAGE:
+ * To Be Completed ...
+ * 
+ * PLEASE NOTE:
+ * To Be Completed ...
+ * 
+ * ssh jordmorr@ayres.cl.cam.ac.uk
+ * scp -r C:\Users\drjor\Documents\tinsel\apps\POLite\dna-sync-batch jordmorr@ayres.cl.cam.ac.uk:~/tinsel/apps/POLite
+ * scp jordmorr@ayres.cl.cam.ac.uk:~/tinsel/apps/POLite/dna-sync-batch/build/stats.txt C:\Users\drjor\Documents\tinsel\apps\POLite\dna-sync-batch
+ * ****************************************************/
 
 int main(int argc, char **argv)
 {
@@ -19,7 +34,7 @@ int main(int argc, char **argv)
   HostLink hostLink;
 
   // Create POETS graph
-  PGraph<PipelineDevice, PipelineState, None, PipelineMessage> graph;
+  PGraph<ImpDevice, ImpState, None, ImpMessage> graph;
 
   // Create devices
   for (uint32_t i = 0; i < numCols * colHeight; i++) {

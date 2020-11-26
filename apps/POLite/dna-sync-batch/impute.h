@@ -1,20 +1,20 @@
 // SPDX-License-Identifier: BSD-2-Clause
-#ifndef _PIPELINE_H_
-#define _PIPELINE_H_
+#ifndef _IMPUTE_H_
+#define _IMPUTE_H_
 
 #define POLITE_DUMP_STATS
 #define POLITE_COUNT_MSGS
 #include <POLite.h>
 
 // Message contents doesn't really matter for this benchmark
-struct PipelineMessage {
+struct ImpMessage {
   uint32_t data;
 };
 
 // Does the device produce, consume, or both (i.e. forward)
 enum DeviceKind { Produce, Consume, Forward };
 
-struct PipelineState {
+struct ImpState {
   // Did device receive on current timestep?
   uint8_t didRecv;
   // Device kind
@@ -23,7 +23,7 @@ struct PipelineState {
   uint32_t numWaves;
 };
 
-struct PipelineDevice : PDevice<PipelineState, None, PipelineMessage> {
+struct ImpDevice : PDevice<ImpState, None, ImpMessage> {
 
   // Called once by POLite at start of execution
   inline void init() {
@@ -31,14 +31,14 @@ struct PipelineDevice : PDevice<PipelineState, None, PipelineMessage> {
   }
 
   // Send handler
-  inline void send(volatile PipelineMessage* msg) {
+  inline void send(volatile ImpMessage* msg) {
     msg->data = 42;
     if (s->kind == Produce) s->numWaves--;
     *readyToSend = No;
   }
 
   // Receive handler
-  inline void recv(PipelineMessage* msg, None* edge) {
+  inline void recv(ImpMessage* msg, None* edge) {
     s->didRecv = 1;
   }
 
@@ -55,7 +55,7 @@ struct PipelineDevice : PDevice<PipelineState, None, PipelineMessage> {
   }
 
   // Optionally send message to host on termination
-  inline bool finish(volatile PipelineMessage* msg) {
+  inline bool finish(volatile ImpMessage* msg) {
     return false;
   }
 };
