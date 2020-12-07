@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BSD-2-Clause
-#ifndef _MODEL_H_
-#define _MODEL_H_
+#ifndef _PARAMS_H_
+#define _PARAMS_H_
 
-#include "params.h"
+#include <stdint.h>
 
 // Parameters
 
@@ -10,14 +10,21 @@
  * Edit values between here ->
  * ************************************************/
 
-// Moved to params.h
+// Model Size
+#define NOOFSTATES (8)
+#define NOOFOBS (6144)
+
+#define LINRATIO (10)
+
+// Model Values
+#define NE (1000000)
+#define ERRORRATE (10000)
+
+// Pre-processor selectors
+#define IMPDEBUG (1)
 
 /***************************************************
  * <- And here
  * ************************************************/
-
-extern const uint8_t hmm_labels[NOOFSTATES][NOOFOBS];
-extern const uint32_t observation[NOOFOBS][2];
-extern const float dm[NOOFOBS-1];
 
 #endif

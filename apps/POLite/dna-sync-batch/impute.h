@@ -4,24 +4,33 @@
 
 #define POLITE_DUMP_STATS
 #define POLITE_COUNT_MSGS
-#include <POLite.h>
-#include "model.h"
+#include "myPOLite.h"
+#include "params.h"
 
 // ImpMessage types
-const uint32_t ALPHAINDUCT = 0;
-const uint32_t BETAINDUCT =  1;
-const uint32_t TERMINATION = 2;
+const uint32_t FORWARD = 0;
+const uint32_t BACKWARD =  1;
+const uint32_t FWDACCA = 4;
+const uint32_t BWDACCA =  5;
 
 // Flags
-const uint32_t INIT = 1 << 0;
-const uint32_t FINAL = 1 << 1;
-const uint32_t ALPHA = 1 << 2;
-const uint32_t BETA = 1 << 3;
+const uint32_t INIT = (1 << 0); //1
+const uint32_t FINAL = (1 << 1); //2
+const uint32_t ALPHA = (1 << 2); //4
+const uint32_t BETA = (1 << 3); //8
+const uint32_t ALPHAACCA = (1 << 4); //16
+const uint32_t BETAACCA = (1 << 5); //32
+const uint32_t ALPHAPOST = (1 << 6); //64
+const uint32_t BETAPOST = (1 << 7); //128
 
 struct ImpMessage {
     
     // message type
     uint32_t msgtype;
+    // state number
+    uint32_t stateNo;
+    // match
+    uint32_t match;
     // message value
     float val;
     
@@ -30,36 +39,56 @@ struct ImpMessage {
 struct ImpState {
     
     // Device id
-    uint32_t id;
+    uint32_t id; //
     // Message Counters
-    uint32_t aindreccount, bindreccount, finreccount, ccountl, ccountu;
+    uint32_t fwdRecCnt, bwdRecCnt, fwdAccaCnt, bwdAccaCnt; //
     // Mesh Coordinates
-    uint32_t x, y;
-    // Mesh Dimnesions
-    uint32_t xmax, ymax;
+    uint32_t x, y; //
+    // Match
+    uint32_t match; //
     // Ready Flags
-    uint32_t readyflags;
+    uint32_t rdyFlags; //
     // Sent Flags
-    uint32_t sentflags;
-    // Initial Probability
-    float initprob;
-    // Transition Probability
-    float transprob;
-    // Emission Probability
-    float emisprob;
+    uint32_t sentFlags; //
     // Node Alphas
-    float alpha;
+    float alpha; //
     // Node Betas
-    float beta;
-    // Node Posteriors
-    float posterior;
-    // P(O|lambda)
-    float answer;
+    float beta; //
+    // Node Betas
+    float fwdSame; //
+    // Node Betas
+    float fwdDiff; //
+    // Node Betas
+    float bwdSame; //
+    // Node Betas
+    float bwdDiff; //
+    // Last Node in Column Only
+    // Node Betas
+    float betaPosterior; //
+    // Node Betas
+    float alphaPosterior; //
+    // Node Old Alphas
+    float oldAlpha; //
+    // Node Old Betas
+    float oldBeta; //
     
-    #ifdef IMPDEBUG
+    
+#ifdef LINEARINTERP    
+    // Linear Interpolation Results
+    // Alpha
+    float alphaLin[LINRATIO - 1u];
+    // Beta
+    float betaLin[LINRATIO - 1u];
+    // Previous Alpha
+    float prevAlpha;
+    // Previous Beta
+    float prevBeta;
+#endif
+    
+#ifdef IMPDEBUG
         // Step Counter
         uint32_t stepcount;
-    #endif
+#endif
     
 };
 
@@ -68,9 +97,15 @@ struct ImpDevice : PDevice<ImpState, None, ImpMessage> {
     // Called once by POLite at start of execution
     inline void init() {
         
-        #ifdef IMPDEBUG
-            s->stepcount = 0;
-        #endif
+        s->fwdRecCnt = 0u;
+        s->bwdRecCnt = 0u;
+        s->fwdAccaCnt = 0u;
+        s->bwdAccaCnt = 0u;
+        s->rdyFlags = 0u;
+        s->sentFlags = 0u;
+        
+        s->alpha = 0.0f;
+        s->beta = 0.0f;
         
         *readyToSend = No;
         
@@ -79,48 +114,67 @@ struct ImpDevice : PDevice<ImpState, None, ImpMessage> {
     // Send handler
     inline void send(volatile ImpMessage* msg) {
         
-        if (*readyToSend == Pin(ALPHAINDUCT)) {
+        if (*readyToSend == Pin(FORWARD)) {
             
-            msg->msgtype = ALPHAINDUCT;
+            msg->msgtype = FORWARD;
+            msg->stateNo = s->y;
             msg->val = s->alpha;
-            s->sentflags |= ALPHA;
+            
+            s->sentFlags |= ALPHA;
         
         }
         
-        if (*readyToSend == Pin(BETAINDUCT)) {
+        if (*readyToSend == Pin(BACKWARD)) {
             
-            msg->msgtype = BETAINDUCT;
+            msg->msgtype = BACKWARD;
+            msg->stateNo = s->y;
+            msg->match = s->match;
             msg->val = s->beta;
-            s->sentflags |= BETA;
+            
+            s->sentFlags |= BETA;
 
         }
         
-        if (*readyToSend == Pin(TERMINATION)) {
+        if (*readyToSend == Pin(FWDACCA)) {
             
-            msg->msgtype = TERMINATION;
-            msg->val = s->posterior;
+            msg->msgtype = FWDACCA;
+            msg->val = s->oldAlpha;
             
-        }
-        
-        if (*readyToSend == HostPin) {
-            
-            #ifndef IMPDEBUG
-                msg->msgtype = s->ccountu;
-                msg->val = s->ccountl;
-            #endif
+            s->sentFlags |= ALPHAACCA;
         
         }
         
-        if ((s->readyflags & ALPHA) && !(s->sentflags & ALPHA)) {
+        if (*readyToSend == Pin(BWDACCA)) {
+            
+            msg->msgtype = BWDACCA;
+            msg->val = s->oldBeta;
+            
+            s->sentFlags |= BETAACCA;
+        
+        }
+        
+        if ((s->rdyFlags & ALPHA) && !(s->sentFlags & ALPHA)) {
             // Have We calculated alpha but not sent it?
             
-            *readyToSend = Pin(ALPHAINDUCT);
+            *readyToSend = Pin(FORWARD);
             
         }
-        else if ((s->readyflags & BETA) && !(s->sentflags & BETA)) {
+        else if ((s->rdyFlags & BETA) && !(s->sentFlags & BETA)) {
             // Have We calculated beta but not sent it?
             
-            *readyToSend = Pin(BETAINDUCT);
+            *readyToSend = Pin(BACKWARD);
+            
+        }
+        else if ((s->rdyFlags & ALPHAACCA) && !(s->sentFlags & ALPHAACCA)) {
+            // Have We calculated alpha but not sent it?
+            
+            *readyToSend = Pin(FWDACCA);
+            
+        }
+        else if ((s->rdyFlags & BETAACCA) && !(s->sentFlags & BETAACCA)) {
+            // Have We calculated beta but not sent it?
+            
+            *readyToSend = Pin(BWDACCA);
             
         }
         else {
@@ -134,26 +188,43 @@ struct ImpDevice : PDevice<ImpState, None, ImpMessage> {
         
         
         // Received Alpha Inductive Message (Forward Algo)
-        if (msg->msgtype == ALPHAINDUCT) {
+        if (msg->msgtype == FORWARD) {
 
-            s->alpha += msg->val * s->transprob;
-            s->aindreccount++;
+            if (msg->stateNo == s->y) {
+                
+                s->alpha += msg->val * s->fwdSame;
+#ifdef LINEARINTERP                 
+                s->prevAlpha = msg->val;
+#endif                
+            }
+            else {
+                
+                s->alpha += msg->val * s->fwdDiff;
+                
+            }
+            
+            s->fwdRecCnt++;
             
             // Has the summation of the alpha been calculated?
-            if (s->aindreccount == s->ymax) {
+            if (s->fwdRecCnt == NOOFSTATES) {
                 
                 // Calculate the final alpha
-                s->alpha = s->alpha * s->emisprob;
-                
-                s->posterior = s->posterior * s->alpha;
-                
-                // Send alpha inductively if not in last column else send termination if in last column and not in last row
-                if ((s->x) != (s->xmax)-1) {
-                    s->readyflags |= ALPHA;
-                    *readyToSend = Pin(ALPHAINDUCT);
+                if (s->match == 1u) {
+                    s->alpha = s->alpha * (1.0f - (1.0f / ERRORRATE));
                 }
-                else if ((s->y) != (s->ymax)-1) {
-                    *readyToSend = Pin(TERMINATION);
+                else {
+                    s->alpha = s->alpha * (1.0f / ERRORRATE);
+                }
+                
+                
+                // Send alpha inductively if not in last column
+                if ( (s->x) != (NOOFOBS - 1u) ) {
+                    s->rdyFlags |= ALPHA;
+                }
+                
+                // Send alpha accumulation message
+                if (s->y != NOOFSTATES - 1) {
+                    s->rdyFlags |= ALPHAACCA;
                 }
                 
             }
@@ -161,46 +232,79 @@ struct ImpDevice : PDevice<ImpState, None, ImpMessage> {
         }
         
         
-        if (msg->msgtype == BETAINDUCT) {
+        if (msg->msgtype == BACKWARD) {
             
-            s->beta += msg->val * s->transprob * s->emisprob;
-            s->bindreccount++;
+            float emissionProb = 0.0f;
+         
+            if (msg->match == 1u) {
+                emissionProb = (1.0f - (1.0f / ERRORRATE));
+            }
+            else {
+                emissionProb = (1.0f / ERRORRATE);
+            }
+            
+            if (msg->stateNo == s->y) {
+                
+                s->beta += msg->val * s->bwdSame * emissionProb;
+#ifdef LINEARINTERP                 
+                s->prevBeta = msg->val;
+#endif                
+            }
+            else {
+                
+                s->beta += msg->val * s->bwdDiff * emissionProb;
+                
+            }
+            
+            s->bwdRecCnt++;
             
             // Has the summation of the beta been calculated?
-            if (s->bindreccount == s->ymax) {
-                
-                s->posterior = s->posterior * s->beta;
+            if (s->bwdRecCnt == NOOFSTATES) {
                 
                 // Send beta message if we are not the first node
-                if ((s->x) != 0) {
-                    s->readyflags |= BETA;
-                    *readyToSend = Pin(BETAINDUCT);
+                if ((s->x) != 0u) {
+                    s->rdyFlags |= BETA;
                 }
+                
+                // Send alpha accumulation message
+                if (s->y != NOOFSTATES - 1) {
+                    s->rdyFlags |= BETAACCA;
+                }
+                
 
                     
             }
         
         }
         
-        
-        if (msg->msgtype == TERMINATION) {
-            s->answer += msg->val;
-            s->finreccount++;
+        // Received Alpha Accumulation Message (Forward Algo)
+        if (msg->msgtype == FWDACCA) {
+            
+            s->fwdAccaCnt++;
+            s->alphaPosterior += msg->val;
+            
+            if (s->fwdAccaCnt == NOOFSTATES - 1) {
+                
+                s->alphaPosterior += s->oldAlpha;
+                s->rdyFlags |= ALPHAPOST;
+                
+            }
             
         }
         
-        // Have all termination and alpha messages been received for the final node?
-        if ((s->finreccount == (s->ymax-1)) && (s->aindreccount == s->ymax)) {
-            // Add own alpha for final answer
-            s->answer += s->posterior;
+        // Received Beta Accumulation Message (Forward Algo)
+        if (msg->msgtype == BWDACCA) {
             
-            #ifdef TINSEL
-                tinselPerfCountStop();
-                s->ccountl = tinselCycleCount();
-                s->ccountu = tinselCycleCountU();
-            #endif
+            s->bwdAccaCnt++;
+            s->betaPosterior += msg->val;
             
-            *readyToSend = HostPin;
+            if (s->bwdAccaCnt == NOOFSTATES - 1) {
+                
+                s->betaPosterior += s->oldBeta;
+                s->rdyFlags |= BETAPOST;
+                
+            }
+            
         }
 
     }
@@ -208,59 +312,94 @@ struct ImpDevice : PDevice<ImpState, None, ImpMessage> {
     // Called by POLite when system becomes idle
     inline bool step() {
         
-        // If we are the last node, reset and start the cycle counters
-        if (((s->x) == (s->xmax)-1) && ((s->y) == (s->ymax)-1)) {
-            #ifdef TINSEL
-                tinselPerfCountReset();
-                tinselPerfCountStart();
-            #endif
-        }
-            
-        #ifdef IMPDEBUG
-        s->stepcount++;
-        
-        if (s->stepcount > 100) {
-            return false;
-        }
-        #endif
+        // Copy Values Over to enable both stages of processing (induction and accumulation)
+        s->oldAlpha = s->alpha;
+        s->oldBeta = s->beta;
         
         // Calculate and send initial alphas
-        if ((s->x == 0) && !(s->sentflags & INIT)) {
+        if ((s->x == 0) && !(s->sentFlags & INIT)) {
             
-            s->alpha = s->initprob * s->emisprob;
-            s->sentflags |= INIT;
-            *readyToSend = Pin(ALPHAINDUCT);
+            s->alpha = 1.0f / NOOFSTATES;
+            s->oldAlpha = 1.0f / NOOFSTATES;
+            s->rdyFlags |= ALPHA;
+            
+            if (s->y != NOOFSTATES - 1) {
+                s->rdyFlags |= ALPHAACCA;
+            }
+            
+            s->sentFlags |= INIT;
+            *readyToSend = Pin(FORWARD);
+            
+            return true;
             
         }
         // Calculate and send initial betas
-        else if (((s->x) == (s->xmax)-1) && !(s->sentflags & FINAL)) {
+        else if (((s->x) == (NOOFOBS - 1u)) && !(s->sentFlags & FINAL)) {
             
-            s->beta = s->initprob;
-            s->sentflags |= FINAL;
-            *readyToSend = Pin(BETAINDUCT);
+            s->beta = 1.0f;
+            s->oldBeta = 1.0f;
+            s->rdyFlags |= BETA;
+            
+            if (s->y != NOOFSTATES - 1) {
+                s->rdyFlags |= BETAACCA;
+            }
+            
+            s->sentFlags |= FINAL;
+            *readyToSend = Pin(BACKWARD);
+            
+            return true;
             
         }
         
-        return true;
+        if ((s->rdyFlags & ALPHA) && !(s->sentFlags & ALPHA)) {
+            
+            *readyToSend = Pin(FORWARD);
+            
+            return true;
+            
+        }
+        
+        if ((s->rdyFlags & BETA) && !(s->sentFlags & BETA)) {
+            
+            *readyToSend = Pin(BACKWARD);
+            
+            return true;
+            
+        }
+        
+        if ((s->rdyFlags & ALPHAACCA) && !(s->sentFlags & ALPHAACCA)) {
+            
+            *readyToSend = Pin(FWDACCA);
+            
+            return true;
+            
+        }
+        
+        if ((s->rdyFlags & BETAACCA) && !(s->sentFlags & BETAACCA)) {
+            
+            *readyToSend = Pin(BWDACCA);
+            
+            return true;
+            
+        }
+        
+        // There is nothing to be sent
+        return false;
         
     }
 
     // Optionally send message to host on termination
     inline bool finish(volatile ImpMessage* msg) {
-        
+
         #ifdef IMPDEBUG
         
             msg->msgtype = s->id;
-            msg->val = s->posterior;
+            msg->val = (float)s->alpha;
             return true;
         
         #endif
         
-
         return false;
-
-        
-        
 
     }
 };

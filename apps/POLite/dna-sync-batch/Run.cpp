@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: BSD-2-Clause
 #include "impute.h"
 #include "model.h"
+#include "myPOLite.h"
+#include "params.h"
 
 #include <HostLink.h>
-#include <POLite.h>
 #include <EdgeList.h>
 #include <sys/time.h>
 
@@ -17,17 +18,13 @@
  * PLEASE NOTE:
  * To Be Completed ...
  * 
- * ssh jordmorr@ayres.cl.cam.ac.uk
- * scp -r C:\Users\drjor\Documents\tinsel\apps\POLite\dna-sync-batch jordmorr@ayres.cl.cam.ac.uk:~/tinsel/apps/POLite
- * scp jordmorr@ayres.cl.cam.ac.uk:~/tinsel/apps/POLite/dna-sync-batch/build/stats.txt C:\Users\drjor\Documents\tinsel\apps\POLite\dna-sync-batch
+ * ssh jordmorr@byron.cl.cam.ac.uk
+ * scp -r C:\Users\drjor\Documents\tinsel\apps\POLite\dna-sync-batch jordmorr@byron.cl.cam.ac.uk:~/tinsel/apps/POLite
+ * scp jordmorr@byron.cl.cam.ac.uk:~/tinsel/apps/POLite/dna-sync-batch/build/results.csv C:\Users\drjor\Documents\tinsel\apps\POLite\dna-sync-batch
  * ****************************************************/
 
 int main(int argc, char **argv)
 {
-    
-    uint32_t lower_count = 1u;
-    uint64_t upper_count = 1u;
-    double total_time = 0.0f;
     
     // Start timer for mesh creation and mapping
     struct timeval start_map, finish_map, diff_map;
@@ -50,10 +47,10 @@ int main(int argc, char **argv)
     }
     
     
-
+    
     // Add induction edges
     // Forward Connections
-    for (uint32_t x = 0; x < NOOFOBS-1; x++) {
+    for (uint32_t x = 0; x < NOOFOBS - 1; x++) {
         for (uint32_t y = 0; y < NOOFSTATES; y++) {
             
             for (uint32_t z = 0; z < NOOFSTATES; z++) {
@@ -62,6 +59,7 @@ int main(int argc, char **argv)
 
         }
     }
+    
     
     // Backward Connections
     for (uint32_t x = 1; x < NOOFOBS; x++) {
@@ -74,11 +72,48 @@ int main(int argc, char **argv)
         }
     }
     
+    // Forward Linear Interpolation Messages
+    for (uint32_t x = 0; x < NOOFOBS - 1; x++) {
+        for (uint32_t y = 0; y < NOOFSTATES; y++) {
+            
+            graph.addEdge(mesh[y][x], 2, mesh[y][x+1]);
+            
+        }
+    }
+    
+    // Backward Linear Interpolation Messages
+    for (uint32_t x = 1; x < NOOFOBS; x++) {
+        for (uint32_t y = 0; y < NOOFSTATES; y++) {
+            
+            graph.addEdge(mesh[y][x], 3, mesh[y][x-1]);
+            
+        }
+    }
+    
+    // Forward Accumulation Messages
+    for (uint32_t x = 0; x < NOOFOBS; x++) {
+        for (uint32_t y = 0; y < NOOFSTATES - 1; y++) {
+            
+            graph.addEdge(mesh[y][x], 4, mesh[NOOFSTATES - 1][x]);
+            
+        }
+    }
+    
+    // Backward Accumulation Messages
+    for (uint32_t x = 0; x < NOOFOBS; x++) {
+        for (uint32_t y = 0; y < NOOFSTATES - 1; y++) {
+            
+            graph.addEdge(mesh[y][x], 5, mesh[NOOFSTATES - 1][x]);
+            
+        }
+    }
+    
+    /*
     // Add termination edges
     for (uint32_t y = 0; y < NOOFSTATES-1; y++) {
         graph.addEdge(mesh[y][NOOFOBS-1], 2, mesh[NOOFSTATES-1][NOOFOBS-1]);
     }
-
+    */
     // Prepare mapping from graph to hardware
     graph.mapVerticesToDRAM = true;
     graph.map();
@@ -91,10 +126,37 @@ int main(int argc, char **argv)
     // Start timer for mesh init
     struct timeval start_init, finish_init, diff_init;
     gettimeofday(&start_init, NULL);
-
+    
     // Initialise device coordinates/dimensions
-    for (uint32_t y = 0; y < NOOFSTATES; y++) {
-        for (uint32_t x = 0; x < NOOFOBS; x++) {
+    for (uint32_t x = 0; x < NOOFOBS; x++) {
+        
+        float tau_m0 = 0u;
+        float same0 = 0u;
+        float diff0 = 0u;
+        
+        // Tau M Values
+        if (x != 0u) {
+            
+            tau_m0 = (1 - exp((-4 * NE * dm[x - 1u]) / NOOFSTATES));
+            same0 = (1 - tau_m0) + (tau_m0 / NOOFSTATES);
+            diff0 = tau_m0 / NOOFSTATES;
+            
+            
+        }
+        
+        float tau_m1 = 0u;
+        float same1 = 0u;
+        float diff1 = 0u;
+        
+        if ((x != (NOOFOBS - 1u))) {
+            
+            tau_m1 = (1 - exp((-4 * NE * dm[x]) / NOOFSTATES));
+            same1 = (1 - tau_m1) + (tau_m1 / NOOFSTATES);
+            diff1 = tau_m1 / NOOFSTATES;
+            
+        }
+        
+        for (uint32_t y = 0; y < NOOFSTATES; y++) {
                 
             // Initialise device IDs
             graph.devices[mesh[y][x]]->state.id = mesh[y][x];
@@ -102,40 +164,26 @@ int main(int argc, char **argv)
             // Initialise Mesh coordinates on devices
             graph.devices[mesh[y][x]]->state.x = x;
             graph.devices[mesh[y][x]]->state.y = y;
-
-            //Inform each device of matrix size for message passing decisions
-            graph.devices[mesh[y][x]]->state.xmax = NOOFOBS;
-            graph.devices[mesh[y][x]]->state.ymax = NOOFSTATES;
             
-            // Initialise Sentflags
-            graph.devices[mesh[y][x]]->state.sentflags = 0;
+            uint32_t match = 0u;
             
-            // Initialise Counters
-            graph.devices[mesh[y][x]]->state.aindreccount = 0;
-            graph.devices[mesh[y][x]]->state.bindreccount = 0;
-            graph.devices[mesh[y][x]]->state.finreccount = 0;
-            
-            // Initialise known values
-            if (x == 0) {
-                graph.devices[mesh[y][x]]->state.initprob = init_prob[y];
-            }
-            if (x == NOOFOBS-1) {
-                graph.devices[mesh[y][x]]->state.initprob = 1;
+            if (hmm_labels[y][x] == observation[x][1]) {
+                match = 1u;
             }
             
-            graph.devices[mesh[y][x]]->state.transprob = (1.0 / NOOFSTATES);
+            // Initialise Match Value
+            graph.devices[mesh[y][x]]->state.match = match;
             
-            graph.devices[mesh[y][x]]->state.emisprob = 0.9999;
-
-            // Initialise Values
-            graph.devices[mesh[y][x]]->state.alpha = 0.0;
-            graph.devices[mesh[y][x]]->state.beta = 0.0;
-            graph.devices[mesh[y][x]]->state.posterior = 1.0;
-            graph.devices[mesh[y][x]]->state.answer = 0.0;
+            // Initialise Transition Probabilities
+            graph.devices[mesh[y][x]]->state.bwdSame = same0;
+            graph.devices[mesh[y][x]]->state.bwdDiff = diff0;
+            graph.devices[mesh[y][x]]->state.fwdSame = same1;
+            graph.devices[mesh[y][x]]->state.fwdDiff = diff1;
+            
             
         }
     }
-
+    
     // Write graph down to tinsel machine via HostLink
     graph.write(&hostLink);
 
@@ -143,86 +191,131 @@ int main(int argc, char **argv)
     hostLink.boot("code.v", "data.v");
     hostLink.go();
     printf("Starting\n");
+    
+    // Consume performance stats
+    politeSaveStats(&hostLink, "stats.txt");
   
       // Record init time
     gettimeofday(&finish_init, NULL);
     timersub(&finish_init, &start_init, &diff_init);
     double init_duration = (double) diff_init.tv_sec + (double) diff_init.tv_usec / 1000000.0;
     
-    // Start timer for overall processing
-    struct timeval start_proc, finish_proc, diff_proc;
-    gettimeofday(&start_proc, NULL);  
-    
-    #ifndef IMPDEBUG
-        //JPMREAL
+#ifdef IMPDEBUG
+        
+        /*
         // Allocate array to contain final value of each device
-        //float result = 0.0f;
+        static float result[NOOFOBS] {};
 
-        // Receive message
-        PMessage<None, ImpMessage> msg;
-        hostLink.recvMsg(&msg, sizeof(msg));
-        gettimeofday(&finish_proc, NULL);
-        
-        // Save final value
-        //result = msg.payload.val;
-        
-        lower_count = msg.payload.val;
-        upper_count = msg.payload.msgtype;
+        // Receive final value of each device
+        for (uint32_t i = 0; i < (NOOFOBS); i++) {
+            
+            //printf("%d received \n", i);
+            
+            // Receive message
+            PMessage<ImpMessage> msg;
+            hostLink.recvMsg(&msg, sizeof(msg));
 
-        timersub(&finish_proc, &start_proc, &diff_proc);
-        double proc_duration = (double) diff_proc.tv_sec + (double) diff_proc.tv_usec / 1000000.0;
-        
-        //total_time = ((upper_count << 32) + lower_count) / (TinselClockFreq * 1000000.0);
-           
-        //printf("%f\n", result);
-        #ifdef CYCDEBUG
-        //JPM CYCLE DEBUG
-        printf("%ld,%d,%lf", upper_count, lower_count, total_time);
-        #else
-        //JPM STANDARD DEBUG
-        printf("%lf,%lf,%lf", map_duration, init_duration, total_time);
-        #endif
+            // Save final value
+            result[graph.devices[msg.payload.msgtype]->state.x] = msg.payload.val;
+            
+        }
 
-    #endif
-    
-    #ifdef IMPDEBUG
-        //JPMDEBUG
-        // Allocate array to contain final value of each device
+        //Create a file pointer
+        FILE * fp;
+        // open the file for writing
+        fp = fopen ("results.csv","w");
+
+        uint32_t alphaSelect = 1u;
+        
+        if (alphaSelect) {
+
+            for (uint32_t x = 0u; x < NOOFOBS; x++) {
+            
+                if (x != (NOOFOBS - 1u) ) {
+                    fprintf(fp, "%e,", result[x]);
+                }
+                else {
+                    fprintf(fp, "%e", result[x]);
+                }
+            
+            }
+                
+        }
+        else {
+            
+            for (uint32_t x = 0u; x < NOOFOBS; x++) {
+        
+                if (x != (NOOFOBS - 1u) ) {
+                    fprintf(fp, "%e,", result[(NOOFOBS - 1) - x]);
+                }
+                else {
+                    fprintf(fp, "%e", result[(NOOFOBS - 1) - x]);
+                }
+        
+            }  
+
+        }
+        
+        // close the file 
+        fclose (fp);
+        */
+        
         float result[NOOFSTATES][NOOFOBS] {};
 
         // Receive final value of each device
         for (uint32_t i = 0; i < (NOOFSTATES*NOOFOBS); i++) {
             
-            //printf("%d received \n", i);
-            
             // Receive message
-            PMessage<None, ImpMessage> msg;
+            PMessage<ImpMessage> msg;
             hostLink.recvMsg(&msg, sizeof(msg));
-            if (i == 0) gettimeofday(&finish_proc, NULL);
 
             // Save final value
             result[graph.devices[msg.payload.msgtype]->state.y][graph.devices[msg.payload.msgtype]->state.x] = msg.payload.val;
             
         }
 
-        // Display time
-        timersub(&finish_proc, &start_proc, &diff_proc);
-        double proc_duration = (double) diff_proc.tv_sec + (double) diff_proc.tv_usec / 1000000.0;
-
-        for (uint32_t y = 0; y < NOOFSTATES; y++) {
-            for (uint32_t x = 0; x < NOOFOBS; x++) {
+        //Create a file pointer
+        FILE * fp;
+        // open the file for writing
+        fp = fopen ("results.csv","w");
+        
+        uint32_t alphaSelect = 1u;
+        
+        if (alphaSelect) {
+        
+            for (uint32_t y = 0u; y < NOOFSTATES; y++) {
+                for (uint32_t x = 0u; x < NOOFOBS; x++) {
                 
-                printf("%f ", result[y][x]);
+                    if (x != (NOOFOBS - 1u) ) {
+                        fprintf(fp, "%e,", result[y][x]);
+                    }
+                    else {
+                        fprintf(fp, "%e", result[y][x]);
+                    }
                 
+                }
+                fprintf(fp, "\n");
             }
-            
-            printf("\n");
-            
         }
-    #endif
-
-    // Consume performance stats
-    politeSaveStats(&hostLink, "stats.txt");
+        else {
+            for (uint32_t y = 0u; y < NOOFSTATES; y++) {
+                for (uint32_t x = 0u; x < NOOFOBS; x++) {
+                
+                    if (x != (NOOFOBS - 1u) ) {
+                        fprintf(fp, "%e,", result[y][(NOOFOBS - 1) - x]);
+                    }
+                    else {
+                        fprintf(fp, "%e", result[y][(NOOFOBS - 1) - x]);
+                    }
+                
+                }
+                fprintf(fp, "\n");
+            }
+        }
+        // close the file 
+        fclose (fp);
+        
+#endif
 
     printf("Finished\n");
     
