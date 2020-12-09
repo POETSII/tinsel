@@ -209,11 +209,13 @@ struct ImpDevice : PDevice<ImpState, None, ImpMessage> {
             if (s->fwdRecCnt == NOOFSTATES) {
                 
                 // Calculate the final alpha
-                if (s->match == 1u) {
-                    s->alpha = s->alpha * (1.0f - (1.0f / ERRORRATE));
-                }
-                else {
-                    s->alpha = s->alpha * (1.0f / ERRORRATE);
+                if (s->match != 2u) {
+                    if (s->match == 1u) {
+                        s->alpha = s->alpha * (1.0f - (1.0f / ERRORRATE));
+                    }
+                    else {
+                        s->alpha = s->alpha * (1.0f / ERRORRATE);
+                    }
                 }
                 
                 
@@ -235,8 +237,11 @@ struct ImpDevice : PDevice<ImpState, None, ImpMessage> {
         if (msg->msgtype == BACKWARD) {
             
             float emissionProb = 0.0f;
-         
-            if (msg->match == 1u) {
+            
+            if (msg->match == 2u) {
+                emissionProb = 1.0f;
+            }
+            else if (msg->match == 1u) {
                 emissionProb = (1.0f - (1.0f / ERRORRATE));
             }
             else {
@@ -394,7 +399,8 @@ struct ImpDevice : PDevice<ImpState, None, ImpMessage> {
         #ifdef IMPDEBUG
         
             msg->msgtype = s->id;
-            msg->val = (float)s->alpha;
+            msg->val = (float)s->beta;
+            //msg->val = s->fwdDiff;
             return true;
         
         #endif

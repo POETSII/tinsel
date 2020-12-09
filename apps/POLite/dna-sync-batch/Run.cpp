@@ -130,27 +130,27 @@ int main(int argc, char **argv)
     // Initialise device coordinates/dimensions
     for (uint32_t x = 0; x < NOOFOBS; x++) {
         
-        float tau_m0 = 0u;
-        float same0 = 0u;
-        float diff0 = 0u;
+        float tau_m0 = 0.0f;
+        float same0 = 0.0f;
+        float diff0 = 0.0f;
         
         // Tau M Values
-        if (x != 0u) {
+        if ((x != (NOOFOBS - 1u))) {
             
-            tau_m0 = (1 - exp((-4 * NE * dm[x - 1u]) / NOOFSTATES));
+            tau_m0 = (1 - exp((-4 * NE * dm[x]) / NOOFSTATES));
             same0 = (1 - tau_m0) + (tau_m0 / NOOFSTATES);
             diff0 = tau_m0 / NOOFSTATES;
             
             
         }
         
-        float tau_m1 = 0u;
-        float same1 = 0u;
-        float diff1 = 0u;
+        float tau_m1 = 0.0f;
+        float same1 = 0.0f;
+        float diff1 = 0.0f;
         
-        if ((x != (NOOFOBS - 1u))) {
+        if (x != 0u) {
             
-            tau_m1 = (1 - exp((-4 * NE * dm[x]) / NOOFSTATES));
+            tau_m1 = (1 - exp((-4 * NE * dm[x - 1u]) / NOOFSTATES));
             same1 = (1 - tau_m1) + (tau_m1 / NOOFSTATES);
             diff1 = tau_m1 / NOOFSTATES;
             
@@ -167,8 +167,13 @@ int main(int argc, char **argv)
             
             uint32_t match = 0u;
             
-            if (hmm_labels[y][x] == observation[x][1]) {
-                match = 1u;
+            if (observation[x][1] == 2u) {
+                match = 2u;
+            }
+            else {
+                if (hmm_labels[y][x] == observation[x][1]) {
+                    match = 1u;
+                }
             }
             
             // Initialise Match Value
