@@ -11,8 +11,8 @@
  * ************************************************/
 
 // Model Size
-#define NOOFSTATES (40)
-#define NOOFOBS (30720)
+#define NOOFSTATES (8)
+#define NOOFOBS (6144)
 
 #define LINRATIO (10)
 
