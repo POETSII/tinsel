@@ -31,10 +31,10 @@ int main(int argc, char **argv)
     gettimeofday(&start_map, NULL);
     
     // Connection to tinsel machine
-    HostLink hostLink;
+    HostLink hostLink(2, 4);
 
     // Create POETS graph
-    PGraph<ImpDevice, ImpState, None, ImpMessage> graph;
+    PGraph<ImpDevice, ImpState, None, ImpMessage> graph(2, 4);
 
     // Create 2D mesh of devices
     static PDeviceId mesh[NOOFSTATES][NOOFOBS];
@@ -71,7 +71,7 @@ int main(int argc, char **argv)
 
         }
     }
-    
+/*    
     // Forward Linear Interpolation Messages
     for (uint32_t x = 0; x < NOOFOBS - 1; x++) {
         for (uint32_t y = 0; y < NOOFSTATES; y++) {
@@ -89,7 +89,7 @@ int main(int argc, char **argv)
             
         }
     }
-    
+*/    
     // Forward Accumulation Messages
     for (uint32_t x = 0; x < NOOFOBS; x++) {
         for (uint32_t y = 0; y < NOOFSTATES - 1; y++) {
@@ -265,7 +265,7 @@ int main(int argc, char **argv)
         fclose (fp);
         */
         
-        float result[NOOFSTATES][NOOFOBS] {};
+        static float result[NOOFSTATES][NOOFOBS] {};
 
         // Receive final value of each device
         for (uint32_t i = 0; i < (NOOFSTATES*NOOFOBS); i++) {

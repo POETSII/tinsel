@@ -14,8 +14,8 @@ const uint32_t FWDACCA = 4;
 const uint32_t BWDACCA =  5;
 
 // Flags
-const uint32_t INIT = (1 << 0); //1
-const uint32_t FINAL = (1 << 1); //2
+//const uint32_t INIT = (1 << 0); //1
+//const uint32_t FINAL = (1 << 1); //2
 const uint32_t ALPHA = (1 << 2); //4
 const uint32_t BETA = (1 << 3); //8
 const uint32_t ALPHAACCA = (1 << 4); //16
@@ -48,8 +48,12 @@ struct ImpState {
     uint32_t match; //
     // Ready Flags
     uint32_t rdyFlags; //
+    // Next Ready Flags
+    uint32_t nxtRdyFlags; //
     // Sent Flags
     uint32_t sentFlags; //
+    // Target Haplotype Counter
+    uint32_t targCnt;
     // Node Alphas
     float alpha; //
     // Node Betas
@@ -86,8 +90,8 @@ struct ImpState {
 #endif
     
 #ifdef IMPDEBUG
-        // Step Counter
-        uint32_t stepcount;
+        // Sent Counter
+        uint32_t sentCnt;
 #endif
     
 };
@@ -103,9 +107,14 @@ struct ImpDevice : PDevice<ImpState, None, ImpMessage> {
         s->bwdAccaCnt = 0u;
         s->rdyFlags = 0u;
         s->sentFlags = 0u;
+        s->targCnt = 0u;
         
         s->alpha = 0.0f;
         s->beta = 0.0f;
+        
+#ifdef IMPDEBUG
+        s->sentCnt = 0u;
+#endif
         
         *readyToSend = No;
         
@@ -120,7 +129,12 @@ struct ImpDevice : PDevice<ImpState, None, ImpMessage> {
             msg->stateNo = s->y;
             msg->val = s->alpha;
             
+            s->rdyFlags &= (~ALPHA);
             s->sentFlags |= ALPHA;
+            
+#ifdef IMPDEBUG
+            s->sentCnt++;
+#endif
         
         }
         
@@ -131,7 +145,9 @@ struct ImpDevice : PDevice<ImpState, None, ImpMessage> {
             msg->match = s->match;
             msg->val = s->beta;
             
+            s->rdyFlags &= (~BETA);
             s->sentFlags |= BETA;
+        
 
         }
         
@@ -140,6 +156,7 @@ struct ImpDevice : PDevice<ImpState, None, ImpMessage> {
             msg->msgtype = FWDACCA;
             msg->val = s->oldAlpha;
             
+            s->rdyFlags &= (~ALPHAACCA);
             s->sentFlags |= ALPHAACCA;
         
         }
@@ -149,6 +166,7 @@ struct ImpDevice : PDevice<ImpState, None, ImpMessage> {
             msg->msgtype = BWDACCA;
             msg->val = s->oldBeta;
             
+            s->rdyFlags &= (~BETAACCA);
             s->sentFlags |= BETAACCA;
         
         }
@@ -186,7 +204,6 @@ struct ImpDevice : PDevice<ImpState, None, ImpMessage> {
     // Receive handler
     inline void recv(ImpMessage* msg, None* edge) {
         
-        
         // Received Alpha Inductive Message (Forward Algo)
         if (msg->msgtype == FORWARD) {
 
@@ -221,13 +238,15 @@ struct ImpDevice : PDevice<ImpState, None, ImpMessage> {
                 
                 // Send alpha inductively if not in last column
                 if ( (s->x) != (NOOFOBS - 1u) ) {
-                    s->rdyFlags |= ALPHA;
+                    s->nxtRdyFlags |= ALPHA;
                 }
                 
                 // Send alpha accumulation message
                 if (s->y != NOOFSTATES - 1) {
-                    s->rdyFlags |= ALPHAACCA;
+                    s->nxtRdyFlags |= ALPHAACCA;
                 }
+                
+                s->fwdRecCnt = 0u;
                 
             }
         
@@ -268,15 +287,15 @@ struct ImpDevice : PDevice<ImpState, None, ImpMessage> {
                 
                 // Send beta message if we are not the first node
                 if ((s->x) != 0u) {
-                    s->rdyFlags |= BETA;
+                    s->nxtRdyFlags |= BETA;
                 }
                 
                 // Send alpha accumulation message
                 if (s->y != NOOFSTATES - 1) {
-                    s->rdyFlags |= BETAACCA;
+                    s->nxtRdyFlags |= BETAACCA;
                 }
                 
-
+                s->bwdRecCnt = 0u;
                     
             }
         
@@ -291,7 +310,9 @@ struct ImpDevice : PDevice<ImpState, None, ImpMessage> {
             if (s->fwdAccaCnt == NOOFSTATES - 1) {
                 
                 s->alphaPosterior += s->oldAlpha;
-                s->rdyFlags |= ALPHAPOST;
+                s->nxtRdyFlags |= ALPHAPOST;
+                
+                s->fwdAccaCnt = 0u;
                 
             }
             
@@ -306,7 +327,9 @@ struct ImpDevice : PDevice<ImpState, None, ImpMessage> {
             if (s->bwdAccaCnt == NOOFSTATES - 1) {
                 
                 s->betaPosterior += s->oldBeta;
-                s->rdyFlags |= BETAPOST;
+                s->nxtRdyFlags |= BETAPOST;
+                
+                s->bwdAccaCnt = 0u;
                 
             }
             
@@ -321,8 +344,19 @@ struct ImpDevice : PDevice<ImpState, None, ImpMessage> {
         s->oldAlpha = s->alpha;
         s->oldBeta = s->beta;
         
+        // Transfer and CLear Ready Flags
+        s->rdyFlags = s->nxtRdyFlags;
+        s->nxtRdyFlags = 0u;
+        
+        // Clear sent flags
+        s->sentFlags = 0u;
+        
+        // Clear Posterior values -> JPM This needs reading if data is to be transferred out
+        s->alphaPosterior = 0u;
+        s->betaPosterior = 0u;
+        
         // Calculate and send initial alphas
-        if ((s->x == 0) && !(s->sentFlags & INIT)) {
+        if ((s->x == 0) && (s->targCnt < NOOFTARG)) {
             
             s->alpha = 1.0f / NOOFSTATES;
             s->oldAlpha = 1.0f / NOOFSTATES;
@@ -332,14 +366,13 @@ struct ImpDevice : PDevice<ImpState, None, ImpMessage> {
                 s->rdyFlags |= ALPHAACCA;
             }
             
-            s->sentFlags |= INIT;
-            *readyToSend = Pin(FORWARD);
+            //*readyToSend = Pin(FORWARD);
             
-            return true;
+            //return true;
             
         }
         // Calculate and send initial betas
-        else if (((s->x) == (NOOFOBS - 1u)) && !(s->sentFlags & FINAL)) {
+        else if (((s->x) == (NOOFOBS - 1u)) && (s->targCnt < NOOFTARG)) {
             
             s->beta = 1.0f;
             s->oldBeta = 1.0f;
@@ -349,12 +382,13 @@ struct ImpDevice : PDevice<ImpState, None, ImpMessage> {
                 s->rdyFlags |= BETAACCA;
             }
             
-            s->sentFlags |= FINAL;
-            *readyToSend = Pin(BACKWARD);
+            //*readyToSend = Pin(BACKWARD);
             
-            return true;
+            //return true;
             
         }
+        
+        s->targCnt++;
         
         if ((s->rdyFlags & ALPHA) && !(s->sentFlags & ALPHA)) {
             
@@ -399,7 +433,7 @@ struct ImpDevice : PDevice<ImpState, None, ImpMessage> {
         #ifdef IMPDEBUG
         
             msg->msgtype = s->id;
-            msg->val = (float)s->beta;
+            msg->val = (float)s->sentCnt;
             //msg->val = s->fwdDiff;
             return true;
         
