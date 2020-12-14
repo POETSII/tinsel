@@ -31,10 +31,12 @@ int main(int argc, char **argv)
     gettimeofday(&start_map, NULL);
     
     // Connection to tinsel machine
-    HostLink hostLink(2, 4);
+    HostLink hostLink;
+    //HostLink hostLink(2, 4);
 
     // Create POETS graph
-    PGraph<ImpDevice, ImpState, None, ImpMessage> graph(2, 4);
+    PGraph<ImpDevice, ImpState, None, ImpMessage> graph;
+    //PGraph<ImpDevice, ImpState, None, ImpMessage> graph(2, 4);
 
     // Create 2D mesh of devices
     static PDeviceId mesh[NOOFSTATES][NOOFOBS];
@@ -164,6 +166,9 @@ int main(int argc, char **argv)
             // Initialise Mesh coordinates on devices
             graph.devices[mesh[y][x]]->state.x = x;
             graph.devices[mesh[y][x]]->state.y = y;
+            
+            // Initialise Label Values
+            graph.devices[mesh[y][x]]->state.label = hmm_labels[y][x];
             
             uint32_t match = 0u;
             
