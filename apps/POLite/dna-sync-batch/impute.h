@@ -47,8 +47,6 @@ struct ImpState {
     uint32_t label; //
     // Match
     uint32_t match; //
-    // State Flags
-    uint32_t stateFlags; //
     // Ready Flags
     uint32_t rdyFlags; //
     // Next Ready Flags
@@ -61,6 +59,8 @@ struct ImpState {
     float alpha; //
     // Node Betas
     float beta; //
+    // Major Posterior Probability
+    float posterior; //
     // Major Posterior Probability
     float majPosterior; //
     // Minor Posterior Probability
@@ -115,6 +115,7 @@ struct ImpDevice : PDevice<ImpState, None, ImpMessage> {
         
         s->alpha = 0.0f;
         s->beta = 0.0f;
+        s->posterior = 1.0f;
         s->majPosterior = 0.0f;
         s->minPosterior = 0.0f;
         
@@ -160,7 +161,8 @@ struct ImpDevice : PDevice<ImpState, None, ImpMessage> {
         if (*readyToSend == Pin(ACCUMULATE)) {
             
             msg->msgtype = ACCUMULATE;
-            msg->val = s->oldAlpha;
+            msg->match = s->label;
+            msg->val = s->posterior;
             
             s->rdyFlags &= (~ACCA);
             s->sentFlags |= ACCA;
@@ -225,19 +227,16 @@ struct ImpDevice : PDevice<ImpState, None, ImpMessage> {
                     }
                 }
                 
-                // Update posterior probability flags
-                s->stateFlags |= ALPHAPOST;
-                
-                
                 // Send alpha inductively if not in last column
                 if ( (s->x) != (NOOFOBS - 1u) ) {
                     s->nxtRdyFlags |= ALPHA;
                 }
                 
+                // Calculate Posterior
+                s->posterior = s->posterior * s->alpha;
+                
                 // Send accumulation message if posterior probability is complete
-                if ((s->stateFlags & ALPHAPOST) && (s->stateFlags & BETAPOST) && (s->y != NOOFSTATES - 1)) {
-                    
-                    s->alpha = s->alpha * s->beta;
+                if (s->y != NOOFSTATES - 1) {
                     s->nxtRdyFlags |= ACCA;
                 }
                 
@@ -288,10 +287,11 @@ struct ImpDevice : PDevice<ImpState, None, ImpMessage> {
                     s->nxtRdyFlags |= BETA;
                 }
                 
+                // Calculate Posterior
+                s->posterior = s->posterior * s->beta;
+                
                 // Send accumulation message if posterior probability is complete
-                if ((s->stateFlags & ALPHAPOST) && (s->stateFlags & BETAPOST) && (s->y != NOOFSTATES - 1)) {
-                    
-                    s->alpha = s->alpha * s->beta;
+                if (s->y != NOOFSTATES - 1) {
                     s->nxtRdyFlags |= ACCA;
                 }
                 
@@ -323,12 +323,12 @@ struct ImpDevice : PDevice<ImpState, None, ImpMessage> {
                 // If the final node is a major allele . . (alpha at this point = alpha * beta (posterior probability))
                 if (s->label == 0u) {
                     
-                    s->majPosterior += s->alpha;
+                    s->majPosterior += s->posterior;
                     
                 }
                 else {
                     
-                    s->minPosterior += s->alpha;
+                    s->minPosterior += s->posterior;
                     
                 }
                 
