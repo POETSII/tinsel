@@ -10,8 +10,7 @@
 // ImpMessage types
 const uint32_t FORWARD = 0;
 const uint32_t BACKWARD =  1;
-const uint32_t ACCUMULATE = 4;
-//const uint32_t BWDACCA =  5;
+const uint32_t ACCUMULATE = 2;
 
 // Flags
 
@@ -55,12 +54,20 @@ struct ImpState {
     uint32_t sentFlags; //
     // Target Haplotype Counter
     uint32_t targCnt; //
+    // Alpha Counter
+    uint32_t alphaCnt; //
+    // Beta Counter
+    uint32_t betaCnt; //
+    // Current Index
+    uint32_t currentIndex; //
+    // Old Index
+    uint32_t oldIndex; //
     // Node Alphas
     float alpha; //
     // Node Betas
     float beta; //
     // Major Posterior Probability
-    float posterior; //
+    float posterior[NOOFTARG]; //
     // Major Posterior Probability
     float majPosterior; //
     // Minor Posterior Probability
@@ -77,6 +84,10 @@ struct ImpState {
     float oldAlpha; //
     // Node Old Betas
     float oldBeta; //
+    // Node Current Posterior
+    float currentPosterior; //
+    // Node Old Posterior
+    float oldPosterior; //
     
     
 #ifdef LINEARINTERP    
@@ -105,19 +116,22 @@ struct ImpDevice : PDevice<ImpState, None, ImpMessage> {
         
         s->fwdRecCnt = 0u;
         s->bwdRecCnt = 0u;
+        s->alphaCnt = 0u;
+        s->betaCnt = 0u;
         s->accaCnt = 0u;
         s->targCnt = 0u;
         
-        s->stateFlags = 0u;
         s->rdyFlags = 0u;
         s->nxtRdyFlags = 0u;
         s->sentFlags = 0u;
         
         s->alpha = 0.0f;
         s->beta = 0.0f;
-        s->posterior = 1.0f;
         s->majPosterior = 0.0f;
         s->minPosterior = 0.0f;
+        
+        s->currentPosterior = 0.0f;
+        s->currentIndex = 0u;
         
 #ifdef IMPDEBUG
         s->sentCnt = 0u;
@@ -138,10 +152,6 @@ struct ImpDevice : PDevice<ImpState, None, ImpMessage> {
             
             s->rdyFlags &= (~ALPHA);
             s->sentFlags |= ALPHA;
-            
-#ifdef IMPDEBUG
-            s->sentCnt++;
-#endif
         
         }
         
@@ -154,19 +164,17 @@ struct ImpDevice : PDevice<ImpState, None, ImpMessage> {
             
             s->rdyFlags &= (~BETA);
             s->sentFlags |= BETA;
-        
-
         }
         
         if (*readyToSend == Pin(ACCUMULATE)) {
             
             msg->msgtype = ACCUMULATE;
+            msg->stateNo = s->oldIndex;
             msg->match = s->label;
-            msg->val = s->posterior;
+            msg->val = s->oldPosterior;
             
             s->rdyFlags &= (~ACCA);
             s->sentFlags |= ACCA;
-        
         }
         
         if ((s->rdyFlags & ALPHA) && !(s->sentFlags & ALPHA)) {
@@ -227,16 +235,21 @@ struct ImpDevice : PDevice<ImpState, None, ImpMessage> {
                     }
                 }
                 
+                // Increase number of alphas calculated
+                s->alphaCnt++;
+                
                 // Send alpha inductively if not in last column
                 if ( (s->x) != (NOOFOBS - 1u) ) {
                     s->nxtRdyFlags |= ALPHA;
                 }
                 
                 // Calculate Posterior
-                s->posterior = s->posterior * s->alpha;
+                s->posterior[s->alphaCnt - 1u] = s->posterior[s->alphaCnt - 1u] * s->alpha;
                 
                 // Send accumulation message if posterior probability is complete
-                if (s->y != NOOFSTATES - 1) {
+                if ((s->betaCnt >= s->alphaCnt) && (s->y != NOOFSTATES - 1)) {
+                    s->currentPosterior = s->posterior[s->alphaCnt - 1u];
+                    s->currentIndex = s->alphaCnt - 1u;
                     s->nxtRdyFlags |= ACCA;
                 }
                 
@@ -279,8 +292,8 @@ struct ImpDevice : PDevice<ImpState, None, ImpMessage> {
             // Has the summation of the beta been calculated?
             if (s->bwdRecCnt == NOOFSTATES) {
                 
-                // Update posterior probability flags
-                s->stateFlags |= BETAPOST;
+                // Increase number of betas calculated
+                s->betaCnt++;
                 
                 // Send beta message if we are not the first node
                 if ((s->x) != 0u) {
@@ -288,15 +301,17 @@ struct ImpDevice : PDevice<ImpState, None, ImpMessage> {
                 }
                 
                 // Calculate Posterior
-                s->posterior = s->posterior * s->beta;
+                s->posterior[s->betaCnt - 1u] = s->posterior[s->betaCnt - 1u] * s->beta;
                 
                 // Send accumulation message if posterior probability is complete
-                if (s->y != NOOFSTATES - 1) {
+                if ((s->alphaCnt >= s->betaCnt) && (s->y != NOOFSTATES - 1)) {
+                    s->currentPosterior = s->posterior[s->betaCnt - 1u];
+                    s->currentIndex = s->betaCnt - 1u;
                     s->nxtRdyFlags |= ACCA;
                 }
                 
                 s->bwdRecCnt = 0u;
-                    
+
             }
         
         }
@@ -320,21 +335,25 @@ struct ImpDevice : PDevice<ImpState, None, ImpMessage> {
             
             if (s->accaCnt == NOOFSTATES - 1) {
                 
-                // If the final node is a major allele . . (alpha at this point = alpha * beta (posterior probability))
+                // If the final node is a major allele . . (stateNo is holding the posterior index)
                 if (s->label == 0u) {
                     
-                    s->majPosterior += s->posterior;
+                    s->majPosterior += s->posterior[msg->stateNo];
                     
                 }
                 else {
                     
-                    s->minPosterior += s->posterior;
+                    s->minPosterior += s->posterior[msg->stateNo];
                     
                 }
                 
                 s->nxtRdyFlags |= ALLELECNTS;
 
                 s->accaCnt = 0u;
+                
+#ifdef IMPDEBUG
+                s->sentCnt++;
+#endif
                 
             }
             
@@ -348,6 +367,8 @@ struct ImpDevice : PDevice<ImpState, None, ImpMessage> {
         // Copy Values Over to enable both stages of processing (induction and accumulation)
         s->oldAlpha = s->alpha;
         s->oldBeta = s->beta;
+        s->oldPosterior = s->currentPosterior;
+        s->oldIndex = s->currentIndex;
         
         // Clear alpha/beta values ready for next timestep
         s->alpha = 0.0f;
@@ -370,11 +391,9 @@ struct ImpDevice : PDevice<ImpState, None, ImpMessage> {
             s->alpha = 1.0f / NOOFSTATES;
             s->oldAlpha = 1.0f / NOOFSTATES;
             s->rdyFlags |= ALPHA;
-            s->stateFlags |= ALPHAPOST;
             
-            //*readyToSend = Pin(FORWARD);
-            
-            //return true;
+            // Increase number of alphas calculated
+            s->alphaCnt++;
             
         }
         // Calculate and send initial betas
@@ -383,11 +402,9 @@ struct ImpDevice : PDevice<ImpState, None, ImpMessage> {
             s->beta = 1.0f;
             s->oldBeta = 1.0f;
             s->rdyFlags |= BETA;
-            s->stateFlags |= BETAPOST;
             
-            //*readyToSend = Pin(BACKWARD);
-            
-            //return true;
+            // Increase number of betas calculated
+            s->betaCnt++;
             
         }
         

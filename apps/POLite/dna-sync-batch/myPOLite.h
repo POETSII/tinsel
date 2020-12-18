@@ -6,7 +6,7 @@
  * Edit values between here ->
  * ************************************************/
 
-#define POLITE_NUM_PINS 6
+#define POLITE_NUM_PINS 3
 #include <POLite.h>
 
 /***************************************************

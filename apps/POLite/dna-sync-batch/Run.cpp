@@ -31,12 +31,12 @@ int main(int argc, char **argv)
     gettimeofday(&start_map, NULL);
     
     // Connection to tinsel machine
-    HostLink hostLink;
-    //HostLink hostLink(2, 4);
+    //HostLink hostLink;
+    HostLink hostLink(2, 4);
 
     // Create POETS graph
-    PGraph<ImpDevice, ImpState, None, ImpMessage> graph;
-    //PGraph<ImpDevice, ImpState, None, ImpMessage> graph(2, 4);
+    //PGraph<ImpDevice, ImpState, None, ImpMessage> graph;
+    PGraph<ImpDevice, ImpState, None, ImpMessage> graph(2, 4);
 
     // Create 2D mesh of devices
     static PDeviceId mesh[NOOFSTATES][NOOFOBS];
@@ -73,49 +73,16 @@ int main(int argc, char **argv)
 
         }
     }
-/*    
-    // Forward Linear Interpolation Messages
-    for (uint32_t x = 0; x < NOOFOBS - 1; x++) {
-        for (uint32_t y = 0; y < NOOFSTATES; y++) {
-            
-            graph.addEdge(mesh[y][x], 2, mesh[y][x+1]);
-            
-        }
-    }
-    
-    // Backward Linear Interpolation Messages
-    for (uint32_t x = 1; x < NOOFOBS; x++) {
-        for (uint32_t y = 0; y < NOOFSTATES; y++) {
-            
-            graph.addEdge(mesh[y][x], 3, mesh[y][x-1]);
-            
-        }
-    }
-*/    
-    // Forward Accumulation Messages
+  
+    // Accumulation Messages
     for (uint32_t x = 0; x < NOOFOBS; x++) {
         for (uint32_t y = 0; y < NOOFSTATES - 1; y++) {
             
-            graph.addEdge(mesh[y][x], 4, mesh[NOOFSTATES - 1][x]);
+            graph.addEdge(mesh[y][x], 2, mesh[NOOFSTATES - 1][x]);
             
         }
     }
     
-    // Backward Accumulation Messages
-    for (uint32_t x = 0; x < NOOFOBS; x++) {
-        for (uint32_t y = 0; y < NOOFSTATES - 1; y++) {
-            
-            graph.addEdge(mesh[y][x], 5, mesh[NOOFSTATES - 1][x]);
-            
-        }
-    }
-    
-    /*
-    // Add termination edges
-    for (uint32_t y = 0; y < NOOFSTATES-1; y++) {
-        graph.addEdge(mesh[y][NOOFOBS-1], 2, mesh[NOOFSTATES-1][NOOFOBS-1]);
-    }
-    */
     // Prepare mapping from graph to hardware
     graph.mapVerticesToDRAM = true;
     graph.map();
@@ -189,6 +156,12 @@ int main(int argc, char **argv)
             graph.devices[mesh[y][x]]->state.bwdDiff = diff0;
             graph.devices[mesh[y][x]]->state.fwdSame = same1;
             graph.devices[mesh[y][x]]->state.fwdDiff = diff1;
+            
+            // Initialise Posterior Values
+            for (uint32_t i = 0u; i < NOOFTARG; i++) {
+                graph.devices[mesh[y][x]]->state.posterior[i] = 1.0f;
+            }
+            
             
             
         }
