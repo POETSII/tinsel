@@ -2,8 +2,8 @@
 #ifndef _IMPUTE_H_
 #define _IMPUTE_H_
 
-#define POLITE_DUMP_STATS
-#define POLITE_COUNT_MSGS
+//#define POLITE_DUMP_STATS
+//#define POLITE_COUNT_MSGS
 #include "myPOLite.h"
 #include "params.h"
 
@@ -441,18 +441,15 @@ struct ImpDevice : PDevice<ImpState, None, ImpMessage> {
 
     // Optionally send message to host on termination
     inline bool finish(volatile ImpMessage* msg) {
-
-        #ifdef IMPDEBUG
         
-            msg->msgtype = s->id;
-            msg->val = (float)s->sentCnt;
-            //msg->val = s->fwdDiff;
-            return true;
+        msg->msgtype = s->id;
+#ifdef IMPDEBUG
+        msg->val = (float)s->sentCnt;
+#else
+        msg->val = 1.0f;
+#endif
+        return true;
         
-        #endif
-        
-        return false;
-
     }
 };
 

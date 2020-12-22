@@ -176,12 +176,16 @@ int main(int argc, char **argv)
     printf("Starting\n");
     
     // Consume performance stats
-    politeSaveStats(&hostLink, "stats.txt");
+    //politeSaveStats(&hostLink, "stats.txt");
   
       // Record init time
     gettimeofday(&finish_init, NULL);
     timersub(&finish_init, &start_init, &diff_init);
     double init_duration = (double) diff_init.tv_sec + (double) diff_init.tv_usec / 1000000.0;
+    
+    // Start timer for overall processing
+    struct timeval start_proc, finish_proc, diff_proc;
+    gettimeofday(&start_proc, NULL); 
     
 #ifdef IMPDEBUG
         
@@ -297,6 +301,17 @@ int main(int argc, char **argv)
         }
         // close the file 
         fclose (fp);
+       
+#else
+
+    // Receive first message and close timer
+    PMessage<ImpMessage> msg;
+    hostLink.recvMsg(&msg, sizeof(msg));
+    
+    gettimeofday(&finish_proc, NULL);
+    timersub(&finish_proc, &start_proc, &diff_proc);
+    double proc_duration = (double) diff_proc.tv_sec + (double) diff_proc.tv_usec / 1000000.0;
+    printf("%lf\n", proc_duration);
         
 #endif
 
