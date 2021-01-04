@@ -12,8 +12,8 @@ papers:
 * *Termination detection for fine-grained message-passing
   architectures*, ASAP 2020 ([paper](doc/asap-2020-paper.pdf),
   [video](https://sms.cam.ac.uk/media/3258486))
-* *Hardware multicasting for large unstructured communication patterns
-  in manycore architectures* (available soon)
+* *General hardware multicasting for fine-grained message-passing
+  architectures* (available soon)
 
 If you're a POETS partner, you can access a machine running Tinsel in
 the [POETS cloud](https://github.com/POETSII/poets-cloud).
@@ -147,7 +147,7 @@ accelerators](doc/custom) in tiles.
 #### Tinsel FPGA
 
 Each FPGA contains two *Tinsel Slices*, with each slice by default
-comprising eight tiles connected to one 4GB DDR3 DIMM and two 8MB
+comprising eight tiles connected to one 2GB DDR3 DIMM and two 8MB
 QDRII+ SRAMs.  All tiles are connected together via a routers to form
 a 2D NoC.  The NoC is connected to the inter-FPGA links using a
 *per-board programmable router*.  Note that the per-board router also
