@@ -1,19 +1,20 @@
 # Tinsel 0.8.3
 
-Tinsel is a [RISC-V](https://riscv.org/)-based manythread
-message-passing architecture designed for FPGA clusters.  It is being
-developed as part of the [POETS
-project](https://poets-project.org/about) (Partial Ordered Event
-Triggered Systems).  Further background can be found in the following
-papers:
+Tinsel is a [RISC-V](https://riscv.org/) manythread message-passing
+architecture designed for FPGA clusters.  It is being developed as
+part of the [POETS project](https://poets-project.org/about) (Partial
+Ordered Event Triggered Systems).  Further background can be found in
+the following papers:
 
 * *Tinsel: a manythread overlay for FPGA clusters*, FPL 2019
-  ([paper](doc/fpl-2019-paper.pdf))
+  ([paper](https://www.repository.cam.ac.uk/handle/1810/294801))
 * *Termination detection for fine-grained message-passing
-  architectures*, ASAP 2020 ([paper](doc/asap-2020-paper.pdf),
+  architectures*, ASAP 2020
+  ([paper](https://www.repository.cam.ac.uk/handle/1810/307470),
   [video](https://sms.cam.ac.uk/media/3258486))
 * *General hardware multicasting for fine-grained message-passing
-  architectures* (available soon)
+  architectures*, PDP 2021
+  ([paper](https://www.repository.cam.ac.uk/handle/1810/317181))
 
 If you're a POETS partner, you can access a machine running Tinsel in
 the [POETS cloud](https://github.com/POETSII/poets-cloud).
@@ -35,7 +36,7 @@ Released on 10 Sep 2018 and maintained in the
 * [v0.5](https://github.com/POETSII/tinsel/releases/tag/v0.5):
 Released on 8 Jan 2019 and maintained in the
 [tinsel-0.5.1 branch](https://github.com/POETSII/tinsel/tree/tinsel-0.5.1).
-(Hardware termination-detection.)
+(Termination detection.)
 * [v0.6](https://github.com/POETSII/tinsel/releases/tag/v0.6):
 Released on 11 Apr 2019 and maintained in the
 [tinsel-0.6.3 branch](https://github.com/POETSII/tinsel/tree/tinsel-0.6.3).
@@ -43,11 +44,11 @@ Released on 11 Apr 2019 and maintained in the
 * [v0.7](https://github.com/POETSII/tinsel/releases/tag/v0.7):
 Released on 2 Dec 2019 and maintained in the
 [tinsel-0.7.1 branch](https://github.com/POETSII/tinsel/tree/tinsel-0.7.1).
-(Local hardware multicast.)
+(Local multicasting.)
 * [v0.8](https://github.com/POETSII/tinsel/releases/tag/v0.8):
 Released on 1 Jul 2020 and maintained in the
 [master branch](https://github.com/POETSII/tinsel/).
-(Distributed hardware multicast.)
+(Distributed multicasting.)
 
 ## Contents
 
@@ -95,18 +96,18 @@ main features are:
     instructions for sending and receiving messages 
     between any two threads in the cluster.
 
-  * **Hardware termination-detection**.  A global termination event is
-    triggered when every thread indicates termination and no messages
-    are in-flight.  Termination can be interpreted as termination of a
-    time step, or termination of the application, supporting
-    both synchronous and asynchronous event-driven systems.
+  * **Termination detection**.  A global termination event is
+    triggered in hardware when every thread indicates termination and
+    no messages are in-flight.  Termination can be interpreted as
+    termination of a time step, or termination of the application,
+    supporting both synchronous and asynchronous event-driven systems.
 
-  * **Local hardware multicast**.  Threads can send a message to
-    multiple collocated destination threads simultaneously, greatly reducing
+  * **Local multicasting**.  Threads can send a message to
+    multiple colocated destination threads simultaneously, reducing
     the number of inter-thread messages in applications exhibiting good
     locality of communication.
 
-  * **Distributed hardware multicast**.  Programmable routers
+  * **Distributed multicasting**.  Programmable routers
     automatically propagate messages to any number of destination
     threads distributed throughout the cluster, minimising inter-FPGA
     bandwidth usage for distributed fanouts.
@@ -147,12 +148,11 @@ accelerators](doc/custom) in tiles.
 #### Tinsel FPGA
 
 Each FPGA contains two *Tinsel Slices*, with each slice by default
-comprising eight tiles connected to one 2GB DDR3 DIMM and two 8MB
-QDRII+ SRAMs.  All tiles are connected together via a routers to form
-a 2D NoC.  The NoC is connected to the inter-FPGA links using a
-*per-board programmable router*.  Note that the per-board router also
-has connections to off-chip memory: this is where the programmable
-routing tables are stored.
+comprising eight tiles connected to a 2GB DDR3 DIMM and two 8MB QDRII+
+SRAMs.  All tiles are connected together via a routers to form a 2D
+NoC.  The NoC is connected to the inter-FPGA links using a *per-board
+programmable router*.  The per-board router also has connections to
+off-chip memory; this is where the routing tables are stored.
 
 <img align="center" src="doc/figures/fpga.png">
 
@@ -178,18 +178,18 @@ requirements, we have developed a per-FPGA *power module*:
 
 <img align="center" src="doc/figures/powerboard.jpg">
 
-It comprises an ARM-microcontroller-based Cypress PSoC 5, extended
-with a custom power and fan management shield.  We have also extended
-the PSoC with a custom FE1.1s-based USB hub, so that the two USB
+It's an ARM-microcontroller-based Cypress PSoC 5, extended with a
+custom power and fan management shield.  We have also extended the
+PSoC with a custom FE1.1s-based USB hub, so that the two USB
 connections to the ARM (debug and UART), and the one to the FPGA
 (JTAG), are all exposed by a single port on the power module, reducing
 cabling and improving air flow.
 
 #### POETS box
 
-A POETS box comprises a modern PC with a disk, a NIC, a PCIe FPGA
+A POETS box contains a modern PC with a disk, a 10G NIC, a PCIe FPGA
 bridge board connecting the PC to the worker FPGAs via SFP+, and two
-FPGA-triplets.
+FPGA-triplets (six worker FPGAs).
 
 <img align="center" src="doc/figures/box.png">
 
