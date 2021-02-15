@@ -14,7 +14,8 @@ the following papers:
   [video](https://sms.cam.ac.uk/media/3258486))
 * *General hardware multicasting for fine-grained message-passing
   architectures*, PDP 2021
-  ([paper](https://www.repository.cam.ac.uk/handle/1810/317181))
+  ([paper](https://www.repository.cam.ac.uk/handle/1810/317181),
+   [video](https://sms.cam.ac.uk/media/3426946))
 
 If you're a POETS partner, you can access a machine running Tinsel in
 the [POETS cloud](https://github.com/POETSII/poets-cloud).
