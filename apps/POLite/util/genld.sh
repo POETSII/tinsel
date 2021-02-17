@@ -1,10 +1,12 @@
 #!/bin/bash
 # SPDX-License-Identifier: BSD-2-Clause
 
+TINSEL_ROOT=${TINSEL_ROOT-../../../}
+
 # Load config parameters
 while read -r EXPORT; do
   eval $EXPORT
-done <<< `python ../../../config.py envs`
+done <<< `python $TINSEL_ROOT/config.py envs`
 
 # Compute space available for instructions
 MaxInstrBytes=$((4 * 2**$LogInstrsPerCore - $MaxBootImageBytes))
