@@ -1,24 +1,12 @@
 # Tinsel 0.8.3
 
-Tinsel is a [RISC-V](https://riscv.org/) manythread message-passing
-architecture designed for FPGA clusters.  It is being developed as
-part of the [POETS project](https://poets-project.org/about) (Partial
-Ordered Event Triggered Systems).  Further background can be found in
-the following papers:
-
-* *Tinsel: a manythread overlay for FPGA clusters*, FPL 2019
-  ([paper](https://www.repository.cam.ac.uk/handle/1810/294801))
-* *Termination detection for fine-grained message-passing
-  architectures*, ASAP 2020
-  ([paper](https://www.repository.cam.ac.uk/handle/1810/307470),
-  [video](https://sms.cam.ac.uk/media/3258486))
-* *General hardware multicasting for fine-grained message-passing
-  architectures*, PDP 2021
-  ([paper](https://www.repository.cam.ac.uk/handle/1810/317181),
-   [video](https://sms.cam.ac.uk/media/3426946))
-
-If you're a POETS partner, you can access a machine running Tinsel in
-the [POETS cloud](https://github.com/POETSII/poets-cloud).
+Tinsel is a manythread [RISC-V](https://riscv.org/) architecture being
+developed as part of the [POETS
+project](https://poets-project.org/about) (Partial Ordered Event
+Triggered Systems).  Further background can be found in our
+[publications](#i-publications).  If you're a POETS partner, you can
+access machines running Tinsel in the [POETS
+cloud](https://github.com/POETSII/poets-cloud).
 
 ## Release Log
 
@@ -53,7 +41,7 @@ Released on 1 Jul 2020 and maintained in the
 
 ## Contents
 
-* [1. Overview](#1-tinsel-overview)
+* [1. Overview](#1-overview)
 * [2. High-Level Structure](#2-high-level-structure)
 * [3. Tinsel Core](#3-tinsel-core)
 * [4. Tinsel Cache](#4-tinsel-cache)
@@ -73,12 +61,13 @@ Released on 1 Jul 2020 and maintained in the
 * [F. Tinsel API](#f-tinsel-api)
 * [G. HostLink API](#g-hostlink-api)
 * [H. Limitations on RV32IMF](#h-limitations-on-rv32imf)
+* [I. Publications](#i-publications)
 
 ## 1. Overview
 
 On the [POETS Project](https://poets-project.org/about), we are
 looking at ways to accelerate applications that are naturally
-expressed as a large number of small processes communicating by
+expressed as large numbers of small processes communicating by
 message-passing.  Our first attempt is based around a manythread
 RISC-V architecture called Tinsel, running on an FPGA cluster.  The
 main features are:
@@ -296,7 +285,7 @@ Single-precision floating-point operations are implemented by the
 *Tinsel FPU*, which may be shared by any number of cores, as defined
 by the `LogCoresPerFPU` parameter.  Note that, because the FPU is
 implemented using IP blocks provided by the FPGA vendor, there are
-some [limitations](h-missing-rv32imf-features) with respect to the
+some [limitations](#h-missing-rv32imf-features) with respect to the
 RISC-V spec.  Most FPU operations have a high latency on the
 [DE5-Net](http://de5-net.terasic.com) (up to 14 clock cycles) so
 multithreading is important for efficient implementation.
@@ -1861,3 +1850,16 @@ inerhit a number of limitations:
   * Floating-point division may not be correctly rounded.
     See [Issue #54](https://github.com/POETSII/tinsel/issues/54)
     for more details.
+
+## I. Publications
+
+* *Tinsel: a manythread overlay for FPGA clusters*, FPL 2019
+  ([paper](https://www.repository.cam.ac.uk/handle/1810/294801))
+* *Termination detection for fine-grained message-passing
+  architectures*, ASAP 2020
+  ([paper](https://www.repository.cam.ac.uk/handle/1810/307470),
+  [video](https://sms.cam.ac.uk/media/3258486))
+* *General hardware multicasting for fine-grained message-passing
+  architectures*, PDP 2021
+  ([paper](https://www.repository.cam.ac.uk/handle/1810/317181),
+   [video](https://sms.cam.ac.uk/media/3426946))
