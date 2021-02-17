@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: BSD-2-Clause
 
 # Tinsel root
-TINSEL_ROOT=../../..
+TINSEL_ROOT ?= ../../..
 
 ifndef QUARTUS_ROOTDIR
   $(error Please set QUARTUS_ROOTDIR)
@@ -41,7 +41,8 @@ $(LIB)/lib.o:
 	make -C $(LIB)
 
 $(BUILD)/link.ld: builddir $(TINSEL_ROOT)/apps/POLite/util/genld.sh
-	$(TINSEL_ROOT)/apps/POLite/util/genld.sh > $(BUILD)/link.ld
+	TINSEL_ROOT=$(TINSEL_ROOT) \
+    $(TINSEL_ROOT)/apps/POLite/util/genld.sh > $(BUILD)/link.ld
 
 $(INC)/config.h: $(TINSEL_ROOT)/config.py
 	make -C $(INC)
