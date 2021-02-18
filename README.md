@@ -5,7 +5,7 @@ developed as part of the [POETS
 project](https://poets-project.org/about) (Partial Ordered Event
 Triggered Systems).  Further background can be found in our
 [publications](#i-publications).  If you're a POETS partner, you can
-access machines running Tinsel in the [POETS
+access Tinsel machines in the [POETS
 cloud](https://github.com/POETSII/poets-cloud).
 
 ## Release Log
