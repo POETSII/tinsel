@@ -30,14 +30,13 @@ typedef int32_t PinId;
 typedef uint8_t PPin;
 const PPin No = 0;
 const PPin HostPin = 1;
-inline PPin Pin(unsigned n){
-    assert(n<POLITE_NUM_PINS);
+inline constexpr PPin Pin(unsigned n){
     return ((n)+2);
 }
 
 const unsigned  TinselLogWordsPerMsg = 16;
 const unsigned TinselLogBytesPerWord = 2;
-
+const unsigned TinselLogBytesPerFlit = 4;
 
 
 // For template arguments that are not used
@@ -258,12 +257,12 @@ public:
 
     void addLabelledEdge(E edge, PDeviceId from, PinId pin, PDeviceId to)
     {
-        assert(pin<POLITE_NUM_PINS);
+        assert(2<=pin && pin<2+POLITE_NUM_PINS);
         std::shared_ptr<PState> dstDev=devices.at(to);
         std::shared_ptr<PState> srcDev=devices.at(from);
         unsigned key=dstDev->incoming.size();      
         dstDev->incoming.push_back(edge);
-        srcDev->outgoing[pin+2].push_back({to,key});  
+        srcDev->outgoing[pin].push_back({to,key});  
     }
 
     bool mapVerticesToDRAM=false; // Dummy flag
@@ -305,7 +304,39 @@ public:
 
 private:
     std::vector<DeviceType> device_states;
-    std::vector<std::tuple<PDeviceId,unsigned,M>> messages_in_flight;
+
+    struct transit_msg
+    {
+        unsigned dst;
+        unsigned src;
+        unsigned key;
+        unsigned time;
+        M msg;
+    };
+
+    unsigned time_now=0;
+    unsigned max_time_skew=0;
+    uint64_t messages_sent=0;
+    uint64_t messages_received=0;
+    unsigned messages_in_flight_total=0;
+    uint64_t sum_messages_in_flight_since_last_print=0;
+    unsigned max_in_flight_ever=0;
+    unsigned next_print_time=1000;
+    unsigned time_since_print=0;
+    std::deque<std::vector<transit_msg>> messages_in_flight;
+    std::geometric_distribution<> msg_delay_distribution{0.1};
+
+    void post_message(std::mt19937_64 &rng, unsigned dst, unsigned src, unsigned key, const M &msg)
+    {
+        unsigned distance=msg_delay_distribution(rng);
+        while(messages_in_flight.size() <= distance){
+            messages_in_flight.push_back({});
+        }
+
+        messages_in_flight.at(distance).push_back({dst, src, key, time_now, msg});
+        messages_in_flight_total ++;
+        messages_sent++;
+    }
 public:
 
     virtual void sim_prepare()
@@ -318,8 +349,6 @@ public:
             device_states[i].time=0; // ?
 
             device_states[i].init();
-
-
         }
     }
 
@@ -327,11 +356,22 @@ public:
         std::mt19937_64 &rng,
         std::function<void (void *, size_t)> send_cb
     ){
+        if(time_now >= next_print_time){
+            double avg_in_flight=sum_messages_in_flight_since_last_print / (double)time_since_print;
+            fprintf(stderr, "Sim : time=%u, sent=%llu, recv=%llu, in_flight_now=%u, in_flight_avg=%.1f, in_flight_max=%u max_skew=%u\n", time_now, messages_sent, messages_received, messages_in_flight_total, avg_in_flight, max_in_flight_ever, max_time_skew);
+            next_print_time=(next_print_time*4)/3;
+            sum_messages_in_flight_since_last_print=0;
+            time_since_print=0;
+        }
+        max_in_flight_ever=std::max(max_in_flight_ever, messages_in_flight_total);
+        sum_messages_in_flight_since_last_print += messages_in_flight_total;
+        time_since_print++;
+
         bool idle=true;
         for(unsigned i=0; i<numDevices; i++){
             auto &d=device_states[i];
             if(d._realReadyToSend){
-                if(rng()&1){
+                if((rng()&1)==0){
                     PPin pin=d._realReadyToSend;
 
                     M msg;
@@ -343,7 +383,8 @@ public:
                     }else{
                         //fprintf(stderr, "Send(%u) -> Pin(%d)\n", i, pin-2);
                         for(const auto &e : devices[i]->outgoing[pin]){
-                            messages_in_flight.push_back({e.first,e.second,msg});
+                            //fprintf(stderr, "  ->%u\n", e.first);
+                            post_message(rng, e.first, i, e.second, msg);
                         }
                     }
                 }
@@ -352,23 +393,21 @@ public:
         }
 
         if(!messages_in_flight.empty()){
-            std::vector<std::tuple<PDeviceId,unsigned,M>> next_msgs;
-            for(unsigned i=0; i<messages_in_flight.size(); i++){
-                if(rng()&1){
-                    PDeviceId dstId=std::get<0>(messages_in_flight[i]);
-                    unsigned key=std::get<1>(messages_in_flight[i]);
-                    M msg=std::get<2>(messages_in_flight[i]);
-
-                    E e=devices.at(dstId)->incoming.at(key);
-
-                    device_states[dstId].recv(&msg, &e);
-                }else{
-                    next_msgs.push_back(messages_in_flight[i]);
+            const auto &now=messages_in_flight.front();
+            for(const transit_msg &m : now){
+                unsigned time_skew=time_now - m.time;
+                if(time_skew > max_time_skew){
+                    max_time_skew=time_skew;
                 }
+                device_states[m.dst].recv((M*)&m.msg, &devices[m.dst]->incoming[m.key]);
             }
-            std::swap(messages_in_flight, next_msgs);
+            messages_in_flight_total -= now.size();
+            messages_received += now.size();
+            messages_in_flight.pop_front();
             idle=false;
         }
+
+        time_now++;
 
         if(!idle){
             //fprintf(stderr, "Not idle\n");
@@ -382,6 +421,8 @@ public:
         if(any_active){
             return true;
         }
+
+        time_now++;
 
         for(unsigned i=0; i<numDevices; i++){
             M msg;

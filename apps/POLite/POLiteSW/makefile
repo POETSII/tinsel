@@ -5,13 +5,14 @@ EXISTING = asp-gals asp-sync asp-tiles-sync \
 	hashmin-sync heat-cube-sync heat-gals heat-grid-sync heat-sync \
 	izhikevich-gals izhikevich-sync \
 	nhood-sync \
-	pagerank-gals pagerank-sync
+	pagerank-gals pagerank-sync \
+	izhikevich-clock-tree
 
 CPPFLAGS += -g -pthread -O3 -DNDEBUG=1
 
 define setup_existing
 
-build/existing/$1/%.o : ../$1/%.cpp $(wildcard include/*) $(wildcard include/*/*)
+build/existing/$1/%.o : ../$1/%.cpp $(wildcard include/*) $(wildcard include/*/*) $(wildcard ../$1/*.h)
 	mkdir -p build/existing/$1/
 	echo "Wibble"
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -I include -I ../../../include -c $$< -o $$@
