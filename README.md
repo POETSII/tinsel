@@ -130,7 +130,7 @@ actual numbers of component parts shown will vary.
 A Tinsel tile typically consists of four Tinsel cores sharing a
 mailbox, an FPU, and a data cache.
  
-<img align="center" src="doc/figures/tile.png">
+<img src="doc/figures/tile.png">
 
 There is also experimental support for [custom
 accelerators](doc/custom) in tiles.
@@ -144,7 +144,7 @@ NoC.  The NoC is connected to the inter-FPGA links using a *per-board
 programmable router*.  The per-board router also has connections to
 off-chip memory; this is where the routing tables are stored.
 
-<img align="center" src="doc/figures/fpga.png">
+<img src="doc/figures/fpga.png">
 
 #### FPGA Triplet
 
@@ -181,21 +181,24 @@ A POETS box contains a modern PC with a disk, a 10G NIC, a PCIe FPGA
 bridge board connecting the PC to the worker FPGAs via SFP+, and two
 FPGA-triplets (six worker FPGAs).
 
-<img align="center" src="doc/figures/box.png">
+<img src="doc/figures/box.png">
+
+The innards of a box are visible in this photo of two boxes:
+
+<img src="doc/figures/twobox.jpg">
 
 #### POETS cluster
 
-A multi-box POETS cluster is collection of POETS boxes, with FPGAs
-from different boxes connected via SFP+.  For example, here is a
-of photo of our first two-box cluster.
+The POETS cluster is collection of ten POETS boxes in a 40U rack,
+with FPGAs from different boxes connected via SFP+.
 
-<img align="center" src="doc/figures/twobox.jpg">
+<img height="400" src="doc/figures/rack.jpg">
 
-The complete 8-box DE5-Net POETS cluster has the following 2D
+Eight of the boxes are connected together using the following 2D
 structure (it doesn't yet exploit the PCIe backplanes which permit a
 3D structure).
 
-<img align="center" src="doc/figures/box-mesh.png">
+<img src="doc/figures/box-mesh.png">
 
 There are also plans to develop a modern version of the cluster using
 Stratix 10 devices.
