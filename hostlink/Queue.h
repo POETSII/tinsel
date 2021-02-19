@@ -15,7 +15,7 @@ template <typename T> struct Queue {
   Queue(int n) {
     capacity = n+1;
     data = new T [capacity];
-    size = 0;
+    front = back = size = 0;
   }
 
   inline int space() {
