@@ -191,9 +191,6 @@ The innards of a box are visible in this photo of two boxes:
 
 The POETS cluster is collection of ten POETS boxes in a 40U rack,
 with FPGAs from different boxes connected via SFP+.
-
-<img height="400" src="doc/figures/rack.jpg">
-
 Eight of the boxes are connected together using the following 2D
 structure (it doesn't yet exploit the PCIe backplanes which permit a
 3D structure).
