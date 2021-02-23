@@ -18,6 +18,24 @@ struct EdgeList {
   // First element of each array holds the number of neighbours
   uint32_t** neighbours;
 
+  void clear()
+  {
+    if(neighbours){
+      for(unsigned i=0; i<numNodes; i++){
+        free(neighbours[i]);
+      }
+      free(neighbours);
+    }
+    neighbours=0;
+    numNodes=0;
+    numEdges=0;
+  }
+
+  ~EdgeList()
+  {
+    clear();
+  }
+
   // Read network from file
   void read(const char* filename)
   {
