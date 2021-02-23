@@ -8,6 +8,8 @@
 #include <queue>
 #include <omp.h>
 
+#define POLITE_NOINLINE __attribute__((noinline))
+
 typedef uint32_t PartitionId;
 
 // Partition and place a graph on a 2D mesh
@@ -86,7 +88,7 @@ struct Placer {
   }
 
   // Partition the graph using Metis
-  void partitionMetis() {
+  POLITE_NOINLINE void partitionMetis() {
     // Compute total number of edges
     uint32_t numEdges = 0;
     for (uint32_t i = 0; i < graph->nodeCount(); i++) {
@@ -135,12 +137,12 @@ struct Placer {
           adjncy[next++] = (idx_t) out->elems[j];
       */
      unsigned nIn=graph->fanIn(i);
-     graph->exportIncomingNodeIds(i, nIn, adjncy);
-     adjncy += nIn;
+     graph->exportIncomingNodeIds(i, nIn, adjncy+next);
+     next += nIn;
 
      unsigned nOut=graph->fanOut(i);
-     graph->exportOutgoingNodeIds(i, nOut, adjncy);
-     adjncy += nOut;
+     graph->exportOutgoingNodeIds(i, nOut, adjncy+next);
+     next += nOut;
     }
     xadj[nvtxs] = (idx_t) next;
 
@@ -265,7 +267,7 @@ struct Placer {
   }
 
   // Create subgraph for each partition
-  void computeSubgraphs() {
+  POLITE_NOINLINE void computeSubgraphs() {
     uint32_t numPartitions = width*height;
 
     // Create mapping from node id to subgraph node id
@@ -301,7 +303,7 @@ struct Placer {
   }
 
   // Computes the number of connections between each pair of partitions
-  void computeInterPartitionCounts() {
+  POLITE_NOINLINE  void computeInterPartitionCounts() {
     uint32_t numPartitions = width*height;
 
     // Zero the counts
@@ -329,7 +331,7 @@ struct Placer {
   }
 
   // Create random mapping between partitions and mesh
-  void randomPlacement() {
+  POLITE_NOINLINE void randomPlacement() {
     uint32_t numPartitions = width*height;
 
     // Array of partition ids
@@ -451,7 +453,7 @@ struct Placer {
   }
 
   // Constructor
-  Placer(Graph* g, uint32_t w, uint32_t h) {
+  POLITE_NOINLINE Placer(Graph* g, uint32_t w, uint32_t h) {
     graph = g;
     width = w;
     height = h;
@@ -489,7 +491,7 @@ struct Placer {
   }
 
   // Deconstructor
-  ~Placer() {
+  POLITE_NOINLINE ~Placer() {
     delete [] partitions;
     delete [] subgraphs;
     uint32_t numPartitions = width*height;

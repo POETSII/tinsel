@@ -27,24 +27,58 @@ template <class T> class Seq
     T* elems;
 
     // Constructors
-    Seq() { init(4096/sizeof(T)); }  // dt10 - original default of 4096 bytes creates a lot of memory pressure for large graphs
+    Seq() {
+      maxElems=0;
+      numElems=0;
+      elems=nullptr;
+    }
     Seq(int initialSize) { init(initialSize); }
 
     // Copy constructor
-    Seq(const Seq<T>& seq) {
+    /*Seq(const Seq<T>& seq) {
       init(seq.maxElems);
       numElems = seq.numElems;
       std::copy(seq.elems, seq.elems+seq.numElems, elems);
       //for (int i = 0; i < seq.numElems; i++)
       //  elems[i] = seq.elems[i];
+    }*/
+
+    Seq(const Seq &) = delete;
+
+    Seq(Seq<T>&& seq) {
+      maxElems=seq.maxElems;
+      numElems=seq.numElems;
+      elems=seq.elems;
+      seq.maxElems=0;
+      seq.numElems=0;
+      seq.elems=nullptr;
+    }
+
+    Seq &operator=(const Seq &seq) = delete;
+
+    Seq &operator=(Seq &&seq)
+    {
+      if(this!=&seq){
+        if(elems){
+          delete []elems;
+        }
+        maxElems=seq.maxElems;
+        numElems=seq.numElems;
+        elems=seq.elems;
+        seq.maxElems=0;
+        seq.numElems=0;
+        seq.elems=nullptr;
+      }
+      return *this;
     }
 
     // Set capacity of sequence
     void setCapacity(int n) {
+      assert(numElems <= n);
       maxElems = n;
       T* newElems = new T[maxElems];
       std::move(elems, elems+numElems, newElems);
-      // BUG : dt10 : Pretty sure the upper bound of numElems-1 is a bug?
+      // Originally this assumed that numElems changed _before_ capacity (?)
       //for (int i = 0; i < numElems-1; i++)
       //  newElems[i] = elems[i];
       delete [] elems;
@@ -54,9 +88,11 @@ template <class T> class Seq
     // Extend size of sequence by N
     void extendBy(int n)
     {
-      numElems += n;
-      if (numElems > maxElems)
-        setCapacity(numElems*2);
+      int newNumElems = numElems + n;
+      if (newNumElems  > maxElems){
+        setCapacity(std::max(newNumElems, maxElems*2));
+      }
+      numElems=newNumElems;
     }
 
     // Extend size of sequence by one
@@ -68,16 +104,26 @@ template <class T> class Seq
     // Ensure space for a further N elements
     void ensureSpaceFor(int n)
     {
-      int newNumElems = numElems + n;
-      if (newNumElems > maxElems)
-        setCapacity(newNumElems*2);
+      int newSpace = numElems + n;
+      if (newSpace > maxElems)
+        setCapacity(std::max(newSpace, 2*maxElems));
     }
 
     // Append
-    void append(T x)
+    void append(T &&x)
     {
-      extend();
-      elems[numElems-1] = x;
+      if(numElems==maxElems){
+        setCapacity(std::max(maxElems*2, 16));
+      }
+      elems[numElems++] = std::move(x);
+    }
+
+    void append(const T &x)
+    {
+      if(numElems==maxElems){
+        setCapacity(std::max(maxElems*2, 16));
+      }
+      elems[numElems++] = std::move(x);
     }
 
     // Delete last element
@@ -120,10 +166,7 @@ template <class T> class Seq
       for (int i = 0; i < numElems; i++){
         if (elems[i] == x) {
           std::move(elems+1,elems+numElems, elems);
-          // BUG : dt10. The 
-          /*for (int j = i; j < numElems-1; j++)
-            elems[j] = elems[j+1];
-          */
+          // (Ignore any mention of bugs. dt10 does not read code properly)
           numElems--;
           return;
         }
@@ -133,7 +176,12 @@ template <class T> class Seq
     // Destructor
     ~Seq()
     {
-      delete [] elems;
+      if(elems){
+        delete [] elems;
+        elems=0;
+      }
+      numElems=0;
+      maxElems=0;
     }
 
     const T &operator[](size_t i) const
