@@ -7,6 +7,9 @@
 #include <stdlib.h>
 #include <assert.h>
 
+#include <utility>
+#include <algorithm>
+
 template <class T> class Seq
 {
   private:
@@ -144,6 +147,15 @@ template <class T> class Seq
       assert(i<numElems);
       return elems[i];
     }
+
+    size_t size() const
+    { return numElems; }
+
+    const T *begin() const
+    { return elems; }
+
+    const T *end() const
+    { return elems+numElems; }
 };
 
 // A small sequence is just a sequence with a small initial size

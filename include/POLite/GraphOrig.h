@@ -86,6 +86,12 @@ struct GraphOrig {
     return max;
   }
 
+  unsigned nodeCount() const
+  {
+    return incoming->numElems;
+  }
+
+
   // Determine fan-in of given node
   uint32_t fanIn(NodeId id) {
     return incoming->elems[id]->numElems;

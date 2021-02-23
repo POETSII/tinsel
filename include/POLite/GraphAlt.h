@@ -54,10 +54,17 @@ struct GraphAlt {
     nodes[id].label=lab;
   }
 
+  // Set node label
+  NodeLabel getLabel(NodeId id) {
+    assert(id < nodes.numElems);
+    return nodes[id].label;
+  }
+
   // Add edge using given output pin
   void addEdge(NodeId x, PinId p, NodeId y)
   {
-    nodes[x].outgoing.append({y,p});
+    assert(p>=0); // Not completely sure why PinId is signed; assume it is positive
+    nodes[x].outgoing.append({y,unsigned(p)});
     nodes[x].max_pin=std::max(nodes[x].max_pin, p);
     nodes[y].incoming.append(x);
   }
@@ -80,14 +87,75 @@ struct GraphAlt {
    return nodes[x].max_pin;
   }
 
+  unsigned nodeCount() const
+  {
+    return nodes.numElems;
+  }
+
   // Determine fan-in of given node
-  uint32_t fanIn(NodeId id) {
+  uint32_t fanIn(NodeId id) const {
     return nodes[id].incoming.numElems;
   }
 
   // Determine fan-out of given node
-  uint32_t fanOut(NodeId id) {
+  uint32_t fanOut(NodeId id) const {
     return nodes[id].outgoing.numElems;
+  }
+
+  template<class TId>
+  void exportOutgoingNodeIds(NodeId id, uint32_t n, TId *dst) const
+  {
+    const Node &node = nodes[id];
+    assert(n==node.outgoing.size());
+    for(unsigned i=0; i<n; i++){
+      dst[i] = node.outgoing[i].dst;
+    }
+  }
+
+  template<class TId>
+  void exportIncomingNodeIds(NodeId id, uint32_t n, TId *dst) const
+  {
+    const Node &node = nodes[id];
+    assert(n==node.incoming.size());
+    std::copy(node.incoming.begin(), node.incoming.end(), dst);
+  }
+
+  template<class TCb>
+  void walkOutgoingNodeIds(NodeId id, const TCb &cb) const
+  {
+    const Node &node = nodes[id];
+    for(unsigned i=0; i<node.outgoing.size(); i++){
+      cb(node.outgoing[i].dst);
+    }
+  }
+
+  template<class TCb>
+  void walkOutgoingNodeIdsAndPins(NodeId id, const TCb &cb) const
+  {
+    const Node &node = nodes[id];
+    for(unsigned i=0; i<node.outgoing.size(); i++){
+      cb(node.outgoing[i].dst, node.outgoing[i].pin);
+    }
+  }
+
+  template<class TCb>
+  void walkOutgoingNodeIdsForPin(NodeId id, PinId pin, const TCb &cb) const
+  {
+    const Node &node = nodes[id];
+    for(unsigned i=0; i<node.outgoing.size(); i++){
+      if(node.outgoing[i].pin==pin){
+        cb(node.outgoing[i].dst);
+      }
+    }
+  }
+
+  template<class TCb>
+  void walkIncomingNodeIds(NodeId id, const TCb &cb) const
+  {
+    const Node &node = nodes[id];
+    for(unsigned i=0; i<node.incoming.size(); i++){
+      cb(node.incoming[i]);
+    }
   }
 
 };

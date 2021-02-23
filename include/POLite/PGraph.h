@@ -41,10 +41,14 @@ struct PEdgeDest {
 
 // Comparison function for PEdgeDest
 // (Useful to sort destinations by thread id of destination)
+inline int cmpEdgeDestT(const PEdgeDest &d0, const PEdgeDest &d1) {
+  return getThreadId(d0.addr) < getThreadId(d1.addr);
+}
+
 inline int cmpEdgeDest(const void* e0, const void* e1) {
   PEdgeDest* d0 = (PEdgeDest*) e0;
   PEdgeDest* d1 = (PEdgeDest*) e1;
-  return getThreadId(d0->addr) < getThreadId(d1->addr);
+  return cmpEdgeDest(&d0, &d1);
 }
 
 // POETS graph
@@ -572,25 +576,30 @@ template <typename DeviceType,
     PDeviceAddr devAddr = toDeviceAddr[devId];
     uint32_t devBoard = getThreadId(devAddr) >> TinselLogThreadsPerBoard;
     // Split destinations into local/non-local
-    Seq<PDeviceId>* dests = graph.outgoing->elems[devId];
-    Seq<PinId>* pinIds = graph.pins->elems[devId];
-    for (uint32_t d = 0; d < dests->numElems; d++) {
-      if (pinIds->elems[d] == pinId) {
+    //Seq<PDeviceId>* dests = graph.outgoing->elems[devId];
+    //Seq<PinId>* pinIds = graph.pins->elems[devId];
+    //for (uint32_t d = 0; d < dests->numElems; d++) {
+    uint32_t d=0;
+    graph.walkOutgoingNodeIdsAndPins(devId, [&](uint32_t dstDev, PinId dstPin){
+      if (dstPin == pinId) {
         PEdgeDest e;
         e.index = d;
-        e.dest = dests->elems[d];
-        e.addr = toDeviceAddr[e.dest];
+        e.dest = dstDev;
+        e.addr = toDeviceAddr[dstDev];
         uint32_t destBoard = getThreadId(e.addr) >> TinselLogThreadsPerBoard;
         if (devBoard == destBoard)
           local->append(e);
         else
           nonLocal->append(e);
+        ++d;
       }
-    }
+    });
     // Sort local list
-    qsort(local->elems, local->numElems, sizeof(PEdgeDest), cmpEdgeDest);
+    //qsort(local->elems, local->numElems, sizeof(PEdgeDest), cmpEdgeDest);
+    std::sort(local->elems, local->elems+local->numElems, cmpEdgeDestT);
     // Sort non-local list
-    qsort(nonLocal->elems, nonLocal->numElems, sizeof(PEdgeDest), cmpEdgeDest);
+    //qsort(nonLocal->elems, nonLocal->numElems, sizeof(PEdgeDest), cmpEdgeDest);
+    std::sort(nonLocal->elems, nonLocal->elems+nonLocal->numElems, cmpEdgeDestT);
   }
 
   // Compute table updates for destinations for given device
@@ -839,19 +848,22 @@ template <typename DeviceType,
               Graph* g = &threads.subgraphs[threadNum];
 
               // Populate fromDeviceAddr mapping
-              uint32_t numDevs = g->incoming->numElems;
+              uint32_t numDevs = g->nodeCount();
               numDevicesOnThread[threadId] = numDevs;
               fromDeviceAddr[threadId] = (PDeviceId*)
                 malloc(sizeof(PDeviceId) * numDevs);
-              for (uint32_t devNum = 0; devNum < numDevs; devNum++)
-                fromDeviceAddr[threadId][devNum] = g->labels->elems[devNum];
+              for (uint32_t devNum = 0; devNum < numDevs; devNum++){
+                //fromDeviceAddr[threadId][devNum] = g->labels->elems[devNum];
+                fromDeviceAddr[threadId][devNum] = g->getLabel(devNum);
+              }
   
               // Populate toDeviceAddr mapping
               assert(numDevs < maxLocalDeviceId());
               for (uint32_t devNum = 0; devNum < numDevs; devNum++) {
                 PDeviceAddr devAddr =
                   makeDeviceAddr(threadId, devNum);
-                toDeviceAddr[g->labels->elems[devNum]] = devAddr;
+                //toDeviceAddr[g->labels->elems[devNum]] = devAddr;
+                toDeviceAddr[g->getLabel(devNum)] = devAddr;
               }
             }
           }

@@ -89,13 +89,13 @@ struct Placer {
   void partitionMetis() {
     // Compute total number of edges
     uint32_t numEdges = 0;
-    for (uint32_t i = 0; i < graph->incoming->numElems; i++) {
-      numEdges += graph->incoming->elems[i]->numElems +
-                  graph->outgoing->elems[i]->numElems;
+    for (uint32_t i = 0; i < graph->nodeCount(); i++) {
+      numEdges += graph->fanIn(i) +
+                  graph->fanOut(i);
     }
 
     // Create Metis parameters
-    idx_t nvtxs = (idx_t) graph->incoming->numElems;
+    idx_t nvtxs = (idx_t) graph->nodeCount();
     idx_t nparts = (idx_t) (width * height);
     idx_t nconn = 1;
     idx_t objval;
@@ -125,6 +125,7 @@ struct Placer {
     uint32_t next = 0;
     for (uint32_t i = 0; i < nvtxs; i++) {
       xadj[i] = next;
+      /*
       Seq<NodeId>* in = graph->incoming->elems[i];
       Seq<NodeId>* out = graph->outgoing->elems[i];
       for (uint32_t j = 0; j < in->numElems; j++)
@@ -132,6 +133,14 @@ struct Placer {
       for (uint32_t j = 0; j < out->numElems; j++)
         if (! in->member(out->elems[j]))
           adjncy[next++] = (idx_t) out->elems[j];
+      */
+     unsigned nIn=graph->fanIn(i);
+     graph->exportIncomingNodeIds(i, nIn, adjncy);
+     adjncy += nIn;
+
+     unsigned nOut=graph->fanOut(i);
+     graph->exportOutgoingNodeIds(i, nOut, adjncy);
+     adjncy += nOut;
     }
     xadj[nvtxs] = (idx_t) next;
 
@@ -151,7 +160,7 @@ struct Placer {
       NULL, NULL, NULL, &nparts, NULL, NULL, options, &objval, parts);
 
     // Populate result array
-    for (uint32_t i = 0; i < graph->incoming->numElems; i++)
+    for (uint32_t i = 0; i < graph->nodeCount(); i++)
       partitions[i] = (uint32_t) parts[i];
 
     // Release Metis structures
@@ -162,7 +171,7 @@ struct Placer {
 
   // Partition the graph randomly
   void partitionRandom() {
-    uint32_t numVertices = graph->incoming->numElems;
+    uint32_t numVertices = graph->nodeCount();
     uint32_t numParts = width * height;
 
     // Populate result array
@@ -173,7 +182,7 @@ struct Placer {
 
   // Partition the graph using direct mapping
   void partitionDirect() {
-    uint32_t numVertices = graph->incoming->numElems;
+    uint32_t numVertices = graph->nodeCount();
     uint32_t numParts = width * height;
     uint32_t partSize = (numVertices + numParts) / numParts;
 
@@ -185,7 +194,7 @@ struct Placer {
 
   // Partition the graph using repeated BFS
   void partitionBFS() {
-    uint32_t numVertices = graph->incoming->numElems;
+    uint32_t numVertices = graph->nodeCount();
     uint32_t numParts = width * height;
     uint32_t partSize = (numVertices + numParts) / numParts;
 
@@ -215,11 +224,16 @@ struct Placer {
             partitions[v] = nextPart;
             count++;
             // Add unvisited neighbours of v to the frontier
-            Seq<uint32_t>* dests = graph->outgoing->elems[v];
+            /*Seq<uint32_t>* dests = graph->outgoing->elems[v];
             for (uint32_t i = 0; i < dests->numElems; i++) {
               uint32_t w = dests->elems[i];
               if (!seen[w]) frontier.push(w);
-            }
+            }*/
+            graph->walkOutgoingNodeIds(v, [&](uint32_t id){
+              if(!seen[id]){
+                frontier.push(id);
+              }
+            });
           }
         }
         while (nextUnseen < numVertices && seen[nextUnseen]) nextUnseen++;
@@ -255,27 +269,31 @@ struct Placer {
     uint32_t numPartitions = width*height;
 
     // Create mapping from node id to subgraph node id
-    NodeId* mappedTo = new NodeId [graph->incoming->numElems];
+    NodeId* mappedTo = new NodeId [graph->nodeCount()];
 
     // Create subgraphs
-    for (uint32_t i = 0; i < graph->incoming->numElems; i++) {
+    for (uint32_t i = 0; i < graph->nodeCount(); i++) {
       // What parition is this node in?
       PartitionId p = partitions[i];
       // Add node to subgraph
       NodeId n = subgraphs[p].newNode();
-      subgraphs[p].setLabel(n, graph->labels->elems[i]);
+      subgraphs[p].setLabel(n, graph->getLabel(i));
       mappedTo[i] = n;
     }
 
     // Add edges to subgraphs
-    for (uint32_t i = 0; i < graph->incoming->numElems; i++) {
+    for (uint32_t i = 0; i < graph->nodeCount(); i++) {
       PartitionId p = partitions[i];
-      Seq<NodeId>* out = graph->outgoing->elems[i];
+      /*Seq<NodeId>* out = graph->outgoing->elems[i];
       for (uint32_t j = 0; j < out->numElems; j++) {
         NodeId neighbour = out->elems[j];
         if (partitions[neighbour] == p)
           subgraphs[p].addEdge(mappedTo[i], mappedTo[neighbour]);
-      }
+      }*/
+      graph->walkOutgoingNodeIds(i, [&](uint32_t neighbour){
+        if (partitions[neighbour] == p)
+          subgraphs[p].addEdge(mappedTo[i], mappedTo[neighbour]);
+      });
     }
 
     // Release mapping
@@ -292,13 +310,21 @@ struct Placer {
         connCount[i][j] = 0;
 
     // Iterative over graph and count connections
-    for (uint32_t i = 0; i < graph->incoming->numElems; i++) {
-      Seq<NodeId>* in = graph->incoming->elems[i];
+    for (uint32_t i = 0; i < graph->nodeCount(); i++) {
+      /*Seq<NodeId>* in = graph->incoming->elems[i];
       Seq<NodeId>* out = graph->outgoing->elems[i];
       for (uint32_t j = 0; j < in->numElems; j++)
         connCount[partitions[i]][partitions[in->elems[j]]]++;
-      for (uint32_t j = 0; j < out->numElems; j++)
-        connCount[partitions[i]][partitions[out->elems[j]]]++;
+      */
+     graph->walkIncomingNodeIds(i, [&](uint32_t j){
+        connCount[partitions[i]][partitions[j]]++;
+      });
+
+      /*for (uint32_t j = 0; j < out->numElems; j++)
+        connCount[partitions[i]][partitions[out->elems[j]]]++;*/
+      graph->walkOutgoingNodeIds(i, [&](uint32_t j){
+        connCount[partitions[i]][partitions[j]]++;
+      });
     }
   }
 
@@ -432,7 +458,7 @@ struct Placer {
     // Random seed
     setRand(1 + omp_get_thread_num());
     // Allocate the partitions array
-    partitions = new PartitionId [g->incoming->numElems];
+    partitions = new PartitionId [g->nodeCount()];
     // Allocate subgraphs
     subgraphs = new Graph [width*height];
     // Allocate the connection count matrix
