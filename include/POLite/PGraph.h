@@ -688,9 +688,49 @@ template <typename DeviceType,
     }
   }
 
+  void computeRoutingTablesForDevice(
+    uint32_t d, // device id
+    Seq<PEdgeDest> &local,
+    Seq<PEdgeDest> &nonLocal,
+    Seq<PRoutingDest> &dests,
+    PReceiverGroup<E> *groups
+  ){
+    // For each pin
+    for (uint32_t p = 0; p < POLITE_NUM_PINS; p++) {
+      // Split edge lists into local/non-local and sort by target thread id
+      splitDests(d, p, &local, &nonLocal);
+      // Deal with board-local connections
+      computeTables(&local, d, p, &dests, groups);
+      for (uint32_t i = 0; i < dests.numElems; i++) {
+        PRoutingDest dest = dests.elems[i];
+        POutEdge edge;
+        edge.mbox = dest.mbox;
+        edge.key = dest.mrm.key;
+        edge.threadMaskLow = dest.mrm.threadMaskLow;
+        edge.threadMaskHigh = dest.mrm.threadMaskHigh;
+        outTable[d][p]->append(edge);
+      }
+      // Deal with non-board-local connections
+      computeTables(&nonLocal, d, p, &dests, groups);
+      uint32_t src = getThreadId(toDeviceAddr[d]) >>
+        TinselLogThreadsPerMailbox;
+      uint32_t key = progRouterTables->addDestsFromBoard(src, &dests);
+      POutEdge edge;
+      edge.mbox = tinselUseRoutingKey();
+      edge.key = 0;
+      edge.threadMaskLow = key;
+      edge.threadMaskHigh = 0; 
+      outTable[d][p]->append(edge);
+      // Add output list terminator
+      POutEdge term;
+      term.key = InvalidKey;
+      outTable[d][p]->append(term);
+    }
+  }
+
   // Compute routing tables
   // (Only valid after mapper is called)
-  __attribute__((noinline)) void computeRoutingTables() {
+  POLITE_NOINLINE void computeRoutingTables() {
     // Edge destinations (local to sender board, or not)
     Seq<PEdgeDest> local;
     Seq<PEdgeDest> nonLocal;
@@ -705,37 +745,7 @@ template <typename DeviceType,
 
     // For each device
     for (uint32_t d = 0; d < numDevices; d++) {
-      // For each pin
-      for (uint32_t p = 0; p < POLITE_NUM_PINS; p++) {
-        // Split edge lists into local/non-local and sort by target thread id
-        splitDests(d, p, &local, &nonLocal);
-        // Deal with board-local connections
-        computeTables(&local, d, p, &dests, groups);
-        for (uint32_t i = 0; i < dests.numElems; i++) {
-          PRoutingDest dest = dests.elems[i];
-          POutEdge edge;
-          edge.mbox = dest.mbox;
-          edge.key = dest.mrm.key;
-          edge.threadMaskLow = dest.mrm.threadMaskLow;
-          edge.threadMaskHigh = dest.mrm.threadMaskHigh;
-          outTable[d][p]->append(edge);
-        }
-        // Deal with non-board-local connections
-        computeTables(&nonLocal, d, p, &dests, groups);
-        uint32_t src = getThreadId(toDeviceAddr[d]) >>
-          TinselLogThreadsPerMailbox;
-        uint32_t key = progRouterTables->addDestsFromBoard(src, &dests);
-        POutEdge edge;
-        edge.mbox = tinselUseRoutingKey();
-        edge.key = 0;
-        edge.threadMaskLow = key;
-        edge.threadMaskHigh = 0; 
-        outTable[d][p]->append(edge);
-        // Add output list terminator
-        POutEdge term;
-        term.key = InvalidKey;
-        outTable[d][p]->append(term);
-      }
+      computeRoutingTablesForDevice(d, local, nonLocal, dests, groups);
     }
   }
 
