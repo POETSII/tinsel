@@ -70,10 +70,23 @@ typedef uint16_t Key;
 //   No      - means 'not ready to send'
 //   HostPin - means 'send to host'
 //   Pin(n)  - means 'send to application pin number n'
-typedef uint8_t PPin;
-#define No 0
-#define HostPin 1
-#define Pin(n) ((n)+2)
+struct PPin{
+  uint8_t index;
+
+  PPin(const PPin &) = default;
+  PPin &operator=(const PPin &o) = default;
+
+  explicit constexpr PPin(unsigned _index)
+    : index(_index)
+  {}
+
+  constexpr bool operator==(PPin o) const { return index==o.index; }
+  constexpr bool operator!=(PPin o) const { return index!=o.index; }
+};
+static_assert(sizeof(PPin)==1, "Expecting PPin to be 1 byte.");
+#define No (PPin{0})
+#define HostPin (PPin{1})
+#define Pin(n) (PPin{((n)+2)})
 
 // For template arguments that are not used
 struct None {};
@@ -275,6 +288,7 @@ template <typename DeviceType,
           PMessage<M>* m = (PMessage<M>*) tinselSendSlot();
           // Send message
           m->destKey = outEdge->key;
+            outEdge->threadMaskLow);
           tinselMulticast(outEdge->mbox, outEdge->threadMaskHigh,
             outEdge->threadMaskLow, m);
           #ifdef POLITE_COUNT_MSGS
@@ -303,12 +317,13 @@ template <typename DeviceType,
           // Reinsert sender, if it still wants to send
           if (*dev.readyToSend != No) sendersTop++;
           // Determine out-edge array for sender
-          if (pin == HostPin)
+          if (pin == HostPin){
             outEdge = outHost;
-          else
+          }else{
             outEdge = (POutEdge*) &outTableBase[
-              devices[src].pinBase[pin-2]
+              devices[src].pinBase[pin.index-2]
             ];
+          }
         }
         else {
           #ifdef POLITE_COUNT_MSGS

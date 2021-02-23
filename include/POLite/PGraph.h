@@ -213,9 +213,9 @@ template <typename DeviceType,
   }
 
   // Add labelled edge using given output pin
-  void addLabelledEdge(E edge, PDeviceId x, PinId pin, PDeviceId y) {
-    graph.addEdge(x, pin, y);
-    edgeLabels.elems[x]->append(edge);
+  void addLabelledEdge(E edge, PDeviceId from, PinId pin, PDeviceId to) {
+    graph.addEdge(from, pin, to);
+    edgeLabels.elems[from]->append(edge);
   }
 
   // Allocate SRAM and DRAM partitions
@@ -595,7 +595,15 @@ template <typename DeviceType,
 
   // Compute table updates for destinations for given device
   // (Only valid after mapper is called)
-  void computeTables(Seq<PEdgeDest>* dests, uint32_t d,
+  /*! 
+    \param d Source device index
+    \param d Source pin on device
+    \pre dests is guaranteed to be in ascended softed order (using cmpEdgeDest)
+     \todo TODO (dt10) : the ascending nature of the lists may be biasing run-time behaviour
+      for higher fanout nets, and in aggregate might cause load to sweeep from lower ordered to
+      higher ordered destinations within the entire board.
+  */
+  void computeTables(Seq<PEdgeDest>* dests, uint32_t d, uint32_t p,
          Seq<PRoutingDest>* out) {
     out->clear();
     uint32_t index = 0;
@@ -651,7 +659,11 @@ template <typename DeviceType,
       dest.mrm.key = key;
       dest.mrm.threadMaskLow = threadMaskLow;
       dest.mrm.threadMaskHigh = threadMaskHigh;
+      assert(threadMaskLow | threadMaskHigh);
       out->append(dest);
+      if(chatty>1){
+        printf("  routing-entry: source(dev/pin)=%u/%u kind=MRM, mbox=0x%x, key=%u, tMaskLo=0x%x, tMaskHi=0x%x\n", d, p, dest.mbox, key, threadMaskLow, threadMaskHigh);
+      }
       // Clear receiver groups, for a new iteration
       for (uint32_t i = 0; i <= nextGroup; i++) groups[i].receivers.clear();
     }
@@ -677,7 +689,7 @@ template <typename DeviceType,
         // Split edge lists into local/non-local and sort by target thread id
         splitDests(d, p, &local, &nonLocal);
         // Deal with board-local connections
-        computeTables(&local, d, &dests);
+        computeTables(&local, d, p, &dests);
         for (uint32_t i = 0; i < dests.numElems; i++) {
           PRoutingDest dest = dests.elems[i];
           POutEdge edge;
@@ -688,7 +700,7 @@ template <typename DeviceType,
           outTable[d][p]->append(edge);
         }
         // Deal with non-board-local connections
-        computeTables(&nonLocal, d, &dests);
+        computeTables(&nonLocal, d, p, &dests);
         uint32_t src = getThreadId(toDeviceAddr[d]) >>
           TinselLogThreadsPerMailbox;
         uint32_t key = progRouterTables->addDestsFromBoard(src, &dests);
