@@ -288,7 +288,6 @@ template <typename DeviceType,
           PMessage<M>* m = (PMessage<M>*) tinselSendSlot();
           // Send message
           m->destKey = outEdge->key;
-            outEdge->threadMaskLow);
           tinselMulticast(outEdge->mbox, outEdge->threadMaskHigh,
             outEdge->threadMaskLow, m);
           #ifdef POLITE_COUNT_MSGS

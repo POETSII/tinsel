@@ -4,13 +4,17 @@
 #ifndef _Izhikevich_H_
 #define _Izhikevich_H_
 
-#define POLITE_DUMP_STATS
-#define POLITE_COUNT_MSGS
+//#define POLITE_DUMP_STATS
+//#define POLITE_COUNT_MSGS
 
 #define POLITE_NUM_PINS 3
 
 #include <POLite.h>
 #include "RNG.h"
+#include <cassert>
+#include <cstdio>
+#include <algorithm>
+#include <cmath>
 
 #include <cstdint>
 
@@ -32,24 +36,28 @@
 
 struct SpikeStatsState
 {
-  uint16_t sent;
-  uint16_t send_gap_max;
-  uint32_t send_gap_sum_squared;
+  uint16_t sent=0;
+  uint16_t send_gap_max=0;
+  uint32_t send_gap_sum_squared=0;
 
-  uint32_t received;
+  uint32_t received=0;
 
-  uint16_t recv_gap_max;
+  uint16_t recv_gap_max=0;
   // uint16_t _pad_;
-  uint32_t recv_gap_sum_squared;
+  uint32_t recv_gap_sum_squared=0;
 
   int16_t recv_delta_min=INT16_MAX;
   int16_t recv_delta_max=INT16_MIN;
-  int32_t recv_delta_sum;
-  uint32_t recv_delta_sum_abs;
-  uint64_t recv_delta_sum_squared;
+  int32_t recv_delta_sum=0;
+  uint32_t recv_delta_sum_abs=0;
+  uint64_t recv_delta_sum_squared=0;
 
-  int16_t last_send_time = -1;
-  int16_t last_recv_time = -1;
+  int16_t last_send_time =-1;
+  int16_t last_recv_time =-1;
+
+  SpikeStatsState()
+  {
+  }
 
   void on_send(int32_t time)
   {
@@ -98,10 +106,18 @@ struct SpikeStatsState
   }
 };
 
+inline void memcpy_dwords(void *dst, const void *src, size_t n)
+{
+  for(unsigned i=0; i<n; i++){
+    ((uint32_t*)dst)[i]=((uint32_t*)src)[i];
+  }
+}
+
 template<class TMsg, size_t FragmentBytes>
 struct MessageFragmenter
 {
   static_assert((FragmentBytes%4)==0, "MaxBytes must be multiple of 4.");
+  static_assert((sizeof(TMsg)%4)==0, "sizeof TMsg must be a multiple of 4.");
 
   uint32_t progress=0;
 
@@ -111,7 +127,7 @@ struct MessageFragmenter
   bool import_msg(TMsg &msg, const void *bytes)
   {
     size_t todo=std::min<size_t>(FragmentBytes, sizeof(TMsg)-progress);
-    memcpy( progress+(char*)&msg, bytes, todo );
+    memcpy_dwords( progress+(char*)&msg, bytes, todo/4 );
     progress += todo;
     return progress < sizeof(TMsg);
   }
@@ -119,7 +135,7 @@ struct MessageFragmenter
   bool export_msg(const TMsg &msg, void *bytes)
   {
     size_t todo=std::min<size_t>(FragmentBytes, sizeof(TMsg)-progress);
-    memcpy( bytes, progress+(char*)&msg, todo);
+    memcpy_dwords( bytes, progress+(char*)&msg, todo/4);
     progress += todo;
     return progress < sizeof(TMsg);
   }
@@ -159,7 +175,8 @@ const int LogLevel=0;
 struct IzhikevichMsg{
   // One word goes for PMessage header (only 16-bits, but it needs to be aligned)
   MessageType type : 4;
-  uint32_t src : 28;
+  uint32_t src : 20;
+  uint32_t progress : 8;
   union{
     int32_t time;
     char bytes[(1<<TinselLogBytesPerFlit)-2*4];
@@ -181,20 +198,20 @@ struct IzhikevichState {
   // Neuron properties
   float a, b, c, d, Ir;
 
-  int32_t time;
-  uint32_t clock_tocks_received;
+  int32_t time =0;
+  uint32_t clock_tocks_received =0;
 
-  uint32_t num_steps;
+  uint32_t num_steps =0;
 
   // flags
 
-  int8_t clock_tick_pending;
-  int8_t clock_tock_pending;
-  int8_t spike_pending;
-  int8_t export_pending;
+  int8_t clock_tick_pending =0;
+  int8_t clock_tock_pending =0;
+  int8_t spike_pending =0;
+  int8_t export_pending =0;
 
-  int8_t is_root;
-  int8_t clock_child_count;
+  int8_t is_root =0;
+  int8_t clock_child_count =0;
   
   SpikeStatsState spike_stats;
   SpikeStatsFragmenter spike_stats_fragmenter;
@@ -217,7 +234,7 @@ struct IzhikevichDevice : PDevice<IzhikevichState,Weight,IzhikevichMsg> {
       u += s->d;
       s->spike_pending=1;
       if(LogLevel>0){
-        fprintf(stderr, "%u : Spike, t=%u\n", s->id, s->time);
+        //fprintf(stderr, "%u : Spike, t=%u\n", s->id, s->time);
       }
     }
     s->Inext = s->Inow;
@@ -236,20 +253,43 @@ struct IzhikevichDevice : PDevice<IzhikevichState,Weight,IzhikevichMsg> {
   void RTS()
   {
     *readyToSend=No;
+    /*
+    if(!s->spike_stats_fragmenter.complete()){
+      *readyToSend=HostPin;
+    }
+    */
+    
     if(s->export_pending && !s->spike_stats_fragmenter.complete()){
+      if(LogLevel>2){
+        printf("%x:RTS, HostPin\n", s->id);
+      }
        *readyToSend=HostPin;
     }else if(s->clock_tick_pending){
+      if(LogLevel>2){
+        printf("%x:RTS, Tick\n", s->id);
+      }
       *readyToSend=TICK_OUT;
     }else if(s->clock_tock_pending){
+      if(LogLevel>2){
+        printf("%x:RTS, Tock\n", s->id);
+      }
       *readyToSend=TOCK_OUT;
     }else if(s->spike_pending){
+      if(LogLevel>2){
+        printf("%x:RTS, Spike\n", s->id);
+      }
       *readyToSend=SPIKE_OUT;
+    }else{
+      if(LogLevel>2){
+        printf("%x:RTS, None\n", s->id);
+      }
     }
+    
   }
 
   inline void init() {
     if(LogLevel>1){
-      fprintf(stderr, "%04u : Init, child_count=%u, is_root=%u\n", s->id, s->clock_child_count, s->is_root);
+     // fprintf(stderr, "%04u : Init, child_count=%u, is_root=%u\n", s->id, s->clock_child_count, s->is_root);
     }
     s->v = -65.0f;
     s->u = s->b * s->v;
@@ -260,33 +300,40 @@ struct IzhikevichDevice : PDevice<IzhikevichState,Weight,IzhikevichMsg> {
        s->clock_tick_pending=1;
     }
     RTS();
+    if(LogLevel>1){
+     printf("Init %x\n", s->id);
+    }
   }
 
   inline void send(IzhikevichMsg* msg) {
     msg->src=s->id;
     msg->time=s->time;
-    switch(*readyToSend){
+    switch(readyToSend->index){
     default:
       assert(0);
-    case HostPin:
+    case HostPin.index:
+      if(LogLevel>1){
+        printf("%x:Send/HostPin\n", s->id);
+      }
       assert(s->export_pending==1);
       assert(!s->spike_stats_fragmenter.complete());
       assert(s->time==s->num_steps);
       msg->type=MessageType::StatsExport;
+      msg->progress=s->spike_stats_fragmenter.progress;
       if(!s->spike_stats_fragmenter.export_msg(s->spike_stats, msg->bytes)){
         s->export_pending=0;
       }
       break;
-    case SPIKE_OUT:
+    case SPIKE_OUT.index:
       if(LogLevel>1){
-        fprintf(stderr, "%04u : send/Spike\n", s->id);
+        printf("%x:Send/Spike\n", s->id);
       }
       msg->type=MessageType::Spike;
       s->spike_pending=0;
       break;
-    case TICK_OUT:
+    case TICK_OUT.index:
       if(LogLevel>1){
-          fprintf(stderr, "%04u : send/Tick, s->time=%u\n", s->id, s->time);
+         printf("%x:Send/Tick, child_count=%x\n", s->id, s->clock_child_count);
       }
       assert(s->clock_tick_pending);
       assert(!s->clock_tock_pending);
@@ -294,11 +341,9 @@ struct IzhikevichDevice : PDevice<IzhikevichState,Weight,IzhikevichMsg> {
       msg->type=MessageType::Tick;
       s->clock_tick_pending=0;
       break;
-    case TOCK_OUT:
+    case TOCK_OUT.index:
       if(LogLevel>1){
-        fprintf(stderr, "%04u : send/Tock, clock_tocks_received=%u, clock_child_count=%u, state=%p\n", s->id,
-          s->clock_tocks_received, s->clock_child_count, s
-        );
+        printf("%x:Send/Tock\n", s->id);
       }
       assert(s->clock_tock_pending);
       assert(!s->clock_tick_pending);
@@ -311,12 +356,15 @@ struct IzhikevichDevice : PDevice<IzhikevichState,Weight,IzhikevichMsg> {
   }
 
   inline void recv(IzhikevichMsg* msg, Weight* weight) {
+    if(LogLevel>2){
+     printf("%x:Recv\n", s->id);
+    }
     switch(msg->type){
     default:
       assert(0);
     case Spike:
       if(LogLevel>1){
-        fprintf(stderr, "%04u : recv/Spike\n", s->id);
+        printf("%x:Recv/Spike\n", s->id);
       }
       if(s->time < msg->time){
         assert(s->time+1 == msg->time);
@@ -328,7 +376,8 @@ struct IzhikevichDevice : PDevice<IzhikevichState,Weight,IzhikevichMsg> {
       break;
     case Tick:
       if(LogLevel>1){
-        fprintf(stderr, "%04u : recv/Tick, s->time=%u, msg->time=%u\n", s->id, s->time, msg->time);
+        printf("%x:Recv/Tick\n", s->id);
+        //fprintf(stderr, "%04u : recv/Tick, s->time=%u, msg->time=%u\n", s->id, s->time, msg->time);
       }
       assert(!s->clock_tock_pending);
       assert(!s->clock_tick_pending);
@@ -343,7 +392,7 @@ struct IzhikevichDevice : PDevice<IzhikevichState,Weight,IzhikevichMsg> {
       break;
     case Tock:
       if(LogLevel>1){
-        fprintf(stderr, "%04u : recv/Tock\n", s->id);
+        printf("%x:Recv/Tock\n", s->id);
       }
       assert(!s->clock_tock_pending);
       assert(!s->clock_tick_pending);
@@ -368,11 +417,13 @@ struct IzhikevichDevice : PDevice<IzhikevichState,Weight,IzhikevichMsg> {
 
   inline bool step()
   {
+    printf("%x:Step", s->id);
     return false;
   }
 
   inline bool finish( volatile IzhikevichMsg * msg)
   {
+    printf("%x:Finish", s->id);
     return false;
   }
 };
