@@ -18,84 +18,9 @@
 #include <tinsel-interface.h>
 #include <POLite/SpinLock.h>
 
-#include <tbb/parallel_for.h>
-#include <tbb/blocked_range2d.h>
+#include <functional>
 
-const bool AllowParallelFor=true;
-
-template<class TR=unsigned, class TF>
-void parallel_for_with_grain(TR begin, TR end, TR grain_size, TF f)
-{
-  auto n=end-begin;
-  if(n==0){
-    return;
-  }
-  if(n >= 2*grain_size && AllowParallelFor){
-    tbb::parallel_for<tbb::blocked_range<TR>>( {begin, end, grain_size},  [&](const tbb::blocked_range<TR> &r){
-      for(TR i=r.begin(); i<r.end(); i++){
-        f(i);
-      }
-    });
-  }else{
-    #ifdef NDEBUG
-    TR off=begin + rand()%(end-begin);
-    for(TR i=begin; i<end; i++){
-      f(off);
-      ++off;
-      if(off==end){
-        off=begin;
-      }
-    }  
-    #else
-    for(TR i=begin; i<end; i++){
-      f(i);
-    }
-    #endif
-  }
-}
-
-template<class TR=unsigned, class TF>
-void parallel_for_2d_with_grain(TR begin0, TR end0, TR grain_size0, TR begin1, TR end1, TR grain_size1, TF f)
-{
-  auto n0=end0-begin0;
-  auto n1=end1-begin1;
-  if(n1==0 || n0==0){
-    return;
-  }
-  if(n1 >= 2*grain_size1 && n0 >= 2*grain_size0 && AllowParallelFor){
-    tbb::parallel_for<tbb::blocked_range2d<TR>>( {begin0, end0, grain_size0, begin1, end1, grain_size1},  [&](const tbb::blocked_range2d<TR> &r){
-      for(TR i=r.rows().begin(); i<r.rows().end(); i++){
-        for(TR j=r.cols().begin(); j<r.cols().end(); j++){
-          f(i, j);
-        }
-      }
-    });
-  }else{
-    #ifdef NDEBUG
-    TR off0=begin0 + rand()%(end0-begin0);
-    for(TR i=begin0; i<end0; i++){
-      TR off1=begin1 + rand()%(end1-begin1);
-      for(TR i=begin0; i<end0; i++){
-        f(off0, off1);
-        ++off1;
-        if(off1==end1){
-          off1=begin1;
-        }
-      }
-      ++off0;
-      if(off0==end0){
-        off0=begin0;
-      }
-    }  
-    #else
-    for(TR i=begin0; i<end0; i++){
-      for(TR j=begin1; j<end1; j++){
-        f(i,j);
-      }
-    }
-    #endif
-  }
-}
+#include "ParallelFor.h"
 
 // Nodes of a POETS graph are devices
 typedef NodeId PDeviceId;
@@ -112,11 +37,11 @@ template <typename E> struct PReceiverGroup {
 // This structure holds info about an edge destination
 struct PEdgeDest {
   // Index of edge in outgoing edge list
-  uint32_t index;
+  uint32_t index = 0;
   // Destination device
-  PDeviceId dest;
+  PDeviceId dest = 0;
   // Address where destination is located
-  PDeviceAddr addr;
+  PDeviceAddr addr = 0;
 };
 
 // Comparison function for PEdgeDest
@@ -285,6 +210,16 @@ template <typename DeviceType,
   // 0=default, +1=yes, -1=no
   int parallel=0;
 
+  std::function<void(const char *part)> on_phase_hook;
+
+  // Used to record when we move between main sections in the mapping process.
+  void mark_phase(const char *name)
+  {
+    if(on_phase_hook){
+      on_phase_hook(name);
+    }
+  }
+
   // Setter for number of boards to use
   void setNumBoards(uint32_t x, uint32_t y) {
     if (x > meshLenX || y > meshLenY) {
@@ -347,6 +282,8 @@ template <typename DeviceType,
 
   // Allocate SRAM and DRAM partitions
   __attribute__((noinline)) void allocatePartitions() {
+    mark_phase("allocPartitions");
+
     // Decide a maximum partition size that is reasonable
     // SRAM: Partition size minus 2048 bytes for the stack
     uint32_t maxSRAMSize = (1<<TinselLogBytesPerSRAMPartition) - 2048;
@@ -372,7 +309,7 @@ template <typename DeviceType,
     outEdgeMemBase = (uint32_t*) calloc(TinselMaxThreads, sizeof(uint32_t));
 
     // Compute partition sizes for each thread
-    parallel_for_with_grain(0, TinselMaxThreads, 64, [&](uint32_t threadId){
+    parallel_for_with_grain<unsigned>(0, TinselMaxThreads, 64, [&](uint32_t threadId){
       // This variable is used to count the size of the *initialised*
       // partition.  The total partition size is larger as it includes
       // uninitialised portions.
@@ -495,7 +432,8 @@ template <typename DeviceType,
 
   // Initialise partitions
   __attribute__((noinline)) void initialisePartitions() {
-    parallel_for_with_grain(0, TinselMaxThreads,1024, [&](uint32_t threadId){
+    mark_phase("initPartitions");
+    parallel_for_with_grain<unsigned>(0, TinselMaxThreads,1024, [&](uint32_t threadId){
         // Next pointers for each partition
         uint32_t nextVMem = 0;
         uint32_t nextOutIndex = 0;
@@ -567,6 +505,7 @@ template <typename DeviceType,
 
   // Allocate mapping structures
   __attribute__((noinline)) void allocateMapping() {
+    mark_phase("allocMapping");
     devices = (PState<S>**) calloc(numDevices, sizeof(PState<S>*));
     toDeviceAddr = (PDeviceAddr*) calloc(numDevices, sizeof(PDeviceAddr));
     fromDeviceAddr = (PDeviceId**) calloc(TinselMaxThreads, sizeof(PDeviceId*));
@@ -576,6 +515,7 @@ template <typename DeviceType,
   // Allocate routing tables
   // (Only valid after mapper is called)
   __attribute__((noinline)) void allocateRoutingTables() {
+    mark_phase("allocRoutingTables");
     perThreadRoutingInfo=new PerThreadRoutingInfo[TinselMaxThreads];
 
     // Sender-side tables
@@ -867,6 +807,7 @@ template <typename DeviceType,
   // Compute routing tables
   // (Only valid after mapper is called)
   POLITE_NOINLINE void computeRoutingTables() {
+    mark_phase("compRouteTables");
 
     // Allocate per-board programmable routing tables
     progRouterTables = new ProgRouterMesh(numBoardsX, numBoardsY);
@@ -902,11 +843,12 @@ template <typename DeviceType,
 
   // Release all structures
   void releaseAll() {
+    mark_phase("releaseAll");
     if (devices != NULL) {
       free(devices);
       free(toDeviceAddr);
       free(numDevicesOnThread);
-      parallel_for_with_grain(0,TinselMaxThreads,1024, [&](unsigned t) {
+      parallel_for_with_grain<unsigned>(0,TinselMaxThreads,1024, [&](unsigned t) {
           if (fromDeviceAddr[t] != NULL) free(fromDeviceAddr[t]);
           if (vertexMem[t] != NULL) free(vertexMem[t]);
           if (threadMem[t] != NULL) free(threadMem[t]);
@@ -966,13 +908,16 @@ template <typename DeviceType,
     // Start placement timer
     gettimeofday(&placementStart, NULL);
 
+    mark_phase("partTopLevel");
     // Partition into subgraphs, one per board
     Placer boards(&graph, numBoardsX, numBoardsY, true);
 
+    mark_phase("placeTopLevel");
     // Place subgraphs onto 2D mesh
     const uint32_t placerEffort = 8;
     boards.place(placerEffort);
 
+    mark_phase("placeBoards");
     // For each board
     parallel_for_2d_with_grain<unsigned>(0,numBoardsY,1, 0,numBoardsX,1, [&](uint32_t boardY, uint32_t boardX) {
       // Partition into subgraphs, one per mailbox
@@ -1086,6 +1031,7 @@ template <typename DeviceType,
   // Write partition to tinsel machine
   void writeRAM(HostLink* hostLink,
          uint8_t** heap, uint32_t* heapSize, uint32_t* heapBase) {
+
     // Number of bytes written by each thread
     uint32_t* writeCount = (uint32_t*)
       calloc(TinselMaxThreads, sizeof(uint32_t));
@@ -1154,13 +1100,20 @@ template <typename DeviceType,
 
     bool useSendBufferOld = hostLink->useSendBuffer;
     hostLink->useSendBuffer = true;
+    mark_phase("writeVertexMemToRAM");
     writeRAM(hostLink, vertexMem, vertexMemSize, vertexMemBase);
+    mark_phase("writeThreadMemToRAM");
     writeRAM(hostLink, threadMem, threadMemSize, threadMemBase);
+    mark_phase("writeInEdgeHeaderMemToRAM");
     writeRAM(hostLink, inEdgeHeaderMem,
                inEdgeHeaderMemSize, inEdgeHeaderMemBase);
+    mark_phase("writeInEdgeRestMemToRAM");
     writeRAM(hostLink, inEdgeRestMem, inEdgeRestMemSize, inEdgeRestMemBase);
+    mark_phase("writeOutEdgeMemToRAM");
     writeRAM(hostLink, outEdgeMem, outEdgeMemSize, outEdgeMemBase);
+    mark_phase("writeProgRouterTables");
     progRouterTables->write(hostLink);
+    mark_phase("flushRAM");
     hostLink->flush();
     hostLink->useSendBuffer = useSendBufferOld;
 
