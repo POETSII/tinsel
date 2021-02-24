@@ -18,6 +18,8 @@
 #include <tinsel-interface.h>
 #include <POLite/SpinLock.h>
 
+#include <tbb/parallel_for.h>
+
 // Nodes of a POETS graph are devices
 typedef NodeId PDeviceId;
 
@@ -98,7 +100,15 @@ template <typename DeviceType,
     SpinLock lock;
   };
 
+  struct PerMailboxRoutingInfo
+  {
+    SpinLock lock;
+    char _pad_[32]; // Put them all on a different cache line
+  };
+
   PerThreadRoutingInfo *perThreadRoutingInfo;
+
+  PerMailboxRoutingInfo *perMailboxRoutingInfo;
 
   // Programmable routing tables
   ProgRouterMesh* progRouterTables;
@@ -135,6 +145,7 @@ template <typename DeviceType,
     mapOutEdgesToDRAM = true;
     outTable = NULL;
     perThreadRoutingInfo = NULL;
+    perMailboxRoutingInfo = NULL;
     progRouterTables = NULL;
     chatty = 0;
     str = getenv("POLITE_CHATTY");
@@ -180,6 +191,8 @@ template <typename DeviceType,
   uint8_t** outEdgeMem;
   uint32_t* outEdgeMemSize;
   uint32_t* outEdgeMemBase;
+
+  
 
   // Where to map the various regions
   // (If false, map to SRAM instead)
@@ -476,6 +489,8 @@ template <typename DeviceType,
       for (uint32_t p = 0; p < POLITE_NUM_PINS; p++)
         outTable[d][p] = new SmallSeq<POutEdge>;
     }
+
+    perMailboxRoutingInfo=new PerMailboxRoutingInfo[TinselMaxThreads / TinselThreadsPerMailbox];
   }
 
   // Determine local-multicast routing key for given set of receivers
@@ -485,54 +500,67 @@ template <typename DeviceType,
       It then needs to reserve bit index b in each group as a single transaction, so that
       no other group can take it.
   */
+ template<bool DoLock>
   __attribute__((noinline)) uint32_t findKey(uint32_t numGroups, PReceiverGroup<E> *groups) { 
-    // Fast path (single receiver)
+    
+    /* All threads involved here are in the same mail-box, so we can enforce exclusion
+      by locking the mailbox. */
+
+    unsigned mbox_index= groups[0].threadId >> TinselLogThreadsPerMailbox;
+    for(unsigned i=1; i<numGroups; i++){
+      assert( mbox_index == groups[i].threadId >> TinselLogThreadsPerMailbox);
+    }
+    SpinLockGuard<DoLock> lk(perMailboxRoutingInfo[mbox_index].lock);
+
+    uint32_t res;
+
     if (numGroups == 1) {
-      //Bitmap* bm = inTableBitmaps[groups[0].threadId];
-      Bitmap *bm = &perThreadRoutingInfo[groups[0].threadId].inTableBitmap;
-      return bm->grabNextBit();
-    }
+      // Fast path
+      PerThreadRoutingInfo *tbi = &perThreadRoutingInfo[groups[0].threadId];
+      Bitmap *bm = &tbi->inTableBitmap;
 
-    Bitmap *bms[TinselThreadsPerMailbox];
-    assert(numGroups <= TinselThreadsPerMailbox);
-    for(int i=0; i<numGroups; i++){
-      bms[i]=&perThreadRoutingInfo[groups[i].threadId].inTableBitmap;
-    }
-
-    // Determine starting index for key search
-    uint32_t index = 0;
-    for (uint32_t i = 0; i < numGroups; i++) {
-      //PReceiverGroup<E>* g = &groups[i];
-      //Bitmap* bm = inTableBitmaps[g->threadId];
-      if (bms[i]->firstFree > index) index = bms[i]->firstFree;
-    }
-
-    // Find key that is available for all receivers
-    uint64_t mask;
-    retry:
-      mask = 0ul;
-      for (uint32_t i = 0; i < numGroups; i++) {
-        //PReceiverGroup<E>* g = &groups[i];
-        //Bitmap* bm = inTableBitmaps[g->threadId];
-        mask |= bms[i]->getWord(index);
-        if (~mask == 0ul) { index++; goto retry; }
+      res = bm->grabNextBit( );
+    }else{
+      Bitmap *bms[TinselThreadsPerMailbox];
+      assert(numGroups <= TinselThreadsPerMailbox);
+      for(int i=0; i<numGroups; i++){
+        bms[i]=&perThreadRoutingInfo[groups[i].threadId].inTableBitmap;
       }
 
-    // Mark key as taken in each bitmap
-    uint32_t bit = __builtin_ctzll(~mask);
-    for (uint32_t i = 0; i < numGroups; i++) {
-      //PReceiverGroup<E>* g = &groups[i];
-      //Bitmap* bm = inTableBitmaps[g->threadId];
-      bms[i]->setBit(index, bit);
+      // Determine starting index for key search.
+      uint32_t index = 0;
+      for (uint32_t i = 0; i < numGroups; i++) {
+        if (bms[i]->firstFree > index){
+          index = bms[i]->firstFree;
+        }
+      }
+
+      // Find key that is available for all receivers
+      uint64_t mask;
+      retry:
+        mask = 0ul;
+        for (uint32_t i = 0; i < numGroups; i++) {
+          mask |= bms[i]->getWord(index);
+          if (~mask == 0ul) { index++; goto retry; }
+        }
+
+      // Mark key as taken in each bitmap
+      uint32_t bit = __builtin_ctzll(~mask);
+      for (uint32_t i = 0; i < numGroups; i++) {
+        bms[i]->setBit(index, bit);
+      }
+      res = 64*index + bit;
     }
-    return 64*index + bit;
+
+    return res;
   }
 
 
   // Add entries to the input tables for the given receivers
   // (Only valid after mapper is called)
+  template<bool DoLock>
   __attribute__((noinline)) uint32_t addInTableEntries(uint32_t numGroups, PReceiverGroup<E> *groups) {
-    uint32_t key = findKey(numGroups, groups);
+    uint32_t key = findKey<DoLock>(numGroups, groups);
     if (key >= 0xffff) {
       printf("Routing key exceeds 16 bits\n");
       exit(EXIT_FAILURE);
@@ -546,6 +574,9 @@ template <typename DeviceType,
         // Determine thread id of receiver
         uint32_t t = g->threadId;
         PerThreadRoutingInfo *tbi = perThreadRoutingInfo+t;
+        // Everything here is associated with thread t and its data structures
+        SpinLockGuard<DoLock> lk(tbi->lock);
+        
         // Extend table
         Seq<PInHeader<E>>* headers = &tbi->inTableHeaders;
         if (key >= headers->numElems)
@@ -581,6 +612,7 @@ template <typename DeviceType,
   /* This has no side-effects into global data structures, it only depends:
      - graph
      - toDeviceAddr
+    So we dont need to lock anything
   */
   __attribute__((noinline)) void splitDests(PDeviceId devId, PinId pinId,
                     Seq<PEdgeDest>* local, Seq<PEdgeDest>* nonLocal)
@@ -622,6 +654,7 @@ template <typename DeviceType,
       for higher fanout nets, and in aggregate might cause load to sweeep from lower ordered to
       higher ordered destinations within the entire board.
   */
+  template<bool DoLock>
   __attribute__((noinline)) void computeTables(Seq<PEdgeDest>* dests, uint32_t d, uint32_t p,
          Seq<PRoutingDest>* out, PReceiverGroup<E> *groups) {
     out->clear();
@@ -670,7 +703,7 @@ template <typename DeviceType,
         else break;
       }
       // Add input table entries
-      uint32_t key = addInTableEntries(nextGroup+1, groups);
+      uint32_t key = addInTableEntries<DoLock>(nextGroup+1, groups);
       // Add output entry
       PRoutingDest dest;
       dest.kind = PRDestKindMRM;
@@ -688,6 +721,7 @@ template <typename DeviceType,
     }
   }
 
+  template<bool DoLock>
   void computeRoutingTablesForDevice(
     uint32_t d, // device id
     Seq<PEdgeDest> &local,
@@ -699,8 +733,9 @@ template <typename DeviceType,
     for (uint32_t p = 0; p < POLITE_NUM_PINS; p++) {
       // Split edge lists into local/non-local and sort by target thread id
       splitDests(d, p, &local, &nonLocal);
+
       // Deal with board-local connections
-      computeTables(&local, d, p, &dests, groups);
+      computeTables<DoLock>(&local, d, p, &dests, groups);
       for (uint32_t i = 0; i < dests.numElems; i++) {
         PRoutingDest dest = dests.elems[i];
         POutEdge edge;
@@ -708,10 +743,12 @@ template <typename DeviceType,
         edge.key = dest.mrm.key;
         edge.threadMaskLow = dest.mrm.threadMaskLow;
         edge.threadMaskHigh = dest.mrm.threadMaskHigh;
+        // This is only writeable by this function
         outTable[d][p]->append(edge);
       }
+
       // Deal with non-board-local connections
-      computeTables(&nonLocal, d, p, &dests, groups);
+      computeTables<DoLock>(&nonLocal, d, p, &dests, groups);
       uint32_t src = getThreadId(toDeviceAddr[d]) >>
         TinselLogThreadsPerMailbox;
       uint32_t key = progRouterTables->addDestsFromBoard(src, &dests);
@@ -720,10 +757,12 @@ template <typename DeviceType,
       edge.key = 0;
       edge.threadMaskLow = key;
       edge.threadMaskHigh = 0; 
+      // This is only writeable by this function
       outTable[d][p]->append(edge);
       // Add output list terminator
       POutEdge term;
       term.key = InvalidKey;
+      // This is only writeable by this function
       outTable[d][p]->append(term);
     }
   }
@@ -731,21 +770,36 @@ template <typename DeviceType,
   // Compute routing tables
   // (Only valid after mapper is called)
   POLITE_NOINLINE void computeRoutingTables() {
-    // Edge destinations (local to sender board, or not)
-    Seq<PEdgeDest> local;
-    Seq<PEdgeDest> nonLocal;
-
-    // Routing destinations
-    Seq<PRoutingDest> dests;
 
     // Allocate per-board programmable routing tables
     progRouterTables = new ProgRouterMesh(numBoardsX, numBoardsY);
 
-    PReceiverGroup<E> groups[TinselThreadsPerMailbox];
+    const bool DoLock=true;
 
     // For each device
-    for (uint32_t d = 0; d < numDevices; d++) {
-      computeRoutingTablesForDevice(d, local, nonLocal, dests, groups);
+    if(DoLock){
+      tbb::parallel_for<uint32_t>(0, numDevices, [&](uint32_t d) {
+
+        // Edge destinations (local to sender board, or not)
+        Seq<PEdgeDest> local;
+        Seq<PEdgeDest> nonLocal;
+
+        // Routing destinations
+        Seq<PRoutingDest> dests;
+        PReceiverGroup<E> groups[TinselThreadsPerMailbox];
+        computeRoutingTablesForDevice<true>(d, local, nonLocal, dests, groups);
+      });
+    }else{
+      // Edge destinations (local to sender board, or not)
+      Seq<PEdgeDest> local;
+      Seq<PEdgeDest> nonLocal;
+
+      // Routing destinations
+      Seq<PRoutingDest> dests;
+      PReceiverGroup<E> groups[TinselThreadsPerMailbox];
+      for (uint32_t d = 0; d < numDevices; d++) {
+        computeRoutingTablesForDevice<false>(d, local, nonLocal, dests, groups);
+      }
     }
   }
 
@@ -786,6 +840,9 @@ template <typename DeviceType,
     }
     if(perThreadRoutingInfo!=NULL){
       delete []perThreadRoutingInfo;
+    }
+    if(perMailboxRoutingInfo!=NULL){
+      delete []perMailboxRoutingInfo;
     }
     if (outTable != NULL) {
       for (uint32_t d = 0; d < numDevices; d++) {

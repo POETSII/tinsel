@@ -13,7 +13,7 @@
     This could be more efficient with c++20 and test/notify/wait
 
 */
-class SpinLock
+/*class SpinLock
 {
 private:
   std::atomic<int> _lock;
@@ -51,5 +51,50 @@ public:
     _lock.store(0, std::memory_order_release);
   }
 };
+*/
+
+using SpinLock = std::mutex;
+
+/*template<bool Lock>
+struct SpinLockGuard
+{
+private:
+    SpinLock *m_lock;
+public:
+    SpinLockGuard()
+        : m_lock(0)
+    {}
+
+    SpinLockGuard(SpinLock &lock)
+        : m_lock(&lock)
+    {
+        lock.lock();
+    }
+
+    ~SpinLockGuard()
+    {
+        if(m_lock){
+            m_lock->unlock();
+        }
+    }
+};
+
+template<>
+struct SpinLockGuard<false>
+{
+public:
+    SpinLockGuard()
+    {}
+
+    SpinLockGuard(SpinLock &lock)
+    {}
+
+    ~SpinLockGuard()
+    {}
+};
+*/
+
+template<bool DoLock>
+using SpinLockGuard = std::lock_guard<std::mutex>;
 
 #endif

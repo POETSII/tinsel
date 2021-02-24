@@ -15,6 +15,9 @@
 
 class ProgRouter {
 
+  // Use a real mutex here, as contention is quite possible
+  std::mutex m_mutex;
+
   // Number of chunks used so far in current beat
   uint32_t numChunks;
 
@@ -72,6 +75,26 @@ class ProgRouter {
     return &table[currentRAM]->elems[beatBase];
   }
 
+    // Set indirection key
+  void setIND(uint8_t* ind, uint32_t key) {
+    ind[0] = key;
+    ind[1] = key >> 8;
+    ind[2] = key >> 16;
+    ind[3] = key >> 24;
+  }
+
+    // Add an IND record to the table
+  // Return a pointer to the indirection key,
+  // so it can be set later by the caller
+  uint8_t* addIND() {
+    if (numChunks == 5) nextBeat();
+    uint8_t* ptr = currentRecord48();
+    ptr[5] = 4 << 5;
+    numChunks++;
+    numRecords++;
+    return ptr;
+  }
+
  public:
 
   // A table holding encoded routing beats for each RAM
@@ -103,6 +126,8 @@ class ProgRouter {
 
   // Generate a new key for the records added
   uint32_t genKey() {
+    std::lock_guard<std::mutex> lk(m_mutex);
+
     // Determine index of first beat in record sequence
     uint32_t index = table[currentRAM]->numElems - numBeats*32;
     // Determine final key length
@@ -129,30 +154,11 @@ class ProgRouter {
     return key;
   }
 
-  // Add an IND record to the table
-  // Return a pointer to the indirection key,
-  // so it can be set later by the caller
-  uint8_t* addIND() {
-    if (numChunks == 5) nextBeat();
-    uint8_t* ptr = currentRecord48();
-    ptr[5] = 4 << 5;
-    numChunks++;
-    numRecords++;
-    return ptr;
-  }
-
-  // Set indirection key
-  void setIND(uint8_t* ind, uint32_t key) {
-    ind[0] = key;
-    ind[1] = key >> 8;
-    ind[2] = key >> 16;
-    ind[3] = key >> 24;
-  }
-
   // Add an MRM record to the table
   void addMRM(uint32_t mboxX, uint32_t mboxY,
                 uint32_t threadsHigh, uint32_t threadsLow,
                   uint16_t localKey) {
+    std::lock_guard<std::mutex> lk(m_mutex);
     if (numChunks >= 4) nextBeat();
     uint8_t* ptr = currentRecord96();
     ptr[0] = threadsLow;
@@ -172,6 +178,8 @@ class ProgRouter {
 
   // Add an RR record to the table
   void addRR(uint32_t dir, uint32_t key) {
+    std::lock_guard<std::mutex> lk(m_mutex);
+
     if (numChunks == 5) nextBeat();
     uint8_t* ptr = currentRecord48();
     ptr[0] = key;
@@ -186,6 +194,8 @@ class ProgRouter {
   // Add a URM1 record to the table
   void addURM1(uint32_t mboxX, uint32_t mboxY,
                  uint32_t threadId, uint32_t key) {
+    std::lock_guard<std::mutex> lk(m_mutex);
+    
     if (numChunks == 5) nextBeat();
     uint8_t* ptr = currentRecord48();
     ptr[0] = key;

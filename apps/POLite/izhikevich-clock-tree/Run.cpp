@@ -56,28 +56,25 @@ int main(int argc, char**argv)
   printf("Min fan-out = %d\n", net.minFanOut());
   fflush(stdout);
 
-  // Connection to tinsel machine
-  printf("Opening hostlink...\n");
-  HostLink hostLink;
-
   // Create POETS graph
   IzhikevichGraph graph;
   graph.chatty=1;
 
   unsigned num_steps=1000;
+  unsigned num_nodes=net.numNodes;
 
   // Used to hold states until the graph allocates them
-  std::vector<IzhikevichState> states(net.numNodes);
+  std::vector<IzhikevichState> states(num_nodes);
 
   // Create nodes in POETS graph
-  for (uint32_t i = 0; i < net.numNodes; i++) {
+  for (uint32_t i = 0; i < num_nodes; i++) {
     PDeviceId id = graph.newDevice();
     assert(i == id);
     states[i].num_steps=num_steps;
   }
 
   printf("Building clock tree...\n");
-  build_clock_tree(graph, states, 0, 1, net.numNodes);
+  build_clock_tree(graph, states, 0, 1, num_nodes);
   states[0].is_root=1;
 
 
@@ -86,19 +83,22 @@ int main(int argc, char**argv)
 
   // Mark each neuron as excitatory (or inhibiatory)
   srand(1);
-  bool* excite = new bool [net.numNodes];
-  for (int i = 0; i < net.numNodes; i++)
+  std::vector<bool> excite(num_nodes);
+  for (int i = 0; i < num_nodes; i++){
     excite[i] = urand() < excitatory;
+  }
 
   printf("Building synapse connections...\n");
   // Create connections in POETS graph
-  for (uint32_t i = 0; i < net.numNodes; i++) {
+  for (uint32_t i = 0; i < num_nodes; i++) {
     uint32_t numNeighbours = net.neighbours[i][0];
     for (uint32_t j = 0; j < numNeighbours; j++) {
       float weight = excite[i] ? 0.5 * urand() : -urand();
       graph.addLabelledEdge(weight, i, MessageType::Spike, net.neighbours[i][j+1]);
     }
   }
+
+  net.clear();
 
   // Prepare mapping from graph to hardware
   printf("Mapping  graph...\n");
@@ -131,6 +131,10 @@ int main(int argc, char**argv)
     }
   }
 
+    // Connection to tinsel machine
+  printf("Opening hostlink...\n");
+  HostLink hostLink;
+
   // Write graph down to tinsel machine via HostLink
   printf("Writing graph to hardware...\n");
   graph.write(&hostLink);
@@ -144,14 +148,20 @@ int main(int argc, char**argv)
   std::atomic<bool> quit_log;
   quit_log=false;
 
-  std::thread dumper([&](){
-    while(!quit_log.load()){
-      bool ok=hostLink.pollStdOut(stderr);
-      if(!ok){
-        usleep(10000);
+  // Avoiding the dumper makes it easier to reader per fprofiles, though is slower
+  bool use_dumper_thread=true;
+  std::thread dumper;
+
+  if(use_dumper_thread){
+    dumper=std::thread([&](){
+      while(!quit_log.load()){
+        bool ok=hostLink.pollStdOut(stderr);
+        if(!ok){
+          usleep(10000);
+        }
       }
-    }
-  });
+    });
+  }
 
   // Timer
   printf("Started\n");
@@ -162,6 +172,7 @@ int main(int argc, char**argv)
   std::vector<SpikeStatsCollector> collected_stats(graph.numDevices);
   unsigned complete_device_stats=0;
   while(complete_device_stats < collected_stats.size()){
+
     PMessage<IzhikevichMsg> msg;
     hostLink.recvMsg(&msg, sizeof(msg));
 
@@ -171,6 +182,10 @@ int main(int argc, char**argv)
 
     if(!stats.import_msg(msg.payload.bytes)){
       complete_device_stats++;
+    }
+
+    if(!use_dumper_thread){
+      while(hostLink.pollStdOut(stderr));
     }
   }
 
@@ -209,7 +224,9 @@ int main(int argc, char**argv)
   
 
   quit_log.store(true);
-  dumper.join();
+  if(use_dumper_thread){
+    dumper.join();
+  }
 
   return 0;
 }

@@ -51,12 +51,20 @@ $(HL)/%.o:
 	make -C $(HL)
 
 $(BUILD)/run: $(RUN_CPP) $(RUN_H) $(HL)/*.o
-	g++ -std=c++11 -O2 -I $(INC) -I $(HL) -o $(BUILD)/run $(RUN_CPP) $(HL)/*.o \
-	  -lmetis -fno-exceptions -fopenmp
+	g++ -std=c++11 -O0 -I $(INC) -I $(HL) -o $(BUILD)/run $(RUN_CPP) $(HL)/*.o \
+	 -march=native -g -O3 -DNDEBUG=1 -lmetis -fno-exceptions -fopenmp \
+	 -fno-omit-frame-pointer -ltbb
+
+$(BUILD)/run.debug: $(RUN_CPP) $(RUN_H) $(HL)/*.o
+	g++ -std=c++11 -O0 -I $(INC) -I $(HL) -o $(BUILD)/run $(RUN_CPP) $(HL)/*.o \
+	 -g -O0 -lmetis -fno-exceptions -fopenmp -pthread \
+	 -fno-omit-frame-pointer  -fsanitize=undefined -ltbb \
+	 -fsanitize=thread -std=c++17
+# -fsanitize=address
 
 $(BUILD)/sim: $(RUN_CPP) $(RUN_H) $(HL)/sim/*.o
 	g++ -O2 -I $(INC) -I $(HL) -o $(BUILD)/sim $(RUN_CPP) $(HL)/sim/*.o \
-    -lmetis
+    -g -lmetis
 
 .PHONY: clean
 clean:
