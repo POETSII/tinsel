@@ -19,6 +19,83 @@
 #include <POLite/SpinLock.h>
 
 #include <tbb/parallel_for.h>
+#include <tbb/blocked_range2d.h>
+
+const bool AllowParallelFor=true;
+
+template<class TR=unsigned, class TF>
+void parallel_for_with_grain(TR begin, TR end, TR grain_size, TF f)
+{
+  auto n=end-begin;
+  if(n==0){
+    return;
+  }
+  if(n >= 2*grain_size && AllowParallelFor){
+    tbb::parallel_for<tbb::blocked_range<TR>>( {begin, end, grain_size},  [&](const tbb::blocked_range<TR> &r){
+      for(TR i=r.begin(); i<r.end(); i++){
+        f(i);
+      }
+    });
+  }else{
+    #ifdef NDEBUG
+    TR off=begin + rand()%(end-begin);
+    for(TR i=begin; i<end; i++){
+      f(off);
+      ++off;
+      if(off==end){
+        off=begin;
+      }
+    }  
+    #else
+    for(TR i=begin; i<end; i++){
+      f(i);
+    }
+    #endif
+  }
+}
+
+template<class TR=unsigned, class TF>
+void parallel_for_2d_with_grain(TR begin0, TR end0, TR grain_size0, TR begin1, TR end1, TR grain_size1, TF f)
+{
+  auto n0=end0-begin0;
+  auto n1=end1-begin1;
+  if(n1==0 || n0==0){
+    return;
+  }
+  if(n1 >= 2*grain_size1 && n0 >= 2*grain_size0 && AllowParallelFor){
+    tbb::parallel_for<tbb::blocked_range2d<TR>>( {begin0, end0, grain_size0, begin1, end1, grain_size1},  [&](const tbb::blocked_range2d<TR> &r){
+      for(TR i=r.rows().begin(); i<r.rows().end(); i++){
+        for(TR j=r.cols().begin(); j<r.cols().end(); j++){
+          f(i, j);
+        }
+      }
+    });
+  }else{
+    #ifdef NDEBUG
+    TR off0=begin0 + rand()%(end0-begin0);
+    for(TR i=begin0; i<end0; i++){
+      TR off1=begin1 + rand()%(end1-begin1);
+      for(TR i=begin0; i<end0; i++){
+        f(off0, off1);
+        ++off1;
+        if(off1==end1){
+          off1=begin1;
+        }
+      }
+      ++off0;
+      if(off0==end0){
+        off0=begin0;
+      }
+    }  
+    #else
+    for(TR i=begin0; i<end0; i++){
+      for(TR j=begin1; j<end1; j++){
+        f(i,j);
+      }
+    }
+    #endif
+  }
+}
 
 // Nodes of a POETS graph are devices
 typedef NodeId PDeviceId;
@@ -204,6 +281,10 @@ template <typename DeviceType,
   // Allow mapper to print useful information to stdout
   uint32_t chatty;
 
+  // Do stuff in parallel
+  // 0=default, +1=yes, -1=no
+  int parallel=0;
+
   // Setter for number of boards to use
   void setNumBoards(uint32_t x, uint32_t y) {
     if (x > meshLenX || y > meshLenY) {
@@ -222,23 +303,39 @@ template <typename DeviceType,
     return graph.newNode();
   }
 
-  // Add a connection between devices
-  inline void addEdge(PDeviceId from, PinId pin, PDeviceId to) {
+  // Creates n new devices with contiguous ids, and returns the first id
+  inline PDeviceId newDevices(uint32_t n)
+  {
+    assert(edgeLabels.numElems==graph.nodeCount());
+    PDeviceId base=graph.newNodes(n);
+    numDevices+=n;
+    edgeLabels.extendBy(n);
+    for(unsigned i=base; i<base+n; i++){
+      edgeLabels[i]=new SmallSeq<E>;
+    }
+    return base;
+  }
+
+    // Add labelled edge using given output pin
+  void addLabelledEdge(E edge, PDeviceId from, PinId pin, PDeviceId to) {
     if (pin >= POLITE_NUM_PINS) {
       printf("addEdge: pin exceeds POLITE_NUM_PINS\n");
       exit(EXIT_FAILURE);
     }
     graph.addEdge(from, pin, to);
+    edgeLabels.elems[from]->append(edge);
+  }
+
+  // Add a connection between devices
+  inline void addEdge(PDeviceId from, PinId pin, PDeviceId to) {
     E edge;
-    edgeLabels.elems[from]->append(edge);
+    graph.addEdge(edge, from, pin, to);
   }
 
-  // Add labelled edge using given output pin
-  void addLabelledEdge(E edge, PDeviceId from, PinId pin, PDeviceId to) {
-    graph.addEdge(from, pin, to);
-    edgeLabels.elems[from]->append(edge);
+  void reserveOutgoingEdgeSpace(PDeviceId from, PinId pin, size_t n)
+  {
+    graph.reserveOutgoingEdgeSpace(from, pin, n);
   }
-
 
   /*
   dt10 : the random POLITE_NOINLINE attributes are to avoid the
@@ -275,7 +372,7 @@ template <typename DeviceType,
     outEdgeMemBase = (uint32_t*) calloc(TinselMaxThreads, sizeof(uint32_t));
 
     // Compute partition sizes for each thread
-    for (uint32_t threadId = 0; threadId < TinselMaxThreads; threadId++) {
+    parallel_for_with_grain(0, TinselMaxThreads, 64, [&](uint32_t threadId){
       // This variable is used to count the size of the *initialised*
       // partition.  The total partition size is larger as it includes
       // uninitialised portions.
@@ -393,79 +490,79 @@ template <typename DeviceType,
         outEdgeMemBase[threadId] = sramBase;
         sramBase += sizeEOMem;
       }
-    }
+    });
   }
 
   // Initialise partitions
   __attribute__((noinline)) void initialisePartitions() {
-    for (uint32_t threadId = 0; threadId < TinselMaxThreads; threadId++) {
-      // Next pointers for each partition
-      uint32_t nextVMem = 0;
-      uint32_t nextOutIndex = 0;
-      // Pointer to thread structure
-      PThread<DeviceType, S, E, M>* thread =
-        (PThread<DeviceType, S, E, M>*) &threadMem[threadId][0];
-      // Set number of devices on thread
-      thread->numDevices = numDevicesOnThread[threadId];
-      // Set number of devices in graph
-      thread->numVertices = numDevices;
-      // Set tinsel address of array of device states
-      thread->devices = vertexMemBase[threadId];
-      // Set tinsel address of base of edge tables
-      thread->outTableBase = outEdgeMemBase[threadId];
-      thread->inTableHeaderBase = inEdgeHeaderMemBase[threadId];
-      thread->inTableRestBase = inEdgeRestMemBase[threadId];
-      // Add space for each device on thread
-      uint32_t numDevs = numDevicesOnThread[threadId];
-      for (uint32_t devNum = 0; devNum < numDevs; devNum++) {
-        PState<S>* dev = (PState<S>*) &vertexMem[threadId][nextVMem];
-        PDeviceId id = fromDeviceAddr[threadId][devNum];
-        devices[id] = dev;
-        // Add space for device
-        nextVMem = nextVMem + sizeof(PState<S>);
-      }
-      // Initialise each device and the thread's out edges
-      for (uint32_t devNum = 0; devNum < numDevs; devNum++) {
-        PDeviceId id = fromDeviceAddr[threadId][devNum];
-        PState<S>* dev = devices[id];
-        // Initialise
-        POutEdge* outEdgeArray = (POutEdge*) outEdgeMem[threadId];
-        for (uint32_t p = 0; p < POLITE_NUM_PINS; p++) {
-          dev->pinBase[p] = nextOutIndex;
-          Seq<POutEdge>* edges = outTable[id][p];
-          for (uint32_t i = 0; i < edges->numElems; i++) {
-            outEdgeArray[nextOutIndex] = edges->elems[i];
-            nextOutIndex++;
+    parallel_for_with_grain(0, TinselMaxThreads,1024, [&](uint32_t threadId){
+        // Next pointers for each partition
+        uint32_t nextVMem = 0;
+        uint32_t nextOutIndex = 0;
+        // Pointer to thread structure
+        PThread<DeviceType, S, E, M>* thread =
+          (PThread<DeviceType, S, E, M>*) &threadMem[threadId][0];
+        // Set number of devices on thread
+        thread->numDevices = numDevicesOnThread[threadId];
+        // Set number of devices in graph
+        thread->numVertices = numDevices;
+        // Set tinsel address of array of device states
+        thread->devices = vertexMemBase[threadId];
+        // Set tinsel address of base of edge tables
+        thread->outTableBase = outEdgeMemBase[threadId];
+        thread->inTableHeaderBase = inEdgeHeaderMemBase[threadId];
+        thread->inTableRestBase = inEdgeRestMemBase[threadId];
+        // Add space for each device on thread
+        uint32_t numDevs = numDevicesOnThread[threadId];
+        for (uint32_t devNum = 0; devNum < numDevs; devNum++) {
+          PState<S>* dev = (PState<S>*) &vertexMem[threadId][nextVMem];
+          PDeviceId id = fromDeviceAddr[threadId][devNum];
+          devices[id] = dev;
+          // Add space for device
+          nextVMem = nextVMem + sizeof(PState<S>);
+        }
+        // Initialise each device and the thread's out edges
+        for (uint32_t devNum = 0; devNum < numDevs; devNum++) {
+          PDeviceId id = fromDeviceAddr[threadId][devNum];
+          PState<S>* dev = devices[id];
+          // Initialise
+          POutEdge* outEdgeArray = (POutEdge*) outEdgeMem[threadId];
+          for (uint32_t p = 0; p < POLITE_NUM_PINS; p++) {
+            dev->pinBase[p] = nextOutIndex;
+            Seq<POutEdge>* edges = outTable[id][p];
+            for (uint32_t i = 0; i < edges->numElems; i++) {
+              outEdgeArray[nextOutIndex] = edges->elems[i];
+              nextOutIndex++;
+            }
           }
         }
-      }
-      // Intialise thread's in edges
-      PerThreadRoutingInfo *tbi=perThreadRoutingInfo+threadId;
-      PInHeader<E>* inEdgeHeaderArray =
-        (PInHeader<E>*) inEdgeHeaderMem[threadId];
-      Seq<PInHeader<E>>* headers = &tbi->inTableHeaders;
-      if (headers)
-        for (uint32_t i = 0; i < headers->numElems; i++) {
-          inEdgeHeaderArray[i] = headers->elems[i];
+        // Intialise thread's in edges
+        PerThreadRoutingInfo *tbi=perThreadRoutingInfo+threadId;
+        PInHeader<E>* inEdgeHeaderArray =
+          (PInHeader<E>*) inEdgeHeaderMem[threadId];
+        Seq<PInHeader<E>>* headers = &tbi->inTableHeaders;
+        if (headers)
+          for (uint32_t i = 0; i < headers->numElems; i++) {
+            inEdgeHeaderArray[i] = headers->elems[i];
+          }
+        PInEdge<E>* inEdgeRestArray = (PInEdge<E>*) inEdgeRestMem[threadId];
+        Seq<PInEdge<E>>* edges = &tbi->inTableRest;
+        if (edges)
+          for (uint32_t i = 0; i < edges->numElems; i++) {
+            inEdgeRestArray[i] = edges->elems[i];
+          }
+        // At this point, check that next pointers line up with heap sizes
+        if (nextVMem != vertexMemSize[threadId]) {
+          printf("Error: vertex mem size does not match pre-computed size\n");
+          exit(EXIT_FAILURE);
         }
-      PInEdge<E>* inEdgeRestArray = (PInEdge<E>*) inEdgeRestMem[threadId];
-      Seq<PInEdge<E>>* edges = &tbi->inTableRest;
-      if (edges)
-        for (uint32_t i = 0; i < edges->numElems; i++) {
-          inEdgeRestArray[i] = edges->elems[i];
+        if ((nextOutIndex * sizeof(POutEdge)) != outEdgeMemSize[threadId]) {
+          printf("Error: out edge mem size does not match pre-computed size\n");
+          exit(EXIT_FAILURE);
         }
-      // At this point, check that next pointers line up with heap sizes
-      if (nextVMem != vertexMemSize[threadId]) {
-        printf("Error: vertex mem size does not match pre-computed size\n");
-        exit(EXIT_FAILURE);
-      }
-      if ((nextOutIndex * sizeof(POutEdge)) != outEdgeMemSize[threadId]) {
-        printf("Error: out edge mem size does not match pre-computed size\n");
-        exit(EXIT_FAILURE);
-      }
-      // Set tinsel address of senders array
-      thread->senders = vertexMemBase[threadId] + nextVMem;
-    }
+        // Set tinsel address of senders array
+        thread->senders = vertexMemBase[threadId] + nextVMem;
+    });
   }
 
   // Allocate mapping structures
@@ -483,12 +580,12 @@ template <typename DeviceType,
 
     // Sender-side tables
     outTable = (Seq<POutEdge>***) calloc(numDevices, sizeof(Seq<POutEdge>**));
-    for (uint32_t d = 0; d < numDevices; d++) {
-      outTable[d] = (Seq<POutEdge>**)
-        calloc(POLITE_NUM_PINS, sizeof(Seq<POutEdge>*));
-      for (uint32_t p = 0; p < POLITE_NUM_PINS; p++)
+    parallel_for_with_grain<unsigned>( 0, numDevices,1024, [&](unsigned d){
+      outTable[d] = (Seq<POutEdge>**) calloc(POLITE_NUM_PINS, sizeof(Seq<POutEdge>*));
+      for (uint32_t p = 0; p < POLITE_NUM_PINS; p++){
         outTable[d][p] = new SmallSeq<POutEdge>;
-    }
+      }
+    });
 
     perMailboxRoutingInfo=new PerMailboxRoutingInfo[TinselMaxThreads / TinselThreadsPerMailbox];
   }
@@ -778,7 +875,7 @@ template <typename DeviceType,
 
     // For each device
     if(DoLock){
-      tbb::parallel_for<uint32_t>(0, numDevices, [&](uint32_t d) {
+      parallel_for_with_grain<unsigned>(0, numDevices, 1, [&](uint32_t d) {
 
         // Edge destinations (local to sender board, or not)
         Seq<PEdgeDest> local;
@@ -809,31 +906,27 @@ template <typename DeviceType,
       free(devices);
       free(toDeviceAddr);
       free(numDevicesOnThread);
-      for (uint32_t t = 0; t < TinselMaxThreads; t++)
-        if (fromDeviceAddr[t] != NULL) free(fromDeviceAddr[t]);
+      parallel_for_with_grain(0,TinselMaxThreads,1024, [&](unsigned t) {
+          if (fromDeviceAddr[t] != NULL) free(fromDeviceAddr[t]);
+          if (vertexMem[t] != NULL) free(vertexMem[t]);
+          if (threadMem[t] != NULL) free(threadMem[t]);
+          if (inEdgeHeaderMem[t] != NULL) free(inEdgeHeaderMem[t]);
+          if (inEdgeRestMem[t] != NULL) free(inEdgeRestMem[t]);
+          if (outEdgeMem[t] != NULL) free(outEdgeMem[t]);
+      });
       free(fromDeviceAddr);
-      for (uint32_t t = 0; t < TinselMaxThreads; t++)
-        if (vertexMem[t] != NULL) free(vertexMem[t]);
       free(vertexMem);
       free(vertexMemSize);
       free(vertexMemBase);
-      for (uint32_t t = 0; t < TinselMaxThreads; t++)
-        if (threadMem[t] != NULL) free(threadMem[t]);
       free(threadMem);
       free(threadMemSize);
       free(threadMemBase);
-      for (uint32_t t = 0; t < TinselMaxThreads; t++)
-        if (inEdgeHeaderMem[t] != NULL) free(inEdgeHeaderMem[t]);
       free(inEdgeHeaderMem);
       free(inEdgeHeaderMemSize);
       free(inEdgeHeaderMemBase);
-      for (uint32_t t = 0; t < TinselMaxThreads; t++)
-        if (inEdgeRestMem[t] != NULL) free(inEdgeRestMem[t]);
       free(inEdgeRestMem);
       free(inEdgeRestMemSize);
       free(inEdgeRestMemBase);
-      for (uint32_t t = 0; t < TinselMaxThreads; t++)
-        if (outEdgeMem[t] != NULL) free(outEdgeMem[t]);
       free(outEdgeMem);
       free(outEdgeMemSize);
       free(outEdgeMemBase);
@@ -874,66 +967,61 @@ template <typename DeviceType,
     gettimeofday(&placementStart, NULL);
 
     // Partition into subgraphs, one per board
-    Placer boards(&graph, numBoardsX, numBoardsY);
+    Placer boards(&graph, numBoardsX, numBoardsY, true);
 
     // Place subgraphs onto 2D mesh
     const uint32_t placerEffort = 8;
     boards.place(placerEffort);
 
     // For each board
-    //#pragma omp parallel for collapse(2)
-    for (uint32_t boardY = 0; boardY < numBoardsY; boardY++) {
-      for (uint32_t boardX = 0; boardX < numBoardsX; boardX++) {
-        // Partition into subgraphs, one per mailbox
-        PartitionId b = boards.mapping[boardY][boardX];
-        Placer boxes(&boards.subgraphs[b], 
-                 TinselMailboxMeshXLen, TinselMailboxMeshYLen);
-        boxes.place(placerEffort);
+    parallel_for_2d_with_grain<unsigned>(0,numBoardsY,1, 0,numBoardsX,1, [&](uint32_t boardY, uint32_t boardX) {
+      // Partition into subgraphs, one per mailbox
+      PartitionId b = boards.mapping[boardY][boardX];
+      Placer boxes(&boards.subgraphs[b], 
+              TinselMailboxMeshXLen, TinselMailboxMeshYLen);
+      boxes.place(placerEffort);
 
-        // For each mailbox
-        for (uint32_t boxX = 0; boxX < TinselMailboxMeshXLen; boxX++) {
-          for (uint32_t boxY = 0; boxY < TinselMailboxMeshYLen; boxY++) {
-            // Partition into subgraphs, one per thread
-            uint32_t numThreads = 1<<TinselLogThreadsPerMailbox;
-            PartitionId t = boxes.mapping[boxY][boxX];
-            Placer threads(&boxes.subgraphs[t], numThreads, 1);
+      // For each mailbox
+      parallel_for_2d_with_grain<unsigned>(0,TinselMailboxMeshXLen,1,  0,TinselMailboxMeshYLen,1, [&](uint32_t boxX, uint32_t boxY) {
+        // Partition into subgraphs, one per thread
+        uint32_t numThreads = 1<<TinselLogThreadsPerMailbox;
+        PartitionId t = boxes.mapping[boxY][boxX];
+        Placer threads(&boxes.subgraphs[t], numThreads, 1);
 
-            // For each thread
-            for (uint32_t threadNum = 0; threadNum < numThreads; threadNum++) {
-              // Determine tinsel thread id
-              uint32_t threadId = boardY;
-              threadId = (threadId << TinselMeshXBits) | boardX;
-              threadId = (threadId << TinselMailboxMeshYBits) | boxY;
-              threadId = (threadId << TinselMailboxMeshXBits) | boxX;
-              threadId = (threadId << (TinselLogCoresPerMailbox +
-                            TinselLogThreadsPerCore)) | threadNum;
+        // For each thread
+        for (uint32_t threadNum = 0; threadNum < numThreads; threadNum++) {
+          // Determine tinsel thread id
+          uint32_t threadId = boardY;
+          threadId = (threadId << TinselMeshXBits) | boardX;
+          threadId = (threadId << TinselMailboxMeshYBits) | boxY;
+          threadId = (threadId << TinselMailboxMeshXBits) | boxX;
+          threadId = (threadId << (TinselLogCoresPerMailbox +
+                        TinselLogThreadsPerCore)) | threadNum;
 
-              // Get subgraph
-              Graph* g = &threads.subgraphs[threadNum];
+          // Get subgraph
+          Graph* g = &threads.subgraphs[threadNum];
 
-              // Populate fromDeviceAddr mapping
-              uint32_t numDevs = g->nodeCount();
-              numDevicesOnThread[threadId] = numDevs;
-              fromDeviceAddr[threadId] = (PDeviceId*)
-                malloc(sizeof(PDeviceId) * numDevs);
-              for (uint32_t devNum = 0; devNum < numDevs; devNum++){
-                //fromDeviceAddr[threadId][devNum] = g->labels->elems[devNum];
-                fromDeviceAddr[threadId][devNum] = g->getLabel(devNum);
-              }
-  
-              // Populate toDeviceAddr mapping
-              assert(numDevs < maxLocalDeviceId());
-              for (uint32_t devNum = 0; devNum < numDevs; devNum++) {
-                PDeviceAddr devAddr =
-                  makeDeviceAddr(threadId, devNum);
-                //toDeviceAddr[g->labels->elems[devNum]] = devAddr;
-                toDeviceAddr[g->getLabel(devNum)] = devAddr;
-              }
-            }
+          // Populate fromDeviceAddr mapping
+          uint32_t numDevs = g->nodeCount();
+          numDevicesOnThread[threadId] = numDevs;
+          fromDeviceAddr[threadId] = (PDeviceId*)
+            malloc(sizeof(PDeviceId) * numDevs);
+          for (uint32_t devNum = 0; devNum < numDevs; devNum++){
+            //fromDeviceAddr[threadId][devNum] = g->labels->elems[devNum];
+            fromDeviceAddr[threadId][devNum] = g->getLabel(devNum);
+          }
+
+          // Populate toDeviceAddr mapping
+          assert(numDevs < maxLocalDeviceId());
+          for (uint32_t devNum = 0; devNum < numDevs; devNum++) {
+            PDeviceAddr devAddr =
+              makeDeviceAddr(threadId, devNum);
+            //toDeviceAddr[g->labels->elems[devNum]] = devAddr;
+            toDeviceAddr[g->getLabel(devNum)] = devAddr;
           }
         }
-      }
-    }
+      });
+    });
 
     // Stop placement timer and start routing timer
     gettimeofday(&placementFinish, NULL);

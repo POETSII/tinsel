@@ -15,9 +15,6 @@
 
 class ProgRouter {
 
-  // Use a real mutex here, as contention is quite possible
-  std::mutex m_mutex;
-
   // Number of chunks used so far in current beat
   uint32_t numChunks;
 
@@ -126,7 +123,6 @@ class ProgRouter {
 
   // Generate a new key for the records added
   uint32_t genKey() {
-    std::lock_guard<std::mutex> lk(m_mutex);
 
     // Determine index of first beat in record sequence
     uint32_t index = table[currentRAM]->numElems - numBeats*32;
@@ -158,7 +154,6 @@ class ProgRouter {
   void addMRM(uint32_t mboxX, uint32_t mboxY,
                 uint32_t threadsHigh, uint32_t threadsLow,
                   uint16_t localKey) {
-    std::lock_guard<std::mutex> lk(m_mutex);
     if (numChunks >= 4) nextBeat();
     uint8_t* ptr = currentRecord96();
     ptr[0] = threadsLow;
@@ -178,7 +173,6 @@ class ProgRouter {
 
   // Add an RR record to the table
   void addRR(uint32_t dir, uint32_t key) {
-    std::lock_guard<std::mutex> lk(m_mutex);
 
     if (numChunks == 5) nextBeat();
     uint8_t* ptr = currentRecord48();
@@ -194,7 +188,6 @@ class ProgRouter {
   // Add a URM1 record to the table
   void addURM1(uint32_t mboxX, uint32_t mboxY,
                  uint32_t threadId, uint32_t key) {
-    std::lock_guard<std::mutex> lk(m_mutex);
     
     if (numChunks == 5) nextBeat();
     uint8_t* ptr = currentRecord48();
@@ -277,9 +270,12 @@ class ProgRouterMesh {
   uint32_t boardsX;
   uint32_t boardsY;
 
- public:
+  std::recursive_mutex m_mutex;
+
   // 2D array of tables;
   ProgRouter** table;
+
+ public:
 
   // Constructor
   ProgRouterMesh(uint32_t numBoardsX, uint32_t numBoardsY) {
@@ -312,6 +308,8 @@ class ProgRouterMesh {
       else if (receiverY > senderY) north.append(dest);
       else local.append(dest);
     }
+
+    std::lock_guard<std::recursive_mutex> lk(m_mutex);
 
     // Recurse on non-local groups and add RR records on return
     if (north.numElems > 0) {

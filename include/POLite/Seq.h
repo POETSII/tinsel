@@ -25,9 +25,9 @@ template <class T> class Seq
     }
 
   public:
+    T* elems;
     int maxElems;
     int numElems;
-    T* elems;
 
     // Constructors
     Seq() {
@@ -123,16 +123,6 @@ template <class T> class Seq
 
     void append(const T &x)
     {
-      if(numElems==maxElems){
-        setCapacity(std::max(maxElems*2, 16));
-      }
-      elems[numElems++] = std::move(x);
-    }
-
-    void append(SpinLock &lock, T &&x)
-    {
-      std::lock_guard<SpinLock> lk(lock);
-
       if(numElems==maxElems){
         setCapacity(std::max(maxElems*2, 16));
       }

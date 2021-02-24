@@ -8,6 +8,11 @@
 #include <queue>
 #include <omp.h>
 
+/* I (dt10) couldnt get MTMetis to work on more than 1 thread without crashing */
+#ifdef HAVE_MT_METIS
+#include <mtmetis.h>
+#endif
+
 #define POLITE_NOINLINE __attribute__((noinline))
 
 typedef uint32_t PartitionId;
@@ -20,9 +25,14 @@ struct Placer {
     Metis,
     Random,
     Direct,
-    BFS
+    BFS,
+    MTMetis
   };
+  #ifdef HAVE_MT_METIS
+  const Method defaultMethod=MTMetis;  
+  #else
   const Method defaultMethod=Metis;
+  #endif
 
   // The graph being placed
   Graph* graph;
@@ -55,6 +65,8 @@ struct Placer {
   uint32_t* yCoordSaved;
   uint64_t savedCost;
 
+  bool is_top_level=false; // We only try to parallelise at the top level
+
   // Random numbers
   unsigned int seed;
   void setRand(unsigned int s) { seed = s; };
@@ -70,6 +82,8 @@ struct Placer {
     if (e) {
       if (!strcmp(e, "metis"))
         method=Metis;
+      else if (!strcmp(e, "mtmetis"))
+        method=MTMetis;
       else if (!strcmp(e, "random"))
         method=Random;
       else if (!strcmp(e, "direct"))
@@ -87,7 +101,7 @@ struct Placer {
       method = defaultMethod;
   }
 
-  // Partition the graph using Metis
+  // Partition the graph using Metis or MetisMT
   POLITE_NOINLINE void partitionMetis() {
     // Compute total number of edges
     uint32_t numEdges = 0;
@@ -127,15 +141,6 @@ struct Placer {
     uint32_t next = 0;
     for (uint32_t i = 0; i < nvtxs; i++) {
       xadj[i] = next;
-      /*
-      Seq<NodeId>* in = graph->incoming->elems[i];
-      Seq<NodeId>* out = graph->outgoing->elems[i];
-      for (uint32_t j = 0; j < in->numElems; j++)
-        adjncy[next++] = (idx_t) in->elems[j];
-      for (uint32_t j = 0; j < out->numElems; j++)
-        if (! in->member(out->elems[j]))
-          adjncy[next++] = (idx_t) out->elems[j];
-      */
      unsigned nIn=graph->fanIn(i);
      graph->exportIncomingNodeIds(i, nIn, adjncy+next);
      next += nIn;
@@ -149,17 +154,38 @@ struct Placer {
     // Allocate Metis result array
     idx_t* parts = (idx_t*) calloc(nvtxs, sizeof(idx_t));
 
-    // Specify Metis options
-    idx_t options[METIS_NOPTIONS];
-    METIS_SetDefaultOptions(options);
-
     // Invoke partitioner
     // Note: METIS_PartGraphKway gives poor results when the number of
     // vertices is close to the number of partitions, so we use
     // METIS_PartGraphRecursive.
-    int ret = METIS_PartGraphRecursive(
-      &nvtxs, &nconn, xadj, adjncy,
-      NULL, NULL, NULL, &nparts, NULL, NULL, options, &objval, parts);
+    int ret;
+    if(method==MTMetis && is_top_level && method!=Metis){
+      #ifndef HAVE_MT_METIS
+      fprintf(stderr, "MTMetis is selected, but does not seem to have been compiled in.");
+      exit(1);
+      #else
+      fprintf(stderr, "Using MTMetis : warning, this is very unstable.\n");
+      static_assert(sizeof(idx_t)==sizeof(mtmetis_vtx_type));
+      static_assert(sizeof(idx_t)==sizeof(mtmetis_adj_type));
+      static_assert(sizeof(idx_t)==sizeof(mtmetis_pid_type));
+      double options[MTMETIS_NOPTIONS];
+      for(unsigned i=0; i<MTMETIS_NOPTIONS; i++){
+        options[i]= MTMETIS_VAL_OFF;
+      }
+      options[MTMETIS_OPTION_NTHREADS]=2;
+      mtmetis_wgt_type objval;
+      ret = MTMETIS_PartGraphRecursive(
+        (mtmetis_vtx_type*)&nvtxs, (mtmetis_vtx_type*)&nconn, (mtmetis_adj_type*)xadj, (mtmetis_vtx_type*)adjncy,
+        NULL, NULL, NULL, (mtmetis_pid_type*)&nparts, NULL, NULL, options, &objval, (mtmetis_pid_type*)parts);
+      #endif
+    }else{
+      // Specify Metis options
+      idx_t options[METIS_NOPTIONS];
+      METIS_SetDefaultOptions(options);
+      ret = METIS_PartGraphRecursive(
+        &nvtxs, &nconn, xadj, adjncy,
+        NULL, NULL, NULL, &nparts, NULL, NULL, options, &objval, parts);
+    }
 
     // Populate result array
     for (uint32_t i = 0; i < graph->nodeCount(); i++)
@@ -251,6 +277,7 @@ struct Placer {
   {
     switch(method){
     case Default:
+    case MTMetis:
     case Metis:
       partitionMetis();
       break;
@@ -453,7 +480,8 @@ struct Placer {
   }
 
   // Constructor
-  POLITE_NOINLINE Placer(Graph* g, uint32_t w, uint32_t h) {
+  POLITE_NOINLINE Placer(Graph* g, uint32_t w, uint32_t h, bool _is_top_level=false) {
+    is_top_level=_is_top_level;
     graph = g;
     width = w;
     height = h;

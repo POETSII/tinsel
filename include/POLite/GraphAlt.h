@@ -48,6 +48,16 @@ struct GraphAlt {
     return nodes.numElems-1;
   }
 
+  // Creates n new nodes with contiguous ids, and returns the id of the first one
+  NodeId newNodes(uint32_t n) {
+    NodeId base=nodes.numElems;
+    nodes.extendBy(n);
+    for(NodeId i=base; i<base+n; i++){
+      nodes[i].label=i;
+    }
+    return base;
+  }
+
   // Set node label
   void setLabel(NodeId id, NodeLabel lab) {
     assert(id < nodes.numElems);
@@ -72,6 +82,11 @@ struct GraphAlt {
   // Add edge using output pin 0
   void addEdge(NodeId x, NodeId y) {
     addEdge(x, 0, y);
+  }
+
+  void reserveOutgoingEdgeSpace(NodeId from, PinId pin, size_t n)
+  {
+    nodes[from].outgoing.ensureSpaceFor(n);
   }
 
   // Determine max pin used by given node

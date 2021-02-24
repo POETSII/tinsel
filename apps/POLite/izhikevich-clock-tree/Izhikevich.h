@@ -212,6 +212,7 @@ struct IzhikevichState {
 
   int8_t is_root =0;
   int8_t clock_child_count =0;
+  int8_t is_excitatory =0;
   
   SpikeStatsState spike_stats;
   SpikeStatsFragmenter spike_stats_fragmenter;
