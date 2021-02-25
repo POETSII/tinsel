@@ -130,6 +130,35 @@ public:
 
 };
 
+inline std::shared_ptr<NetworkTopology> edge_prob_network_topology_factory(const boost::json::object &config)
+{
+    if(config.at("type") != "EdgeProbTopology"){
+        throw std::runtime_error("wrong config type.");
+    }
+
+    if(!config.contains("nNeurons")){
+        throw std::runtime_error("topology config missing key 'nNeurons'");
+    }
+    uint64_t nNeurons=config.at("nNeurons").as_uint64();
+
+    if(!config.contains("pConnect")){
+        throw std::runtime_error("topology config missing key 'pConnect'");
+    }
+    double pConnect=config.at("pConnect").as_double();
+    if(pConnect <0 || 1 < pConnect){
+        throw std::runtime_error("pConnect is outside [0,1]");
+    }
+
+    uint64_t seed=1;
+    if(config.contains("seed")){
+        seed=config.at("seed").as_uint64();
+    }
+
+    StochasticSourceNode source(seed);
+
+    return std::make_shared<EdgeProbNetworkTopology>(nNeurons, pConnect, source);
+}
+
 };
 
 #endif

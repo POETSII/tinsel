@@ -76,7 +76,9 @@ struct PPin{
   PPin(const PPin &) = default;
   PPin &operator=(const PPin &o) = default;
 
-  explicit constexpr PPin(unsigned _index)
+  // The tag is to stop me accidentally constructing them,
+  // as I keep doing it...
+  explicit constexpr PPin(unsigned _index, bool _tag)
     : index(_index)
   {}
 
@@ -84,9 +86,9 @@ struct PPin{
   constexpr bool operator!=(PPin o) const { return index!=o.index; }
 };
 static_assert(sizeof(PPin)==1, "Expecting PPin to be 1 byte.");
-#define No (PPin{0})
-#define HostPin (PPin{1})
-#define Pin(n) (PPin{((n)+2)})
+#define No (PPin{0,true})
+#define HostPin (PPin{1,true})
+#define Pin(n) (PPin{((n)+2),true})
 
 // For template arguments that are not used
 struct None {};

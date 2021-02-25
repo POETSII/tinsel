@@ -10,10 +10,12 @@
 #include <utility>
 #include <numeric>
 #include <atomic>
-#include <boost/math/distributions/binomial.hpp>
-#include <boost/sort/pdqsort/pdqsort.hpp>
+#include "boost/math/distributions/binomial.hpp"
+#include "boost/sort/pdqsort/pdqsort.hpp"
 
 #include "stochastic_source.hpp"
+
+#include "boost/json.hpp"
 
 namespace snn
 {
@@ -36,6 +38,8 @@ public:
     virtual ~NetworkTopology()
     {}
 
+    virtual std::string topology_description() const=0;
+
     virtual count_type neuron_count() const =0;
 
     virtual count_type estimate_max_neuron_fanin() const =0;
@@ -55,6 +59,7 @@ public:
     }
 };
 
+inline std::shared_ptr<NetworkTopology> network_topology_factory(boost::json::object config);
 
 };
 

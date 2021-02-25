@@ -2,6 +2,8 @@
 #define snn_model_poisson_hpp
 
 #include <cstdint>
+#include <cstdio>
+#include <cmath>
 
 #include "hash.hpp"
 
@@ -11,7 +13,6 @@ namespace snn{
         struct model_config_type {
             uint32_t seed;
             uint32_t excitatory_probability; // Probability of excitatory is ldexp(excitatory,-32)
-
         };
 
         struct neuron_state_type {
@@ -19,8 +20,9 @@ namespace snn{
             float a, b, c, d, Ir;
 
             // Mutable
-            uint64_t rng_state;
             float u, v;
+            uint64_t rng_state;
+            
         };
 
         struct weight_type {
@@ -33,7 +35,8 @@ namespace snn{
 
     private:
         static bool is_neuron_excitatory(const model_config_type &config, uint32_t src)
-        { return hash_3d_to_bernoulli(config.seed, src, 2, config.excitatory_probability); }
+        { return src < 5; };
+        //{ return hash_3d_to_bernoulli(config.seed, src, 2, config.excitatory_probability); }
     public:
 
         static void neuron_init(const model_config_type &config, uint32_t src, neuron_state_type &state)
@@ -42,12 +45,13 @@ namespace snn{
             float r=hash_3d_to_u01(config.seed, src, 3);
             state.rng_state = hash_3d_to_uint64(config.seed, src, 1);
             if(is_excitatory){
+                float r2=r*r;
                 state.a=0.02f;
                 state.b=0.2f;
                 state.c=-65.0f;
-                state.c+=r*r;
+                state.c+=15.f*r2;
                 state.d=8.f;
-                state.d-=r*r;
+                state.d-=6*r2;
             }else{
                 state.a=0.02f;
                 state.a+=0.08f*r;
@@ -82,25 +86,27 @@ namespace snn{
             acc.acc += weight.inc;
         }
         
-
-        static bool neuron_step(const model_config_type &config, neuron_state_type &neuron, const accumulator_type &acc)
+        static __attribute__((noinline)) bool neuron_step( neuron_state_type &neuron, const accumulator_type &acc)
         {
             float v = neuron.v;
             float u = neuron.u;
+             bool spike=false;
 
+            /*
             float I = rng64_next_grng(neuron.rng_state);
-            I += acc.acc * float(1.f / 65536.0f);
+            //I += acc.acc * float(1.f / 65536.0f);
+            I = 0;
             v = v+0.5*(0.04*v*v+5*v+140-u+I); // Step 0.5 ms
             v = v+0.5*(0.04*v*v+5*v+140-u+I); // for numerical
             u = u + neuron.a*(neuron.b*v-u);          // stability
-            bool spike=false;
+           
             if (v >= 30.0) {
                 v = neuron.c;
                 u += neuron.d;
                 spike=true;
             }
-            neuron.v=v;
-            neuron.u=u;
+            */
+            neuron.v=0.1f;
             return spike;
         }
     };

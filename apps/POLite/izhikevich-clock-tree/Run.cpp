@@ -60,23 +60,22 @@ int main(int argc, char**argv)
   IzhikevichGraph graph;
   graph.chatty=1;
 
-  unsigned num_steps=1000;
+  unsigned num_steps=100;
   unsigned num_nodes=net.numNodes;
 
   // Used to hold states until the graph allocates them
   std::vector<IzhikevichState> states(num_nodes);
 
   // Create nodes in POETS graph
+  PDeviceId base_id= graph.newDevices(num_nodes);
+  assert(base_id==0);
   for (uint32_t i = 0; i < num_nodes; i++) {
-    PDeviceId id = graph.newDevice();
-    assert(i == id);
     states[i].num_steps=num_steps;
   }
 
   printf("Building clock tree...\n");
   build_clock_tree(graph, states, 0, 1, num_nodes);
   states[0].is_root=1;
-
 
   // Ratio of excitatory to inhibitory neurons
   double excitatory = 0.8;
@@ -85,15 +84,16 @@ int main(int argc, char**argv)
   srand(1);
   std::vector<bool> excite(num_nodes);
   for (int i = 0; i < num_nodes; i++){
-    excite[i] = urand() < excitatory;
+    states[i].is_excitatory = urand() < excitatory;
   }
 
   printf("Building synapse connections...\n");
   // Create connections in POETS graph
   for (uint32_t i = 0; i < num_nodes; i++) {
     uint32_t numNeighbours = net.neighbours[i][0];
+    graph.reserveOutgoingEdgeSpace(i, MessageType::Spike, numNeighbours);
     for (uint32_t j = 0; j < numNeighbours; j++) {
-      float weight = excite[i] ? 0.5 * urand() : -urand();
+      float weight = states[i].is_excitatory ? 0.5 * urand() : -urand();
       graph.addLabelledEdge(weight, i, MessageType::Spike, net.neighbours[i][j+1]);
     }
   }
