@@ -113,20 +113,23 @@ template <class T> class Seq
     }
 
     // Append
-    void append(T &&x)
+    //! \retval The number of items in the Seq after the append
+    int append(T &&x)
     {
       if(numElems==maxElems){
         setCapacity(std::max(maxElems*2, 16));
       }
       elems[numElems++] = std::move(x);
+      return numElems;
     }
 
-    void append(const T &x)
+    int append(const T &x)
     {
       if(numElems==maxElems){
         setCapacity(std::max(maxElems*2, 16));
       }
       elems[numElems++] = std::move(x);
+      return numElems;
     }
 
     // Delete last element

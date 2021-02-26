@@ -29,6 +29,21 @@ struct GraphAlt {
 
   Seq<Node> nodes;
 
+private:
+  size_t m_edgeCount=0;
+  size_t m_maxFanIn=0;
+  size_t m_maxFanOut=0;
+public:
+
+  size_t getEdgeCount() const
+  { return m_edgeCount; }
+
+  size_t getMaxFanIn() const
+  { return m_maxFanIn; }
+
+  size_t getMaxFanOut() const
+  { return m_maxFanOut; }
+
   // Constructor
   GraphAlt()
     : nodes(4096)
@@ -74,9 +89,13 @@ struct GraphAlt {
   void addEdge(NodeId x, PinId p, NodeId y)
   {
     assert(p>=0); // Not completely sure why PinId is signed; assume it is positive
-    nodes[x].outgoing.append({y,unsigned(p)});
+    unsigned fanOut = nodes[x].outgoing.append({y,unsigned(p)});
     nodes[x].max_pin=std::max(nodes[x].max_pin, p);
-    nodes[y].incoming.append(x);
+    unsigned fanIn = nodes[y].incoming.append(x);
+    ++m_edgeCount;
+
+    m_maxFanIn=std::max<size_t>(m_maxFanIn, nodes[x].outgoing.numElems);
+    m_maxFanOut=std::max<unsigned>(m_maxFanOut, nodes[y].incoming.size());
   }
 
   // Add edge using output pin 0

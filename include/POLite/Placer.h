@@ -26,6 +26,7 @@ struct Placer {
     Random,
     Direct,
     BFS,
+    BFS_then_Metis, // Perform BFS at the board level, then switch to metis
     MTMetis
   };
   #ifdef HAVE_MT_METIS
@@ -65,7 +66,7 @@ struct Placer {
   uint32_t* yCoordSaved;
   uint64_t savedCost;
 
-  bool is_top_level=false; // We only try to parallelise at the top level
+  int recursion_level=0; // May be used to intelligently select methods at system vs board vs FPGA levels
 
   // Random numbers
   unsigned int seed;
@@ -90,6 +91,8 @@ struct Placer {
         method=Direct;
       else if (!strcmp(e, "bfs"))
         method=BFS;
+      else if (!strcmp(e, "bfs_then_metis"))
+        method=BFS_then_Metis;
       else if (!strcmp(e, "default") || *e == '\0')
         method=Default;
       else {
@@ -103,6 +106,12 @@ struct Placer {
 
   // Partition the graph using Metis or MetisMT
   POLITE_NOINLINE void partitionMetis() {
+    // TODO : use 64-bit metis
+    if(graph->getEdgeCount() >= (1u<<31)){
+      fprintf(stderr, "This graph has at least 2^31 edges, and will fail in 32-bit metis.\n");
+      exit(1);
+    }
+
     // Compute total number of edges
     uint32_t numEdges = 0;
     for (uint32_t i = 0; i < graph->nodeCount(); i++) {
@@ -159,7 +168,7 @@ struct Placer {
     // vertices is close to the number of partitions, so we use
     // METIS_PartGraphRecursive.
     int ret;
-    if(method==MTMetis && is_top_level && method!=Metis){
+    if(method==MTMetis && (recursion_level==0) && method!=Metis){
       #ifndef HAVE_MT_METIS
       fprintf(stderr, "MTMetis is selected, but does not seem to have been compiled in.");
       exit(1);
@@ -273,12 +282,33 @@ struct Placer {
     delete [] seen;
   }
 
+  Method choose_default()
+  {
+    if(graph->getEdgeCount() >= (1u<<30) || graph->nodes.size() >= (1u<<28) ){
+      return BFS;
+    }else{
+      return Metis;
+    }
+  }
+
   void partition()
   {
+    Method method_now=method;
+    if(method==Default){
+      method_now=choose_default();
+    }
+
     switch(method){
     case Default:
+      fprintf(stderr, "Expecting explicit method by now\n");
+      exit(1);
     case MTMetis:
     case Metis:
+      if(graph->getEdgeCount() >= (1u<<30)){
+        fprintf(stderr, "Warning: Metis chosen as placement method, but graph has at least 2^31 edges. Falling back on BFS.");
+        partitionBFS();
+        break;
+      }
       partitionMetis();
       break;
     case Random:
@@ -289,6 +319,13 @@ struct Placer {
       break;
     case BFS:
       partitionBFS();
+      break;
+    case BFS_then_Metis:
+      if(recursion_level==0 || (graph->getEdgeCount() >= (1u<<30))){
+        partitionBFS();
+      }else{
+        partitionMetis();
+      }
       break;
     }
   }
@@ -480,8 +517,8 @@ struct Placer {
   }
 
   // Constructor
-  POLITE_NOINLINE Placer(Graph* g, uint32_t w, uint32_t h, bool _is_top_level=false) {
-    is_top_level=_is_top_level;
+  POLITE_NOINLINE Placer(Graph* g, uint32_t w, uint32_t h, bool _recursion_level=0) {
+    recursion_level = _recursion_level;
     graph = g;
     width = w;
     height = h;

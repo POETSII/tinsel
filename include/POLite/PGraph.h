@@ -910,7 +910,7 @@ template <typename DeviceType,
 
     mark_phase("partTopLevel");
     // Partition into subgraphs, one per board
-    Placer boards(&graph, numBoardsX, numBoardsY, true);
+    Placer boards(&graph, numBoardsX, numBoardsY, 0);
 
     mark_phase("placeTopLevel");
     // Place subgraphs onto 2D mesh
@@ -923,7 +923,7 @@ template <typename DeviceType,
       // Partition into subgraphs, one per mailbox
       PartitionId b = boards.mapping[boardY][boardX];
       Placer boxes(&boards.subgraphs[b], 
-              TinselMailboxMeshXLen, TinselMailboxMeshYLen);
+              TinselMailboxMeshXLen, TinselMailboxMeshYLen, 1);
       boxes.place(placerEffort);
 
       // For each mailbox
@@ -931,7 +931,7 @@ template <typename DeviceType,
         // Partition into subgraphs, one per thread
         uint32_t numThreads = 1<<TinselLogThreadsPerMailbox;
         PartitionId t = boxes.mapping[boxY][boxX];
-        Placer threads(&boxes.subgraphs[t], numThreads, 1);
+        Placer threads(&boxes.subgraphs[t], numThreads, 2);
 
         // For each thread
         for (uint32_t threadNum = 0; threadNum < numThreads; threadNum++) {
