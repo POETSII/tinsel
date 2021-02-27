@@ -21,6 +21,8 @@ private:
 
     StochasticSourceNode m_noise;
 
+    boost::json::object m_config;
+
     mutable std::vector<outgoing_range_weak_ptr_t> m_cache;
 
     void enum_outgoing_neurons(count_type src, std::vector<count_type> &dest) const
@@ -92,7 +94,14 @@ public:
     {
         m_average_connections_per_neuron=boost::math::mean(m_edges_per_neuron_dist); 
         m_expected_max_connections_per_neuron=std::ceil(boost::math::quantile(m_edges_per_neuron_dist, 0.5/num_neurons));
+
+        m_config["type"]="EdgeProbTopology";
+        m_config["nNeurons"]=num_neurons;
+        m_config["pConnect"]=connection_prob;
     }
+
+    virtual const boost::json::object &topology_config() const
+    { return m_config; }
 
     count_type neuron_count() const override
     { return m_num_neurons; }
@@ -130,7 +139,7 @@ public:
 
 };
 
-inline std::shared_ptr<NetworkTopology> edge_prob_network_topology_factory(const boost::json::object &config)
+inline std::shared_ptr<NetworkTopology> edge_prob_network_topology_factory(const StochasticSourceNode &source, const boost::json::object &config)
 {
     if(config.at("type") != "EdgeProbTopology"){
         throw std::runtime_error("wrong config type.");
@@ -139,7 +148,7 @@ inline std::shared_ptr<NetworkTopology> edge_prob_network_topology_factory(const
     if(!config.contains("nNeurons")){
         throw std::runtime_error("topology config missing key 'nNeurons'");
     }
-    uint64_t nNeurons=config.at("nNeurons").as_uint64();
+    uint64_t nNeurons=config.at("nNeurons").to_number<double>();
 
     if(!config.contains("pConnect")){
         throw std::runtime_error("topology config missing key 'pConnect'");
@@ -148,13 +157,6 @@ inline std::shared_ptr<NetworkTopology> edge_prob_network_topology_factory(const
     if(pConnect <0 || 1 < pConnect){
         throw std::runtime_error("pConnect is outside [0,1]");
     }
-
-    uint64_t seed=1;
-    if(config.contains("seed")){
-        seed=config.at("seed").as_uint64();
-    }
-
-    StochasticSourceNode source(seed);
 
     return std::make_shared<EdgeProbNetworkTopology>(nNeurons, pConnect, source);
 }

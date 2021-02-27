@@ -5,12 +5,16 @@
 
 #include "hash.hpp"
 
+#ifndef TINSEL
+#include <boost/json.hpp>
+#endif
+
 namespace snn{
     struct poisson_neuron_model
     {
         struct model_config_type {
             uint32_t seed;
-            uint32_t firing_rate_per_step;  
+            uint32_t firing_rate_per_step;  // Expressed as fixed point with 32 fractional bits.
         };
 
         struct neuron_state_type {
@@ -52,6 +56,28 @@ namespace snn{
             uint32_t u=rng64_next_uint32(neuron.rng_state);
             u += acc.acc;
             return u > neuron.firing_thresh;
+        }
+
+        #ifndef TINSEL
+        static model_config_type parse_config(const boost::json::object &config)
+        {
+            if(!config.contains("type")){
+                throw std::runtime_error("No type attribute.");
+            }
+            if(config.at("type") != "Poisson"){
+                throw std::runtime_error("Wrong neuron model.");
+            }
+
+            model_config_type res;
+            double p=config.contains("firing_rate_per_step") ? config.at("firing_rate_per_step").to_number<double>() : 0.01;
+            if(p<0 || 1<p){
+                throw std::runtime_error("excitatory_fraction is out of range.");
+            }
+
+            res.firing_rate_per_step=ldexp(p, 32);
+            res.seed=1;
+
+            return res;
         }
     };
 };

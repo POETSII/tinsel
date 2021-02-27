@@ -12,6 +12,8 @@
 #include <sys/time.h>
 #include <sys/resource.h>
 
+#include "vsnprintf_to_string.h"
+
 class LogContext;
 
 class Logger
@@ -38,8 +40,9 @@ private:
     };
 
     double m_t0;
-    int m_log_level=2;
-    FILE *m_dst;
+    FILE *m_dst=0;
+    int m_dst_log_level=10;
+    int m_stderr_log_level=2;
     std::vector<region> m_regions;
     int m_next_handle=0;
 
@@ -53,12 +56,16 @@ private:
         double dt=t-m_regions.back().start_wall_clock;
         double user_time=(usage.ru_utime.tv_sec+1e-6*usage.ru_utime.tv_usec)-m_regions.back().start_user_time;
         double kernel_time=(usage.ru_stime.tv_sec+1e-6*usage.ru_stime.tv_usec)-m_regions.back().start_kernel_time;
-        export_value("region_wall_time", dt);
-        export_value("region_kernel_time", kernel_time);
-        export_value("region_user_time", user_time);
+        export_value("region_wall_time", dt, 2);
+        export_value("region_kernel_time", kernel_time,2 );
+        export_value("region_user_time", user_time, 2);
         double utilisation=(kernel_time+user_time)/dt;
-        export_value("region_cpu_utilisation", utilisation);
-        fprintf(m_dst, "%.6f,  EXIT, %-32s, %-24s\n", now(), m_scope_name.c_str(), m_regions.back().local_name.c_str());
+        export_value("region_cpu_utilisation", utilisation, 2);
+        if(m_dst){
+            fprintf(m_dst, "%.6f,  EXIT, %-64s, %.6f\n", now(), m_scope_name.c_str(), dt);
+        }
+        fprintf(stderr, "%.6f,  EXIT, %-64s, %.6f\n", now(), m_scope_name.c_str(), dt);
+        
 
         m_regions.pop_back();
         m_scope_name= m_regions.empty() ? "" : m_regions.back().full_name;
@@ -98,7 +105,7 @@ private:
                 std::string val=strip(s.substr(colon+1));
 
                 if(!key.empty() && !val.empty()){
-                    export_value(key.c_str(), val.c_str());
+                    export_value(key.c_str(), val.c_str(), 2);
                 }
             }
 
@@ -113,58 +120,99 @@ private:
         add_system_info_lscpu();
     }
 
-public:
-    Logger()
-        : m_t0(0)
-        , m_dst(stdout)
+    void attach_log_file(const std::string &dst)
     {
+        assert(!m_dst);
+        FILE *dst_h=fopen(dst.c_str(), "w");
+        if(!dst_h){
+            fprintf(stderr, "Couldnt open log file %s\n", dst.c_str());
+            exit(1);
+        }
+        m_dst=dst_h;
+    }
+
+    void on_exit()
+    {
+        while(!m_regions.empty()){
+            exit_region();
+        }
+        if(m_dst){
+            fclose(m_dst);
+        }
+    }
+
+    void log_impl(const char *type, int severity, const char *msg, va_list va)
+    {
+        if(severity <= m_dst_log_level || severity <= m_stderr_log_level){
+            double t=now();
+
+            char buffer[256]={0};
+
+            vsnprintf(buffer, sizeof(buffer)-1, msg, va);
+
+            if(severity < m_dst_log_level && m_dst){
+                fprintf(m_dst, "%.6f, %-5s, %-64s, %s\n", t, type, m_scope_name.c_str(), msg);
+            }
+            if(severity < m_stderr_log_level){
+                fprintf(stderr, "%.6f, %-5s, %-64s, %s\n", t, type, m_scope_name.c_str(), msg);
+            }
+        }
+    }
+
+public:
+    Logger(std::string log_file_name)
+        : m_t0(0)
+        , m_dst(0)
+    {
+        attach_log_file(log_file_name);
+
         m_t0=now();
         enter_region("prog");
 
         enter_region("sys-info");
         char buffer[128]={0};
         gethostname(buffer, sizeof(buffer)-1);
-        export_value("hostname", buffer);
+        export_value("hostname", buffer, 2);
         add_system_info();
         exit_region();
     }
 
     ~Logger()
     {
-        while(!m_regions.empty()){
-            exit_region();
-        }
+        on_exit();
     }
 
     void log(int severity, const char *msg, ...)
     {
-        if(severity <= m_log_level){
-            double t=now();
+        va_list va;
+        va_start(va,msg);
+        log_impl("MSG", severity, msg, va);
+        va_end(va);
+    }
 
-            char buffer[256]={0};
-
-            va_list a;
-            va_start(a, msg);
-            vsnprintf(buffer, sizeof(buffer)-1, msg, a);
-            va_end(a);
-
-            fprintf(m_dst, "%.6f,   MSG, %-32s\n", t, msg);
+    void export_value(const char *key, const std::string &value, int level)
+    {
+        if(level < m_dst_log_level && m_dst){
+            fprintf(m_dst, "%.6f,   VAL, %-64s, %s\n", now(), (m_scope_name+"+"+key).c_str(), value.c_str());
+        }
+        if(level < m_stderr_log_level){
+            
+            fprintf(stderr, "%.6f,   VAL, %-64s, %s\n", now(),  (m_scope_name+"+"+key).c_str(), value.c_str());
         }
     }
 
-    void export_value(const char *key, const std::string &value)
+    void export_value(const char *key, double value, int level)
     {
-        fprintf(m_dst, "%.6f,   VAL, %-32s, %-24s, %s\n", now(), m_scope_name.c_str(), key, value.c_str());
+        if(level < m_dst_log_level || level < m_stderr_log_level){
+            export_value(key, std::to_string(value), level);
+        }
     }
 
-    void export_value(const char *key, double value)
+    void export_value(const char *key, int64_t value, int level)
     {
-        fprintf(m_dst, "%.6f,   VAL, %-32s, %-24s, %.8g\n", now(), m_scope_name.c_str(), key, value);
-    }
-
-    void export_value(const char *key, int64_t value)
-    {
-        fprintf(m_dst, "%.6f,   VAL  , %-32s, %-24s, %lld\n", now(), m_scope_name.c_str(), key, (long long)value);
+        if(level < m_dst_log_level || level < m_stderr_log_level){
+            export_value(key, std::to_string(value), level);
+        }
     }
 
     int enter_region(const char *name)
@@ -178,7 +226,10 @@ public:
             t, usage.ru_utime.tv_sec+1e-6*usage.ru_utime.tv_usec, usage.ru_stime.tv_sec+1e-6*usage.ru_stime.tv_usec
         });
         m_scope_name=m_regions.back().full_name;
-        fprintf(m_dst, "%.6f, ENTER, %-32s, %-24s\n", now(), m_scope_name.c_str(), name);
+        if(m_dst){
+            fprintf(m_dst, "%.6f, ENTER, %-64s\n", now(), m_scope_name.c_str());
+        }
+        fprintf(stderr, "%.6f, ENTER, %-64s\n", now(), m_scope_name.c_str());
         return h;
     }
 
@@ -207,7 +258,10 @@ public:
             t, usage.ru_utime.tv_sec+1e-6*usage.ru_utime.tv_usec, usage.ru_stime.tv_sec+1e-6*usage.ru_stime.tv_usec
         });
         m_scope_name=m_regions.back().full_name;
-        fprintf(m_dst, "%.6f, ENTER, %-32s, %-24s\n", now(), m_scope_name.c_str(), name);
+        if(m_dst){
+            fprintf(m_dst, "%.6f, ENTER, %-64s\n", now(), m_scope_name.c_str());
+        }
+        fprintf(stderr, "%.6f, ENTER, %-64s\n", now(), m_scope_name.c_str());
     }
 
     void tag_leaf(const char *name)
@@ -221,6 +275,17 @@ public:
         assert(m_regions.back().is_leaf);
         do_exit_region();
     }
+
+    [[noreturn]] void fatal_error(const char *msg, ...)
+    {
+        va_list va;
+        va_start(va, msg);
+        log_impl("FATAL", -1, msg, va);
+        va_end(va);
+
+        on_exit();
+        exit(1);
+    }   
 
     LogContext with_region(const char *name);
 };

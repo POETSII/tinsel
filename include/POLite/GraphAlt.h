@@ -94,8 +94,8 @@ public:
     unsigned fanIn = nodes[y].incoming.append(x);
     ++m_edgeCount;
 
-    m_maxFanIn=std::max<size_t>(m_maxFanIn, nodes[x].outgoing.numElems);
-    m_maxFanOut=std::max<unsigned>(m_maxFanOut, nodes[y].incoming.size());
+    m_maxFanOut=std::max<size_t>(m_maxFanOut, fanOut);
+    m_maxFanIn=std::max<size_t>(m_maxFanIn, fanIn);
   }
 
   // Add edge using output pin 0

@@ -61,6 +61,12 @@ public:
         , y(splitmix64(_x))
     {}
 
+    void seed(size_t n)
+    {
+        x=n;
+        y=splitmix64(n);
+    }
+
 
     StochasticSourceNode(uint64_t _x, uint64_t _y)
         : x(_x)

@@ -6,21 +6,23 @@ CPPFLAGS += -I ../../../hostlink
 
 CPPFLAGS += -I /home/dt10/local/include
 
-CXXFLAGS += -g -std=c++17 
-CXXFLAGS += -O3 -DNDEBUG=1 -march=native -fopenmp -lpthread
+CXXFLAGS += -g -std=c++17 -fopenmp -lpthread
+#CXXFLAGS += -O3 -DNDEBUG=1 -march=native 
 
-LDLIBS += -ltbb -lmetis
+LDLIBS += -ltbb -lmetis -lboost_program_options -lquadmath -ltbbmalloc_proxy
 
 include src/test_hash_all.mk
 
 HOSTLINK_SRCS := HostLink.cpp SocketUtils.cpp MemFileReader.cpp DebugLink.cpp
 HOSTLINK_OBJS := $(patsubst %.cpp, obj/%.o,$(HOSTLINK_SRCS))
 
+EXTRA_OBJS := src/per_program_definitions.o
+
 obj/%.o : ../../../hostlink/%.cpp
 	mkdir -p obj
 	$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) $< -o $@
 
-bin/% : src/%.o $(HOSTLINK_OBJS)
+bin/% : src/%.o $(HOSTLINK_OBJS) $(EXTRA_OBJS)
 	mkdir -p bin
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $^ -o $@ $(LDFLAGS) $(LDLIBS)
 

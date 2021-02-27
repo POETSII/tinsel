@@ -305,7 +305,7 @@ struct Placer {
     case MTMetis:
     case Metis:
       if(graph->getEdgeCount() >= (1u<<30)){
-        fprintf(stderr, "Warning: Metis chosen as placement method, but graph has at least 2^31 edges. Falling back on BFS.");
+        fprintf(stderr, "Warning: Metis chosen as placement method, but graph has at least 2^31 edges. Falling back on BFS.\n");
         partitionBFS();
         break;
       }
@@ -377,17 +377,9 @@ struct Placer {
 
     // Iterative over graph and count connections
     for (uint32_t i = 0; i < graph->nodeCount(); i++) {
-      /*Seq<NodeId>* in = graph->incoming->elems[i];
-      Seq<NodeId>* out = graph->outgoing->elems[i];
-      for (uint32_t j = 0; j < in->numElems; j++)
-        connCount[partitions[i]][partitions[in->elems[j]]]++;
-      */
      graph->walkIncomingNodeIds(i, [&](uint32_t j){
         connCount[partitions[i]][partitions[j]]++;
       });
-
-      /*for (uint32_t j = 0; j < out->numElems; j++)
-        connCount[partitions[i]][partitions[out->elems[j]]]++;*/
       graph->walkOutgoingNodeIds(i, [&](uint32_t j){
         connCount[partitions[i]][partitions[j]]++;
       });
@@ -517,7 +509,7 @@ struct Placer {
   }
 
   // Constructor
-  POLITE_NOINLINE Placer(Graph* g, uint32_t w, uint32_t h, bool _recursion_level=0) {
+  POLITE_NOINLINE Placer(Graph* g, uint32_t w, uint32_t h, bool _recursion_level) {
     recursion_level = _recursion_level;
     graph = g;
     width = w;

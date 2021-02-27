@@ -30,15 +30,15 @@ namespace snn
         bs::stats<bs::tag::count, bs::tag::mean, bs::tag::min, bs::tag::max, bs::tag::variance, bs::tag::skewness, bs::tag::kurtosis >
     >;
 
-    void scalar_statistics_export_values(const scalar_statistics &stats, const std::string &name, std::function<void(const std::string &name, double value)> &cb)
+    void scalar_statistics_export_values(const scalar_statistics &stats, const std::string &name, std::function<void(const std::string &name, double value, int level)> &cb, int base_level)
     {
-        cb(name+"_count",  bs::count(stats));
-        cb(name+"_mean",  bs::mean(stats));
-        cb(name+"_stddev",  sqrt(bs::variance(stats)));
-        cb(name+"_skewness",  bs::skewness(stats));
-        cb(name+"_kurtosis",  bs::kurtosis(stats));
-        cb(name+"_min",  bs::min(stats));
-        cb(name+"_max",  bs::max(stats));
+        cb(name+"_count",  bs::count(stats), base_level+1);
+        cb(name+"_mean",  bs::mean(stats), base_level);
+        cb(name+"_stddev",  sqrt(bs::variance(stats)), base_level+1);
+        cb(name+"_skewness",  bs::skewness(stats), base_level+1);
+        cb(name+"_kurtosis",  bs::kurtosis(stats), base_level+1);
+        cb(name+"_min",  bs::min(stats), base_level+1);
+        cb(name+"_max",  bs::max(stats), base_level+1);
     }
 #endif
 
@@ -129,12 +129,12 @@ struct stats_minimal
             init_to_finish(stats.body.init_to_finish);
         }
 
-        void export_values(std::function<void(const std::string &name, double value)> cb)
+        void export_values(std::function<void(const std::string &name, double value, int level)> cb, int base_level)
         {
-            scalar_statistics_export_values(time_steps, "time_steps", cb);
-            scalar_statistics_export_values(sent_per_step, "sent_per_step", cb);
-            scalar_statistics_export_values(recv_per_step, "recv_per_step", cb);
-            scalar_statistics_export_values(init_to_finish, "thread_init_to_finish", cb);
+            scalar_statistics_export_values(time_steps, "time_steps", cb, base_level);
+            scalar_statistics_export_values(sent_per_step, "sent_per_step", cb, base_level);
+            scalar_statistics_export_values(recv_per_step, "recv_per_step", cb, base_level);
+            scalar_statistics_export_values(init_to_finish, "thread_init_to_finish", cb, base_level);
         }
     };
 #endif

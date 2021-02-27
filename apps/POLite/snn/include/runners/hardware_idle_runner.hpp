@@ -19,7 +19,7 @@
 namespace snn
 {
 
-template<class TNeuronModel=snn::model_concept, class TStats=snn::stats_concept>
+template<class TNeuronModel=::snn::model_concept, class TStats=::snn::stats_concept>
 struct HardwareIdleRunner
 {   
     typedef TNeuronModel neuron_model_t;
@@ -147,7 +147,7 @@ struct HardwareIdleRunner
 
     PGraph<device_type, state_type, edge_type, message_type> graph;
 
-    void build_graph(const runner_config &config, const NetworkTopology &topology, std::vector<state_type> &states)
+    void build_graph(const ::snn::RunnerConfig &config, const NetworkTopology &topology, std::vector<state_type> &states)
     {
         num_neurons=topology.neuron_count();
 
@@ -202,7 +202,7 @@ struct HardwareIdleRunner
         );
     }
 
-    void collect_output(const runner_config &config, HostLink &hl, Logger &logger)
+    void collect_output(const RunnerConfig &config, HostLink &hl, Logger &logger)
     {
         std::vector<typename TStats::neuron_stats> stats(num_neurons);
         unsigned complete=0;
@@ -222,11 +222,9 @@ struct HardwareIdleRunner
             all.combine(i, stats[i]);
         }
 
-        all.export_values([&](const std::string &name, double value){
-            logger.export_value(name.c_str(), value);
-        });
-
-        fprintf(stderr, "All collected.");
+        all.export_values([&](const std::string &name, double value, int level){
+            logger.export_value(name.c_str(), value, level);
+        }, 1);
     }
 
     #endif

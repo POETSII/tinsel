@@ -38,7 +38,7 @@ public:
     virtual ~NetworkTopology()
     {}
 
-    virtual std::string topology_description() const=0;
+    virtual const boost::json::object &topology_config() const=0;
 
     virtual count_type neuron_count() const =0;
 
@@ -59,7 +59,6 @@ public:
     }
 };
 
-inline std::shared_ptr<NetworkTopology> network_topology_factory(boost::json::object config);
 
 };
 

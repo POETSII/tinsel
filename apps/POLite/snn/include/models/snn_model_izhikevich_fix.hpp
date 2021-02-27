@@ -7,6 +7,10 @@
 
 #include "hash.hpp"
 
+#ifndef TINSEL
+#include <boost/json.hpp>
+#endif
+
 namespace snn{
     struct fix_t
     {
@@ -63,9 +67,11 @@ namespace snn{
 
     struct izhikevich_fix_neuron_model
     {
+
+
         struct model_config_type {
-            uint32_t seed;
-            uint32_t excitatory_probability; // Probability of excitatory is ldexp(excitatory,-32)
+            uint32_t seed = 1;
+            uint32_t excitatory_fraction = 3435973836 ; // == 0.8 Probability of excitatory is ldexp(excitatory,-32)
         };
 
         struct neuron_state_type {
@@ -88,8 +94,7 @@ namespace snn{
 
     private:
         static bool is_neuron_excitatory(const model_config_type &config, uint32_t src)
-        { return src < 5; };
-        //{ return hash_3d_to_bernoulli(config.seed, src, 2, config.excitatory_probability); }
+        { return hash_3d_to_bernoulli(config.seed, src, 2, config.excitatory_fraction); }
     public:
 
         static void neuron_init(const model_config_type &config, uint32_t src, neuron_state_type &state)
@@ -111,7 +116,7 @@ namespace snn{
             }
             state.v=fix_t{-65.0f};
             state.u=state.b*state.v;
-            //fprintf(stderr, " r=%f,  %f * %f = %f\n", (float)r, (float)state.b, (float)state.v, (float)state.u);
+            //fprintf(stderr, " excite=%d, r=%f,  %f * %f = %f\n", is_excitatory, (float)r, (float)state.b, (float)state.v, (float)state.u);
         }
 
         static void weight_init(const model_config_type &config, uint32_t src, uint32_t dst, weight_type &weight)
@@ -158,6 +163,31 @@ namespace snn{
             neuron.u=u;
             return spike;
         }
+
+
+#ifndef TINSEL
+        static model_config_type parse_config(const boost::json::object &config)
+        {
+            if(!config.contains("type")){
+                throw std::runtime_error("No type attribute.");
+            }
+            if(config.at("type") != "IzhikevichFix"){
+                throw std::runtime_error("Wrong neuron model.");
+            }
+
+            model_config_type res;
+            double p=config.contains("excitatory_fraction") ? config.at("excitatory_fraction").to_number<double>() : 0.8;
+            if(p<0 || 1<p){
+                throw std::runtime_error("excitatory_fraction is out of range.");
+            }
+
+            res.excitatory_fraction=ldexp(p, 32);
+            res.seed=1;
+
+            return res;
+        }
+#endif
+
     };
 };
 
