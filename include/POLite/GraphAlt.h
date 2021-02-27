@@ -13,19 +13,68 @@ typedef uint32_t NodeId;
 typedef int32_t PinId;
 typedef uint32_t NodeLabel;
 
-struct GraphAlt {
-  struct OutEdge{
-    uint32_t dst : 27;
-    uint32_t pin : 5;
-  };
+template<class TEdgeWeight>
+struct OutEdge{
+  uint32_t dst : 27;
+  uint32_t pin : 5;
+private:
+  TEdgeWeight weight;
+public:
+  OutEdge(uint32_t _dst, uint32_t _pin, const TEdgeWeight &e)
+    : dst(_dst)
+    , pin(_pin)
+    , weight(e)
+  {}
 
-  struct Node
+  OutEdge()
+  {}
+
+  void setWeight(const TEdgeWeight &_weight)
+  { weight=_weight; }
+
+  const TEdgeWeight &getWeight() const
+  { return weight; }
+};
+
+template<>
+struct OutEdge<None>{
+  uint32_t dst : 27;
+  uint32_t pin : 5;
+
+  OutEdge()
+  {}
+
+  OutEdge(uint32_t _dst, uint32_t _pin, const None &)
+    : dst(_dst)
+    , pin(_pin)
+  {}
+
+  void setWeight(const None &)
+  { }
+
+  const None &getWeight() const
   {
-    NodeLabel label;
-    int32_t max_pin = 0;
-    Seq<NodeId> incoming;
-    Seq<OutEdge> outgoing;
-  };
+    const static None nothing;
+    return nothing;
+  }
+};
+
+
+template<class TEdgeWeight>
+struct GraphAltNode
+{
+  NodeLabel label;
+  int32_t max_pin = 0;
+  Seq<NodeId> incoming;
+  Seq<OutEdge<TEdgeWeight>> outgoing;
+};
+
+
+template<class TEdgeWeight>
+struct GraphAlt {
+
+  using Node = GraphAltNode<TEdgeWeight>;
+  
 
   Seq<Node> nodes;
 
@@ -85,24 +134,43 @@ public:
     return nodes[id].label;
   }
 
-  // Add edge using given output pin
-  void addEdge(NodeId x, PinId p, NodeId y)
+private:
+  template<bool DoLockDst>
+  void addEdgeImpl(const TEdgeWeight &e, NodeId x, PinId p, NodeId y)
   {
     assert(p>=0); // Not completely sure why PinId is signed; assume it is positive
-    unsigned fanOut = nodes[x].outgoing.append({y,unsigned(p)});
+    unsigned fanOut = nodes[x].outgoing.append({y,unsigned(p),e});
     nodes[x].max_pin=std::max(nodes[x].max_pin, p);
-    unsigned fanIn = nodes[y].incoming.append(x);
+    unsigned fanIn = nodes[y].incoming.template append_locked<DoLockDst>(x);
     ++m_edgeCount;
 
     m_maxFanOut=std::max<size_t>(m_maxFanOut, fanOut);
     m_maxFanIn=std::max<size_t>(m_maxFanIn, fanIn);
   }
+public:
 
-  // Add edge using output pin 0
-  void addEdge(NodeId x, NodeId y) {
-    addEdge(x, 0, y);
+  // Add edge using given output pin
+  // Cannot be called in parallel with any method
+  void addEdge(const TEdgeWeight &e, NodeId x, PinId p, NodeId y)
+  {
+    addEdgeImpl<false>(e, x, p, y);
   }
 
+  // Add edge using output pin 0
+  // Cannot be called in parallel with any method
+  void addEdge(NodeId x, NodeId y) {
+    TEdgeWeight e;
+    addEdge(e, x, 0, y);
+  }
+
+  // Add edge in parallel, as long as no two threads use the same source. Any
+  // number of threads can use the same destination
+  void addEdgeLockedDst(const TEdgeWeight &e, NodeId x, PinId p, NodeId y)
+  {
+    addEdgeImpl<true>(e, x,p,y);
+  }
+
+  // Can be called in parallel with other methods using a different source node
   void reserveOutgoingEdgeSpace(NodeId from, PinId pin, size_t n)
   {
     nodes[from].outgoing.ensureSpaceFor(n);
@@ -110,14 +178,7 @@ public:
 
   // Determine max pin used by given node
   // (Returns -1 if node has no outgoing edges)
-  PinId maxPin(NodeId x) {
-   /* int max = -1;
-    for (uint32_t i = 0; i < pins->elems[x]->numElems; i++) {
-      if (pins->elems[x]->elems[i] > max)
-        max = pins->elems[x]->elems[i];
-    }
-    return max;
-    */
+  PinId maxPin(NodeId x) const {
    return nodes[x].max_pin;
   }
 
@@ -135,6 +196,9 @@ public:
   uint32_t fanOut(NodeId id) const {
     return nodes[id].outgoing.numElems;
   }
+
+  const TEdgeWeight &getEdgeWeight(NodeId id, unsigned index) const
+  { return nodes[id].outgoing[index].getWeight(); }
 
   template<class TId>
   void exportOutgoingNodeIds(NodeId id, uint32_t n, TId *dst) const

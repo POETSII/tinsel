@@ -5,6 +5,7 @@
 #include "GraphAlt.h"
 #include "GraphOrig.h"
 
-using Graph = GraphAlt;
+template<class TEdgeWeight>
+using Graph = GraphAlt<TEdgeWeight>;
 
 #endif

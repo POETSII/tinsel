@@ -165,10 +165,10 @@ template <typename DeviceType,
   uint32_t numDevices;
 
   // Graph containing device ids and connections
-  Graph graph;
+  Graph<E> graph;
 
   // Edge labels: has same structure as graph.outgoing
-  Seq<Seq<E>*> edgeLabels;
+  //Seq<Seq<E>*> edgeLabels;
 
   // Mapping from device id to device state
   // (Not valid until the mapper is called)
@@ -214,7 +214,7 @@ template <typename DeviceType,
   // 0=default, +1=yes, -1=no
   int parallel=0;
 
-  Placer::Method placer_method=Placer::Method::Default;
+  PlacerMethod placer_method=PlacerMethod::Default;
 
   std::function<void(const char *message)> on_fatal_error;
   std::function<void(const char *part)> on_phase_hook;
@@ -257,7 +257,7 @@ template <typename DeviceType,
 
   // Create new device
   inline PDeviceId newDevice() {
-    edgeLabels.append(new SmallSeq<E>);
+    //edgeLabels.append(new SmallSeq<E>);
     numDevices++;
     return graph.newNode();
   }
@@ -268,10 +268,10 @@ template <typename DeviceType,
     assert(edgeLabels.numElems==graph.nodeCount());
     PDeviceId base=graph.newNodes(n);
     numDevices+=n;
-    edgeLabels.extendBy(n);
+    /*edgeLabels.extendBy(n);
     for(unsigned i=base; i<base+n; i++){
       edgeLabels[i]=new SmallSeq<E>;
-    }
+    }*/
     return base;
   }
 
@@ -280,8 +280,8 @@ template <typename DeviceType,
     if (pin >= POLITE_NUM_PINS) {
       fatal_error("addEdge: pin exceeds POLITE_NUM_PINS\n");
     }
-    graph.addEdge(from, pin, to);
-    edgeLabels.elems[from]->append(edge);
+    graph.addEdge(edge, from, pin, to);
+    //edgeLabels.elems[from]->append(edge);
   }
 
   // Add a connection between devices
@@ -304,8 +304,8 @@ template <typename DeviceType,
     if (pin >= POLITE_NUM_PINS) {
       fatal_error("addEdge: pin exceeds POLITE_NUM_PINS\n");
     }
-    graph.addEdgeLockedDst(from, pin, to);
-    edgeLabels.elems[from]->append(edge);
+    graph.addEdgeLockedDst(edge, from, pin, to);
+    //edgeLabels.elems[from]->append(edge);
   }
 
   /*
@@ -750,9 +750,12 @@ template <typename DeviceType,
             // Add to current receiver group
             PInEdge<E> in;
             in.devId = getLocalDeviceId(edge->addr);
-            Seq<E>* edges = edgeLabels.elems[d];
-            if (! std::is_same<E, None>::value)
-              in.edge = edges->elems[edge->index];
+            //Seq<E>* edges = edgeLabels.elems[d];
+            const E &weight=graph.getEdgeWeight(d, edge->index);
+            if (! std::is_same<E, None>::value){
+              //in.edge = edges->elems[edge->index];
+              in.edge = weight;
+            }
             // Update current receiver group
             groups[nextGroup].receivers.append(in);
             groups[nextGroup].threadId = getThreadId(edge->addr);
@@ -945,7 +948,7 @@ template <typename DeviceType,
       on_export_value("numBoardsTotal", numBoardsX*numBoardsY);
     }
     // Partition into subgraphs, one per board
-    Placer boards(&graph, numBoardsX, numBoardsY, 0, placer_method);
+    Placer<E> boards(&graph, numBoardsX, numBoardsY, 0, placer_method);
 
     mark_phase("placeTopLevel");
     // Place subgraphs onto 2D mesh
@@ -963,7 +966,7 @@ template <typename DeviceType,
 
       // Partition into subgraphs, one per mailbox
       PartitionId b = boards.mapping[boardY][boardX];
-      Placer boxes(&boards.subgraphs[b], 
+      Placer<None> boxes(&boards.subgraphs[b], 
               TinselMailboxMeshXLen, TinselMailboxMeshYLen, 1, placer_method);
       boxes.place(placerEffort);
 
@@ -974,7 +977,7 @@ template <typename DeviceType,
         // Partition into subgraphs, one per thread
         uint32_t numThreads = 1<<TinselLogThreadsPerMailbox;
         PartitionId t = boxes.mapping[boxY][boxX];
-        Placer threads(&boxes.subgraphs[t], numThreads, 1, 2, placer_method);
+        Placer<None> threads(&boxes.subgraphs[t], numThreads, 1, 2, placer_method);
 
         // For each thread
         for (uint32_t threadNum = 0; threadNum < numThreads; threadNum++) {
@@ -987,7 +990,7 @@ template <typename DeviceType,
                         TinselLogThreadsPerCore)) | threadNum;
 
           // Get subgraph
-          Graph* g = &threads.subgraphs[threadNum];
+          Graph<None>* g = &threads.subgraphs[threadNum];
 
           // Populate fromDeviceAddr mapping
           uint32_t numDevs = g->nodeCount();
@@ -1083,8 +1086,8 @@ template <typename DeviceType,
   // Deconstructor
   ~PGraph() {
     releaseAll();
-    for (uint32_t i = 0; i < edgeLabels.numElems; i++)
-      delete edgeLabels.elems[i];
+    //for (uint32_t i = 0; i < edgeLabels.numElems; i++)
+    //  delete edgeLabels.elems[i];
   }
 
   // Write partition to tinsel machine

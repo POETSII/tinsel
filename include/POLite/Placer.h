@@ -17,10 +17,7 @@
 
 typedef uint32_t PartitionId;
 
-// Partition and place a graph on a 2D mesh
-struct Placer {
-  // Select between different methods
-  enum Method {
+enum PlacerMethod {
     Default,
     Metis,
     Random,
@@ -29,14 +26,20 @@ struct Placer {
     BFS_then_Metis, // Perform BFS at the board level, then switch to metis
     MTMetis
   };
+
+// Partition and place a graph on a 2D mesh
+template<class TEdgeWeight=None>
+struct Placer {
+  // Select between different methods
+  
   #ifdef HAVE_MT_METIS
-  const Method defaultMethod=MTMetis;  
+  const PlacerMethod defaultMethod=MTMetis;  
   #else
-  const Method defaultMethod=Metis;
+  const PlacerMethod defaultMethod=Metis;
   #endif
 
   // The graph being placed
-  Graph* graph;
+  Graph<TEdgeWeight>* graph;
 
   // Dimension of the 2D mesh
   uint32_t width, height;
@@ -45,7 +48,7 @@ struct Placer {
   PartitionId* partitions;
 
   // Mapping from partition id to subgraph
-  Graph* subgraphs;
+  Graph<None>* subgraphs;
 
   // Stores the number of connections between each pair of partitions
   uint64_t** connCount;
@@ -74,7 +77,7 @@ struct Placer {
   int getRand() { return rand_r(&seed); }
 
   // Controls which strategy is used
-  Method method = Default;
+  PlacerMethod method = Default;
 
   // Select placer method
   void chooseMethod()
@@ -282,7 +285,7 @@ struct Placer {
     delete [] seen;
   }
 
-  Method choose_default()
+  PlacerMethod choose_default()
   {
     if(graph->getEdgeCount() >= (1u<<30) || graph->nodes.size() >= (1u<<28) ){
       return BFS;
@@ -293,7 +296,7 @@ struct Placer {
 
   void partition()
   {
-    Method method_now=method;
+    PlacerMethod method_now=method;
     if(method==Default){
       method_now=choose_default();
     }
@@ -509,7 +512,7 @@ struct Placer {
   }
 
   // Constructor
-  POLITE_NOINLINE Placer(Graph* g, uint32_t w, uint32_t h, int _recursion_level, Method _method=Method::Default) {
+  POLITE_NOINLINE Placer(Graph<TEdgeWeight>* g, uint32_t w, uint32_t h, int _recursion_level, PlacerMethod _method=PlacerMethod::Default) {
     recursion_level = _recursion_level;
     graph = g;
     width = w;
@@ -520,7 +523,7 @@ struct Placer {
     // Allocate the partitions array
     partitions = new PartitionId [g->nodeCount()];
     // Allocate subgraphs
-    subgraphs = new Graph [width*height];
+    subgraphs = new Graph<None> [width*height];
     // Allocate the connection count matrix
     uint32_t numPartitions = width*height;
     connCount = new uint64_t* [numPartitions];

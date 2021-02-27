@@ -26,7 +26,7 @@ int snn_host_main_impl(int argc, char *argv[])
     std::string neuron_config_str;
     std::string log_file_name;
     unsigned max_steps;
-    Placer::Method placer_method;
+    PlacerMethod placer_method;
     {
         po::options_description desc("Allowed options");
         desc.add_options()

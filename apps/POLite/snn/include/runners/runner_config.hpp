@@ -11,21 +11,21 @@
 namespace snn
 {
 
-    inline Placer::Method parse_placer_method(::std::string method){
+    inline PlacerMethod parse_placer_method(::std::string method){
         std::transform(method.begin(), method.end(), method.begin(), [](char c){ return std::tolower(c); });
 
         if(method=="metis"){
-            return Placer::Method::Metis;
+            return PlacerMethod::Metis;
         }else if(method=="bfs"){
-            return Placer::Method::BFS;
+            return PlacerMethod::BFS;
         }else if(method=="random"){
-            return Placer::Method::Random;
+            return PlacerMethod::Random;
         }else if(method=="direct"){
-            return Placer::Method::Direct;
+            return PlacerMethod::Direct;
         }else if(method=="default"){
-            return Placer::Method::Default;
+            return PlacerMethod::Default;
         }else if(method=="metis"){
-            return Placer::Method::Metis;
+            return PlacerMethod::Metis;
         }else{
             fprintf(stderr, "Unknown placement method '%s'\n", method.c_str());
             exit(1);
@@ -34,7 +34,7 @@ namespace snn
 
     struct RunnerConfig
     {
-        Placer::Method placerMethod = Placer::Method::Default;
+        PlacerMethod placerMethod = PlacerMethod::Default;
         unsigned max_time_steps=1000;
     };
 
