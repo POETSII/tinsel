@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <math.h>
+#include <stdarg.h>
 #include <HostLink.h>
 #include <config.h>
 #include <POLite.h>
@@ -17,8 +18,11 @@
 #include <type_traits>
 #include <tinsel-interface.h>
 #include <POLite/SpinLock.h>
+#include <vsnprintf_to_string.h>
+#include "ParallelRunningStats.hpp"
 
 #include <functional>
+#include <unordered_set>
 
 #include "ParallelFor.h"
 
@@ -210,7 +214,26 @@ template <typename DeviceType,
   // 0=default, +1=yes, -1=no
   int parallel=0;
 
+  std::function<void(const char *message)> on_fatal_error;
   std::function<void(const char *part)> on_phase_hook;
+  std::function<void(const char *key, double value)> on_export_value;
+
+  [[noreturn]] void fatal_error(const char *message, ...)
+  {
+    va_list va;
+    va_start(va, message);
+    std::string fmsg=vsprintf_to_string(message, va);
+    va_end(va);
+
+    if(on_fatal_error){
+      on_fatal_error(fmsg.c_str());
+      assert(0);
+      abort(); // Should never get here
+    }else{
+      puts(fmsg.c_str());
+      exit(1);
+    }
+  }
 
   // Used to record when we move between main sections in the mapping process.
   void mark_phase(const char *name)
@@ -223,9 +246,8 @@ template <typename DeviceType,
   // Setter for number of boards to use
   void setNumBoards(uint32_t x, uint32_t y) {
     if (x > meshLenX || y > meshLenY) {
-      printf("Mapper: %d x %d boards requested, %d x %d available\n",
+      fatal_error("Mapper: %d x %d boards requested, %d x %d available\n",
         numBoardsX, numBoardsY, meshLenX, meshLenY);
-      exit(EXIT_FAILURE);
     }
     numBoardsX = x;
     numBoardsY = y;
@@ -254,8 +276,7 @@ template <typename DeviceType,
     // Add labelled edge using given output pin
   void addLabelledEdge(E edge, PDeviceId from, PinId pin, PDeviceId to) {
     if (pin >= POLITE_NUM_PINS) {
-      printf("addEdge: pin exceeds POLITE_NUM_PINS\n");
-      exit(EXIT_FAILURE);
+      fatal_error("addEdge: pin exceeds POLITE_NUM_PINS\n");
     }
     graph.addEdge(from, pin, to);
     edgeLabels.elems[from]->append(edge);
@@ -361,12 +382,10 @@ template <typename DeviceType,
       if (mapOutEdgesToDRAM) totalSizeDRAM += sizeEOMem;
                         else totalSizeSRAM += sizeEOMem;
       if (totalSizeDRAM > maxDRAMSize) {
-        printf("Error: max DRAM partition size exceeded\n");
-        exit(EXIT_FAILURE);
+        fatal_error("Error: max DRAM partition size exceeded\n");
       }
       if (totalSizeSRAM > maxSRAMSize) {
-        printf("Error: max SRAM partition size exceeded\n");
-        exit(EXIT_FAILURE);
+        fatal_error("Error: max SRAM partition size exceeded\n");
       }
       // Allocate space for the initialised portion of the partition
       assert((sizeVMem%4) == 0);
@@ -491,12 +510,10 @@ template <typename DeviceType,
           }
         // At this point, check that next pointers line up with heap sizes
         if (nextVMem != vertexMemSize[threadId]) {
-          printf("Error: vertex mem size does not match pre-computed size\n");
-          exit(EXIT_FAILURE);
+          fatal_error("Error: vertex mem size does not match pre-computed size\n");
         }
         if ((nextOutIndex * sizeof(POutEdge)) != outEdgeMemSize[threadId]) {
-          printf("Error: out edge mem size does not match pre-computed size\n");
-          exit(EXIT_FAILURE);
+          fatal_error("Error: out edge mem size does not match pre-computed size\n");
         }
         // Set tinsel address of senders array
         thread->senders = vertexMemBase[threadId] + nextVMem;
@@ -599,8 +616,7 @@ template <typename DeviceType,
   __attribute__((noinline)) uint32_t addInTableEntries(uint32_t numGroups, PReceiverGroup<E> *groups) {
     uint32_t key = findKey<DoLock>(numGroups, groups);
     if (key >= 0xffff) {
-      printf("Routing key exceeds 16 bits\n");
-      exit(EXIT_FAILURE);
+      fatal_error("Routing key exceeds 16 bits\n");
     }
     // Populate inTableHeaders and inTableRest using the key
     for (uint32_t i = 0; i < numGroups; i++) {
@@ -621,9 +637,8 @@ template <typename DeviceType,
         // Fill in header
         PInHeader<E>* header = &tbi->inTableHeaders.elems[key];
         header->numReceivers = numEdges;
-        if (tbi->inTableRest.numElems > 0xffff) {
-          printf("In-table index exceeds 16 bits\n");
-          exit(EXIT_FAILURE);
+        if (tbi->inTableRest.numElems > 0xffff) {          
+          fatal_error("In-table index exceeds 16 bits\n");
         }
         header->restIndex = tbi->inTableRest.numElems;
         uint32_t numHeaderEdges = numEdges < POLITE_EDGES_PER_HEADER ?
@@ -909,6 +924,11 @@ template <typename DeviceType,
     gettimeofday(&placementStart, NULL);
 
     mark_phase("partTopLevel");
+    if(on_export_value){
+      on_export_value("numBoardsX", numBoardsX);
+      on_export_value("numBoardsY", numBoardsY);
+      on_export_value("numBoardsTotal", numBoardsX*numBoardsY);
+    }
     // Partition into subgraphs, one per board
     Placer boards(&graph, numBoardsX, numBoardsY, 0);
 
@@ -918,8 +938,14 @@ template <typename DeviceType,
     boards.place(placerEffort);
 
     mark_phase("placeBoards");
+    // 0==DevicesPerThread, 1== fanIn, 2==fanOut
+    ParallelRunningStats<3> systemThreadStats;
+
     // For each board
     parallel_for_2d_with_grain<unsigned>(0,numBoardsY,1, 0,numBoardsX,1, [&](uint32_t boardY, uint32_t boardX) {
+      ParallelRunningStats<3> boardThreadStats;
+
+
       // Partition into subgraphs, one per mailbox
       PartitionId b = boards.mapping[boardY][boardX];
       Placer boxes(&boards.subgraphs[b], 
@@ -928,10 +954,12 @@ template <typename DeviceType,
 
       // For each mailbox
       parallel_for_2d_with_grain<unsigned>(0,TinselMailboxMeshXLen,1,  0,TinselMailboxMeshYLen,1, [&](uint32_t boxX, uint32_t boxY) {
+        ParallelRunningStats<3> mailboxThreadStats;
+
         // Partition into subgraphs, one per thread
         uint32_t numThreads = 1<<TinselLogThreadsPerMailbox;
         PartitionId t = boxes.mapping[boxY][boxX];
-        Placer threads(&boxes.subgraphs[t], numThreads, 2);
+        Placer threads(&boxes.subgraphs[t], numThreads, 1, 2);
 
         // For each thread
         for (uint32_t threadNum = 0; threadNum < numThreads; threadNum++) {
@@ -949,24 +977,40 @@ template <typename DeviceType,
           // Populate fromDeviceAddr mapping
           uint32_t numDevs = g->nodeCount();
           numDevicesOnThread[threadId] = numDevs;
-          fromDeviceAddr[threadId] = (PDeviceId*)
-            malloc(sizeof(PDeviceId) * numDevs);
-          for (uint32_t devNum = 0; devNum < numDevs; devNum++){
-            //fromDeviceAddr[threadId][devNum] = g->labels->elems[devNum];
-            fromDeviceAddr[threadId][devNum] = g->getLabel(devNum);
-          }
+          if(numDevs>0){
+            assert(numDevs < maxLocalDeviceId());
 
-          // Populate toDeviceAddr mapping
-          assert(numDevs < maxLocalDeviceId());
-          for (uint32_t devNum = 0; devNum < numDevs; devNum++) {
-            PDeviceAddr devAddr =
-              makeDeviceAddr(threadId, devNum);
-            //toDeviceAddr[g->labels->elems[devNum]] = devAddr;
-            toDeviceAddr[g->getLabel(devNum)] = devAddr;
+            unsigned totalFanIn=0, totalFanOut=0;
+            fromDeviceAddr[threadId] = (PDeviceId*) malloc(sizeof(PDeviceId) * numDevs);
+            for (uint32_t devNum = 0; devNum < numDevs; devNum++){
+              unsigned tid=g->getLabel(devNum);
+              fromDeviceAddr[threadId][devNum] = tid;
+              totalFanIn += graph.fanIn(tid);
+              totalFanOut += graph.fanOut(tid);
+
+              // Populate toDeviceAddr mapping
+              PDeviceAddr devAddr = makeDeviceAddr(threadId, devNum);
+              // Safe in parallel context, as each thread is written exactly once
+              toDeviceAddr[g->getLabel(devNum)] = devAddr;
+            }
+
+            mailboxThreadStats += std::array<double,3>{(double)numDevs, (double)totalFanIn, (double)totalFanOut};
           }
         }
+
+        boardThreadStats += mailboxThreadStats; // This is safe for parallelism
       });
+      systemThreadStats += boardThreadStats; // Safe for parallelism
     });
+
+    if(on_export_value){
+      systemThreadStats.walk_stats(
+        {"devices_per_thread", "fanin_per_thread", "fanout_per_thread"},
+        [&](const char *name, const char *stat, double value){
+          on_export_value((std::string(name)+"_"+stat).c_str(), value);
+        }
+      );
+    }
 
     // Stop placement timer and start routing timer
     gettimeofday(&placementFinish, NULL);
