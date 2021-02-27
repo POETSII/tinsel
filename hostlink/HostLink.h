@@ -8,6 +8,7 @@
 #include <sys/time.h>
 #include <config.h>
 #include <DebugLink.h>
+#include <functional>
 
 // Max line length for line-buffered UART StdOut capture
 #define MaxLineLen 128
@@ -21,6 +22,9 @@ struct HostLinkParams {
   uint32_t numBoxesX;
   uint32_t numBoxesY;
   bool useExtraSendSlot;
+
+  // Used to indicate when the hostlink moves through different phases, especially in construction
+  std::function<void(const char *)> on_phase;
 };
 
 class HostLink {
@@ -42,6 +46,9 @@ class HostLink {
 
   // Request an extra send slot when bringing up Tinsel FPGAs
   bool useExtraSendSlot;
+
+  // Used to indicate to interested parties what the hostlink is doing, for logging and timing purposes
+  std::function<void(const char *)> on_phase;
 
   // Internal constructor
   void constructor(HostLinkParams params);

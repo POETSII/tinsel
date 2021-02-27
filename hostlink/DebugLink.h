@@ -8,11 +8,16 @@
 #include "BoardCtrl.h"
 #include "DebugLinkFormat.h"
 
+#include <functional>
+
 // DebugLinkH parameters
 struct DebugLinkParams {
   uint32_t numBoxesX;
   uint32_t numBoxesY;
   bool useExtraSendSlot;
+
+  // Used to indicate when the hostlink moves through different phases, especially in construction
+  std::function<void(const char *)> on_phase;
 };
 
 class DebugLink {

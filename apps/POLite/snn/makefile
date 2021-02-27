@@ -7,9 +7,9 @@ CPPFLAGS += -I ../../../hostlink
 CPPFLAGS += -I /home/dt10/local/include
 
 CXXFLAGS += -g -std=c++17 -fopenmp -lpthread
-#CXXFLAGS += -O3 -DNDEBUG=1 -march=native 
+CXXFLAGS += -O3 -DNDEBUG=1 -march=native 
 
-LDLIBS += -ltbb -lmetis -lboost_program_options -lquadmath -ltbbmalloc_proxy
+LDLIBS += -ltbb -lmetis -lboost_program_options -lquadmath
 
 include src/test_hash_all.mk
 
@@ -24,13 +24,15 @@ obj/%.o : ../../../hostlink/%.cpp
 
 bin/% : src/%.o $(HOSTLINK_OBJS) $(EXTRA_OBJS)
 	mkdir -p bin
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $^ -o $@ $(LDFLAGS) $(LDLIBS)
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(filter %.c %.o, $^) -o $@ $(LDFLAGS) $(LDLIBS)
 
 bin/%.riscv.elf bin/%.riscv.code.v bin/%.riscv.data.v : src/%_tinsel.cpp
 	src/compile_riscv.sh $< bin/$*-build
 	cp bin/$*-build/app.elf bin/$*.riscv.elf
 	cp bin/$*-build/code.v bin/$*.riscv.code.v
 	cp bin/$*-build/code.v bin/$*.riscv.data.v
+
+bin/hardware_idle_izhikevich_fix	: bin/hardware_idle_izhikevich_fix.riscv.elf
 
 
 all : bin/test_pair_hash

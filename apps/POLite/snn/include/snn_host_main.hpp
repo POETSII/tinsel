@@ -70,9 +70,11 @@ int snn_host_main_impl(int argc, char *argv[])
     runner.graph.on_export_value=[&](const char *name, double value)
     { log.export_value(name, value, 2); };
 
+    runner.graph.placer_method=placer_method;
+
     std::string riscv_code_path, riscv_data_path;
     {
-        auto r=log.with_region("prepare");
+        auto r=log.with_region("prep");
 
         {
             log.enter_leaf("finding_riscv_code");
@@ -107,10 +109,10 @@ int snn_host_main_impl(int argc, char *argv[])
         }
         std::shared_ptr<NetworkTopology> topology=network_topology_factory(noise, topology_config);
 
-        log.enter_leaf("build_polite_graph");
+        log.enter_leaf("build_graph");
         using state_type = typename RunnerType::state_type;
         std::vector<state_type> device_states;
-        runner.build_graph(config, *topology, device_states);
+        runner.build_graph(config, *topology, device_states, log);
 
         log.export_value("graph_total_nodes", (int64_t)runner.graph.numDevices, 1);
         log.export_value("graph_total_edges", (int64_t)runner.graph.graph.getEdgeCount(), 1);
@@ -133,8 +135,18 @@ int snn_host_main_impl(int argc, char *argv[])
     {
         auto r=log.with_region("execute");
 
+        HostLinkParams hostLinkParams;
+        hostLinkParams.numBoxesX=1;
+        hostLinkParams.numBoxesY=1;
+        hostLinkParams.useExtraSendSlot=false;
+        hostLinkParams.on_phase=[&](const char *name){
+            log.tag_leaf(name);
+        };
+        
+        
+
         log.enter_region("open_hostlink");
-        HostLink hostlink;
+        HostLink hostlink(hostLinkParams);
         log.exit_region();
 
         {

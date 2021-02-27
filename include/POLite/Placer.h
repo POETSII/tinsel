@@ -509,11 +509,12 @@ struct Placer {
   }
 
   // Constructor
-  POLITE_NOINLINE Placer(Graph* g, uint32_t w, uint32_t h, bool _recursion_level) {
+  POLITE_NOINLINE Placer(Graph* g, uint32_t w, uint32_t h, int _recursion_level, Method _method=Method::Default) {
     recursion_level = _recursion_level;
     graph = g;
     width = w;
     height = h;
+    method=_method;
     // Random seed
     setRand(1 + omp_get_thread_num());
     // Allocate the partitions array

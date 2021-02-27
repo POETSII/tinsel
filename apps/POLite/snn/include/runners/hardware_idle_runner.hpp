@@ -147,10 +147,13 @@ struct HardwareIdleRunner
 
     PGraph<device_type, state_type, edge_type, message_type> graph;
 
-    void build_graph(const ::snn::RunnerConfig &config, const NetworkTopology &topology, std::vector<state_type> &states)
+    void build_graph(const ::snn::RunnerConfig &config, const NetworkTopology &topology, std::vector<state_type> &states, Logger &logger)
     {
+        auto region=logger.with_region("topology_to_pgraph");
+
         num_neurons=topology.neuron_count();
 
+        logger.tag_leaf("nodes");
         PDeviceId base_id=graph.newDevices(num_neurons);
         assert(base_id==0);
 
@@ -162,10 +165,17 @@ struct HardwareIdleRunner
             neuron_model_t::neuron_init(model_config, i, states[i].neuron_state);
         }
 
+        logger.tag_leaf("edges");
+
         std::atomic<unsigned> source;
         source=0;
 
         const auto SpikePin = Pin(MessageTypes::Spike);
+
+        uint64_t devices_done=0;
+        double tStart=logger.now();
+        double tLastPrint=tStart;
+        double tPrintDelta=10;
 
         /* Use a pipeline to generate the edges at the same time as putting them
             into the graph.
@@ -196,6 +206,20 @@ struct HardwareIdleRunner
                     for(unsigned i=0; i<edges->count; i++){
                         neuron_model_t::weight_init(model_config, edges->source, edges->destinations[i], E);
                         graph.addLabelledEdge(E, edges->source, MessageTypes::Spike, edges->destinations[i]);
+                    }
+
+                    // NOTE: this is only safe due to the serial_out_of_order tag.
+                    // Needs modifying if graph building becomes more parallel
+                    ++devices_done;
+                    if((devices_done&0xFFF)==0){
+                        double tNow=logger.now();
+                        if(tNow-tLastPrint > tPrintDelta){
+                            logger.export_value( ("time_to_add_"+std::to_string(devices_done)).c_str(), tNow-tStart, 1);
+                            logger.flush();
+
+                            tLastPrint=tNow;
+                            tPrintDelta=std::min(60.0, 1.5*tPrintDelta);
+                        }
                     }
                 }
             )

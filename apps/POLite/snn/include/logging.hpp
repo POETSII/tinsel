@@ -6,6 +6,7 @@
 #include <cstdarg>
 #include <cstdio>
 #include <string>
+#include <mutex>
 
 #include <unistd.h>
 
@@ -19,8 +20,6 @@ class LogContext;
 class Logger
 {
 public:
-
-private:
     double now()
     {
         timespec ts;
@@ -28,6 +27,8 @@ private:
         return ts.tv_sec+1e-9*ts.tv_nsec - m_t0;
     }
 
+private:
+    
     struct region
     {
         int handle;
@@ -47,6 +48,8 @@ private:
     int m_next_handle=0;
 
     std::string m_scope_name;
+
+    std::mutex m_mutex;
 
     void do_exit_region()
     {
@@ -190,6 +193,16 @@ public:
         va_end(va);
     }
 
+    void log_locked(int severity, const char *msg, ...)
+    {
+        std::unique_lock<std::mutex> lk(m_mutex);
+
+        va_list va;
+        va_start(va,msg);
+        log_impl("MSG", severity, msg, va);
+        va_end(va);
+    }
+
     void export_value(const char *key, const std::string &value, int level)
     {
         if(level < m_dst_log_level && m_dst){
@@ -212,6 +225,13 @@ public:
     {
         if(level < m_dst_log_level || level < m_stderr_log_level){
             export_value(key, std::to_string(value), level);
+        }
+    }
+
+    void flush()
+    {
+        if(m_dst){
+            fflush(m_dst);
         }
     }
 

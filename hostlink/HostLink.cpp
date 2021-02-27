@@ -70,6 +70,7 @@ void HostLink::constructor(HostLinkParams p)
   }
 
   // Open lock file
+  if(p.on_phase){ p.on_phase("open_lock_file"); }
   lockFile = open("/tmp/HostLink.lock", O_CREAT, 0444);
   if (lockFile == -1) {
     perror("Unable to open HostLink lock file");
@@ -85,6 +86,7 @@ void HostLink::constructor(HostLinkParams p)
   // Ignore SIGPIPE
   signal(SIGPIPE, SIG_IGN);
 
+  if(p.on_phase){ p.on_phase("connect_to_pci_stream"); }
   #ifdef SIMULATE
     // Connect to simulator
     pcieLink = connectToPCIeStream(PCIESTREAM_SIM);
@@ -94,15 +96,19 @@ void HostLink::constructor(HostLinkParams p)
   #endif
 
   // Create DebugLink
+  if(p.on_phase){ p.on_phase("create_debug_link"); }
   DebugLinkParams debugLinkParams;
   debugLinkParams.numBoxesX = p.numBoxesX;
   debugLinkParams.numBoxesY = p.numBoxesY;
   debugLinkParams.useExtraSendSlot = p.useExtraSendSlot;
+  debugLinkParams.on_phase=p.on_phase;
   debugLink = new DebugLink(debugLinkParams);
 
   // Set board mesh dimensions
   meshXLen = debugLink->meshXLen;
   meshYLen = debugLink->meshYLen;
+
+  if(p.on_phase){ p.on_phase("allocating_buffers"); }
 
   // Allocate line buffers
   lineBuffer = new char**** [meshXLen];
@@ -138,6 +144,7 @@ void HostLink::constructor(HostLinkParams p)
   sendBuffer = new char [(1<<TinselLogBytesPerFlit) * SEND_BUFFER_SIZE];
   sendBufferLen = 0;
 
+  if(p.on_phase){ p.on_phase("power_on_self_test"); }
   // Run the self test
   if (! powerOnSelfTest()) {
     fprintf(stderr, "Power-on self test failed.  Please try again.\n");

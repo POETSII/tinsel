@@ -214,6 +214,8 @@ template <typename DeviceType,
   // 0=default, +1=yes, -1=no
   int parallel=0;
 
+  Placer::Method placer_method=Placer::Method::Default;
+
   std::function<void(const char *message)> on_fatal_error;
   std::function<void(const char *part)> on_phase_hook;
   std::function<void(const char *key, double value)> on_export_value;
@@ -930,7 +932,7 @@ template <typename DeviceType,
       on_export_value("numBoardsTotal", numBoardsX*numBoardsY);
     }
     // Partition into subgraphs, one per board
-    Placer boards(&graph, numBoardsX, numBoardsY, 0);
+    Placer boards(&graph, numBoardsX, numBoardsY, 0, placer_method);
 
     mark_phase("placeTopLevel");
     // Place subgraphs onto 2D mesh
@@ -949,7 +951,7 @@ template <typename DeviceType,
       // Partition into subgraphs, one per mailbox
       PartitionId b = boards.mapping[boardY][boardX];
       Placer boxes(&boards.subgraphs[b], 
-              TinselMailboxMeshXLen, TinselMailboxMeshYLen, 1);
+              TinselMailboxMeshXLen, TinselMailboxMeshYLen, 1, placer_method);
       boxes.place(placerEffort);
 
       // For each mailbox
@@ -959,7 +961,7 @@ template <typename DeviceType,
         // Partition into subgraphs, one per thread
         uint32_t numThreads = 1<<TinselLogThreadsPerMailbox;
         PartitionId t = boxes.mapping[boxY][boxX];
-        Placer threads(&boxes.subgraphs[t], numThreads, 1, 2);
+        Placer threads(&boxes.subgraphs[t], numThreads, 1, 2, placer_method);
 
         // For each thread
         for (uint32_t threadNum = 0; threadNum < numThreads; threadNum++) {
