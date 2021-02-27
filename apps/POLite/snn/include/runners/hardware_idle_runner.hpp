@@ -172,10 +172,11 @@ struct HardwareIdleRunner
 
         const auto SpikePin = Pin(MessageTypes::Spike);
 
-        uint64_t devices_done=0;
+        std::atomic<uint64_t> devices_done=0;
         double tStart=logger.now();
         double tLastPrint=tStart;
         double tPrintDelta=10;
+        std::mutex print_lock;
 
         /* Use a pipeline to generate the edges at the same time as putting them
             into the graph.
@@ -184,7 +185,7 @@ struct HardwareIdleRunner
         */
         using edge_list_t = NetworkTopology::outgoing_range_ptr_t;
         tbb::parallel_pipeline(
-            32,
+            128,
             tbb::make_filter<void,edge_list_t>(
                 tbb::filter::parallel, 
                 [&](tbb::flow_control& fc) -> edge_list_t {
@@ -199,19 +200,19 @@ struct HardwareIdleRunner
             )
             &
             tbb::make_filter<edge_list_t,void>(
-                tbb::filter::serial_out_of_order ,
+                tbb::filter::parallel ,
                 [&](edge_list_t edges){
                     assert(edges);
                     edge_type E;
+                    graph.reserveOutgoingEdgeSpace(edges->source, MessageTypes::Spike, edges->count);
                     for(unsigned i=0; i<edges->count; i++){
                         neuron_model_t::weight_init(model_config, edges->source, edges->destinations[i], E);
-                        graph.addLabelledEdge(E, edges->source, MessageTypes::Spike, edges->destinations[i]);
+                        graph.addLabelledEdgeLockedDst(E, edges->source, MessageTypes::Spike, edges->destinations[i]);
                     }
 
-                    // NOTE: this is only safe due to the serial_out_of_order tag.
-                    // Needs modifying if graph building becomes more parallel
-                    ++devices_done;
-                    if((devices_done&0xFFF)==0){
+                    uint64_t done=devices_done.fetch_add(1, std::memory_order_relaxed)+1;
+                    if((done&0xFFF)==0){
+                        std::unique_lock<std::mutex> lk(print_lock);
                         double tNow=logger.now();
                         if(tNow-tLastPrint > tPrintDelta){
                             logger.export_value( ("time_to_add_"+std::to_string(devices_done)).c_str(), tNow-tStart, 1);

@@ -28,6 +28,7 @@ template <class T> class Seq
     T* elems;
     int maxElems;
     int numElems;
+    SpinLock lock;
 
     // Constructors
     Seq() {
@@ -114,7 +115,7 @@ template <class T> class Seq
 
     // Append
     //! \retval The number of items in the Seq after the append
-    int append(T &&x)
+    size_t append(T &&x)
     {
       if(numElems==maxElems){
         setCapacity(std::max(maxElems*2, 16));
@@ -123,13 +124,20 @@ template <class T> class Seq
       return numElems;
     }
 
-    int append(const T &x)
+    size_t append(const T &x)
     {
       if(numElems==maxElems){
         setCapacity(std::max(maxElems*2, 16));
       }
       elems[numElems++] = std::move(x);
       return numElems;
+    }
+
+    template<bool DoLock=true>
+    size_t append_locked(const T &x)
+    {
+      SpinLockGuard<DoLock> lk(lock);
+      return append(x);
     }
 
     // Delete last element

@@ -295,6 +295,19 @@ template <typename DeviceType,
     graph.reserveOutgoingEdgeSpace(from, pin, n);
   }
 
+  /*! Adds an edge, with the constraint that no other thread
+    will try to use the same from edge at the same time. Howver,
+    the destination thread can be used by many threads in parallel.
+  */
+  void addLabelledEdgeLockedDst(E edge, PDeviceId from, PinId pin, PDeviceId to)
+  {
+    if (pin >= POLITE_NUM_PINS) {
+      fatal_error("addEdge: pin exceeds POLITE_NUM_PINS\n");
+    }
+    graph.addEdgeLockedDst(from, pin, to);
+    edgeLabels.elems[from]->append(edge);
+  }
+
   /*
   dt10 : the random POLITE_NOINLINE attributes are to avoid the
   compiler flattening them, so that for profiling and debugging you can
