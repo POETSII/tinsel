@@ -129,7 +129,7 @@ DebugLink::DebugLink(DebugLinkParams p)
   bridge = new int* [boxMeshYLen];
   for (int y = 0; y < boxMeshYLen; y++) {
     bridge[y] = new int [boxMeshXLen];
-    for (int x = 0; x < meshXLen; x++)
+    for (int x = 0; x < boxMeshXLen; x++)
       bridge[y][x] = -1;
   }
 
