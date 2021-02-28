@@ -142,6 +142,10 @@ void HostLink::constructor(HostLinkParams p)
   // Initialise send buffer
   useSendBuffer = false;
   sendBuffer = new char [(1<<TinselLogBytesPerFlit) * SEND_BUFFER_SIZE];
+  // avoids (correct) warnings by valgrind about passing un-init memory to syscall. In
+  // cases seen this is fine, as it is un-init padding being passed through to fill in
+  // spaces in tables for alignment purposes.
+  memset(sendBuffer, 0, (1<<TinselLogBytesPerFlit) * SEND_BUFFER_SIZE);
   sendBufferLen = 0;
 
   if(p.on_phase){ p.on_phase("power_on_self_test"); }
@@ -411,6 +415,8 @@ void HostLink::boot(const char* codeFilename, const char* dataFilename)
 
   // Request to boot loader
   BootReq req;
+  static_assert(std::is_pod<BootReq>::value);
+  memset(&req, 0, sizeof(BootReq)); // Keep valgrind happy about un-init bytes.
 
   // Step 1: load code into instruction memory
   // -----------------------------------------
@@ -567,6 +573,7 @@ void HostLink::startAll()
 {
   // Request to boot loader
   BootReq req;
+  memset(&req, 0, sizeof(BootReq));
 
   // Total number of cores
   const uint32_t numCores =
@@ -613,9 +620,11 @@ void HostLink::setAddr(uint32_t meshX, uint32_t meshY,
                        uint32_t coreId, uint32_t addr)
 {
   BootReq req;
+  memset(&req, 0, sizeof(BootReq));
   req.cmd = SetAddrCmd;
   req.numArgs = 1;
   req.args[0] = addr;
+
   send(toAddr(meshX, meshY, coreId, 0), 1, &req);
 }
 
@@ -624,6 +633,7 @@ void HostLink::store(uint32_t meshX, uint32_t meshY,
                      uint32_t coreId, uint32_t numWords, uint32_t* data)
 {
   BootReq req;
+  memset(&req, 0, sizeof(BootReq));
   req.cmd = StoreCmd;
   while (numWords > 0) {
     uint32_t sendWords = numWords > 15 ? 15 : numWords;
@@ -646,6 +656,7 @@ bool HostLink::powerOnSelfTest()
   // Boot request to load data from memory
   // (The test involves reading from QDRII+ SRAMs on each board)
   BootReq req;
+  memset(&req, 0, sizeof(BootReq));
   req.cmd = LoadCmd;
   req.numArgs = 1;
   req.args[0] = 1;

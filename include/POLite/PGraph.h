@@ -344,124 +344,161 @@ template <typename DeviceType,
     outEdgeMemSize = (uint32_t*) calloc(TinselMaxThreads, sizeof(uint32_t));
     outEdgeMemBase = (uint32_t*) calloc(TinselMaxThreads, sizeof(uint32_t));
 
+    const bool EnableStats=false; //(bool)on_export_value;
+
+    ParallelRunningStats<8> sizeStatistics;
+
     // Compute partition sizes for each thread
-    parallel_for_with_grain<unsigned>(0, TinselMaxThreads, 64, [&](uint32_t threadId){
-      // This variable is used to count the size of the *initialised*
-      // partition.  The total partition size is larger as it includes
-      // uninitialised portions.
-      uint32_t sizeVMem = 0;
-      uint32_t sizeEIHeaderMem = 0;
-      uint32_t sizeEIRestMem = 0;
-      uint32_t sizeEOMem = 0;
-      uint32_t sizeTMem = 0;
-      // Add space for thread structure (always stored in SRAM)
-      sizeTMem = cacheAlign(sizeof(PThread<DeviceType, S, E, M>));
-      // Add space for devices
-      uint32_t numDevs = numDevicesOnThread[threadId];
-      for (uint32_t devNum = 0; devNum < numDevs; devNum++) {
-        // Add space for device
-        sizeVMem = sizeVMem + sizeof(PState<S>);
-      }
-      PerThreadRoutingInfo *tbi=perThreadRoutingInfo+threadId;
-      // Add space for incoming edge tables
-      if (tbi->inTableHeaders.numElems ) {
-        sizeEIHeaderMem = tbi->inTableHeaders.numElems *
-                            sizeof(PInHeader<E>);
-        sizeEIHeaderMem = wordAlign(sizeEIHeaderMem);
-      }
-      if (tbi->inTableRest.numElems) {
-        sizeEIRestMem = tbi->inTableRest.numElems * sizeof(PInEdge<E>);
-        sizeEIRestMem = wordAlign(sizeEIRestMem);
-      }
-      // Add space for outgoing edge table
-      for (uint32_t devNum = 0; devNum < numDevs; devNum++) {
-        PDeviceId id = fromDeviceAddr[threadId][devNum];
-        for (uint32_t p = 0; p < POLITE_NUM_PINS; p++) {
-          Seq<POutEdge>* edges = outTable[id][p];
-          sizeEOMem += sizeof(POutEdge) * edges->numElems;
+    parallel_for_blocked<unsigned>(0, TinselMaxThreads, 256, [&](uint32_t beginThreadId, uint32_t endThreadId){
+      ParallelRunningStats<8> sizeStatisticsLocal;
+      for(uint32_t threadId=beginThreadId; threadId<endThreadId; threadId++){
+
+        // This variable is used to count the size of the *initialised*
+        // partition.  The total partition size is larger as it includes
+        // uninitialised portions.
+        uint32_t sizeVMem = 0;
+        uint32_t sizeEIHeaderMem = 0;
+        uint32_t sizeEIRestMem = 0;
+        uint32_t sizeEOMem = 0;
+        uint32_t sizeTMem = 0;
+        // Add space for thread structure (always stored in SRAM)
+        sizeTMem = cacheAlign(sizeof(PThread<DeviceType, S, E, M>));
+        // Add space for devices
+        uint32_t numDevs = numDevicesOnThread[threadId];
+        for (uint32_t devNum = 0; devNum < numDevs; devNum++) {
+          // Add space for device
+          sizeVMem = sizeVMem + sizeof(PState<S>);
         }
+        PerThreadRoutingInfo *tbi=perThreadRoutingInfo+threadId;
+        // Add space for incoming edge tables
+        if (tbi->inTableHeaders.numElems ) {
+          sizeEIHeaderMem = tbi->inTableHeaders.numElems *
+                              sizeof(PInHeader<E>);
+          sizeEIHeaderMem = wordAlign(sizeEIHeaderMem);
+        }
+        if (tbi->inTableRest.numElems) {
+          sizeEIRestMem = tbi->inTableRest.numElems * sizeof(PInEdge<E>);
+          sizeEIRestMem = wordAlign(sizeEIRestMem);
+        }
+        // Add space for outgoing edge table
+        unsigned totalFanIn=0, totalFanOut=0;
+        for (uint32_t devNum = 0; devNum < numDevs; devNum++) {
+          PDeviceId id = fromDeviceAddr[threadId][devNum];
+          for (uint32_t p = 0; p < POLITE_NUM_PINS; p++) {
+            Seq<POutEdge>* edges = outTable[id][p];
+            sizeEOMem += sizeof(POutEdge) * edges->numElems;
+          }
+
+          // This adds a bit of unpredictable memory traffic, but the stats are quite useful
+          if(EnableStats){
+            totalFanIn += graph.fanIn(id);
+            totalFanOut += graph.fanOut(id);
+          }
+        }
+        sizeEOMem = wordAlign(sizeEOMem);
+        // The total partition size including uninitialised portions
+        uint32_t totalSizeVMem =
+          sizeVMem + wordAlign(sizeof(PLocalDeviceId) * numDevs);
+        // Check that total size is reasonable
+        uint32_t totalSizeSRAM = sizeTMem;
+        uint32_t totalSizeDRAM = 0;
+        if (mapVerticesToDRAM) totalSizeDRAM += totalSizeVMem;
+                          else totalSizeSRAM += totalSizeVMem;
+        if (mapInEdgeHeadersToDRAM) totalSizeDRAM += sizeEIHeaderMem;
+                              else totalSizeSRAM += sizeEIHeaderMem;
+        if (mapInEdgeRestToDRAM) totalSizeDRAM += sizeEIRestMem;
+                            else totalSizeSRAM += sizeEIRestMem;
+        if (mapOutEdgesToDRAM) totalSizeDRAM += sizeEOMem;
+                          else totalSizeSRAM += sizeEOMem;
+        if (totalSizeDRAM > maxDRAMSize) {
+          fatal_error("Error: max DRAM partition size exceeded\n");
+        }
+        if (totalSizeSRAM > maxSRAMSize) {
+          fatal_error("Error: max SRAM partition size exceeded\n");
+        }
+        // Allocate space for the initialised portion of the partition
+        assert((sizeVMem%4) == 0);
+        assert((sizeTMem%4) == 0);
+        assert((sizeEIHeaderMem%4) == 0);
+        assert((sizeEIRestMem%4) == 0);
+        assert((sizeEOMem%4) == 0);
+        vertexMem[threadId] = (uint8_t*) calloc(sizeVMem, 1);
+        vertexMemSize[threadId] = sizeVMem;
+        threadMem[threadId] = (uint8_t*) calloc(sizeTMem, 1);
+        threadMemSize[threadId] = sizeTMem;
+        inEdgeHeaderMem[threadId] = (uint8_t*) calloc(sizeEIHeaderMem, 1);
+        inEdgeHeaderMemSize[threadId] = sizeEIHeaderMem;
+        inEdgeRestMem[threadId] = (uint8_t*) calloc(sizeEIRestMem, 1);
+        inEdgeRestMemSize[threadId] = sizeEIRestMem;
+        outEdgeMem[threadId] = (uint8_t*) calloc(sizeEOMem, 1);
+        outEdgeMemSize[threadId] = sizeEOMem;
+        // Tinsel address of base of partition
+        uint32_t partId = threadId & (TinselThreadsPerDRAM-1);
+        uint32_t sramBase = (1 << TinselLogBytesPerSRAM) +
+            (partId << TinselLogBytesPerSRAMPartition);
+        uint32_t dramBase = TinselBytesPerDRAM -
+            ((partId+1) << TinselLogBytesPerDRAMPartition);
+        // Use partition-interleaved region for DRAM
+        dramBase |= 0x80000000;
+        threadMemBase[threadId] = sramBase;
+        sramBase += threadMemSize[threadId];
+        // Determine base addresses of each region
+        if (mapVerticesToDRAM) {
+          vertexMemBase[threadId] = dramBase;
+          dramBase += totalSizeVMem;
+        }
+        else {
+          vertexMemBase[threadId] = sramBase;
+          sramBase += totalSizeVMem;
+        }
+        if (mapInEdgeHeadersToDRAM) {
+          inEdgeHeaderMemBase[threadId] = dramBase;
+          dramBase += sizeEIHeaderMem;
+        }
+        else {
+          inEdgeHeaderMemBase[threadId] = sramBase;
+          sramBase += sizeEIHeaderMem;
+        }
+        if (mapInEdgeRestToDRAM) {
+          inEdgeRestMemBase[threadId] = dramBase;
+          dramBase += sizeEIRestMem;
+        }
+        else {
+          inEdgeRestMemBase[threadId] = sramBase;
+          sramBase += sizeEIRestMem;
+        }
+        if (mapOutEdgesToDRAM) {
+          outEdgeMemBase[threadId] = dramBase;
+          dramBase += sizeEOMem;
+        }
+        else {
+          outEdgeMemBase[threadId] = sramBase;
+          sramBase += sizeEOMem;
+        }
+
+        if(EnableStats){
+          sizeStatisticsLocal += std::array<double,8>{
+              (double)sizeVMem, (double)sizeEIHeaderMem, (double)sizeEIRestMem, (double)sizeEOMem, (double)totalSizeDRAM, (double)totalSizeSRAM,
+              totalFanIn ? (sizeEIHeaderMem+sizeEIRestMem)/(double)totalFanIn : 0,
+              totalFanOut ? sizeEOMem/(double)totalFanOut : 0
+          }; 
+        }
+      } // threadId loop
+
+      if(EnableStats){
+        sizeStatistics += sizeStatisticsLocal;
       }
-      sizeEOMem = wordAlign(sizeEOMem);
-      // The total partition size including uninitialised portions
-      uint32_t totalSizeVMem =
-        sizeVMem + wordAlign(sizeof(PLocalDeviceId) * numDevs);
-      // Check that total size is reasonable
-      uint32_t totalSizeSRAM = sizeTMem;
-      uint32_t totalSizeDRAM = 0;
-      if (mapVerticesToDRAM) totalSizeDRAM += totalSizeVMem;
-                        else totalSizeSRAM += totalSizeVMem;
-      if (mapInEdgeHeadersToDRAM) totalSizeDRAM += sizeEIHeaderMem;
-                             else totalSizeSRAM += sizeEIHeaderMem;
-      if (mapInEdgeRestToDRAM) totalSizeDRAM += sizeEIRestMem;
-                          else totalSizeSRAM += sizeEIRestMem;
-      if (mapOutEdgesToDRAM) totalSizeDRAM += sizeEOMem;
-                        else totalSizeSRAM += sizeEOMem;
-      if (totalSizeDRAM > maxDRAMSize) {
-        fatal_error("Error: max DRAM partition size exceeded\n");
-      }
-      if (totalSizeSRAM > maxSRAMSize) {
-        fatal_error("Error: max SRAM partition size exceeded\n");
-      }
-      // Allocate space for the initialised portion of the partition
-      assert((sizeVMem%4) == 0);
-      assert((sizeTMem%4) == 0);
-      assert((sizeEIHeaderMem%4) == 0);
-      assert((sizeEIRestMem%4) == 0);
-      assert((sizeEOMem%4) == 0);
-      vertexMem[threadId] = (uint8_t*) calloc(sizeVMem, 1);
-      vertexMemSize[threadId] = sizeVMem;
-      threadMem[threadId] = (uint8_t*) calloc(sizeTMem, 1);
-      threadMemSize[threadId] = sizeTMem;
-      inEdgeHeaderMem[threadId] = (uint8_t*) calloc(sizeEIHeaderMem, 1);
-      inEdgeHeaderMemSize[threadId] = sizeEIHeaderMem;
-      inEdgeRestMem[threadId] = (uint8_t*) calloc(sizeEIRestMem, 1);
-      inEdgeRestMemSize[threadId] = sizeEIRestMem;
-      outEdgeMem[threadId] = (uint8_t*) calloc(sizeEOMem, 1);
-      outEdgeMemSize[threadId] = sizeEOMem;
-      // Tinsel address of base of partition
-      uint32_t partId = threadId & (TinselThreadsPerDRAM-1);
-      uint32_t sramBase = (1 << TinselLogBytesPerSRAM) +
-          (partId << TinselLogBytesPerSRAMPartition);
-      uint32_t dramBase = TinselBytesPerDRAM -
-          ((partId+1) << TinselLogBytesPerDRAMPartition);
-      // Use partition-interleaved region for DRAM
-      dramBase |= 0x80000000;
-      threadMemBase[threadId] = sramBase;
-      sramBase += threadMemSize[threadId];
-      // Determine base addresses of each region
-      if (mapVerticesToDRAM) {
-        vertexMemBase[threadId] = dramBase;
-        dramBase += totalSizeVMem;
-      }
-      else {
-        vertexMemBase[threadId] = sramBase;
-        sramBase += totalSizeVMem;
-      }
-      if (mapInEdgeHeadersToDRAM) {
-        inEdgeHeaderMemBase[threadId] = dramBase;
-        dramBase += sizeEIHeaderMem;
-      }
-      else {
-        inEdgeHeaderMemBase[threadId] = sramBase;
-        sramBase += sizeEIHeaderMem;
-      }
-      if (mapInEdgeRestToDRAM) {
-        inEdgeRestMemBase[threadId] = dramBase;
-        dramBase += sizeEIRestMem;
-      }
-      else {
-        inEdgeRestMemBase[threadId] = sramBase;
-        sramBase += sizeEIRestMem;
-      }
-      if (mapOutEdgesToDRAM) {
-        outEdgeMemBase[threadId] = dramBase;
-        dramBase += sizeEOMem;
-      }
-      else {
-        outEdgeMemBase[threadId] = sramBase;
-        sramBase += sizeEOMem;
-      }
-    });
+    }); // Parallel loop
+
+    if(EnableStats){
+      sizeStatistics.walk_stats(
+        { "threadSizeVMem", "threadSizeEIHeaderMem", "threadSizeEIRestMem", "threadSizeEOMem", "threadTotalSizeDRAM", "threadTotalSizeSRAM",
+          "threadBytesPerInEdge", "threadBytesPerOutEdge" },
+        [&](const char *name, const char *stat, double val){
+          on_export_value((std::string(name)+"_"+stat).c_str(), val);
+        }
+      );
+    }
   }
 
   // Initialise partitions
@@ -647,10 +684,10 @@ template <typename DeviceType,
         
         // Extend table
         Seq<PInHeader<E>>* headers = &tbi->inTableHeaders;
-        if (key >= headers->numElems)
-          headers->extendBy(key + 1 - headers->numElems);
+        // Try to avoid uninitialised bytes - force to zero.
+        if (key >= headers->numElems) headers->extendByAndZeroExtra(key + 1 - headers->numElems);
         // Fill in header
-        PInHeader<E>* header = &tbi->inTableHeaders.elems[key];
+        PInHeader<E>* header = &headers->elems[key];
         header->numReceivers = numEdges;
         if (tbi->inTableRest.numElems > 0xffff) {          
           fatal_error("In-table index exceeds 16 bits\n");
@@ -725,6 +762,8 @@ template <typename DeviceType,
   __attribute__((noinline)) void computeTables(Seq<PEdgeDest>* dests, uint32_t d, uint32_t p,
          Seq<PRoutingDest>* out, PReceiverGroup<E> *groups) {
     out->clear();
+    PRoutingDest dest;
+    memset(&dest, 0, sizeof(PRoutingDest));
     uint32_t index = 0;
     while (index < dests->numElems) {
       // New set of receiver groups on same mailbox
@@ -775,7 +814,6 @@ template <typename DeviceType,
       // Add input table entries
       uint32_t key = addInTableEntries<DoLock>(nextGroup+1, groups);
       // Add output entry
-      PRoutingDest dest;
       dest.kind = PRDestKindMRM;
       dest.mbox = mbox;
       dest.mrm.key = key;

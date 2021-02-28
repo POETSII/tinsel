@@ -25,7 +25,7 @@ void parallel_for_with_grain(TR begin, TR end, TR grain_size, TF f)
       }
     });
   }else{
-    #ifdef NDEBUG
+    #ifndef NDEBUG
     TR off=begin + rand()%(end-begin);
     for(TR i=begin; i<end; i++){
       f(off);
@@ -38,6 +38,39 @@ void parallel_for_with_grain(TR begin, TR end, TR grain_size, TF f)
     for(TR i=begin; i<end; i++){
       f(i);
     }
+    #endif
+  }
+}
+
+template<class TR=unsigned, class TF>
+void parallel_for_blocked(TR begin, TR end, TR grain_size, TF f)
+{
+  auto n=end-begin;
+  if(n==0){
+    return;
+  }
+  if(n >= 2*grain_size && POLite_AllowParallelFor){
+    tbb::parallel_for<tbb::blocked_range<TR>>( {begin, end, grain_size},  [&](const tbb::blocked_range<TR> &r){
+      f(r.begin(), r.end());
+    });
+  }else{
+    #ifndef NDEBUG
+    TR done=0;
+    TR off=(begin+19937)%n;
+    while(done < n){
+      TR todo=n-done;
+      todo=std::min<TR>(grain_size, std::min<TR>(todo, n-off));
+      assert(todo>0);
+      f(off, off+todo);
+      done+=todo;
+      off+=todo;
+      if(off==n){
+        off=0;
+      }
+    }
+    assert(done==n);
+    #else
+    f(begin, end);
     #endif
   }
 }
@@ -59,7 +92,7 @@ void parallel_for_2d_with_grain(TR begin0, TR end0, TR grain_size0, TR begin1, T
       }
     });
   }else{
-    #ifdef NDEBUG
+    #ifndef NDEBUG
     TR off0=begin0 + rand()%(end0-begin0);
     for(TR i=begin0; i<end0; i++){
       TR off1=begin1 + rand()%(end1-begin1);

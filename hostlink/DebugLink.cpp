@@ -280,6 +280,7 @@ void DebugLink::setBroadcastDest(
   pkt.payload[1] = threadId;
   // Broadcast address
   pkt.payload[2] = 0x80;
+  std::fill(pkt.payload+3, pkt.payload+sizeof(pkt.payload)/sizeof(pkt.payload[0]), 0); // Avoid un-unit bytes going through syscall (make valgrind happy)
   // Send packet to appropriate box
   putPacket(boxX[boardY][boardX], boxY[boardY][boardX], &pkt);
 }
@@ -291,6 +292,7 @@ void DebugLink::put(uint32_t boardX, uint32_t boardY, uint8_t byte)
   pkt.linkId = linkId[boardY][boardX];
   pkt.payload[0] = DEBUGLINK_STD_IN;
   pkt.payload[1] = byte;
+  std::fill(pkt.payload+2, pkt.payload+sizeof(pkt.payload)/sizeof(pkt.payload[0]), 0);  // Avoid un-unit bytes going through syscall (make valgrind happy)
   putPacket(boxX[boardY][boardX], boxY[boardY][boardX], &pkt);
 }
 

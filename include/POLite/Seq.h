@@ -82,9 +82,16 @@ template <class T> class Seq
       maxElems = n;
       T* newElems = new T[maxElems];
       std::move(elems, elems+numElems, newElems);
-      // Originally this assumed that numElems changed _before_ capacity (?)
-      //for (int i = 0; i < numElems-1; i++)
-      //  newElems[i] = elems[i];
+      delete [] elems;
+      elems = newElems;
+    }
+
+    void setCapacityAndZeroExtra(int n) {
+      assert(numElems <= n);
+      maxElems = n;
+      T* newElems = new T[maxElems];
+      std::move(elems, elems+numElems, newElems);
+      std::memset(newElems+numElems, 0, sizeof(T)*(maxElems-numElems));
       delete [] elems;
       elems = newElems;
     }
@@ -95,6 +102,15 @@ template <class T> class Seq
       int newNumElems = numElems + n;
       if (newNumElems  > maxElems){
         setCapacity(std::max(newNumElems, maxElems*2));
+      }
+      numElems=newNumElems;
+    }
+
+    void extendByAndZeroExtra(int n)
+    {
+      int newNumElems = numElems + n;
+      if (newNumElems  > maxElems){
+        setCapacityAndZeroExtra(std::max(newNumElems, maxElems*2));
       }
       numElems=newNumElems;
     }

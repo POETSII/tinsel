@@ -6,8 +6,16 @@ CPPFLAGS += -I ../../../hostlink
 
 CPPFLAGS += -I /home/dt10/local/include
 
-CXXFLAGS += -g -std=c++17 -fopenmp -lpthread
-CXXFLAGS += -O3 -DNDEBUG=1 -march=native 
+CXXFLAGS += -g -std=c++17 -fopenmp -lpthread -fno-omit-frame-pointer
+
+CXXFLAGS += -O2 -DNDEBUG=1
+#CXXFLAGS += -O3 -DNDEBUG=1 -march=native 
+
+# This is needed to stop valgrind crashing. We dont need ultra-high precision
+# from boost math anyway
+CXXFLAGS += -DBOOST_MATH_NO_LONG_DOUBLE_MATH_FUNCTIONS=1
+
+LDFLAGS += -L /home/dt10/local/lib
 
 LDLIBS += -ltbb -lmetis -lboost_program_options -lquadmath
 

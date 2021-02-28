@@ -41,7 +41,7 @@ class ProgRouter {
     numChunks = numRecords = 0;
     // Allocate new beat, and check for overflow
     numBeats++;
-    table[currentRAM]->extendBy(32);
+    table[currentRAM]->extendByAndZeroExtra(32);
     if (table[currentRAM]->numElems >= (TinselPOLiteProgRouterLength-1024)) {
       printf("ProgRouter out of memory\n");
       exit(EXIT_FAILURE);
@@ -111,7 +111,7 @@ class ProgRouter {
     for (int i = 0; i < TinselDRAMsPerBoard; i++) {
       table[i] = new Seq<uint8_t> (1 << 15);
       // Allocate first beat
-      table[i]->extendBy(32);
+      table[i]->extendByAndZeroExtra(32);
     }
   }
 
