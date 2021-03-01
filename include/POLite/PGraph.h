@@ -219,6 +219,7 @@ template <typename DeviceType,
   std::function<void(const char *message)> on_fatal_error;
   std::function<void(const char *part)> on_phase_hook;
   std::function<void(const char *key, double value)> on_export_value;
+  std::function<void(const char *key, const char *value)> on_export_string;
 
   [[noreturn]] void fatal_error(const char *message, ...)
   {
@@ -344,7 +345,7 @@ template <typename DeviceType,
     outEdgeMemSize = (uint32_t*) calloc(TinselMaxThreads, sizeof(uint32_t));
     outEdgeMemBase = (uint32_t*) calloc(TinselMaxThreads, sizeof(uint32_t));
 
-    const bool EnableStats=false; //(bool)on_export_value;
+    const bool EnableStats=(bool)on_export_value;
 
     ParallelRunningStats<8> sizeStatistics;
 
@@ -477,11 +478,13 @@ template <typename DeviceType,
         }
 
         if(EnableStats){
-          sizeStatisticsLocal += std::array<double,8>{
-              (double)sizeVMem, (double)sizeEIHeaderMem, (double)sizeEIRestMem, (double)sizeEOMem, (double)totalSizeDRAM, (double)totalSizeSRAM,
-              totalFanIn ? (sizeEIHeaderMem+sizeEIRestMem)/(double)totalFanIn : 0,
-              totalFanOut ? sizeEOMem/(double)totalFanOut : 0
-          }; 
+          if(numDevs>0){
+            sizeStatisticsLocal += std::array<double,8>{
+                (double)sizeVMem, (double)sizeEIHeaderMem, (double)sizeEIRestMem, (double)sizeEOMem, (double)totalSizeDRAM, (double)totalSizeSRAM,
+                totalFanIn ? (sizeEIHeaderMem+sizeEIRestMem)/(double)totalFanIn : 0,
+                totalFanOut ? sizeEOMem/(double)totalFanOut : 0
+            }; 
+          }
         }
       } // threadId loop
 
@@ -984,18 +987,29 @@ template <typename DeviceType,
       on_export_value("numBoardsX", numBoardsX);
       on_export_value("numBoardsY", numBoardsY);
       on_export_value("numBoardsTotal", numBoardsX*numBoardsY);
+      on_export_value("numThreadsTotal", numBoardsX*numBoardsY*TinselLogThreadsPerBoard);
     }
     // Partition into subgraphs, one per board
     Placer<E> boards(&graph, numBoardsX, numBoardsY, 0, placer_method);
 
     mark_phase("placeTopLevel");
     // Place subgraphs onto 2D mesh
+    // DT10 : TODO - is this call to place adding much?
     const uint32_t placerEffort = 8;
     boards.place(placerEffort);
+    if(on_export_string){
+      on_export_string("board_placer_method", placer_method_to_string(boards.method_chosen));
+    }
+    if(on_export_value){
+      on_export_value("board_placer_effort", (int64_t) placerEffort);
+    }
 
     mark_phase("placeBoards");
     // 0==DevicesPerThread, 1== fanIn, 2==fanOut
     ParallelRunningStats<3> systemThreadStats;
+
+    PlacerMethod boardPlacerMethod=Default;
+    PlacerMethod mailboxPlacerMethod=Default;
 
     // For each board
     parallel_for_2d_with_grain<unsigned>(0,numBoardsY,1, 0,numBoardsX,1, [&](uint32_t boardY, uint32_t boardX) {
@@ -1006,7 +1020,16 @@ template <typename DeviceType,
       PartitionId b = boards.mapping[boardY][boardX];
       Placer<None> boxes(&boards.subgraphs[b], 
               TinselMailboxMeshXLen, TinselMailboxMeshYLen, 1, placer_method);
+      // DT10 : TODO - is this call to place adding much?
       boxes.place(placerEffort);
+      if(boardX==0 && boardY==0){
+        if(on_export_string){
+          on_export_string("mailbox_placer_method", placer_method_to_string(boxes.method_chosen));
+        }
+        if(on_export_value){
+         on_export_value("mailbox_placer_effort", placerEffort);
+        }
+      }
 
       // For each mailbox
       parallel_for_2d_with_grain<unsigned>(0,TinselMailboxMeshXLen,1,  0,TinselMailboxMeshYLen,1, [&](uint32_t boxX, uint32_t boxY) {
@@ -1016,6 +1039,9 @@ template <typename DeviceType,
         uint32_t numThreads = 1<<TinselLogThreadsPerMailbox;
         PartitionId t = boxes.mapping[boxY][boxX];
         Placer<None> threads(&boxes.subgraphs[t], numThreads, 1, 2, placer_method);
+        if(boardX==0 && boardY==0 && boxX==0 && boxY==0 && on_export_string){
+          on_export_string("thread_placer_method", placer_method_to_string(threads.method_chosen));
+        }
 
         // For each thread
         for (uint32_t threadNum = 0; threadNum < numThreads; threadNum++) {

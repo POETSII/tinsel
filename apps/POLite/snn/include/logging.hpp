@@ -15,6 +15,8 @@
 
 #include "vsnprintf_to_string.h"
 
+#include "config.h"
+
 class LogContext;
 
 class Logger
@@ -118,6 +120,26 @@ private:
         exit_region();
     }
 
+    void add_tinsel_info()
+    {
+        enter_region("tinsel");
+
+        export_value("TinselCoresPerFPU",(int64_t)TinselCoresPerFPU,2);
+        export_value("TinselLogBytesPerDRAM",(int64_t)TinselLogBytesPerDRAM,2);
+        export_value("TinselLogBytesPerFlit",(int64_t)TinselLogBytesPerFlit,2);
+        export_value("TinselLogBytesPerMsg",(int64_t) TinselLogBytesPerMsg,2);
+        export_value("TinselMeshYBits",(int64_t)TinselMeshYBits,2);
+        export_value("TinselMeshXBits",(int64_t)TinselMeshXBits,2);
+        #define SSSTR(x) #x
+        // This string has quotes that dont work for C
+        export_value("TinselDeviceFamily",std::string(SSSTR(TinselDeviceFamily)).c_str(),2);
+        #undef SSSTR
+        export_value("TinselBoxMeshXLen",(int64_t)TinselBoxMeshXLen,2);
+        export_value("TinselBoxMeshYLen", (int64_t)TinselBoxMeshYLen,2);
+
+        exit_region();
+    }
+
     void add_system_info()
     {
         add_system_info_lscpu();
@@ -176,6 +198,7 @@ public:
         char buffer[128]={0};
         gethostname(buffer, sizeof(buffer)-1);
         export_value("hostname", buffer, 2);
+        export_value("user", getlogin(), 2);
         add_system_info();
         exit_region();
     }

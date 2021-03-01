@@ -10,6 +10,7 @@
 #include "../topology/network_topology.hpp"
 #include "tbb/pipeline.h"
 #include "logging.hpp"
+#include "boost/json.hpp"
 #endif
 
 #include "config.h"
@@ -32,7 +33,7 @@ struct HardwareIdleRunner
     struct message_type
     {
         //constexpr static size_t FragmentWords=(1<<TinselLogBytesPerFlit)/4 - 1 - 1;
-        constexpr static size_t FragmentWords=(1<<TinselLogBytesPerMsg)/4 - 1 - 1;
+        constexpr static size_t FragmentWords=(1<<TinselLogBytesPerFlit)/4 - 1 - 1;
 
         uint32_t src : 30;
         MessageTypes type : 2;
@@ -111,8 +112,6 @@ struct HardwareIdleRunner
                 neuron_model_t::accumulator_reset(s->neuron_state, s->accumulator);
                 s->stats.on_end_step(s->time);
                 s->time++;
-                s->stats.body.bibble=s->neuron_state.u;
-                s->stats.body.bobble=s->neuron_state.v;
                 *readyToSend = spike ? Pin(0) : No;
                 return true;
 
@@ -146,6 +145,13 @@ struct HardwareIdleRunner
     typename neuron_model_t::model_config_type model_config;
 
     PGraph<device_type, state_type, edge_type, message_type> graph;
+
+    void parse_neuron_config(const std::string &s, Logger &logger)
+    {
+        auto c=boost::json::parse(s).as_object();
+        model_config=neuron_model_t::parse_config(c);
+        neuron_model_t::log_config(logger, model_config);
+    }
 
     void build_graph(const ::snn::RunnerConfig &config, const NetworkTopology &topology, std::vector<state_type> &states, Logger &logger)
     {

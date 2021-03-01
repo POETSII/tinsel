@@ -23,10 +23,11 @@ int snn_host_main_impl(int argc, char *argv[])
     uint64_t seed;
     std::string placer_method_str;
     std::string topology_config_str;
-    std::string neuron_config_str;
+    std::string neuron_config_str = RunnerType::neuron_model_t::default_model_config();
     std::string log_file_name;
     unsigned max_steps;
     PlacerMethod placer_method;
+    std::vector<std::string> user_key_values;
     {
         po::options_description desc("Allowed options");
         desc.add_options()
@@ -34,9 +35,10 @@ int snn_host_main_impl(int argc, char *argv[])
             ("seed", po::value<uint64_t>()->default_value(1), "seed for creating network")
             ("placer", po::value<std::string>()->default_value("default"), "Placer method (metis,bfs,random,default)")
             ("topology", po::value<std::string>()->default_value(R"({"type":"EdgeProbTopology","nNeurons":10000,"pConnect":0.01})"), "Topology config")
-            ("neuron-model", po::value<std::string>()->default_value(R"({"type":"IzhikevichFix"})"), "Neuron model config")
+            ("neuron-model", po::value<std::string>()->default_value(neuron_config_str), "Neuron model config")
             ("max-steps", po::value<uint64_t>()->default_value(1000), "Number of network time-steps to take")
             ("log-file", po::value<std::string>()->default_value("snn.log"), "Where to write the log file")
+            ("user-key-value", po::value<std::vector<std::string>>(), "User-defined key:value pairs to add to the log. e,g. '--user-key-value=[key]:[value]'")
         ;
 
         po::variables_map vm;
@@ -49,10 +51,25 @@ int snn_host_main_impl(int argc, char *argv[])
         neuron_config_str=vm["neuron-model"].as<std::string>();
         log_file_name=vm["log-file"].as<std::string>();
         max_steps=vm["max-steps"].as<uint64_t>();
+        if (vm.count("user-key-value")>0){
+            user_key_values=vm["user-key-value"].as<std::vector<std::string>>();
+        }
     }
 
     Logger log(log_file_name);
-
+    if(!user_key_values.empty()){
+        auto r=log.with_region("user-params");
+        for(const auto &kv : user_key_values){
+            auto colon=kv.find(':');
+            if(colon==std::string::npos){
+                log.export_value(kv.c_str(), "", 1);
+            }else{
+                std::string key=kv.substr(0, colon);
+                std::string value=kv.substr(colon+1);
+                log.export_value(key.c_str(), value.c_str(), 1);
+            }
+        }
+    }
 
     StochasticSourceNode noise(seed);
 
@@ -60,15 +77,19 @@ int snn_host_main_impl(int argc, char *argv[])
     config.max_time_steps=max_steps;
     
     RunnerType runner;
+    runner.parse_neuron_config(neuron_config_str, log);
 
-    runner.graph.on_phase_hook=[&](const char *name)
-    { log.tag_leaf(name); };
+    {
+        auto r=log.with_region("POLite_config");
+        log.export_value("app_message_size", (int64_t)sizeof(typename RunnerType::message_type), 2);
+        log.export_value("POLite_message_size", (int64_t)sizeof(PMessage<typename RunnerType::message_type>), 2);
+        log.export_value("POLITE_NUM_PINS", (int64_t)POLITE_NUM_PINS, 2);
+    }
 
-    runner.graph.on_fatal_error=[&](const char *msg)
-    { log.fatal_error(msg); };
-
-    runner.graph.on_export_value=[&](const char *name, double value)
-    { log.export_value(name, value, 2); };
+    runner.graph.on_phase_hook=[&](const char *name) { log.tag_leaf(name); };
+    runner.graph.on_fatal_error=[&](const char *msg) { log.fatal_error(msg); };
+    runner.graph.on_export_value=[&](const char *name, double value) { log.export_value(name, value, 2); };
+    runner.graph.on_export_string=[&](const char *name, const char * value) { log.export_value(name, value, 2); };
 
     runner.graph.placer_method=placer_method;
 
@@ -142,6 +163,7 @@ int snn_host_main_impl(int argc, char *argv[])
         hostLinkParams.on_phase=[&](const char *name){
             log.tag_leaf(name);
         };
+        hostLinkParams.max_connection_attempts=8;
         
         
 

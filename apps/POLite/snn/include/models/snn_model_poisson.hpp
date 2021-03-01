@@ -6,6 +6,7 @@
 #include "hash.hpp"
 
 #ifndef TINSEL
+#include "logging.hpp"
 #include <boost/json.hpp>
 #endif
 
@@ -45,7 +46,7 @@ namespace snn{
             acc.acc += weight.inc;
         }
         
-        static void neuron_init(const model_config_type &config, neuron_state_type &neuron, uint32_t neuron_id)
+        static void neuron_init(const model_config_type &config, uint32_t neuron_id, neuron_state_type &neuron)
         {
             neuron.rng_state=hash_2d_to_uint64(config.seed, neuron_id);
             neuron.firing_thresh=config.firing_rate_per_step;
@@ -55,10 +56,24 @@ namespace snn{
         {
             uint32_t u=rng64_next_uint32(neuron.rng_state);
             u += acc.acc;
-            return u > neuron.firing_thresh;
+            return u <= neuron.firing_thresh;
         }
 
         #ifndef TINSEL
+        static std::string default_model_config()
+        {
+            return R"({"type":"Poisson", "firing_rate_per_step":0.01, "seed":1 })";
+        }
+
+        static void log_config(Logger &log, const model_config_type &config)
+        {
+            auto r=log.with_region("model");
+            log.export_value("type", "Poisson", 2);
+            log.export_value("firing_rate_per_step_thresh", (int64_t)config.firing_rate_per_step, 2);
+            log.export_value("firing_rate_per_step", ldexp(config.firing_rate_per_step,-32), 2);
+            log.export_value("seed", (int64_t)config.seed, 2);
+        }
+
         static model_config_type parse_config(const boost::json::object &config)
         {
             if(!config.contains("type")){
@@ -79,6 +94,7 @@ namespace snn{
 
             return res;
         }
+        #endif
     };
 };
 

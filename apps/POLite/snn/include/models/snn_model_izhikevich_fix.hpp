@@ -8,7 +8,9 @@
 #include "hash.hpp"
 
 #ifndef TINSEL
+#include "logging.hpp"
 #include <boost/json.hpp>
+
 #endif
 
 namespace snn{
@@ -166,6 +168,20 @@ namespace snn{
 
 
 #ifndef TINSEL
+        static void log_config(Logger &log, const model_config_type &config)
+        {
+            auto r=log.with_region("model");
+            log.export_value("type", "IzhikevichFix", 2);
+            log.export_value("excitatory_fraction_thresh", (int64_t)config.excitatory_fraction, 2);
+            log.export_value("excitatory_fraction", ldexp(config.excitatory_fraction,-32), 2);
+            log.export_value("seed", (int64_t)config.seed, 2);
+        }
+
+        static std::string default_model_config()
+        {
+            return R"({"type":"IzhikevichFix", "excitatory_fraction":0.8, "seed":1 })";
+        }
+
         static model_config_type parse_config(const boost::json::object &config)
         {
             if(!config.contains("type")){

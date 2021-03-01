@@ -7,6 +7,8 @@
 #include <POLite/Graph.h>
 #include <queue>
 #include <omp.h>
+#include <random>
+#include <algorithm>
 
 /* I (dt10) couldnt get MTMetis to work on more than 1 thread without crashing */
 #ifdef HAVE_MT_METIS
@@ -21,11 +23,54 @@ enum PlacerMethod {
     Default,
     Metis,
     Random,
+    RandomBalanced,
     Direct,
     BFS,
     BFS_then_Metis, // Perform BFS at the board level, then switch to metis
     MTMetis
   };
+
+inline const char *placer_method_to_string(PlacerMethod m)
+{
+  switch(m){
+  case Default: return "Default";
+  case Metis: return "Metis";
+  case Random: return "Random";
+  case RandomBalanced: return "RandomBalanced";
+  case Direct: return "Direct";
+  case BFS: return "BFS";
+  case BFS_then_Metis: return "BFS_then_Metis";
+  case MTMetis: return "MTMetis";
+  default:
+    assert(0);
+    return "UNKNOWN";
+  }
+}
+
+inline PlacerMethod parse_placer_method(::std::string method){
+  std::transform(method.begin(), method.end(), method.begin(), [](char c){ return std::tolower(c); });
+
+  if(method=="metis"){
+      return PlacerMethod::Metis;
+  }else if(method=="bfs"){
+      return PlacerMethod::BFS;
+  }else if(method=="random"){
+      return PlacerMethod::Random;
+  }else if(method=="randombalanced"){
+      return PlacerMethod::RandomBalanced;
+  }else if(method=="direct"){
+      return PlacerMethod::Direct;
+  }else if(method=="default"){
+      return PlacerMethod::Default;
+  }else if(method=="mtmetis"){
+      return PlacerMethod::MTMetis;
+  }else if(method=="bfs_then_metis"){
+      return PlacerMethod::BFS_then_Metis;
+  }else{
+      fprintf(stderr, "Unknown placement method '%s'\n", method.c_str());
+      exit(1);
+  }
+}
 
 // Partition and place a graph on a 2D mesh
 template<class TEdgeWeight=None>
@@ -78,6 +123,9 @@ struct Placer {
 
   // Controls which strategy is used
   PlacerMethod method = Default;
+
+  // will be set to the method actually used
+  PlacerMethod method_chosen;
 
   // Select placer method
   void chooseMethod()
@@ -172,6 +220,7 @@ struct Placer {
     // METIS_PartGraphRecursive.
     int ret;
     if(method==MTMetis && (recursion_level==0) && method!=Metis){
+      method_chosen=MTMetis;
       #ifndef HAVE_MT_METIS
       fprintf(stderr, "MTMetis is selected, but does not seem to have been compiled in.");
       exit(1);
@@ -191,6 +240,8 @@ struct Placer {
         NULL, NULL, NULL, (mtmetis_pid_type*)&nparts, NULL, NULL, options, &objval, (mtmetis_pid_type*)parts);
       #endif
     }else{
+      method_chosen=Metis;
+
       // Specify Metis options
       idx_t options[METIS_NOPTIONS];
       METIS_SetDefaultOptions(options);
@@ -211,6 +262,8 @@ struct Placer {
 
   // Partition the graph randomly
   void partitionRandom() {
+    method_chosen=Random;
+
     uint32_t numVertices = graph->nodeCount();
     uint32_t numParts = width * height;
 
@@ -220,8 +273,37 @@ struct Placer {
     }
   }
 
+  // Partition the graph randomly, but keeping the same number of devices per thread
+  void partitionRandomBalanced() {
+    method_chosen=RandomBalanced;
+
+    uint32_t numVertices = graph->nodeCount();
+    uint32_t numParts = width * height;
+
+    std::mt19937_64 rng(getRand());
+
+    std::vector<PartitionId> dests(numParts);
+    std::iota(dests.begin(), dests.end(), 0);
+
+    // We allocate in rounds, handing one device out to each partition per round.
+    // This takes O(numVertices) RNG calls, which are slow, but not too bad for 64-bit
+    // mersenne twister. Note: 32-bit MT is generally a lot slower than 64-bit
+    uint32_t done=0;
+    while(done < numVertices){
+      std::shuffle(dests.begin(), dests.end(), rng);
+
+      uint32_t todo=std::min<size_t>(dests.size(), numVertices-done);
+      for(unsigned i=0; i<todo; i++){
+        partitions[i+done] = dests[i];
+      }
+      done+=todo;
+    }
+  }
+
   // Partition the graph using direct mapping
   void partitionDirect() {
+    method_chosen=Direct;
+
     uint32_t numVertices = graph->nodeCount();
     uint32_t numParts = width * height;
     uint32_t partSize = (numVertices + numParts) / numParts;
@@ -234,6 +316,8 @@ struct Placer {
 
   // Partition the graph using repeated BFS
   void partitionBFS() {
+    method_chosen=BFS;
+
     uint32_t numVertices = graph->nodeCount();
     uint32_t numParts = width * height;
     uint32_t partSize = (numVertices + numParts) / numParts;
