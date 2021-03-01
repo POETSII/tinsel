@@ -90,6 +90,9 @@ namespace snn{
             }
 
             res.firing_rate_per_step=ldexp(p, 32);
+            if(p=>1-ldexp(1,-31)){
+                res.firing_rate_per_step=0xFFFFFFFFul;
+            }
             res.seed=1;
 
             return res;
