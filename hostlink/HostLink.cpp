@@ -102,6 +102,7 @@ void HostLink::constructor(HostLinkParams p)
   debugLinkParams.numBoxesY = p.numBoxesY;
   debugLinkParams.useExtraSendSlot = p.useExtraSendSlot;
   debugLinkParams.on_phase=p.on_phase;
+  debugLinkParams.max_connection_attempts=p.max_connection_attempts;
   debugLink = new DebugLink(debugLinkParams);
 
   // Set board mesh dimensions

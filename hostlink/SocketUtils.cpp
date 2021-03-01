@@ -95,7 +95,7 @@ int socketPut(int fd, char* buf, int numBytes)
 }
 
 // Create TCP connection to given host/port
-int socketConnectTCP(const char* hostname, int port)
+int socketConnectTCP(const char* hostname, int port, bool returnCantConnect)
 {
   // Resolve hostname
   hostent* hostInfo = gethostbyname2(hostname, AF_INET);
@@ -122,7 +122,11 @@ int socketConnectTCP(const char* hostname, int port)
     fprintf(stderr, "Can't connect to host '%s' on port '%d'\n",
       hostname, port);
     fprintf(stderr, "Box '%s' already in use?\n", hostname);
-    exit(EXIT_FAILURE);
+    if(returnCantConnect){
+      return -1;
+    }else{
+      exit(1);
+    }
   }
 
   return sock;

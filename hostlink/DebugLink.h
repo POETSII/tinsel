@@ -18,6 +18,10 @@ struct DebugLinkParams {
 
   // Used to indicate when the hostlink moves through different phases, especially in construction
   std::function<void(const char *)> on_phase;
+
+  // Used to allow retries when connecting to the socket. When performing rapid sweeps,
+  // it is quite common for the first attempt in the next process to fail.
+  int max_connection_attempts = 1;
 };
 
 class DebugLink {
