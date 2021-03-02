@@ -8,12 +8,15 @@
 #include <string>
 #include <algorithm>
 
+#include "ParallelFor.h"
+
 namespace snn
 {
     struct RunnerConfig
     {
         PlacerMethod placerMethod = PlacerMethod::Default;
         unsigned max_time_steps=1000;
+        ParallelFlag enable_parallel;
     };
 
 };

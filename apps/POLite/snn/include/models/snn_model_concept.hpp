@@ -5,6 +5,7 @@
 #ifndef snn_model_concept_hpp
 #define snn_model_concept_hpp
 
+#include <cstdint>
 
 namespace snn
 {

@@ -86,9 +86,10 @@ struct PPin{
   constexpr bool operator!=(PPin o) const { return index!=o.index; }
 };
 static_assert(sizeof(PPin)==1, "Expecting PPin to be 1 byte.");
-#define No (PPin{0,true})
-#define HostPin (PPin{1,true})
-#define Pin(n) (PPin{((n)+2),true})
+
+const constexpr No = (PPin{0,true});
+const constexpr HostPin = (PPin{1,true});
+constexpr PPin Pin(n) { return PPin{((n)+2),true}; }
 
 // For template arguments that are not used
 struct None {};

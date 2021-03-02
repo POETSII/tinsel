@@ -85,7 +85,6 @@ struct HardwareIdleRunner
                 *readyToSend=No;
                 break;
             case HostPin.index:
-                tinselCacheFlush();
                 msg->src=s->id;
                 msg->type=Export;
                 if(s->stats.template do_fragment_export<message_type::FragmentWords>(msg->words)){

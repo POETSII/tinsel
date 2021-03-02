@@ -1,5 +1,6 @@
 #include "snn_host_main.hpp"
 
+#include "runners/hardware_idle_runner.hpp"
 #include "models/snn_model_izhikevich_fix.hpp"
 #include "stats/stats_minimal.hpp"
 

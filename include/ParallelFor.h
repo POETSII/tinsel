@@ -11,14 +11,21 @@ const bool POLite_AllowParallelFor=false;
 const bool POLite_AllowParallelFor=true;
 #endif
 
+enum struct ParallelFlag
+{
+  Yes=+1,
+  Default=0,
+  No=-1
+};
+
 template<class TR=unsigned, class TF>
-void parallel_for_with_grain(TR begin, TR end, TR grain_size, TF f)
+void parallel_for_with_grain(ParallelFlag flag, TR begin, TR end, TR grain_size, TF f)
 {
   auto n=end-begin;
   if(n==0){
     return;
   }
-  if(n >= 2*grain_size && POLite_AllowParallelFor){
+  if(n >= 2*grain_size && POLite_AllowParallelFor && flag >= ParallelFlag::Default){
     tbb::parallel_for<tbb::blocked_range<TR>>( {begin, end, grain_size},  [&](const tbb::blocked_range<TR> &r){
       for(TR i=r.begin(); i<r.end(); i++){
         f(i);
@@ -43,13 +50,17 @@ void parallel_for_with_grain(TR begin, TR end, TR grain_size, TF f)
 }
 
 template<class TR=unsigned, class TF>
-void parallel_for_blocked(TR begin, TR end, TR grain_size, TF f)
+void parallel_for_with_grain(TR begin, TR end, TR grain_size, TF f)
+{ parallel_for_with_grain(ParallelFlag::Default, begin, end, grain_size, f); }
+
+template<class TR=unsigned, class TF>
+void parallel_for_blocked(ParallelFlag flag, TR begin, TR end, TR grain_size, TF f)
 {
   auto n=end-begin;
   if(n==0){
     return;
   }
-  if(n >= 2*grain_size && POLite_AllowParallelFor){
+  if(n >= 2*grain_size && POLite_AllowParallelFor && flag>=ParallelFlag::Default){
     tbb::parallel_for<tbb::blocked_range<TR>>( {begin, end, grain_size},  [&](const tbb::blocked_range<TR> &r){
       f(r.begin(), r.end());
     });
@@ -76,14 +87,20 @@ void parallel_for_blocked(TR begin, TR end, TR grain_size, TF f)
 }
 
 template<class TR=unsigned, class TF>
-void parallel_for_2d_with_grain(TR begin0, TR end0, TR grain_size0, TR begin1, TR end1, TR grain_size1, TF f)
+void parallel_for_blocked(TR begin, TR end, TR grain_size, TF f)
+{
+  parallel_for_blocked(ParallelFlag::Default, begin, end, grain_size, f);
+}
+
+template<class TR=unsigned, class TF>
+void parallel_for_2d_with_grain(ParallelFlag flag, TR begin0, TR end0, TR grain_size0, TR begin1, TR end1, TR grain_size1, TF f)
 {
   auto n0=end0-begin0;
   auto n1=end1-begin1;
   if(n1==0 || n0==0){
     return;
   }
-  if(n1 >= 2*grain_size1 && n0 >= 2*grain_size0 && POLite_AllowParallelFor){
+  if(n1 >= 2*grain_size1 && n0 >= 2*grain_size0 && POLite_AllowParallelFor && flag >= ParallelFlag::Default){
     tbb::parallel_for<tbb::blocked_range2d<TR>>( {begin0, end0, grain_size0, begin1, end1, grain_size1},  [&](const tbb::blocked_range2d<TR> &r){
       for(TR i=r.rows().begin(); i<r.rows().end(); i++){
         for(TR j=r.cols().begin(); j<r.cols().end(); j++){
@@ -116,6 +133,12 @@ void parallel_for_2d_with_grain(TR begin0, TR end0, TR grain_size0, TR begin1, T
     }
     #endif
   }
+}
+
+template<class TR=unsigned, class TF>
+void parallel_for_2d_with_grain(TR begin0, TR end0, TR grain_size0, TR begin1, TR end1, TR grain_size1, TF f)
+{
+  parallel_for_2d_with_grain(ParallelFlag::Default, begin0, end0, grain_size0, begin1, end1, grain_size1, f);
 }
 
 #endif

@@ -9,7 +9,7 @@ CPPFLAGS += -I /home/dt10/local/include
 CXXFLAGS += -g -std=c++17 -fopenmp -lpthread -fno-omit-frame-pointer
 
 #CXXFLAGS += -O2 -DNDEBUG=1
-CXXFLAGS += -O3 -DNDEBUG=1 -march=native 
+#CXXFLAGS += -O3 -DNDEBUG=1 -march=native 
 
 # This is needed to stop valgrind crashing. We dont need ultra-high precision
 # from boost math anyway
@@ -34,6 +34,14 @@ bin/% : src/%.o $(HOSTLINK_OBJS) $(EXTRA_OBJS)
 	mkdir -p bin
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(filter %.c %.o, $^) -o $@ $(LDFLAGS) $(LDLIBS)
 
+obj/%_sim.o : src/%.cpp
+	mkdir -p obj
+	$(CXX) -I ../POLiteSW/include    -c $(CPPFLAGS) $(CXXFLAGS) $< -o $@
+
+bin/%_sim : obj/%_sim.o $(EXTRA_OBJS)
+	mkdir -p bin
+	$(CXX) -I ../POLiteSW/include $(CPPFLAGS) $(CXXFLAGS) $(filter %.c %.o, $^) -o $@ $(LDFLAGS) $(LDLIBS)
+
 bin/%.riscv.elf bin/%.riscv.code.v bin/%.riscv.data.v : src/%_tinsel.cpp
 	src/compile_riscv.sh $< bin/$*-build
 	cp bin/$*-build/app.elf bin/$*.riscv.elf
@@ -43,6 +51,8 @@ bin/%.riscv.elf bin/%.riscv.code.v bin/%.riscv.data.v : src/%_tinsel.cpp
 bin/hardware_idle_izhikevich_fix	: bin/hardware_idle_izhikevich_fix.riscv.elf
 
 bin/hardware_idle_poisson	: bin/hardware_idle_poisson.riscv.elf
+
+
 
 
 all : bin/test_pair_hash

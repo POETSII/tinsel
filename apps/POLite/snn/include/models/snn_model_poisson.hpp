@@ -36,6 +36,11 @@ namespace snn{
             weight.inc = hash_2d_to_uint32(src, dst) & 0xFF;
         }
 
+        static void weight_init_zero(const model_config_type &config, weight_type &weight)
+        {
+            weight.inc = 0;
+        }
+
         static void accumulator_reset(const neuron_state_type &dst_neuron, accumulator_type &acc)
         {
             acc.acc = 0;
@@ -90,7 +95,7 @@ namespace snn{
             }
 
             res.firing_rate_per_step=ldexp(p, 32);
-            if(p=>1-ldexp(1,-31)){
+            if(p>=1-ldexp(1,-31)){
                 res.firing_rate_per_step=0xFFFFFFFFul;
             }
             res.seed=1;

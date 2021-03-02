@@ -133,6 +133,11 @@ namespace snn{
             weight.inc = fix_t{0.5f} * r;
         }
 
+        static void weight_init_zero(const model_config_type &config, weight_type &weight)
+        {
+            weight.inc = fix_t{0};
+        }
+
         static void accumulator_reset(const neuron_state_type &dst_neuron, accumulator_type &acc)
         {
             acc.acc = fix_t{0};

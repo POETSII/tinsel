@@ -39,8 +39,9 @@ private:
 
         }else if(m_connection_prob >= 0.125){
             uint64_t thresh_bits=ldexp(m_connection_prob,64);
+            if(m_connection_prob)
             for(count_type dst=0; dst<m_num_neurons; dst++){
-                if(rng() >= thresh_bits){
+                if(rng() <= thresh_bits){
                     dest.push_back(dst);
                 }
             }

@@ -1,6 +1,6 @@
 #include "models/snn_model_izhikevich.hpp"
-#include "stats/stats_minimal.hpp"
 #include "runners/hardware_idle_runner.hpp"
+#include "stats/stats_minimal.hpp"
 #include "topology/edge_prob_network_topology.hpp"
 
 #include "logging.hpp"

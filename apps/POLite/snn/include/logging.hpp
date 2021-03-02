@@ -8,6 +8,8 @@
 #include <string>
 #include <mutex>
 
+#include <POLite.h>
+
 #include <unistd.h>
 
 #include <sys/time.h>

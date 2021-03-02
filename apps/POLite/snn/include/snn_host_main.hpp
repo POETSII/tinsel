@@ -3,8 +3,8 @@
 
 #include "models/snn_model_izhikevich_fix.hpp"
 #include "stats/stats_minimal.hpp"
-#include "runners/hardware_idle_runner.hpp"
 #include "topology/network_topology_factory.hpp"
+#include "runners/runner_config.hpp"
 
 #include "logging.hpp"
 
@@ -44,6 +44,11 @@ int snn_host_main_impl(int argc, char *argv[])
         po::variables_map vm;
         po::store(po::parse_command_line(argc, argv, desc), vm);
         po::notify(vm);  
+
+        if(vm.count("help")>0){
+            std::cerr << desc << "\n";
+            return 1;
+        }
 
         seed=vm["seed"].as<uint64_t>();
         placer_method= parse_placer_method( vm["placer"].as<std::string>() );
@@ -99,24 +104,28 @@ int snn_host_main_impl(int argc, char *argv[])
 
         {
             log.enter_leaf("finding_riscv_code");
-            std::vector<char> buffer(4096);
-            int c=readlink("/proc/self/exe", &buffer[0], buffer.size()-1);
-            if(c==-1 || (c>=buffer.size())){
-                fprintf(stderr, "Couldnt fine self executable path.");
-                exit(1);
-            }
-            buffer[c]=0;
+            if(runner.graph.is_simulation){
+                log.log(3, "Skipping code search as we are simulating.");
+            }else{
+                std::vector<char> buffer(4096);
+                int c=readlink("/proc/self/exe", &buffer[0], buffer.size()-1);
+                if(c==-1 || (c>=buffer.size())){
+                    fprintf(stderr, "Couldnt fine self executable path.");
+                    exit(1);
+                }
+                buffer[c]=0;
 
-            riscv_code_path=std::string(&buffer[0])+".riscv.code.v";
-            riscv_data_path=std::string(&buffer[0])+".riscv.data.v";
+                riscv_code_path=std::string(&buffer[0])+".riscv.code.v";
+                riscv_data_path=std::string(&buffer[0])+".riscv.data.v";
 
-            if(  access( riscv_code_path.c_str(), F_OK ) != 0){
-                fprintf(stderr, "Couldnt find code file at %s\n", riscv_code_path.c_str());
-                exit(1);
-            }
-            if(  access( riscv_data_path.c_str(), F_OK ) != 0){
-                fprintf(stderr, "Couldnt find data file at %s\n", riscv_data_path.c_str());
-                exit(1);
+                if(  access( riscv_code_path.c_str(), F_OK ) != 0){
+                    fprintf(stderr, "Couldnt find code file at %s\n", riscv_code_path.c_str());
+                    exit(1);
+                }
+                if(  access( riscv_data_path.c_str(), F_OK ) != 0){
+                    fprintf(stderr, "Couldnt find data file at %s\n", riscv_data_path.c_str());
+                    exit(1);
+                }
             }
         }
 
@@ -136,9 +145,9 @@ int snn_host_main_impl(int argc, char *argv[])
         runner.build_graph(config, *topology, device_states, log);
 
         log.export_value("graph_total_nodes", (int64_t)runner.graph.numDevices, 1);
-        log.export_value("graph_total_edges", (int64_t)runner.graph.graph.getEdgeCount(), 1);
-        log.export_value("graph_max_fan_in", (int64_t)runner.graph.graph.getMaxFanIn(), 1);
-        log.export_value("graph_max_fan_out", (int64_t)runner.graph.graph.getMaxFanOut(), 1);
+        log.export_value("graph_total_edges", (int64_t)runner.graph.getEdgeCount(), 1);
+        log.export_value("graph_max_fan_in", (int64_t)runner.graph.getMaxFanIn(), 1);
+        log.export_value("graph_max_fan_out", (int64_t)runner.graph.getMaxFanOut(), 1);
         
 
         {

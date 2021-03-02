@@ -210,9 +210,9 @@ template <typename DeviceType,
   // Allow mapper to print useful information to stdout
   uint32_t chatty;
 
-  // Do stuff in parallel
-  // 0=default, +1=yes, -1=no
-  int parallel=0;
+  ParallelFlag use_parallel;
+
+  static constexpr bool is_simulation = false;
 
   PlacerMethod placer_method=PlacerMethod::Default;
 
@@ -350,7 +350,7 @@ template <typename DeviceType,
     ParallelRunningStats<8> sizeStatistics;
 
     // Compute partition sizes for each thread
-    parallel_for_blocked<unsigned>(0, TinselMaxThreads, 256, [&](uint32_t beginThreadId, uint32_t endThreadId){
+    parallel_for_blocked<unsigned>(use_parallel, 0, TinselMaxThreads, 256, [&](uint32_t beginThreadId, uint32_t endThreadId){
       ParallelRunningStats<8> sizeStatisticsLocal;
       for(uint32_t threadId=beginThreadId; threadId<endThreadId; threadId++){
 
@@ -507,7 +507,7 @@ template <typename DeviceType,
   // Initialise partitions
   __attribute__((noinline)) void initialisePartitions() {
     mark_phase("initPartitions");
-    parallel_for_with_grain<unsigned>(0, TinselMaxThreads,1024, [&](uint32_t threadId){
+    parallel_for_with_grain<unsigned>(use_parallel, 0, TinselMaxThreads,1024, [&](uint32_t threadId){
         // Next pointers for each partition
         uint32_t nextVMem = 0;
         uint32_t nextOutIndex = 0;
@@ -592,7 +592,7 @@ template <typename DeviceType,
 
     // Sender-side tables
     outTable = (Seq<POutEdge>***) calloc(numDevices, sizeof(Seq<POutEdge>**));
-    parallel_for_with_grain<unsigned>( 0, numDevices,1024, [&](unsigned d){
+    parallel_for_with_grain<unsigned>(use_parallel, 0, numDevices,1024, [&](unsigned d){
       outTable[d] = (Seq<POutEdge>**) calloc(POLITE_NUM_PINS, sizeof(Seq<POutEdge>*));
       for (uint32_t p = 0; p < POLITE_NUM_PINS; p++){
         outTable[d][p] = new SmallSeq<POutEdge>;
@@ -678,6 +678,8 @@ template <typename DeviceType,
       PReceiverGroup<E>* g = &groups[i];
       uint32_t numEdges = g->receivers.numElems;
       PInEdge<E>* edgePtr = g->receivers.elems;
+
+      assert(numEdges!=0); // Why would it be in the group if there are no edges?
       if (numEdges > 0) {
         // Determine thread id of receiver
         uint32_t t = g->threadId;
@@ -890,7 +892,7 @@ template <typename DeviceType,
 
     // For each device
     if(DoLock){
-      parallel_for_with_grain<unsigned>(0, numDevices, 1, [&](uint32_t d) {
+      parallel_for_with_grain<unsigned>(use_parallel, 0, numDevices, 1, [&](uint32_t d) {
 
         // Edge destinations (local to sender board, or not)
         Seq<PEdgeDest> local;
@@ -922,7 +924,7 @@ template <typename DeviceType,
       free(devices);
       free(toDeviceAddr);
       free(numDevicesOnThread);
-      parallel_for_with_grain<unsigned>(0,TinselMaxThreads,1024, [&](unsigned t) {
+      parallel_for_with_grain<unsigned>(use_parallel, 0,TinselMaxThreads,1024, [&](unsigned t) {
           if (fromDeviceAddr[t] != NULL) free(fromDeviceAddr[t]);
           if (vertexMem[t] != NULL) free(vertexMem[t]);
           if (threadMem[t] != NULL) free(threadMem[t]);
@@ -1012,7 +1014,7 @@ template <typename DeviceType,
     PlacerMethod mailboxPlacerMethod=Default;
 
     // For each board
-    parallel_for_2d_with_grain<unsigned>(0,numBoardsY,1, 0,numBoardsX,1, [&](uint32_t boardY, uint32_t boardX) {
+    parallel_for_2d_with_grain<unsigned>(use_parallel, 0,numBoardsY,1, 0,numBoardsX,1, [&](uint32_t boardY, uint32_t boardX) {
       ParallelRunningStats<3> boardThreadStats;
 
 
@@ -1263,6 +1265,15 @@ template <typename DeviceType,
   uint32_t fanOut(PDeviceId id) {
     return graph.fanOut(id);
   }
+
+  uint32_t getMaxFanOut() const
+  { return graph.getMaxFanOut(); }
+
+  uint32_t getMaxFanIn() const
+  { return graph.getMaxFanIn(); }
+
+  uint64_t getEdgeCount() const
+  { return graph.getEdgeCount(); }
 };
 
 // Read performance stats and store in file

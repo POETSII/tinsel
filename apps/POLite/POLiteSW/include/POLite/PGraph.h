@@ -27,17 +27,37 @@ typedef int32_t PinId;
 //   No      - means 'not ready to send'
 //   HostPin - means 'send to host'
 //   Pin(n)  - means 'send to application pin number n'
-typedef uint8_t PPin;
-const PPin No = 0;
-const PPin HostPin = 1;
+struct PPin{
+     uint8_t index;
+
+     bool operator==(const PPin &o) const
+     { return index==o.index; }
+};
+const constexpr PPin No = PPin{0};
+const constexpr  PPin HostPin = PPin{1};
 inline constexpr PPin Pin(unsigned n){
-    return ((n)+2);
+    return PPin{(uint8_t)(n+2)};
 }
 
-const unsigned  TinselLogWordsPerMsg = 16;
+const unsigned  TinselLogWordsPerMsg = 4;
+const unsigned  TinselLogBytesPerMsg = 6;
 const unsigned TinselLogBytesPerWord = 2;
 const unsigned TinselLogBytesPerFlit = 4;
+const unsigned TinselCoresPerFPU=32;
+const unsigned TinselLogBytesPerDRAM=27;
+const unsigned TinselMeshXBits=3;
+const unsigned TinselMeshYBits=3;
+const unsigned TinselBoxMeshXLen=4;
+const unsigned TinselBoxMeshYLen=4;
 
+enum PlacerMethod
+{ Default };
+
+PlacerMethod parse_placer_method(const std::string &s)
+{ return Default; }
+
+std::string placer_method_to_string(PlacerMethod p)
+{ return "Default"; }
 
 // For template arguments that are not used
 struct None {};
@@ -55,6 +75,20 @@ public:
         std::mt19937_64 &rng,
         std::function<void (void *, size_t)> send_cb
     ) =0;
+};
+
+// HostLink parameters
+struct HostLinkParams {
+  uint32_t numBoxesX;
+  uint32_t numBoxesY;
+  bool useExtraSendSlot;
+
+  // Used to indicate when the hostlink moves through different phases, especially in construction
+  std::function<void(const char *)> on_phase;
+
+    // Used to allow retries when connecting to the socket. When performing rapid sweeps,
+  // it is quite common for the first attempt in the next process to fail.
+  int max_connection_attempts = 1;
 };
 
 class HostLink
@@ -111,6 +145,11 @@ private:
 
     std::thread m_worker;
 public:
+    HostLink()
+    {}
+
+    HostLink(const HostLinkParams)
+    {}
 
     ~HostLink()
     {
@@ -216,12 +255,31 @@ struct PDevice {
 };
 
 template <typename DeviceType, typename S, typename E, typename M>
+struct PThread {
+
+};
+
+template <typename DeviceType, typename S, typename E, typename M>
 class PGraph
     : public PGraphBase // Implementation detail
 {
 private:
     HostLink *m_hostlink;
+
+    std::mutex m_lock;
+    uint32_t m_maxFanOut=0;
+    uint32_t m_maxFanIn=0;
+    uint64_t m_edgeCount=0;
 public:
+    static constexpr bool is_simulation = true;
+
+    std::function<void(const char *message)> on_fatal_error;
+    std::function<void(const char *part)> on_phase_hook;
+    std::function<void(const char *key, double value)> on_export_value;
+    std::function<void(const char *key, const char *value)> on_export_string;
+
+    PlacerMethod placer_method=Default;
+
     ~PGraph()
     {
         if(m_hostlink){
@@ -237,9 +295,12 @@ public:
         // For outgoing we keep that 0==empty and 1==host
         std::array<std::vector<std::pair<PDeviceId,unsigned>>,POLITE_NUM_PINS+2> outgoing;
         std::vector<E> incoming;
+        unsigned fanOut=0;
 
         // User visible stuff
         S state;
+
+        std::mutex lock;
     };
 
     PDeviceId newDevice()
@@ -250,19 +311,62 @@ public:
         return id;
     }
 
+    PDeviceId newDevices(unsigned n)
+    {
+        PDeviceId id=numDevices;
+        for(unsigned i=0; i<n; i++){
+            newDevice();
+        }
+        return id;
+    }
+
+    void reserveOutgoingEdgeSpace(PDeviceId from, PinId pin, unsigned n)
+    {
+        auto &d=devices.at(from)->outgoing[pin];
+        d.reserve(d.size()+n);
+    }
+
+
     void addEdge(PDeviceId from, PinId pin, PDeviceId to)
     {
         addLabelledEdge({}, from, pin, to);
     }
 
-    void addLabelledEdge(E edge, PDeviceId from, PinId pin, PDeviceId to)
+    void addLabelledEdgeImpl(E edge, PDeviceId from, PinId pin, PDeviceId to, bool lock_dst)
     {
-        assert(2<=pin && pin<2+POLITE_NUM_PINS);
+        assert(pin<POLITE_NUM_PINS);
         std::shared_ptr<PState> dstDev=devices.at(to);
         std::shared_ptr<PState> srcDev=devices.at(from);
         unsigned key=dstDev->incoming.size();      
-        dstDev->incoming.push_back(edge);
+        {
+            std::unique_lock<std::mutex> lk(dstDev->lock, std::defer_lock);
+            if(lock_dst){
+                lk.lock();
+            }
+            dstDev->incoming.push_back(edge);
+        }
         srcDev->outgoing[pin].push_back({to,key});  
+        srcDev->fanOut++;
+
+        {
+            std::unique_lock<std::mutex> lk(m_lock, std::defer_lock);
+            if(lock_dst){
+                lk.lock();
+            }
+            m_maxFanOut=std::max<uint32_t>(m_maxFanOut, srcDev->fanOut);
+            m_maxFanIn=std::max<uint32_t>(m_maxFanIn, dstDev->incoming.size());
+            ++m_edgeCount;
+        }
+    }
+
+    void addLabelledEdge(E edge, PDeviceId from, PinId pin, PDeviceId to)
+    {
+        addLabelledEdgeImpl(edge,from, pin, to, false);
+    }
+
+    void addLabelledEdgeLockedDst(E edge, PDeviceId from, PinId pin, PDeviceId to)
+    {
+        addLabelledEdgeImpl(edge,from, pin, to, true);
     }
 
     bool mapVerticesToDRAM=false; // Dummy flag
@@ -290,6 +394,15 @@ public:
     {
         return devices.at(id)->incoming.size();
     }
+
+    uint32_t getMaxFanOut() const
+    { return m_maxFanOut; }
+
+    uint32_t getMaxFanIn() const
+    { return m_maxFanIn; }
+
+    uint64_t getEdgeCount() const
+    { return m_edgeCount; }
 
     // No-op for sw
     void map()
@@ -358,7 +471,8 @@ public:
     ){
         if(time_now >= next_print_time){
             double avg_in_flight=sum_messages_in_flight_since_last_print / (double)time_since_print;
-            fprintf(stderr, "Sim : time=%u, sent=%llu, recv=%llu, in_flight_now=%u, in_flight_avg=%.1f, in_flight_max=%u max_skew=%u\n", time_now, messages_sent, messages_received, messages_in_flight_total, avg_in_flight, max_in_flight_ever, max_time_skew);
+            fprintf(stderr, "Sim : time=%u, sent=%llu, recv=%llu, in_flight_now=%u, in_flight_avg=%.1f, in_flight_max=%u max_skew=%u\n",
+                    time_now, (unsigned long long)messages_sent, (unsigned long long)messages_received, messages_in_flight_total, avg_in_flight, max_in_flight_ever, max_time_skew);
             next_print_time=(next_print_time*4)/3;
             sum_messages_in_flight_since_last_print=0;
             time_since_print=0;
@@ -370,19 +484,21 @@ public:
         bool idle=true;
         for(unsigned i=0; i<numDevices; i++){
             auto &d=device_states[i];
-            if(d._realReadyToSend){
+            if(d._realReadyToSend.index){
                 if((rng()&1)==0){
                     PPin pin=d._realReadyToSend;
 
                     M msg;
                     d.send(&msg);
 
-                    if(pin==HostPin){
+                    if(pin==No){
+                        // Do nothing
+                    }else if(pin==HostPin){
                         //fprintf(stderr, "Send(%u) -> Host\n", i);
                         send_cb(&msg, sizeof(M));
                     }else{
                         //fprintf(stderr, "Send(%u) -> Pin(%d)\n", i, pin-2);
-                        for(const auto &e : devices[i]->outgoing[pin]){
+                        for(const auto &e : devices[i]->outgoing.at(pin.index-2)){
                             //fprintf(stderr, "  ->%u\n", e.first);
                             post_message(rng, e.first, i, e.second, msg);
                         }
