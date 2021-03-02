@@ -87,9 +87,9 @@ struct PPin{
 };
 static_assert(sizeof(PPin)==1, "Expecting PPin to be 1 byte.");
 
-const constexpr No = (PPin{0,true});
-const constexpr HostPin = (PPin{1,true});
-constexpr PPin Pin(n) { return PPin{((n)+2),true}; }
+const constexpr PPin No = (PPin{0,true});
+const constexpr PPin HostPin = (PPin{1,true});
+constexpr PPin Pin(int n) { return PPin{(int8_t)((n)+2),true}; }
 
 // For template arguments that are not used
 struct None {};

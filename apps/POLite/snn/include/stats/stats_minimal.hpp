@@ -14,6 +14,7 @@
 #include <boost/accumulators/statistics/variance.hpp>
 #include <boost/accumulators/statistics/skewness.hpp>
 #include <boost/accumulators/statistics/kurtosis.hpp>
+#include "logging.hpp"
 #endif
 
 #include "models/snn_model_izhikevich_fix.hpp"
@@ -113,11 +114,31 @@ struct stats_minimal
         scalar_statistics time_steps;
         scalar_statistics sent_per_step;
         scalar_statistics recv_per_step;
-        scalar_statistics init_to_finish;
+        scalar_statistics init_to_finish_cycles;
+        scalar_statistics init_to_finish_seconds;
+        double total_sends=0;
+        double total_recvs=0;
+        double min_steps;
 
-        void init(unsigned num_neurons)
+        double time_begin;
+        double time_end;
+
+        double now()
+        {
+            timespec ts;
+            clock_gettime(CLOCK_REALTIME, &ts);
+            return ts.tv_sec+1e-9*ts.tv_nsec;
+        }
+
+        void begin(unsigned num_neurons)
         {
             neuron_count=num_neurons;
+            time_begin=now();
+        }
+
+        void end()
+        {
+            time_end=now();
         }
 
         void combine(uint32_t neuron_id, const neuron_stats &stats)
@@ -126,7 +147,10 @@ struct stats_minimal
             time_steps(stats.body.time_steps);
             sent_per_step(stats.body.total_sends / (double)stats.body.time_steps);
             recv_per_step(stats.body.total_recvs / (double)stats.body.time_steps);
-            init_to_finish(stats.body.init_to_finish);
+            init_to_finish_cycles( stats.body.init_to_finish );
+            init_to_finish_seconds( stats.body.init_to_finish / (TinselClockFreq*1.0e6) );
+            total_sends += stats.body.total_sends;
+            total_recvs += stats.body.total_recvs;
         }
 
         void export_values(std::function<void(const std::string &name, double value, int level)> cb, int base_level)
@@ -134,7 +158,18 @@ struct stats_minimal
             scalar_statistics_export_values(time_steps, "time_steps", cb, base_level);
             scalar_statistics_export_values(sent_per_step, "sent_per_step", cb, base_level);
             scalar_statistics_export_values(recv_per_step, "recv_per_step", cb, base_level);
-            scalar_statistics_export_values(init_to_finish, "thread_init_to_finish", cb, base_level);
+            scalar_statistics_export_values(init_to_finish_cycles, "thread_init_to_finish_cycles", cb, base_level);
+            scalar_statistics_export_values(init_to_finish_seconds, "thread_init_to_finish_secs", cb, base_level);
+
+            double time_period=time_end-time_begin;
+            double steps=bs::mean(time_steps);
+            
+            cb("software_init_to_finish_secs", time_period, base_level);
+            cb("time_steps_per_sec",  steps/time_period, base_level);
+            cb("neuron_steps_per_sec", neuron_count * steps/time_period, base_level);
+            cb("spikes_sent_per_sec", total_sends /time_period, base_level);
+            cb("spikes_recv_per_sec", total_recvs /time_period, base_level);
+
         }
     };
 #endif

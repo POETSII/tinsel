@@ -44,8 +44,8 @@ struct GALSRunner
         //constexpr static size_t FragmentWords=(1<<TinselLogBytesPerFlit)/4 - 1 - 1;
         constexpr static size_t FragmentWords=(1<<TinselLogBytesPerFlit)/4 - 1 - 1;
 
-        uint32_t src : 30;
-        MessageTypes type : 2;
+        uint32_t src;
+        MessageTypes type;
         union{
             struct{
                 uint32_t time;
@@ -119,8 +119,7 @@ struct GALSRunner
         {
             s->stats.on_sim_start();
             s->seen[0]=s->degree;
-           //s->seen_ever.push_back(s->degree);
-            *readyToSend=SpikePin;
+           *readyToSend=SpikePin;
         }
 
         void send(volatile message_type *msg)
@@ -152,20 +151,12 @@ struct GALSRunner
                 }
                 
                 msg->time=s->time;
-                //fprintf(stderr, "%u -> %s, t=%u\n", s->id, msg->type==MessageTypes::Spike?"spike":"sync", s->time);
             }
         }
 
        void recv(const volatile message_type *msg, const edge_type *edge)
         {
             assert(msg->type==MessageTypes::Spike || msg->type==MessageTypes::Sync);
-            if(!(msg->time==s->time || msg->time==s->time+1)){
-                /*fprintf(stderr, "  %u, recv, seen[0]=%u, nhood=%u, t=%u, msg->t=%u, degree=%u\n", s->id, s->seen[0], s->degree, s->time, msg->time, s->degree);
-                for(unsigned t=0; t<s->seen_ever.size(); t++){
-                    fprintf(stderr, "  seen[%u]=%u\n", t, s->seen_ever[t]);
-                }
-                */
-            }
             assert(msg->time==s->time || msg->time==s->time+1);
             bool ahead = msg->time > s->time;
             if(msg->spike){
@@ -181,14 +172,11 @@ struct GALSRunner
                     calc_rts();
                 }
             }
-            //s->seen_ever.resize(msg->time+1, 0);
-            //s->seen_ever[msg->time]++;
-            //fprintf(stderr, "  %u, recv, seen[0]=%u, nhood=%u\n", s->id, s->seen[0], s->degree);
         }
 
         bool step()
         {
-            fprintf(stderr, "  %u : step, s->seen[0]=%u, s->t=%u, degree=%u\n", s->id, s->seen[0], s->time, s->degree);
+            //printf("  %u : step, s->seen[0]=%u, s->t=%u, degree=%u\n", s->id, s->seen[0], s->time, s->degree);
             return false;
         }
 
@@ -207,7 +195,11 @@ struct GALSRunner
 
     #ifndef TINSEL
 
-    unsigned num_neurons;
+    GALSRunner(int boxesX, int boxesY)
+        : graph(boxesX, boxesY)
+    {}
+
+    unsigned num_neurons = -1;
     typename neuron_model_t::model_config_type model_config;
 
     PGraph<device_type, state_type, edge_type, message_type> graph;
@@ -277,7 +269,6 @@ struct GALSRunner
 
 
             states[id].degree = edges->count;
-            fprintf(stderr, "ud=%u, degree=%u, edges->count=%u\n", id, states[id].degree, edges->count);
 
             uint64_t done=devices_done.fetch_add(1, std::memory_order_relaxed)+1;
             if((done&0xFFF)==0){
@@ -323,20 +314,21 @@ struct GALSRunner
 
     void collect_output(const RunnerConfig &config, HostLink &hl, Logger &logger)
     {
+        typename TStats::global_stats all;
+        all.begin(num_neurons);
+
         std::vector<typename TStats::neuron_stats> stats(num_neurons);
         unsigned complete=0;
         PMessage<message_type> msg;
         while(complete < num_neurons){
             hl.recvMsg(&msg, sizeof(msg));
-
             if(stats.at(msg.payload.src).template do_fragment_import<message_type::FragmentWords>(msg.payload.words)){
-                //fprintf(stderr, "From %u\n", msg.payload.src);
                 complete++;
             }
         }
 
-        typename TStats::global_stats all;
-        all.init(num_neurons);
+        all.end();
+
         for(unsigned i=0; i<stats.size(); i++){
             all.combine(i, stats[i]);
         }

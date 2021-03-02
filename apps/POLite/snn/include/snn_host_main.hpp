@@ -28,6 +28,8 @@ int snn_host_main_impl(int argc, char *argv[])
     unsigned max_steps;
     PlacerMethod placer_method;
     std::vector<std::string> user_key_values;
+    int boxesX=1;
+    int boxesY=1;
     {
         po::options_description desc("Allowed options");
         desc.add_options()
@@ -39,6 +41,7 @@ int snn_host_main_impl(int argc, char *argv[])
             ("max-steps", po::value<uint64_t>()->default_value(1000), "Number of network time-steps to take")
             ("log-file", po::value<std::string>()->default_value("snn.log"), "Where to write the log file")
             ("user-key-value", po::value<std::vector<std::string>>(), "User-defined key:value pairs to add to the log. e,g. '--user-key-value=[key]:[value]'")
+            ("boxes", po::value<std::string>()->default_value("1x1"), "Number of boxes in XxY form, or max for maximum availalbe.")
         ;
 
         po::variables_map vm;
@@ -59,6 +62,12 @@ int snn_host_main_impl(int argc, char *argv[])
         if (vm.count("user-key-value")>0){
             user_key_values=vm["user-key-value"].as<std::vector<std::string>>();
         }
+
+        std::string boxes_config=vm["boxes"].as<std::string>();
+        if(boxes_config=="max"){
+            boxesX=-1;
+            boxesY=-1;
+        }
     }
 
     Logger log(log_file_name);
@@ -76,12 +85,19 @@ int snn_host_main_impl(int argc, char *argv[])
         }
     }
 
+    if(boxesX==-1){
+        boxesX=TinselBoxMeshXLen;
+        boxesY=TinselBoxMeshYLen;
+    }
+    log.export_value("numBoxesX", (int64_t)boxesX, 1);
+    log.export_value("numBoxesY", (int64_t)boxesY, 1);
+
     StochasticSourceNode noise(seed);
 
     RunnerConfig config;
     config.max_time_steps=max_steps;
     
-    RunnerType runner;
+    RunnerType runner(boxesX, boxesY);
     runner.parse_neuron_config(neuron_config_str, log);
 
     {
@@ -90,6 +106,8 @@ int snn_host_main_impl(int argc, char *argv[])
         log.export_value("POLite_message_size", (int64_t)sizeof(PMessage<typename RunnerType::message_type>), 2);
         log.export_value("POLITE_NUM_PINS", (int64_t)POLITE_NUM_PINS, 2);
     }
+
+
 
     runner.graph.on_phase_hook=[&](const char *name) { log.tag_leaf(name); };
     runner.graph.on_fatal_error=[&](const char *msg) { log.fatal_error(msg); };
@@ -158,7 +176,6 @@ int snn_host_main_impl(int argc, char *argv[])
         log.enter_leaf("assign_states");
         for(unsigned i=0; i<device_states.size(); i++){
             runner.graph.devices[i]->state = device_states[i];
-            //fprintf(stderr, "%u, %f, %f\n", i, (float)device_states[i].neuron_state.u, (float)device_states[i].neuron_state.v );
         }
     }
 
@@ -166,8 +183,8 @@ int snn_host_main_impl(int argc, char *argv[])
         auto r=log.with_region("execute");
 
         HostLinkParams hostLinkParams;
-        hostLinkParams.numBoxesX=1;
-        hostLinkParams.numBoxesY=1;
+        hostLinkParams.numBoxesX=boxesX;
+        hostLinkParams.numBoxesY=boxesY;
         hostLinkParams.useExtraSendSlot=false;
         hostLinkParams.on_phase=[&](const char *name){
             log.tag_leaf(name);

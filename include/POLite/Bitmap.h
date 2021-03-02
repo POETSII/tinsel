@@ -23,6 +23,9 @@ struct Bitmap {
     if (contents) delete contents;
   }
 
+  Bitmap(const Bitmap &o) = delete;
+  Bitmap &operator=(const Bitmap &o) = delete;
+
   // Get value of word at given index, return 0 if out-of-bounds
   inline uint64_t getWord(uint32_t index) {
     return index >= contents->numElems ? 0ul : contents->elems[index];

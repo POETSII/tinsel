@@ -762,7 +762,10 @@ void HostLink::dumpStdOut(FILE* outFile)
 {
   for (;;) {
     bool ok = pollStdOut(outFile);
-    if (!ok) usleep(10000);
+    if (!ok){
+      fflush(outFile);
+      usleep(10000);
+    }
   }
 }
 

@@ -9,7 +9,7 @@ CPPFLAGS += -I /home/dt10/local/include
 CXXFLAGS += -g -std=c++17 -fopenmp -lpthread -fno-omit-frame-pointer
 
 #CXXFLAGS += -O2 -DNDEBUG=1
-#CXXFLAGS += -O3 -DNDEBUG=1 -march=native 
+CXXFLAGS += -O3 -DNDEBUG=1 -march=native 
 
 # This is needed to stop valgrind crashing. We dont need ultra-high precision
 # from boost math anyway
@@ -52,6 +52,9 @@ bin/hardware_idle_izhikevich_fix	: bin/hardware_idle_izhikevich_fix.riscv.elf
 
 bin/hardware_idle_poisson	: bin/hardware_idle_poisson.riscv.elf
 
+bin/gals_izhikevich_fix	: bin/gals_izhikevich_fix.riscv.elf
+
+bin/gals_poisson	: bin/gals_poisson.riscv.elf
 
 
 

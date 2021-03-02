@@ -210,7 +210,7 @@ template <typename DeviceType,
   // Allow mapper to print useful information to stdout
   uint32_t chatty;
 
-  ParallelFlag use_parallel;
+  ParallelFlag use_parallel=ParallelFlag::Default;
 
   static constexpr bool is_simulation = false;
 
@@ -266,7 +266,6 @@ template <typename DeviceType,
   // Creates n new devices with contiguous ids, and returns the first id
   inline PDeviceId newDevices(uint32_t n)
   {
-    assert(edgeLabels.numElems==graph.nodeCount());
     PDeviceId base=graph.newNodes(n);
     numDevices+=n;
     /*edgeLabels.extendBy(n);
@@ -890,6 +889,7 @@ template <typename DeviceType,
 
     const bool DoLock=true;
 
+
     // For each device
     if(DoLock){
       parallel_for_with_grain<unsigned>(use_parallel, 0, numDevices, 1, [&](uint32_t d) {
@@ -989,7 +989,7 @@ template <typename DeviceType,
       on_export_value("numBoardsX", numBoardsX);
       on_export_value("numBoardsY", numBoardsY);
       on_export_value("numBoardsTotal", numBoardsX*numBoardsY);
-      on_export_value("numThreadsTotal", numBoardsX*numBoardsY*TinselLogThreadsPerBoard);
+      on_export_value("numThreadsTotal", (numBoardsX*numBoardsY)<<TinselLogThreadsPerBoard);
     }
     // Partition into subgraphs, one per board
     Placer<E> boards(&graph, numBoardsX, numBoardsY, 0, placer_method);

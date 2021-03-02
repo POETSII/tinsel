@@ -140,6 +140,10 @@ struct HardwareIdleRunner
 
     #ifndef TINSEL
 
+    HardwareIdleRunner(int boxesX, int boxesY)
+        : graph(boxesX, boxesY)
+    {}
+
     unsigned num_neurons;
     typename neuron_model_t::model_config_type model_config;
 
@@ -234,6 +238,9 @@ struct HardwareIdleRunner
 
     void collect_output(const RunnerConfig &config, HostLink &hl, Logger &logger)
     {
+        typename TStats::global_stats all;
+        all.begin(num_neurons);
+
         std::vector<typename TStats::neuron_stats> stats(num_neurons);
         unsigned complete=0;
         PMessage<message_type> msg;
@@ -246,8 +253,8 @@ struct HardwareIdleRunner
             }
         }
 
-        typename TStats::global_stats all;
-        all.init(num_neurons);
+        all.end();
+        
         for(unsigned i=0; i<stats.size(); i++){
             all.combine(i, stats[i]);
         }
