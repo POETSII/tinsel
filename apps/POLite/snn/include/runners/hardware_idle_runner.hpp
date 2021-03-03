@@ -169,7 +169,7 @@ struct HardwareIdleRunner
         states.resize(num_neurons);
         for(unsigned i=0; i<num_neurons;i++){
             states[i].time=0;
-            states[i].max_time=1000;
+            states[i].max_time=config.max_time_steps;
             states[i].id=i;    
             neuron_model_t::neuron_init(model_config, i, states[i].neuron_state);
         }
