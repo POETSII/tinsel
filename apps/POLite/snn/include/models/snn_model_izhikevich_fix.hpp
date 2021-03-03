@@ -87,7 +87,7 @@ namespace snn{
         };
 
         struct weight_type {
-            fix_t inc;
+            int16_t w;
         };
 
         struct accumulator_type {
@@ -130,22 +130,22 @@ namespace snn{
             }else{
                 r=fix_t{0.0f}-r;
             }
-            weight.inc = fix_t{0.5f} * r;
+            weight.w = (r.x)>>1; // Store as 16 bit with 15 fractional bits
         }
 
         static void weight_init_zero(const model_config_type &config, weight_type &weight)
         {
-            weight.inc = fix_t{0};
+            weight.w = 0;
         }
 
         static void accumulator_reset(const neuron_state_type &dst_neuron, accumulator_type &acc)
         {
-            acc.acc = fix_t{0};
+            acc.acc = fix_t{0,true};
         }
 
         static void accumulator_add_spike(const neuron_state_type &dst_neuron, const weight_type &weight, accumulator_type &acc)
         {
-            acc.acc = acc.acc + weight.inc;
+            acc.acc = acc.acc + fix_t{weight.w<<1, true}; // recover weight from 15 fractional bits
         }
         
         static __attribute__((noinline)) bool neuron_step( neuron_state_type &neuron, const accumulator_type &acc)
