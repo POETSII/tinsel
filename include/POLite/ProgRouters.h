@@ -14,7 +14,6 @@
 // =============================
 
 class ProgRouter {
-
   // Number of chunks used so far in current beat
   uint32_t numChunks;
 
@@ -96,6 +95,8 @@ class ProgRouter {
 
   // A table holding encoded routing beats for each RAM
   Seq<uint8_t>** table;
+
+  std::recursive_mutex m_mutex;
 
   // Constructor
   ProgRouter() {
@@ -309,24 +310,31 @@ class ProgRouterMesh {
       else local.append(dest);
     }
 
-    std::lock_guard<std::recursive_mutex> lk(m_mutex);
+    uint64_t keys[4]; // 64-bit -1 is invalid key
+    for(int i=0; i<4; i++){
+      keys[i]=~uint64_t(0);
+    }
 
     // Recurse on non-local groups and add RR records on return
     if (north.numElems > 0) {
-      uint32_t key = addDestsFromBoardXY(senderX, senderY+1, &north);
-      table[senderY][senderX].addRR(0, key);
+      keys[0] = addDestsFromBoardXY(senderX, senderY+1, &north);
     }
     if (south.numElems > 0) {
-      uint32_t key = addDestsFromBoardXY(senderX, senderY-1, &south);
-      table[senderY][senderX].addRR(1, key);
+      keys[1] = addDestsFromBoardXY(senderX, senderY-1, &south);
     }
     if (east.numElems > 0) {
-      uint32_t key = addDestsFromBoardXY(senderX+1, senderY, &east);
-      table[senderY][senderX].addRR(2, key);
+      keys[2] = addDestsFromBoardXY(senderX+1, senderY, &east);
     }
     if (west.numElems > 0) {
-      uint32_t key = addDestsFromBoardXY(senderX-1, senderY, &west);
-      table[senderY][senderX].addRR(3, key);
+      keys[3] = addDestsFromBoardXY(senderX-1, senderY, &west);
+    }
+
+    std::unique_lock<std::recursive_mutex> lk(table[senderY][senderX].m_mutex);
+
+    for(unsigned i=0; i<4; i++){
+      if(keys[i]!=~uint64_t(0)){
+        table[senderY][senderX].addRR(i, (uint32_t)keys[i]);
+      }
     }
 
     // Add local records

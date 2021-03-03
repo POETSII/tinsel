@@ -5,10 +5,12 @@
 #include <stdint.h>
 #include <metis.h>
 #include <POLite/Graph.h>
+#include <POLite/Noise.h>
 #include <queue>
 #include <omp.h>
 #include <random>
 #include <algorithm>
+#include "ParallelFor.h"
 
 /* I (dt10) couldnt get MTMetis to work on more than 1 thread without crashing */
 #ifdef HAVE_MT_METIS
@@ -82,6 +84,7 @@ struct Placer {
   #else
   const PlacerMethod defaultMethod=Metis;
   #endif
+    ParallelFlag parallel_flag=ParallelFlag::Default;
 
   // The graph being placed
   Graph<TEdgeWeight>* graph;
@@ -140,6 +143,8 @@ struct Placer {
         method=Random;
       else if (!strcmp(e, "direct"))
         method=Direct;
+      else if (!strcmp(e, "randombalanced"))
+        method=RandomBalanced;
       else if (!strcmp(e, "bfs"))
         method=BFS;
       else if (!strcmp(e, "bfs_then_metis"))
@@ -280,24 +285,28 @@ struct Placer {
     uint32_t numVertices = graph->nodeCount();
     uint32_t numParts = width * height;
 
-    std::mt19937_64 rng(getRand());
+    unsigned rounds=(numVertices+numParts-1) / numParts;
 
-    std::vector<PartitionId> dests(numParts);
-    std::iota(dests.begin(), dests.end(), 0);
+    uint64_t base=getRand();
 
-    // We allocate in rounds, handing one device out to each partition per round.
-    // This takes O(numVertices) RNG calls, which are slow, but not too bad for 64-bit
-    // mersenne twister. Note: 32-bit MT is generally a lot slower than 64-bit
-    uint32_t done=0;
-    while(done < numVertices){
-      std::shuffle(dests.begin(), dests.end(), rng);
+    // Note: the partition is non-deterministic, and depends on scheduler and splitter
+    parallel_for_blocked<unsigned>(parallel_flag, 0, rounds, std::max<unsigned>(8u,8192u/numParts), [&](unsigned begin, unsigned end){
+      std::vector<PartitionId> dests(numParts);
+      std::iota(dests.begin(), dests.end(), 0);
 
-      uint32_t todo=std::min<size_t>(dests.size(), numVertices-done);
-      for(unsigned i=0; i<todo; i++){
-        partitions[i+done] = dests[i];
+      noise::MiniRng rng{begin*(base|1)};
+
+      for(unsigned r=begin; r<end; r++){
+        std::shuffle(dests.begin(), dests.end(), rng);
+
+        unsigned i_begin=r*numParts;
+        unsigned i_todo=std::min(numVertices-i_begin, numParts);
+
+        for(unsigned i=0; i<i_todo; i++){
+          partitions[i+i_begin] = dests[i];
+        }
       }
-      done+=todo;
-    }
+    });
   }
 
   // Partition the graph using direct mapping
@@ -386,6 +395,9 @@ struct Placer {
     }
 
     switch(method){
+    default:
+      fprintf(stderr, "Invalid placement enum value %d\n", method);
+      exit(1);
     case Default:
       fprintf(stderr, "Expecting explicit method by now\n");
       exit(1);
@@ -400,6 +412,9 @@ struct Placer {
       break;
     case Random:
       partitionRandom();
+      break;
+    case RandomBalanced:
+      partitionRandomBalanced();
       break;
     case Direct:
       partitionDirect();
