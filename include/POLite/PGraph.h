@@ -109,7 +109,14 @@ template <typename DeviceType,
   struct PerMailboxRoutingInfo
   {
     SpinLock lock;
-    char _pad_[32]; // Put them all on a different cache line
+    unsigned lowestFreeIndexPerThread[TinselThreadsPerMailbox];
+    static_assert(TinselThreadsPerMailbox==64, "64-bit masks assumes there are 64 threads per mailbox.");
+    Seq<uint64_t> threadBitMaps;
+
+    PerMailboxRoutingInfo()
+    {
+      std::fill(lowestFreeIndexPerThread, lowestFreeIndexPerThread+TinselThreadsPerMailbox, 0);
+    }
   };
 
   PerThreadRoutingInfo *perThreadRoutingInfo;
@@ -609,7 +616,7 @@ template <typename DeviceType,
       no other group can take it.
   */
  template<bool DoLock>
-  __attribute__((noinline)) uint32_t findKey(uint32_t numGroups, PReceiverGroup<E> *groups) { 
+  __attribute__((noinline)) uint32_t findKeyPerThread(uint32_t numGroups, PReceiverGroup<E> *groups) { 
     
     /* All threads involved here are in the same mail-box, so we can enforce exclusion
       by locking the mailbox. */
@@ -663,11 +670,119 @@ template <typename DeviceType,
     return res;
   }
 
+  template<bool DoLock>
+  __attribute__((noinline)) uint32_t findKeyPerMailbox(uint32_t numGroups, PReceiverGroup<E> *groups) { 
+    
+    /* All threads involved here are in the same mail-box, so we can enforce exclusion
+      by locking the mailbox. */
+
+    uint64_t required=0;
+    unsigned index=0;
+
+    unsigned mbox_index= groups[0].threadId >> TinselLogThreadsPerMailbox;
+    PerMailboxRoutingInfo *mbi=perMailboxRoutingInfo+mbox_index;
+    auto &threadBitMaps = mbi->threadBitMaps;
+
+    SpinLockGuard<DoLock> lk(mbi->lock);
+
+    if(numGroups==1){
+      unsigned threadOffset=groups[0].threadId % (1<<TinselLogThreadsPerMailbox);
+      required=1ull<<threadOffset;
+
+      unsigned lowest_free=mbi->lowestFreeIndexPerThread[threadOffset];
+      index=lowest_free;
+      assert(index <= mbi->threadBitMaps.size());
+      if(index==mbi->threadBitMaps.size()){
+        mbi->threadBitMaps.extendByWithZero(64);
+        lowest_free++;
+        mbi->threadBitMaps[index] |= required;
+      
+      }else{
+        assert( (mbi->threadBitMaps[index]&required)==0 );
+        mbi->threadBitMaps[index] |= required;
+
+        if(lowest_free==index){
+          while( ( lowest_free < mbi->threadBitMaps.size()) && ( mbi->threadBitMaps[lowest_free] & required) ){
+            lowest_free++;
+          }
+        }
+      }
+      mbi->lowestFreeIndexPerThread[threadOffset]=lowest_free;
+
+    }else{
+
+      for(unsigned i=0; i<numGroups; i++){
+        assert( mbox_index == groups[i].threadId >> TinselLogThreadsPerMailbox);
+        unsigned threadOffset=groups[i].threadId % (1<<TinselLogThreadsPerMailbox);
+
+        required |= 1ull<<threadOffset;
+
+        unsigned lowest_here = mbi->lowestFreeIndexPerThread[threadOffset];
+        index=std::min(index, lowest_here);
+        
+        assert(lowest_here==threadBitMaps.size() || ((threadBitMaps[lowest_here]&(1ull<<threadOffset))==0) );
+      }
+
+      for(; index<threadBitMaps.size(); index++){
+        if((threadBitMaps[index] & required)==0){
+          break;
+        }
+      }
+
+      if(index == threadBitMaps.size()){
+        threadBitMaps.extendByWithZero(64);
+      }
+
+      assert( (threadBitMaps[index] & required) ==0);
+      threadBitMaps[index] |= required;
+
+      while(required){
+        // https://lemire.me/blog/2018/02/21/iterating-over-set-bits-quickly/
+        uint64_t bit = required & -required;
+        int o = __builtin_ctzl(required);
+
+        unsigned lowest=mbi->lowestFreeIndexPerThread[o];
+        if(lowest==index){
+          for(; lowest<threadBitMaps.size(); lowest++){
+            if( 0==(bit&threadBitMaps[lowest])){
+              break;
+            }
+          }
+          if(lowest==threadBitMaps.size()){
+            threadBitMaps.extendByWithZero(64);
+          }
+          mbi->lowestFreeIndexPerThread[o]=lowest;
+        }
+        
+        required ^= bit;
+      }
+    }
+
+    // Ensure post-condition
+    for(unsigned i=0; i<64; i++){
+      assert(  mbi->lowestFreeIndexPerThread[i] <= mbi->threadBitMaps.size() );
+      assert(  ( mbi->lowestFreeIndexPerThread[i] == mbi->threadBitMaps.size() ) || ! ( mbi->threadBitMaps[mbi->lowestFreeIndexPerThread[i]] & (1ull<<i) ) );
+    }
+
+    return index;
+  }
+
+  template<bool DoLock>
+  __attribute__((noinline)) uint32_t findKey(uint32_t numGroups, PReceiverGroup<E> *groups)
+  {
+    // Both methods work, and intuitively the per mailbox one should be faster.
+    // But in practise... the the per-thread one is a touch faster. This may
+    // vary based on the average group size and so on, so I'll leave the code in
+    // for now.
+    //
+    //return findKeyPerMailbox<DoLock>(numGroups, groups);
+    return findKeyPerThread<DoLock>(numGroups, groups);
+  }
 
   // Add entries to the input tables for the given receivers
   // (Only valid after mapper is called)
   template<bool DoLock>
-  __attribute__((noinline)) uint32_t addInTableEntries(uint32_t numGroups, PReceiverGroup<E> *groups) {
+  __attribute__((noinline)) uint32_t addInTableEntries(uint32_t numGroups, PReceiverGroup<E> *groups, ParallelRunningStats<1> *edgesPerHeaderStats) {
     uint32_t key = findKey<DoLock>(numGroups, groups);
     if (key >= 0xffff) {
       fatal_error("Routing key exceeds 16 bits\n");
@@ -677,6 +792,10 @@ template <typename DeviceType,
       PReceiverGroup<E>* g = &groups[i];
       uint32_t numEdges = g->receivers.numElems;
       PInEdge<E>* edgePtr = g->receivers.elems;
+
+      if(edgesPerHeaderStats){
+        (*edgesPerHeaderStats)+=numEdges;
+      }
 
       assert(numEdges!=0); // Why would it be in the group if there are no edges?
       if (numEdges > 0) {
@@ -689,7 +808,7 @@ template <typename DeviceType,
         // Extend table
         Seq<PInHeader<E>>* headers = &tbi->inTableHeaders;
         // Try to avoid uninitialised bytes - force to zero.
-        if (key >= headers->numElems) headers->extendByAndZeroExtra(key + 1 - headers->numElems);
+        if (key >= headers->numElems) headers->extendByWithZero(key + 1 - headers->numElems);
         // Fill in header
         PInHeader<E>* header = &headers->elems[key];
         header->numReceivers = numEdges;
@@ -697,8 +816,8 @@ template <typename DeviceType,
           fatal_error("In-table index exceeds 16 bits\n");
         }
         header->restIndex = tbi->inTableRest.numElems;
-        uint32_t numHeaderEdges = numEdges < POLITE_EDGES_PER_HEADER ?
-          numEdges : POLITE_EDGES_PER_HEADER;
+        const int EdgesPerHeader = PInHeader<E>::EdgesPerHeader;
+        uint32_t numHeaderEdges = numEdges < EdgesPerHeader ? numEdges : EdgesPerHeader;
         for (uint32_t j = 0; j < numHeaderEdges; j++) {
           header->edges[j] = *edgePtr;
           edgePtr++;
@@ -764,7 +883,7 @@ template <typename DeviceType,
   */
   template<bool DoLock>
   __attribute__((noinline)) void computeTables(Seq<PEdgeDest>* dests, uint32_t d, uint32_t p,
-         Seq<PRoutingDest>* out, PReceiverGroup<E> *groups) {
+         Seq<PRoutingDest>* out, PReceiverGroup<E> *groups, ParallelRunningStats<1> *edgesPerheaderStats) {
     out->clear();
     PRoutingDest dest;
     memset(&dest, 0, sizeof(PRoutingDest));
@@ -816,7 +935,7 @@ template <typename DeviceType,
         else break;
       }
       // Add input table entries
-      uint32_t key = addInTableEntries<DoLock>(nextGroup+1, groups);
+      uint32_t key = addInTableEntries<DoLock>(nextGroup+1, groups, edgesPerheaderStats);
       // Add output entry
       dest.kind = PRDestKindMRM;
       dest.mbox = mbox;
@@ -839,7 +958,9 @@ template <typename DeviceType,
     Seq<PEdgeDest> &local,
     Seq<PEdgeDest> &nonLocal,
     Seq<PRoutingDest> &dests,
-    PReceiverGroup<E> *groups
+    PReceiverGroup<E> *groups,
+    ParallelRunningStats<1> *edgesPerLocalHeaderStats,
+    ParallelRunningStats<1> *edgesPerNonLocalHeaderStats
   ){
     // For each pin
     for (uint32_t p = 0; p < POLITE_NUM_PINS; p++) {
@@ -847,7 +968,7 @@ template <typename DeviceType,
       splitDests(d, p, &local, &nonLocal);
 
       // Deal with board-local connections
-      computeTables<DoLock>(&local, d, p, &dests, groups);
+      computeTables<DoLock>(&local, d, p, &dests, groups, edgesPerLocalHeaderStats);
       for (uint32_t i = 0; i < dests.numElems; i++) {
         PRoutingDest dest = dests.elems[i];
         POutEdge edge;
@@ -860,7 +981,7 @@ template <typename DeviceType,
       }
 
       // Deal with non-board-local connections
-      computeTables<DoLock>(&nonLocal, d, p, &dests, groups);
+      computeTables<DoLock>(&nonLocal, d, p, &dests, groups, edgesPerNonLocalHeaderStats);
       uint32_t src = getThreadId(toDeviceAddr[d]) >>
         TinselLogThreadsPerMailbox;
       uint32_t key = progRouterTables->addDestsFromBoard(src, &dests);
@@ -889,10 +1010,17 @@ template <typename DeviceType,
 
     const bool DoLock=true;
 
+    ParallelRunningStats<1> edgesPerHeaderLocalStats;
+    ParallelRunningStats<1> edgesPerHeaderNonLocalStats;
+
+    ParallelRunningStats<1> *pEdgesPerHeaderLocalStats = on_export_value ? &edgesPerHeaderLocalStats : nullptr;
+    ParallelRunningStats<1> *pEdgesPerHeaderNonLocalStats = on_export_value ? &edgesPerHeaderNonLocalStats : nullptr;
 
     // For each device
     if(DoLock){
-      parallel_for_with_grain<unsigned>(use_parallel, 0, numDevices, 1, [&](uint32_t d) {
+      parallel_for_blocked<unsigned>(use_parallel, 0, numDevices, 1, [&](uint32_t dBegin, uint32_t dEnd) {
+        ParallelRunningStats<1> lEdgesPerHeaderLocalStats;
+        ParallelRunningStats<1> lEdgesPerHeaderNonLocalStats;
 
         // Edge destinations (local to sender board, or not)
         Seq<PEdgeDest> local;
@@ -901,7 +1029,23 @@ template <typename DeviceType,
         // Routing destinations
         Seq<PRoutingDest> dests;
         PReceiverGroup<E> groups[TinselThreadsPerMailbox];
-        computeRoutingTablesForDevice<true>(d, local, nonLocal, dests, groups);
+
+        for(unsigned d=dBegin; d<dEnd; d++){
+          // Note: the various tables (local,nonLocal,dests,group) will get cleared within functions
+          
+          computeRoutingTablesForDevice<true>(d, local, nonLocal, dests, groups,
+            pEdgesPerHeaderLocalStats ? &lEdgesPerHeaderLocalStats : nullptr,
+            pEdgesPerHeaderNonLocalStats ? &lEdgesPerHeaderNonLocalStats : nullptr
+          );
+        }
+
+        if(pEdgesPerHeaderNonLocalStats){
+          *pEdgesPerHeaderNonLocalStats += lEdgesPerHeaderNonLocalStats;
+        }
+        if(pEdgesPerHeaderLocalStats){
+          *pEdgesPerHeaderLocalStats += lEdgesPerHeaderLocalStats;
+        }
+        
       });
     }else{
       // Edge destinations (local to sender board, or not)
@@ -912,8 +1056,19 @@ template <typename DeviceType,
       Seq<PRoutingDest> dests;
       PReceiverGroup<E> groups[TinselThreadsPerMailbox];
       for (uint32_t d = 0; d < numDevices; d++) {
-        computeRoutingTablesForDevice<false>(d, local, nonLocal, dests, groups);
+        computeRoutingTablesForDevice<false>(d, local, nonLocal, dests, groups,    pEdgesPerHeaderLocalStats, pEdgesPerHeaderNonLocalStats );
       }
+    }
+
+    if(pEdgesPerHeaderNonLocalStats){
+      pEdgesPerHeaderNonLocalStats->walk_stats( {"edges_per_header_non_local"}, [&](const char *name, const char *stat, double value) {
+        on_export_value((name+std::string("_")+stat).c_str(), value);
+      });
+    }
+    if(pEdgesPerHeaderLocalStats){
+      pEdgesPerHeaderLocalStats->walk_stats( {"edges_per_header_local"},[&](const char *name, const char *stat, double value) {
+        on_export_value((name+std::string("_")+stat).c_str(), value);
+      });
     }
   }
 

@@ -87,16 +87,6 @@ template <class T> class Seq
       elems = newElems;
     }
 
-    void setCapacityAndZeroExtra(int n) {
-      assert(numElems <= n);
-      maxElems = n;
-      T* newElems = new T[maxElems];
-      std::move(elems, elems+numElems, newElems);
-      std::memset(newElems+numElems, 0, sizeof(T)*(maxElems-numElems));
-      delete [] elems;
-      elems = newElems;
-    }
-
     // Extend size of sequence by N
     void extendBy(int n)
     {
@@ -107,12 +97,13 @@ template <class T> class Seq
       numElems=newNumElems;
     }
 
-    void extendByAndZeroExtra(int n)
+    void extendByWithZero(int n)
     {
       int newNumElems = numElems + n;
       if (newNumElems  > maxElems){
-        setCapacityAndZeroExtra(std::max(newNumElems, maxElems*2));
+        setCapacity(std::max(newNumElems, maxElems*2));
       }
+      std::memset(elems+numElems, 0, sizeof(T)*(newNumElems-numElems));
       numElems=newNumElems;
     }
 
@@ -141,12 +132,14 @@ template <class T> class Seq
       return numElems;
     }
 
+    // Append
+    //! \retval The number of items in the Seq after the append
     size_t append(const T &x)
     {
       if(numElems==maxElems){
         setCapacity(std::max(maxElems*2, 16));
       }
-      elems[numElems++] = std::move(x);
+      elems[numElems++] = x;
       return numElems;
     }
 
