@@ -9,6 +9,8 @@
 #define POLITE_NUM_PINS 2
 #endif
 
+#define POLITE_EDGES_PER_HEADER 3
+
 #include "../models/snn_model_concept.hpp"
 #include "../stats/stats_concept.hpp"
 

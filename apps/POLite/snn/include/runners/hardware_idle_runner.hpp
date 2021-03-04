@@ -1,6 +1,8 @@
 #ifndef hardware_idle_runner_hpp
 #define hardware_idle_runner_hpp
 
+#define POLITE_EDGES_PER_HEADER 3
+
 #include "../models/snn_model_concept.hpp"
 #include "../stats/stats_concept.hpp"
 

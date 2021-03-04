@@ -7,6 +7,7 @@
 #include <cstdio>
 #include <string>
 #include <mutex>
+#include <condition_variable>
 
 #include <POLite.h>
 
@@ -45,6 +46,7 @@ private:
     };
 
     double m_t0;
+    double m_tLastProgress;
     FILE *m_dst=0;
     int m_dst_log_level=10;
     int m_stderr_log_level=2;
@@ -53,13 +55,22 @@ private:
 
     std::string m_scope_name;
 
-    std::mutex m_mutex;
+    std::recursive_mutex m_mutex;
+
+    std::mutex m_watchdog_mutex;
+    std::thread m_watchdog;
+    std::condition_variable m_cond;
+    double m_watchdogNoProgressTimeout;
+    double m_watchdogTotalTimeout;
+    bool m_quitWatchdog;
 
     void do_exit_region()
     {
+        double t=now();
+        m_tLastProgress=t;
+
         struct rusage usage;
         getrusage(RUSAGE_SELF, &usage);
-        double t=now();
         double dt=t-m_regions.back().start_wall_clock;
         double user_time=(usage.ru_utime.tv_sec+1e-6*usage.ru_utime.tv_usec)-m_regions.back().start_user_time;
         double kernel_time=(usage.ru_stime.tv_sec+1e-6*usage.ru_stime.tv_usec)-m_regions.back().start_kernel_time;
@@ -69,9 +80,9 @@ private:
         double utilisation=(kernel_time+user_time)/dt;
         export_value("region_cpu_utilisation", utilisation, 2);
         if(m_dst){
-            fprintf(m_dst, "%.6f,  EXIT, %-64s, %.6f\n", now(), m_scope_name.c_str(), dt);
+            fprintf(m_dst, "%.6f,  EXIT, %-64s, %.6f\n", t, m_scope_name.c_str(), dt);
         }
-        fprintf(stderr, "%.6f,  EXIT, %-64s, %.6f\n", now(), m_scope_name.c_str(), dt);
+        fprintf(stderr, "%.6f,  EXIT, %-64s, %.6f\n", t, m_scope_name.c_str(), dt);
         
 
         m_regions.pop_back();
@@ -187,13 +198,17 @@ private:
     }
 
 public:
+    Logger(const Logger &) = delete;
+    Logger &operator=(const Logger &) = delete;
+
     Logger(std::string log_file_name)
-        : m_t0(0)
-        , m_dst(0)
+        : m_dst(0)
     {
         attach_log_file(log_file_name);
 
+        m_t0=0.0;
         m_t0=now();
+        m_tLastProgress=0;
         enter_region("prog");
 
         enter_region("sys-info");
@@ -207,20 +222,55 @@ public:
 
     ~Logger()
     {
+        std::unique_lock<std::recursive_mutex> lk(m_mutex);
+        if(m_watchdog.joinable()){
+            {
+                std::unique_lock<std::mutex> lk2(m_watchdog_mutex);
+                m_quitWatchdog=true;
+                m_cond.notify_one();
+            }
+
+            lk.unlock(); // Must releast lock before joining, so that watchdog can actually run
+            m_watchdog.join();
+            lk.lock();
+        }
         on_exit();
+    }
+
+    void run_watchdog(double phaseTimeout, double totalTimeout)
+    {
+        using namespace std::literals::chrono_literals;
+
+        assert(!m_watchdog.joinable());
+
+        m_quitWatchdog=false;
+        m_watchdog=std::thread([&](){
+            std::unique_lock<std::mutex> lk(m_watchdog_mutex);
+
+            while(!m_quitWatchdog){
+                double t=now();
+                double tPhase=t-m_tLastProgress;
+                if(totalTimeout >0 && t >= totalTimeout){
+                    lk.unlock();
+                    fatal_error("Watchdog total time budget of %.1f exceeded, tTotal=%.1f", t);
+                    lk.lock(); // Pointless, we cant get here
+                }
+                if(phaseTimeout>0 && t-m_tLastProgress >= phaseTimeout){
+                    lk.unlock();
+                    fatal_error("Watchdog phase time budget of %.1f exceeded, tLastPhase=%.1f", t-m_tLastProgress);
+                    lk.lock(); // Pointless, we cant get here
+                }
+
+                m_cond.wait_for(lk,
+                    std::chrono::seconds(1)
+                );
+            }
+        });
     }
 
     void log(int severity, const char *msg, ...)
     {
-        va_list va;
-        va_start(va,msg);
-        log_impl("MSG", severity, msg, va);
-        va_end(va);
-    }
-
-    void log_locked(int severity, const char *msg, ...)
-    {
-        std::unique_lock<std::mutex> lk(m_mutex);
+        std::unique_lock<std::recursive_mutex> lk(m_mutex);
 
         va_list va;
         va_start(va,msg);
@@ -230,31 +280,32 @@ public:
 
     void export_value(const char *key, const std::string &value, int level)
     {
+        std::unique_lock<std::recursive_mutex> lk(m_mutex);
+        double t=now();
+        m_tLastProgress=t;
+
         if(level < m_dst_log_level && m_dst){
-            fprintf(m_dst, "%.6f,   VAL, %-64s, %s\n", now(), (m_scope_name+"+"+key).c_str(), value.c_str());
+            fprintf(m_dst, "%.6f,   VAL, %-64s, %s\n", t, (m_scope_name+"+"+key).c_str(), value.c_str());
         }
         if(level < m_stderr_log_level){
             
-            fprintf(stderr, "%.6f,   VAL, %-64s, %s\n", now(),  (m_scope_name+"+"+key).c_str(), value.c_str());
+            fprintf(stderr, "%.6f,   VAL, %-64s, %s\n", t,  (m_scope_name+"+"+key).c_str(), value.c_str());
         }
     }
 
     void export_value(const char *key, double value, int level)
     {
-        if(level < m_dst_log_level || level < m_stderr_log_level){
-            export_value(key, std::to_string(value), level);
-        }
+        export_value(key, std::to_string(value), level);
     }
 
     void export_value(const char *key, int64_t value, int level)
     {
-        if(level < m_dst_log_level || level < m_stderr_log_level){
-            export_value(key, std::to_string(value), level);
-        }
+        export_value(key, std::to_string(value), level);
     }
 
     void flush()
     {
+        std::unique_lock<std::recursive_mutex> lk(m_mutex);
         if(m_dst){
             fflush(m_dst);
         }
@@ -262,10 +313,13 @@ public:
 
     int enter_region(const char *name)
     {
+        std::unique_lock<std::recursive_mutex> lk(m_mutex);
+
         int h=m_next_handle++;
         struct rusage usage;
         getrusage(RUSAGE_SELF, &usage);
         double t=now();
+        m_tLastProgress=t;
         m_regions.push_back({
             h, false, name, m_scope_name+"/"+name,
             t, usage.ru_utime.tv_sec+1e-6*usage.ru_utime.tv_usec, usage.ru_stime.tv_sec+1e-6*usage.ru_stime.tv_usec
@@ -280,6 +334,7 @@ public:
 
     void exit_region(int h=-1)
     {
+        std::unique_lock<std::recursive_mutex> lk(m_mutex);
         assert(!m_regions.empty());
         if(m_regions.back().is_leaf){
             exit_leaf();
@@ -290,6 +345,7 @@ public:
 
     void enter_leaf(const char *name)
     {
+        std::unique_lock<std::recursive_mutex> lk(m_mutex);
         assert(!m_regions.empty());
         if(m_regions.back().is_leaf){
             exit_leaf();
@@ -298,6 +354,7 @@ public:
         struct rusage usage;
         getrusage(RUSAGE_SELF, &usage);
         double t=now();
+        m_tLastProgress=t;
         m_regions.push_back({
             -1, true, name, m_scope_name+"/"+name,
             t, usage.ru_utime.tv_sec+1e-6*usage.ru_utime.tv_usec, usage.ru_stime.tv_sec+1e-6*usage.ru_stime.tv_usec
@@ -316,6 +373,7 @@ public:
 
     void exit_leaf()
     {
+        std::unique_lock<std::recursive_mutex> lk(m_mutex);
         assert(!m_regions.empty());
         assert(m_regions.back().is_leaf);
         do_exit_region();
@@ -323,6 +381,8 @@ public:
 
     [[noreturn]] void fatal_error(const char *msg, ...)
     {
+        std::unique_lock<std::recursive_mutex> lk(m_mutex);
+
         va_list va;
         va_start(va, msg);
         log_impl("FATAL", -1, msg, va);

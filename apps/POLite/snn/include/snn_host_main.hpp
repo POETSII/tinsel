@@ -30,6 +30,8 @@ int snn_host_main_impl(int argc, char *argv[])
     std::vector<std::string> user_key_values;
     int boxesX=1;
     int boxesY=1;
+    double progress_timeout=-1;
+    double total_timeout=-1;
     {
         po::options_description desc("Allowed options");
         desc.add_options()
@@ -42,6 +44,8 @@ int snn_host_main_impl(int argc, char *argv[])
             ("log-file", po::value<std::string>()->default_value("snn.log"), "Where to write the log file")
             ("user-key-value", po::value<std::vector<std::string>>(), "User-defined key:value pairs to add to the log. e,g. '--user-key-value=[key]:[value]'")
             ("boxes", po::value<std::string>()->default_value("1x1"), "Number of boxes in XxY form, or max for maximum availalbe.")
+            ("total-timeout", po::value<double>()->default_value(-1.0), "Unconditionally exit program if it runs for longer than this.")
+            ("progress-timeout", po::value<double>()->default_value(-1.0), "Unconditionally exit program if it goes this long without logging anything.")
         ;
 
         po::variables_map vm;
@@ -62,6 +66,8 @@ int snn_host_main_impl(int argc, char *argv[])
         if (vm.count("user-key-value")>0){
             user_key_values=vm["user-key-value"].as<std::vector<std::string>>();
         }
+        total_timeout=vm["total-timeout"].as<double>();
+        progress_timeout=vm["progress-timeout"].as<double>();
 
         std::string boxes_config=vm["boxes"].as<std::string>();
         if(boxes_config=="max"){
@@ -83,6 +89,10 @@ int snn_host_main_impl(int argc, char *argv[])
                 log.export_value(key.c_str(), value.c_str(), 1);
             }
         }
+    }
+
+    if(progress_timeout>0 || total_timeout>0){
+        log.run_watchdog(progress_timeout, total_timeout);
     }
 
     if(boxesX==-1){
