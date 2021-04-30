@@ -3,9 +3,10 @@
 # Tinsel root
 TINSEL_ROOT ?= ../../..
 
-ifndef QUARTUS_ROOTDIR
-  $(error Please set QUARTUS_ROOTDIR)
-endif
+# DT10 : This is irrelevant for everyone apart from boardctrld, AFIACT
+#ifndef QUARTUS_ROOTDIR
+#  $(error Please set QUARTUS_ROOTDIR)
+#endif
 
 include $(TINSEL_ROOT)/globals.mk
 
@@ -35,6 +36,7 @@ $(BUILD)/app.elf: $(APP_CPP) $(APP_HDR) $(BUILD)/link.ld $(INC)/config.h \
 	$(RV_LD) $(LDFLAGS) -T $(BUILD)/link.ld -o $(BUILD)/app.elf $(BUILD)/entry.o $(BUILD)/app.o $(LIB)/lib.o
 
 $(BUILD)/entry.o: builddir
+	echo "RV_CPPC=$(RV_CPPC)"
 	$(RV_CPPC) $(CFLAGS) -Wall -c -o $(BUILD)/entry.o $(TINSEL_ROOT)/apps/POLite/util/entry.S
 
 $(LIB)/lib.o:
@@ -50,21 +52,27 @@ $(INC)/config.h: $(TINSEL_ROOT)/config.py
 $(HL)/%.o:
 	make -C $(HL)
 
-$(BUILD)/run: $(RUN_CPP) $(RUN_H) $(HL)/*.o
-	g++ -std=c++11 -O0 -I $(INC) -I $(HL) -o $(BUILD)/run $(RUN_CPP) $(HL)/*.o \
-	 -march=native -g -O3 -DNDEBUG=1 -lmetis -fno-exceptions -fopenmp \
-	 -fno-omit-frame-pointer -ltbb
+RUN_CPP_OBJ := $(patsubst %.cpp, build/%.run.o, $(RUN_CPP))
+SIM_CPP_OBJ := $(patsubst %.cpp, build/%.sim.o, $(RUN_CPP))
 
-$(BUILD)/run.debug: $(RUN_CPP) $(RUN_H) $(HL)/*.o
-	g++ -std=c++11 -O0 -I $(INC) -I $(HL) -o $(BUILD)/run $(RUN_CPP) $(HL)/*.o \
-	 -g -O0 -lmetis -fno-exceptions -fopenmp -pthread \
-	 -fno-omit-frame-pointer  -fsanitize=undefined -ltbb \
-	 -std=c++17  -fsanitize=address
-	 #-fsanitize=thread 
+$(BUILD)/%.run.o : %.cpp
+	mkdir -p $(BUILD)
+	g++ -c -std=c++11 -I $(INC) -I $(HL) -o $(BUILD)/$*.run.o $*.cpp \
+	   -march=native -g -O3 -DNDEBUG=1 -fno-exceptions -fopenmp \
+	   -fno-omit-frame-pointer
 
-$(BUILD)/sim: $(RUN_CPP) $(RUN_H) $(HL)/sim/*.o
-	g++ -O2 -I $(INC) -I $(HL) -o $(BUILD)/sim $(RUN_CPP) $(HL)/sim/*.o \
-    -g -lmetis
+$(BUILD)/run: $(RUN_CPP_OBJ) $(RUN_H) $(HL)/*.o
+	g++ -std=c++11 -o $(BUILD)/run $(RUN_CPP_OBJ) $(HL)/*.o \
+	   -march=native -g -O3 -DNDEBUG=1 -fno-exceptions -fopenmp \
+	   -fno-omit-frame-pointer -ltbb -lmetis
+
+$(BUILD)/%.sim.o : %.cpp
+	mkdir -p $(BUILD)
+	g++ -c -O2 -I $(TINSEL_ROOT)/apps/POLite/POLiteSW/include -I $(INC) -I $(HL) -o $(BUILD)/$*.sim.o $*.cpp \
+		-g -fopenmp
+
+$(BUILD)/sim: $(SIM_CPP_OBJ) $(RUN_H)
+	g++ $(SIM_CPP_OBJ) -o $(BUILD)/sim -g -lmetis -ltbb -fopenmp
 
 .PHONY: clean
 clean:

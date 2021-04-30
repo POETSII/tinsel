@@ -2,10 +2,6 @@
 TINSEL_ROOT = ..
 include $(TINSEL_ROOT)/globals.mk
 
-ifndef QUARTUS_ROOTDIR
-  $(error Please set QUARTUS_ROOTDIR)
-endif
-
 # Local compiler flags
 CPPFLAGS = -I$(INC) -O2 -Wall
 
@@ -24,6 +20,7 @@ pciestreamd: pciestreamd.cpp
 boardctrld: boardctrld.cpp PowerLink.o JtagAtlantic.h \
             $(INC)/config.h jtag/UART.h Queue.h jtag/UARTBuffer.h \
             jtag/UART.o SocketUtils.o DebugLinkFormat.h BoardCtrl.h
+	if [[ "$$QUARTUS_ROOTDIR" == "" ]] ; then echo "Please set QUARTUS_ROOTDIR" ; exit 1 ; fi \
 	g++ -std=c++98 boardctrld.cpp jtag/UART.o PowerLink.o SocketUtils.o \
 	  $(CPPFLAGS) -I $(HL) -o boardctrld \
 	  -ljtag_atlantic -ljtag_client -L $(QUARTUS_ROOTDIR)/linux64/ \

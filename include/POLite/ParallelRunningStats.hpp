@@ -8,7 +8,7 @@
 #include <cmath>
 #include <cfloat>
 
-#include <quadmath.h>
+//#include <quadmath.h>
 
 /*! Maintains an array of N double running stats.
     The intent is to allow for fast heirarchical stats, e.g. in the following form:
@@ -84,7 +84,12 @@ private:
     stats_t m_stg;
     std::atomic<uint64_t> m_n;
 
-    using acc_t = __float128;
+    using acc_t = long double;
+
+    acc_t sqrt_acc(const acc_t &x) const
+    {
+        return std::sqrt(x);
+    }
 
     double sum_impl(acc_t &acc)
     {
@@ -167,7 +172,9 @@ public:
     void walk_stats(const std::array<const char *,N> &names, const std::function<void(const char *name, const char *stat, double val)> &cb){
         stats_t *pp=m_pStats.load();
         if(pp!=&m_stg){
-            throw std::runtime_error("cant walk stats while update is happening.");
+            fputs("cant walk stats while update is happening.", stderr);
+            assert(0);
+            abort();
         }
 
         assert(m_n.load()==m_stg.m_sums[0][0]);
@@ -210,7 +217,7 @@ public:
                 cb( names[i], "kurtosis", nan("") );
                 continue;
             }else{
-                acc_t stddev = sqrtq(variance);
+                acc_t stddev = sqrt_acc(variance);
                 cb( names[i], "stddev", stddev );
 
                 acc_t skewness = sum( moments[3] , - 3. * moments[2] * mean , + 2. * mean * mean * mean ) / ( variance  * stddev );

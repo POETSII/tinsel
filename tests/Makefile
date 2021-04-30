@@ -1,9 +1,10 @@
 # SPDX-License-Identifier: BSD-2-Clause
 TINSEL_ROOT = ..
 
-ifndef QUARTUS_ROOTDIR
-  $(error Please set QUARTUS_ROOTDIR)
-endif
+# DT10 : Not actually needed AFAICT
+#ifndef QUARTUS_ROOTDIR
+#  $(error Please set QUARTUS_ROOTDIR)
+#endif
 
 include $(TINSEL_ROOT)/globals.mk
 
@@ -35,7 +36,8 @@ $(HL)/%.o:
 	make -C $(HL)
 
 run: run.cpp $(HL)/*.o
-	g++ -O2 -I $(INC) -I $(HL) -o run run.cpp $(HL)/*.o
+	g++ -O2 -I $(INC) -I $(HL) -c -o run run.cpp
+	g++ -O2 -I $(INC) -I $(HL) -o run run.o $(HL)/*.o
 
 sim: run.cpp $(HL)/sim/*.o
 	g++ -O2 -I $(INC) -I $(HL) -o sim run.cpp $(HL)/sim/*.o

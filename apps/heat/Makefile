@@ -36,7 +36,8 @@ $(HL)/%.o:
 	make -C $(HL)
 
 run: run.cpp heat.h $(HL)/*.o
-	g++ -O2 -I $(INC) -I $(HL) -o run run.cpp $(HL)/*.o
+	g++ -O2 -I $(INC) -I $(HL) -c -o run.o run.cpp
+	g++ -O2 -I $(INC) -I $(HL) -o run run.o $(HL)/*.o
 
 sim: run.cpp heat.h $(HL)/sim/*.o
 	g++ -O2 -I $(INC) -I $(HL) -o sim run.cpp $(HL)/sim/*.o

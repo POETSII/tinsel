@@ -6,12 +6,22 @@
 #include <POLite.h>
 #include <sys/time.h>
 
-int main()
+int main(int argc, char *argv[])
 {
   // Parameters
-  const uint32_t width  = 256;
-  const uint32_t height = 256;
-  const uint32_t time   = 1000;
+  uint32_t width  = 256;
+  uint32_t height = 256;
+  uint32_t time   = 1000;
+
+  if(argc>1){
+    width=atoi(argv[1]);
+  }
+  if(argc>2){
+    height=atoi(argv[2]);
+  }
+  if(argc>3){
+    time=atoi(argv[3]);
+  }
 
   // Connection to tinsel machine
   HostLink hostLink;

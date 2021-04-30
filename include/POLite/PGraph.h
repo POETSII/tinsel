@@ -232,15 +232,15 @@ template <typename DeviceType,
   {
     va_list va;
     va_start(va, message);
-    std::string fmsg=vsprintf_to_string(message, va);
+    char *fmsg=vsprintf_to_string(message, va);
     va_end(va);
 
     if(on_fatal_error){
-      on_fatal_error(fmsg.c_str());
+      on_fatal_error(fmsg);
       assert(0);
       abort(); // Should never get here
     }else{
-      puts(fmsg.c_str());
+      puts(fmsg);
       exit(1);
     }
   }

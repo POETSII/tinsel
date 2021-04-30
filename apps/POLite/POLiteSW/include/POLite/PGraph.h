@@ -28,16 +28,25 @@ typedef int32_t PinId;
 //   HostPin - means 'send to host'
 //   Pin(n)  - means 'send to application pin number n'
 struct PPin{
-     uint8_t index;
+  uint8_t index;
 
-     bool operator==(const PPin &o) const
-     { return index==o.index; }
+  PPin(const PPin &) = default;
+  PPin &operator=(const PPin &o) = default;
+
+  // The tag is to stop me accidentally constructing them,
+  // as I keep doing it...
+  explicit constexpr PPin(unsigned _index, bool _tag)
+    : index((uint8_t)_index)
+  {}
+
+  constexpr bool operator==(PPin o) const { return index==o.index; }
+  constexpr bool operator!=(PPin o) const { return index!=o.index; }
 };
-const constexpr PPin No = PPin{0};
-const constexpr  PPin HostPin = PPin{1};
-inline constexpr PPin Pin(unsigned n){
-    return PPin{(uint8_t)(n+2)};
-}
+static_assert(sizeof(PPin)==1, "Expecting PPin to be 1 byte.");
+
+const constexpr PPin No = (PPin{0,true});
+const constexpr PPin HostPin = (PPin{1,true});
+constexpr PPin Pin(unsigned n) { return PPin{n+2,true}; }
 
 const unsigned  TinselLogWordsPerMsg = 4;
 const unsigned  TinselLogBytesPerMsg = 6;
@@ -238,7 +247,7 @@ struct PMessage
 template <typename S, typename E, typename M>
 struct PDevice {
     // Impementation
-    PPin _realReadyToSend;
+    PPin _realReadyToSend = No;
 
   // State
   S* s;
@@ -370,7 +379,8 @@ public:
     }
 
     bool mapVerticesToDRAM=false; // Dummy flag
-    bool mapInEdgesToDRAM=false; // Dummy flag
+    bool mapInEdgeHeadersToDRAM=false; // Dummy flag
+    bool mapInEdgeRestToDRAM=false; // Dummy flag
      bool mapOutEdgesToDRAM=false; // Dummy flag
 
     // uint32_t i = graph.numDevices;
@@ -533,6 +543,7 @@ public:
         bool any_active=false;
         for(unsigned i=0; i<numDevices; i++){
             any_active |= device_states[i].step();
+            device_states[i].time++;
         }
         if(any_active){
             return true;

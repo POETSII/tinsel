@@ -48,12 +48,10 @@ struct stats_minimal
     struct neuron_stats
     {
         struct body_t{
-            fix_t bibble;
             uint16_t time_steps=0;
             uint16_t total_sends=0;
             uint32_t total_recvs=0;
             uint64_t init_to_finish=0;
-            fix_t bobble;
         }body;
 
         uint32_t fragment_progress;
