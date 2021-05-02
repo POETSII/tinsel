@@ -2,32 +2,43 @@
 #ifndef _HEAT_RELAX_H_
 #define _HEAT_RELAX_H_
 
-#define POLITE_DUMP_STATS
-#define POLITE_COUNT_MSGS
 #include <POLite.h>
 
 struct HeatMessage {
-  uint16_t generation;   // Generation at sender
-  uint16_t colour;
-  int16_t val;
+  float val;
+  struct {
+    uint32_t colour : 2;
+    uint32_t generation : 30;
+  };
+  // These are only used for export, but POLite doesn't give us a
+  // way of changing message size.
+  uint16_t x;
+  uint16_t y;
 };
 
 struct HeatState {
-  uint16_t tolerance;
+  float scale;
+  float omega;
+  float tolerance;
+  float min_tolerance;
+  float tolerance_scale;
+  uint16_t x;
+  uint16_t y;
   bool is_fixed = false;
   uint16_t colour;
+  
 
-  uint16_t generation = 0;
-  int16_t curr_heat = 0;
-  int16_t sent_heat = 0;
+  uint16_t generation ;
+  float curr_heat ;
+  float sent_heat ;
 
   uint32_t msgs_sent=0;
   uint32_t msgs_recv=0;
 
   struct
   {
+    float heat;
     uint16_t generation;
-    int16_t heat;
   } ghosts[4] = {{0,0}};
 };
 
@@ -35,7 +46,9 @@ struct HeatDevice : PDevice<HeatState, None, HeatMessage> {
 
   bool is_dirty() const
   {
-    return abs(curr_heat - sent_heat) > s->tolerance;
+    bool dirty= fabsf(s->curr_heat - s->sent_heat) > s->tolerance;
+    //fprintf(stderr, "%d,%d c=%f, s=%f, t=%f, dirty=%d\n", s->x, s->y, s->curr_heat, s->sent_heat, s->tolerance, dirty);
+    return dirty;
   }
 
   bool is_after(uint16_t a, uint16_t b) const
@@ -45,8 +58,6 @@ struct HeatDevice : PDevice<HeatState, None, HeatMessage> {
 
   // Called once by POLite at start of execution
   void init() {
-    inv_degree = (int)(65535.0f/degree);
-
     if( is_dirty() ){
       *readyToSend = Pin(0);
     }else{
@@ -76,11 +87,13 @@ struct HeatDevice : PDevice<HeatState, None, HeatMessage> {
       ghost.heat=msg->val;
 
       if(!s->is_fixed){
-        int32_t sum=0;
+        float sum=0;
         for(unsigned i=0; i<4; i++){
           sum += s->ghosts[i].heat;
         }
-        s->curr_heat = sum>>2;
+        float now = (sum*s->scale);
+        s->curr_heat = (1-s->omega) * s->sent_heat + s->omega * now;
+        //fprintf(stderr, "  omega=%f\n", s->omega);
       }
     }
 
@@ -92,12 +105,31 @@ struct HeatDevice : PDevice<HeatState, None, HeatMessage> {
   }
 
   // Called by POLite when system becomes idle
-  inline bool step() { *readyToSend = No; return false; }
+  inline bool step() {
+    assert(!is_dirty());
+    if(s->tolerance > s->min_tolerance){
+      s->tolerance *= s->tolerance_scale;
+      s->tolerance=std::max(s->tolerance, s->min_tolerance);
+      if(s->x==0 && s->y==0){
+        fprintf(stderr, "new tolerance=%g\n", s->tolerance);
+      }
+    }
+    if(is_dirty()){
+      *readyToSend = Pin(0);
+      return true;
+    }else{
+      *readyToSend = No;
+      return false;
+    }
+  }
 
   // Optionally send message to host on termination
   inline bool finish(volatile HeatMessage* msg) {
+    assert(!is_dirty());
     msg->generation=s->generation;
     msg->val=s->curr_heat;
+    msg->x=s->x;
+    msg->y=s->y;
     return true;
   }
 };

@@ -14,6 +14,7 @@
 #include <functional>
 #include <random>
 #include <atomic>
+#include <algorithm>
 
 using PDeviceId = uint32_t;
 typedef int32_t PinId;
@@ -279,6 +280,25 @@ private:
     uint32_t m_maxFanOut=0;
     uint32_t m_maxFanIn=0;
     uint64_t m_edgeCount=0;
+
+    bool get_option_bool(const char *name, bool def) const
+    {
+        auto *p=getenv(name);
+        if(p){
+            std::string s(p);
+            std::transform(s.begin(), s.end(), s.begin(), [](char c){ return std::tolower(c);});
+            if(s=="1" || s=="yes" || s=="true"){
+                fprintf(stderr, "%s=%s, flag=true\n", name, s.c_str());
+                return true;
+            }
+            if(s=="0" || s=="no" || s=="false"){
+                fprintf(stderr, "%s=%s, flag=false\n", name, s.c_str());
+                return false;
+            }
+            fprintf(stderr, "Warning : didn't understand value for %s=%s. Defaulting to %d\n", name, p, def);
+        }
+        return def;
+    }   
 public:
     static constexpr bool is_simulation = true;
 
@@ -288,6 +308,11 @@ public:
     std::function<void(const char *key, const char *value)> on_export_string;
 
     PlacerMethod placer_method=Default;
+
+    PGraph()
+    {
+        deliver_out_of_order=get_option_bool("POLITE_SIM_DELIVER_OUT_OF_ORDER", true);
+    }
 
     ~PGraph()
     {
@@ -449,9 +474,16 @@ private:
     std::deque<std::vector<transit_msg>> messages_in_flight;
     std::geometric_distribution<> msg_delay_distribution{0.1};
 
+    bool deliver_out_of_order;
+
     void post_message(std::mt19937_64 &rng, unsigned dst, unsigned src, unsigned key, const M &msg)
     {
-        unsigned distance=msg_delay_distribution(rng);
+        unsigned distance;
+        if(deliver_out_of_order){
+            distance=msg_delay_distribution(rng);
+        }else{
+            distance=1;
+        }
         while(messages_in_flight.size() <= distance){
             messages_in_flight.push_back({});
         }

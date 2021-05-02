@@ -54,6 +54,7 @@ $(HL)/%.o:
 
 RUN_CPP_OBJ := $(patsubst %.cpp, build/%.run.o, $(RUN_CPP))
 SIM_CPP_OBJ := $(patsubst %.cpp, build/%.sim.o, $(RUN_CPP))
+SIM_RELEASE_CPP_OBJ := $(patsubst %.cpp, build/%.sim-release.o, $(RUN_CPP))
 
 $(BUILD)/%.run.o : %.cpp
 	mkdir -p $(BUILD)
@@ -68,11 +69,19 @@ $(BUILD)/run: $(RUN_CPP_OBJ) $(RUN_H) $(HL)/*.o
 
 $(BUILD)/%.sim.o : %.cpp
 	mkdir -p $(BUILD)
-	g++ -c -O2 -I $(TINSEL_ROOT)/apps/POLite/POLiteSW/include -I $(INC) -I $(HL) -o $(BUILD)/$*.sim.o $*.cpp \
-		-g -fopenmp
+	g++ -g -c -O0 -I $(TINSEL_ROOT)/apps/POLite/POLiteSW/include -I $(INC) -I $(HL) -o $(BUILD)/$*.sim.o $*.cpp \
+		-fopenmp
 
 $(BUILD)/sim: $(SIM_CPP_OBJ) $(RUN_H)
-	g++ $(SIM_CPP_OBJ) -o $(BUILD)/sim -g -lmetis -ltbb -fopenmp
+	g++ -g $(SIM_CPP_OBJ) -o $(BUILD)/sim -g -lmetis -ltbb -fopenmp
+
+$(BUILD)/%.sim-release.o : %.cpp
+	mkdir -p $(BUILD)
+	g++ -g -c -O3 -DNDEBUG=1 -I $(TINSEL_ROOT)/apps/POLite/POLiteSW/include -I $(INC) -I $(HL) -o $(BUILD)/$*.sim.o $*.cpp \
+		-fopenmp
+
+$(BUILD)/sim-release: $(SIM_RELEASE_CPP_OBJ) $(RUN_H)
+	g++ -g $(SIM_CPP_OBJ) -o $(BUILD)/sim-release -g -lmetis -ltbb -fopenmp
 
 .PHONY: clean
 clean:
