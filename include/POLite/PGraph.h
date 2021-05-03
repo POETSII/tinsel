@@ -224,7 +224,7 @@ template <typename DeviceType,
   PlacerMethod placer_method=PlacerMethod::Default;
 
   std::function<void(const char *message)> on_fatal_error;
-  std::function<void(const char *part)> on_phase_hook;
+  std::function<void(int direction, const char *part)> on_phase_hook;
   std::function<void(const char *key, double value)> on_export_value;
   std::function<void(const char *key, const char *value)> on_export_string;
 
@@ -249,7 +249,21 @@ template <typename DeviceType,
   void mark_phase(const char *name)
   {
     if(on_phase_hook){
-      on_phase_hook(name);
+      on_phase_hook(0, name);
+    }
+  }
+
+  void begin_phase(const char *name)
+  {
+    if(on_phase_hook){
+      on_phase_hook(+1, name);
+    }
+  }
+
+  void end_phase(const char *name)
+  {
+    if(on_phase_hook){
+      on_phase_hook(-1, name);
     }
   }
 
@@ -1125,6 +1139,8 @@ template <typename DeviceType,
 
   // Implement mapping to tinsel threads
   void map() {
+    begin_phase("map");
+
     // Let's measure some times
     struct timeval placementStart, placementFinish;
     struct timeval routingStart, routingFinish;
@@ -1286,6 +1302,8 @@ template <typename DeviceType,
       duration = (double) diff.tv_sec + (double) diff.tv_usec / 1000000.0;
       printf("  Thread state initialisation: %lfs\n", duration);
     }
+
+    end_phase("map");
   }
 
   // Constructor
@@ -1377,6 +1395,8 @@ template <typename DeviceType,
 
   // Write graph to tinsel machine
   void write(HostLink* hostLink) { 
+    begin_phase("upload");
+
     // Start timer
     struct timeval start, finish;
     gettimeofday(&start, NULL);
@@ -1409,6 +1429,7 @@ template <typename DeviceType,
         (double) diff.tv_usec / 1000000.0;
       printf("POLite graph upload time: %lfs\n", duration);
     }
+    end_phase("upload");
   }
 
   // Determine fan-in of given device

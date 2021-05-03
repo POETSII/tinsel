@@ -24,5 +24,5 @@ APPNAME=heat-cube-sync
 @test "$APPNAME-run-default-hw" {
     if [[ "$TINSEL_NO_HARDWARE" -eq 1 ]] ; then skip ; fi
     (cd $BATS_TEST_DIRNAME && make build/run)
-    (cd $BATS_TEST_DIRNAME && build/run)
+    (cd $BATS_TEST_DIRNAME/build && run)
 }

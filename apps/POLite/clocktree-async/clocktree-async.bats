@@ -23,11 +23,11 @@ APPNAME=clocktree-async
 @test "$APPNAME-run-medium-hw" {
     if [[ "$TINSEL_NO_HARDWARE" -eq 1 ]] ; then skip ; fi
     (cd $BATS_TEST_DIRNAME && make build/run)
-    (cd $BATS_TEST_DIRNAME && build/run 4 4)
+    (cd $BATS_TEST_DIRNAME/build && run 4 4)
 }
 
 @test "$APPNAME-run-large-hw" {
     if [[ "$TINSEL_NO_HARDWARE" -eq 1 ]] ; then skip ; fi
     (cd $BATS_TEST_DIRNAME && make build/run)
-    (cd $BATS_TEST_DIRNAME && build/run 7 7)
+    (cd $BATS_TEST_DIRNAME/build && run 7 7)
 }

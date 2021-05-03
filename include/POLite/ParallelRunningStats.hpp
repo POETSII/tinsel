@@ -212,7 +212,7 @@ public:
             
             acc_t variance = moments[2]-mean*mean;
             if(variance <= 0){
-                cb( names[i], "skewness", nan("") );
+                cb( names[i], "stddev", nan("") );
                 cb( names[i], "skewness", nan("") );
                 cb( names[i], "kurtosis", nan("") );
                 continue;

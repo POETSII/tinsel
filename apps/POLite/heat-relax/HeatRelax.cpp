@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BSD-2-Clause
-#include "Heat.h"
+#include "HeatRelax.h"
 
 #include <tinsel.h>
 #include <POLite.h>

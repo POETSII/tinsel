@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: BSD-2-Clause
-APP_CPP = Heat.cpp
-APP_HDR = Heat.h
+APP_CPP = HeatRelax.cpp
+APP_HDR = HeatRelax.h
 RUN_CPP = Run.cpp
 RUN_H = 
 
