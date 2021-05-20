@@ -1,6 +1,6 @@
 APPNAME=heat-app-native
 
-@test "$APPNAME-compile-hw" {
+@test "heat-app-native-compile-hw" {
     (
         cd $BATS_TEST_DIRNAME
         make clean

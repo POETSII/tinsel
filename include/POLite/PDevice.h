@@ -87,7 +87,7 @@ struct PPin{
 
   // The tag is to stop me accidentally constructing them,
   // as I keep doing it...
-  explicit constexpr PPin(unsigned _index, bool _tag)
+  explicit constexpr PPin(unsigned _index, bool /*_tag*/)
     : index((uint8_t)_index)
   {}
 

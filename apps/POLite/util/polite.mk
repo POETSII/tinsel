@@ -16,8 +16,13 @@ LDFLAGS = -melf32lriscv -G 0
 
 BUILD=build
 
-.PHONY: all
-all: $(BUILD)/code.v $(BUILD)/data.v $(BUILD)/run
+.PHONY: all sim hw
+all: hw
+
+hw : $(BUILD)/code.v $(BUILD)/data.v $(BUILD)/run
+
+sim : $(BUILD)/sim
+sim-release : $(BUILD)/sim-release
 
 $(BUILD)/code.v: $(BUILD)/app.elf
 	checkelf.sh $(BUILD)/app.elf

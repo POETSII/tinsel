@@ -171,8 +171,8 @@ DebugLink::DebugLink(DebugLinkParams p)
       }
     }
 
-    int complete=0;
-    for(int tries=0; tries < p.max_connection_attempts; tries++){
+    int complete=0, tries=0;
+    while(1){
       for (int y = 0; y < boxMeshYLen; y++){
         for (int x = 0; x < boxMeshXLen; x++){
           if(conn[y][x]==-1){
@@ -186,8 +186,13 @@ DebugLink::DebugLink(DebugLinkParams p)
       if(complete==(boxMeshXLen*boxMeshYLen)){
         break;
       }
-      fprintf(stderr, "Connected %u out of %u boards. Sleeping 1 second.\n", complete, (boxMeshXLen*boxMeshYLen));
-      sleep(1);
+      if(tries < p.max_connection_attempts){
+        fprintf(stderr, "Connected %u out of %u boards. Sleeping 1 second. Tries left=%u.\n", complete, (boxMeshXLen*boxMeshYLen), p.max_connection_attempts-tries );
+        tries++;
+        sleep(1);
+      }else{
+        break;
+      }
     }
 
     if(complete!=(boxMeshXLen*boxMeshYLen)){
