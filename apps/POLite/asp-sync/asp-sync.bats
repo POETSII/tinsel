@@ -2,9 +2,8 @@ APPNAME=asp-sync
 
 function setup_file {
     mkdir -p $BATS_TMPDIR/$APPNAME
-    ghc  $BATS_TEST_DIRNAME/../asp-pc/GenHypercube.hs -o $BATS_TMPDIR/$APPNAME/GenHypercube
-    $BATS_TMPDIR/$APPNAME/GenHypercube 4 5 > $BATS_TMPDIR/$APPNAME/hypercube.medium.edges
-    $BATS_TMPDIR/$APPNAME/GenHypercube 5 6  > $BATS_TMPDIR/$APPNAME/hypercube.large.edges
+    xzcat $BATS_TEST_DIRNAME/../asp-pc/hypercube.medium.edges.xz >  $BATS_TMPDIR/$APPNAME/hypercube.medium.edges
+    xzcat $BATS_TEST_DIRNAME/../asp-pc/hypercube.large.edges.xz >  $BATS_TMPDIR/$APPNAME/hypercube.large.edges
 }
 
 @test "$APPNAME-compile-hw" {
