@@ -32,12 +32,12 @@ builddir:
 
 $(BUILD)/app.elf: $(APP_CPP) $(APP_HDR) $(BUILD)/link.ld $(INC)/config.h \
           $(INC)/tinsel.h $(BUILD)/entry.o $(LIB)/lib.o
-	$(RV_CPPC) $(CFLAGS) -Wall -c -DTINSEL -o $(BUILD)/app.o $(APP_CPP)
+	$(RV_CPPC) $(CFLAGS) -W -Wall -c -DTINSEL -o $(BUILD)/app.o $(APP_CPP)
 	$(RV_LD) $(LDFLAGS) -T $(BUILD)/link.ld -o $(BUILD)/app.elf $(BUILD)/entry.o $(BUILD)/app.o $(LIB)/lib.o
 
 $(BUILD)/entry.o: builddir
 	echo "RV_CPPC=$(RV_CPPC)"
-	$(RV_CPPC) $(CFLAGS) -Wall -c -o $(BUILD)/entry.o $(TINSEL_ROOT)/apps/POLite/util/entry.S
+	$(RV_CPPC) $(CFLAGS) -W -Wall -c -o $(BUILD)/entry.o $(TINSEL_ROOT)/apps/POLite/util/entry.S
 
 $(LIB)/lib.o:
 	make -C $(LIB)
@@ -59,29 +59,29 @@ SIM_RELEASE_CPP_OBJ := $(patsubst %.cpp, build/%.sim-release.o, $(RUN_CPP))
 $(BUILD)/%.run.o : %.cpp
 	mkdir -p $(BUILD)
 	g++ -c -std=c++11 -I $(INC) -I $(HL) -o $(BUILD)/$*.run.o $*.cpp \
-	   -march=native -g -O3 -DNDEBUG=1 -fno-exceptions -fopenmp \
+	   -std=c++17 -march=native -g -O3 -DNDEBUG=1 -fno-exceptions -fopenmp \
 	   -fno-omit-frame-pointer
 
 $(BUILD)/run: $(RUN_CPP_OBJ) $(RUN_H) $(HL)/*.o
 	g++ -std=c++11 -o $(BUILD)/run $(RUN_CPP_OBJ) $(HL)/*.o \
-	   -march=native -g -O3 -DNDEBUG=1 -fno-exceptions -fopenmp \
+	   -std=c++17 -march=native -g -O3 -DNDEBUG=1 -fno-exceptions -fopenmp \
 	   -fno-omit-frame-pointer -ltbb -lmetis
 
 $(BUILD)/%.sim.o : %.cpp
 	mkdir -p $(BUILD)
-	g++ -g -c -O0 -I $(TINSEL_ROOT)/apps/POLite/POLiteSW/include -I $(INC) -I $(HL) -o $(BUILD)/$*.sim.o $*.cpp \
+	g++ -std=c++17 -g -c -O0 -I $(TINSEL_ROOT)/apps/POLite/POLiteSW/include -I $(INC) -I $(HL) -o $(BUILD)/$*.sim.o $*.cpp \
 		-fopenmp
 
 $(BUILD)/sim: $(SIM_CPP_OBJ) $(RUN_H)
-	g++ -g $(SIM_CPP_OBJ) -o $(BUILD)/sim -g -lmetis -ltbb -fopenmp
+	g++ -std=c++17 -g $(SIM_CPP_OBJ) -o $(BUILD)/sim -g -lmetis -ltbb -fopenmp
 
 $(BUILD)/%.sim-release.o : %.cpp
 	mkdir -p $(BUILD)
-	g++ -g -c -O3 -DNDEBUG=1 -I $(TINSEL_ROOT)/apps/POLite/POLiteSW/include -I $(INC) -I $(HL) -o $(BUILD)/$*.sim.o $*.cpp \
+	g++ -std=c++17 -g -c -O3 -DNDEBUG=1 -I $(TINSEL_ROOT)/apps/POLite/POLiteSW/include -I $(INC) -I $(HL) -o $(BUILD)/$*.sim.o $*.cpp \
 		-fopenmp
 
 $(BUILD)/sim-release: $(SIM_RELEASE_CPP_OBJ) $(RUN_H)
-	g++ -g $(SIM_CPP_OBJ) -o $(BUILD)/sim-release -g -lmetis -ltbb -fopenmp
+	g++ -std=c++17 -g $(SIM_CPP_OBJ) -o $(BUILD)/sim-release -g -lmetis -ltbb -fopenmp
 
 .PHONY: clean
 clean:
