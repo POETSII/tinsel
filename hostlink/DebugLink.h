@@ -13,6 +13,10 @@ struct DebugLinkParams {
   uint32_t numBoxesX;
   uint32_t numBoxesY;
   bool useExtraSendSlot;
+
+  // Used to allow retries when connecting to the socket. When performing rapid sweeps,
+  // it is quite common for the first attempt in the next process to fail.
+  int max_connection_attempts = 5;
 };
 
 class DebugLink {
