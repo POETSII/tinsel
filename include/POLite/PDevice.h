@@ -99,11 +99,21 @@ template <typename S, typename E, typename M> struct PDevice {
 };
 
 // Generic device state structure
+/* A subtlety is that a device can turn on and off its ready-to-send in the
+  receive handler, and if that happens, we need to either remove it from the
+  RTS list, or make sure it doesn't get added twice. This seemed to be a subtle
+  bug in the original implementation, probably because this didn't happen in
+  the original 
+  So we need both readyToSend, which is what the device said at the end of
+  the last handler, and something that tracks whether it is currently on
+  the RTS list.
+*/
 template <typename S> struct ALIGNED PState {
   // Pointer to base of neighbours arrays
   uint16_t pinBase[POLITE_NUM_PINS];
   // Ready-to-send status
   PPin readyToSend;
+  int8_t isMarkedRTS;
   // Custom state
   S state;
 };
@@ -190,6 +200,25 @@ template <typename DeviceType,
 
   #ifdef TINSEL
 
+  INLINE bool senders_queue_empty() const
+  { return senders==sendersTop; }
+
+  //! \pre: !senders_queue_empty()
+  PLocalDeviceId senders_queue_pop()
+  {
+    PLocalDeviceId id=*(--senders);
+    devices[id].isMarkedRTS=false;
+    return id;
+  }
+
+  void senders_queue_add(PLocalDeviceId id)
+  {
+    if(!devices[id].isMarkedRTS){
+      *(senders++) = id;
+      devices[id].isMarkedRTS=true;
+    }
+  }
+
   // Helper function to construct a device
   INLINE DeviceType getDevice(uint32_t id) {
     DeviceType dev;
@@ -258,9 +287,10 @@ template <typename DeviceType,
       DeviceType dev = getDevice(i);
       // Invoke the initialiser for each device
       dev.init();
+      devices[i].isMarkedRTS=false;
       // Device ready to send?
       if (*dev.readyToSend != No) {
-        *(sendersTop++) = i;
+        senders_queue_add(i);
       }
     }
 
@@ -290,25 +320,35 @@ template <typename DeviceType,
           tinselWaitUntil(TINSEL_CAN_SEND|TINSEL_CAN_RECV);
         }
       }
-      else if (sendersTop != senders) {
+      else if (!senders_queue_empty()) {
         if (tinselCanSend()) {
           // Start new multicast
-          PLocalDeviceId src = *(--sendersTop);
+          PLocalDeviceId src = senders_queue_pop();
           // Lookup device
           DeviceType dev = getDevice(src);
           PPin pin = *dev.readyToSend;
-          // Invoke send handler
-          PMessage<M>* m = (PMessage<M>*) tinselSendSlot();
-          dev.send(&m->payload);
-          // Reinsert sender, if it still wants to send
-          if (*dev.readyToSend != No) sendersTop++;
-          // Determine out-edge array for sender
-          if (pin == HostPin)
-            outEdge = outHost;
-          else
-            outEdge = (POutEdge*) &outTableBase[
-              devices[src].pinBase[pin-2]
-            ];
+          // A pin could have changed it's mind about sending, yet still be on 
+          // the list, so check whether it wants to send.
+          if(pin == No){
+            // We don't need to do anything. outEdge is still invalid.
+            // We'll go back round the loop
+          }else{
+            // Invoke send handler
+            PMessage<M>* m = (PMessage<M>*) tinselSendSlot();
+            dev.send(&m->payload);
+            // Reinsert sender, if it still wants to send
+            if (*dev.readyToSend != No) {
+              senders_queue_add(src);
+            }
+            // Determine out-edge array for sender
+            if (pin == HostPin){
+              outEdge = outHost;
+            }else{
+              outEdge = (POutEdge*) &outTableBase[
+                devices[src].pinBase[pin-2]
+              ];
+            }
+          }
         }
         else {
           #ifdef POLITE_COUNT_MSGS
@@ -330,7 +370,7 @@ template <typename DeviceType,
             active = dev.step() || active;
             // Device ready to send?
             if (*dev.readyToSend != No) {
-              *(sendersTop++) = i;
+              senders_queue_add(i);
             }
           }
           time++;
@@ -351,13 +391,12 @@ template <typename DeviceType,
           // Lookup destination device
           PLocalDeviceId id = inEdge->devId;
           DeviceType dev = getDevice(id);
-          // Was it ready to send?
-          PPin oldReadyToSend = *dev.readyToSend;
           // Invoke receive handler
           dev.recv(&inMsg->payload, &inEdge->edge);
           // Insert device into a senders array, if not already there
-          if (*dev.readyToSend != No && oldReadyToSend == No)
-            *(sendersTop++) = id;
+          if (*dev.readyToSend != No) {
+            senders_queue_add(id);
+          }
           inEdge++;
           #ifdef POLITE_COUNT_MSGS
           msgsReceived++;
