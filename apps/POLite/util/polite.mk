@@ -43,15 +43,15 @@ $(BUILD)/link.ld: builddir $(TINSEL_ROOT)/apps/POLite/util/genld.sh
 $(INC)/config.h: $(TINSEL_ROOT)/config.py
 	make -C $(INC)
 
-$(HL)/%.o:
-	make -C $(HL)
+$(HL)/hostlink.a:
+	make -C $(HL) hostlink.a
 
-$(BUILD)/run: $(RUN_CPP) $(RUN_H) $(HL)/*.o
-	g++ -std=c++11 -O2 -I $(INC) -I $(HL) -o $(BUILD)/run $(RUN_CPP) $(HL)/*.o \
+$(BUILD)/run: $(RUN_CPP) $(RUN_H) $(HL)/hostlink.a
+	g++ -std=c++11 -O2 -I $(INC) -I $(HL) -o $(BUILD)/run $(RUN_CPP) $(HL)/hostlink.a \
 	  -lmetis -fno-exceptions -fopenmp
 
-$(BUILD)/sim: $(RUN_CPP) $(RUN_H) $(HL)/sim/*.o
-	g++ -O2 -I $(INC) -I $(HL) -o $(BUILD)/sim $(RUN_CPP) $(HL)/sim/*.o \
+$(BUILD)/sim: $(RUN_CPP) $(RUN_H) $(HL)/sim/hostlink.a
+	g++ -O2 -I $(INC) -I $(HL) -o $(BUILD)/sim $(RUN_CPP) $(HL)/sim/hostlink.a \
     -lmetis
 
 .PHONY: clean
