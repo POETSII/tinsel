@@ -1,10 +1,6 @@
 # SPDX-License-Identifier: BSD-2-Clause
 TINSEL_ROOT = ..
 
-ifndef QUARTUS_ROOTDIR
-  $(error Please set QUARTUS_ROOTDIR)
-endif
-
 include $(TINSEL_ROOT)/globals.mk
 
 # Local compiler flags
