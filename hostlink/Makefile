@@ -12,7 +12,18 @@ HL = $(TINSEL_ROOT)/hostlink
 all: DebugLink.o HostLink.o MemFileReader.o jtag/UART.o pciestreamd \
      sim/DebugLink.o sim/HostLink.o sim/MemFileReader.o sim/UART.o \
      SocketUtils.o sim/SocketUtils.o udsock boardctrld \
-     sim/boardctrld fancheck
+     sim/boardctrld fancheck \
+	 hostlink.a
+
+hostlink.a : DebugLink.o HostLink.o MemFileReader.o SocketUtils.o
+	-rm $@
+	ar rcu $@ $^
+	ranlib $@
+
+sim/hostlink.a : sim/DebugLink.o sim/HostLink.o sim/MemFileReader.o sim/SocketUtils.o
+	-rm $@
+	ar rcu $@ $^
+	ranlib $@
 
 pciestreamd: pciestreamd.cpp 
 	g++ -Wall -I $(HL) -O2 pciestreamd.cpp -o pciestreamd
@@ -62,5 +73,5 @@ $(INC)/config.h: $(TINSEL_ROOT)/config.py
 
 .PHONY: clean
 clean:
-	rm -f *.o pciestreamd udsock boardctrld fancheck jtag/*.o
+	rm -f *.o pciestreamd udsock boardctrld fancheck jtag/*.o hostlink.a
 	rm -rf sim
