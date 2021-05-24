@@ -184,7 +184,7 @@ DebugLink::DebugLink(DebugLinkParams p)
       if(tries < p.max_connection_attempts){
         fprintf(stderr, "Connected %u out of %u boards. Sleeping 1 second. Tries left=%u.\n", complete, (boxMeshXLen*boxMeshYLen), p.max_connection_attempts-tries );
         tries++;
-        sleep(EXIT_FAILURE);
+        sleep(1);
       }else{
         break;
       }
