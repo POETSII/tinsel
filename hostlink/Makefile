@@ -16,13 +16,13 @@ all: DebugLink.o HostLink.o MemFileReader.o jtag/UART.o pciestreamd \
 	 hostlink.a
 
 hostlink.a : DebugLink.o HostLink.o MemFileReader.o SocketUtils.o
-	-rm -f $@
-	ar rcu $@ $^
+	[ ! -f $@ ] || rm $@
+	ar rc $@ $^
 	ranlib $@
 
 sim/hostlink.a : sim/DebugLink.o sim/HostLink.o sim/MemFileReader.o sim/SocketUtils.o
-	-rm -f $@
-	ar rcu $@ $^
+	[ ! -f $@ ] || rm $@
+	ar rc $@ $^
 	ranlib $@
 
 pciestreamd: pciestreamd.cpp 
