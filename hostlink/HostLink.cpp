@@ -409,7 +409,6 @@ void HostLink::boot(const char* codeFilename, const char* dataFilename)
 
   // Request to boot loader
   BootReq req;
-  static_assert(std::is_pod<BootReq>::value);
   memset(&req, 0, sizeof(BootReq)); // Keep valgrind happy about un-init bytes.
 
 
@@ -568,7 +567,6 @@ void HostLink::startAll()
 {
   // Request to boot loader
   BootReq req;
-  static_assert(std::is_pod<BootReq>::value);
   memset(&req, 0, sizeof(BootReq)); // Keep valgrind happy about un-init bytes.
 
   // Total number of cores
@@ -616,7 +614,6 @@ void HostLink::setAddr(uint32_t meshX, uint32_t meshY,
                        uint32_t coreId, uint32_t addr)
 {
   BootReq req;
-  static_assert(std::is_pod<BootReq>::value);
   memset(&req, 0, sizeof(BootReq)); // Keep valgrind happy about un-init bytes.
 
   req.cmd = SetAddrCmd;
@@ -630,7 +627,6 @@ void HostLink::store(uint32_t meshX, uint32_t meshY,
                      uint32_t coreId, uint32_t numWords, uint32_t* data)
 {
   BootReq req;
-  static_assert(std::is_pod<BootReq>::value);
   memset(&req, 0, sizeof(BootReq)); // Keep valgrind happy about un-init bytes.
 
   req.cmd = StoreCmd;
@@ -655,7 +651,6 @@ bool HostLink::powerOnSelfTest()
   // Boot request to load data from memory
   // (The test involves reading from QDRII+ SRAMs on each board)
   BootReq req;
-  static_assert(std::is_pod<BootReq>::value);
   memset(&req, 0, sizeof(BootReq)); // Keep valgrind happy about un-init bytes.
 
   req.cmd = LoadCmd;
