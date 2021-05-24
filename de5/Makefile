@@ -1,10 +1,6 @@
 TINSEL_ROOT = ..
 include $(TINSEL_ROOT)/globals.mk
 
-ifndef QUARTUS_ROOTDIR
-  $(error Please set QUARTUS_ROOTDIR)
-endif
-
 .PHONY: all
 all: 
 	make -C $(TINSEL_ROOT)/rtl verilog

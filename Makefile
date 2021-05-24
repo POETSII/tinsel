@@ -1,7 +1,4 @@
 # SPDX-License-Identifier: BSD-2-Clause
-ifndef QUARTUS_ROOTDIR
-  $(error Please set QUARTUS_ROOTDIR)
-endif
 
 .PHONY: nothing
 nothing:
