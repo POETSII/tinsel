@@ -21,9 +21,6 @@
 #include <string.h>
 #include <signal.h>
 
-#include <type_traits>
-
-
 // Send buffer size (in flits)
 #define SEND_BUFFER_SIZE 8192
 
