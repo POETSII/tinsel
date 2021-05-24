@@ -98,6 +98,7 @@ void HostLink::constructor(HostLinkParams p)
   debugLinkParams.numBoxesX = p.numBoxesX;
   debugLinkParams.numBoxesY = p.numBoxesY;
   debugLinkParams.useExtraSendSlot = p.useExtraSendSlot;
+  debugLinkParams.max_connection_attempts=p.max_connection_attempts;
   debugLink = new DebugLink(debugLinkParams);
 
   // Set board mesh dimensions
@@ -136,6 +137,10 @@ void HostLink::constructor(HostLinkParams p)
   // Initialise send buffer
   useSendBuffer = false;
   sendBuffer = new char [(1<<TinselLogBytesPerFlit) * SEND_BUFFER_SIZE];
+  // avoids (correct) warnings by valgrind about passing un-init memory to syscall. In
+  // cases seen this is fine, as it is un-init padding being passed through to fill in
+  // spaces in tables for alignment purposes.
+  memset(sendBuffer, 0, (1<<TinselLogBytesPerFlit) * SEND_BUFFER_SIZE);
   sendBufferLen = 0;
 
   // Run the self test
@@ -404,6 +409,8 @@ void HostLink::boot(const char* codeFilename, const char* dataFilename)
 
   // Request to boot loader
   BootReq req;
+  memset(&req, 0, sizeof(BootReq)); // Keep valgrind happy about un-init bytes.
+
 
   // Step 1: load code into instruction memory
   // -----------------------------------------
@@ -560,6 +567,7 @@ void HostLink::startAll()
 {
   // Request to boot loader
   BootReq req;
+  memset(&req, 0, sizeof(BootReq)); // Keep valgrind happy about un-init bytes.
 
   // Total number of cores
   const uint32_t numCores =
@@ -606,6 +614,8 @@ void HostLink::setAddr(uint32_t meshX, uint32_t meshY,
                        uint32_t coreId, uint32_t addr)
 {
   BootReq req;
+  memset(&req, 0, sizeof(BootReq)); // Keep valgrind happy about un-init bytes.
+
   req.cmd = SetAddrCmd;
   req.numArgs = 1;
   req.args[0] = addr;
@@ -617,6 +627,8 @@ void HostLink::store(uint32_t meshX, uint32_t meshY,
                      uint32_t coreId, uint32_t numWords, uint32_t* data)
 {
   BootReq req;
+  memset(&req, 0, sizeof(BootReq)); // Keep valgrind happy about un-init bytes.
+
   req.cmd = StoreCmd;
   while (numWords > 0) {
     uint32_t sendWords = numWords > 15 ? 15 : numWords;
@@ -639,6 +651,8 @@ bool HostLink::powerOnSelfTest()
   // Boot request to load data from memory
   // (The test involves reading from QDRII+ SRAMs on each board)
   BootReq req;
+  memset(&req, 0, sizeof(BootReq)); // Keep valgrind happy about un-init bytes.
+
   req.cmd = LoadCmd;
   req.numArgs = 1;
   req.args[0] = 1;
@@ -743,7 +757,10 @@ void HostLink::dumpStdOut(FILE* outFile)
 {
   for (;;) {
     bool ok = pollStdOut(outFile);
-    if (!ok) usleep(10000);
+    if (!ok){
+      fflush(outFile); // Try to ensure output becomes visible to sink process
+      usleep(10000);
+    }
   }
 }
 
@@ -753,7 +770,10 @@ void HostLink::dumpStdOut(FILE* outFile, uint32_t lines)
   uint32_t count = 0;
   while (count < lines) {
     bool ok = pollStdOut(outFile, &count);
-    if (!ok) usleep(10000);
+    if (!ok){
+      fflush(outFile); // Try to ensure output becomes visible to sink process
+      usleep(10000);
+    }
   }
 }
 
