@@ -1502,7 +1502,8 @@ LSB.
 A globally unique mailbox id is exactly the same, except it is missing
 the mailbox-local thread id component.
 
-So a thread address is an integer in the half-open range `[0..2^(MeshYBits+MeshXBits+MailboxMeshYBits+MailboxMeshXBits+LogThreadsPerMailbox))`,
+So a thread address is an integer in the half-open range
+[0..2^(`MeshYBits`+`MeshXBits`+`MailboxMeshYBits`+`MailboxMeshXBits`+`LogThreadsPerMailbox`)),
 with the following structure:
 ```
             +-- LSB (bit 0)
@@ -1530,11 +1531,11 @@ these can be found in the `MailboxNetAddr`
 You must always rely on the configured parameters for the system you are using, but as an
 example for the Tinsel 0.8 release, these parameters are:
 
-- `MeshYBits = 3`
-- `MeshXBits = 3`
-- `MailboxMeshYBits = 2`
-- `MailboxMeshXBits = 2`
-- `LogThreadsPerMailbox = LogCoresPerMailbox+LogThreadsPerCore = 2+4 = 6`
+- `MeshYBits` = 3
+- `MeshXBits` = 3
+- `MailboxMeshYBits` = 2
+- `MailboxMeshXBits` = 2
+- `LogThreadsPerMailbox` = `LogCoresPerMailbox`+`LogThreadsPerCore` = 2+4 = 6
 
 _So with these specific parameters_, this leads to a 16 bit thread address in Tinsel 0.8:
 ```
@@ -1560,21 +1561,16 @@ as it is determined by compile-time and run-time parameters:
 
 Given the run-time values `numBoxesX` and `numBoxes`, we have the following ranges for X and Y:
 
-- `0 <= YYY < numBoxesX * MeshXLenWithinBox`
-- `0 <= XXX < numBoxesY * MeshYLenWithinBox`
+- 0 <= `YYY` < `numBoxesX` * `MeshXLenWithinBox`
+- 0 <= `XXX` < `numBoxesY` * `MeshYLenWithinBox`
 
 So this means that:
 
-- If `numBoxesX < 2^MeshXBits` then not all `XXX` values will be valid, so there will be "gaps" in
-  the thread addresses range that do not correspond to any valid FPGA or thread.
+- If `numBoxesX` < 2^`MeshXBits` then not all `XXX` values will be valid, so there will be "gaps" in the thread addresses range that do not correspond to any valid FPGA or thread.
   
-- If `numBoxesX == 2^MeshXBits` then the thread addresses forms a single unbroken contiguous range, so
-  every value in the range `[0,numBoxesY * 2^(MeshXBits+MailboxMeshYBits+MailboxMeshXBits+LogThreadsPerMailbox))`
-  is a valid address.
+- If `numBoxesX` = 2^`MeshXBits` then the thread addresses forms a single unbroken contiguous range, so every value in the range `[0,numBoxesY * 2^(MeshXBits+MailboxMeshYBits+MailboxMeshXBits+LogThreadsPerMailbox))` is a valid address.
   
-- If `numBoxesX == 2**MeshXBits` and `numBoxesY == 2**MeshYBits` then every bit pattern
-  with length `(MeshYBits+MeshXBits+MailboxMeshYBits+MailboxMeshXBits+LogThreadsPerMailbox)`
-  is a valid address.
+- If `numBoxesX` = 2^`MeshXBits` and `numBoxesY` = 2^`MeshYBits` then every bit pattern with length (`MeshYBits`+`MeshXBits`+`MailboxMeshYBits`+`MailboxMeshXBits`+`LogThreadsPerMailbox`) is a valid address.
 
 ## F. Tinsel API
 
