@@ -1559,7 +1559,8 @@ as it is determined by compile-time and run-time parameters:
 2. (`numBoxesX`,`numBoxesY`) : how many boxes have been requested at run-time when initialising hostlink, where
    `numBoxesX` <= `BoxMeshXLen` and `numBoxesY` <= `boxMeshYLen`.
 
-Given the run-time values `numBoxesX` and `numBoxes`, we have the following ranges for X and Y:
+Given the run-time values `numBoxesX` and `numBoxesY`, we have the
+following ranges for `XXX` and `YYY`:
 
 - 0 <= `YYY` < `numBoxesX` * `MeshXLenWithinBox`
 - 0 <= `XXX` < `numBoxesY` * `MeshYLenWithinBox`
