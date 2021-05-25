@@ -1502,6 +1502,74 @@ LSB.
 A globally unique mailbox id is exactly the same, except it is missing
 the mailbox-local thread id component.
 
+So the address is an integer in the range `[0..2**MeshXBits+MailboxMeshYBits+MailboxMeshXBits+LogThreadsPerMailbox)`,
+with the following structure:
+```
+            +-- LSB (bit 0)
+|Y|X|y|x|c|t|
+ | | | | | +--- Thread index within core
+ | | | | +----- Core index within mailbox
+ | | +-+------- (x,y) coord of mailbox in FPGA
+ +-+----------- (X,Y) coord of FPGA in system
+```
+
+Mapping to and from addresses can be performed in software using the [Hostlink API](#8-tinsel-hostlink)
+functions `HostLink::toAddr` and `HostLink::fromAddr`. Mapping to and from an address in Tinsel
+code can be performed using `tinselToAddr` and `tinselFromAddr` in [tinsel-interface.h](include/tinsel-interface.h).
+These functions automatically take into account the configured parameters, and should be preferred
+to direct manipulation of addresses in most circumstances.
+
+### Example structure for Tinsel 0.8
+
+You must always rely on the configured parameters for the system you are using, but as an
+example for the Tinsel 0.8 release, these parameters are:
+
+- MeshYBits = 3
+- MeshXBits = 3
+- MailboxMeshYBits = 2
+- MailboxMeshXBits = 2
+- LogThreadsPerMailbox = LogCoresPerMailbox + LogThreadsPerCore = 2 + 4 = 6
+
+_So with these specific parameters_, this leads to a 16 bit thread address in Tinsel 0.8:
+```
+|YYY|XXX|yy|xx|cc|tttt|
+ |   |   |  |  |   +--- 4 bit Thread index within core
+ |   |   |  |  +------- 2 bit Core index within mailbox
+ |   |   +--+---------- 4 bit (x,y) coord of mailbox in FPGA
+ +---+----------------- 6 bit (X,Y) coord of FPGA in system
+```
+
+### Validity of addresses
+
+All components except for the FPGA coordinates are full populated,
+i.e. every possible `|yy|xx|cc|tttt|` bit pattern represents a valid
+thread within each FPGA.
+
+However, the `|YYY|XXX|` FPGA coordinate space may not be completely populated,
+as it is determined by compile-time and run-time parameters:
+
+1. (`BoxMeshXLen`,`BoxMeshYLen`) : how many physical boxes exist in the system at compile-time, given in the local `config.h`; and
+2. (`numBoxesX`,`numBoxesY`) : how many boxes have been requested at run-time when initialising hostlink, where
+   `numBoxesX <= BoxMeshXLen` and `numBoxesY <= boxMeshYLen`.
+
+Given the run-time values `numBoxesX` and `numBoxes`, we have the following ranges for X and Y:
+
+- `0 <= Y < numBoxesX * MeshXLenWithinBox`
+- `0 <= X < numBoxesY * MeshYLenWithinBox`
+
+So this means that:
+
+- If `numBoxesX < 2**MeshXBits` then not all X values will be valid, so there will be "gaps" in
+  the thread addresses range that do not correspond to any valid FPGA or thread.
+  
+- If `numBoxesX == 2**MeshXBits` then the thread addresses forms a single unbroken contiguous range, so
+  every value in the range `[0,numBoxesY * 2**(MeshXBits+MailboxMeshYBits+MailboxMeshXBits+LogThreadsPerMailbox) )`
+  is a valid address.
+  
+- If `numBoxesX == 2**MeshXBits` and `numBoxesY == 2**MeshYBits` then every bit pattern
+  with length `(MeshXBits+MailboxMeshYBits+MailboxMeshXBits+LogThreadsPerMailbox)`
+  is a valid address.
+
 ## F. Tinsel API
 
 ```c
