@@ -1502,7 +1502,7 @@ LSB.
 A globally unique mailbox id is exactly the same, except it is missing
 the mailbox-local thread id component.
 
-So the address is an integer in the range `[0..2**MeshXBits+MailboxMeshYBits+MailboxMeshXBits+LogThreadsPerMailbox)`,
+So a thread address is an integer in the half-open range `[0..2**(MeshYBits+MeshXBits+MailboxMeshYBits+MailboxMeshXBits+LogThreadsPerMailbox))`,
 with the following structure:
 ```
             +-- LSB (bit 0)
@@ -1519,10 +1519,16 @@ code can be performed using `tinselToAddr` and `tinselFromAddr` in [tinsel-inter
 These functions automatically take into account the configured parameters, and should be preferred
 to direct manipulation of addresses in most circumstances.
 
-### Example structure for Tinsel 0.8
+Note that there are a few additional most-significant bits that are
+used to address hardware components that are not threads, e.g. custom
+accelerators, bridge boards, and programmable routers.  Details of
+these can be found in the `MailboxNetAddr`
+[structure](rtl/Globals.bsv).
+
+### Example structure for Tinsel 0.8.3
 
 You must always rely on the configured parameters for the system you are using, but as an
-example for the Tinsel 0.8 release, these parameters are:
+example for the Tinsel 0.8.3 release, these parameters are:
 
 - MeshYBits = 3
 - MeshXBits = 3
