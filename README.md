@@ -1356,6 +1356,47 @@ to deal with highly non-uniform fanouts (i.e. where some vertices have
 tiny fanouts and others have huge fanouts; this could be alleviated by
 adding fanout as a vertex weight for METIS partitioning).
 
+**Simulation**. There is a simple and partial functional simulation of the
+POLite framework in [apps/util/POLiteSWSim](apps/util/POLiteSWSim). This
+implements most of the common parts of the POLite `PGraph` and `PDevice` class,
+along with just enough `HostLink` to give a run-time API. Assuming you
+are using the default POLite makefile then it will be available for free.
+So if you are currently doing:
+```
+$ make all
+$ (cd build && ./run ARGS)
+```
+to run your application, you should be able to simulation using:
+```
+$ make sim
+$ (cd build && ./sim ARGS)
+```
+All the makefile does is include the `POLiteSW/include` directory
+ahead of the main `include/POLite` directory, so it overrides the
+"real" header files.
+
+Note that the simulator is intended to uncover errors, and so it models
+the fairly worst-case behaviour in terms of message delivery. In particular, it
+inserts exponentially distributed random delays between sends and corresponding
+receives, and so causes many messages to be delivered in a different order to
+the sending order.
+
+There are two environment parameters that will affect the run-time
+behaviour of the simulation:
+
+- `POLITE_SW_SIM_VERBOSITY` : Controls logging of simulation info to stderr. At 0 only
+   fatal errors are printed. For values larger than 0 increasing amounts of info are printed.
+   Default is 1, which prints progress information during simulation. Printing frequency
+   will slow down as the simulation takes longer.
+
+- `POLITE_SW_SIM_DELIVER_OUT_OF_ORDER` : Controls whether messages can be delayed and
+   delivered out of order in the simulation. By default this is "true", but if you set
+   it to "0" or "false" then you might find simulation a bit faster. Note that current
+   (0.8.3) hardware behaviour is somewhat in-between - messages can be delayed arbitrarily,
+   but for any (dst,src) pair the messages will be delivered in order. However, this was
+   not true in previous hardware, and may not be true in future hardware. Actually,
+   the above might not event be true with mixed uni-cast and multi-cast transmissions...
+
 ## A. DE5-Net Synthesis Report
 
 The default Tinsel configuration on a single DE5-Net board contains:
@@ -1937,3 +1978,27 @@ inerhit a number of limitations:
   architectures*, PDP 2021
   ([paper](https://www.repository.cam.ac.uk/handle/1810/317181),
    [video](https://sms.cam.ac.uk/media/3426946))
+
+## J. Testing
+
+The tinsel repo contains (at least) the following automated self-test
+facilities:
+
+- [Instruction tests](tests/) - These test the basic instruction
+    execution capabiities of the tinsel hardware. To run, do:
+    ```
+    $ make -C tests
+    $ (cd tests && ./run)
+    ```
+    These tests only work on a machine with Tinsel hardware, and if a test
+    fails then something is probably quite seriously wrong with configuration
+    or the hardware has been mis-built.
+
+- [POLiteSWSim tests](apps/POLite/util/POLiteSWSim) - These tests
+    the POLiteSWSim framework (software simulation of POLite apps),
+    and can be run using:
+    ```
+    $ apps/POLite/util/test_polite_sw_sim.sh
+    ```
+    These tests should work on any machine, regardless of whether there
+    is Tinsel hardware installed.
