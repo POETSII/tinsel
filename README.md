@@ -61,7 +61,8 @@ Released on 1 Jul 2020 and maintained in the
 * [F. Tinsel API](#f-tinsel-api)
 * [G. HostLink API](#g-hostlink-api)
 * [H. Limitations on RV32IMF](#h-limitations-on-rv32imf)
-* [I. Publications](#i-publications)
+* [I. Testing](#i-testing)
+* [J. Publications](#j-publications)
 
 ## 1. Overview
 
@@ -1366,7 +1367,7 @@ So if you are currently doing:
 $ make all
 $ (cd build && ./run ARGS)
 ```
-to run your application, you should be able to simulation using:
+to run your application, you should be able to simulate using:
 ```
 $ make sim
 $ (cd build && ./sim ARGS)
@@ -1395,7 +1396,7 @@ behaviour of the simulation:
    (0.8.3) hardware behaviour is somewhat in-between - messages can be delayed arbitrarily,
    but for any (dst,src) pair the messages will be delivered in order. However, this was
    not true in previous hardware, and may not be true in future hardware. Actually,
-   the above might not event be true with mixed uni-cast and multi-cast transmissions...
+   it is not true on current hardware for mixed unicast and multicast transmissions.
 
 ## A. DE5-Net Synthesis Report
 
@@ -1966,7 +1967,35 @@ inerhit a number of limitations:
     See [Issue #54](https://github.com/POETSII/tinsel/issues/54)
     for more details.
 
-## I. Publications
+## I. Testing
+
+This repo contains (at least) the following automated self-test
+facilities:
+
+- [Instruction tests](tests/) - These test the basic instruction
+    execution capabiities of the tinsel hardware. To run, do:
+    ```
+    $ make -C tests
+    $ (cd tests && ./run)
+    ```
+    These tests work on any machine with Tinsel hardware, and if a test
+    fails then something is probably quite seriously wrong with configuration
+    or the hardware has been mis-built.  These tests (and indeed any
+    application) can also be run using the cycle-accurate hardware
+    simulator produced by the Bluespec compiler (`make sim` in the
+    `rtl` directory).  However, this simulator is *very* slow (even
+    when `config.py` is modified to use fewer cores per board).
+
+- [POLiteSWSim tests](apps/POLite/util/POLiteSWSim) - These test
+    the POLiteSWSim framework (software simulation of POLite apps),
+    and can be run using:
+    ```
+    $ apps/POLite/util/test_polite_sw_sim.sh
+    ```
+    These tests should work on any machine, regardless of whether there
+    is Tinsel hardware installed.
+
+## J. Publications
 
 * *Tinsel: a manythread overlay for FPGA clusters*, FPL 2019
   ([paper](https://www.repository.cam.ac.uk/handle/1810/294801))
@@ -1978,27 +2007,3 @@ inerhit a number of limitations:
   architectures*, PDP 2021
   ([paper](https://www.repository.cam.ac.uk/handle/1810/317181),
    [video](https://sms.cam.ac.uk/media/3426946))
-
-## J. Testing
-
-The tinsel repo contains (at least) the following automated self-test
-facilities:
-
-- [Instruction tests](tests/) - These test the basic instruction
-    execution capabiities of the tinsel hardware. To run, do:
-    ```
-    $ make -C tests
-    $ (cd tests && ./run)
-    ```
-    These tests only work on a machine with Tinsel hardware, and if a test
-    fails then something is probably quite seriously wrong with configuration
-    or the hardware has been mis-built.
-
-- [POLiteSWSim tests](apps/POLite/util/POLiteSWSim) - These tests
-    the POLiteSWSim framework (software simulation of POLite apps),
-    and can be run using:
-    ```
-    $ apps/POLite/util/test_polite_sw_sim.sh
-    ```
-    These tests should work on any machine, regardless of whether there
-    is Tinsel hardware installed.
