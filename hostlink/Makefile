@@ -13,7 +13,7 @@ all: DebugLink.o HostLink.o MemFileReader.o jtag/UART.o pciestreamd \
      sim/DebugLink.o sim/HostLink.o sim/MemFileReader.o sim/UART.o \
      SocketUtils.o sim/SocketUtils.o udsock boardctrld \
      sim/boardctrld fancheck \
-	 hostlink.a
+	 hostlink.a sim/hostlink.a
 
 hostlink.a : DebugLink.o HostLink.o MemFileReader.o SocketUtils.o
 	[ ! -f $@ ] || rm $@
