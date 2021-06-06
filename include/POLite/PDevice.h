@@ -3,7 +3,6 @@
 #define _PDEVICE_H_
 
 #include <stdint.h>
-#include <stdlib.h>
 #include <type_traits>
 
 #ifdef TINSEL
