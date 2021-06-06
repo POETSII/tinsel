@@ -52,6 +52,9 @@ $(INC)/config.h: $(TINSEL_ROOT)/config.py
 $(HL)/hostlink.a:
 	make -C $(HL) hostlink.a
 
+$(HL)/sim/hostlink.a:
+	make -C $(HL) sim/hostlink.a
+
 RUN_CPP_OBJ := $(patsubst %.cpp, build/%.run.o, $(RUN_CPP))
 SIM_CPP_OBJ := $(patsubst %.cpp, build/%.sim.o, $(RUN_CPP))
 SIM_RELEASE_CPP_OBJ := $(patsubst %.cpp, build/%.sim-release.o, $(RUN_CPP))
@@ -85,6 +88,11 @@ $(BUILD)/%.sim-release.o : %.cpp
 
 $(BUILD)/sim-release: $(SIM_RELEASE_CPP_OBJ) $(RUN_H)
 	g++ -std=c++17 -g $(SIM_CPP_OBJ) -o $(BUILD)/sim-release -g -lmetis -ltbb -fopenmp
+
+$(BUILD)/hwsim: $(RUN_CPP) $(RUN_H) $(HL)/sim/hostlink.a
+	mkdir -p $(BUILD)
+	g++ -O2 -I $(INC) -I $(HL) -o $(BUILD)/hwsim $(RUN_CPP) $(HL)/sim/hostlink.a \
+    -lmetis -fopenmp
 
 .PHONY: clean
 clean:
