@@ -1,0 +1,14 @@
+# gitignore for the rtl subdir; exclusions only apply to /rtl.
+*.elf
+*.a
+*.bo
+*.ba
+*.cxx
+*.h
+*.c
+*.v
+*.o
+*.hex
+*.so
+
+de5BridgeTop

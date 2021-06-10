@@ -1,0 +1,3 @@
+[submodule "DE10Pro/DE10-reference-project"]
+	path = DE10Pro/DE10-reference-project
+	url = git@github.com:POETSII/DE10-reference-project.git
