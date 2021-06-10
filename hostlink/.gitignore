@@ -1,6 +1,7 @@
 *.o
 boardctrld
 pciestreamd
+fancheck
+hostlink.a
 sim/
 udsock
-
