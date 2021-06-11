@@ -39,3 +39,8 @@ clean:
 	make -C apps/POLite/progrouters clean
 	make -C bin clean
 	make -C tests clean
+	make -C DE10Pro/DE10-reference-project XXCLEAN
+
+DE10: clean
+	make -C rtl mkDE10Top.v
+	make -C DE10Pro/DE10-reference-project build/top.sof
