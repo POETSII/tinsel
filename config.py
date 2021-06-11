@@ -175,13 +175,10 @@ p["FetcherMsgsPerFlitBuffer"] = 2 ** p["FetcherLogMsgsPerFlitBuffer"]
 p["EnablePerfCount"] = True
 
 # Box mesh
-p["BoxMeshXLen"] = 2
-p["BoxMeshYLen"] = 4
+p["BoxMeshXLen"] = 1
+p["BoxMeshYLen"] = 1
 p["BoxMesh"] = ('{'
-    '{"byron",    "coleridge"},'
-    '{"defoe",    "eliot"},'
-    '{"fielding", "goethe"},'
-    '{"heaney",   "ibsen"}'
+    '{"tparks-optiplex-390",},'
   '}')
 
 # Enable custom accelerators (experimental feature)
@@ -383,7 +380,7 @@ p["FetchersPerProgRouter"] = 4 + p["MailboxMeshXLen"]
 p["LogFetcherFlitBufferSize"] = 5
 
 #==============================================================================
-# Main 
+# Main
 #==============================================================================
 
 def to_cpp_string(convertee):

@@ -105,13 +105,13 @@ module mkTransmitBuffer (TransmitBuffer);
 
   // Pointer to back of queue
   Reg#(TransmitBufferPtr) backPtr <- mkConfigReg(0);
- 
+
   // Contents of the buffer
   BlockRamOpts contentsOpts = defaultBlockRamOpts;
   contentsOpts.registerDataOut = False;
   BlockRam#(TransmitBufferPtr, Bit#(64)) contents <-
     mkBlockRamOpts(contentsOpts);
- 
+
   // Track the nummber of unsent items in the buffer
   Reg#(TransmitBufferPtr) unsentReg <- mkConfigReg(0);
 
@@ -265,7 +265,7 @@ module mkReliableLinkCore#(Mac mac) (ReliableLink);
   rule transmit0 (txState == 0 && toMACPort.canPut);
     // Bound number of items in packet
     // (Must be less than the size of the MAC receive buffer)
-    myAssert(`TransmitBound < 2**`LogMacRecvBufferSize, 
+    myAssert(`TransmitBound < 2**`LogMacRecvBufferSize,
                "TransmitBound is too large");
     Bit#(7) toSend = transmitBuffer.unsent > `TransmitBound ?
       `TransmitBound : truncate(transmitBuffer.unsent);
@@ -344,7 +344,7 @@ module mkReliableLinkCore#(Mac mac) (ReliableLink);
     transmitBuffer.ack(h.ack);
     // Is there space in the receive buffer?
     Bool space = receiveCount.available > `TransmitBound;
-    // Are the received items in the expected sequence    
+    // Are the received items in the expected sequence
     if (h.numItems != 0 && h.seqNum == nextItemToRecv && space) begin
       numItemsToRecv <= h.numItems;
       nextItemToRecv <= nextItemToRecv + zeroExtend(h.numItems);

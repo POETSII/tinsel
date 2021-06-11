@@ -7,16 +7,33 @@ include $(TINSEL_ROOT)/globals.mk
 # Obtain config parameters
 DEFS = $(shell python ../config.py defs)
 
+# A literal space.
+space :=
+space +=
+
+# Joins elements of the list in arg 2 with the given separator.
+#   1. Element separator.
+#   2. The list.
+join-with = $(subst $(space),$1,$(strip $2))
+
+BSINCLUDE=+
+BSINCLUDE+=../DE10Pro/DE10-reference-project/src/DE10-libs/src/bsv
+BSINCLUDE+=../DE10Pro/DE10-reference-project/src/BlueStuff/BlueUtils
+BSINCLUDE+=../DE10Pro/DE10-reference-project/src/BlueStuff/BlueBasics
+BSINCLUDE+=../DE10Pro/DE10-reference-project/src/BlueStuff/AXI
+BSINCLUDE+=../DE10Pro/DE10-reference-project/src/BlueStuff/SocketPacketUtils
+BSINCLUDE+=../DE10Pro/DE10-reference-project/src/BlueStuff
 # BSV compiler flags
 BSC = bsc
 BSCFLAGS = -suppress-warnings S0015 \
            -suppress-warnings G0023 \
            -steps-warn-interval 750000 -check-assert \
-           +RTS -K32M -RTS
+           +RTS -K32M -RTS \
+					 -p $(call join-with,:,$(BSINCLUDE))
 
 # Top level module
-TOPFILE = DE5Top.bsv
-TOPMOD = de5Top
+TOPFILE = DE10Top.bsv
+TOPMOD = mkDE10Top
 
 # Top level module for bridge board
 HOSTTOPFILE = DE5BridgeTop.bsv
