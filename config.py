@@ -78,15 +78,6 @@ p["MailboxMeshXBits"] = 2
 # Number of bits in mailbox mesh Y coord
 p["MailboxMeshYBits"] = 2
 
-# Length of mailbox mesh X dimension
-p["MailboxMeshXLen"] = 2 ** p["MailboxMeshXBits"]
-
-# Length of mailbox mesh Y dimension
-p["MailboxMeshYLen"] = 2 ** p["MailboxMeshYBits"]
-
-# Number of mailboxes per board
-p["LogMailboxesPerBoard"] = p["MailboxMeshXBits"] + p["MailboxMeshYBits"]
-
 # Size of multicast queues in mailbox
 p["LogMsgPtrQueueSize"] = 6
 
@@ -187,11 +178,32 @@ p["UseCustomAccelerator"] = False
 # Clock frequency (in MHz)
 p["ClockFreq"] = 210
 
+if True: # simulate
+    p["MailboxMeshXBits"] = 1
+    p["MailboxMeshYBits"] = 1
+    p["LogDCachesPerDRAM"] = 1
+    p["MeshXLenWithinBox"] = 1
+    p["MeshYLenWithinBox"] = 1
+    p["BoxMeshXLen"] = 1
+    p["BoxMeshYLen"] = 1
+    p["BoxMesh"] = ('{'
+        '{"tparks-optiplex-390",},'
+      '}')
+
 #==============================================================================
 # Derived Parameters
 #==============================================================================
 
 # (These should not be modified.)
+
+# Number of mailboxes per board
+p["LogMailboxesPerBoard"] = p["MailboxMeshXBits"] + p["MailboxMeshYBits"]
+
+# Length of mailbox mesh X dimension
+p["MailboxMeshXLen"] = 2 ** p["MailboxMeshXBits"]
+
+# Length of mailbox mesh Y dimension
+p["MailboxMeshYLen"] = 2 ** p["MailboxMeshYBits"]
 
 # The number of 32-bit instructions that fit in a core's instruction memory
 p["InstrsPerCore"] = 2**p["LogInstrsPerCore"]
