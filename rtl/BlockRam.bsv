@@ -77,7 +77,7 @@ typedef BlockRamTrueMixedByteEn#(
 // For simultaneous read and write to same address,
 // read old data or don't care?
 typedef enum {
-  DontCare, OldData 
+  DontCare, OldData
 } ReadDuringWrite deriving (Eq);
 
 // Block RAM options
@@ -152,7 +152,7 @@ import "BVI" AlteraBlockRam =
     parameter DATA_WIDTH     = valueOf(dataWidth);
     parameter NUM_ELEMS      = valueOf(TExp#(addrWidth));
     parameter BE_WIDTH       = 1;
-    parameter RD_DURING_WR = 
+    parameter RD_DURING_WR =
       opts.readDuringWrite == OldData ? "OLD_DATA" : "DONT_CARE";
     parameter DO_REG         =
       opts.registerDataOut ? "CLOCK0" : "UNREGISTERED";
@@ -234,7 +234,7 @@ import "BVI" AlteraBlockRam =
     parameter DATA_WIDTH     = valueOf(dataWidth);
     parameter NUM_ELEMS      = valueOf(TExp#(addrWidth));
     parameter BE_WIDTH       = valueOf(dataBytes);
-    parameter RD_DURING_WR = 
+    parameter RD_DURING_WR =
       opts.readDuringWrite == OldData ? "OLD_DATA" : "DONT_CARE";
     parameter DO_REG         =
       opts.registerDataOut ? "CLOCK0" : "UNREGISTERED";
@@ -263,6 +263,8 @@ import "BVI" AlteraBlockRam =
 
 `endif
 
+
+
 // ====================================
 // True dual-port mixed-width block RAM
 // ====================================
@@ -276,6 +278,7 @@ module mkBlockRamTrueMixed
                   Mul#(TExp#(aExtra), dataWidthB, dataWidthA));
   let ram <- mkBlockRamTrueMixedOpts(defaultBlockRamOpts); return ram;
 endmodule
+
 
 `ifdef SIMULATE
 
@@ -363,51 +366,120 @@ endmodule
 
 `else
 
-// Altera implementation
+// Altera implementation for sx5
 
-import "BVI" AlteraBlockRamTrueMixed =
-  module mkBlockRamTrueMixedOpts#(BlockRamOpts opts)
-         (BlockRamTrueMixed#(addrA, dataA, addrB, dataB))
-         provisos(Bits#(addrA, addrWidthA), Bits#(dataA, dataWidthA),
-                  Bits#(addrB, addrWidthB), Bits#(dataB, dataWidthB),
-                  Bounded#(addrA), Bounded#(addrB));
+// import "BVI" AlteraBlockRamTrueMixed =
+//   module mkBlockRamTrueMixedOpts#(BlockRamOpts opts)
+//          (BlockRamTrueMixed#(addrA, dataA, addrB, dataB))
+//          provisos(Bits#(addrA, addrWidthA), Bits#(dataA, dataWidthA),
+//                   Bits#(addrB, addrWidthB), Bits#(dataB, dataWidthB),
+//                   Bounded#(addrA), Bounded#(addrB));
+//
+//     parameter ADDR_WIDTH_A = valueOf(addrWidthA);
+//     parameter ADDR_WIDTH_B = valueOf(addrWidthB);
+//     parameter DATA_WIDTH_A = valueOf(dataWidthA);
+//     parameter DATA_WIDTH_B = valueOf(dataWidthB);
+//     parameter NUM_ELEMS_A  = valueOf(TExp#(addrWidthA));
+//     parameter NUM_ELEMS_B  = valueOf(TExp#(addrWidthB));
+//     parameter RD_DURING_WR =
+//       opts.readDuringWrite == OldData ? "OLD_DATA" : "DONT_CARE";
+//     parameter DO_REG_A       =
+//       opts.registerDataOut ? "CLOCK0" : "UNREGISTERED";
+//     parameter DO_REG_B       =
+//       opts.registerDataOut ? "CLOCK0" : "UNREGISTERED";
+//     parameter INIT_FILE      =
+//       case (opts.initFile) matches
+//         tagged Invalid: return "UNUSED";
+//         tagged Valid .x: return (x + ".mif");
+//       endcase;
+//     parameter DEV_FAMILY = `DeviceFamily;
+//     parameter STYLE = opts.style;
+//
+//     // Port A
+//     method putA(WE_A, ADDR_A, DI_A) enable (EN_A) clocked_by(clk);
+//     method DO_A dataOutA;
+//
+//     // Port B
+//     method putB(WE_B, ADDR_B, DI_B) enable (EN_B) clocked_by(clk);
+//     method DO_B dataOutB;
+//
+//     default_clock clk(CLK, (*unused*) clk_gate);
+//     default_reset no_reset;
+//
+//     schedule (dataOutA, dataOutB) CF (dataOutA, dataOutB, putA, putB);
+//     schedule (putA)               CF (putB);
+//     schedule (putA)               C  (putA);
+//     schedule (putB)               C  (putB);
+//   endmodule
 
-    parameter ADDR_WIDTH_A = valueOf(addrWidthA);
-    parameter ADDR_WIDTH_B = valueOf(addrWidthB);
-    parameter DATA_WIDTH_A = valueOf(dataWidthA);
-    parameter DATA_WIDTH_B = valueOf(dataWidthB);
-    parameter NUM_ELEMS_A  = valueOf(TExp#(addrWidthA));
-    parameter NUM_ELEMS_B  = valueOf(TExp#(addrWidthB));
-    parameter RD_DURING_WR = 
-      opts.readDuringWrite == OldData ? "OLD_DATA" : "DONT_CARE";
-    parameter DO_REG_A       =
-      opts.registerDataOut ? "CLOCK0" : "UNREGISTERED";
-    parameter DO_REG_B       =
-      opts.registerDataOut ? "CLOCK0" : "UNREGISTERED";
-    parameter INIT_FILE      =
-      case (opts.initFile) matches
-        tagged Invalid: return "UNUSED";
-        tagged Valid .x: return (x + ".mif");
-      endcase;
-    parameter DEV_FAMILY = `DeviceFamily;
-    parameter STYLE = opts.style;
 
-    // Port A
-    method putA(WE_A, ADDR_A, DI_A) enable (EN_A) clocked_by(clk);
-    method DO_A dataOutA;
+module mkBlockRamAlteraFakeMixedOps#(BlockRamOpts opts)
+        (BlockRamTrueMixed#(addrA, dataA, addrB, dataB))
 
-    // Port B
-    method putB(WE_B, ADDR_B, DI_B) enable (EN_B) clocked_by(clk);
-    method DO_B dataOutB;
+        provisos(Bits#(addrA, addrWidthA), Bits#(dataA, dataWidthA),
+                 Bits#(addrB, addrWidthB), Bits#(dataB, dataWidthB),
+                 Bounded#(addrA), Bounded#(addrB),
+                 Add#(addrWidthA, aExtra, addrWidthB),
+                 Mul#(TExp#(aExtra), dataWidthB, dataWidthA),
+                 Mul#(TDiv#(dataWidthA, 8), 8, dataWidthA),
+                 Div#(dataWidthA, TDiv#(dataWidthA, 8), 8), // tautology - compiler infered??
+                 Literal#(addrA), Literal#(addrB),
+                 Literal#(dataA), Literal#(dataB),
+                 Add#(TDiv#(aExtra, 8), TDiv#(dataWidthB, 8), TDiv#(dataWidthA, 8)), // for extend() in the B addr calc
+                 Add#(bExtraData, dataWidthB, dataWidthA) // for extend in the b data calc
+                );
 
-    default_clock clk(CLK, (*unused*) clk_gate);
-    default_reset no_reset;
+  // The sx10 BRAMs do not support true dual port operation.
+  // as a fallback, this module adapts a dual-clock equal port size byte enabled BRAM into
+  // a dual port; this adds a sizable mux on port B to select and mask out the desired portion,
+  // as well as more address calculation logic.
+  // fully comb
+  Integer addrWidthA = valueOf(SizeOf#(addrA));
+  Integer addrWidthB = valueOf(SizeOf#(addrB));
+  Integer dataWidthA = valueOf(SizeOf#(dataA));
+  Integer dataWidthB = valueOf(SizeOf#(dataB));
 
-    schedule (dataOutA, dataOutB) CF (dataOutA, dataOutB, putA, putB);
-    schedule (putA)               CF (putB);
-    schedule (putA)               C  (putA);
-    schedule (putB)               C  (putB);
-  endmodule
+  Bit#(addrWidthB) width_ratio = fromInteger(dataWidthA / dataWidthB);
+
+  // use a dual rwport bram with equal sized ports (supported by sx10).
+  // port B has byte enables for the narrower of the 2 stored types
+  BlockRamTrueMixedByteEn#(addrA, dataA, // port A
+                           addrA, dataA, // port B
+                           TDiv#(dataWidthA, 8) // Port B byte enables width
+                          ) bram <- mkBlockRamTrueMixedBEOpts(opts);
+
+    // A, the wide side, is trivial
+    method Action putA(Bool wr, addrA a, dataA x);
+      bram.putA(wr, a, x);
+    endmethod
+
+    method dataA dataOutA;
+      return bram.dataOutA;
+    endmethod
+
+    method Action putB(Bool wr, addrB addr_into_b, dataB x);
+      // // the port is sizeOf(A) wide; we can enable 8 bits at a time by setting b_enables
+      // calculate the effective address;
+      addrA addr_into_a = unpack((pack(addr_into_b) / width_ratio)[addrWidthA:0]);
+      // Integer shift = 0;
+      Bit#(TDiv#(dataWidthB, 8)) b_lane_base_mask = fromInteger(2**(dataWidthB/8)-1); // all ones vector the width of dataB in bytes
+      Bit#(TDiv#(dataWidthA, 8)) b_enables = extend(b_lane_base_mask) << (pack(addr_into_b)%width_ratio);
+      // Bit#(dataWidthA) x_packed = 0;
+      dataA x_packed = unpack(extend( pack(x) << (pack(addr_into_b)%width_ratio)*8 ));
+      // need to move the B data into the correct portion
+      bram.putB(wr, addr_into_a, x_packed, b_enables);
+    endmethod
+
+    method dataB dataOutB;
+        Bit#(dataWidthA) x_packed = pack(bram.dataOutB);
+        // need to mask out the right section
+        dataB x = unpack(x_packed[dataWidthB:0]);
+        return x;
+    endmethod
+
+endmodule
+
+
 
 `endif
 
@@ -511,7 +583,7 @@ import "BVI" AlteraBlockRamTrueMixedBE =
     parameter NUM_ELEMS_A  = valueOf(TExp#(addrWidthA));
     parameter NUM_ELEMS_B  = valueOf(TExp#(addrWidthB));
     parameter BE_WIDTH     = valueOf(dataBBytes);
-    parameter RD_DURING_WR = 
+    parameter RD_DURING_WR =
       opts.readDuringWrite == OldData ? "OLD_DATA" : "DONT_CARE";
     parameter DO_REG_A       =
       opts.registerDataOut ? "CLOCK0" : "UNREGISTERED";
