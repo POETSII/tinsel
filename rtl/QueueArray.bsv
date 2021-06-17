@@ -45,11 +45,31 @@ endinterface
 // =============================================================================
 
 module mkQueueArray (QueueArray#(logNumQueues, logQueueSize, elemType))
-  provisos (Bits#(elemType, elemTypeSize));
+  provisos (Bits#(elemType, elemTypeSize),
+
+  Div#(TMul#(TDiv#(elemTypeSize, 8), 8), TDiv#(TMul#(TDiv#(elemTypeSize, 8),
+    8), 8), 8),
+  Div#(TMul#(TDiv#(elemTypeSize, 8), 8), 8, TDiv#(elemTypeSize, 8)),
+  Mul#(TDiv#(TAdd#(TMul#(TDiv#(elemTypeSize, 8), 8), 8), 8), 8,
+    TAdd#(TMul#(TDiv#(elemTypeSize, 8), 8), 8)),
+  Div#(TAdd#(TMul#(TDiv#(elemTypeSize, 8), 8), 8),
+    TDiv#(TAdd#(TMul#(TDiv#(elemTypeSize, 8), 8), 8), 8), 8),
+  Add#(a__, elemTypeSize, TAdd#(TMul#(TDiv#(elemTypeSize, 8), 8), 8)),
+  Add#(b__, logQueueSize, TAdd#(TMul#(TDiv#(logQueueSize, 8), 8), 8)),
+  Mul#(TDiv#(TAdd#(TMul#(TDiv#(logQueueSize, 8), 8), 8), 8), 8,
+    TAdd#(TMul#(TDiv#(logQueueSize, 8), 8), 8)),
+  Mul#(TDiv#(TAdd#(TMul#(TDiv#(logQueueSize, 8), 8), 8), 8), 8,
+    TAdd#(TMul#(TDiv#(logQueueSize, 8), 8), 8)),
+  Div#(TMul#(TDiv#(logQueueSize, 8), 8), TDiv#(TMul#(TDiv#(logQueueSize, 8),
+    8), 8), 8),
+  Div#(TMul#(TDiv#(logQueueSize, 8), 8), 8, TDiv#(logQueueSize, 8)),
+  Div#(TAdd#(TMul#(TDiv#(logQueueSize, 8), 8), 8),
+    TDiv#(TAdd#(TMul#(TDiv#(logQueueSize, 8), 8), 8), 8), 8)
+  );
 
   // Block RAM storing front pointers
   BlockRamOpts ptrOpts = defaultBlockRamOpts;
-  ptrOpts.readDuringWrite = OldData;
+  ptrOpts.readDuringWrite = DontCare; // OldData; // XXXX CHECK WHY we need oldData here
   ptrOpts.registerDataOut = False;
   BlockRamTrue#(Bit#(logNumQueues), Bit#(logQueueSize))
     ramFront <- mkBlockRamTrueMixedOpts(ptrOpts);
