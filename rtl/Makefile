@@ -6,6 +6,8 @@ include $(TINSEL_ROOT)/globals.mk
 
 # Obtain config parameters
 DEFS = $(shell python ../config.py defs)
+STRATIX10 = $(shell python ../config.py print Stratix10)
+STRATIXV = $(shell python ../config.py print StratixV)
 
 # A literal space.
 space :=
@@ -31,13 +33,26 @@ BSCFLAGS = -suppress-warnings S0015 \
            +RTS -K32M -RTS \
 					 -p $(call join-with,:,$(BSINCLUDE))
 
+
+
 # Top level module
+ifdef STRATIX10
 TOPFILE = DE10Top.bsv
 TOPMOD = mkDE10Top
 
 # Top level module for bridge board
 HOSTTOPFILE = DE5BridgeTop.bsv
 HOSTTOPMOD = de5BridgeTop
+endif
+
+ifdef STRATIXV
+TOPFILE = DE5Top.bsv
+TOPMOD = de5Top
+
+# Top level module for bridge board
+HOSTTOPFILE = DE5BridgeTop.bsv
+HOSTTOPMOD = de5BridgeTop
+endif
 
 .PHONY: sim
 sim: $(TOPMOD) $(HOSTTOPMOD)
@@ -92,6 +107,7 @@ clean:
 	rm -f InstrMem.hex DataMem.hex RunQueue.hex
 	rm -f testMem de5Top testMailbox de5BridgeTop
 	rm -f de5Top.v mkCore.v mkDCache.v mkMailbox.v mkDebugLinkRouter.v
+	rm -f DE10Top.v
 	rm -f mkFPU.v mkMeshRouter.v
 	rm -f de5BridgeTop.v
 	rm -rf test-mem-log
