@@ -382,15 +382,17 @@ endmodule
 
 `else
 
-// Altera implementation for sx5
 
+// define the IP wrappers. s10 has additional conditions relative to sV
 import "BVI" AlteraBlockRamTrueMixed =
-  module mkBlockRamTrueMixedOpts_EQUALONLY#(BlockRamOpts opts)
+  module mkBlockRamMaybeTrueMixedOpts#(BlockRamOpts opts)
          (BlockRamTrueMixed#(addrA, dataA, addrB, dataB))
          provisos(Bits#(addrA, addrWidthA), Bits#(dataA, dataWidthA),
                   Bits#(addrB, addrWidthB), Bits#(dataB, dataWidthB),
-                  Bounded#(addrA), Bounded#(addrB),
-                  Add#(0, dataWidthA, dataWidthB) // s10 requirement; equal sized dual ports!
+                  Bounded#(addrA), Bounded#(addrB)
+`ifdef Stratix10
+                  , Add#(0, dataWidthA, dataWidthB) // s10 requirement; equal sized dual ports!
+`endif // s10
                   );
 
     parameter ADDR_WIDTH_A = valueOf(addrWidthA);
@@ -431,6 +433,8 @@ import "BVI" AlteraBlockRamTrueMixed =
   endmodule
 
 
+`ifdef Stratix10
+// If s10, we need to add width adaptors to get a true dual port
 
 module mkBlockRamTrueMixedOpts#(BlockRamOpts opts)
   (BlockRamTrueMixed#(addrA, dataA, addrB, dataB))
@@ -441,18 +445,8 @@ module mkBlockRamTrueMixedOpts#(BlockRamOpts opts)
            Add#(addrWidthA, aExtra, addrWidthB),
            Mul#(TExp#(aExtra), dataWidthB, dataWidthA),
            Literal#(addrA), Literal#(addrB),
-           //
-           // // compiler provisos I don't understand yet...
-           // Add#(aExtraMod8, TMul#(TDiv#(dataWidthB, 8), 8), TMul#(TDiv#(dataWidthA, 8), 8)), // ...
-           // Div#(TMul#(TDiv#(dataWidthA, 8), 8), TDiv#(TMul#(TDiv#(dataWidthA, 8), 8), 8), 8), // ...
-           // Div#(TMul#(TDiv#(dataWidthA, 8), 8), 8, TDiv#(dataWidthA, 8)), // .....
-           // Mul#(TDiv#(dataWidthB, 8), TExp#(aExtra), TDiv#(dataWidthA, 8)), // ok this is fine
-           // Add#(TDiv#(TExp#(aExtra), 8), TDiv#(TMul#(TDiv#(dataWidthB, 8), 8), 8), TDiv#(TMul#(TDiv#(dataWidthA, 8), 8), 8))
 
-           // Mul#(TDiv#(TAdd#(dataWidthA, dataPadA), 8), 8, TDiv#(TMul#(TAdd#(dataWidthA, dataPadA), 8), 8)),
-           // Mul#(TDiv#(TAdd#(dataWidthB, dataPadB), 8), 8, TDiv#(TMul#(TAdd#(dataWidthB, dataPadB), 8), 8))
-
-
+           // compiler generated provisos I don't understand yet...
            Add#(a__, TMul#(TDiv#(dataWidthB, 8), 8), TMul#(TDiv#(dataWidthA, 8), 8)),
            Div#(TMul#(TDiv#(dataWidthA, 8), 8), TDiv#(TMul#(TDiv#(dataWidthA, 8), 8), 8), 8),
            Div#(TMul#(TDiv#(dataWidthA, 8), 8), 8, TDiv#(dataWidthA, 8)),
@@ -531,7 +525,7 @@ module mkBlockRamTrueMixedOptsMult8#(BlockRamOpts opts)
   BlockRamTrueMixedByteEn#(addrA, dataA, // port A
                            addrA, dataA, // port B
                            TDiv#(dataWidthA, 8) // Port B byte enables width
-                          ) bram <- mkBlockRamTrueMixedBEOpts_EQUALONLY(opts);
+                          ) bram <- mkBlockRamMaybeTrueMixedBEOpts(opts);
 
     // A, the wide side, is trivial
     method Action putA(Bool wr, addrA a, dataA x);
@@ -563,8 +557,27 @@ module mkBlockRamTrueMixedOptsMult8#(BlockRamOpts opts)
     endmethod
 
 endmodule
+`endif // s10
 
+`ifdef StratixV
+// No adaptors needed; mixed width is natively supported
 
+module mkBlockRamTrueMixedOpts#(BlockRamOpts opts)
+  (BlockRamTrueMixed#(addrA, dataA, addrB, dataB))
+
+  provisos(Bits#(addrA, addrWidthA), Bits#(dataA, dataWidthA),
+           Bits#(addrB, addrWidthB), Bits#(dataB, dataWidthB),
+           Bounded#(addrA), Bounded#(addrB),
+           Add#(addrWidthA, aExtra, addrWidthB),
+           Mul#(TExp#(aExtra), dataWidthB, dataWidthA),
+           Literal#(addrA), Literal#(addrB)
+          );
+
+  BlockRamTrueMixed#(addrA, dataA, addrB, dataB) bram <- mkBlockRamMaybeTrueMixedOpts(opts);
+  return bram;
+endmodule
+
+`endif // StratixV
 
 `endif
 
@@ -572,71 +585,11 @@ endmodule
 // True dual-port mixed-width block RAM with byte-enables
 // ======================================================
 
-module mkBlockRamTrueMixedBE
-      (BlockRamTrueMixedByteEn#(addrA, dataA, addrB, dataB, dataBBytes))
-    provisos(Bits#(addrA, addrWidthA), Bits#(dataA, dataWidthA),
-             Bits#(addrB, addrWidthB), Bits#(dataB, dataWidthB),
-             Bounded#(addrA), Bounded#(addrB),
-             Add#(addrWidthA, aExtra, addrWidthB),
-             Mul#(TExp#(aExtra), dataWidthB, dataWidthA),
-             Mul#(dataBBytes, 8, dataWidthB),
-             Div#(dataWidthB, dataBBytes, 8),
-             Mul#(dataABytes, 8, dataWidthA),
-             Div#(dataWidthA, dataABytes, 8),
-             Mul#(TExp#(aExtra), dataBBytes, dataABytes),
-
-             // lane enables...
-             Div#(dataWidthB, 8, dataBBytes),
-             Div#(dataWidthA, TDiv#(dataWidthA, 8), 8),
-             Add#(TDiv#(aExtraData, 8), TDiv#(dataWidthB, 8), TDiv#(dataWidthA, 8)), // for extend() in the B addr calc
-             Add#(aExtraData, dataWidthB, dataWidthA) // for extend in the b data calc
-            );
-
-   Integer addrWidthA = valueOf(SizeOf#(addrA));
-   Integer addrWidthB = valueOf(SizeOf#(addrB));
-   Integer dataWidthA = valueOf(SizeOf#(dataA));
-   Integer dataWidthB = valueOf(SizeOf#(dataB));
-   Bit#(addrWidthB) width_ratio = fromInteger(dataWidthA / dataWidthB);
-
-  let bram <- mkBlockRamTrueMixedBEOpts_EQUALONLY(defaultBlockRamOpts);
-  // return ram;
-
-  // A, the wide side, is trivial
-  method Action putA(Bool wr, addrA a, dataA x);
-    bram.putA(wr, a, x);
-  endmethod
-
-  method dataA dataOutA;
-    return bram.dataOutA;
-  endmethod
-
-  method Action putB(Bool wr, addrB addr_into_b, dataB x, Bit#(dataBBytes) be);
-    // // the port is sizeOf(A) wide; we can enable 8 bits at a time by setting b_enables
-    // calculate the effective address;
-    addrA addr_into_a = unpack((pack(addr_into_b) / width_ratio)[addrWidthA-1:0]);
-    // Integer shift = 0;
-    Bit#(TDiv#(dataWidthB, 8)) b_lane_base_mask = be; // the required byte enables
-    Bit#(TDiv#(dataWidthA, 8)) b_enables = extend(b_lane_base_mask) << (pack(addr_into_b)%width_ratio);
-    // Bit#(dataWidthA) x_packed = 0;
-    dataA x_packed = unpack(extend( pack(x) << (pack(addr_into_b)%width_ratio)*8 ));
-    // need to move the B data into the correct portion
-    bram.putB(wr, addr_into_a, x_packed, b_enables);
-  endmethod
-
-  method dataB dataOutB;
-      Bit#(dataWidthA) x_packed = pack(bram.dataOutB);
-      // need to mask out the right section
-      dataB x = unpack(x_packed[dataWidthB-1:0]);
-      return x;
-  endmethod
-
-endmodule
-
 `ifdef SIMULATE
 
 // BSV implementation using BRAMCore
 
-module mkBlockRamTrueMixedBEOpts#(BlockRamOpts opts)
+module mkBlockRamMaybeTrueMixedBEOpts#(BlockRamOpts opts)
          (BlockRamTrueMixedByteEn#(addrA, dataA, addrB, dataB, dataBBytes))
          provisos(Bits#(addrA, addrWidthA), Bits#(dataA, dataWidthA),
                   Bits#(addrB, addrWidthB), Bits#(dataB, dataWidthB),
@@ -693,19 +646,21 @@ module mkBlockRamTrueMixedBEOpts#(BlockRamOpts opts)
 
 endmodule
 
-`else
+`else // not SIMULATE
 
 // Altera implementation
 
 import "BVI" AlteraBlockRamTrueMixedBE =
-  module mkBlockRamTrueMixedBEOpts_EQUALONLY#(BlockRamOpts opts)
+  module mkBlockRamMaybeTrueMixedBEOpts#(BlockRamOpts opts) // mkBlockRamTrueMixedBEOpts_EQUALONLY
          (BlockRamTrueMixedByteEn#(addrA, dataA, addrB, dataB, dataBBytes))
          provisos(Bits#(addrA, addrWidthA), Bits#(dataA, dataWidthA),
                   Bits#(addrB, addrWidthB), Bits#(dataB, dataWidthB),
                   Bounded#(addrA), Bounded#(addrB),
                   Mul#(dataBBytes, 8, dataWidthB),
-                  Div#(dataWidthB, dataBBytes, 8),
-                  Add#(0, dataWidthA, dataWidthB) // s10 requirement; equal sized dual ports!
+                  Div#(dataWidthB, dataBBytes, 8)
+`ifdef Stratix10
+                  , Add#(0, dataWidthA, dataWidthB) // s10 requirement; equal sized dual ports!
+`endif // Stratix10
                  );
 
     parameter ADDR_WIDTH_A = valueOf(addrWidthA);
@@ -746,6 +701,96 @@ import "BVI" AlteraBlockRamTrueMixedBE =
     schedule (putB)               C  (putB);
   endmodule
 
-`endif
+`endif // not SIMULATE
+
+
+`ifdef Stratix10
+
+module mkBlockRamTrueMixedBE
+      (BlockRamTrueMixedByteEn#(addrA, dataA, addrB, dataB, dataBBytes))
+    provisos(Bits#(addrA, addrWidthA), Bits#(dataA, dataWidthA),
+             Bits#(addrB, addrWidthB), Bits#(dataB, dataWidthB),
+             Bounded#(addrA), Bounded#(addrB),
+             Add#(addrWidthA, aExtra, addrWidthB),
+             Mul#(TExp#(aExtra), dataWidthB, dataWidthA),
+             Mul#(dataBBytes, 8, dataWidthB),
+             Div#(dataWidthB, dataBBytes, 8),
+             Mul#(dataABytes, 8, dataWidthA),
+             Div#(dataWidthA, dataABytes, 8),
+             Mul#(TExp#(aExtra), dataBBytes, dataABytes),
+
+             // lane enables...
+             Div#(dataWidthB, 8, dataBBytes),
+             Div#(dataWidthA, TDiv#(dataWidthA, 8), 8),
+             Add#(TDiv#(aExtraData, 8), TDiv#(dataWidthB, 8), TDiv#(dataWidthA, 8)), // for extend() in the B addr calc
+             Add#(aExtraData, dataWidthB, dataWidthA) // for extend in the b data calc
+            );
+
+   Integer addrWidthA = valueOf(SizeOf#(addrA));
+   Integer addrWidthB = valueOf(SizeOf#(addrB));
+   Integer dataWidthA = valueOf(SizeOf#(dataA));
+   Integer dataWidthB = valueOf(SizeOf#(dataB));
+   Bit#(addrWidthB) width_ratio = fromInteger(dataWidthA / dataWidthB);
+
+  let bram <- mkBlockRamMaybeTrueMixedBEOpts(defaultBlockRamOpts);
+  // return ram;
+
+  // A, the wide side, is trivial
+  method Action putA(Bool wr, addrA a, dataA x);
+    bram.putA(wr, a, x);
+  endmethod
+
+  method dataA dataOutA;
+    return bram.dataOutA;
+  endmethod
+
+  method Action putB(Bool wr, addrB addr_into_b, dataB x, Bit#(dataBBytes) be);
+    // // the port is sizeOf(A) wide; we can enable 8 bits at a time by setting b_enables
+    // calculate the effective address;
+    addrA addr_into_a = unpack((pack(addr_into_b) / width_ratio)[addrWidthA-1:0]);
+    // Integer shift = 0;
+    Bit#(TDiv#(dataWidthB, 8)) b_lane_base_mask = be; // the required byte enables
+    Bit#(TDiv#(dataWidthA, 8)) b_enables = extend(b_lane_base_mask) << (pack(addr_into_b)%width_ratio);
+    // Bit#(dataWidthA) x_packed = 0;
+    dataA x_packed = unpack(extend( pack(x) << (pack(addr_into_b)%width_ratio)*8 ));
+    // need to move the B data into the correct portion
+    bram.putB(wr, addr_into_a, x_packed, b_enables);
+  endmethod
+
+  method dataB dataOutB;
+      Bit#(dataWidthA) x_packed = pack(bram.dataOutB);
+      // need to mask out the right section
+      dataB x = unpack(x_packed[dataWidthB-1:0]);
+      return x;
+  endmethod
+
+endmodule
+
+`endif // Stratix10
+
+`ifdef StratixV
+
+module mkBlockRamTrueMixedBE
+      (BlockRamTrueMixedByteEn#(addrA, dataA, addrB, dataB, dataBBytes))
+    provisos(Bits#(addrA, addrWidthA), Bits#(dataA, dataWidthA),
+             Bits#(addrB, addrWidthB), Bits#(dataB, dataWidthB),
+             Bounded#(addrA), Bounded#(addrB),
+             Add#(addrWidthA, aExtra, addrWidthB),
+             Mul#(TExp#(aExtra), dataWidthB, dataWidthA),
+             Mul#(dataBBytes, 8, dataWidthB),
+             Div#(dataWidthB, dataBBytes, 8),
+             Mul#(dataABytes, 8, dataWidthA),
+             Div#(dataWidthA, dataABytes, 8),
+             Mul#(TExp#(aExtra), dataBBytes, dataABytes)
+            );
+
+
+  let bram <- mkBlockRamMaybeTrueMixedBEOpts(defaultBlockRamOpts);
+  return bram;
+
+endmodule
+
+`endif // StratixV
+
 
 endpackage

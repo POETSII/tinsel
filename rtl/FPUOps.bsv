@@ -55,13 +55,21 @@ interface FPUOp;
   method FPUOpOutput out;
 endinterface
 
+`ifdef Stratix10
+(* always_ready, always_enabled *)
+interface AlteraS10FPFuncIfc;
+  method Action put(Bit#(32) a, Bit#(32) b);
+  method Bit#(32) res;
+endinterface
+`endif
+
 // =============================================================================
 // Integer multiplier
 // =============================================================================
 
 // Pipelined 33-bit signed mutlitplier
 // With ability to select upper or lower 32 bits of result
-// Output valid after three cycles 
+// Output valid after three cycles
 module mkIntMult (FPUOp);
   // Combinatorial multiplier
   Mult#(33) mult <- mkSignedMult;
@@ -143,6 +151,8 @@ interface AlteraFPAddSubIfc;
   method Bit#(1) underflow;
 endinterface
 
+`ifdef StratixV
+
 import "BVI" AlteraFPAddSub =
   module mkAlteraFPAddSub (AlteraFPAddSubIfc);
     default_clock clk(clock, (*unused*) clk_gate);
@@ -177,7 +187,50 @@ module mkFPAddSub (FPUOp);
       inexact: 0
     };
 endmodule
-     
+`endif // StratixV
+
+`ifdef Stratix10
+(* always_ready, always_enabled *)
+interface AlteraS10FPAddSubIfc;
+  method Action put(Bit#(1) s, Bit#(32) a, Bit#(32) b);
+  method Bit#(32) res;
+endinterface
+
+
+// de10 version. 14 cycles latency target
+import "BVI" fpS10AddSub =
+  module mkAlteraS10FPAddSub (AlteraS10FPAddSubIfc);
+    default_clock clk(clk, (*unused*) clk_gate);
+    default_reset no_reset;
+
+    method put(opSel, a, b) enable ((*inhigh*) EN) clocked_by(clk);
+    method q res;
+
+    schedule (put) C (put);
+    schedule (put) CF (res);
+    schedule (res) CF
+             (res);
+  endmodule
+
+module mkFPAddSub (FPUOp);
+  AlteraS10FPAddSubIfc op <- mkAlteraS10FPAddSub;
+
+  method Action put(FPUOpInput in);
+    op.put(~in.addOrSub, in.arg1[31:0], in.arg2[31:0]);
+  endmethod
+
+  method FPUOpOutput out =
+    FPUOpOutput {
+      val: op.res,
+      invalid: 0,
+      overflow: 0,
+      underflow: 0,
+      divByZero: 0,
+      inexact: 0
+    };
+endmodule
+`endif // Stratix10
+
 `endif
 
 // =============================================================================
@@ -215,6 +268,8 @@ module mkFPMult (FPUOp);
 endmodule
 
 `else
+
+`ifdef StratixV
 
 (* always_ready, always_enabled *)
 interface AlteraFPMultIfc;
@@ -260,6 +315,48 @@ module mkFPMult (FPUOp);
     };
 endmodule
 
+`endif // StratixV
+
+`ifdef Stratix10
+(* always_ready, always_enabled *)
+interface AlteraS10FPMultIfc;
+  method Action put(Bit#(32) a, Bit#(32) b);
+  method Bit#(32) res;
+endinterface
+
+import "BVI" fpS10Mult =
+  module mkAlteraS10FPMult (AlteraS10FPFuncIfc);
+    default_clock clk(clk, (*unused*) clk_gate);
+    default_reset no_reset;
+
+    method put(a, b) enable ((*inhigh*) EN) clocked_by(clk);
+    method q res;
+
+    schedule (put) C (put);
+    schedule (put) CF (res);
+    schedule (res) CF
+             (res);
+  endmodule
+
+module mkFPMult (FPUOp);
+  AlteraS10FPFuncIfc op <- mkAlteraS10FPMult;
+
+  method Action put(FPUOpInput in);
+    op.put(in.arg1[31:0], in.arg2[31:0]);
+  endmethod
+
+  method FPUOpOutput out =
+    FPUOpOutput {
+      val: op.res,
+      invalid: 0,
+      overflow: 0,
+      underflow: 0,
+      divByZero: 0,
+      inexact: 0
+    };
+endmodule
+`endif // Stratix10
+
 `endif
 
 // =============================================================================
@@ -299,8 +396,9 @@ module mkFPDiv (FPUOp);
   method FPUOpOutput out = pipeline[0];
 endmodule
 
-`else
+`else // not SIMULATE
 
+`ifdef StratixV
 (* always_ready, always_enabled *)
 interface AlteraFPDivIfc;
   method Action put(Bit#(32) x, Bit#(32) y);
@@ -342,12 +440,55 @@ module mkFPDiv (FPUOp);
       invalid: 0,
       overflow: op.overflow,
       underflow: op.underflow,
-      divByZero: op.divByZero,
+      divByZero: 0,
       inexact: 0
     };
 endmodule
 
-`endif
+`endif // StratixV
+
+`ifdef Stratix10
+(* always_ready, always_enabled *)
+interface AlteraS10FPDivIfc;
+  method Action put(Bit#(32) a, Bit#(32) b);
+  method Bit#(32) res;
+endinterface
+
+import "BVI" fpS10Div =
+  module mkAlteraS10FPDiv (AlteraS10FPFuncIfc);
+    default_clock clk(clk, (*unused*) clk_gate);
+    default_reset no_reset;
+
+    method put(a, b) enable ((*inhigh*) EN) clocked_by(clk);
+    method q res;
+
+    schedule (put) C (put);
+    schedule (put) CF (res);
+    schedule (res) CF
+             (res);
+  endmodule
+
+
+module mkFPDiv (FPUOp);
+  AlteraS10FPFuncIfc op <- mkAlteraS10FPDiv;
+
+  method Action put(FPUOpInput in);
+    op.put(in.arg1[31:0], in.arg2[31:0]);
+  endmethod
+
+  method FPUOpOutput out =
+    FPUOpOutput {
+      val: op.res,
+      invalid: 0,
+      overflow: 0,
+      underflow: 0,
+      divByZero: 0,
+      inexact: 0
+    };
+endmodule
+`endif // Stratix10
+
+`endif // not SIMULATE
 
 // =============================================================================
 // Floating point comparison
@@ -388,6 +529,7 @@ endmodule
 
 `else
 
+`ifdef StratixV
 (* always_ready, always_enabled *)
 interface AlteraFPCompareIfc;
   method Action put(Bit#(32) x, Bit#(32) y);
@@ -410,6 +552,7 @@ import "BVI" AlteraFPCompare =
     schedule (put) CF (eq, lt, lte);
     schedule (eq, lt, lte) CF (eq, lt, lte);
   endmodule
+
 
 module mkFPCompare (FPUOp);
   AlteraFPCompareIfc op <- mkAlteraFPCompare;
@@ -442,6 +585,87 @@ module mkFPCompare (FPUOp);
       inexact: 0
     };
 endmodule
+`endif // StratixV
+
+`ifdef Stratix10
+import "BVI" fpS10LT =
+  module mkAlteraS10FPLT (AlteraS10FPFuncIfc);
+    default_clock clk(clk, (*unused*) clk_gate);
+    default_reset no_reset;
+
+    method put(a, b) enable ((*inhigh*) EN) clocked_by(clk);
+    method q res;
+
+    schedule (put) C (put);
+    schedule (put) CF (res);
+    schedule (res) CF
+             (res);
+  endmodule
+
+import "BVI" fpS10EQ =
+  module mkAlteraS10FPEQ (AlteraS10FPFuncIfc);
+    default_clock clk(clk, (*unused*) clk_gate);
+    default_reset no_reset;
+
+    method put(a, b) enable ((*inhigh*) EN) clocked_by(clk);
+    method q res;
+
+    schedule (put) C (put);
+    schedule (put) CF (res);
+    schedule (res) CF
+             (res);
+  endmodule
+
+import "BVI" fpS10LTE =
+  module mkAlteraS10FPLTE (AlteraS10FPFuncIfc);
+    default_clock clk(clk, (*unused*) clk_gate);
+    default_reset no_reset;
+
+    method put(a, b) enable ((*inhigh*) EN) clocked_by(clk);
+    method q res;
+
+    schedule (put) C (put);
+    schedule (put) CF (res);
+    schedule (res) CF
+             (res);
+  endmodule
+
+module mkFPCompare (FPUOp);
+  AlteraS10FPFuncIfc op_lt <- mkAlteraS10FPLT;
+  AlteraS10FPFuncIfc op_eq <- mkAlteraS10FPEQ;
+  AlteraS10FPFuncIfc op_lte <- mkAlteraS10FPLTE;
+
+  Vector#(`FPCompareLatency, Reg#(Bit#(1))) cmpEQ <- replicateM(mkConfigRegU);
+  Vector#(`FPCompareLatency, Reg#(Bit#(1))) cmpLT <- replicateM(mkConfigRegU);
+
+  rule shift;
+    for (Integer i = 0; i < `FPCompareLatency-1; i=i+1) begin
+      cmpEQ[i] <= cmpEQ[i+1];
+      cmpLT[i] <= cmpLT[i+1];
+    end
+  endrule
+
+
+  method Action put(FPUOpInput in);
+    op_lt.put(in.arg1[31:0], in.arg2[31:0]);
+    op_eq.put(in.arg1[31:0], in.arg2[31:0]);
+    op_lte.put(in.arg1[31:0], in.arg2[31:0]);
+    cmpEQ[`FPCompareLatency-1] <= in.cmpEQ;
+    cmpLT[`FPCompareLatency-1] <= in.cmpLT;
+  endmethod
+
+  method FPUOpOutput out =
+    FPUOpOutput {
+      val: zeroExtend(cmpEQ[0] == 1 ? op_eq.res :
+             (cmpLT[0] == 1 ? op_lt.res : op_lte.res)),
+      invalid: 0,
+      overflow: 0,
+      underflow: 0,
+      divByZero: 0,
+      inexact: 0
+    };
+endmodule
+`endif // Stratix10
 
 `endif
 
@@ -483,6 +707,7 @@ endmodule
 
 `else
 
+`ifdef StratixV
 (* always_ready, always_enabled *)
 interface AlteraFPFromIntIfc;
   method Action put(Bit#(32) x);
@@ -519,6 +744,46 @@ module mkFPFromInt (FPUOp);
       inexact: 0
     };
 endmodule
+`endif //  StratixV
+
+`ifdef Stratix10
+(* always_ready, always_enabled *)
+interface AlteraS10FPIntConvertIfc;
+  method Action put(Bit#(32) x);
+  method Bit#(32) res;
+endinterface
+
+import "BVI" fpS10FromInt =
+  module mkAlteraS10FPFromInt (AlteraS10FPIntConvertIfc);
+    default_clock clk(clk, (*unused*) clk_gate);
+    default_reset no_reset;
+
+    method put(a) enable ((*inhigh*) EN) clocked_by(clk);
+    method q res;
+
+    schedule (put) C (put);
+    schedule (put) CF (res);
+    schedule (res) CF (res);
+  endmodule
+
+module mkFPFromInt (FPUOp);
+  AlteraS10FPIntConvertIfc op <- mkAlteraS10FPFromInt;
+
+  method Action put(FPUOpInput in);
+    op.put(in.arg1[31:0]);
+  endmethod
+
+  method FPUOpOutput out =
+    FPUOpOutput {
+      val: op.res,
+      invalid: 0,
+      overflow: 0,
+      underflow: 0,
+      divByZero: 0,
+      inexact: 0
+    };
+endmodule
+`endif // Stratix10
 
 `endif
 
@@ -547,7 +812,7 @@ module mkFPToInt (FPUOp);
     Bit#(32) out = pack(outUInt);
     pipeline[`FPConvertLatency-1] <=
       FPUOpOutput {
-        val: out >= 32'h80000000 || isNaN(f) || isInfinity(f) ? 
+        val: out >= 32'h80000000 || isNaN(f) || isInfinity(f) ?
           (in.arg1[31] == 0 || isNaN(f) ? 32'h7fffffff : 32'h80000000) :
           (in.arg1[31] == 0 ? out : -out),
         invalid: 0, // pack(exc.invalid_op),
@@ -563,6 +828,7 @@ endmodule
 
 `else
 
+`ifdef StratixV
 (* always_ready, always_enabled *)
 interface AlteraFPToIntIfc;
   method Action put(Bit#(32) x);
@@ -606,6 +872,40 @@ module mkFPToInt (FPUOp);
       inexact: 0
     };
 endmodule
+`endif // StratixV
+
+`ifdef Stratix10
+import "BVI" fpS10ToInt =
+  module mkAlteraS10FPToInt (AlteraS10FPIntConvertIfc);
+    default_clock clk(clk, (*unused*) clk_gate);
+    default_reset no_reset;
+
+    method put(a) enable ((*inhigh*) EN) clocked_by(clk);
+    method q res;
+
+    schedule (put) C (put);
+    schedule (put) CF (res);
+    schedule (res) CF (res);
+  endmodule
+
+module mkFPToInt (FPUOp);
+  AlteraS10FPIntConvertIfc op <- mkAlteraS10FPToInt;
+
+  method Action put(FPUOpInput in);
+    op.put(in.arg1[31:0]);
+  endmethod
+
+  method FPUOpOutput out =
+    FPUOpOutput {
+      val: op.res,
+      invalid: 0,
+      overflow: 0, //op.overflow,
+      underflow: 0, //op.underflow,
+      divByZero: 0,
+      inexact: 0
+    };
+endmodule
+`endif // Stratix10
 
 `endif
 

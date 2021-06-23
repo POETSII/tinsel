@@ -36,7 +36,7 @@ BSCFLAGS = -suppress-warnings S0015 \
 
 
 # Top level module
-ifdef STRATIX10
+ifeq ($(STRATIX10),True)
 TOPFILE = DE10Top.bsv
 TOPMOD = mkDE10Top
 
@@ -45,7 +45,7 @@ HOSTTOPFILE = DE5BridgeTop.bsv
 HOSTTOPMOD = de5BridgeTop
 endif
 
-ifdef STRATIXV
+ifeq ($(STRATIXV),True)
 TOPFILE = DE5Top.bsv
 TOPMOD = de5Top
 
