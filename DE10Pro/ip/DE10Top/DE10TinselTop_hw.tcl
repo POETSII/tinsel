@@ -84,6 +84,28 @@ set_interface_property reset_tx_B synchronousEdges DEASSERT
 set_interface_property reset_tx_B ENABLED true
 add_interface_port reset_tx_B RST_N_tx_rst_B reset_n Input 1
 
+# avalon interface number 0 - JTAG debug
+add_interface jtag_uart avalon start
+set_interface_property jtag_uart addressGroup 0
+set_interface_property jtag_uart addressUnits WORDS
+set_interface_property jtag_uart associatedClock clk
+set_interface_property jtag_uart associatedReset rst
+set_interface_property jtag_uart bitsPerSymbol 8
+set_interface_property jtag_uart ENABLED true
+set_interface_property jtag_uart EXPORT_OF ""
+set_interface_property jtag_uart PORT_NAME_MAP ""
+set_interface_property jtag_uart CMSIS_SVD_VARIABLES ""
+set_interface_property jtag_uart SVD_ADDRESS_GROUP ""
+set_interface_property jtag_uart IPXACT_REGISTER_MAP_VARIABLES ""
+
+add_interface_port jtag_uart jtagIfc_uart_address address Output 3
+add_interface_port jtag_uart jtagIfc_uart_writedata writedata Output 32
+add_interface_port jtag_uart jtagIfc_uart_write write Output 1
+add_interface_port jtag_uart jtagIfc_uart_read read Output 1
+add_interface_port jtag_uart jtagIfc_uart_uart_readdata readdata Input 32
+add_interface_port jtag_uart jtagIfc_uart_uart_waitrequest waitrequest Input 1
+
+
 # avalon interface number 1
 #
 # connection point av_peripheral_s0
