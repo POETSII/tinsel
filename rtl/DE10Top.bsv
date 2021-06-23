@@ -34,6 +34,10 @@ import Connections  :: *;
 
 interface DE10Ifc;
   interface AvalonSlaveSingleMasterIfc#(4) tester; // AvalonSlave physical interface
+  interface JtagUartAvalon jtagIfc;
+
+  (* always_ready, always_enabled *)
+  method Action setBoardId(Bit#(4) id);
 
   interface MacDataIfc macA;
   interface MacDataIfc macB;
