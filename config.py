@@ -19,6 +19,7 @@ p = {}
 #==============================================================================
 
 # The Altera device family being targetted
+# Stratix 10 or Stratix V.
 p["DeviceFamily"] = quoted("Stratix V")
 
 # The number of hardware threads per core
@@ -195,6 +196,14 @@ if True: # simulate
 #==============================================================================
 
 # (These should not be modified.)
+
+# add target-specific defines for `ifdef
+if p["DeviceFamily"] == quoted("Stratix V"):
+    p["StratixV"] = True
+elif  p["DeviceFamily"] == quoted("Stratix 10"):
+    p["Stratix10"] = True
+else:
+    raise RuntimeError("Unsupported device type " + str(p['DeviceFamily']) + ", Stratix V and Stratix 10 currently supported.")
 
 # Number of mailboxes per board
 p["LogMailboxesPerBoard"] = p["MailboxMeshXBits"] + p["MailboxMeshYBits"]
@@ -409,7 +418,7 @@ def to_cpp_string(convertee):
 if len(sys.argv) > 1:
   mode = sys.argv[1]
 else:
-  print "Usage: config.py <defs|envs|cpp|vpp>"
+  print "Usage: config.py <defs|envs|cpp|vpp|print [KEY]>"
   sys.exit(-1)
 
 # The BoxMesh parameter is only meant for cpp mode
@@ -430,3 +439,9 @@ elif mode == "cpp":
 elif mode == "vpp":
   for var in p:
     print("`define Tinsel" + var + " " + str(p[var]))
+elif mode == "print":
+    if len(sys.argv) < 3:
+        print "Usage: config.py <defs|envs|cpp|vpp|print [KEY]>"
+        sys.exit(-1)
+
+    print(p.get(sys.argv[2], ""))
