@@ -229,9 +229,10 @@ module mkFPAddSub (FPUOp);
       inexact: 0
     };
 endmodule
+
 `endif // Stratix10
 
-`endif
+`endif // SIMULATE
 
 // =============================================================================
 // Floating point multiply
@@ -357,7 +358,7 @@ module mkFPMult (FPUOp);
 endmodule
 `endif // Stratix10
 
-`endif
+`endif // SIMULATE
 
 // =============================================================================
 // Floating point divide
@@ -785,7 +786,7 @@ module mkFPFromInt (FPUOp);
 endmodule
 `endif // Stratix10
 
-`endif
+`endif // SIMULATE
 
 // =============================================================================
 // Floating point to integer conversion

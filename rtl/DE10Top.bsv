@@ -33,6 +33,7 @@ import Connections  :: *;
 
 
 interface DE10Ifc;
+  interface Vector#(`DRAMsPerBoard, DRAMExtIfc) dramIfcs;
   interface AvalonSlaveSingleMasterIfc#(4) tester; // AvalonSlave physical interface
   interface JtagUartAvalon jtagIfc;
 
@@ -108,9 +109,11 @@ module mkDE10Top(Clock rx_390_A, Clock tx_390_A,
     idmod.toMac.recv(flit);
   endrule
 
-  // PORT FROM DE5
-  // Board Id
-  Bit#(4) localBoardId = 1;
+  `ifdef SIMULATE
+  Bit#(4) localBoardId = truncate(getBoardId());
+  `else
+  Wire#(Bit#(4)) localBoardId <- mkDWire(?);
+  `endif
 
   // Temperature register
   Reg#(Bit#(8)) temperature <- mkReg(128);
@@ -257,22 +260,22 @@ module mkDE10Top(Clock rx_390_A, Clock tx_390_A,
   `endif
 
   `ifndef SIMULATE
-  // function DRAMExtIfc getDRAMExtIfc(OffChipRAM ram) = ram.extDRAM;
+  function DRAMExtIfc getDRAMExtIfc(OffChipRAM ram) = ram.extDRAM;
   // function Vector#(2, SRAMExtIfc) getSRAMExtIfcs(OffChipRAM ram) = ram.extSRAM;
-  // interface dramIfcs = map(getDRAMExtIfc, rams);
+  interface dramIfcs = map(getDRAMExtIfc, rams);
   // interface sramIfcs = concat(map(getSRAMExtIfcs, rams));
-  // interface jtagIfc  = debugLink.jtagAvalon;
+  interface jtagIfc  = debugLink.jtagAvalon;
   // interface northMac = noc.north;
   // interface southMac = noc.south;
   // interface eastMac  = noc.east;
   // interface westMac  = noc.west;
-  // method Action setBoardId(Bit#(4) id);
-  //   localBoardId <= id;
-  // endmethod
+  method Action setBoardId(Bit#(4) id);
+    localBoardId <= id;
+  endmethod
   // method Action setTemperature(Bit#(8) temp);
   //   temperature <= temp;
   // endmethod
-  // `endif
+  `endif
 
 
   interface tester = idmod.av_peripheral;
