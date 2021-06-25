@@ -12,6 +12,7 @@ import BlockRam  :: *;
 import Assert    :: *;
 import Util      :: *;
 import DReg      :: *;
+import Reserved :: * ;
 
 // =============================================================================
 // Routing keys and beats
@@ -73,11 +74,11 @@ typedef struct {
   // Record type
   RoutingRecordTag tag;
   // Mailbox destination
-  Bit#(4) mbox;
+  Bit#(`LogMailboxesPerBoard) mbox;
   // Mailbox-local thread identifier
-  Bit#(6) thread;
+  Bit#(`LogThreadsPerMailbox) thread;
   // Unused
-  Bit#(3) unused;
+  Reserved#(TSub#(48, TAdd#(TAdd#(TAdd#(SizeOf#(RoutingRecordTag), `LogMailboxesPerBoard), `LogThreadsPerMailbox), 32))) unused;
   // Local key. The first word of the message
   // payload is overwritten with this.
   Bit#(32) localKey;
@@ -88,11 +89,11 @@ typedef struct {
   // Record type
   RoutingRecordTag tag;
   // Mailbox destination
-  Bit#(4) mbox;
+  Bit#(`LogMailboxesPerBoard) mbox;
   // Mailbox-local thread identifier
-  Bit#(6) thread;
+  Bit#(`LogThreadsPerMailbox) thread;
   // Currently unused
-  Bit#(19) unused;
+  Reserved#(TSub#(96, TAdd#(TAdd#(TAdd#(SizeOf#(RoutingRecordTag), `LogMailboxesPerBoard), `LogThreadsPerMailbox), 64))) unused;
   // Local key. The first two words of the message
   // payload is overwritten with this.
   Bit#(64) localKey;
@@ -105,7 +106,7 @@ typedef struct {
   // Direction (N, S, E, or W)
   RoutingDir dir;
   // Currently unused
-  Bit#(11) unused;
+  Reserved#(TSub#(48, TAdd#(TAdd#(SizeOf#(RoutingRecordTag), SizeOf#(RoutingDir)), 32))) unused;
   // New 32-bit routing key that will replace the one in the
   // current message for the next hop of the message's journey
   Bit#(32) newKey;
@@ -116,14 +117,14 @@ typedef struct {
   // Record type
   RoutingRecordTag tag;
   // Mailbox destination
-  Bit#(4) mbox;
+  Bit#(`LogMailboxesPerBoard) mbox;
   // Currently unused
-  Bit#(9) unused;
+  Reserved#(TSub#(96, TAdd#(TAdd#(TAdd#(SizeOf#(RoutingRecordTag), `LogMailboxesPerBoard), `ThreadsPerMailbox), 16))) unused;
   // Local key. The least-significant half-word
   // of the message is replaced with this
   Bit#(16) localKey;
   // Mailbox-local destination mask
-  Bit#(64) destMask;
+  Bit#(`ThreadsPerMailbox) destMask;
 } MRMRecord deriving (Bits);
 
 // 48-bit Indirection (IND) record
@@ -134,7 +135,7 @@ typedef struct {
   // Record type
   RoutingRecordTag tag;
   // Currently unused
-  Bit#(13) unused;
+  Reserved#(13) unused;
   // New 32-bit routing key for new set of records on current router
   Bit#(32) newKey;
 } INDRecord deriving (Bits);
@@ -185,10 +186,10 @@ typedef struct {
 // | F | | F | | F | | F | | F | | F | | F | | F |    Fetchers
 // +---+ +---+ +---+ +---+ +---+ +---+ +---+ +---+
 //   |     |     |     |     |     |     |     |
-// +-------------------------------------------+      
+// +-------------------------------------------+
 // |                 Crossbar                  |      Routing
-// +-------------------------------------------+      
-//   |     |     |     |     |     |     |     |  
+// +-------------------------------------------+
+//   |     |     |     |     |     |     |     |
 //   N     S     E     W     L0    L1    L2    L3     Output queues
 
 // The core functionality is implemented in the fetchers, which:
@@ -360,7 +361,7 @@ module mkFetcher#(BoardId boardId, Integer fetcherId) (Fetcher);
     // Find unused message slot
     Bool found = False;
     FetcherFlitBufferMsgAddr chosen = ?;
-    for (Integer i = 0; i < `FetcherMsgsPerFlitBuffer; i=i+1) 
+    for (Integer i = 0; i < `FetcherMsgsPerFlitBuffer; i=i+1)
       if (! flitBufferUsedSlots[i].value) begin
         found = True;
         chosen = fromInteger(i);
@@ -550,8 +551,9 @@ module mkFetcher#(BoardId boardId, Integer fetcherId) (Fetcher);
       URM1: begin
         URM1Record rec = unpack(beat.chunks[4]);
         flit.dest.addr.isKey = False;
-        flit.dest.addr.mbox.x = unpack(truncate(rec.mbox[1:0]));
-        flit.dest.addr.mbox.y = unpack(truncate(rec.mbox[3:2]));
+        MailboxId mbox_id = unpack(rec.mbox);
+        flit.dest.addr.mbox.x = mbox_id.x;// unpack(truncate(rec.mbox[`MailboxMeshXBits-1:0]));
+        flit.dest.addr.mbox.y = mbox_id.y;// unpack(truncate(rec.mbox[`MailboxMeshYBits:`MailboxMeshXBits]));
         Vector#(`ThreadsPerMailbox, Bool) threadMask = newVector;
         for (Integer j = 0; j < `ThreadsPerMailbox; j=j+1)
           threadMask[j] = rec.thread == fromInteger(j);
@@ -565,8 +567,9 @@ module mkFetcher#(BoardId boardId, Integer fetcherId) (Fetcher);
       URM2: begin
         URM2Record rec = unpack({beat.chunks[4], beat.chunks[3]});
         flit.dest.addr.isKey = False;
-        flit.dest.addr.mbox.x = unpack(truncate(rec.mbox[1:0]));
-        flit.dest.addr.mbox.y = unpack(truncate(rec.mbox[3:2]));
+        MailboxId mbox_id = unpack(rec.mbox);
+        flit.dest.addr.mbox.x = mbox_id.x;// unpack(truncate(rec.mbox[`MailboxMeshXBits-1:0]));
+        flit.dest.addr.mbox.y = mbox_id.y;// unpack(truncate(rec.mbox[`MailboxMeshYBits:`MailboxMeshXBits]));
         Vector#(`ThreadsPerMailbox, Bool) threadMask = newVector;
         for (Integer j = 0; j < `ThreadsPerMailbox; j=j+1)
           threadMask[j] = rec.thread == fromInteger(j);
@@ -603,8 +606,9 @@ module mkFetcher#(BoardId boardId, Integer fetcherId) (Fetcher);
       MRM: begin
         MRMRecord rec = unpack({beat.chunks[4], beat.chunks[3]});
         flit.dest.addr.isKey = False;
-        flit.dest.addr.mbox.x = unpack(truncate(rec.mbox[1:0]));
-        flit.dest.addr.mbox.y = unpack(truncate(rec.mbox[3:2]));
+        MailboxId mbox_id = unpack(rec.mbox);
+        flit.dest.addr.mbox.x = mbox_id.x;// unpack(truncate(rec.mbox[`MailboxMeshXBits-1:0]));
+        flit.dest.addr.mbox.y = mbox_id.y;// unpack(truncate(rec.mbox[`MailboxMeshYBits:`MailboxMeshXBits]));
         flit.dest.threads = rec.destMask;
         // Replace first half-word of message with local key
         if (firstFlit)

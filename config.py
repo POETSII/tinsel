@@ -20,7 +20,7 @@ p = {}
 
 # The Altera device family being targetted
 # Stratix 10 or Stratix V.
-p["DeviceFamily"] = quoted("Stratix V")
+p["DeviceFamily"] = quoted("Stratix 10")
 
 # The number of hardware threads per core
 p["LogThreadsPerCore"] = 4
@@ -32,10 +32,10 @@ p["LogInstrsPerCore"] = 11
 p["SharedInstrMem"] = True
 
 # Log of number of multi-threaded cores sharing a DCache
-p["LogCoresPerDCache"] = 2
+p["LogCoresPerDCache"] = 2 # the mailbox calc defines no of cores, but this defines hookup; need to match
 
 # Log of number of caches per DRAM port
-p["LogDCachesPerDRAM"] = 3
+p["LogDCachesPerDRAM"] = 5
 
 # Log of number of 32-bit words in a single memory transfer
 p["LogWordsPerBeat"] = 3
@@ -68,16 +68,16 @@ p["LogWordsPerFlit"] = 2
 p["LogMaxFlitsPerMsg"] = 2
 
 # Space available in mailbox scratchpad
-p["LogMsgsPerMailbox"] = 9
+p["LogMsgsPerMailbox"] = 9 # must be at least enough to store one message per thread
 
 # Number of cores sharing a mailbox
 p["LogCoresPerMailbox"] = 2
 
 # Number of bits in mailbox mesh X coord
-p["MailboxMeshXBits"] = 2
+p["MailboxMeshXBits"] = 3
 
 # Number of bits in mailbox mesh Y coord
-p["MailboxMeshYBits"] = 2
+p["MailboxMeshYBits"] = 3
 
 # Size of multicast queues in mailbox
 p["LogMsgPtrQueueSize"] = 6
@@ -107,24 +107,24 @@ p["LinkTimeout"] = 1024
 p["MacLatency"] = 100
 
 # Number of bits in mesh X coord (board id)
-p["MeshXBits"] = 3
+p["MeshXBits"] = 1
 p["MeshXBits1"] = p["MeshXBits"] + 1
 
 # Number of bits in mesh Y coord (board id)
-p["MeshYBits"] = 3
+p["MeshYBits"] = 1
 p["MeshYBits1"] = p["MeshYBits"] + 1
 
 # Number of bits in mesh X coord within a box (DIP switches)
-p["MeshXBitsWithinBox"] = 2
+p["MeshXBitsWithinBox"] = 1
 
 # Number of bits in mesh Y coord within a box (DIP switches)
-p["MeshYBitsWithinBox"] = 2
+p["MeshYBitsWithinBox"] = 1
 
 # Mesh X length within a box
-p["MeshXLenWithinBox"] = 3
+p["MeshXLenWithinBox"] = 4
 
 # Mesh Y length within a box
-p["MeshYLenWithinBox"] = 2
+p["MeshYLenWithinBox"] = 4
 
 # Number of cores per FPU
 p["LogCoresPerFPU"] = 2
@@ -141,7 +141,7 @@ p["LogEastWestLinks"] = 0
 p["IntMultLatency"] = 3
 p["FPMultLatency"] = 11
 p["FPAddSubLatency"] = 14
-p["FPDivLatency"] = 14
+p["FPDivLatency"] = 24
 p["FPConvertLatency"] = 6
 p["FPCompareLatency"] = 3
 
@@ -177,19 +177,26 @@ p["BoxMesh"] = ('{'
 p["UseCustomAccelerator"] = False
 
 # Clock frequency (in MHz)
-p["ClockFreq"] = 210
+p["ClockFreq"] = 200
 
-if True: # simulate
-    p["MailboxMeshXBits"] = 1
-    p["MailboxMeshYBits"] = 1
-    p["LogDCachesPerDRAM"] = 1
-    p["MeshXLenWithinBox"] = 1
-    p["MeshYLenWithinBox"] = 1
-    p["BoxMeshXLen"] = 1
-    p["BoxMeshYLen"] = 1
-    p["BoxMesh"] = ('{'
-        '{"tparks-optiplex-390",},'
-      '}')
+# if True: # simulate
+#     p["MailboxMeshXBits"] = 1
+#     p["MailboxMeshYBits"] = 1
+#     p["LogDCachesPerDRAM"] = 1
+#     p["MeshXLenWithinBox"] = 1
+#     p["MeshYLenWithinBox"] = 1
+#     p["BoxMeshXLen"] = 1
+#     p["BoxMeshYLen"] = 1
+#     p["BoxMesh"] = ('{'
+#         '{"tparks-optiplex-390",},'
+#       '}')
+
+if False: # make mailbox type more compatible with the dual port memory
+    p["LogMsgsPerMailbox"] = 8
+    p["LogCoresPerMailbox"] = 4
+    p["MeshXBits"] = 1
+    p["MeshXBits"] = 1
+
 
 #==============================================================================
 # Derived Parameters

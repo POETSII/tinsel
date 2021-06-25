@@ -607,7 +607,12 @@ module mkBlockRamTrueMixedOptsMult8_S10#(BlockRamOpts opts)
     Bit#(TDiv#(dataWidthB, 8)) b_lane_base_mask = fromInteger(2**(dataWidthB/8)-1); // all ones vector the width of dataB in bytes
     Bit#(TDiv#(dataWidthA, 8)) b_enables = extend(b_lane_base_mask) << (pack(addr_into_b)%width_ratio);
     // Bit#(dataWidthA) x_packed = 0;
-    dataA x_packed = unpack(extend( pack(x) << (pack(addr_into_b)%width_ratio)*8 ));
+
+    dataA x_packed = unpack(0);
+    if (valueOf(SizeOf#(dataA)) > 8)
+      x_packed = unpack(extend( pack(x) << (pack(addr_into_b)%width_ratio) ));
+    else
+      x_packed = unpack(extend(pack(x)));
     // need to move the B data into the correct portion
     bram.putB(wr, addr_into_a, x_packed, b_enables);
   endmethod
