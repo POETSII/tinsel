@@ -865,6 +865,7 @@ interface ProgRouter;
   interface ProgRouterPerfCounters perfCounters;
 endinterface
 
+(* synthesize *)
 module mkProgRouter#(BoardId boardId) (ProgRouter);
 
   // Fetchers
