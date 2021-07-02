@@ -47,24 +47,14 @@ endinterface
 module mkQueueArray (QueueArray#(logNumQueues, logQueueSize, elemType))
   provisos (Bits#(elemType, elemTypeSize),
 
-  Div#(TMul#(TDiv#(elemTypeSize, 8), 8), TDiv#(TMul#(TDiv#(elemTypeSize, 8),
-    8), 8), 8),
+  Div#(TMul#(TDiv#(elemTypeSize, 8), 8), TDiv#(TMul#(TDiv#(elemTypeSize, 8), 8), 8), 8),
   Div#(TMul#(TDiv#(elemTypeSize, 8), 8), 8, TDiv#(elemTypeSize, 8)),
-  Mul#(TDiv#(TAdd#(TMul#(TDiv#(elemTypeSize, 8), 8), 8), 8), 8,
-    TAdd#(TMul#(TDiv#(elemTypeSize, 8), 8), 8)),
-  Div#(TAdd#(TMul#(TDiv#(elemTypeSize, 8), 8), 8),
-    TDiv#(TAdd#(TMul#(TDiv#(elemTypeSize, 8), 8), 8), 8), 8),
-  Add#(a__, elemTypeSize, TAdd#(TMul#(TDiv#(elemTypeSize, 8), 8), 8)),
-  Add#(b__, logQueueSize, TAdd#(TMul#(TDiv#(logQueueSize, 8), 8), 8)),
-  Mul#(TDiv#(TAdd#(TMul#(TDiv#(logQueueSize, 8), 8), 8), 8), 8,
-    TAdd#(TMul#(TDiv#(logQueueSize, 8), 8), 8)),
-  Mul#(TDiv#(TAdd#(TMul#(TDiv#(logQueueSize, 8), 8), 8), 8), 8,
-    TAdd#(TMul#(TDiv#(logQueueSize, 8), 8), 8)),
-  Div#(TMul#(TDiv#(logQueueSize, 8), 8), TDiv#(TMul#(TDiv#(logQueueSize, 8),
-    8), 8), 8),
-  Div#(TMul#(TDiv#(logQueueSize, 8), 8), 8, TDiv#(logQueueSize, 8)),
-  Div#(TAdd#(TMul#(TDiv#(logQueueSize, 8), 8), 8),
-    TDiv#(TAdd#(TMul#(TDiv#(logQueueSize, 8), 8), 8), 8), 8)
+  Div#(TMul#(TDiv#(elemTypeSize, 8), 8), TMul#(TDiv#(elemTypeSize, 8), 8), 1),
+  Add#(a__, elemTypeSize, TMul#(TDiv#(elemTypeSize, 8), 8)),
+  Add#(b__, logQueueSize, TMul#(TDiv#(logQueueSize, 8), 8)),
+  Div#(TMul#(TDiv#(logQueueSize, 8), 8), TMul#(TDiv#(logQueueSize, 8), 8), 1),
+  Div#(TMul#(TDiv#(logQueueSize, 8), 8), TDiv#(TMul#(TDiv#(logQueueSize, 8), 8), 8), 8),
+  Div#(TMul#(TDiv#(logQueueSize, 8), 8), 8, TDiv#(logQueueSize, 8))
   );
 
   // Block RAM storing front pointers
