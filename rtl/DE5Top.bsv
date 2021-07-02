@@ -68,9 +68,9 @@ module de5Top (DE5Top);
   Reg#(Bit#(8)) temperature <- mkReg(128);
 
   // Create off-chip RAMs
-  Vector#(`DRAMsPerBoard, OffChipRAM) rams;
+  Vector#(`DRAMsPerBoard, OffChipRAMStratixV) rams;
   for (Integer i = 0; i < `DRAMsPerBoard; i=i+1)
-    rams[i] <- mkOffChipRAM(fromInteger(i*3));
+    rams[i] <- mkOffChipRAMStratixV(fromInteger(i*3));
 
   // Create data caches
   Vector#(`DRAMsPerBoard,

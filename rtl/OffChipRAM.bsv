@@ -17,14 +17,21 @@ import Queue      :: *;
 import Util       :: *;
 import Vector     :: *;
 
-interface OffChipRAM;
+interface OffChipRAMStratixV;
   interface In#(DRAMReq) reqIn;
   interface BOut#(DRAMResp) respOut;
   interface DRAMExtIfc extDRAM;
   interface Vector#(2, SRAMExtIfc) extSRAM;
 endinterface
 
-module mkOffChipRAM#(RAMId base) (OffChipRAM);
+interface OffChipRAMStratix10;
+  interface In#(DRAMReq) reqIn;
+  interface BOut#(DRAMResp) respOut;
+  interface DRAMExtIfc extDRAM;
+endinterface
+
+
+module mkOffChipRAMStratixV#(RAMId base) (OffChipRAMStratixV);
 
   // Create DRAM instance
   DRAM dram <- mkDRAM(base);
@@ -115,7 +122,61 @@ module mkOffChipRAM#(RAMId base) (OffChipRAM);
 
   // External interfaces
   interface extDRAM = dram.external;
-  interface extSRAM = 
+  interface extSRAM =
     vector(sramA.external, sramB.external);
+
+endmodule
+
+module mkOffChipRAMStratix10#(RAMId base) (OffChipRAMStratix10);
+
+  // Create DRAM instance
+  DRAM dram <- mkDRAM(base);
+
+  // Incoming request port
+  InPort#(DRAMReq) reqInPort <- mkInPort;
+
+  // Outgoing response queue
+  Queue#(DRAMResp) respQueue <- mkUGQueue;
+
+  OutPort#(DRAMReq) toDRAM  <- mkOutPort;
+  connectUsing(mkUGQueue, toDRAM.out, dram.reqIn);
+
+  InPort#(DRAMResp) fromDRAM  <- mkInPort;
+  connectDirect(dram.respOut, fromDRAM.in);
+
+  // Forward requests
+  rule forwardRequests (reqInPort.canGet);
+    DRAMReq reqIn = reqInPort.value;
+    if (toDRAM.canPut) begin
+      toDRAM.put(reqInPort.value);
+      reqInPort.get;
+    end
+  endrule
+
+  // Only DRAM supports burst access at this point
+  // Use a lock to prevent interleaving of unrelated beats
+  Reg#(Bool) dramLock <- mkReg(False);
+
+  // Forward responses
+  rule forwardResps (respQueue.notFull);
+    if (fromDRAM.canGet) begin
+      dramLock <= !fromDRAM.value.finalBeat;
+      respQueue.enq(fromDRAM.value);
+      fromDRAM.get;
+    end
+  endrule
+
+  // Request interface
+  interface reqIn = reqInPort.in;
+
+  // Response interface
+  interface BOut respOut;
+    method Action get = respQueue.deq;
+    method Bool valid = respQueue.canDeq;
+    method DRAMResp value = respQueue.dataOut;
+  endinterface
+
+  // External interfaces
+  interface extDRAM = dram.external;
 
 endmodule

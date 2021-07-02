@@ -166,7 +166,7 @@ module mkDebugLinkRouter#(Bit#(`LogCoresPerBoard) myId) (DebugLinkRouter);
   // Route from the bus to the core and the bus?
   Bool routeBusToCoreAndBus = busInPort.canGet &&
                                 busOutPort.canPut &&
-                                  toCorePort.canPut && 
+                                  toCorePort.canPut &&
                                     broadcast;
 
   // Trigger busInPort.get
@@ -335,10 +335,10 @@ module mkDebugLink#(
   Reg#(Bit#(2)) recvState <- mkConfigReg(0);
 
   // Destination core id
-  Reg#(Bit#(8)) recvDestCore <- mkConfigReg(0);
+  Reg#(Bit#(`LogCoresPerBoard)) recvDestCore <- mkConfigReg(0);
 
   // Destination thread id
-  Reg#(Bit#(8)) recvDestThread <- mkConfigReg(0);
+  Reg#(Bit#(`LogThreadsPerCore)) recvDestThread <- mkConfigReg(0);
 
   // Command
   Reg#(DebugLinkCmd) recvCmd <- mkConfigReg(0);
@@ -363,12 +363,12 @@ module mkDebugLink#(
         boardOffset <= fromJtag.value;
         recvState <= 2;
       end else if (recvCmd == cmdSetDest) begin
-        recvDestThread <= fromJtag.value;
+        recvDestThread <= truncate(fromJtag.value);
         recvState <= 2;
       end else if (recvCmd == cmdStdIn) begin
         DebugLinkFlit flit;
         flit.coreId = truncate(recvDestCore);
-        flit.isBroadcast = unpack(recvDestCore[7]);
+        flit.isBroadcast = False; //unpack(recvDestCore[7]);
         flit.threadId = truncate(recvDestThread);
         flit.cmd = recvCmd;
         flit.payload = truncate(fromJtag.value);
@@ -401,7 +401,7 @@ module mkDebugLink#(
         checkTemperature <= True;
         recvState <= 0;
       end else begin
-        recvDestCore <= fromJtag.value;
+        recvDestCore <= truncate(fromJtag.value); // TODO: let us address the higher num cores!
         recvState <= 0;
       end
     end
@@ -460,11 +460,11 @@ module mkDebugLink#(
       end
     end else if (sendState == 1) begin
       // Send StdOut thread id
-      toJtag.put(zeroExtend(sendFlit.threadId));
+      toJtag.put(zeroExtend(sendFlit.threadId)); // TODO: address bits 8-10 of the core id!
       sendState <= 2;
     end else if (sendState == 2) begin
       // Send StdOut core id
-      toJtag.put(zeroExtend(sendFlit.coreId));
+      toJtag.put(extend(sendFlit.coreId)); // TODO: address bits 8-10 of the core id!
       sendState <= 3;
     end else begin
       // Send StdOut payload
