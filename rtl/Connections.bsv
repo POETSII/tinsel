@@ -61,7 +61,13 @@ module connectClientsToOffChipRAM#(
   Vector#(`FetchersPerProgRouter, BOut#(DRAMReq)) routerReqs,
   Vector#(`FetchersPerProgRouter, In#(DRAMResp)) routerResps,
   // Off-chip memory
-  OffChipRAM ram) ();
+`ifdef STRATIXV
+  OffChipRAMStratixV ram
+`endif
+`ifdef Stratix10
+  OffChipRAMStratix10 ram
+`endif
+  ) ();
 
   // Count the number of outstanding fetcher requests
   // Used to throttle the fetcher requests to avoid starving/blocking
@@ -96,7 +102,7 @@ module connectClientsToOffChipRAM#(
           fetcherReqsB.get;
           fetcherCount.incBy(zeroExtend(fetcherReqsB.value.burst));
         endaction;
-      method Bool valid = fetcherReqsB.valid && 
+      method Bool valid = fetcherReqsB.valid &&
         zeroExtend(fetcherReqsB.value.burst) <= fetcherCount.available;
       method DRAMReq value = fetcherReqsB.value;
     endinterface;

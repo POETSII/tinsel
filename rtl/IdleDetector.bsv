@@ -122,9 +122,10 @@ interface IdleDetector;
   interface Out#(Flit) mboxFlitOut;
 endinterface
 
+(* synthesize *)
 module mkIdleDetector (IdleDetector);
 
-  // Ports  
+  // Ports
   InPort#(Flit) netInPort <- mkInPort;
   OutPort#(Flit) netOutPort <- mkOutPort;
   InPort#(Flit) mboxInPort <- mkInPort;
@@ -258,7 +259,7 @@ module mkIdleDetector (IdleDetector);
       end
     end
   endrule
- 
+
   // We release threads from the barrier as soon as any message
   // arrives to the board.  The existence of any message at this
   // point implies that the release phase is underway.
@@ -371,7 +372,7 @@ module connectClientsToIdleDetector#(
   // Register the result
   Reg#(Bool) active <- mkConfigReg(True);
   Reg#(Bool) vote <- mkConfigReg(True);
-  
+
   rule updateActive;
     active <= anyActive;
     vote <= voteDecision;
@@ -444,8 +445,8 @@ interface IdleDetectMaster;
 endinterface
 
 module mkIdleDetectMaster (IdleDetectMaster);
- 
-  // Ports  
+
+  // Ports
   InPort#(Flit) flitInPort <- mkInPort;
   OutPort#(Flit) flitOutPort <- mkOutPort;
 
@@ -489,7 +490,7 @@ module mkIdleDetectMaster (IdleDetectMaster);
     else if (incWire || decWire)
       localBlack <= True;
   endrule
- 
+
   // FSM state
   // 0: probe
   // 1: stage 1 done
@@ -576,7 +577,7 @@ module mkIdleDetectMaster (IdleDetectMaster);
           localBlackReset.send;
           currentVote <= nextVote && token.vote;
           nextVote <= True;
-      
+
           disableHostMsgsWire <= True;
           if (!token.black && !localBlack && !anyBlack &&
                 (totalCount+token.count == 0)) begin
@@ -602,7 +603,7 @@ module mkIdleDetectMaster (IdleDetectMaster);
     // Update probeSent
     probeSent <= probeSentNew;
   endrule
-  
+
   interface In flitIn = flitInPort.in;
   interface Out flitOut = flitOutPort.out;
   method Bool disableHostMsgs =

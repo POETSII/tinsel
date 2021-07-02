@@ -82,7 +82,7 @@ module mkID(LinkTestIfc);
   endinterface
 endmodule
 
-module mkFakeRAM#(RAMId base) (OffChipRAM);
+module mkFakeRAM#(RAMId base) (OffChipRAMStratix10);
 
 endmodule
 
@@ -94,20 +94,20 @@ module mkDE10Top(Clock rx_390_A, Clock tx_390_A,
 
   Clock default_clock <- exposeCurrentClock();
   Reset default_reset <- exposeCurrentReset();
-  LinkTestIfc idmod <- mkID();
+  // LinkTestIfc idmod <- mkID();
 
-  MacSyncIfc syncA <- mkMacSyncroniser(default_clock, rx_390_A, tx_390_A, default_reset, rx_rst_A, tx_rst_A);
-  MacSyncIfc syncB <- mkMacSyncroniser(default_clock, rx_390_B, tx_390_B, default_reset, rx_rst_B, tx_rst_B);
-
-  rule out;
-    let flit <- idmod.toMac.send();
-    syncA.nocToSync.recv(flit);
-  endrule
-
-  rule in;
-    let flit <- syncA.nocToSync.send();
-    idmod.toMac.recv(flit);
-  endrule
+  // MacSyncIfc syncA <- mkMacSyncroniser(default_clock, rx_390_A, tx_390_A, default_reset, rx_rst_A, tx_rst_A);
+  // MacSyncIfc syncB <- mkMacSyncroniser(default_clock, rx_390_B, tx_390_B, default_reset, rx_rst_B, tx_rst_B);
+  //
+  // rule out;
+  //   let flit <- idmod.toMac.send();
+  //   syncA.nocToSync.recv(flit);
+  // endrule
+  //
+  // rule in;
+  //   let flit <- syncA.nocToSync.send();
+  //   idmod.toMac.recv(flit);
+  // endrule
 
   `ifdef SIMULATE
   Bit#(4) localBoardId = truncate(getBoardId());
@@ -119,17 +119,17 @@ module mkDE10Top(Clock rx_390_A, Clock tx_390_A,
   Reg#(Bit#(8)) temperature <- mkReg(128);
 
   // Create off-chip RAMs
-  Vector#(`DRAMsPerBoard, OffChipRAM) rams;
+  Vector#(`DRAMsPerBoard, OffChipRAMStratix10) rams;
   for (Integer i = 0; i < `DRAMsPerBoard; i=i+1)
-    // rams[i] <- mkOffChipRAM(fromInteger(i*3));
-    rams[i] <- mkFakeRAM(fromInteger(i*3));
+    rams[i] <- mkOffChipRAMStratix10(fromInteger(i*3));
+    // rams[i] <- mkFakeRAM(fromInteger(i*3));
 
   // Create data caches
   Vector#(`DRAMsPerBoard,
     Vector#(`DCachesPerDRAM, DCache)) dcaches = newVector;
   for (Integer i = 0; i < `DRAMsPerBoard; i=i+1)
     for (Integer j = 0; j < `DCachesPerDRAM; j=j+1)
-      dcaches[i][j] <- mkDCache(fromInteger(j));
+      dcaches[i][j] <- mkDCache(fromInteger(j)); // (* synthesize *)
 
   // Create cores
   Integer coreCount = 0;
@@ -139,7 +139,7 @@ module mkDE10Top(Clock rx_390_A, Clock tx_390_A,
   for (Integer i = 0; i < `DRAMsPerBoard; i=i+1)
     for (Integer j = 0; j < `DCachesPerDRAM; j=j+1)
       for (Integer k = 0; k < `CoresPerDCache; k=k+1) begin
-        cores[i][j][k] <- mkCore(fromInteger(coreCount));
+        cores[i][j][k] <- mkCore(fromInteger(coreCount)); // (* synthesize *)
         coreCount = coreCount+1;
       end
 
@@ -170,7 +170,7 @@ module mkDE10Top(Clock rx_390_A, Clock tx_390_A,
   // Create FPUs
   Vector#(`FPUsPerBoard, FPU) fpus;
   for (Integer i = 0; i < `FPUsPerBoard; i=i+1)
-    fpus[i] <- mkFPU;
+    fpus[i] <- mkFPU; // (* synthesize *)
 
   // Connect cores to FPUs
   let vecOfCores = concat(concat(cores));
@@ -198,7 +198,7 @@ module mkDE10Top(Clock rx_390_A, Clock tx_390_A,
       Vector::replicate(newVector());
   for (Integer y = 0; y < `MailboxMeshYLen; y=y+1)
     for (Integer x = 0; x < `MailboxMeshXLen; x=x+1)
-      mailboxes[y][x] <- mkMailboxAcc(debugLink.getBoardId(), x, y);
+      mailboxes[y][x] <- mkMailboxAcc(debugLink.getBoardId(), x, y); // (* synthesize *)
 
   // Initialise mailbox send slots
   rule initSendSlots;
@@ -260,10 +260,8 @@ module mkDE10Top(Clock rx_390_A, Clock tx_390_A,
   `endif
 
   `ifndef SIMULATE
-  function DRAMExtIfc getDRAMExtIfc(OffChipRAM ram) = ram.extDRAM;
-  // function Vector#(2, SRAMExtIfc) getSRAMExtIfcs(OffChipRAM ram) = ram.extSRAM;
+  function DRAMExtIfc getDRAMExtIfc(OffChipRAMStratix10 ram) = ram.extDRAM;
   interface dramIfcs = map(getDRAMExtIfc, rams);
-  // interface sramIfcs = concat(map(getSRAMExtIfcs, rams));
   interface jtagIfc  = debugLink.jtagAvalon;
   // interface northMac = noc.north;
   // interface southMac = noc.south;
@@ -278,10 +276,10 @@ module mkDE10Top(Clock rx_390_A, Clock tx_390_A,
   `endif
 
 
-  interface tester = idmod.av_peripheral;
+  // interface tester = idmod.av_peripheral;
 
-  interface MacDataIfc macA = syncA.syncToMac;
-  interface MacDataIfc macB = syncB.syncToMac;
+  // interface MacDataIfc macA = syncA.syncToMac;
+  // interface MacDataIfc macB = syncB.syncToMac;
 
 
 
