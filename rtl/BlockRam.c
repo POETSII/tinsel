@@ -53,14 +53,16 @@ void blockRamRead(
   int8_t* ram = (int8_t*) handle;
   int base = *addr * dataWidth;
   int bitCount = 0;
+  // starting from the end of the data array...
+  data = data + (dataWidth/32 + (dataWidth%32 != 0)) - 1;
   *data = 0;
   for (int i = dataWidth-1; i >= 0; i--) {
     *data = (*data << 1) | ram[base+i];
     bitCount++;
     if (bitCount == 32) {
       bitCount = 0;
-      data++;
-      *data = 0;
+      data--; // move to the next 32b value in the array pointed to by data
+      *data = 0; // zero it out
     }
   }
 }
