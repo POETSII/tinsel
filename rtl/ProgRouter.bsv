@@ -44,6 +44,7 @@ typedef struct {
   Bit#(`LogBeatsPerDRAM) ptr;
   // Number of beats in the array
   Bit#(`LogRoutingEntryLen) numBeats;
+  Reserved#(TSub#(32, TAdd#(TAdd#(`LogDRAMsPerBoard, `LogBeatsPerDRAM), `LogRoutingEntryLen))) unused;
 } RoutingKey deriving (Bits, FShow);
 
 // Extract routing key from an address
@@ -865,7 +866,7 @@ interface ProgRouter;
   interface ProgRouterPerfCounters perfCounters;
 endinterface
 
-(* synthesize *)
+// (* synthesize *)
 module mkProgRouter#(BoardId boardId) (ProgRouter);
 
   // Fetchers
