@@ -54,7 +54,10 @@ module mkQueueArray (QueueArray#(logNumQueues, logQueueSize, elemType))
   Add#(b__, logQueueSize, TMul#(TDiv#(logQueueSize, 8), 8)),
   Div#(TMul#(TDiv#(logQueueSize, 8), 8), TMul#(TDiv#(logQueueSize, 8), 8), 1),
   Div#(TMul#(TDiv#(logQueueSize, 8), 8), TDiv#(TMul#(TDiv#(logQueueSize, 8), 8), 8), 8),
-  Div#(TMul#(TDiv#(logQueueSize, 8), 8), 8, TDiv#(logQueueSize, 8))
+  Div#(TMul#(TDiv#(logQueueSize, 8), 8), 8, TDiv#(logQueueSize, 8)),
+  Div#(elemTypeSize, elemTypeSize, 1),
+  Div#(logQueueSize, logQueueSize, 1)
+
   );
 
   // Block RAM storing front pointers

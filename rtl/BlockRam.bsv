@@ -609,26 +609,45 @@ module mkBlockRamTrueMixedOptsPadded_S10#(BlockRamOpts opts)
   rule calc_outdata;
     let idx = pack(opts.registerDataOut ? baddr_2 : baddr_1) % fromInteger(valueOf(widthRatio));
     Bit#(paddedWidthA) x_packed = bram.dataOutB;
-    Vector#(widthRatio, Bit#(dataWidthB)) xv_b = unpack(truncate(x_packed));
-    dataB x = unpack(xv_b[idx]);
-    $display($time, " BRAM fakemixed pB reading from addr ", opts.registerDataOut ? baddr_2 : baddr_1,
-             " data type A intep as vec of B %x", xv_b,
-             " with shifted data %x", x, " from internal idx ", idx );
-    for (Integer elab_idx=0; elab_idx<valueOf(widthRatio); elab_idx=elab_idx+1) begin
-      $display($time, "xv_b[",elab_idx, "]=%x", xv_b[elab_idx]);
-    end
+    Vector#(widthRatio, Bit#(paddedWidthB)) xv_b = unpack(x_packed);
+    dataB x = unpack(truncate(xv_b[idx]));
+    // $display($time, " BRAM fakemixed pB reading from addr ", opts.registerDataOut ? baddr_2 : baddr_1,
+    //          " data type A intep as vec of B %x", xv_b,
+    //          " with shifted data %x", x, " from internal idx ", idx );
+    // for (Integer elab_idx=0; elab_idx<valueOf(widthRatio); elab_idx=elab_idx+1) begin
+    //   $display($time, "xv_b[",elab_idx, "]=%x", xv_b[elab_idx]);
+    // end
     bout <= x;
   endrule
 
   // A, the wide side, is trivial
-  method Action putA(Bool wr, addrA a, dataA x);
-    $display($time, " BRAM fakemixed pA got req for addr ", a, " data %x", x);
-    Bit#(paddedWidthA) x_packed = zeroExtend(pack(x));
-    bram.putA(wr, a, x_packed);
+  method Action putA(Bool wr, addrA addr, dataA data_a);
+    // $display($time, " BRAM fakemixed pA got req for addr ", a, " data %x", x);
+
+    // need to pack A intyo a vec of b's, in order to allign to the byte enables
+    Vector#(widthRatio, Bit#(dataWidthB)) data_a_bvec = unpack(pack(data_a));
+    Vector#(widthRatio, Bit#(paddedWidthB)) data_a_padded_bvec = unpack(0);
+    for (Integer elab_idx=0; elab_idx<valueOf(widthRatio); elab_idx=elab_idx+1) begin
+      data_a_padded_bvec[elab_idx] = zeroExtend(data_a_bvec[elab_idx]);
+    end
+
+    for (Integer elab_idx=0; elab_idx<valueOf(widthRatio); elab_idx=elab_idx+1) begin
+      $display($time, "data_a_padded_bvec[",elab_idx, "]=%x", data_a_padded_bvec[elab_idx]);
+    end
+
+
+    Bit#(paddedWidthA) data_packed = pack(data_a_padded_bvec);
+    bram.putA(wr, addr, data_packed);
   endmethod
 
   method dataA dataOutA();
-    return unpack(truncate(bram.dataOutA));
+    Vector#(widthRatio, Bit#(paddedWidthB)) data_a_padded_bvec = unpack(bram.dataOutA);
+    Vector#(widthRatio, Bit#(dataWidthB)) data_a_bvec = unpack(0);
+    for (Integer elab_idx=0; elab_idx<valueOf(widthRatio); elab_idx=elab_idx+1) begin
+      data_a_bvec[elab_idx] = truncate(data_a_padded_bvec[elab_idx]);
+    end
+
+    return unpack(pack(data_a_bvec));
   endmethod
 
   method Action putB(Bool wr, addrB addr_into_b, dataB x);
@@ -639,12 +658,24 @@ module mkBlockRamTrueMixedOptsPadded_S10#(BlockRamOpts opts)
     addrA addr_into_a = unpack(truncateLSB(pack(addr_into_b)));
 
     Bit#(TDiv#(dataWidthB, 8)) b_lane_base_mask = fromInteger(2**(valueOf(paddedWidthB)/8)-1); // all ones vector the width of dataB in bytes
-    Bit#(TDiv#(dataWidthA, 8)) b_enables = zeroExtend(b_lane_base_mask) << (idx*(fromInteger(valueOf(paddedWidthB))/8));
+    Bit#(TDiv#(dataWidthA, 8)) b_enables = zeroExtend(b_lane_base_mask) << (idx*(fromInteger(valueOf(paddedWidthB))/8)); // good
 
-    Vector#(widthRatio, dataB) xv_b = unpack(0);
-    xv_b[idx] = x;
+    // Vector#(widthRatio, dataB) xv_b = unpack(0);
+    Vector#(widthRatio, Bit#(paddedWidthB)) xv_padded = unpack(0);
+    xv_padded[idx] = zeroExtend(pack(x));
 
-    Bit#(paddedWidthA) x_buffer = zeroExtend(pack(xv_b));
+    // for (Integer elab_idx=0; elab_idx<valueOf(widthRatio); elab_idx=elab_idx+1) begin
+    //   x_padded[elab_idx] = zeroExtend(xv_b[elab_idx]);
+    //   $display($time, " write x_padded[",elab_idx, "]=%x", x_padded[elab_idx]);
+    // end
+    //
+    // xv_b[idx] = x;
+    // for (Integer elab_idx=0; elab_idx<valueOf(widthRatio); elab_idx=elab_idx+1) begin
+    //   $display($time, " write xv_b[",elab_idx, "]=%x", xv_b[elab_idx]);
+    // end
+
+
+    Bit#(paddedWidthA) x_buffer = pack(xv_padded);
     // need to move the B data into the correct portion
     $display($time, " BRAM fakemixed pB got req for addr ", addr_into_b,
                     " data %x", x, " and will write to addr ", addr_into_a,

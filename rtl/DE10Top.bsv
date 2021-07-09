@@ -31,6 +31,12 @@ import OffChipRAM   :: *;
 import IdleDetector :: *;
 import Connections  :: *;
 
+`ifdef SIMULATE
+
+typedef Empty DE10Ifc;
+import "BDPI" function Bit#(32) getBoardId();
+
+`else
 
 interface DE10Ifc;
   interface Vector#(`DRAMsPerBoard, DRAMExtIfc) dramIfcs;
@@ -43,6 +49,9 @@ interface DE10Ifc;
   interface MacDataIfc macA;
   interface MacDataIfc macB;
 endinterface
+
+
+`endif
 
 interface LinkTestIfc;
   interface AvalonSlaveSingleMasterIfc#(4) av_peripheral; // AvalonSlave physical interface
@@ -82,10 +91,10 @@ module mkID(LinkTestIfc);
   endinterface
 endmodule
 
-module mkFakeRAM#(RAMId base) (OffChipRAMStratix10);
-
-endmodule
-
+// module mkFakeRAM#(RAMId base) (OffChipRAMStratix10);
+//
+// endmodule
+//
 module mkDE10Top(Clock rx_390_A, Clock tx_390_A,
                   Reset rx_rst_A, Reset tx_rst_A,
                   Clock rx_390_B, Clock tx_390_B,
@@ -284,3 +293,38 @@ module mkDE10Top(Clock rx_390_A, Clock tx_390_A,
 
 
 endmodule
+
+
+// module mkDE10Top(Clock rx_390_A, Clock tx_390_A,
+//                   Reset rx_rst_A, Reset tx_rst_A,
+//                   Clock rx_390_B, Clock tx_390_B,
+//                   Reset rx_rst_B, Reset tx_rst_B,
+//                   DE10Ifc ifc);
+//
+//   Clock default_clock <- exposeCurrentClock();
+//   Reset default_reset <- exposeCurrentReset();
+//
+//   // Create JTAG UART instance
+//   JtagUart uart <- mkJtagUart;
+//
+//   Reg#(Bit#(8)) ctr <- mkReg(0);
+//
+//   rule write;
+//     uart.jtagIn.tryPut(ctr);
+//   endrule
+//
+//   rule count;
+//     ctr <= ctr+1;
+//   endrule
+//
+//   // connectUsing(mkQueue, uart.jtagOut, uart.jtagIn);
+//
+//   `ifndef SIMULATE
+//   interface jtagIfc  = uart.jtagAvalon;
+//   method Action setBoardId(Bit#(4) id);
+//   endmethod
+//   `endif
+//
+//
+//
+// endmodule
