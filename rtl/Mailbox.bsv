@@ -15,32 +15,32 @@ package Mailbox;
 // scratchpad within a mailbox.  We refer to an aligned message-sized
 // block in the scracthpad as a "message slot".
 //
-//                                                     
+//
 //                 +----------------------------------+
-//                 |             Mailbox              |  
-//                 |                                  | 
-//                 |       +------------+             |  
-//              <--------->| Scratchpad |             |  
-//                 |       +------------+             |  
+//                 |             Mailbox              |
 //                 |                                  |
-//                 |       +---------------+          | 
+//                 |       +------------+             |
+//              <--------->| Scratchpad |             |
+//                 |       +------------+             |
+//                 |                                  |
+//                 |       +---------------+          |
 //              <--------->| Transmit Unit |          |
 //    Group        |       +---------------+          |<----- Flit in
-//     of          |                                  | 
+//     of          |                                  |
 //    cores        |       +----------------+         |-----> Flit out
 //              <--------->| Receive Unit   |         |
 //                 |       +----------------+         |
 //                 |                                  |
-//                 |       +-----------+              | 
-//              <--------->| Free Unit |              | 
 //                 |       +-----------+              |
-//                 |                                  | 
+//              <--------->| Free Unit |              |
+//                 |       +-----------+              |
+//                 |                                  |
 //                 +----------------------------------+
-//                                              
+//
 //
 // Scratchpad
 // ----------
-// 
+//
 // The scratchpad is a mixed-width dual-port block RAM with a 32-bit bus
 // on the core side and a flit-sized bus on the network side (a
 // message is comprised of several flits).  The size of the mailbox
@@ -51,11 +51,11 @@ package Mailbox;
 // The first ThreadsPerMailbox message slots are reserved for message
 // sending (one send slot per thread).  All other slots are used as
 // a receive buffer.
-// 
+//
 // One attraction of using a unified scratchpad for send and receive
 // is that a message can be forwarded (recieved and sent) without
 // serialising it through the 32-bit core.
-// 
+//
 // Transmit Unit
 // -------------
 //
@@ -66,7 +66,7 @@ package Mailbox;
 //
 // Receive Unit
 // ------------
-// 
+//
 // The Receive Unit contains a queue for each thread served by the
 // mailbox.  Each queue holds message-pointers into the scratchpad.
 // When a message arrives, it is written into the next free message
@@ -284,8 +284,12 @@ endinterface
 module mkMailbox (Mailbox);
   // True dual-port mixed-width scratchpad
   // (One flit-sized port and one word-sized port)
-  BlockRamTrueMixedBE#(MailboxFlitAddr, FlitPayload, MailboxWordAddr, Bit#(32))
-    scratchpad <- mkBlockRamTrueMixedBE;
+  // BlockRamTrueMixedBE#(MailboxFlitAddr, FlitPayload, MailboxWordAddr, Bit#(32))
+  //   scratchpad <- mkBlockRamTrueMixedBEOpts_S10(defaultBlockRamOpts);
+
+  BlockRamTrueMixedByteEnPadded#(MailboxFlitAddr, FlitPayload, MailboxWordAddr, Bit#(32), TDiv#(32, 8), SizeOf#(FlitPayload), 32)
+    scratchpad <- mkBlockRamTrueMixedBEOptsPadded_S10(defaultBlockRamOpts);
+
 
   // Request & response ports
   InPort#(ScratchpadReq) spadReqPort  <- mkInPort;
@@ -442,7 +446,7 @@ module mkMailbox (Mailbox);
     Reg#(Bit#(`ThreadsPerCore)) mcastDests <- mkConfigRegU;
     Reg#(Bit#(`LogMsgsPerMailbox)) mcastSlot <- mkConfigRegU;
     Reg#(Bit#(`LogThreadsPerCore)) mcastDest <- mkConfigRegU;
-  
+
     // State machine to consume mcastBuffer, and update mcastQueues
     rule mcast0 (mcastState == 0);
       if (mcastBuffer[i].canPeek && mcastBuffer[i].canDeq) begin
@@ -575,7 +579,7 @@ module mkMailbox (Mailbox);
                     , isIdleToken:  False };
     transmitBuffer.enq(flit);
   endrule
-  
+
   // Scratchpad
   // ==========
 
@@ -933,7 +937,7 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
         thread.wakeEvent = eventMatch;
         wakeupPort.put(thread);
         sleepQueue.deq;
-      end 
+      end
     // If thread can't receive but wants to,
     // we need to make a new receive request
     end else if (!thread.canRecv && thread.wakeEvent[1] == 1) begin
@@ -956,7 +960,7 @@ module mkMailboxClientUnit#(CoreId myId) (MailboxClientUnit);
     doResumeSleep <= True;
     recvRespPort.get;
   endrule
- 
+
   // Decrement receive count (for idle-detection)
   Wire#(Bit#(1)) incReceivedWire <- mkBypassWire;
 

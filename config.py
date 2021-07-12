@@ -35,7 +35,7 @@ p["SharedInstrMem"] = True
 p["LogCoresPerDCache"] = 2 # the mailbox calc defines no of cores, but this defines hookup; need to match
 
 # Log of number of caches per DRAM port
-p["LogDCachesPerDRAM"] = 5
+p["LogDCachesPerDRAM"] = 2
 
 # Log of number of 32-bit words in a single memory transfer
 p["LogWordsPerBeat"] = 3
@@ -59,7 +59,7 @@ p["DRAMLogMaxInFlight"] = 5
 p["DRAMLatency"] = 20
 
 # Size of each DRAM
-p["LogBeatsPerDRAM"] = 26
+p["LogBeatsPerDRAM"] = 9
 
 # Size of internal flit payload
 p["LogWordsPerFlit"] = 2
@@ -74,10 +74,10 @@ p["LogMsgsPerMailbox"] = 9 # must be at least enough to store one message per th
 p["LogCoresPerMailbox"] = 2
 
 # Number of bits in mailbox mesh X coord
-p["MailboxMeshXBits"] = 3
+p["MailboxMeshXBits"] = 1
 
 # Number of bits in mailbox mesh Y coord
-p["MailboxMeshYBits"] = 3
+p["MailboxMeshYBits"] = 2
 
 # Size of multicast queues in mailbox
 p["LogMsgPtrQueueSize"] = 6
@@ -121,10 +121,10 @@ p["MeshXBitsWithinBox"] = 1
 p["MeshYBitsWithinBox"] = 1
 
 # Mesh X length within a box
-p["MeshXLenWithinBox"] = 4
+p["MeshXLenWithinBox"] = 1
 
 # Mesh Y length within a box
-p["MeshYLenWithinBox"] = 4
+p["MeshYLenWithinBox"] = 1
 
 # Number of cores per FPU
 p["LogCoresPerFPU"] = 2
@@ -146,7 +146,7 @@ p["FPConvertLatency"] = 6
 p["FPCompareLatency"] = 3
 
 # SRAM parameters
-p["SRAMAddrWidth"] = 20
+p["SRAMAddrWidth"] = 12
 p["LogBytesPerSRAMBeat"] = 3
 p["SRAMBurstWidth"] = 3
 p["SRAMLatency"] = 8
