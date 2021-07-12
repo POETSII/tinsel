@@ -6,10 +6,10 @@ import StmtFSM::*;
 import Assert::*;
 
 
-typedef UInt#(2) AddrA;
-typedef UInt#(4) AddrB;
-typedef Bit#(28) DataA;
-typedef Bit#(7) DataB;
+// typedef UInt#(2) AddrA;
+// typedef UInt#(4) AddrB;
+// typedef Bit#(28) DataA;
+// typedef Bit#(7) DataB;
 
 // works
 // typedef UInt#(3) AddrA;
@@ -18,10 +18,10 @@ typedef Bit#(7) DataB;
 // typedef Bit#(16) DataB;
 
 
-// typedef UInt#(1) AddrA; // 2 A's
-// typedef UInt#(5) AddrB; // 16 B's
-// typedef Bit#(128) DataA;
-// typedef Bit#(8) DataB;
+typedef UInt#(1) AddrA; // 2 A's
+typedef UInt#(5) AddrB; // 16 B's
+typedef Bit#(128) DataA;
+typedef Bit#(8) DataB;
 
 // Default options
 BlockRamOpts testBlockRamOpts =
@@ -91,7 +91,8 @@ endmodule
 
 
 module [Module] mkBRAMTest ();
-  blueCheck(checkBRAM);
+    blueCheck(checkBRAM);
+
 endmodule
 
 // module mkBRAMTest();

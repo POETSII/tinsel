@@ -33,11 +33,11 @@ package DCache;
 //            +-------------+      +----------------------+
 // req  ----->| tag lookup  |<-----| memory response unit |
 //            +-------------+      +----------------------+
-//                 ||                               
-//                 \/                               
-//            +-------------+      +-----------+    
-//            | data lookup |----->| miss unit |    
-//            +-------------+      +-----------+    
+//                 ||
+//                 \/
+//            +-------------+      +-----------+
+//            | data lookup |----->| miss unit |
+//            +-------------+      +-----------+
 //                 ||
 //                 \/
 //            +----------+
@@ -62,7 +62,7 @@ package DCache;
 //   b. on read hit: send BRAM request for word data
 //   c. on write hit: write word data to BRAM
 //   d. on miss: send request to miss unit
-// 
+//
 // 3. hit unit:
 //   a. on hit: enqueue response FIFO
 //   b. on miss: update tag
@@ -106,7 +106,7 @@ import PseudoLRU   :: *;
 import DCacheTypes :: *;
 
 // ============================================================================
-// Types  
+// Types
 // ============================================================================
 
 // Number of ways
@@ -237,12 +237,16 @@ module mkDCache#(DCacheId myId) (DCache);
 
   // True dual-port mixed-width data block RAM
   // (One bus-sized port and one word-sized port)
-  BlockRamTrueMixedBE#(BeatIndex, Bit#(`BeatWidth), WordIndex, Bit#(32))
-    dataMem <- mkBlockRamTrueMixedBE;
+  // BlockRamTrueMixedBE#(BeatIndex, Bit#(`BeatWidth), WordIndex, Bit#(32))
+  //   dataMem <- mkBlockRamTrueMixedBE;
+
+  BlockRamTrueMixedByteEnPadded#(BeatIndex, Bit#(`BeatWidth), WordIndex, Bit#(32), TDiv#(32, 8), `BeatWidth, 32)
+    dataMem <- mkBlockRamTrueMixedBEOptsPadded_S10(defaultBlockRamOpts);
+
 
   // Meta data for each set
   BlockRam#(SetIndex, SetMetaData) metaData <- mkBlockRam;
-  
+
   // Request & response ports
   InPort#(DCacheReq) reqPort  <- mkInPort;
   InPort#(DRAMResp)  respPort <- mkInPort;
@@ -488,7 +492,7 @@ module mkDCache#(DCacheId myId) (DCache);
     // Determine line address
     let writeLineAddr =
       reconstructLineAddr(miss.evictTag.key, miss.req.addr);
-    let readLineAddr = 
+    let readLineAddr =
       miss.req.addr[`LogBytesPerDRAM:`LogBytesPerLine];
     // Create inflight request info
     InflightDCacheReqInfo info;
