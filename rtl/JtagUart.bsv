@@ -70,7 +70,7 @@ module mkJtagUart (JtagUart);
     method Bit#(3) uart_address =
       state == JTAG_READ_DATA || state == JTAG_WRITE_DATA ? 0 : 4;
 
-    method Bit#(32) uart_writedata = 
+    method Bit#(32) uart_writedata =
       zeroExtend(inPort.value);
 
     method Bool uart_write =
@@ -99,7 +99,7 @@ module mkJtagUart (JtagUart);
           end
         JTAG_READ_WSPACE:
           if (!uart_waitrequest)
-            state <= uart_readdata[31:16] > 0 ? JTAG_WRITE_DATA : JTAG_IDLE;
+            state <= (uart_readdata[31:16] > 0) ? JTAG_WRITE_DATA : JTAG_IDLE;
         JTAG_WRITE_DATA:
           if (!uart_waitrequest) begin
             inPort.get;
@@ -137,7 +137,10 @@ module mkJtagUart (JtagUart);
     end
     if (outPort.canPut) begin
       Bit#(32) b <- socketGet8(uartSocket);
-      if (b[31] == 0) outPort.put(b[7:0]);
+      if (b[31] == 0) begin
+        $display("JTAG sending byte ", b);
+        outPort.put(b[7:0]);
+      end
     end
   endrule
 
