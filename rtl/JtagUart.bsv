@@ -72,7 +72,7 @@ module mkJtagUart (Clock axi_clk, Reset axi_rst, JtagUart ifc);
     uartToDesignFIFO.deq();
   endrule
 
-  rule designToUartTxfr;
+  rule designToUartTxfr (inPort.canGet);
     designToUartFIFO.enq(inPort.value);
     inPort.get();
   endrule
@@ -104,7 +104,7 @@ module mkJtagUart (Clock axi_clk, Reset axi_rst, JtagUart ifc);
       state == JTAG_READ_DATA || state == JTAG_WRITE_DATA ? 0 : 1; // 32b symbol address
 
     method Bit#(32) uart_writedata =
-      zeroExtend(designToUartFIFOUnGuarded.first);
+      zeroExtend(designToUartFIFOUnGuarded.notEmpty ? designToUartFIFOUnGuarded.first : 0);
 
     method Bool uart_write =
       state == JTAG_WRITE_DATA;
@@ -114,7 +114,6 @@ module mkJtagUart (Clock axi_clk, Reset axi_rst, JtagUart ifc);
 
     method Action uart(Bool uart_waitrequest,
                        Bit#(32) uart_readdata);
-      (* split *)
       case (state)
         JTAG_IDLE:
           begin
@@ -133,7 +132,7 @@ module mkJtagUart (Clock axi_clk, Reset axi_rst, JtagUart ifc);
           end
         JTAG_READ_WSPACE:
           if (!uart_waitrequest)
-            state <= (uart_readdata[31:16] > 0) ? JTAG_WRITE_DATA : JTAG_IDLE;
+            state <= (uart_readdata[31:16] > 0 && designToUartFIFOUnGuarded.notEmpty) ? JTAG_WRITE_DATA : JTAG_IDLE;
         JTAG_WRITE_DATA:
           if (!uart_waitrequest) begin
             designToUartFIFOUnGuarded.deq;
@@ -159,7 +158,7 @@ endmodule
 
 `ifdef SIMULATE
 
-module mkJtagUart (JtagUart);
+module mkJtagUart (Clock axi_clk, Reset axi_rst, JtagUart ifc);
 
   InPort#(Bit#(8))  inPort  <- mkInPort;
   OutPort#(Bit#(8)) outPort <- mkOutPort;
