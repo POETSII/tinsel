@@ -35,6 +35,10 @@ add_interface clk clock end
 set_interface_property clk ENABLED true
 add_interface_port clk CLK clk Input 1
 
+add_interface clk_mgmt clock end
+set_interface_property clk_mgmt ENABLED true
+add_interface_port clk_mgmt CLK_mgmt clk Input 1
+
 add_interface clock_rx_a clock end
 set_interface_property clock_rx_a ENABLED true
 add_interface_port clock_rx_a CLK_rx_390_A clk Input 1
@@ -59,6 +63,12 @@ set_interface_property rst associatedClock clk
 set_interface_property rst synchronousEdges DEASSERT
 set_interface_property rst ENABLED true
 add_interface_port rst RST_N reset_n Input 1
+
+add_interface rst_mgmt reset end
+set_interface_property rst_mgmt associatedClock clk_mgmt
+set_interface_property rst_mgmt synchronousEdges DEASSERT
+set_interface_property rst_mgmt ENABLED true
+add_interface_port rst_mgmt RST_N_mgmt_reset reset_n Input 1
 
 add_interface reset_rx_A reset end
 set_interface_property reset_rx_A associatedClock clock_rx_a
@@ -86,10 +96,10 @@ add_interface_port reset_tx_B RST_N_tx_rst_B reset_n Input 1
 
 # avalon interface number 0 - JTAG debug
 add_interface jtag_uart avalon start
-set_interface_property jtag_uart addressGroup 0
+set_interface_property jtag_uart addressGroup 1
 set_interface_property jtag_uart addressUnits WORDS
-set_interface_property jtag_uart associatedClock clk
-set_interface_property jtag_uart associatedReset rst
+set_interface_property jtag_uart associatedClock clk_mgmt
+set_interface_property jtag_uart associatedReset rst_mgmt
 set_interface_property jtag_uart bitsPerSymbol 8
 set_interface_property jtag_uart ENABLED true
 set_interface_property jtag_uart EXPORT_OF ""
@@ -98,12 +108,58 @@ set_interface_property jtag_uart CMSIS_SVD_VARIABLES ""
 set_interface_property jtag_uart SVD_ADDRESS_GROUP ""
 set_interface_property jtag_uart IPXACT_REGISTER_MAP_VARIABLES ""
 
-add_interface_port jtag_uart jtagIfc_uart_address address Output 3
+add_interface_port jtag_uart jtagIfc_uart_address address Output 1
 add_interface_port jtag_uart jtagIfc_uart_writedata writedata Output 32
 add_interface_port jtag_uart jtagIfc_uart_write write Output 1
 add_interface_port jtag_uart jtagIfc_uart_read read Output 1
 add_interface_port jtag_uart jtagIfc_uart_uart_readdata readdata Input 32
 add_interface_port jtag_uart jtagIfc_uart_uart_waitrequest waitrequest Input 1
+
+# avalon interface number 1 - DRAM ifc 0
+add_interface dram0 avalon start
+set_interface_property dram0 addressGroup 2
+set_interface_property dram0 addressUnits WORDS
+set_interface_property dram0 associatedClock clk
+set_interface_property dram0 associatedReset rst
+set_interface_property dram0 bitsPerSymbol 8
+set_interface_property dram0 ENABLED true
+set_interface_property dram0 EXPORT_OF ""
+set_interface_property dram0 PORT_NAME_MAP ""
+set_interface_property dram0 CMSIS_SVD_VARIABLES ""
+set_interface_property dram0 SVD_ADDRESS_GROUP ""
+set_interface_property dram0 IPXACT_REGISTER_MAP_VARIABLES ""
+
+add_interface_port dram0 dramIfcs_0_m_address address Output 26
+add_interface_port dram0 dramIfcs_0_m_writedata writedata Output 256
+add_interface_port dram0 dramIfcs_0_m_write write Output 1
+add_interface_port dram0 dramIfcs_0_m_read read Output 1
+add_interface_port dram0 dramIfcs_0_m_burstcount burstcount Output 3
+add_interface_port dram0 dramIfcs_0_m_readdata readdata Input 256
+add_interface_port dram0 dramIfcs_0_m_readdatavalid readdatavalid Input 1
+add_interface_port dram0 dramIfcs_0_m_waitrequest waitrequest Input 1
+
+# avalon interface number 2 - DRAM ifc 1
+add_interface dram1 avalon start
+set_interface_property dram1 addressGroup 3
+set_interface_property dram1 addressUnits WORDS
+set_interface_property dram1 associatedClock clk
+set_interface_property dram1 associatedReset rst
+set_interface_property dram1 bitsPerSymbol 8
+set_interface_property dram1 ENABLED true
+set_interface_property dram1 EXPORT_OF ""
+set_interface_property dram1 PORT_NAME_MAP ""
+set_interface_property dram1 CMSIS_SVD_VARIABLES ""
+set_interface_property dram1 SVD_ADDRESS_GROUP ""
+set_interface_property dram1 IPXACT_REGISTER_MAP_VARIABLES ""
+
+add_interface_port dram1 dramIfcs_1_m_address address Output 26
+add_interface_port dram1 dramIfcs_1_m_writedata writedata Output 256
+add_interface_port dram1 dramIfcs_1_m_write write Output 1
+add_interface_port dram1 dramIfcs_1_m_read read Output 1
+add_interface_port dram1 dramIfcs_1_m_burstcount burstcount Output 3
+add_interface_port dram1 dramIfcs_1_m_readdata readdata Input 256
+add_interface_port dram1 dramIfcs_1_m_readdatavalid readdatavalid Input 1
+add_interface_port dram1 dramIfcs_1_m_waitrequest waitrequest Input 1
 
 
 # avalon interface number 1
