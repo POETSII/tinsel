@@ -99,6 +99,7 @@ module mkDE10Top(Clock rx_390_A, Clock tx_390_A,
                   Reset rx_rst_A, Reset tx_rst_A,
                   Clock rx_390_B, Clock tx_390_B,
                   Reset rx_rst_B, Reset tx_rst_B,
+                  Clock mgmt, Reset mgmt_reset,
                   DE10Ifc ifc);
 
   Clock default_clock <- exposeCurrentClock();
@@ -195,7 +196,8 @@ module mkDE10Top(Clock rx_390_A, Clock tx_390_A,
   // Create DebugLink interface
   function DebugLinkClient getDebugLinkClient(Core core) = core.debugLinkClient;
   DebugLink debugLink <-
-    mkDebugLink(localBoardId, temperature,
+    mkDebugLink(mgmt, mgmt_reset,
+      localBoardId, temperature,
       map(getDebugLinkClient, vecOfCores));
 
   // Create idle-detector
@@ -264,6 +266,7 @@ module mkDE10Top(Clock rx_390_A, Clock tx_390_A,
     let t <- $time;
     if (t == 0) begin
       $display("\nSimulator for board %d started", localBoardId);
+      $dumpvars();
     end
   endrule
   `endif
@@ -290,22 +293,21 @@ module mkDE10Top(Clock rx_390_A, Clock tx_390_A,
   // interface MacDataIfc macA = syncA.syncToMac;
   // interface MacDataIfc macB = syncB.syncToMac;
 
-
-
 endmodule
-
+//
 
 // module mkDE10Top(Clock rx_390_A, Clock tx_390_A,
 //                   Reset rx_rst_A, Reset tx_rst_A,
 //                   Clock rx_390_B, Clock tx_390_B,
 //                   Reset rx_rst_B, Reset tx_rst_B,
+//                   Clock mgmt, Reset mgmt_reset,
 //                   DE10Ifc ifc);
 //
 //   Clock default_clock <- exposeCurrentClock();
 //   Reset default_reset <- exposeCurrentReset();
 //
 //   // Create JTAG UART instance
-//   JtagUart uart <- mkJtagUart;
+//   JtagUart uart <- mkJtagUart(mgmt, mgmt_reset);
 //
 //   Reg#(Bit#(8)) ctr <- mkReg(0);
 //
@@ -313,10 +315,9 @@ endmodule
 //     uart.jtagIn.tryPut(ctr);
 //   endrule
 //
-//   rule count;
+//   rule count (uart.jtagIn.didPut);
 //     ctr <= ctr+1;
 //   endrule
-//
 //   // connectUsing(mkQueue, uart.jtagOut, uart.jtagIn);
 //
 //   `ifndef SIMULATE
@@ -324,7 +325,46 @@ endmodule
 //   method Action setBoardId(Bit#(4) id);
 //   endmethod
 //   `endif
+//   // In simulation, display start-up message
+//   `ifdef SIMULATE
+//   rule displayStartup;
+//     let t <- $time;
+//     if (t == 0) begin
+//       $display("\nSimulator started");
+//       $dumpvars();
+//     end
+//   endrule
+//   `endif
 //
+// endmodule
 //
+// module mkSimTop(Empty);
 //
+//   Clock default_clock <- exposeCurrentClock();
+//   Reset default_reset <- exposeCurrentReset();
+//
+//   // Create JTAG UART instance
+//   JtagUart uart <- mkJtagUart(mgmt, mgmt_reset);
+//
+//   Reg#(Bit#(8)) ctr <- mkReg(0);
+//
+//   rule write;
+//     uart.jtagIn.tryPut(ctr);
+//     ctr <= ctr+1;
+//   endrule
+//
+//   // rule count;
+//   //   ctr <= ctr+1;
+//   // endrule
+//
+//   // connectUsing(mkQueue, uart.jtagOut, uart.jtagIn);
+//
+//   // In simulation, display start-up message
+//   rule displayStartup;
+//     let t <- $time;
+//     if (t == 0) begin
+//       $display("\nSimulator started");
+//       $dumpvars();
+//     end
+//   endrule
 // endmodule

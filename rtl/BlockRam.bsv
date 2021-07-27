@@ -1125,8 +1125,7 @@ module mkBlockRamTrueMixedBEOpts#(BlockRamOpts opts)
                   Add#(c__, dataWidthB, TMul#(TDiv#(dataWidthB, 8), 8))
 
                   );
-  // For simulation, use a BRAMCore
-  BlockRamTrueMixedByteEn#(addrA, dataA, addrB, dataB, dataBBytes) ram <- mkBlockRamTrueMixedBEOpts_S10(opts); // swapping to S10 crashes bsc.
+  BlockRamTrueMixedByteEn#(addrA, dataA, addrB, dataB, dataBBytes) ram <- mkBlockRamTrueMixedBEOpts_S10(opts);
   return ram;
 endmodule
 
@@ -1134,28 +1133,28 @@ endmodule
 
 `ifdef StratixV
 
-// module mkBlockRamTrueMixedBEOpts#(BlockRamOpts opts)
-//          (BlockRamTrueMixedByteEn#(addrA, dataA, addrB, dataB, dataBBytes))
-//          provisos(Bits#(addrA, addrWidthA), Bits#(dataA, dataWidthA),
-//                   Bits#(addrB, addrWidthB), Bits#(dataB, dataWidthB),
-//                   Bounded#(addrA), Bounded#(addrB),
-//                   Add#(addrWidthA, aExtra, addrWidthB),
-//                   Mul#(TExp#(aExtra), dataWidthB, dataWidthA),
-//                   Mul#(dataBBytes, 8, dataWidthB),
-//                   Div#(dataWidthB, dataBBytes, 8),
-//                   Mul#(dataABytes, 8, dataWidthA),
-//                   Div#(dataWidthA, dataABytes, 8),
-//                   Mul#(TExp#(aExtra), dataBBytes, dataABytes));
-//   // For simulation, use a BRAMCore
-//
-//   `ifdef SIMULATE
-//   BlockRamTrueMixedByteEn#(addrA, dataA, addrB, dataB, dataBBytes) ram <- mkBlockRamMaybeTrueMixedBEOpts_ALTERA(opts);
-//   `else // not SIMULATE
-//   BlockRamTrueMixedByteEn#(addrA, dataA, addrB, dataB, dataBBytes) ram <- mkBlockRamTrueMixedBEOptsPadded_S10(opts);
-//   `endif // not SIMULATE
-//
-//   return ram;
-// endmodule
+module mkBlockRamTrueMixedBEOpts#(BlockRamOpts opts)
+         (BlockRamTrueMixedByteEn#(addrA, dataA, addrB, dataB, dataBBytes))
+         provisos(Bits#(addrA, addrWidthA), Bits#(dataA, dataWidthA),
+                  Bits#(addrB, addrWidthB), Bits#(dataB, dataWidthB),
+                  Bounded#(addrA), Bounded#(addrB),
+                  Add#(addrWidthA, aExtra, addrWidthB),
+                  Mul#(TExp#(aExtra), dataWidthB, dataWidthA),
+                  Mul#(dataBBytes, 8, dataWidthB),
+                  Div#(dataWidthB, dataBBytes, 8),
+                  Mul#(dataABytes, 8, dataWidthA),
+                  Div#(dataWidthA, dataABytes, 8),
+                  Mul#(TExp#(aExtra), dataBBytes, dataABytes));
+  // For simulation, use a BRAMCore
+
+  `ifdef SIMULATE
+  BlockRamTrueMixedByteEn#(addrA, dataA, addrB, dataB, dataBBytes) ram <- mkBlockRamMaybeTrueMixedBEOpts_ALTERA(opts);
+  `else // not SIMULATE
+  BlockRamTrueMixedByteEn#(addrA, dataA, addrB, dataB, dataBBytes) ram <- mkBlockRamTrueMixedBEOptsPadded_S10(opts);
+  `endif // not SIMULATE
+
+  return ram;
+endmodule
 
 `endif // StratixV
 
