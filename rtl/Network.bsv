@@ -25,7 +25,12 @@ import IdleDetector :: *;
 import FlitMerger   :: *;
 import OffChipRAM   :: *;
 import DRAM         :: *;
+
+`ifdef DefinedIfProgRouterEnabled
 import ProgRouter   :: *;
+`else
+import Router   :: *;
+`endif
 
 // =============================================================================
 // Mesh Router
@@ -385,7 +390,11 @@ module mkNoC#(
   // -------------------------
 
   // Programmable router
+  `ifdef DefinedIfProgRouterEnabled
   ProgRouter boardRouter <- mkProgRouter(boardId);
+  `else
+  ProgRouter boardRouter <- mkBypassRouter(boardId);
+  `endif
 
   // Connect board router to north link
   connectDirect(boardRouter.flitOut[0], northLink[0].flitIn);
