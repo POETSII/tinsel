@@ -70,9 +70,9 @@ typedef uint16_t Key;
 //   HostPin - means 'send to host'
 //   Pin(n)  - means 'send to application pin number n'
 typedef uint8_t PPin;
-#define No 0
-#define HostPin 1
-#define Pin(n) ((n)+2)
+constexpr PPin No = 0;
+constexpr PPin HostPin = 1;
+constexpr PPin Pin(uint8_t n){ return ((n)+2); }
 
 // For template arguments that are not used
 struct None {};
