@@ -144,9 +144,15 @@ void HostLink::constructor(HostLinkParams p)
   sendBufferLen = 0;
 
   // Run the self test
+  int trials=0;
   if (! powerOnSelfTest()) {
-    fprintf(stderr, "Power-on self test failed.  Please try again.\n");
-    exit(EXIT_FAILURE);
+    if(trials < 5){
+      trials++;
+      fprintf(stderr, "Power-on self test failed.  Tying again.\n");
+    }else{
+      fprintf(stderr, "Power-on self test failed.  Please try again.\n");
+      exit(EXIT_FAILURE);
+    }
   }
 }
 
@@ -414,7 +420,7 @@ void HostLink::boot(const char* codeFilename, const char* dataFilename)
 
   // Step 1: load code into instruction memory
   // -----------------------------------------
-
+  fprintf(stderr, "  Writing code\n");
   uint32_t addrReg = 0xffffffff;
   uint32_t addr, word;
   while (code.getWord(&addr, &word)) {
@@ -446,6 +452,7 @@ void HostLink::boot(const char* codeFilename, const char* dataFilename)
   const uint32_t coresPerDRAM = 1 <<
     (TinselLogCoresPerDCache + TinselLogDCachesPerDRAM);
 
+  fprintf(stderr, "  Writing data\n");
   // Write data to DRAMs
   addrReg = 0xffffffff;
   while (data.getWord(&addr, &word)) {
@@ -474,6 +481,7 @@ void HostLink::boot(const char* codeFilename, const char* dataFilename)
   // -------------------
 
   // Send start command
+  fprintf(stderr, "  starting cores\n");
   startAll();
 }
 
