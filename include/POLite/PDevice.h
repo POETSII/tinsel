@@ -418,8 +418,9 @@ template <typename DeviceType,
       if (dev.finish(&m->payload)) tinselSend(tinselHostId(), m);
     }
 
-    // Sleep
-    tinselWaitUntil(TINSEL_CAN_RECV); while (1);
+    // Sleep. Next message in will free us up, and then we
+    // will return back into the bootloader.
+    tinselWaitUntil(TINSEL_CAN_RECV);
   }
 
   #endif

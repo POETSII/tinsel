@@ -68,35 +68,44 @@ int main(int argc, char** argv)
     }
   }
 
-  // Write graph down to tinsel machine via HostLink
-  graph.write(&hostLink);
+  // TODO: This hangs if you try to use the devices again without a full reboot of hostlink
+  int nReps=1;
 
-  // Load code and trigger execution
-  hostLink.boot("code.v", "data.v");
-  hostLink.go();
-  printf("Starting\n");
+  for(int i=0; i<nReps; i++){
 
-  // Start timer
-  struct timeval start, finish, diff;
-  gettimeofday(&start, NULL);
+    printf("Writing\n");
+    // Write graph down to tinsel machine via HostLink
+    graph.write(&hostLink);
 
-  // Receive message
-  PMessage<ClockTreeMessage> msg;
-  hostLink.recvMsg(&msg, sizeof(msg));
-  gettimeofday(&finish, NULL);
+    // Load code and trigger execution
+    printf("Booting\n");
+    hostLink.boot("code.v", "data.v");
+    printf("Go\n");
+    hostLink.go();
+    printf("Starting\n");
 
-  // Display leaf count
-  printf("Vertex count = %u\n", msg.payload.vertexCount);
+    // Start timer
+    struct timeval start, finish, diff;
+    gettimeofday(&start, NULL);
 
-  // Display cycle count
-  printf("Cycles = %u\n", msg.payload.cycleCount);
+    // Receive message
+    PMessage<ClockTreeMessage> msg;
+    hostLink.recvMsg(&msg, sizeof(msg));
+    gettimeofday(&finish, NULL);
 
-  // Display time
-  timersub(&finish, &start, &diff);
-  double duration = (double) diff.tv_sec + (double) diff.tv_usec / 1000000.0;
-  #ifndef POLITE_DUMP_STATS
-  printf("Time = %lf\n", duration);
-  #endif
+    // Display leaf count
+    printf("Vertex count = %u\n", msg.payload.vertexCount);
+
+    // Display cycle count
+    printf("Cycles = %u\n", msg.payload.cycleCount);
+
+    // Display time
+    timersub(&finish, &start, &diff);
+    double duration = (double) diff.tv_sec + (double) diff.tv_usec / 1000000.0;
+    #ifndef POLITE_DUMP_STATS
+    printf("Time = %lf\n", duration);
+    #endif
+  }
 
   return 0;
 }
