@@ -53,7 +53,7 @@ template <typename DeviceType,
  private:
   // Align address to 2^n byte boundary
   inline uint32_t align(uint32_t n, uint32_t addr) {
-    if ((addr & (1<<n)-1) == 0) return addr;
+    if ((addr & ((1u<<n)-1)) == 0) return addr;
     return ((addr >> n) + 1) << n;
   }
 

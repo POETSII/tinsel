@@ -37,7 +37,7 @@ struct POLiteHW
 
     static const unsigned  LogWordsPerMsg = TinselLogWordsPerMsg;
     static const unsigned  LogBytesPerMsg = TinselLogBytesPerMsg;
-    static const unsigned LogBytesPerWord = TinselLogBytesPerWord;
+    static const unsigned LogBytesPerWord = 2;
     static const unsigned LogBytesPerFlit = TinselLogBytesPerFlit;
     static const unsigned CoresPerFPU=TinselCoresPerFPU;
     static const unsigned LogBytesPerDRAM=TinselLogBytesPerDRAM;

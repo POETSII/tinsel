@@ -293,6 +293,18 @@ public:
     {
         recvMsg(msg, 1<<LogBytesPerMsg);
     }
+
+    bool canRecv()
+    {
+        std::unique_lock<std::mutex> lk(m_mutex);
+
+        return !m_dev2host.empty();
+    }
+
+    bool pollStdOut(FILE* outFile)
+    {
+        return false;
+    }
 };
 
 // No-op for SW

@@ -292,7 +292,7 @@ class ProgRouterMesh {
     Seq<PRoutingDest> south(dests->numElems);
     Seq<PRoutingDest> east(dests->numElems);
     Seq<PRoutingDest> west(dests->numElems);
-    for (int i = 0; i < dests->numElems; i++) {
+    for (unsigned i = 0; i < dests->numElems; i++) {
       PRoutingDest dest = dests->elems[i];
       uint32_t receiverX = destX(dest.mbox);
       uint32_t receiverY = destY(dest.mbox);
@@ -357,9 +357,9 @@ class ProgRouterMesh {
       (TinselLogCoresPerDCache + TinselLogDCachesPerDRAM);
 
     // Initialise write address for each routing table
-    for (int y = 0; y < boardsY; y++) {
-      for (int x = 0; x < boardsX; x++) {
-        for (int i = 0; i < TinselDRAMsPerBoard; i++) {
+    for (unsigned y = 0; y < boardsY; y++) {
+      for (unsigned x = 0; x < boardsX; x++) {
+        for (unsigned i = 0; i < TinselDRAMsPerBoard; i++) {
           // Use one core to initialise each DRAM
           uint32_t dest = hostLink->toAddr(x, y, coresPerDRAM * i, 0);
           req.cmd = SetAddrCmd;

@@ -105,14 +105,14 @@ struct Placer {
 
     // If there are more partitions than vertices
     if (nparts >= nvtxs) {
-      for (uint32_t i = 0; i < nvtxs; i++)
+      for (idx_t i = 0; i < nvtxs; i++)
         partitions[i] = i;
       return;
     }
 
     // If there is exactly one partition
     if (nparts == 1) {
-      for (uint32_t i = 0; i < nvtxs; i++)
+      for (idx_t i = 0; i < nvtxs; i++)
         partitions[i] = 0;
       return;
     }
@@ -123,7 +123,7 @@ struct Placer {
 
     // Populate undirected adjacency matrix
     uint32_t next = 0;
-    for (uint32_t i = 0; i < nvtxs; i++) {
+    for (idx_t i = 0; i < nvtxs; i++) {
       xadj[i] = next;
       Seq<NodeId>* in = graph->incoming->elems[i];
       Seq<NodeId>* out = graph->outgoing->elems[i];

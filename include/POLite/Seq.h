@@ -19,8 +19,8 @@ template <class T> class Seq
     }
 
   public:
-    int maxElems;
-    int numElems;
+    unsigned maxElems;
+    unsigned numElems;
     T* elems;
 
     // Constructors
@@ -39,7 +39,7 @@ template <class T> class Seq
     void setCapacity(int n) {
       maxElems = n;
       T* newElems = new T[maxElems];
-      for (int i = 0; i < numElems-1; i++)
+      for (unsigned i = 0; i < numElems-1; i++)
         newElems[i] = elems[i];
       delete [] elems;
       elems = newElems;
