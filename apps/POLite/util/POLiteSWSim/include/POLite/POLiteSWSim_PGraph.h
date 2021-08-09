@@ -16,7 +16,15 @@
 #include <atomic>
 #include <algorithm>
 
+#ifndef POLITE_NUM_PINS
+#define POLITE_NUM_PINS 1
+#endif
+
+template<int T_NUM_PINS=POLITE_NUM_PINS>
 struct POLiteSWSim {
+
+    template<int N>
+    using rebind_num_pins = POLiteSWSim<N>;
 
 static inline bool get_option_bool(const char *name, bool def) 
 {
@@ -115,7 +123,8 @@ public:
 
     virtual bool sim_step(
         std::mt19937_64 &rng,
-        std::function<void (void *, size_t)> send_cb
+        std::function<void (void *, size_t)> send_cb,
+        std::function<bool (uint32_t &, size_t &, void *)>  recv_cb
     ) =0;
 };
 
@@ -146,6 +155,7 @@ private:
     std::condition_variable m_cond;
 
     std::deque<std::vector<uint8_t>> m_dev2host;
+    std::deque<std::pair<uint32_t,std::vector<uint8_t>>> m_host2dev; // queue of (dest,payload) pairs
 
     std::atomic<bool> m_user_waiting;
     std::atomic<bool> m_worker_interrupt;
@@ -176,10 +186,31 @@ private:
             m_dev2host.push_back(std::move(tmp));
         };
 
+        std::function<bool (uint32_t &, size_t &, void *)> recv_cb=[&](uint32_t &dst, size_t &size, void * buffer)
+        {
+            // We don't put anything else in the PMessage.
+            static_assert(sizeof(PMessage<int>) == sizeof(int));
+
+            assert(lk.owns_lock());
+            if(m_host2dev.empty()){
+                return false;
+            }
+
+            auto msg=std::move(m_host2dev.front());
+            m_host2dev.pop_front();
+
+            dst=msg.first;
+            size=msg.second.size();
+            memset(buffer, 0xCC, 1<<LogBytesPerMsg);
+            memcpy(buffer, &msg.second[0], size);
+
+            return true;
+        };
+
         m_graph->sim_prepare();
 
         while(1){
-            if(!m_graph->sim_step(rng, send_cb)){
+            if(!m_graph->sim_step(rng, send_cb, recv_cb)){
                 if(verbosity>=2){
                     fprintf(stderr, "POLiteSWSim::HostLink : Info - Exiting device worker thread due to devices finishing.\n");
                 }
@@ -246,6 +277,26 @@ public:
         m_worker_running.store(true);
         m_worker=std::thread([=](){ worker_proc(); });
     }
+    /*
+      // Send a message (blocking by default)
+    bool send(uint32_t dest, uint32_t numFlits, void* msg, bool block = true)
+    {
+        std::unique_lock<std::mutex> lk(m_mutex);
+
+        m_cond.wait(lk, [&](){
+            return (m_host2dev.size()<16) || !m_worker_running.load();
+        });
+
+        if(!m_worker_running.load()){
+            fprintf(stderr, "POLiteSWSim::HostLink::recvMsg : Error - HostLink::send was called, but devices have all finished - message will be lost.");
+            exit(1);
+        }
+
+        std::vector<uint8_t> payload;
+        payload.assign( (uint8_t*)msg, (numFlits<<LogBytesPerFlit)+(uint8_t*)msg
+        m_host2dev.push_back({dest, std::move(payload)};
+    }
+    */
 
     // Blocking receive of max size message
     void recvMsg(void* msg, uint32_t numBytes)
@@ -301,7 +352,7 @@ public:
         return !m_dev2host.empty();
     }
 
-    bool pollStdOut(FILE* outFile)
+    bool pollStdOut(FILE* /*outFile*/)
     {
         return false;
     }
@@ -341,6 +392,8 @@ template <typename DeviceType, typename S, typename E, typename M>
 class PGraph
     : public PGraphBase // Implementation detail
 {
+public:
+    static constexpr int NUM_PINS = T_NUM_PINS;
 private:
     HostLink *m_hostlink;
 
@@ -379,7 +432,7 @@ public:
     {
         // Implementation stuff
         // For outgoing we keep that 0==empty and 1==host
-        std::array<std::vector<std::pair<PDeviceId,unsigned>>,POLITE_NUM_PINS+2> outgoing;
+        std::array<std::vector<std::pair<PDeviceId,unsigned>>,NUM_PINS+2> outgoing;
         std::vector<E> incoming;
         unsigned fanOut=0;
 
@@ -420,7 +473,7 @@ public:
 
     void addLabelledEdgeImpl(E edge, PDeviceId from, PinId pin, PDeviceId to, bool lock_dst)
     {
-        assert(pin<POLITE_NUM_PINS);
+        assert(pin<NUM_PINS);
         std::shared_ptr<PState> dstDev=devices.at(to);
         std::shared_ptr<PState> srcDev=devices.at(from);
         unsigned key=dstDev->incoming.size();      
@@ -561,7 +614,8 @@ public:
 
     virtual bool sim_step(
         std::mt19937_64 &rng,
-        std::function<void (void *, size_t)> send_cb
+        std::function<void (void *, size_t)> send_cb,
+        std::function<bool (uint32_t &, size_t &, void *)> recv_cb
     ){
         if(time_now >= next_print_time){
             if(verbosity >= 1){
@@ -601,6 +655,21 @@ public:
             }
         }
 
+        for(int i=0; i<10; i++){
+            char buffer[1<<LogBytesPerMsg];
+            uint32_t dst;
+            size_t size;
+            if(!recv_cb(dst, size, buffer)){
+                break;
+            }
+            if(size!=sizeof(M)){
+                throw std::runtime_error("Host sent message that did not match size of message type.");
+            }
+            M msg;
+            memcpy(&msg, buffer, sizeof(M));
+            post_message(rng, dst, -1, -1, msg);
+        }
+
         if(!messages_in_flight.empty()){
             const auto &now=messages_in_flight.front();
             for(const transit_msg &m : now){
@@ -608,7 +677,12 @@ public:
                 if(time_skew > max_time_skew){
                     max_time_skew=time_skew;
                 }
-                device_states[m.dst].recv((M*)&m.msg, &devices[m.dst]->incoming[m.key]);
+                if(m.src==-1){ // from host
+                    assert((int)m.key==-1);
+                    device_states[m.dst].recv((M*)&m.msg, nullptr);
+                }else{ // from device
+                    device_states[m.dst].recv((M*)&m.msg, &devices[m.dst]->incoming[m.key]);
+                }
             }
             messages_in_flight_total -= now.size();
             messages_received += now.size();

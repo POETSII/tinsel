@@ -10,11 +10,17 @@
 
 #include <cstdint>
 
+template<int T_NUM_PINS=POLITE_NUM_PINS>
 struct POLiteHW
 {
+    static constexpr int NUM_PINS = T_NUM_PINS;
+
+    template<int N>
+    using rebind_num_pins = POLiteHW<N>;
+
 #ifndef TINSEL
     template <typename DeviceType, typename S, typename E, typename M>
-    using PGraph = ::PGraph<DeviceType,S,E,M>;
+    using PGraph = ::PGraph<DeviceType,S,E,M,T_NUM_PINS>;
 #endif
 
     template <typename S, typename E, typename M>

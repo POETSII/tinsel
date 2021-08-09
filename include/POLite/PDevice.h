@@ -107,9 +107,9 @@ template <typename S, typename E, typename M> struct PDevice {
   the last handler, and something that tracks whether it is currently on
   the RTS list.
 */
-template <typename S> struct ALIGNED PState {
+template <typename S, int T_NUM_PINS=POLITE_NUM_PINS> struct ALIGNED PState {
   // Pointer to base of neighbours arrays
-  uint16_t pinBase[POLITE_NUM_PINS];
+  uint16_t pinBase[T_NUM_PINS];
   // Ready-to-send status
   PPin readyToSend;
   int8_t isMarkedRTS;
@@ -168,7 +168,8 @@ template <typename E> struct PInHeader {
 
 // Generic thread structure
 template <typename DeviceType,
-          typename S, typename E, typename M> struct PThread {
+          typename S, typename E, typename M, int T_NUM_PINS> struct PThread {
+  static constexpr int NUM_PINS = T_NUM_PINS;
 
   // Number of devices handled by thread
   PLocalDeviceId numDevices;
@@ -177,7 +178,8 @@ template <typename DeviceType,
   // Number of devices in graph
   uint32_t numVertices;
   // Pointer to array of device states
-  PTR(PState<S>) devices;
+  using DevState = PState<S,NUM_PINS>; // work around macro expansion
+  PTR(DevState) devices;
   // Pointer to base of routing tables
   PTR(POutEdge) outTableBase;
   PTR(PInHeader<E>) inTableHeaderBase;

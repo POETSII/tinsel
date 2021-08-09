@@ -276,7 +276,7 @@ class ProgRouterMesh {
     boardsX = numBoardsX;
     boardsY = numBoardsY;
     table = new ProgRouter* [numBoardsY];
-    for (int y = 0; y < numBoardsY; y++)
+    for (unsigned y = 0; y < numBoardsY; y++)
       table[y] = new ProgRouter [numBoardsX];
   }
 
@@ -322,7 +322,7 @@ class ProgRouterMesh {
     }
 
     // Add local records
-    for (int i = 0; i < local.numElems; i++) {
+    for (unsigned i = 0; i < local.numElems; i++) {
       PRoutingDest dest = local.elems[i];
       if (dest.kind == PRDestKindMRM) {
         table[senderY][senderX].addMRM(destMboxX(dest.mbox),
@@ -379,9 +379,9 @@ class ProgRouterMesh {
     uint32_t offset = 0;
     while (! allDone) {
       allDone = true;
-      for (int y = 0; y < boardsY; y++) {
-        for (int x = 0; x < boardsX; x++) {
-          for (int i = 0; i < TinselDRAMsPerBoard; i++) {
+      for (unsigned y = 0; y < boardsY; y++) {
+        for (unsigned x = 0; x < boardsX; x++) {
+          for (unsigned i = 0; i < TinselDRAMsPerBoard; i++) {
             Seq<uint8_t>* seq = table[y][x].table[i];
             if (offset < seq->numElems) {
               uint32_t dest = hostLink->toAddr(x, y, coresPerDRAM * i, 0);

@@ -49,7 +49,10 @@ inline int cmpEdgeDest(const void* e0, const void* e1) {
 
 // POETS graph
 template <typename DeviceType,
-          typename S, typename E, typename M> class PGraph {
+          typename S, typename E, typename M, int T_NUM_PINS=POLITE_NUM_PINS> class PGraph {
+public:
+  static constexpr int NUM_PINS = T_NUM_PINS;
+
  private:
   // Align address to 2^n byte boundary
   inline uint32_t align(uint32_t n, uint32_t addr) {
@@ -147,7 +150,7 @@ template <typename DeviceType,
 
   // Mapping from device id to device state
   // (Not valid until the mapper is called)
-  PState<S>** devices;
+  PState<S,NUM_PINS>** devices;
 
   // Mapping from thread id to number of devices on that thread
   // (Not valid until the mapper is called)
@@ -203,8 +206,8 @@ template <typename DeviceType,
 
   // Add a connection between devices
   inline void addEdge(PDeviceId from, PinId pin, PDeviceId to) {
-    if (pin >= POLITE_NUM_PINS) {
-      printf("addEdge: pin exceeds POLITE_NUM_PINS\n");
+    if (pin >= NUM_PINS) {
+      printf("addEdge: pin exceeds NUM_PINS\n");
       exit(EXIT_FAILURE);
     }
     graph.addEdge(from, pin, to);
@@ -254,12 +257,12 @@ template <typename DeviceType,
       uint32_t sizeEOMem = 0;
       uint32_t sizeTMem = 0;
       // Add space for thread structure (always stored in SRAM)
-      sizeTMem = cacheAlign(sizeof(PThread<DeviceType, S, E, M>));
+      sizeTMem = cacheAlign(sizeof(PThread<DeviceType, S, E, M, NUM_PINS>));
       // Add space for devices
       uint32_t numDevs = numDevicesOnThread[threadId];
       for (uint32_t devNum = 0; devNum < numDevs; devNum++) {
         // Add space for device
-        sizeVMem = sizeVMem + sizeof(PState<S>);
+        sizeVMem = sizeVMem + sizeof(PState<S,NUM_PINS>);
       }
       // Add space for incoming edge tables
       if (inTableHeaders[threadId]) {
@@ -274,7 +277,7 @@ template <typename DeviceType,
       // Add space for outgoing edge table
       for (uint32_t devNum = 0; devNum < numDevs; devNum++) {
         PDeviceId id = fromDeviceAddr[threadId][devNum];
-        for (uint32_t p = 0; p < POLITE_NUM_PINS; p++) {
+        for (uint32_t p = 0; p < NUM_PINS; p++) {
           Seq<POutEdge>* edges = outTable[id][p];
           sizeEOMem += sizeof(POutEdge) * edges->numElems;
         }
@@ -371,8 +374,8 @@ template <typename DeviceType,
       uint32_t nextVMem = 0;
       uint32_t nextOutIndex = 0;
       // Pointer to thread structure
-      PThread<DeviceType, S, E, M>* thread =
-        (PThread<DeviceType, S, E, M>*) &threadMem[threadId][0];
+      PThread<DeviceType, S, E, M, NUM_PINS>* thread =
+        (PThread<DeviceType, S, E, M, NUM_PINS>*) &threadMem[threadId][0];
       // Set number of devices on thread
       thread->numDevices = numDevicesOnThread[threadId];
       // Set number of devices in graph
@@ -386,19 +389,19 @@ template <typename DeviceType,
       // Add space for each device on thread
       uint32_t numDevs = numDevicesOnThread[threadId];
       for (uint32_t devNum = 0; devNum < numDevs; devNum++) {
-        PState<S>* dev = (PState<S>*) &vertexMem[threadId][nextVMem];
+        PState<S,NUM_PINS>* dev = (PState<S,NUM_PINS>*) &vertexMem[threadId][nextVMem];
         PDeviceId id = fromDeviceAddr[threadId][devNum];
         devices[id] = dev;
         // Add space for device
-        nextVMem = nextVMem + sizeof(PState<S>);
+        nextVMem = nextVMem + sizeof(PState<S,NUM_PINS>);
       }
       // Initialise each device and the thread's out edges
       for (uint32_t devNum = 0; devNum < numDevs; devNum++) {
         PDeviceId id = fromDeviceAddr[threadId][devNum];
-        PState<S>* dev = devices[id];
+        PState<S,NUM_PINS>* dev = devices[id];
         // Initialise
         POutEdge* outEdgeArray = (POutEdge*) outEdgeMem[threadId];
-        for (uint32_t p = 0; p < POLITE_NUM_PINS; p++) {
+        for (uint32_t p = 0; p < NUM_PINS; p++) {
           dev->pinBase[p] = nextOutIndex;
           Seq<POutEdge>* edges = outTable[id][p];
           for (uint32_t i = 0; i < edges->numElems; i++) {
@@ -437,7 +440,7 @@ template <typename DeviceType,
 
   // Allocate mapping structures
   void allocateMapping() {
-    devices = (PState<S>**) calloc(numDevices, sizeof(PState<S>*));
+    devices = (PState<S,NUM_PINS>**) calloc(numDevices, sizeof(PState<S,NUM_PINS>*));
     toDeviceAddr = (PDeviceAddr*) calloc(numDevices, sizeof(PDeviceAddr));
     fromDeviceAddr = (PDeviceId**) calloc(TinselMaxThreads, sizeof(PDeviceId*));
     numDevicesOnThread = (uint32_t*) calloc(TinselMaxThreads, sizeof(uint32_t));
@@ -473,8 +476,8 @@ template <typename DeviceType,
     outTable = (Seq<POutEdge>***) calloc(numDevices, sizeof(Seq<POutEdge>**));
     for (uint32_t d = 0; d < numDevices; d++) {
       outTable[d] = (Seq<POutEdge>**)
-        calloc(POLITE_NUM_PINS, sizeof(Seq<POutEdge>*));
-      for (uint32_t p = 0; p < POLITE_NUM_PINS; p++)
+        calloc(NUM_PINS, sizeof(Seq<POutEdge>*));
+      for (uint32_t p = 0; p < NUM_PINS; p++)
         outTable[d][p] = new SmallSeq<POutEdge>;
     }
   }
@@ -673,7 +676,7 @@ template <typename DeviceType,
     // For each device
     for (uint32_t d = 0; d < numDevices; d++) {
       // For each pin
-      for (uint32_t p = 0; p < POLITE_NUM_PINS; p++) {
+      for (uint32_t p = 0; p < NUM_PINS; p++) {
         // Split edge lists into local/non-local and sort by target thread id
         splitDests(d, p, &local, &nonLocal);
         // Deal with board-local connections
@@ -762,7 +765,7 @@ template <typename DeviceType,
     if (outTable != NULL) {
       for (uint32_t d = 0; d < numDevices; d++) {
         if (outTable[d] == NULL) continue;
-        for (uint32_t p = 0; p < POLITE_NUM_PINS; p++)
+        for (uint32_t p = 0; p < NUM_PINS; p++)
           delete outTable[d][p];
         free(outTable[d]);
       }
@@ -926,17 +929,17 @@ template <typename DeviceType,
     }
 
     // Initialise write addresses
-    for (int x = 0; x < meshLenX; x++)
-      for (int y = 0; y < meshLenY; y++)
-        for (int c = 0; c < TinselCoresPerBoard; c++)
+    for (unsigned x = 0; x < meshLenX; x++)
+      for (unsigned y = 0; y < meshLenY; y++)
+        for (unsigned c = 0; c < TinselCoresPerBoard; c++)
           hostLink->setAddr(x, y, c, heapBase[hostLink->toAddr(x, y, c, 0)]);
 
     // Write heaps
     uint32_t done = false;
     while (! done) {
       done = true;
-      for (int x = 0; x < meshLenX; x++) {
-        for (int y = 0; y < meshLenY; y++) {
+      for (unsigned x = 0; x < meshLenX; x++) {
+        for (unsigned y = 0; y < meshLenY; y++) {
           for (int c = 0; c < TinselCoresPerBoard; c++) {
             uint32_t t = threadCount[x][y][c];
             if (t < TinselThreadsPerCore) {
@@ -1012,6 +1015,8 @@ template <typename DeviceType,
 
 // Read performance stats and store in file
 inline void politeSaveStats(HostLink* hostLink, const char* filename) {
+  (void)hostLink;
+  (void)filename;
   #ifdef POLITE_DUMP_STATS
   // Open file for performance counters
   FILE* statsFile = fopen(filename, "wt");

@@ -60,9 +60,9 @@ template <class T> class Seq
     }
 
     // Ensure space for a further N elements
-    void ensureSpaceFor(int n)
+    void ensureSpaceFor(unsigned n)
     {
-      int newNumElems = numElems + n;
+      unsigned newNumElems = numElems + n;
       if (newNumElems > maxElems)
         setCapacity(newNumElems*2);
     }
@@ -97,7 +97,7 @@ template <class T> class Seq
 
     // Is given value already in sequence?
     bool member(T x) {
-      for (int i = 0; i < numElems; i++)
+      for (unsigned i = 0; i < numElems; i++)
         if (elems[i] == x) return true;
       return false;
     }
