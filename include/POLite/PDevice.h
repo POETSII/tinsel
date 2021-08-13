@@ -168,7 +168,7 @@ template <typename E> struct PInHeader {
 
 // Generic thread structure
 template <typename DeviceType,
-          typename S, typename E, typename M, int T_NUM_PINS> struct PThread {
+          typename S, typename E, typename M, int T_NUM_PINS=POLITE_NUM_PINS> struct PThread {
   static constexpr int NUM_PINS = T_NUM_PINS;
 
   // Number of devices handled by thread
@@ -296,6 +296,7 @@ template <typename DeviceType,
     }
 
     // Set number of flits per message
+    static_assert(sizeof(PMessage<M>) <= (1<<TinselLogBytesPerMsg));
     tinselSetLen((sizeof(PMessage<M>)-1) >> TinselLogBytesPerFlit);
 
     // Event loop
@@ -305,9 +306,13 @@ template <typename DeviceType,
         if (tinselCanSend()) {
           PMessage<M>* m = (PMessage<M>*) tinselSendSlot();
           // Send message
-          m->destKey = outEdge->key;
-          tinselMulticast(outEdge->mbox, outEdge->threadMaskHigh,
-            outEdge->threadMaskLow, m);
+          if(outEdge == outHost){
+            tinselSend(tinselHostId(), m);
+          }else{
+              m->destKey = outEdge->key;
+              tinselMulticast(outEdge->mbox, outEdge->threadMaskHigh,
+                outEdge->threadMaskLow, m);
+          }
           #ifdef POLITE_COUNT_MSGS
           msgsSent++;
           #endif

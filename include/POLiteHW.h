@@ -27,6 +27,7 @@ struct POLiteHW
     using PDevice = ::PDevice<S,E,M>;
 
 #ifndef TINSEL
+    using HostLinkParams = ::HostLinkParams;
     using HostLink = ::HostLink;
 #endif
 
