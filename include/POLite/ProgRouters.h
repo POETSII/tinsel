@@ -403,7 +403,7 @@ class ProgRouterMesh {
 
   // Destructor
   ~ProgRouterMesh() {
-     for (int y = 0; y < boardsY; y++)
+     for (unsigned y = 0; y < boardsY; y++)
        delete [] table[y];
      delete [] table;
   }
