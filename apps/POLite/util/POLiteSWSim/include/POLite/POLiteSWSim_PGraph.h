@@ -258,11 +258,19 @@ public:
         HostLink (which is common), we need to end the processing loop. */
     void detach_graph(PGraphBase *graph)
     {
-        assert(graph==m_graph);
+        if(m_graph){
+            assert(graph==m_graph);
+        }
         m_worker_interrupt.store(true);
         std::unique_lock<std::mutex> lk(m_mutex);
 
         m_cond.wait(lk, [&](){ return m_worker_running.load()==false; });
+    }
+
+    void attach_graph(PGraphBase *graph)
+    {
+        assert(m_graph==0);
+        m_graph=graph;
     }
 
     // No-op for SW
@@ -273,6 +281,7 @@ public:
     // background, then return
     void go()
     {
+        assert(m_graph);
         m_worker_interrupt.store(false);
         m_worker_running.store(true);
         m_worker=std::thread([=](){ worker_proc(); });
@@ -301,6 +310,8 @@ public:
     // Blocking receive of max size message
     void recvMsg(void* msg, uint32_t numBytes)
     {
+        assert(m_graph);
+
         if(numBytes > (1<<LogBytesPerMsg)){
             fprintf(stderr, "POLiteSWSim::HostLink::recvMsg : Error - Attempt to read more than max sized message.");
             exit(1);
@@ -342,11 +353,13 @@ public:
     // Blocking receive of max size message
     void recv(void* msg)
     {
+        assert(m_graph);
         recvMsg(msg, 1<<LogBytesPerMsg);
     }
 
     bool canRecv()
     {
+        assert(m_graph);
         std::unique_lock<std::mutex> lk(m_mutex);
 
         return !m_dev2host.empty();
@@ -354,6 +367,7 @@ public:
 
     bool pollStdOut(FILE* /*outFile*/)
     {
+        assert(m_graph);
         return false;
     }
 };
@@ -395,7 +409,7 @@ class PGraph
 public:
     static constexpr int NUM_PINS = T_NUM_PINS;
 private:
-    HostLink *m_hostlink;
+    HostLink *m_hostlink=0;
 
     std::mutex m_lock;
     uint32_t m_maxFanOut=0;
@@ -417,6 +431,11 @@ public:
     {
         deliver_out_of_order=POLiteSWSim::get_option_bool("POLITE_SW_SIM_DELIVER_OUT_OF_ORDER", true);
         verbosity=POLiteSWSim::get_option_unsigned("POLITE_SW_SIM_VERBOSITY", 1);
+    }
+
+    PGraph(int /*x*/, int /*y*/)
+    {
+        PGraph();
     }
 
     ~PGraph()
@@ -551,7 +570,7 @@ public:
     void write(HostLink *h)
     {
         assert(h->m_graph==0);
-        h->m_graph=this;
+        h->attach_graph(this);
         m_hostlink=h;
     }
 
@@ -677,8 +696,8 @@ public:
                 if(time_skew > max_time_skew){
                     max_time_skew=time_skew;
                 }
-                if(m.src==-1){ // from host
-                    assert((int)m.key==-1);
+                if(m.src==(unsigned)-1){ // from host
+                    assert(m.key==(unsigned)-1);
                     device_states[m.dst].recv((M*)&m.msg, nullptr);
                 }else{ // from device
                     device_states[m.dst].recv((M*)&m.msg, &devices[m.dst]->incoming[m.key]);
