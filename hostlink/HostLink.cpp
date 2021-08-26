@@ -402,7 +402,8 @@ bool HostLink::canRecv()
 }
 
 // Load application code and data onto the mesh
-void HostLink::boot(const char* codeFilename, const char* dataFilename)
+void HostLink::boot(const char* codeFilename, const char* dataFilename,
+                    bool start)
 {
   MemFileReader code(codeFilename);
   MemFileReader data(dataFilename);
@@ -473,8 +474,8 @@ void HostLink::boot(const char* codeFilename, const char* dataFilename)
   // Step 3: start cores
   // -------------------
 
-  // Send start command
-  startAll();
+  // Send start command, if desired
+  if (start) startAll();
 }
 
 // Trigger to start application execution
