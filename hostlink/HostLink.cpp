@@ -475,7 +475,7 @@ void HostLink::loadAll(const char* codeFilename, const char* dataFilename)
 void HostLink::boot(const char* codeFilename, const char* dataFilename)
 {
     loadAll(codeFilename, dataFilename);
-    start();
+    startAll();
 }
 
 // Trigger to start application execution
