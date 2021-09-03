@@ -481,7 +481,9 @@ void HostLink::boot(const char* codeFilename, const char* dataFilename)
   // -------------------
 
   // Send start command
-  fprintf(stderr, "  starting cores\n");
+  const uint32_t numCores =
+    (meshXLen*meshYLen) << TinselLogCoresPerBoard;
+  fprintf(stderr, "  starting cores : %u cores, %u threads\n", numCores, numCores*TinselThreadsPerCore);
   startAll();
 }
 

@@ -703,6 +703,7 @@ public:
         outTable[d][p]->append(edge);
         // Add output list terminator
         POutEdge term;
+        memset(&term, 0, sizeof(POutEdge));
         term.key = InvalidKey;
         outTable[d][p]->append(term);
       }
