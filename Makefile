@@ -43,4 +43,5 @@ clean:
 
 DE10: clean
 	make -C rtl mkDE10Top.v
+	make -C apps/boot all
 	make -C DE10Pro/DE10-reference-project build/top.sof

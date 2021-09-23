@@ -25,13 +25,15 @@ BSINCLUDE+=../DE10Pro/DE10-reference-project/src/BlueStuff/BlueBasics
 BSINCLUDE+=../DE10Pro/DE10-reference-project/src/BlueStuff/AXI
 BSINCLUDE+=../DE10Pro/DE10-reference-project/src/BlueStuff/SocketPacketUtils
 BSINCLUDE+=../DE10Pro/DE10-reference-project/src/BlueStuff
+BSINCLUDE+=/home/tparks/upstream/bluecheck
+
 # BSV compiler flags
 BSC = bsc
 BSCFLAGS = -suppress-warnings S0015 \
            -suppress-warnings G0023 \
            -steps-warn-interval 750000 -check-assert \
-           +RTS -K32M -RTS \
-					 -p $(call join-with,:,$(BSINCLUDE))
+           +RTS -K128M -RTS \
+					 -p $(call join-with,:,$(BSINCLUDE)) --verbose
 
 
 
@@ -54,6 +56,11 @@ HOSTTOPFILE = DE5BridgeTop.bsv
 HOSTTOPMOD = de5BridgeTop
 endif
 
+$(info $$STRATIXV is [${STRATIXV}])
+$(info $$STRATIX10 is [${STRATIX10}])
+$(info $$TOPMOD is [${TOPMOD}])
+$(info $$QP is [${QP}])
+
 .PHONY: sim
 sim: $(TOPMOD) $(HOSTTOPMOD)
 
@@ -64,7 +71,7 @@ $(TOPMOD): *.bsv *.c InstrMem.hex
 	make -C $(TINSEL_ROOT)/apps/boot
 	make -C $(TINSEL_ROOT)/hostlink udsock
 	$(BSC) $(BSCFLAGS) $(DEFS) -D SIMULATE -sim -g $(TOPMOD) -u $(TOPFILE)
-	$(BSC) $(BSCFLAGS) -sim -o $(TOPMOD) -e $(TOPMOD) *.c
+	$(BSC) $(BSCFLAGS) -Xc -I/home/tparks/upstream/bsc/inst/lib/VPI/ -sim -o $(TOPMOD) -e $(TOPMOD) *.c
 
 $(TOPMOD).v: *.bsv $(QP)/InstrMem.mif
 	make -C $(TINSEL_ROOT)/apps/boot
@@ -73,7 +80,7 @@ $(TOPMOD).v: *.bsv $(QP)/InstrMem.mif
 
 $(HOSTTOPMOD): *.bsv *.c
 	$(BSC) $(BSCFLAGS) $(DEFS) -D SIMULATE -sim -g $(HOSTTOPMOD) -u $(HOSTTOPFILE)
-	$(BSC) $(BSCFLAGS) -sim -o $(HOSTTOPMOD) -e $(HOSTTOPMOD) *.c
+	$(BSC) $(BSCFLAGS) -Xc -I/home/tparks/upstream/bsc/inst/lib/VPI/ -sim -o $(HOSTTOPMOD) -e $(HOSTTOPMOD) *.c
 
 $(HOSTTOPMOD).v: *.bsv
 	$(BSC) $(BSCFLAGS) -opt-undetermined-vals -unspecified-to X \
@@ -101,13 +108,28 @@ test-mem: testMem
 .PHONY: test-mailbox
 test-mailbox: testMailbox
 
+.PHONY: test-bram
+test-bram:  *.bsv
+	$(BSC) $(BSCFLAGS) $(DEFS) -D SIMULATE \
+         -sim -g mkBRAMTest -u TestBRAMAdaptors.bsv
+	$(BSC) $(BSCFLAGS) -Xc -I/home/tparks/upstream/bsc/inst/lib/VPI/ -sim -o mkBRAMTest -e mkBRAMTest *.c
+	LD_PRELOAD=mkBRAMTest.so ./mkBRAMTest
+
+.PHONY: test-jtaguart
+test-jtaguart:  *.bsv
+	$(BSC) $(BSCFLAGS) $(DEFS) -show-range-conflict \
+         -sim -g mkSimJtagUartTop -u testJtagUart.bsv
+	$(BSC) $(BSCFLAGS) -Xc -I/home/tparks/upstream/bsc/inst/lib/VPI/ -sim -o mkSimJtagUartTop -e mkSimJtagUartTop *.c
+	LD_PRELOAD=mkSimJtagUartTop.so ./mkSimJtagUartTop
+
+
 .PHONY: clean
 clean:
 	rm -f *.cxx *.o *.h *.ba *.bo *.so *.ipinfo
 	rm -f InstrMem.hex DataMem.hex RunQueue.hex
 	rm -f testMem de5Top testMailbox de5BridgeTop
 	rm -f de5Top.v mkCore.v mkDCache.v mkMailbox.v mkDebugLinkRouter.v
-	rm -f DE10Top.v
+	rm -f mkDE10Top.v mkDE10Top
 	rm -f mkFPU.v mkMeshRouter.v
 	rm -f de5BridgeTop.v
 	rm -rf test-mem-log

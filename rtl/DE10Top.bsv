@@ -7,6 +7,9 @@ import ClientServer::*;
 import GetPut::*;
 
 import ReliableLink::*;
+import AXI4 :: *;
+import AXI4Lite :: *;
+
 
 // ============================================================================
 // Imports
@@ -40,6 +43,18 @@ import "BDPI" function Bit#(32) getBoardId();
 
 interface DE10Ifc;
   interface Vector#(`DRAMsPerBoard, DRAMExtIfc) dramIfcs;
+
+  // HPS to FPGA AXI port
+  // --------------------
+  interface AXI4_Slave_Synth #( 4
+                        , 35
+                        , 32
+                        , 0
+                        , 0
+                        , 0
+                        , 0
+                        , 0 ) axs_pcie2f;
+
   interface AvalonSlaveSingleMasterIfc#(4) tester; // AvalonSlave physical interface
   interface JtagUartAvalon jtagIfc;
 
@@ -294,7 +309,7 @@ module mkDE10Top(Clock rx_390_A, Clock tx_390_A,
   // interface MacDataIfc macB = syncB.syncToMac;
 
 endmodule
-//
+
 
 // module mkDE10Top(Clock rx_390_A, Clock tx_390_A,
 //                   Reset rx_rst_A, Reset tx_rst_A,
@@ -311,14 +326,14 @@ endmodule
 //
 //   Reg#(Bit#(8)) ctr <- mkReg(0);
 //
-//   rule write;
-//     uart.jtagIn.tryPut(ctr);
-//   endrule
-//
-//   rule count (uart.jtagIn.didPut);
-//     ctr <= ctr+1;
-//   endrule
-//   // connectUsing(mkQueue, uart.jtagOut, uart.jtagIn);
+//   // rule write;
+//   //   uart.jtagIn.tryPut(ctr);
+//   // endrule
+//   //
+//   // rule count (uart.jtagIn.didPut);
+//   //   ctr <= ctr+1;
+//   // endrule
+//   connectUsing(mkQueue, uart.jtagOut, uart.jtagIn);
 //
 //   `ifndef SIMULATE
 //   interface jtagIfc  = uart.jtagAvalon;
@@ -337,6 +352,7 @@ endmodule
 //   `endif
 //
 // endmodule
+
 //
 // module mkSimTop(Empty);
 //

@@ -50,7 +50,7 @@ module mkWideSRAM#(RAMId id) (WideSRAM);
   // Perform store request
   rule performStore (storeQueue.canDeq && storePort.canPut);
     DRAMReq reqIn = storeQueue.dataOut;
-    Vector#(4, Bit#(64)) chunks = unpack(reqIn.data);
+    Vector#(`Word64sPerBeat, Bit#(64)) chunks = unpack(reqIn.data);
     SRAMStoreReq reqOut;
     reqOut.id = reqIn.id;
     reqOut.addr = { truncate(reqIn.addr), storeCount };
@@ -73,7 +73,7 @@ module mkWideSRAM#(RAMId id) (WideSRAM);
         busy[client].inc;
         storeQueue.enq(reqIn);
         reqInPort.get;
-      end 
+      end
     end else begin
       if (loadPort.canPut) begin
         if (busy[client].value == 0) begin
@@ -84,13 +84,13 @@ module mkWideSRAM#(RAMId id) (WideSRAM);
           reqOut.info = unpack(truncate(reqIn.data));
           loadPort.put(reqOut);
           reqInPort.get;
-        end 
+        end
       end
     end
   endrule
 
   // Response buffer and count
-  Vector#(4, Reg#(Bit#(64))) respBuffer <- replicateM(mkRegU);
+  Vector#(`Word64sPerBeat, Reg#(Bit#(64))) respBuffer <- replicateM(mkRegU);
   Reg#(Bit#(2)) respCount <- mkReg(0);
 
   // Consume load responses
@@ -100,7 +100,7 @@ module mkWideSRAM#(RAMId id) (WideSRAM);
     if (respCount == 3) begin
       if (respQueue.notFull) begin
         DRAMResp respOut;
-        Vector#(4, Bit#(64)) data;
+        Vector#(`Word64sPerBeat, Bit#(64)) data;
         for (Integer i = 0; i < 4; i=i+1) data[i] = respBuffer[i];
         data[3] = respIn.data;
         respInPort.get;

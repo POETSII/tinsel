@@ -25,7 +25,7 @@ sim/hostlink.a : sim/DebugLink.o sim/HostLink.o sim/MemFileReader.o sim/SocketUt
 	ar rc $@ $^
 	ranlib $@
 
-pciestreamd: pciestreamd.cpp 
+pciestreamd: pciestreamd.cpp
 	g++ -Wall -I $(HL) -O2 pciestreamd.cpp -o pciestreamd
 
 boardctrld: boardctrld.cpp PowerLink.o JtagAtlantic.h \
@@ -41,10 +41,16 @@ sim/boardctrld: boardctrld.cpp sim/PowerLink.o JtagAtlantic.h \
                 $(INC)/config.h jtag/UART.h Queue.h jtag/UARTBuffer.h \
                 sim/UART.o sim/SocketUtils.o DebugLinkFormat.h BoardCtrl.h
 	g++ -DSIMULATE -std=c++98 boardctrld.cpp sim/UART.o \
-	  PowerLink.o SocketUtils.o $(CPPFLAGS) -I $(HL) -o sim/boardctrld
+	  sim/PowerLink.o sim/SocketUtils.o $(CPPFLAGS) -I $(HL) -o sim/boardctrld
 
 udsock: udsock.c
 	gcc -Wall -O2 udsock.c -o udsock
+
+POST: jtag/UART.h $(INC)/config.h jtag/UART.o POST.cpp DebugLink_de10.o SocketUtils.o
+	g++ $(CPPFLAGS) -std=c++11 -g -Wall -I $(HL) -O2 POST.cpp jtag/UART.o DebugLink_de10.o SocketUtils.o -ljtag_atlantic -ljtag_client -L $(QUARTUS_ROOTDIR)/linux64/ -Wl,-rpath,$(QUARTUS_ROOTDIR)/linux64 -o POST
+
+sim/POST: jtag/UART.h $(INC)/config.h sim/UART.o POST.cpp sim/DebugLink_de10.o sim/SocketUtils.o
+	g++ $(CPPFLAGS) -std=c++11 -Wall -DSIMULATE -I $(HL) -o sim/POST -O2 POST.cpp sim/UART.o sim/DebugLink_de10.o sim/SocketUtils.o
 
 fancheck: fancheck.cpp SocketUtils.o
 	g++ -I . -O fancheck.cpp SocketUtils.o -o fancheck

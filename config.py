@@ -32,13 +32,13 @@ p["LogInstrsPerCore"] = 11
 p["SharedInstrMem"] = True
 
 # Log of number of multi-threaded cores sharing a DCache
-p["LogCoresPerDCache"] = 2 # the mailbox calc defines no of cores, but this defines hookup; need to match
+p["LogCoresPerDCache"] = 3 # the mailbox calc defines no of cores, but this defines hookup; need to match
 
 # Log of number of caches per DRAM port
-p["LogDCachesPerDRAM"] = 2
+p["LogDCachesPerDRAM"] = 3
 
 # Log of number of 32-bit words in a single memory transfer
-p["LogWordsPerBeat"] = 3
+p["LogWordsPerBeat"] = 3 # need to modify progrouter to fix this
 
 # Log of number of beats in a cache line
 p["LogBeatsPerLine"] = 0
@@ -59,7 +59,7 @@ p["DRAMLogMaxInFlight"] = 5
 p["DRAMLatency"] = 20
 
 # Size of each DRAM
-p["LogBeatsPerDRAM"] = 9
+p["LogBeatsPerDRAM"] = 25 # incr dram count rather than go over 32b byte addresses (beats + wordsperbeat + 4)
 
 # Size of internal flit payload
 p["LogWordsPerFlit"] = 2
@@ -68,16 +68,16 @@ p["LogWordsPerFlit"] = 2
 p["LogMaxFlitsPerMsg"] = 2
 
 # Space available in mailbox scratchpad
-p["LogMsgsPerMailbox"] = 9 # must be at least enough to store one message per thread
+p["LogMsgsPerMailbox"] = 10 # must be at least enough to store one message per thread
 
 # Number of cores sharing a mailbox
-p["LogCoresPerMailbox"] = 2
+p["LogCoresPerMailbox"] = 1
 
 # Number of bits in mailbox mesh X coord
-p["MailboxMeshXBits"] = 1
+p["MailboxMeshXBits"] = 3
 
 # Number of bits in mailbox mesh Y coord
-p["MailboxMeshYBits"] = 2
+p["MailboxMeshYBits"] = 3
 
 # Size of multicast queues in mailbox
 p["LogMsgPtrQueueSize"] = 6
@@ -127,7 +127,7 @@ p["MeshXLenWithinBox"] = 1
 p["MeshYLenWithinBox"] = 1
 
 # Number of cores per FPU
-p["LogCoresPerFPU"] = 2
+p["LogCoresPerFPU"] = 0
 
 # Number of inter-FPGA links on north edge
 # Number of inter-FPGA links on south edge
@@ -165,6 +165,7 @@ p["FetcherMsgsPerFlitBuffer"] = 2 ** p["FetcherLogMsgsPerFlitBuffer"]
 
 # Enable performance counters
 p["EnablePerfCount"] = True
+p["EnableProgRouter"] = True
 
 # Box mesh
 p["BoxMeshXLen"] = 1
@@ -179,17 +180,20 @@ p["UseCustomAccelerator"] = False
 # Clock frequency (in MHz)
 p["ClockFreq"] = 200
 
-# if True: # simulate
-#     p["MailboxMeshXBits"] = 1
-#     p["MailboxMeshYBits"] = 1
-#     p["LogDCachesPerDRAM"] = 1
-#     p["MeshXLenWithinBox"] = 1
-#     p["MeshYLenWithinBox"] = 1
-#     p["BoxMeshXLen"] = 1
-#     p["BoxMeshYLen"] = 1
-#     p["BoxMesh"] = ('{'
-#         '{"tparks-optiplex-390",},'
-#       '}')
+if True: # simulate
+    p["MailboxMeshXBits"] = 1
+    p["MailboxMeshYBits"] = 1
+    p["LogCoresPerMailbox"] = 2
+    p["LogCoresPerDCache"] = 2 # the mailbox calc defines no of cores, but this defines hookup; need to match
+    p["LogDCachesPerDRAM"] = 1
+
+    p["MeshXLenWithinBox"] = 1
+    p["MeshYLenWithinBox"] = 1
+    p["BoxMeshXLen"] = 1
+    p["BoxMeshYLen"] = 1
+    p["BoxMesh"] = ('{'
+        '{"tparks-optiplex-390",},'
+      '}')
 
 if False: # make mailbox type more compatible with the dual port memory
     p["LogMsgsPerMailbox"] = 8
@@ -211,6 +215,9 @@ elif  p["DeviceFamily"] == quoted("Stratix 10"):
     p["Stratix10"] = True
 else:
     raise RuntimeError("Unsupported device type " + str(p['DeviceFamily']) + ", Stratix V and Stratix 10 currently supported.")
+
+if p["EnableProgRouter"]:
+    p["DefinedIfProgRouterEnabled"] = True
 
 # Number of mailboxes per board
 p["LogMailboxesPerBoard"] = p["MailboxMeshXBits"] + p["MailboxMeshYBits"]
@@ -250,6 +257,10 @@ p["WordsPerBeat"] = 2**p["LogWordsPerBeat"]
 
 # Number of bytes in a memory transfer
 p["BytesPerBeat"] = 4 * p["WordsPerBeat"]
+
+# Number of 64-bit words in a memory transfer
+p["Word64sPerBeat"] = p["BytesPerBeat"] * 8 // 64
+
 
 # Number of bytes in a DRAM
 p["BytesPerDRAM"] = 2**p["LogBeatsPerDRAM"] * p["BytesPerBeat"]
@@ -382,7 +393,7 @@ p["NumEastWestLinks"] = 2 ** p["LogEastWestLinks"]
 p["BytesPerSRAMBeat"] = 2 ** p["LogBytesPerSRAMBeat"]
 p["WordsPerSRAMBeat"] = p["BytesPerSRAMBeat"] / 4
 p["SRAMDataWidth"] = 32 * p["WordsPerSRAMBeat"]
-p["SRAMsPerBoard"] = 2 * p["DRAMsPerBoard"]
+p["SRAMsPerBoard"] = 0
 p["LogThreadsPerSRAM"] = p["LogThreadsPerDRAM"] - 1
 p["LogBeatsPerSRAM"] = (
   (p["SRAMAddrWidth"] + p["LogBytesPerSRAMBeat"]) - p["LogBytesPerBeat"])

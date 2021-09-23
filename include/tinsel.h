@@ -235,12 +235,14 @@ INLINE void* tinselHeapBase()
 }
 
 // Return pointer to base of thread's SRAM partition
+#ifdef STRATIXV
 INLINE void* tinselHeapBaseSRAM()
 {
   uint32_t me = tinselId();
   uint32_t addr = tinselHeapBaseSRAMGeneric(me);
   return (void*) addr;
 }
+#endif
 
 // Reset performance counters
 INLINE void tinselPerfCountReset()

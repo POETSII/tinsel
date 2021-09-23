@@ -20,7 +20,7 @@ package Interface;
 //     "port.in" interface.
 //   * Output interfaces (e.g. "port.out") can be connected to input
 //     interfaces (e.g. "port.in") using the "connectUsing" module.
-//     There are a variety of ways to implement this connection, 
+//     There are a variety of ways to implement this connection,
 //     each with different performance characteristics.
 
 // =============================================================================
@@ -41,7 +41,7 @@ import ConfigReg :: *;
 
 interface Out#(type t);
   (* always_ready *)
-  method Action tryGet;
+  method Action tryGet; // No implicit condition on valid
   (* always_enabled *)
   method Bool valid;
   (* always_enabled *)
@@ -66,7 +66,7 @@ endinterface
 interface BOut#(type t);
   method Action get;
   (* always_enabled *)
-  method Bool valid;
+  method Bool valid; // No implicit condition on valid
   (* always_enabled *)
   method t value;
 endinterface
@@ -544,7 +544,7 @@ module mkDeserialiser (Deserialiser#(typeIn, typeOut))
   provisos (Bits#(typeIn, widthIn),
             Bits#(typeOut, widthOut),
             Mul#(widthIn, n, widthOut));
- 
+
   // Ports
   InPort#(typeIn) inPort <- mkInPort;
   OutPort#(typeOut) outPort <- mkOutPort;

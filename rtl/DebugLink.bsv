@@ -235,6 +235,7 @@ interface DebugLink;
 endinterface
 
 module mkDebugLink#(
+    Clock axi_clk, Reset axi_rst,
     Bit#(4) boardIdWithinBox,
     Bit#(8) temperature,
     Vector#(n, DebugLinkClient) cores) (DebugLink);
@@ -263,7 +264,7 @@ module mkDebugLink#(
   OutPort#(DebugLinkFlit) toBusPort <- mkOutPort;
 
   // Create JTAG UART instance
-  JtagUart uart <- mkJtagUart;
+  JtagUart uart <- mkJtagUart(axi_clk, axi_rst);
 
   // Conect ports to UART
   connectUsing(mkUGShiftQueue1(QueueOptFmax), toJtag.out, uart.jtagIn);

@@ -643,7 +643,7 @@ void HostLink::store(uint32_t meshX, uint32_t meshY,
 // Power-on self test
 bool HostLink::powerOnSelfTest()
 {
-  const double timeout = 3.0;
+  const double timeout = 300.0;
 
   // Need to check that we get a response within a given time
   struct timeval start, finish, diff;
