@@ -77,12 +77,39 @@ constexpr PPin Pin(uint8_t n){ return ((n)+2); }
 // For template arguments that are not used
 struct None {};
 
+#include <type_traits>
+
+template <typename T, typename = void>
+struct PState_has_device_performance_counters
+{
+  static constexpr bool value = false;
+  static constexpr unsigned count = 0;
+};
+
+template <typename T>
+struct PState_has_device_performance_counters<T, decltype((void)T::device_performance_counters, void())>
+{
+  static constexpr unsigned count_helper()
+  {
+    constexpr int res= sizeof(T::device_performance_counters) / sizeof(uint32_t);
+    return res;
+  }
+
+  static constexpr unsigned count = count_helper();
+  static constexpr bool value = count > 0;
+};
+
+
+
 // Generic device structure
 // Type parameters:
 //   S - State
 //   E - Edge label
 //   M - Message structure
 template <typename S, typename E, typename M> struct PDevice {
+  static constexpr bool HasDevicePerfCounters = PState_has_device_performance_counters<S>::value;
+  static constexpr unsigned NumDevicePerfCounters = PState_has_device_performance_counters<S>::count;
+
   // State
   S* s;
   PPin* readyToSend;
@@ -167,9 +194,40 @@ template <typename E> struct PInHeader {
 };
 
 // Generic thread structure
-template <typename DeviceType,
-          typename S, typename E, typename M, int T_NUM_PINS=POLITE_NUM_PINS> struct PThread {
+template <typename TDeviceType,
+          typename S, typename E, typename M,
+          int T_NUM_PINS=POLITE_NUM_PINS,
+          bool T_ENABLE_CORE_PERF_COUNTERS=false,
+          bool T_ENABLE_THREAD_PERF_COUNTERS=false
+          >
+struct PThread {
   static constexpr int NUM_PINS = T_NUM_PINS;
+
+  using DeviceType = TDeviceType;
+
+  
+  static constexpr bool ENABLE_CORE_PERF_COUNTERS = T_ENABLE_CORE_PERF_COUNTERS;
+  static constexpr bool ENABLE_THREAD_PERF_COUNTERS = T_ENABLE_THREAD_PERF_COUNTERS;
+
+  enum ThreadPerfCounters {
+    SendHandlerCalls,
+    TotalSendHandlerTime,
+    BlockedSends,
+    MsgsSent,   
+    
+    MsgsRecv,
+    TotalRecvHandlerTime,
+
+    MinBarrierActive,
+    SumBarrierActiveDiv256,
+    MaxBarrierActive,
+
+    Fake_BeginBarrier, // Not an actual perf counter, just used to keep track of things
+    Fake_LastActive, // Not an actual perf counter, just used to keep track of things
+
+    Fake_ThreadPerfCounterSize
+  };
+  static const int NUM_THREAD_PERF_COUNTERS = ENABLE_THREAD_PERF_COUNTERS ? Fake_BeginBarrier : 0;
 
   // Number of devices handled by thread
   PLocalDeviceId numDevices;
@@ -198,6 +256,11 @@ template <typename DeviceType,
   // Number of times we wanted to send but couldn't
   uint32_t blockedSends;
   #endif
+
+  // This will probably take up space even when array is length 0, but it wont be accessed
+  // unless thread perf is turned on.
+  uint32_t thread_performance_counters[ENABLE_THREAD_PERF_COUNTERS ? Fake_ThreadPerfCounterSize : 0];
+  uint32_t paddddd[32];
 
   #ifdef TINSEL
 
@@ -263,6 +326,62 @@ template <typename DeviceType,
     #endif
   }
 
+  void __attribute__((noinline)) dumpPerformanceCountersHelper(const char *pattern, unsigned group, unsigned n, const uint32_t *v)
+  {
+    uint32_t me=tinselId();
+    for(unsigned i=0; i<n; i++){
+      printf(pattern, me, group, i, v[i]);
+    }
+  }
+
+    void dumpDevicePerformanceCounters()
+    {
+      if constexpr(DeviceType::HasDevicePerfCounters){
+        for (uint32_t i = 0; i < numDevices; i++) {
+          DeviceType dev = getDevice(i);
+          static_assert(sizeof(dev.s->device_performance_counters[0])==4);
+          dumpPerformanceCountersHelper("DPC:%x,%x,%x,%x\n", i, DeviceType::NumDevicePerfCounters, dev.s->device_performance_counters);
+        }
+      }
+    }
+
+    void dumpThreadPerformanceCounters()
+    {
+      if constexpr(ENABLE_THREAD_PERF_COUNTERS){
+        dumpPerformanceCountersHelper("ThPC:%x,%x,%x,%x\n", 0, NUM_THREAD_PERF_COUNTERS, thread_performance_counters);
+      }
+    }
+
+  void dumpCorePerformanceCounters()
+  {
+    if constexpr(ENABLE_CORE_PERF_COUNTERS){
+      tinselPerfCountStop();
+
+      uint32_t me = tinselId();
+    
+      // Per-cache performance counters
+      uint32_t cacheMask = (1 << (TinselLogThreadsPerCore + TinselLogCoresPerDCache)) - 1;
+      if ((me & cacheMask) == 0) {
+        uint32_t counters[]={ tinselHitCount(), tinselMissCount(), tinselWritebackCount() };
+        dumpPerformanceCountersHelper("CaPC:%x,%x,%x,%x\n", 0, std::size(counters), counters);
+      }
+
+      // Per-core performance counters
+      uint32_t coreMask = (1 << (TinselLogThreadsPerCore)) - 1;
+      if ((me & coreMask) == 0) {
+        uint32_t counters[]={ tinselCycleCountU(), tinselCycleCount(), tinselCPUIdleCountU(), tinselCPUIdleCount() };
+        dumpPerformanceCountersHelper("CoPC:%x,%x,%x,%x\n", 0, std::size(counters), counters);
+      }
+
+      // Per board performance counters
+      uint32_t intraBoardId = me & ((1<<TinselLogThreadsPerBoard) - 1);
+      if(intraBoardId==0){
+        uint32_t counters[]={tinselProgRouterSent(), tinselProgRouterSentInterBoard()};
+        dumpPerformanceCountersHelper("BoPC:%x,%x,%x,%x\n", 0, std::size(counters), counters);
+      }
+    }
+  }
+
   // Invoke device handlers
   void run() {
     // Current out-going edge in multicast
@@ -281,6 +400,11 @@ template <typename DeviceType,
 
     // Reset performance counters
     tinselPerfCountReset();
+    if constexpr(ENABLE_THREAD_PERF_COUNTERS){
+      for(unsigned i=0; i<Fake_ThreadPerfCounterSize; i++){
+        thread_performance_counters[i]=0;
+      }
+    }
 
     // Initialisation
     sendersTop = senders;
@@ -316,6 +440,9 @@ template <typename DeviceType,
           #ifdef POLITE_COUNT_MSGS
           msgsSent++;
           #endif
+          if constexpr(ENABLE_THREAD_PERF_COUNTERS){
+            thread_performance_counters[MsgsSent] ++; 
+          }
           // Move to next neighbour
           outEdge++;
         }
@@ -323,6 +450,9 @@ template <typename DeviceType,
           #ifdef POLITE_COUNT_MSGS
           blockedSends++;
           #endif
+          if constexpr(ENABLE_THREAD_PERF_COUNTERS){
+            thread_performance_counters[BlockedSends] ++; 
+          }
           tinselWaitUntil(TINSEL_CAN_SEND|TINSEL_CAN_RECV);
         }
       }
@@ -341,7 +471,16 @@ template <typename DeviceType,
           }else{
             // Invoke send handler
             PMessage<M>* m = (PMessage<M>*) tinselSendSlot();
+
+            uint32_t start;
+            if constexpr(ENABLE_THREAD_PERF_COUNTERS){
+              start=tinselCycleCount();
+            }
             dev.send(&m->payload);
+            if constexpr(ENABLE_THREAD_PERF_COUNTERS){
+              thread_performance_counters[SendHandlerCalls]++;
+              thread_performance_counters[TotalSendHandlerTime] += tinselCycleCount() - start;
+            }
             // Reinsert sender, if it still wants to send
             if (*dev.readyToSend != No) {
               senders_queue_add(src);
@@ -360,15 +499,29 @@ template <typename DeviceType,
           #ifdef POLITE_COUNT_MSGS
           blockedSends++;
           #endif
+          if constexpr(ENABLE_THREAD_PERF_COUNTERS){
+            thread_performance_counters[BlockedSends] ++; 
+          }
           tinselWaitUntil(TINSEL_CAN_SEND|TINSEL_CAN_RECV);
         }
       }
       else {
         // Idle detection
+        if constexpr(ENABLE_THREAD_PERF_COUNTERS){
+          thread_performance_counters[Fake_LastActive] = tinselCycleCount(); 
+        }
         int idle = tinselIdle(!active);
         if (idle > 1)
           break;
         else if (idle) {
+          if constexpr(ENABLE_THREAD_PERF_COUNTERS){
+            uint32_t delta=thread_performance_counters[Fake_LastActive] - thread_performance_counters[Fake_BeginBarrier];
+            thread_performance_counters[Fake_BeginBarrier] = tinselCycleCount();
+            thread_performance_counters[MinBarrierActive] = std::min(thread_performance_counters[MinBarrierActive], delta);
+            thread_performance_counters[MaxBarrierActive] = std::max(thread_performance_counters[MaxBarrierActive], delta);
+            thread_performance_counters[SumBarrierActiveDiv256] += delta / 256;
+          }
+
           active = false;
           for (uint32_t i = 0; i < numDevices; i++) {
             DeviceType dev = getDevice(i);
@@ -398,7 +551,15 @@ template <typename DeviceType,
           PLocalDeviceId id = inEdge->devId;
           DeviceType dev = getDevice(id);
           // Invoke receive handler
+          uint32_t start;
+          if constexpr(ENABLE_THREAD_PERF_COUNTERS){
+            start=tinselCycleCount();
+          }
           dev.recv(&inMsg->payload, &inEdge->edge);
+          if constexpr(ENABLE_THREAD_PERF_COUNTERS){
+            thread_performance_counters[TotalRecvHandlerTime] += tinselCycleCount() - start;
+            thread_performance_counters[MsgsRecv] ++;
+          }
           // Insert device into a senders array, if not already there
           if (*dev.readyToSend != No) {
             senders_queue_add(id);
@@ -407,6 +568,7 @@ template <typename DeviceType,
           #ifdef POLITE_COUNT_MSGS
           msgsReceived++;
           #endif
+          
         }
         tinselFree(inMsg);
       }
@@ -424,6 +586,10 @@ template <typename DeviceType,
       PMessage<M>* m = (PMessage<M>*) tinselSendSlot();
       if (dev.finish(&m->payload)) tinselSend(tinselHostId(), m);
     }
+
+    dumpDevicePerformanceCounters();
+    dumpThreadPerformanceCounters();
+    dumpCorePerformanceCounters();
 
     // Sleep. Next message in will free us up, and then we
     // will return back into the bootloader.

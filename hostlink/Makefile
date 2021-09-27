@@ -3,7 +3,9 @@ TINSEL_ROOT = ..
 include $(TINSEL_ROOT)/globals.mk
 
 # Local compiler flags
-CPPFLAGS = -I$(INC) -O2 -Wall
+CPPFLAGS = -I$(INC) -O2 -Wall -g
+
+#CPPFLAGS += -fsanitize=address
 
 # HostLink directory
 HL = $(TINSEL_ROOT)/hostlink
@@ -26,7 +28,7 @@ sim/hostlink.a : sim/DebugLink.o sim/HostLink.o sim/MemFileReader.o sim/SocketUt
 	ranlib $@
 
 pciestreamd: pciestreamd.cpp 
-	g++ -Wall -I $(HL) -O2 pciestreamd.cpp -o pciestreamd
+	g++ -Wall -I $(HL)  $(CPPFLAGS) -O2 pciestreamd.cpp -o pciestreamd
 
 boardctrld: boardctrld.cpp PowerLink.o JtagAtlantic.h \
             $(INC)/config.h jtag/UART.h Queue.h jtag/UARTBuffer.h \
@@ -40,14 +42,14 @@ boardctrld: boardctrld.cpp PowerLink.o JtagAtlantic.h \
 sim/boardctrld: boardctrld.cpp sim/PowerLink.o JtagAtlantic.h \
                 $(INC)/config.h jtag/UART.h Queue.h jtag/UARTBuffer.h \
                 sim/UART.o sim/SocketUtils.o DebugLinkFormat.h BoardCtrl.h
-	g++ -DSIMULATE -std=c++98 boardctrld.cpp sim/UART.o \
+	g++ -DSIMULATE $(CPPFLAGS) -std=c++98 boardctrld.cpp sim/UART.o \
 	  PowerLink.o SocketUtils.o $(CPPFLAGS) -I $(HL) -o sim/boardctrld
 
 udsock: udsock.c
-	gcc -Wall -O2 udsock.c -o udsock
+	gcc  $(CPPFLAGS) -Wall -O2 udsock.c -o udsock
 
 fancheck: fancheck.cpp SocketUtils.o
-	g++ -I . -O fancheck.cpp SocketUtils.o -o fancheck
+	g++ -I .  $(CPPFLAGS) -O fancheck.cpp SocketUtils.o -o fancheck
 
 # HostLink dependencies
 DEPS = $(INC)/config.h $(INC)/boot.h \

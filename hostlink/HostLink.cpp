@@ -69,6 +69,10 @@ void HostLink::constructor(HostLinkParams p)
     exit(EXIT_FAILURE);
   }
 
+  meshXLen=-1;
+  meshYLen=-1;
+
+  
   // Open lock file
   lockFile = open("/tmp/HostLink.lock", O_CREAT, 0444);
   if (lockFile == -1) {
@@ -84,6 +88,18 @@ void HostLink::constructor(HostLinkParams p)
 
   // Ignore SIGPIPE
   signal(SIGPIPE, SIG_IGN);
+
+  pcieLink=-1;
+  debugLink=0;
+
+  int trials=0;
+full_retry:
+  if(debugLink){
+    delete debugLink;
+  }
+  if(pcieLink!=-1){
+    close(pcieLink);
+  }
 
   #ifdef SIMULATE
     // Connect to simulator
@@ -101,54 +117,61 @@ void HostLink::constructor(HostLinkParams p)
   debugLinkParams.max_connection_attempts=p.max_connection_attempts;
   debugLink = new DebugLink(debugLinkParams);
 
-  // Set board mesh dimensions
-  meshXLen = debugLink->meshXLen;
-  meshYLen = debugLink->meshYLen;
+  if(meshXLen!=-1){
+    if(meshXLen!=debugLink->meshXLen || meshYLen!=debugLink->meshYLen){
+      fprintf(stderr, "Debug link has changed mesh size, which was not expected.\n");
+      exit(1);
+    }
+  }else{
+    // Set board mesh dimensions
+    meshXLen = debugLink->meshXLen;
+    meshYLen = debugLink->meshYLen;
 
-  // Allocate line buffers
-  lineBuffer = new char**** [meshXLen];
-  for (int x = 0; x < meshXLen; x++) {
-    lineBuffer[x] = new char*** [meshYLen];
-    for (int y = 0; y < meshYLen; y++) {
-      lineBuffer[x][y] = new char** [TinselCoresPerBoard];
-      for (int c = 0; c < TinselCoresPerBoard; c++) {
-        lineBuffer[x][y][c] = new char* [TinselThreadsPerCore];
-        for (int t = 0; t < TinselThreadsPerCore; t++) {
-          lineBuffer[x][y][c][t] = new char [MaxLineLen];
+    // Allocate line buffers
+    lineBuffer = new char**** [meshXLen];
+    for (int x = 0; x < meshXLen; x++) {
+      lineBuffer[x] = new char*** [meshYLen];
+      for (int y = 0; y < meshYLen; y++) {
+        lineBuffer[x][y] = new char** [TinselCoresPerBoard];
+        for (int c = 0; c < TinselCoresPerBoard; c++) {
+          lineBuffer[x][y][c] = new char* [TinselThreadsPerCore];
+          for (int t = 0; t < TinselThreadsPerCore; t++) {
+            lineBuffer[x][y][c][t] = new char [MaxLineLen];
+          }
         }
       }
     }
-  }
 
-  // Allocate and initialise line buffer lengths
-  lineBufferLen = new int*** [meshXLen];
-  for (int x = 0; x < meshXLen; x++) {
-    lineBufferLen[x] = new int** [meshYLen];
-    for (int y = 0; y < meshYLen; y++) {
-      lineBufferLen[x][y] = new int* [TinselCoresPerBoard];
-      for (int c = 0; c < TinselCoresPerBoard; c++) {
-        lineBufferLen[x][y][c] = new int [TinselThreadsPerCore];
-        for (int t = 0; t < TinselThreadsPerCore; t++)
-          lineBufferLen[x][y][c][t] = 0;
+    // Allocate and initialise line buffer lengths
+    lineBufferLen = new int*** [meshXLen];
+    for (int x = 0; x < meshXLen; x++) {
+      lineBufferLen[x] = new int** [meshYLen];
+      for (int y = 0; y < meshYLen; y++) {
+        lineBufferLen[x][y] = new int* [TinselCoresPerBoard];
+        for (int c = 0; c < TinselCoresPerBoard; c++) {
+          lineBufferLen[x][y][c] = new int [TinselThreadsPerCore];
+          for (int t = 0; t < TinselThreadsPerCore; t++)
+            lineBufferLen[x][y][c][t] = 0;
+        }
       }
     }
-  }
 
-  // Initialise send buffer
+    // Initialise send buffer
+    sendBuffer = new char [(1<<TinselLogBytesPerFlit) * SEND_BUFFER_SIZE];
+    // avoids (correct) warnings by valgrind about passing un-init memory to syscall. In
+    // cases seen this is fine, as it is un-init padding being passed through to fill in
+    // spaces in tables for alignment purposes.
+    memset(sendBuffer, 0, (1<<TinselLogBytesPerFlit) * SEND_BUFFER_SIZE);
+  }
   useSendBuffer = false;
-  sendBuffer = new char [(1<<TinselLogBytesPerFlit) * SEND_BUFFER_SIZE];
-  // avoids (correct) warnings by valgrind about passing un-init memory to syscall. In
-  // cases seen this is fine, as it is un-init padding being passed through to fill in
-  // spaces in tables for alignment purposes.
-  memset(sendBuffer, 0, (1<<TinselLogBytesPerFlit) * SEND_BUFFER_SIZE);
   sendBufferLen = 0;
 
   // Run the self test
-  int trials=0;
   if (! powerOnSelfTest()) {
     if(trials < 5){
       trials++;
-      fprintf(stderr, "Power-on self test failed.  Tying again.\n");
+      fprintf(stderr, "Power-on self test failed.  Trying again.\n");
+      goto full_retry;
     }else{
       fprintf(stderr, "Power-on self test failed.  Please try again.\n");
       exit(EXIT_FAILURE);
@@ -737,8 +760,11 @@ bool HostLink::pollStdOut(FILE* outFile, uint32_t* lineCount)
     if (byte == '\n' || len == MaxLineLen-1) {
       if (lineCount != NULL) (*lineCount)++;
       lineBuffer[x][y][c][t][len] = '\0';
-      fprintf(outFile, "%d:%d:%d:%d: %s\n", x, y, c, t,
-        lineBuffer[x][y][c][t]);
+      uint32_t threadId=toAddr(x,y,c,t);
+      if(stdout_filter_proc && !stdout_filter_proc(threadId,lineBuffer[x][y][c][t])){
+        fprintf(outFile, "BB %d:%d:%d:%d: %s\n", x, y, c, t,
+          lineBuffer[x][y][c][t]);
+      }
       lineBufferLen[x][y][c][t] = len = 0;
     }
     if (byte != '\n') {
@@ -791,4 +817,9 @@ void HostLink::dumpStdOut(FILE* outFile, uint32_t lines)
 void HostLink::dumpStdOut()
 {
   dumpStdOut(stdout);
+}
+
+void HostLink::setStdOutFilterProc(stdout_filter_proc_t filter)
+{
+  stdout_filter_proc=filter;
 }

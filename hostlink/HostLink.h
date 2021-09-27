@@ -8,6 +8,7 @@
 #include <sys/time.h>
 #include <config.h>
 #include <DebugLink.h>
+#include <functional>
 
 // Max line length for line-buffered UART StdOut capture
 #define MaxLineLen 128
@@ -28,6 +29,10 @@ struct HostLinkParams {
 };
 
 class HostLink {
+public:
+  // This is called with (threadId,Line), and return true if the line should be filtered out
+  using stdout_filter_proc_t = std::function<bool(uint32_t,const char *)>;
+private:
   // Lock file for acquring exclusive access to PCIeStream
   int lockFile;
 
@@ -43,6 +48,8 @@ class HostLink {
   // Send buffer, for bulk sending over PCIe
   char* sendBuffer;
   int sendBufferLen;
+
+  stdout_filter_proc_t stdout_filter_proc;
 
   // Request an extra send slot when bringing up Tinsel FPGAs
   bool useExtraSendSlot;
@@ -190,6 +197,13 @@ class HostLink {
 
   // Receive StdOut byte streams and display on stdout (non-terminating)
   void dumpStdOut();
+
+  // Set a filter procedure which can extract certain lines from stdout
+  // If the filter returns true, the line will be supressed. Otherwise it is handled as normal.
+  // This filter is only applied lines that are retrieved through normal polling methods.
+  // The filter has the form:  bool filter(uint32_t threadId, const char *line)
+  // The filter will never be called in parallel with itself.
+  void setStdOutFilterProc(stdout_filter_proc_t filter);
 };
 
 #endif
