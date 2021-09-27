@@ -167,14 +167,14 @@ module mkJtagUart (Clock axi_clk, Reset axi_rst, JtagUart ifc);
     if (inPort.canGet) begin
       Bool ok <- socketPut8(uartSocket, inPort.value);
       if (ok) begin
-        $display("JTAG sending byte %x", inPort.value);
+        // $display("JTAG sending byte %x", inPort.value);
         inPort.get;
       end
     end
     if (outPort.canPut) begin
       Bit#(32) b <- socketGet8(uartSocket);
       if (b[31] == 0) begin
-        $display("JTAG got byte ", b);
+        // $display("JTAG got byte ", b);
         outPort.put(b[7:0]);
       end
     end

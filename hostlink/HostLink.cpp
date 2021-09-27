@@ -662,6 +662,11 @@ bool HostLink::powerOnSelfTest()
 
   // Count number of responses received
   int count = 0;
+  #ifdef TinselLogBytesPerSRAM
+  uint32_t offset = TinselLogBytesPerSRAM;
+  #else
+  uint32_t offset = TinselLogBytesPerDRAM;
+  #endif
 
   // Send request and consume responses
   for (int slice = 0; slice < 2; slice++) {
@@ -670,7 +675,7 @@ bool HostLink::powerOnSelfTest()
       for (int y = 0; y < meshYLen; y++) {
         for (int x = 0; x < meshXLen; x++) {
           // Request a word from SRAM
-          uint32_t addr = ram << TinselLogBytesPerSRAM;
+          uint32_t addr = ram << offset;
           setAddr(x, y, core, addr);
           gettimeofday(&start, NULL);
           while (1) {

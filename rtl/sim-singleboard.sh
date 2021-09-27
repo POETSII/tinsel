@@ -35,12 +35,12 @@ MESH_X=$MeshXLenWithinBox
 MESH_Y=$MeshYLenWithinBox
 echo "Using mesh dimensions: $MESH_X x $MESH_Y"
 
-HOST0_X=0
-HOST0_Y=0
-HOST1_X=0
-HOST1_Y=1
-echo "Connecting bridge board at location ($HOST0_X, $HOST0_Y)"
-echo "Connecting bridge board at location ($HOST1_X, $HOST1_Y)"
+# HOST0_X=0
+# HOST0_Y=0
+# HOST1_X=0
+# HOST1_Y=1
+# echo "Connecting bridge board at location ($HOST0_X, $HOST0_Y)"
+# echo "Connecting bridge board at location ($HOST1_X, $HOST1_Y)"
 
 # Check dimensions
 if [ $MESH_X -gt $MESH_MAX_X ] || [ $MESH_Y -gt $MESH_MAX_Y ] ; then
@@ -73,17 +73,17 @@ PIDS="$PIDS $!"
 for X in $(seq 0 $LAST_X); do
   for Y in $(seq 0 $LAST_Y); do
     ID=$(fromCoords $X $Y)
-    echo "Lauching simulator at position ($X, $Y) with board id $ID"
-    BOARD_ID=$ID LD_PRELOAD="/home/tparks/upstream/bsc/inst/lib/VPI/libbdpi.so /home/tparks/Projects/POETS/tinsel/rtl/mkDE10Top.so" ./mkDE10Top | grep -v Warning &
+    echo "Lauching simulator at position ($X, $Y) with board id $ID"LD_PRELOAD="/home/tparks/upstream/bsc/inst/lib/VPI/libbdpi.so /home/tparks/Projects/POETS/tinsel/rtl/mkDE10Top.so"
+    BOARD_ID=$ID make runsim | grep -v Warning &
     PIDS="$PIDS $!"
   done
 done
 
-# Run bridge board
-HOST_ID=-1
-echo "Lauching bridge board simulator with board id $HOST_ID"
-BOARD_ID=$HOST_ID LD_PRELOAD="/home/tparks/upstream/bsc/inst/lib/VPI/libbdpi.so /home/tparks/Projects/POETS/tinsel/rtl/de5BridgeTop.so" ./de5BridgeTop &
-PIDS="$PIDS $!"
+# # Run bridge board
+# HOST_ID=-1
+# echo "Lauching bridge board simulator with board id $HOST_ID"
+# BOARD_ID=$HOST_ID LD_PRELOAD="/home/tparks/upstream/bsc/inst/lib/VPI/libbdpi.so /home/tparks/Projects/POETS/tinsel/rtl/de5BridgeTop.so" ./de5BridgeTop &
+# PIDS="$PIDS $!"
 
 # Create horizontal links
 for Y in $(seq 0 $LAST_Y); do
@@ -117,15 +117,15 @@ for X in $(seq 0 $LAST_X); do
   done
 done
 
-# Connect bridge board to mesh
-ENTRY1_ID=$(fromCoords $HOST1_X $HOST1_Y)
-$UDSOCK join "@tinsel.b$ENTRY1_ID.$WEST_ID_BASE" \
-             "@tinsel.b$HOST_ID.$NORTH_ID_BASE" &
-PIDS="$PIDS $!"
-ENTRY0_ID=$(fromCoords $HOST0_X $HOST0_Y)
-$UDSOCK join "@tinsel.b$ENTRY0_ID.$WEST_ID_BASE" \
-             "@tinsel.b$HOST_ID.$SOUTH_ID_BASE" &
-PIDS="$PIDS $!"
+# # Connect bridge board to mesh
+# ENTRY1_ID=$(fromCoords $HOST1_X $HOST1_Y)
+# $UDSOCK join "@tinsel.b$ENTRY1_ID.$WEST_ID_BASE" \
+#              "@tinsel.b$HOST_ID.$NORTH_ID_BASE" &
+# PIDS="$PIDS $!"
+# ENTRY0_ID=$(fromCoords $HOST0_X $HOST0_Y)
+# $UDSOCK join "@tinsel.b$ENTRY0_ID.$WEST_ID_BASE" \
+#              "@tinsel.b$HOST_ID.$SOUTH_ID_BASE" &
+# PIDS="$PIDS $!"
 
 # On CTRL-C, call quit()
 trap quit INT

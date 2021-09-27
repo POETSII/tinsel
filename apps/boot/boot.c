@@ -13,16 +13,17 @@ INLINE void sendc(int c) {
   while (tinselUartTryPut(c) == 0);
 }
 
-// INLINE int puts(const char* s)
-// {
-//   int count = 0;
-//   while (*s) { sendc(*s); s++; count++; }
-//   return count;
-// }
+INLINE int puts(const char* s)
+{
+  int count = 0;
+  while (*s) { sendc(*s); s++; count++; }
+  return count;
+}
 
 INLINE int puthex(unsigned x)
 {
   int count = 0;
+  sendc( '0' ); sendc( 'x' );
 
   for (count = 0; count < 8; count++) {
     unsigned nibble = x >> 28;
@@ -32,8 +33,6 @@ INLINE int puthex(unsigned x)
 
   return 8;
 }
-
-const const* msg = "msg";
 
 // INLINE void itoa(uint32_t x, char* s) {
 //   uint8_t w;
@@ -71,33 +70,45 @@ const const* msg = "msg";
 //   sendc( '\n' ); sendc( '\0' );
 // }
 
-INLINE void printaddrmsg(uint32_t me) {
-  uint32_t c = 0;
-  while (c >> 7 <= 0) { c = tinselUartTryGet(); }
-  sendc( 'i' ); sendc( 'd' ); sendc( ' ' ); // sendc( '0' ); sendc( 'x' );
-  puthex( me );
-  sendc( ' ' ); sendc( 'm' ); sendc( 's' ); sendc( 'g' ); sendc( '&' ); sendc( ' ' ); // sendc( 'e' ); sendc( 'c' ); sendc( 'v' ); sendc( 'd' ); sendc( ' ' ); sendc( '0' ); sendc( 'x' );
-  puthex( &msg );
-  sendc( '\n' ); sendc( '\0' );
-}
+// INLINE void printaddrmsg(uint32_t me) {
+//   uint32_t c = 0;
+//   while (c >> 7 <= 0) { c = tinselUartTryGet(); }
+//   sendc( 'i' ); sendc( 'd' ); sendc( ' ' ); // sendc( '0' ); sendc( 'x' );
+//   puthex( me );
+//   sendc( ' ' ); sendc( 'm' ); sendc( 's' ); sendc( 'g' ); sendc( '&' ); sendc( ' ' ); // sendc( 'e' ); sendc( 'c' ); sendc( 'v' ); sendc( 'd' ); sendc( ' ' ); sendc( '0' ); sendc( 'x' );
+//   puthex( &msg );
+//   sendc( '\n' ); sendc( '\0' );
+// }
 
-INLINE void printstackaddr(uint32_t me) {
-  uint32_t c = 0;
-  while (c >> 7 <= 0) { c = tinselUartTryGet(); }
-  sendc( 'i' ); sendc( 'd' ); sendc( ' ' ); // sendc( '0' ); sendc( 'x' );
-  puthex( me );
-  sendc( ' ' ); sendc( 'c' ); sendc( '&' ); sendc( ' ' ); // sendc( 'e' ); sendc( 'c' ); sendc( 'v' ); sendc( 'd' ); sendc( ' ' ); sendc( '0' ); sendc( 'x' );
-  puthex( &c );
-  sendc( '\n' ); sendc( '\0' );
-}
+// INLINE void printstackaddr(uint32_t me) {
+//   uint32_t c = 0;
+//   while (c >> 7 <= 0) { c = tinselUartTryGet(); }
+//   sendc( 'i' ); sendc( 'd' ); sendc( ' ' ); // sendc( '0' ); sendc( 'x' );
+//   puthex( me );
+//   sendc( ' ' ); sendc( 'c' ); sendc( '&' ); sendc( ' ' ); // sendc( 'e' ); sendc( 'c' ); sendc( 'v' ); sendc( 'd' ); sendc( ' ' ); sendc( '0' ); sendc( 'x' );
+//   puthex( &c );
+//   sendc( '\n' ); sendc( '\0' );
+// }
+//
+// void recursive(uint32_t me, int count) {
+//   sendc( 'c' ); sendc( 'o' ); sendc( 'u' ); sendc( 'n' ); sendc( 't' ); sendc( ' ' ); // sendc( '0' ); sendc( 'x' );
+//   puthex( count );
+//   sendc( '\n' );
+//   recursive(me, count+1);
+// }
 
-void recursive(uint32_t me, int count) {
-  sendc( 'c' ); sendc( 'o' ); sendc( 'u' ); sendc( 'n' ); sendc( 't' ); sendc( ' ' ); // sendc( '0' ); sendc( 'x' );
-  puthex( count );
-  sendc( '\n' );
-  recursive(me, count+1);
+void testfp() {
+  float a_f, b_f;
+  float c_f = 0;
+  for (uint32_t a = 0; a < 1<<31; a++) {
+    for (uint32_t b = 0; b < 1<<31; b++) {
+      a_f = (float)a;
+      b_f = (float)b;
+      c_f = (a_f * b_f);
+      puthex( a ); sendc( '*' ); puthex( b ); sendc( '=' ); puthex( c_f ); sendc( '\n' );
+    }
+  }
 }
-
 
 // Main
 int main()
@@ -113,10 +124,7 @@ int main()
   // Host id
   // uint32_t hostId = tinselHostId();
 
-  // Use one flit per message
-  tinselSetLen(0);
-
-  if (threadId == 0 && me == 0) {
+  if (threadId == 0) {
     // State
     // uint32_t addrReg = 0;  // Address register
     // uint32_t lastDataStoreAddr = 0;
@@ -124,12 +132,13 @@ int main()
     // Get mailbox message slot for sending
     // volatile uint32_t* msgOut = tinselSendSlot();
     // Command loop
+
     for (;;) {
-      // pingpong(me);
-      // printstackaddr(me);
-      // uint32_t c = 0;
-      // while (c >> 7 <= 0) { c = tinselUartTryGet(); }
-      recursive(me, 0);
+      uint32_t c = 0;
+      while (c >> 7 <= 0) { c = tinselUartTryGet(); }
+
+      testfp();
+
     }
   }
 

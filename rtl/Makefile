@@ -35,7 +35,7 @@ BSCFLAGS = -suppress-warnings S0015 \
            +RTS -K128M -RTS \
 					 -p $(call join-with,:,$(BSINCLUDE)) --verbose
 
-
+VPIINCL=$(dir $(shell which bsc))../lib/VPI/
 
 # Top level module
 ifeq ($(STRATIX10),True)
@@ -71,7 +71,7 @@ $(TOPMOD): *.bsv *.c InstrMem.hex
 	make -C $(TINSEL_ROOT)/apps/boot
 	make -C $(TINSEL_ROOT)/hostlink udsock
 	$(BSC) $(BSCFLAGS) $(DEFS) -D SIMULATE -sim -g $(TOPMOD) -u $(TOPFILE)
-	$(BSC) $(BSCFLAGS) -Xc -I/home/tparks/upstream/bsc/inst/lib/VPI/ -sim -o $(TOPMOD) -e $(TOPMOD) *.c
+	$(BSC) $(BSCFLAGS) -Xc -I$(VPIINCL) -Xc -L$(VPIINCL) -sim -o $(TOPMOD) -e $(TOPMOD) *.c
 
 $(TOPMOD).v: *.bsv $(QP)/InstrMem.mif
 	make -C $(TINSEL_ROOT)/apps/boot
@@ -80,11 +80,15 @@ $(TOPMOD).v: *.bsv $(QP)/InstrMem.mif
 
 $(HOSTTOPMOD): *.bsv *.c
 	$(BSC) $(BSCFLAGS) $(DEFS) -D SIMULATE -sim -g $(HOSTTOPMOD) -u $(HOSTTOPFILE)
-	$(BSC) $(BSCFLAGS) -Xc -I/home/tparks/upstream/bsc/inst/lib/VPI/ -sim -o $(HOSTTOPMOD) -e $(HOSTTOPMOD) *.c
+	$(BSC) $(BSCFLAGS) -Xc -I$(VPIINCL) -sim -o $(HOSTTOPMOD) -e $(HOSTTOPMOD) *.c
 
 $(HOSTTOPMOD).v: *.bsv
 	$(BSC) $(BSCFLAGS) -opt-undetermined-vals -unspecified-to X \
          $(DEFS) -u -verilog -g $(HOSTTOPMOD) $(HOSTTOPFILE)
+
+.PHONY: runsim
+runsim:
+	LD_PRELOAD=$(VPIINCL)/libbdpi.so:mkDE10Top.so ./mkDE10Top
 
 testMem: *.bsv *.c
 	$(BSC) $(BSCFLAGS) $(DEFS) -D SIMULATE \
@@ -112,15 +116,15 @@ test-mailbox: testMailbox
 test-bram:  *.bsv
 	$(BSC) $(BSCFLAGS) $(DEFS) -D SIMULATE \
          -sim -g mkBRAMTest -u TestBRAMAdaptors.bsv
-	$(BSC) $(BSCFLAGS) -Xc -I/home/tparks/upstream/bsc/inst/lib/VPI/ -sim -o mkBRAMTest -e mkBRAMTest *.c
-	LD_PRELOAD=mkBRAMTest.so ./mkBRAMTest
+	$(BSC) $(BSCFLAGS) -Xc -I$(VPIINCL) -sim -o mkBRAMTest -e mkBRAMTest *.c
+	LD_PRELOAD=$(VPIINCL)/libbdpi.so:mkBRAMTest.so ./mkBRAMTest
 
 .PHONY: test-jtaguart
 test-jtaguart:  *.bsv
 	$(BSC) $(BSCFLAGS) $(DEFS) -show-range-conflict \
          -sim -g mkSimJtagUartTop -u testJtagUart.bsv
-	$(BSC) $(BSCFLAGS) -Xc -I/home/tparks/upstream/bsc/inst/lib/VPI/ -sim -o mkSimJtagUartTop -e mkSimJtagUartTop *.c
-	LD_PRELOAD=mkSimJtagUartTop.so ./mkSimJtagUartTop
+	$(BSC) $(BSCFLAGS) -Xc -I$(VPIINCL) -sim -o mkSimJtagUartTop -e mkSimJtagUartTop *.c
+	LD_PRELOAD=$(VPIINCL)/libbdpi.so:mkSimJtagUartTop.so ./mkSimJtagUartTop
 
 
 .PHONY: clean
