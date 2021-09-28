@@ -756,7 +756,7 @@ module mkBlockRamTrueMixedOpts#(BlockRamOpts opts)
   `ifdef SIMULATE
   BlockRamTrueMixed#(addrA, dataA, addrB, dataB) bram <- mkBlockRamMaybeTrueMixedOpts_ALTERA(opts);
   `else // not SIMULATE
-  BlockRamTrueMixed#(addrA, dataA, addrB, dataB) bram <- mkBlockRamMaybeTrueMixedOpts_SIMULATE(opts);
+  BlockRamTrueMixed#(addrA, dataA, addrB, dataB) bram <- mkBlockRamTrueMixedOpts_SIMULATE(opts);
   `endif // not SIMULATE
 
   return bram;
@@ -1150,8 +1150,8 @@ module mkBlockRamTrueMixedBEOpts#(BlockRamOpts opts)
   `ifdef SIMULATE
   BlockRamTrueMixedByteEn#(addrA, dataA, addrB, dataB, dataBBytes) ram <- mkBlockRamMaybeTrueMixedBEOpts_ALTERA(opts);
   `else // not SIMULATE
-  BlockRamTrueMixedByteEn#(addrA, dataA, addrB, dataB, dataBBytes) ram <- mkBlockRamTrueMixedBEOptsPadded_S10(opts);
-  `endif // not SIMULATE
+  BlockRamTrueMixedByteEn#(addrA, dataA, addrB, dataB, dataBBytes) ram <- mkBlockRamMaybeTrueMixedBEOpts_ALTERA(opts);
+  `endif
 
   return ram;
 endmodule

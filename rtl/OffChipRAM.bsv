@@ -10,24 +10,21 @@
 //                      |
 
 import DRAM       :: *;
-import NarrowSRAM :: *;
-import WideSRAM   :: *;
+
 import Interface  :: *;
 import Queue      :: *;
 import Util       :: *;
 import Vector     :: *;
+
+`ifdef StratixV
+import NarrowSRAM :: *;
+import WideSRAM   :: *;
 
 interface OffChipRAMStratixV;
   interface In#(DRAMReq) reqIn;
   interface BOut#(DRAMResp) respOut;
   interface DRAMExtIfc extDRAM;
   interface Vector#(2, SRAMExtIfc) extSRAM;
-endinterface
-
-interface OffChipRAMStratix10;
-  interface In#(DRAMReq) reqIn;
-  interface BOut#(DRAMResp) respOut;
-  interface DRAMExtIfc extDRAM;
 endinterface
 
 
@@ -126,6 +123,16 @@ module mkOffChipRAMStratixV#(RAMId base) (OffChipRAMStratixV);
     vector(sramA.external, sramB.external);
 
 endmodule
+`endif
+
+
+`ifdef Stratix10
+
+interface OffChipRAMStratix10;
+  interface In#(DRAMReq) reqIn;
+  interface BOut#(DRAMResp) respOut;
+  interface DRAMExtIfc extDRAM;
+endinterface
 
 module mkOffChipRAMStratix10#(RAMId base) (OffChipRAMStratix10);
 
@@ -180,3 +187,4 @@ module mkOffChipRAMStratix10#(RAMId base) (OffChipRAMStratix10);
   interface extDRAM = dram.external;
 
 endmodule
+`endif

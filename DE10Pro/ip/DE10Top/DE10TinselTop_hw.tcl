@@ -129,7 +129,7 @@ set_interface_property dram0 CMSIS_SVD_VARIABLES ""
 set_interface_property dram0 SVD_ADDRESS_GROUP ""
 set_interface_property dram0 IPXACT_REGISTER_MAP_VARIABLES ""
 
-add_interface_port dram0 dramIfcs_0_m_address address Output 26
+add_interface_port dram0 dramIfcs_0_m_address address Output 27
 add_interface_port dram0 dramIfcs_0_m_writedata writedata Output 256
 add_interface_port dram0 dramIfcs_0_m_write write Output 1
 add_interface_port dram0 dramIfcs_0_m_read read Output 1
@@ -152,7 +152,7 @@ set_interface_property dram1 CMSIS_SVD_VARIABLES ""
 set_interface_property dram1 SVD_ADDRESS_GROUP ""
 set_interface_property dram1 IPXACT_REGISTER_MAP_VARIABLES ""
 
-add_interface_port dram1 dramIfcs_1_m_address address Output 26
+add_interface_port dram1 dramIfcs_1_m_address address Output 27
 add_interface_port dram1 dramIfcs_1_m_writedata writedata Output 256
 add_interface_port dram1 dramIfcs_1_m_write write Output 1
 add_interface_port dram1 dramIfcs_1_m_read read Output 1
@@ -347,3 +347,60 @@ add_interface_port tx_b macB_l8_tx_ready_ready ready Input 1
 add_interface_port tx_b macB_l8_tx_error error Output 1
 add_interface_port tx_b macB_l8_tx_empty empty Output 6
 add_interface_port tx_b macB_l8_tx_data data Output 512
+
+# PCIe endpoint
+add_interface axs_pcie2f axi4 end
+set_interface_property axs_pcie2f associatedClock clk
+set_interface_property axs_pcie2f associatedReset rst
+set_interface_property axs_pcie2f readAcceptanceCapability 1
+set_interface_property axs_pcie2f writeAcceptanceCapability 1
+set_interface_property axs_pcie2f combinedAcceptanceCapability 1
+set_interface_property axs_pcie2f readDataReorderingDepth 1
+set_interface_property axs_pcie2f bridgesToMaster ""
+set_interface_property axs_pcie2f ENABLED true
+set_interface_property axs_pcie2f EXPORT_OF ""
+set_interface_property axs_pcie2f PORT_NAME_MAP ""
+set_interface_property axs_pcie2f CMSIS_SVD_VARIABLES ""
+set_interface_property axs_pcie2f SVD_ADDRESS_GROUP ""
+set_interface_property axs_pcie2f IPXACT_REGISTER_MAP_VARIABLES ""
+
+
+add_interface_port axs_pcie2f axs_pcie2f_awready awready             Output 1
+add_interface_port axs_pcie2f axs_pcie2f_wready wready              Output     1
+add_interface_port axs_pcie2f axs_pcie2f_bid bid                 Output     4
+add_interface_port axs_pcie2f axs_pcie2f_bresp bresp               Output     2
+add_interface_port axs_pcie2f axs_pcie2f_bvalid bvalid              Output     1
+add_interface_port axs_pcie2f axs_pcie2f_arready arready             Output     1
+add_interface_port axs_pcie2f axs_pcie2f_rid rid                 Output     4
+add_interface_port axs_pcie2f axs_pcie2f_rdata rdata               Output   32
+add_interface_port axs_pcie2f axs_pcie2f_rresp rresp               Output     2
+add_interface_port axs_pcie2f axs_pcie2f_rlast rlast               Output     1
+add_interface_port axs_pcie2f axs_pcie2f_rvalid rvalid              Output     1
+add_interface_port axs_pcie2f axs_pcie2f_awvalid awvalid             Input     1
+add_interface_port axs_pcie2f axs_pcie2f_awid awid                Input     4
+add_interface_port axs_pcie2f axs_pcie2f_awaddr awaddr              Input    35
+add_interface_port axs_pcie2f axs_pcie2f_awlen awlen               Input     8
+add_interface_port axs_pcie2f axs_pcie2f_awsize awsize              Input     3
+add_interface_port axs_pcie2f axs_pcie2f_awburst awburst             Input     2
+add_interface_port axs_pcie2f axs_pcie2f_awlock awlock              Input     1
+add_interface_port axs_pcie2f axs_pcie2f_awcache awcache             Input     4
+add_interface_port axs_pcie2f axs_pcie2f_awprot awprot              Input     3
+add_interface_port axs_pcie2f axs_pcie2f_awqos awqos               Input     4
+add_interface_port axs_pcie2f axs_pcie2f_awregion awregion            Input     4
+add_interface_port axs_pcie2f axs_pcie2f_wvalid wvalid              Input     1
+add_interface_port axs_pcie2f axs_pcie2f_wdata wdata               Input   32
+add_interface_port axs_pcie2f axs_pcie2f_wstrb wstrb               Input    4
+add_interface_port axs_pcie2f axs_pcie2f_wlast wlast               Input     1
+add_interface_port axs_pcie2f axs_pcie2f_bready bready              Input     1
+add_interface_port axs_pcie2f axs_pcie2f_arvalid arvalid             Input     1
+add_interface_port axs_pcie2f axs_pcie2f_arid arid                Input     4
+add_interface_port axs_pcie2f axs_pcie2f_araddr araddr              Input    35
+add_interface_port axs_pcie2f axs_pcie2f_arlen arlen               Input     8
+add_interface_port axs_pcie2f axs_pcie2f_arsize arsize              Input     3
+add_interface_port axs_pcie2f axs_pcie2f_arburst arburst             Input     2
+add_interface_port axs_pcie2f axs_pcie2f_arlock arlock              Input     1
+add_interface_port axs_pcie2f axs_pcie2f_arcache arcache             Input     4
+add_interface_port axs_pcie2f axs_pcie2f_arprot arprot              Input     3
+add_interface_port axs_pcie2f axs_pcie2f_arqos arqos               Input     4
+add_interface_port axs_pcie2f axs_pcie2f_arregion arregion            Input     4
+add_interface_port axs_pcie2f axs_pcie2f_rready rready              Input     1

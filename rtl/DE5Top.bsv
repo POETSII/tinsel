@@ -64,6 +64,10 @@ module de5Top (DE5Top);
   Wire#(Bit#(4)) localBoardId <- mkDWire(?);
   `endif
 
+  Clock default_clock <- exposeCurrentClock();
+  Reset default_reset <- exposeCurrentReset();
+
+
   // Temperature register
   Reg#(Bit#(8)) temperature <- mkReg(128);
 
@@ -134,8 +138,9 @@ module de5Top (DE5Top);
   // Create DebugLink interface
   function DebugLinkClient getDebugLinkClient(Core core) = core.debugLinkClient;
   DebugLink debugLink <-
-    mkDebugLink(localBoardId, temperature,
-      map(getDebugLinkClient, vecOfCores));
+    mkDebugLink(default_clock, default_reset,
+                localBoardId, temperature,
+                map(getDebugLinkClient, vecOfCores));
 
   // Create idle-detector
   IdleDetector idle <- mkIdleDetector;
@@ -208,8 +213,8 @@ module de5Top (DE5Top);
   `endif
 
   `ifndef SIMULATE
-  function DRAMExtIfc getDRAMExtIfc(OffChipRAM ram) = ram.extDRAM;
-  function Vector#(2, SRAMExtIfc) getSRAMExtIfcs(OffChipRAM ram) = ram.extSRAM;
+  function DRAMExtIfc getDRAMExtIfc(OffChipRAM::OffChipRAMStratixV ram) = ram.extDRAM;
+  function Vector#(2, SRAMExtIfc) getSRAMExtIfcs(OffChipRAM::OffChipRAMStratixV ram) = ram.extSRAM;
   interface dramIfcs = map(getDRAMExtIfc, rams);
   interface sramIfcs = concat(map(getSRAMExtIfcs, rams));
   interface jtagIfc  = debugLink.jtagAvalon;

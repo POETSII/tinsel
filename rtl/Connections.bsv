@@ -61,7 +61,7 @@ module connectClientsToOffChipRAM#(
   Vector#(`FetchersPerProgRouter, BOut#(DRAMReq)) routerReqs,
   Vector#(`FetchersPerProgRouter, In#(DRAMResp)) routerResps,
   // Off-chip memory
-`ifdef STRATIXV
+`ifdef StratixV
   OffChipRAMStratixV ram
 `endif
 `ifdef Stratix10

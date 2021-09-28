@@ -101,7 +101,7 @@ INLINE uint32_t tinselHeapBaseGeneric(uint32_t id)
   return addr;
 }
 
-#ifdef STRATIXV
+#ifdef StratixV
 // Given thread id, return base address of thread's partition in SRAM
 INLINE uint32_t tinselHeapBaseSRAMGeneric(uint32_t id)
 {
@@ -115,7 +115,7 @@ INLINE uint32_t tinselHeapBaseSRAMGeneric(uint32_t id)
 // Return pointer to base of calling thread's DRAM partition
 INLINE void* tinselHeapBase();
 
-#ifdef STRATIXV
+#ifdef StratixV
 // Return pointer to base of calling thread's SRAM partition
 INLINE void* tinselHeapBaseSRAM();
 #endif
