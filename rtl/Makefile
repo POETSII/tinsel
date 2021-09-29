@@ -25,7 +25,6 @@ BSINCLUDE+=../DE10Pro/DE10-reference-project/src/BlueStuff/BlueBasics
 BSINCLUDE+=../DE10Pro/DE10-reference-project/src/BlueStuff/AXI
 BSINCLUDE+=../DE10Pro/DE10-reference-project/src/BlueStuff/SocketPacketUtils
 BSINCLUDE+=../DE10Pro/DE10-reference-project/src/BlueStuff
-BSINCLUDE+=/home/tparks/upstream/bluecheck
 
 # BSV compiler flags
 BSC = bsc
@@ -33,7 +32,8 @@ BSCFLAGS = -suppress-warnings S0015 \
            -suppress-warnings G0023 \
            -steps-warn-interval 750000 -check-assert \
            +RTS -K128M -RTS \
-					 -p $(call join-with,:,$(BSINCLUDE)) --verbose
+					 -p $(call join-with,:,$(BSINCLUDE))
+
 
 VPIINCL=$(dir $(shell which bsc))../lib/VPI/
 
@@ -126,6 +126,17 @@ test-jtaguart:  *.bsv
 	$(BSC) $(BSCFLAGS) -Xc -I$(VPIINCL) -sim -o mkSimJtagUartTop -e mkSimJtagUartTop *.c
 	LD_PRELOAD=$(VPIINCL)/libbdpi.so:mkSimJtagUartTop.so ./mkSimJtagUartTop
 
+# VHDLSIM=$(shell find ../DE10Pro/DE10-reference-project/quartus/ip/fp -wholename "*fpS10AddSub/*sim/*vhd")
+# FPSIMINCLUDE = -vsearch +:$(call join-with,:,$(shell find ../DE10Pro/DE10-reference-project/quartus/ip/fp -type d -name sim)):$(call join-with,:,$(shell find ../scratch/sim_models/lpm_mult -type d -name sim))
+FPSIMINCLUDE = -vsearch +:../scratch/sim_models/fp
+VHDLSIM = ../scratch/sim_models/fp/dspba_library_package.vhd $(shell find ../scratch/sim_models/fp -name "fp*vhd")
+.PHONY: test-fpu
+test-fpu:  *.bsv
+	$(BSC) $(BSCFLAGS) $(DEFS) -show-range-conflict -verilog -g mkTestFPU -u mkTestFPU.bsv
+	$(BSC) $(BSCFLAGS) $(DEFS) -o mkTestFPU -verilog mkTestFPU.bsv
+	bsc -D BSV_TIMESCALE=1ns/1ps -verilog -vsim modelsim $(FPSIMINCLUDE) -e mkTestFPU -o mkTestFPU.out $(VHDLSIM)
+	# $(BSC) $(BSCFLAGS)  -o mkTestFPU -e mkTestFPU *.c
+
 
 .PHONY: clean
 clean:
@@ -140,3 +151,4 @@ clean:
 	rm -rf test-mailbox-log
 	rm -rf test-array-of-queue-log
 	rm -f vpi_wrapper_getBoardId.c
+	rm -rf libraries work_mkTestFPU

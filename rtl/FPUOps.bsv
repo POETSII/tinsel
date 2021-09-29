@@ -17,6 +17,8 @@ import Mult          :: *;
 import Vector        :: *;
 import ConfigReg     :: *;
 import FloatingPoint :: *;
+import Clocks        :: *; // invert reset
+
 
 // =============================================================================
 // Interface
@@ -194,29 +196,44 @@ endmodule
 interface AlteraS10FPAddSubIfc;
   method Action put(Bit#(1) s, Bit#(32) a, Bit#(32) b);
   method Bit#(32) res;
+  // method Action areset(Bit#(1) rst);
 endinterface
 
 
 // de10 version. 14 cycles latency target
 import "BVI" fpS10AddSub =
   module mkAlteraS10FPAddSub (AlteraS10FPAddSubIfc);
+    Reset rstP <- invertCurrentReset();
+
     default_clock clk(clk, (*unused*) clk_gate);
     default_reset no_reset;
 
+    input_reset a_rst (areset) = rstP;
+
     method put(opSel, a, b) enable ((*inhigh*) EN) clocked_by(clk);
-    method q res;
+    // method areset(rst) enable ((*inhigh*) EN_1);
+    method q res reset_by(default_reset);
 
     schedule (put) C (put);
     schedule (put) CF (res);
     schedule (res) CF
              (res);
+    // schedule (areset) CF (put, res, areset);
+
   endmodule
 
 module mkFPAddSub (FPUOp);
   AlteraS10FPAddSubIfc op <- mkAlteraS10FPAddSub;
 
+  Wire#(FPUOpInput) in_w_or_nothing <- mkDWire( FPUOpInput{arg1:0, arg2:0, addOrSub:0, lowerOrUpper:0, cmpEQ:0, cmpLT:0 } );
+
+  (* no_implicit_conditions *)
+  rule send;
+    op.put(in_w_or_nothing.addOrSub, in_w_or_nothing.arg1[31:0], in_w_or_nothing.arg2[31:0]);
+  endrule
+
   method Action put(FPUOpInput in);
-    op.put(~in.addOrSub, in.arg1[31:0], in.arg2[31:0]);
+    in_w_or_nothing <= in;
   endmethod
 
   method FPUOpOutput out =
@@ -327,8 +344,11 @@ endinterface
 
 import "BVI" fpS10Mult =
   module mkAlteraS10FPMult (AlteraS10FPFuncIfc);
+    Reset rstP <- invertCurrentReset();
+
     default_clock clk(clk, (*unused*) clk_gate);
     default_reset no_reset;
+    input_reset a_rst (areset) = rstP;
 
     method put(a, b) enable ((*inhigh*) EN) clocked_by(clk);
     method q res;
@@ -341,9 +361,15 @@ import "BVI" fpS10Mult =
 
 module mkFPMult (FPUOp);
   AlteraS10FPFuncIfc op <- mkAlteraS10FPMult;
+  Wire#(FPUOpInput) in_w_or_nothing <- mkDWire( FPUOpInput{arg1:0, arg2:0, addOrSub:0, lowerOrUpper:0, cmpEQ:0, cmpLT:0 } );
+
+  (* no_implicit_conditions *)
+  rule send;
+    op.put(in_w_or_nothing.arg1[31:0], in_w_or_nothing.arg2[31:0]);
+  endrule
 
   method Action put(FPUOpInput in);
-    op.put(in.arg1[31:0], in.arg2[31:0]);
+    in_w_or_nothing <= in;
   endmethod
 
   method FPUOpOutput out =
@@ -457,8 +483,12 @@ endinterface
 
 import "BVI" fpS10Div =
   module mkAlteraS10FPDiv (AlteraS10FPFuncIfc);
+    Reset rstP <- invertCurrentReset();
+
     default_clock clk(clk, (*unused*) clk_gate);
     default_reset no_reset;
+
+    input_reset a_rst (areset) = rstP;
 
     method put(a, b) enable ((*inhigh*) EN) clocked_by(clk);
     method q res;
@@ -473,8 +503,15 @@ import "BVI" fpS10Div =
 module mkFPDiv (FPUOp);
   AlteraS10FPFuncIfc op <- mkAlteraS10FPDiv;
 
+  Wire#(FPUOpInput) in_w_or_nothing <- mkDWire( FPUOpInput{arg1:0, arg2:0, addOrSub:0, lowerOrUpper:0, cmpEQ:0, cmpLT:0 } );
+
+  (* no_implicit_conditions *)
+  rule send;
+    op.put(in_w_or_nothing.arg1[31:0], in_w_or_nothing.arg2[31:0]);
+  endrule
+
   method Action put(FPUOpInput in);
-    op.put(in.arg1[31:0], in.arg2[31:0]);
+    in_w_or_nothing <= in;
   endmethod
 
   method FPUOpOutput out =
@@ -591,8 +628,10 @@ endmodule
 `ifdef Stratix10
 import "BVI" fpS10LT =
   module mkAlteraS10FPLT (AlteraS10FPFuncIfc);
+    Reset rstP <- invertCurrentReset();
     default_clock clk(clk, (*unused*) clk_gate);
     default_reset no_reset;
+    input_reset a_rst (areset) = rstP;
 
     method put(a, b) enable ((*inhigh*) EN) clocked_by(clk);
     method q res;
@@ -605,8 +644,12 @@ import "BVI" fpS10LT =
 
 import "BVI" fpS10EQ =
   module mkAlteraS10FPEQ (AlteraS10FPFuncIfc);
+    Reset rstP <- invertCurrentReset();
+
     default_clock clk(clk, (*unused*) clk_gate);
     default_reset no_reset;
+
+    input_reset a_rst (areset) = rstP;
 
     method put(a, b) enable ((*inhigh*) EN) clocked_by(clk);
     method q res;
@@ -619,8 +662,12 @@ import "BVI" fpS10EQ =
 
 import "BVI" fpS10LTE =
   module mkAlteraS10FPLTE (AlteraS10FPFuncIfc);
+    Reset rstP <- invertCurrentReset();
+
     default_clock clk(clk, (*unused*) clk_gate);
     default_reset no_reset;
+
+    input_reset a_rst (areset) = rstP;
 
     method put(a, b) enable ((*inhigh*) EN) clocked_by(clk);
     method q res;
@@ -639,6 +686,9 @@ module mkFPCompare (FPUOp);
   Vector#(`FPCompareLatency, Reg#(Bit#(1))) cmpEQ <- replicateM(mkConfigRegU);
   Vector#(`FPCompareLatency, Reg#(Bit#(1))) cmpLT <- replicateM(mkConfigRegU);
 
+  Wire#(FPUOpInput) in_w_or_nothing <- mkDWire( FPUOpInput{arg1:0, arg2:0, addOrSub:0, lowerOrUpper:0, cmpEQ:0, cmpLT:0 } );
+
+
   rule shift;
     for (Integer i = 0; i < `FPCompareLatency-1; i=i+1) begin
       cmpEQ[i] <= cmpEQ[i+1];
@@ -646,13 +696,19 @@ module mkFPCompare (FPUOp);
     end
   endrule
 
+  (* no_implicit_conditions *)
+  rule send;
+    op_lt.put(in_w_or_nothing.arg1[31:0], in_w_or_nothing.arg2[31:0]);
+    op_eq.put(in_w_or_nothing.arg1[31:0], in_w_or_nothing.arg2[31:0]);
+    op_lte.put(in_w_or_nothing.arg1[31:0], in_w_or_nothing.arg2[31:0]);
+    cmpEQ[`FPCompareLatency-1] <= in_w_or_nothing.cmpEQ;
+    cmpLT[`FPCompareLatency-1] <= in_w_or_nothing.cmpLT;
+  endrule
+
+
 
   method Action put(FPUOpInput in);
-    op_lt.put(in.arg1[31:0], in.arg2[31:0]);
-    op_eq.put(in.arg1[31:0], in.arg2[31:0]);
-    op_lte.put(in.arg1[31:0], in.arg2[31:0]);
-    cmpEQ[`FPCompareLatency-1] <= in.cmpEQ;
-    cmpLT[`FPCompareLatency-1] <= in.cmpLT;
+    in_w_or_nothing <= in;
   endmethod
 
   method FPUOpOutput out =
@@ -756,8 +812,12 @@ endinterface
 
 import "BVI" fpS10FromInt =
   module mkAlteraS10FPFromInt (AlteraS10FPIntConvertIfc);
+    Reset rstP <- invertCurrentReset();
+
     default_clock clk(clk, (*unused*) clk_gate);
     default_reset no_reset;
+
+    input_reset a_rst (areset) = rstP;
 
     method put(a) enable ((*inhigh*) EN) clocked_by(clk);
     method q res;
@@ -769,9 +829,16 @@ import "BVI" fpS10FromInt =
 
 module mkFPFromInt (FPUOp);
   AlteraS10FPIntConvertIfc op <- mkAlteraS10FPFromInt;
+  Wire#(FPUOpInput) in_w_or_nothing <- mkDWire( FPUOpInput{arg1:0, arg2:0, addOrSub:0, lowerOrUpper:0, cmpEQ:0, cmpLT:0 } );
+
+
+  (* no_implicit_conditions *)
+  rule send;
+    op.put(in_w_or_nothing.arg1[31:0]);
+  endrule
 
   method Action put(FPUOpInput in);
-    op.put(in.arg1[31:0]);
+    in_w_or_nothing <= in;
   endmethod
 
   method FPUOpOutput out =
@@ -878,8 +945,12 @@ endmodule
 `ifdef Stratix10
 import "BVI" fpS10ToInt =
   module mkAlteraS10FPToInt (AlteraS10FPIntConvertIfc);
+    Reset rstP <- invertCurrentReset();
+
     default_clock clk(clk, (*unused*) clk_gate);
     default_reset no_reset;
+
+    input_reset a_rst (areset) = rstP;
 
     method put(a) enable ((*inhigh*) EN) clocked_by(clk);
     method q res;
@@ -891,9 +962,16 @@ import "BVI" fpS10ToInt =
 
 module mkFPToInt (FPUOp);
   AlteraS10FPIntConvertIfc op <- mkAlteraS10FPToInt;
+  Wire#(FPUOpInput) in_w_or_nothing <- mkDWire( FPUOpInput{arg1:0, arg2:0, addOrSub:0, lowerOrUpper:0, cmpEQ:0, cmpLT:0 } );
+
+
+  (* no_implicit_conditions *)
+  rule send;
+    op.put(in_w_or_nothing.arg1[31:0]);
+  endrule
 
   method Action put(FPUOpInput in);
-    op.put(in.arg1[31:0]);
+    in_w_or_nothing <= in;
   endmethod
 
   method FPUOpOutput out =

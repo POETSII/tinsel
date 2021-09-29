@@ -97,15 +97,18 @@ INLINE int puthex(unsigned x)
 //   recursive(me, count+1);
 // }
 
+typedef union intfloat {
+  uint32_t i;
+  float f;
+} intfloat_t;
+
 void testfp() {
-  float a_f, b_f;
-  float c_f = 0;
-  for (uint32_t a = 0; a < 1<<31; a++) {
-    for (uint32_t b = 0; b < 1<<31; b++) {
-      a_f = (float)a;
-      b_f = (float)b;
-      c_f = (a_f * b_f);
-      puthex( a ); sendc( '*' ); puthex( b ); sendc( '=' ); puthex( c_f ); sendc( '\n' );
+  intfloat_t a, b, c;
+  a.i = 0; b.i = 0; c.i = 0;
+  for (; a.i < 1<<31; a.i++) {
+    for (; b.i < 1<<31; b.i++) {
+      c.f = (a.f + b.f);
+      puthex( a.i ); sendc( '+' ); puthex( b.i ); sendc( '=' ); puthex( c.i ); sendc( '\n' );
     }
   }
 }
