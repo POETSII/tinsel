@@ -126,15 +126,16 @@ test-jtaguart:  *.bsv
 	$(BSC) $(BSCFLAGS) -Xc -I$(VPIINCL) -sim -o mkSimJtagUartTop -e mkSimJtagUartTop *.c
 	LD_PRELOAD=$(VPIINCL)/libbdpi.so:mkSimJtagUartTop.so ./mkSimJtagUartTop
 
-# VHDLSIM=$(shell find ../DE10Pro/DE10-reference-project/quartus/ip/fp -wholename "*fpS10AddSub/*sim/*vhd")
+# VHDLSIM=$(shell find ../DE10Pro/DE10-reference-project/quartus/ip/fp -wholename "*fpS10AddSub/*sim/*vhd") /fourteennm_atoms.sv
 # FPSIMINCLUDE = -vsearch +:$(call join-with,:,$(shell find ../DE10Pro/DE10-reference-project/quartus/ip/fp -type d -name sim)):$(call join-with,:,$(shell find ../scratch/sim_models/lpm_mult -type d -name sim))
-FPSIMINCLUDE = -vsearch +:../scratch/sim_models/fp
+FPSIMINCLUDE = -vsearch +:../scratch/sim_models/fp:/local/ecad/altera/19.2pro/quartus/eda/fv_lib/verilog/fourteennm/fourteennm_atoms.sv
 VHDLSIM = ../scratch/sim_models/fp/dspba_library_package.vhd $(shell find ../scratch/sim_models/fp -name "fp*vhd")
 .PHONY: test-fpu
 test-fpu:  *.bsv
 	$(BSC) $(BSCFLAGS) $(DEFS) -show-range-conflict -verilog -g mkTestFPU -u mkTestFPU.bsv
 	$(BSC) $(BSCFLAGS) $(DEFS) -o mkTestFPU -verilog mkTestFPU.bsv
-	bsc -D BSV_TIMESCALE=1ns/1ps -verilog -vsim modelsim $(FPSIMINCLUDE) -e mkTestFPU -o mkTestFPU.out $(VHDLSIM)
+	# bsc -D BSV_TIMESCALE=1ns/1ps -verilog -vsim iverilog $(FPSIMINCLUDE) -e mkTestFPU -o mkTestFPU.out
+	bsc -D BSV_TIMESCALE=1ns/1ps -verilog -vsim modelsim $(FPSIMINCLUDE) -e mkTestFPU -o mkTestFPU.out ../scratch/sim_models/fourteennm/fourteennm_atoms.sv /local/ecad/altera/19.2pro/quartus/eda/fv_lib/verilog/fourteennm/fourteennm_atoms_encrypt.sv fp_mac_wrapper.v
 	# $(BSC) $(BSCFLAGS)  -o mkTestFPU -e mkTestFPU *.c
 
 
