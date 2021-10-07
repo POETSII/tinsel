@@ -142,10 +142,10 @@ p["LogEastWestLinks"] = 0
 
 # Latencies of arithmetic megafunctions
 p["IntMultLatency"] = 3
-p["FPMultLatency"] = 11
-p["FPAddSubLatency"] = 14
-p["FPDivLatency"] = 24
-p["FPConvertLatency"] = 6
+p["FPMultLatency"] = 4
+p["FPAddSubLatency"] = 4
+p["FPDivLatency"] = 28
+p["FPConvertLatency"] = 9 # longer of to and from; wrappers maintain inputs so overly long numbers are correct, just slow.
 p["FPCompareLatency"] = 3
 
 # SRAM parameters

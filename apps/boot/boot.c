@@ -104,7 +104,10 @@ typedef union intfloat {
 
 void testfp() {
   intfloat_t a, b, c;
-  a.i = 0; b.i = 0; c.i = 0;
+//   Reg#(Bit#(32)) a_reg <- mkReg(32'h40200000); // 2.5
+// Reg#(Bit#(32)) b_reg <- mkReg(32'h40a00000); // 5.0
+
+  a.i = 0x40200000; b.i = 0x40a00000; c.i = 0;
   for (; a.i < 1<<31; a.i++) {
     for (; b.i < 1<<31; b.i++) {
       c.f = (a.f + b.f);
@@ -134,13 +137,24 @@ int main()
 
     // Get mailbox message slot for sending
     // volatile uint32_t* msgOut = tinselSendSlot();
-    // Command loop
+    // Command loopPO
 
     for (;;) {
       uint32_t c = 0;
       while (c >> 7 <= 0) { c = tinselUartTryGet(); }
 
       testfp();
+      // sendc( 'h' );
+      // sendc( 'e' );
+      // sendc( 'l' );
+      // sendc( 'l' );
+      // sendc( 'o' );
+      // sendc( 'c' );
+      // sendc( 'o' );
+      // sendc( 'r' );
+      // sendc( 'e' );
+      // sendc( '\n' );
+      // sendc( '\0' );
 
     }
   }

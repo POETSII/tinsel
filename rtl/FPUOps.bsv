@@ -225,7 +225,7 @@ import "BVI" fpS10AddSub =
 module mkFPAddSub (FPUOp);
   AlteraS10FPAddSubIfc op <- mkAlteraS10FPAddSub;
 
-  Wire#(FPUOpInput) in_w_or_nothing <- mkDWire( FPUOpInput{arg1:0, arg2:0, addOrSub:0, lowerOrUpper:0, cmpEQ:0, cmpLT:0 } );
+  Reg#(FPUOpInput) in_w_or_nothing <- mkReg( FPUOpInput{arg1:0, arg2:0, addOrSub:0, lowerOrUpper:0, cmpEQ:0, cmpLT:0 } );
 
   (* no_implicit_conditions *)
   rule send;
@@ -361,7 +361,7 @@ import "BVI" fpS10Mult =
 
 module mkFPMult (FPUOp);
   AlteraS10FPFuncIfc op <- mkAlteraS10FPMult;
-  Wire#(FPUOpInput) in_w_or_nothing <- mkDWire( FPUOpInput{arg1:0, arg2:0, addOrSub:0, lowerOrUpper:0, cmpEQ:0, cmpLT:0 } );
+  Reg#(FPUOpInput) in_w_or_nothing <- mkReg( FPUOpInput{arg1:0, arg2:0, addOrSub:0, lowerOrUpper:0, cmpEQ:0, cmpLT:0 } );
 
   (* no_implicit_conditions *)
   rule send;
@@ -503,7 +503,7 @@ import "BVI" fpS10Div =
 module mkFPDiv (FPUOp);
   AlteraS10FPFuncIfc op <- mkAlteraS10FPDiv;
 
-  Wire#(FPUOpInput) in_w_or_nothing <- mkDWire( FPUOpInput{arg1:0, arg2:0, addOrSub:0, lowerOrUpper:0, cmpEQ:0, cmpLT:0 } );
+  Reg#(FPUOpInput) in_w_or_nothing <- mkReg( FPUOpInput{arg1:0, arg2:0, addOrSub:0, lowerOrUpper:0, cmpEQ:0, cmpLT:0 } );
 
   (* no_implicit_conditions *)
   rule send;
@@ -686,7 +686,7 @@ module mkFPCompare (FPUOp);
   Vector#(`FPCompareLatency, Reg#(Bit#(1))) cmpEQ <- replicateM(mkConfigRegU);
   Vector#(`FPCompareLatency, Reg#(Bit#(1))) cmpLT <- replicateM(mkConfigRegU);
 
-  Wire#(FPUOpInput) in_w_or_nothing <- mkDWire( FPUOpInput{arg1:0, arg2:0, addOrSub:0, lowerOrUpper:0, cmpEQ:0, cmpLT:0 } );
+  Reg#(FPUOpInput) in_w_or_nothing <- mkReg( FPUOpInput{arg1:0, arg2:0, addOrSub:0, lowerOrUpper:0, cmpEQ:0, cmpLT:0 } );
 
 
   rule shift;
@@ -829,7 +829,7 @@ import "BVI" fpS10FromInt =
 
 module mkFPFromInt (FPUOp);
   AlteraS10FPIntConvertIfc op <- mkAlteraS10FPFromInt;
-  Wire#(FPUOpInput) in_w_or_nothing <- mkDWire( FPUOpInput{arg1:0, arg2:0, addOrSub:0, lowerOrUpper:0, cmpEQ:0, cmpLT:0 } );
+  Reg#(FPUOpInput) in_w_or_nothing <- mkReg( FPUOpInput{arg1:0, arg2:0, addOrSub:0, lowerOrUpper:0, cmpEQ:0, cmpLT:0 } );
 
 
   (* no_implicit_conditions *)
@@ -962,7 +962,7 @@ import "BVI" fpS10ToInt =
 
 module mkFPToInt (FPUOp);
   AlteraS10FPIntConvertIfc op <- mkAlteraS10FPToInt;
-  Wire#(FPUOpInput) in_w_or_nothing <- mkDWire( FPUOpInput{arg1:0, arg2:0, addOrSub:0, lowerOrUpper:0, cmpEQ:0, cmpLT:0 } );
+  Reg#(FPUOpInput) in_w_or_nothing <- mkReg( FPUOpInput{arg1:0, arg2:0, addOrSub:0, lowerOrUpper:0, cmpEQ:0, cmpLT:0 } );
 
 
   (* no_implicit_conditions *)
