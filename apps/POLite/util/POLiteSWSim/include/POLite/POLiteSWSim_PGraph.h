@@ -91,11 +91,13 @@ static const unsigned  LogBytesPerMsg = 6;
 static const unsigned LogBytesPerWord = 2;
 static const unsigned LogBytesPerFlit = 4;
 static const unsigned CoresPerFPU=32;
+static const unsigned TinselLogThreadsPerCore=1;
 static const unsigned LogBytesPerDRAM=27;
 static const unsigned MeshXBits=3;
 static const unsigned MeshYBits=3;
 static const unsigned BoxMeshXLen=4;
 static const unsigned BoxMeshYLen=4;
+
 
 enum PlacerMethod
 { Default };
