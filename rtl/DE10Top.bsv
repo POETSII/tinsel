@@ -33,6 +33,8 @@ import NarrowSRAM   :: *;
 import OffChipRAM   :: *;
 import IdleDetector :: *;
 import Connections  :: *;
+import PCIeStream   :: *;
+import HostLink   :: *;
 
 `ifdef SIMULATE
 
@@ -44,16 +46,11 @@ import "BDPI" function Bit#(32) getBoardId();
 interface DE10Ifc;
   interface Vector#(`DRAMsPerBoard, DRAMExtIfc) dramIfcs;
 
-  // HPS to FPGA AXI port
-  // --------------------
-  interface AXI4_Slave_Synth #( 4
-                        , 35
-                        , 32
-                        , 0
-                        , 0
-                        , 0
-                        , 0
-                        , 0 ) axs_pcie2f;
+  // Interface to the PCIe BAR
+  interface PCIeBAR controlBAR;
+  // Interface to host PCIe bus
+  // (Use for DMA to/from host memory)
+  interface PCIeHostBus pcieHostBus;
 
   interface AvalonSlaveSingleMasterIfc#(4) tester; // AvalonSlave physical interface
   interface JtagUartAvalon jtagIfc;
@@ -245,12 +242,15 @@ module mkDE10Top(Clock rx_390_A, Clock tx_390_A,
       connectCoresToMailbox(map(mailboxClient, cs), mailboxes[y][x]);
     end
 
+  HostLinkPCIeAdaptorIfc hostlink <- mkHostLink();
+
   // Create network-on-chip
   function MailboxNet mailboxNet(Mailbox mbox) = mbox.net;
-  NoC noc <- mkNoC(
+  NoC noc <- mkNoCDE10(
     debugLink.getBoardId(),
     debugLink.linkEnable,
     map(map(mailboxNet), mailboxes),
+    hostlink.mbox,
     idle);
 
   // Connect cores and ProgRouter fetchers to idle-detector
@@ -275,6 +275,14 @@ module mkDE10Top(Clock rx_390_A, Clock tx_390_A,
           cores[i][j][k].setBoardId(debugLink.getBoardId());
   endrule
 
+  // HostLink
+
+  // Create PCIeStream instance
+  PCIeStream pcie <- mkPCIeStream;
+
+  connectDirect(hostlink.streamToHost, pcie.streamIn);
+  connectDirect(pcie.streamOut, hostlink.streamFromHost);
+
   // In simulation, display start-up message
   `ifdef SIMULATE
   rule displayStartup;
@@ -290,6 +298,8 @@ module mkDE10Top(Clock rx_390_A, Clock tx_390_A,
   function DRAMExtIfc getDRAMExtIfc(OffChipRAMStratix10 ram) = ram.extDRAM;
   interface dramIfcs = map(getDRAMExtIfc, rams);
   interface jtagIfc  = debugLink.jtagAvalon;
+  interface controlBAR  = pcie.external.controlBAR;
+  interface pcieHostBus  = pcie.external.hostBus;
   // interface northMac = noc.north;
   // interface southMac = noc.south;
   // interface eastMac  = noc.east;
@@ -309,78 +319,3 @@ module mkDE10Top(Clock rx_390_A, Clock tx_390_A,
   // interface MacDataIfc macB = syncB.syncToMac;
 
 endmodule
-
-
-// module mkDE10Top(Clock rx_390_A, Clock tx_390_A,
-//                   Reset rx_rst_A, Reset tx_rst_A,
-//                   Clock rx_390_B, Clock tx_390_B,
-//                   Reset rx_rst_B, Reset tx_rst_B,
-//                   Clock mgmt, Reset mgmt_reset,
-//                   DE10Ifc ifc);
-//
-//   Clock default_clock <- exposeCurrentClock();
-//   Reset default_reset <- exposeCurrentReset();
-//
-//   // Create JTAG UART instance
-//   JtagUart uart <- mkJtagUart(mgmt, mgmt_reset);
-//
-//   Reg#(Bit#(8)) ctr <- mkReg(0);
-//
-//   // rule write;
-//   //   uart.jtagIn.tryPut(ctr);
-//   // endrule
-//   //
-//   // rule count (uart.jtagIn.didPut);
-//   //   ctr <= ctr+1;
-//   // endrule
-//   connectUsing(mkQueue, uart.jtagOut, uart.jtagIn);
-//
-//   `ifndef SIMULATE
-//   interface jtagIfc  = uart.jtagAvalon;
-//   method Action setBoardId(Bit#(4) id);
-//   endmethod
-//   `endif
-//   // In simulation, display start-up message
-//   `ifdef SIMULATE
-//   rule displayStartup;
-//     let t <- $time;
-//     if (t == 0) begin
-//       $display("\nSimulator started");
-//       $dumpvars();
-//     end
-//   endrule
-//   `endif
-//
-// endmodule
-
-//
-// module mkSimTop(Empty);
-//
-//   Clock default_clock <- exposeCurrentClock();
-//   Reset default_reset <- exposeCurrentReset();
-//
-//   // Create JTAG UART instance
-//   JtagUart uart <- mkJtagUart(mgmt, mgmt_reset);
-//
-//   Reg#(Bit#(8)) ctr <- mkReg(0);
-//
-//   rule write;
-//     uart.jtagIn.tryPut(ctr);
-//     ctr <= ctr+1;
-//   endrule
-//
-//   // rule count;
-//   //   ctr <= ctr+1;
-//   // endrule
-//
-//   // connectUsing(mkQueue, uart.jtagOut, uart.jtagIn);
-//
-//   // In simulation, display start-up message
-//   rule displayStartup;
-//     let t <- $time;
-//     if (t == 0) begin
-//       $display("\nSimulator started");
-//       $dumpvars();
-//     end
-//   endrule
-// endmodule
