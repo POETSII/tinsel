@@ -127,6 +127,18 @@ template <class T> class Seq
     {
       delete [] elems;
     }
+
+    T *begin()
+    { return numElems==0 ? 0 : elems; }
+
+    const T *begin() const
+    { return numElems==0 ? 0 : elems; }
+
+    T *end()
+    { return numElems==0 ? 0 : elems+numElems; }
+
+    const T *end() const
+    { return numElems==0 ? 0 : elems+numElems; }
 };
 
 // A small sequence is just a sequence with a small initial size

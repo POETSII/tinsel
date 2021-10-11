@@ -478,11 +478,22 @@ public:
         return id;
     }
 
+    void setDeviceWeight(unsigned id, unsigned weight)
+    {
+        assert(weight>0);
+    }
+
     void reserveOutgoingEdgeSpace(PDeviceId from, PinId pin, unsigned n)
     {
         auto &d=devices.at(from)->outgoing[pin];
         d.reserve(d.size()+n);
     }
+
+    unsigned getThreadIdFromDeviceId(PDeviceId id) const
+    { return 0; }
+
+    unsigned numThreads() const
+    { return 1; }
 
 
     void addEdge(PDeviceId from, PinId pin, PDeviceId to)

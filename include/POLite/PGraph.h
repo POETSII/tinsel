@@ -222,6 +222,17 @@ public:
     edgeLabels.elems[x]->append(edge);
   }
 
+  void setDeviceWeight(NodeId id, unsigned weight)
+  {
+    assert(weight>0);
+    graph.setWeight(id, weight);
+  }
+
+  unsigned numThreads() const
+  {
+    return meshLenX*meshLenY*TinselLogThreadsPerBoard;
+  }
+
   // Allocate SRAM and DRAM partitions
   void allocatePartitions() {
     // Decide a maximum partition size that is reasonable
@@ -576,8 +587,8 @@ public:
     PDeviceAddr devAddr = toDeviceAddr[devId];
     uint32_t devBoard = getThreadId(devAddr) >> TinselLogThreadsPerBoard;
     // Split destinations into local/non-local
-    Seq<PDeviceId>* dests = graph.outgoing->elems[devId];
-    Seq<PinId>* pinIds = graph.pins->elems[devId];
+    Seq<PDeviceId>* dests = graph.outgoing()->elems[devId];
+    Seq<PinId>* pinIds = graph.pins()->elems[devId];
     for (uint32_t d = 0; d < dests->numElems; d++) {
       if (pinIds->elems[d] == pinId) {
         PEdgeDest e;
@@ -832,19 +843,19 @@ public:
               Graph* g = &threads.subgraphs[threadNum];
 
               // Populate fromDeviceAddr mapping
-              uint32_t numDevs = g->incoming->numElems;
+              uint32_t numDevs = g->numVertices();
               numDevicesOnThread[threadId] = numDevs;
               fromDeviceAddr[threadId] = (PDeviceId*)
                 malloc(sizeof(PDeviceId) * numDevs);
               for (uint32_t devNum = 0; devNum < numDevs; devNum++)
-                fromDeviceAddr[threadId][devNum] = g->labels->elems[devNum];
+                fromDeviceAddr[threadId][devNum] = g->getLabel(devNum);
   
               // Populate toDeviceAddr mapping
               assert(numDevs < maxLocalDeviceId());
               for (uint32_t devNum = 0; devNum < numDevs; devNum++) {
                 PDeviceAddr devAddr =
                   makeDeviceAddr(threadId, devNum);
-                toDeviceAddr[g->labels->elems[devNum]] = devAddr;
+                toDeviceAddr[g->getLabel(devNum)] = devAddr;
               }
             }
           }
@@ -1027,7 +1038,8 @@ public:
   uint32_t getThreadIdFromDeviceId(uint32_t deviceId)
   {
     assert(toDeviceAddr);
-    return toDeviceAddr[deviceId];
+    assert(deviceId < numDevices);
+    return getThreadId(toDeviceAddr[deviceId]);
   }
 
 };
