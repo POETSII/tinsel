@@ -397,7 +397,12 @@ struct PDevice {
   bool finish(volatile M* msg);
 };
 
-template <typename DeviceType, typename S, typename E, typename M>
+template <typename TDeviceType,
+          typename S, typename E, typename M,
+          int TT_NUM_PINS=T_NUM_PINS,
+          bool TT_ENABLE_CORE_PERF_COUNTERS=false,
+          bool TT_ENABLE_THREAD_PERF_COUNTERS=false
+          >
 struct PThread {
 
 };

@@ -42,6 +42,14 @@ struct POLiteHW
     static constexpr PPin No = ::No;
     static constexpr PPin HostPin = ::HostPin;
 
+    template <typename TDeviceType,
+          typename S, typename E, typename M,
+          int TT_NUM_PINS=T_NUM_PINS,
+          bool TT_ENABLE_CORE_PERF_COUNTERS=false,
+          bool TT_ENABLE_THREAD_PERF_COUNTERS=false
+          >
+    using PThread = ::PThread<TDeviceType,S,E,M,TT_NUM_PINS,TT_ENABLE_CORE_PERF_COUNTERS,TT_ENABLE_THREAD_PERF_COUNTERS>;
+
     static const unsigned  LogWordsPerMsg = TinselLogWordsPerMsg;
     static const unsigned  LogBytesPerMsg = TinselLogBytesPerMsg;
     static const unsigned LogBytesPerWord = 2;
