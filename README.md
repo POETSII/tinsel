@@ -1912,7 +1912,7 @@ inerhit a number of limitations:
   * One rounding mode only: *round-to-nearest with ties-to-even*.
   * Signed integer to floating-point conversion only: `fcvt.s.w` and
     `fcvt.s.wu` both convert from *signed* integers.
-  * Floating-point to signed integer conversion only: 
+  * Floating-point to signed integer conversion only:
     `fcvt.w.s` and `fcvt.w.su` both convert to *signed*
     integers.
   * The fixed rounding mode leads to an incompatibility with the C standard
@@ -1924,6 +1924,10 @@ inerhit a number of limitations:
   * Floating-point division may not be correctly rounded.
     See [Issue #54](https://github.com/POETSII/tinsel/issues/54)
     for more details.
+
+On the DE10, FP div is _not_ correctly rounded and no FP exceptions will be
+raised due to limitations in the provided IP blocks. FP exceptions may be
+available in a later release.
 
 ## I. Publications
 
