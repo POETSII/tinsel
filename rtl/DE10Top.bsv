@@ -280,7 +280,7 @@ module mkDE10Top(Clock rx_390_A, Clock tx_390_A,
   // Create PCIeStream instance
   PCIeStream pcie <- mkPCIeStream;
 
-  connectDirect(hostlink.streamToHost, pcie.streamIn);
+  connectUsing(mkUGShiftQueue1(QueueOptFmax), hostlink.streamToHost, pcie.streamIn);
   connectDirect(pcie.streamOut, hostlink.streamFromHost);
 
   // In simulation, display start-up message

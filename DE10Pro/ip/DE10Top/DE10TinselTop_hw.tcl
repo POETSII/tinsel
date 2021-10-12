@@ -348,59 +348,78 @@ add_interface_port tx_b macB_l8_tx_error error Output 1
 add_interface_port tx_b macB_l8_tx_empty empty Output 6
 add_interface_port tx_b macB_l8_tx_data data Output 512
 
-# PCIe endpoint
-add_interface axs_pcie2f axi4 end
-set_interface_property axs_pcie2f associatedClock clk
-set_interface_property axs_pcie2f associatedReset rst
-set_interface_property axs_pcie2f readAcceptanceCapability 1
-set_interface_property axs_pcie2f writeAcceptanceCapability 1
-set_interface_property axs_pcie2f combinedAcceptanceCapability 1
-set_interface_property axs_pcie2f readDataReorderingDepth 1
-set_interface_property axs_pcie2f bridgesToMaster ""
-set_interface_property axs_pcie2f ENABLED true
-set_interface_property axs_pcie2f EXPORT_OF ""
-set_interface_property axs_pcie2f PORT_NAME_MAP ""
-set_interface_property axs_pcie2f CMSIS_SVD_VARIABLES ""
-set_interface_property axs_pcie2f SVD_ADDRESS_GROUP ""
-set_interface_property axs_pcie2f IPXACT_REGISTER_MAP_VARIABLES ""
+#
+# connection point pcie_host_bus
+#
+add_interface pcie_host_bus avalon start
+set_interface_property pcie_host_bus addressUnits SYMBOLS
+set_interface_property pcie_host_bus associatedClock clk
+set_interface_property pcie_host_bus associatedReset rst
+set_interface_property pcie_host_bus bitsPerSymbol 8
+set_interface_property pcie_host_bus burstOnBurstBoundariesOnly false
+set_interface_property pcie_host_bus burstcountUnits WORDS
+set_interface_property pcie_host_bus doStreamReads false
+set_interface_property pcie_host_bus doStreamWrites false
+set_interface_property pcie_host_bus holdTime 0
+set_interface_property pcie_host_bus linewrapBursts false
+set_interface_property pcie_host_bus maximumPendingReadTransactions 0
+set_interface_property pcie_host_bus maximumPendingWriteTransactions 0
+set_interface_property pcie_host_bus readLatency 0
+set_interface_property pcie_host_bus readWaitTime 1
+set_interface_property pcie_host_bus setupTime 0
+set_interface_property pcie_host_bus timingUnits Cycles
+set_interface_property pcie_host_bus writeWaitTime 0
+set_interface_property pcie_host_bus ENABLED true
+set_interface_property pcie_host_bus EXPORT_OF ""
+set_interface_property pcie_host_bus PORT_NAME_MAP ""
+set_interface_property pcie_host_bus CMSIS_SVD_VARIABLES ""
+set_interface_property pcie_host_bus SVD_ADDRESS_GROUP ""
 
+add_interface_port pcie_host_bus pcieHostBus_m_readdata readdata Input 128
+add_interface_port pcie_host_bus pcieHostBus_m_readdatavalid readdatavalid Input 1
+add_interface_port pcie_host_bus pcieHostBus_m_waitrequest waitrequest Input 1
+add_interface_port pcie_host_bus pcieHostBus_m_writedata writedata Output 128
+add_interface_port pcie_host_bus pcieHostBus_m_address address Output 64
+add_interface_port pcie_host_bus pcieHostBus_m_read read Output 1
+add_interface_port pcie_host_bus pcieHostBus_m_write write Output 1
+add_interface_port pcie_host_bus pcieHostBus_m_burstcount burstcount Output 4
+add_interface_port pcie_host_bus pcieHostBus_m_byteenable byteenable Output 16
 
-add_interface_port axs_pcie2f axs_pcie2f_awready awready             Output 1
-add_interface_port axs_pcie2f axs_pcie2f_wready wready              Output     1
-add_interface_port axs_pcie2f axs_pcie2f_bid bid                 Output     4
-add_interface_port axs_pcie2f axs_pcie2f_bresp bresp               Output     2
-add_interface_port axs_pcie2f axs_pcie2f_bvalid bvalid              Output     1
-add_interface_port axs_pcie2f axs_pcie2f_arready arready             Output     1
-add_interface_port axs_pcie2f axs_pcie2f_rid rid                 Output     4
-add_interface_port axs_pcie2f axs_pcie2f_rdata rdata               Output   32
-add_interface_port axs_pcie2f axs_pcie2f_rresp rresp               Output     2
-add_interface_port axs_pcie2f axs_pcie2f_rlast rlast               Output     1
-add_interface_port axs_pcie2f axs_pcie2f_rvalid rvalid              Output     1
-add_interface_port axs_pcie2f axs_pcie2f_awvalid awvalid             Input     1
-add_interface_port axs_pcie2f axs_pcie2f_awid awid                Input     4
-add_interface_port axs_pcie2f axs_pcie2f_awaddr awaddr              Input    35
-add_interface_port axs_pcie2f axs_pcie2f_awlen awlen               Input     8
-add_interface_port axs_pcie2f axs_pcie2f_awsize awsize              Input     3
-add_interface_port axs_pcie2f axs_pcie2f_awburst awburst             Input     2
-add_interface_port axs_pcie2f axs_pcie2f_awlock awlock              Input     1
-add_interface_port axs_pcie2f axs_pcie2f_awcache awcache             Input     4
-add_interface_port axs_pcie2f axs_pcie2f_awprot awprot              Input     3
-add_interface_port axs_pcie2f axs_pcie2f_awqos awqos               Input     4
-add_interface_port axs_pcie2f axs_pcie2f_awregion awregion            Input     4
-add_interface_port axs_pcie2f axs_pcie2f_wvalid wvalid              Input     1
-add_interface_port axs_pcie2f axs_pcie2f_wdata wdata               Input   32
-add_interface_port axs_pcie2f axs_pcie2f_wstrb wstrb               Input    4
-add_interface_port axs_pcie2f axs_pcie2f_wlast wlast               Input     1
-add_interface_port axs_pcie2f axs_pcie2f_bready bready              Input     1
-add_interface_port axs_pcie2f axs_pcie2f_arvalid arvalid             Input     1
-add_interface_port axs_pcie2f axs_pcie2f_arid arid                Input     4
-add_interface_port axs_pcie2f axs_pcie2f_araddr araddr              Input    35
-add_interface_port axs_pcie2f axs_pcie2f_arlen arlen               Input     8
-add_interface_port axs_pcie2f axs_pcie2f_arsize arsize              Input     3
-add_interface_port axs_pcie2f axs_pcie2f_arburst arburst             Input     2
-add_interface_port axs_pcie2f axs_pcie2f_arlock arlock              Input     1
-add_interface_port axs_pcie2f axs_pcie2f_arcache arcache             Input     4
-add_interface_port axs_pcie2f axs_pcie2f_arprot arprot              Input     3
-add_interface_port axs_pcie2f axs_pcie2f_arqos arqos               Input     4
-add_interface_port axs_pcie2f axs_pcie2f_arregion arregion            Input     4
-add_interface_port axs_pcie2f axs_pcie2f_rready rready              Input     1
+#
+# connection point controlbar_s
+#
+add_interface controlbar_s avalon end
+set_interface_property controlbar_s addressUnits WORDS
+set_interface_property controlbar_s associatedClock clk
+set_interface_property controlbar_s associatedReset rst
+set_interface_property controlbar_s bitsPerSymbol 8
+set_interface_property controlbar_s burstOnBurstBoundariesOnly false
+set_interface_property controlbar_s burstcountUnits WORDS
+set_interface_property controlbar_s explicitAddressSpan 0
+set_interface_property controlbar_s holdTime 0
+set_interface_property controlbar_s linewrapBursts false
+set_interface_property controlbar_s maximumPendingReadTransactions 1
+set_interface_property controlbar_s maximumPendingWriteTransactions 0
+set_interface_property controlbar_s readLatency 0
+set_interface_property controlbar_s readWaitTime 1
+set_interface_property controlbar_s setupTime 0
+set_interface_property controlbar_s timingUnits Cycles
+set_interface_property controlbar_s writeWaitTime 0
+set_interface_property controlbar_s ENABLED true
+set_interface_property controlbar_s EXPORT_OF ""
+set_interface_property controlbar_s PORT_NAME_MAP ""
+set_interface_property controlbar_s CMSIS_SVD_VARIABLES ""
+set_interface_property controlbar_s SVD_ADDRESS_GROUP ""
+
+add_interface_port controlbar_s controlBAR_s_writedata writedata Input 128
+add_interface_port controlbar_s controlBAR_s_address address Input 4
+add_interface_port controlbar_s controlBAR_s_read read Input 1
+add_interface_port controlbar_s controlBAR_s_write write Input 1
+add_interface_port controlbar_s controlBAR_s_byteenable byteenable Input 16
+add_interface_port controlbar_s controlBAR_s_readdata readdata Output 128
+add_interface_port controlbar_s controlBAR_s_readdatavalid readdatavalid Output 1
+add_interface_port controlbar_s controlBAR_s_waitrequest waitrequest Output 1
+set_interface_assignment controlbar_s embeddedsw.configuration.isFlash 0
+set_interface_assignment controlbar_s embeddedsw.configuration.isMemoryDevice 0
+set_interface_assignment controlbar_s embeddedsw.configuration.isNonVolatileStorage 0
+set_interface_assignment controlbar_s embeddedsw.configuration.isPrintableDevice 0
