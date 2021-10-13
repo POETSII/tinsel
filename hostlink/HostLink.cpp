@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BSD-2-Clause
 #include "HostLink.h"
-#include "DebugLink.h"
+#include "DebugLink_de10.h"
 #include "MemFileReader.h"
 #include "PowerLink.h"
 #include "SocketUtils.h"
@@ -43,7 +43,8 @@ static int connectToPCIeStream(const char* socketPath)
   memset(&addr, 0, sizeof(struct sockaddr_un));
   addr.sun_family = AF_UNIX;
   addr.sun_path[0] = '\0';
-  strncpy(&addr.sun_path[1], socketPath, sizeof(addr.sun_path) - 2);
+  strncpy(&addr.sun_path[1], socketPath, 12); //sizeof(addr.sun_path) - 2);
+  printf("connecting to pciestream socket %s\n", socketPath);
   int ret = connect(sock, (const struct sockaddr *) &addr,
                   sizeof(struct sockaddr_un));
   if (ret == -1) {
@@ -99,7 +100,7 @@ void HostLink::constructor(HostLinkParams p)
   debugLinkParams.numBoxesY = p.numBoxesY;
   debugLinkParams.useExtraSendSlot = p.useExtraSendSlot;
   debugLinkParams.max_connection_attempts=p.max_connection_attempts;
-  debugLink = new DebugLink(debugLinkParams);
+  debugLink = new DebugLinkDE10(debugLinkParams);
 
   // Set board mesh dimensions
   meshXLen = debugLink->meshXLen;
@@ -147,6 +148,8 @@ void HostLink::constructor(HostLinkParams p)
   if (! powerOnSelfTest()) {
     fprintf(stderr, "Power-on self test failed.  Please try again.\n");
     exit(EXIT_FAILURE);
+  } else {
+    printf("hostlink POST passed.");
   }
 }
 

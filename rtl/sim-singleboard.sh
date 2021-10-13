@@ -73,7 +73,7 @@ PIDS="$PIDS $!"
 for X in $(seq 0 $LAST_X); do
   for Y in $(seq 0 $LAST_Y); do
     ID=$(fromCoords $X $Y)
-    echo "Lauching simulator at position ($X, $Y) with board id $ID"LD_PRELOAD="/home/tparks/upstream/bsc/inst/lib/VPI/libbdpi.so /home/tparks/Projects/POETS/tinsel/rtl/mkDE10Top.so"
+    echo "Lauching simulator at position ($X, $Y) with board id $ID"
     BOARD_ID=$ID make runsim | grep -v Warning &
     PIDS="$PIDS $!"
   done

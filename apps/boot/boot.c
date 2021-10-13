@@ -20,19 +20,19 @@ INLINE int puts(const char* s)
   return count;
 }
 
-INLINE int puthex(unsigned x)
-{
-  int count = 0;
-  sendc( '0' ); sendc( 'x' );
-
-  for (count = 0; count < 8; count++) {
-    unsigned nibble = x >> 28;
-    sendc(nibble > 9 ? ('a'-10)+nibble : '0'+nibble);
-    x = x << 4;
-  }
-
-  return 8;
-}
+// INLINE int puthex(unsigned x)
+// {
+//   int count = 0;
+//   sendc( '0' ); sendc( 'x' );
+//
+//   for (count = 0; count < 8; count++) {
+//     unsigned nibble = x >> 28;
+//     sendc(nibble > 9 ? ('a'-10)+nibble : '0'+nibble);
+//     x = x << 4;
+//   }
+//
+//   return 8;
+// }
 
 // INLINE void itoa(uint32_t x, char* s) {
 //   uint8_t w;
@@ -97,24 +97,24 @@ INLINE int puthex(unsigned x)
 //   recursive(me, count+1);
 // }
 
-typedef union intfloat {
-  uint32_t i;
-  float f;
-} intfloat_t;
-
-void testfp() {
-  intfloat_t a, b, c;
-//   Reg#(Bit#(32)) a_reg <- mkReg(32'h40200000); // 2.5
-// Reg#(Bit#(32)) b_reg <- mkReg(32'h40a00000); // 5.0
-
-  a.i = 0x40200000; b.i = 0x40a00000; c.i = 0;
-  for (; a.i < 1<<31; a.i++) {
-    for (; b.i < 1<<31; b.i++) {
-      c.f = (a.f + b.f);
-      puthex( a.i ); sendc( '+' ); puthex( b.i ); sendc( '=' ); puthex( c.i ); sendc( '\n' );
-    }
-  }
-}
+// typedef union intfloat {
+//   uint32_t i;
+//   float f;
+// } intfloat_t;
+//
+// void testfp() {
+//   intfloat_t a, b, c;
+// //   Reg#(Bit#(32)) a_reg <- mkReg(32'h40200000); // 2.5
+// // Reg#(Bit#(32)) b_reg <- mkReg(32'h40a00000); // 5.0
+//
+//   a.i = 0x40200000; b.i = 0x40a00000; c.i = 0;
+//   for (; a.i < 1<<31; a.i++) {
+//     for (; b.i < 1<<31; b.i++) {
+//       c.f = (a.f + b.f);
+//       puthex( a.i ); sendc( '+' ); puthex( b.i ); sendc( '=' ); puthex( c.i ); sendc( '\n' );
+//     }
+//   }
+// }
 
 // Main
 int main()
@@ -143,18 +143,21 @@ int main()
       uint32_t c = 0;
       while (c >> 7 <= 0) { c = tinselUartTryGet(); }
 
-      testfp();
-      // sendc( 'h' );
-      // sendc( 'e' );
-      // sendc( 'l' );
-      // sendc( 'l' );
-      // sendc( 'o' );
-      // sendc( 'c' );
-      // sendc( 'o' );
-      // sendc( 'r' );
-      // sendc( 'e' );
-      // sendc( '\n' );
-      // sendc( '\0' );
+      tinselWaitUntil(TINSEL_CAN_RECV);
+      volatile BootReq* msgIn = tinselRecv();
+
+      // testfp();
+      sendc( 'h' );
+      sendc( 'e' );
+      sendc( 'l' );
+      sendc( 'l' );
+      sendc( 'o' );
+      sendc( 'f' );
+      sendc( 'l' );
+      sendc( 'i' );
+      sendc( 't' );
+      sendc( '\n' );
+      sendc( '\0' );
 
     }
   }

@@ -33,6 +33,7 @@ static int openSocket(int instId)
   addr.sun_family = AF_UNIX;
   snprintf(&addr.sun_path[1], sizeof(addr.sun_path)-2, "tinsel.b%i.0", instId);
   addr.sun_path[0] = '\0';
+  printf("trying to connect to %s\n", &addr.sun_path[1]);
   int ret = connect(sock, (struct sockaddr *) &addr,
               sizeof(struct sockaddr_un));
   if (ret < 0) {
@@ -64,6 +65,7 @@ UART::UART()
 void UART::open(int instId)
 {
   instanceId = instId;
+  printf("set up a sim UART for instId %i\n", instId);
 }
 
 // Send bytes over UART

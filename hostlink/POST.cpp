@@ -2,6 +2,7 @@
 #include "BoardCtrl.h"
 #include "config.h"
 #include "DebugLink_de10.h"
+#include "HostLink.h"
 #include <unistd.h>
 
 #include <iostream>
@@ -280,7 +281,7 @@ int main(void) {
 
 
   // TEST UART LOOPBACK; tinsel core
-  if (1) {
+  if (0) {
 
     UART card_uart = UART();
     card_uart.open(UARTID); // first JTAG device on the chain; needs to be 0 for sim
@@ -297,6 +298,7 @@ int main(void) {
 
     BoardCtrlPkt req_pkt;
     BoardCtrlPkt pkt;
+
 
 
     uint8_t ctr = 0;
@@ -323,10 +325,17 @@ int main(void) {
       sendDebugLinkPkt(&card_uart, &req_pkt); // send a byte to stdin
       std::cout << "sent byte " << (int)ctr << " to core " << coreid << std::endl;
       ctr++;
+
       do {
         recvDebugLinkPkt(&card_uart, &pkt, DEBUGLINK_STD_OUT); // should get the same pkt back
       } while (pkt.payload[3] != '\0');
     }
+  }
+
+  if (1) {
+   HostLinkParams params;
+   params.numBoxesX=1; params.numBoxesY=1; params.useExtraSendSlot=false;
+    HostLink hl( params );
   }
 
 

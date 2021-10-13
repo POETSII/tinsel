@@ -7,14 +7,14 @@
 #include <stdint.h>
 #include <sys/time.h>
 #include <config.h>
-#include <DebugLink.h>
+#include <DebugLink_de10.h>
 
 // Max line length for line-buffered UART StdOut capture
 #define MaxLineLen 128
 
 // Connections to PCIeStream
 #define PCIESTREAM      "pciestream"
-#define PCIESTREAM_SIM  "tinsel.b-1.1"
+#define PCIESTREAM_SIM  "tinsel.b0.1"
 
 // HostLink parameters
 struct HostLinkParams {
@@ -65,7 +65,7 @@ class HostLink {
 
   // Destructor
   ~HostLink();
- 
+
   // Power-on self test
   bool powerOnSelfTest();
 
@@ -73,7 +73,7 @@ class HostLink {
   // -----------
 
   // DebugLink (access to FPGAs via their JTAG UARTs)
-  DebugLink* debugLink;
+  DebugLinkDE10* debugLink;
 
   // Send and receive messages over PCIe
   // -----------------------------------
