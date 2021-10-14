@@ -174,7 +174,7 @@ p["EnableProgRouter"] = True
 p["BoxMeshXLen"] = 1
 p["BoxMeshYLen"] = 1
 p["BoxMesh"] = ('{'
-    '{"tparks-optiplex-390",},'
+    '{"certina",},'
   '}')
 
 # Enable custom accelerators (experimental feature)
@@ -195,7 +195,7 @@ if True: # simulate
     p["BoxMeshXLen"] = 1
     p["BoxMeshYLen"] = 1
     p["BoxMesh"] = ('{'
-        '{"tparks-optiplex-390",},'
+        '{"certina",},'
       '}')
 
 if False: # make mailbox type more compatible with the dual port memory

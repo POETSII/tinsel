@@ -333,9 +333,10 @@ int main(void) {
   }
 
   if (1) {
-   HostLinkParams params;
-   params.numBoxesX=1; params.numBoxesY=1; params.useExtraSendSlot=false;
+    HostLinkParams params;
+    params.numBoxesX=1; params.numBoxesY=1; params.useExtraSendSlot=false;
     HostLink hl( params );
+    hl.powerOnSelfTest();
   }
 
 

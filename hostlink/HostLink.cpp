@@ -646,7 +646,7 @@ void HostLink::store(uint32_t meshX, uint32_t meshY,
 // Power-on self test
 bool HostLink::powerOnSelfTest()
 {
-  const double timeout = 300.0;
+  const double timeout = 30.0;
 
   // Need to check that we get a response within a given time
   struct timeval start, finish, diff;
@@ -668,7 +668,7 @@ bool HostLink::powerOnSelfTest()
   #ifdef TinselLogBytesPerSRAM
   uint32_t offset = TinselLogBytesPerSRAM;
   #else
-  uint32_t offset = TinselLogBytesPerDRAM;
+  uint32_t offset = 0; //TinselLogBytesPerDRAM;
   #endif
 
   // Send request and consume responses
@@ -686,13 +686,20 @@ bool HostLink::powerOnSelfTest()
             if (canRecv()) {
               recv(msg);
               count++;
+              printf("recv count %i\n", count);
             }
-            if (ok) break;
+            if (ok) {
+              printf("slice: %i core id x: %i y: %i core: %i ok\n", slice, x, y, core);
+              break;
+            }
             gettimeofday(&finish, NULL);
             timersub(&finish, &start, &diff);
             double duration = (double) diff.tv_sec +
                               (double) diff.tv_usec / 1000000.0;
-            if (duration > timeout) return false;
+            if (duration > timeout) {
+              printf("core id x: %i y: %i core: %i NOT OK\n", x, y, core);
+              return false;
+            }
           }
         }
       }
@@ -711,7 +718,11 @@ bool HostLink::powerOnSelfTest()
     timersub(&finish, &start, &diff);
     double duration = (double) diff.tv_sec +
                       (double) diff.tv_usec / 1000000.0;
-    if (duration > timeout) return false;
+    if (duration > timeout) {
+      printf("NOT OK in recv remaining responses, count: %i target: %i\n", count, (4*meshXLen*meshYLen));
+      return false;
+    }
+
   }
 
   return true;
