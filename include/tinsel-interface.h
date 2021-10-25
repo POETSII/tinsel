@@ -83,12 +83,33 @@ INLINE TinselWakeupCond operator|(TinselWakeupCond a, TinselWakeupCond b);
 #endif
 
 // Get address of master host
-// (Master host is accessible via mesh origin)
+// DE5: Master host is accessible via mesh origin
+// DE10: host is available via board-local ID MaxX, maxY+1
+#ifdef TinselStratixV
 INLINE uint32_t tinselHostId()
 {
   return 1 << (1 + TinselMeshYBits + TinselMeshXBits +
                      TinselLogCoresPerBoard + TinselLogThreadsPerCore);
+
 }
+#endif
+
+#ifdef TinselStratix10
+INLINE uint32_t tinselHostId()
+{
+  uint32_t addr;
+  addr = 0; // accelerator bit
+  addr = (addr << 1) | 0; //iskey
+  addr = (addr << 2) | 3; //maybehost, ishost
+  addr = (addr << TinselMeshYBits) | 0;
+  addr = (addr << TinselMeshXBits) | 1;
+  addr = (addr << TinselMailboxMeshYBits) | ((1 << TinselMailboxMeshYBits) - 1);
+  addr = (addr << TinselMailboxMeshXBits) | ((1 << TinselMailboxMeshXBits) - 1);
+  addr = (addr << TinselLogCoresPerMailbox) | 0;
+  addr = (addr << TinselLogThreadsPerCore) | 0;
+  return addr;
+}
+#endif
 
 // Given thread id, return base address of thread's partition in DRAM
 INLINE uint32_t tinselHeapBaseGeneric(uint32_t id)
@@ -101,7 +122,7 @@ INLINE uint32_t tinselHeapBaseGeneric(uint32_t id)
   return addr;
 }
 
-#ifdef StratixV
+#ifdef TinselStratixV
 // Given thread id, return base address of thread's partition in SRAM
 INLINE uint32_t tinselHeapBaseSRAMGeneric(uint32_t id)
 {
@@ -115,7 +136,7 @@ INLINE uint32_t tinselHeapBaseSRAMGeneric(uint32_t id)
 // Return pointer to base of calling thread's DRAM partition
 INLINE void* tinselHeapBase();
 
-#ifdef StratixV
+#ifdef TinselStratixV
 // Return pointer to base of calling thread's SRAM partition
 INLINE void* tinselHeapBaseSRAM();
 #endif

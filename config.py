@@ -74,7 +74,7 @@ p["LogMaxFlitsPerMsg"] = 2
 p["LogMsgsPerMailbox"] = 10 # must be at least enough to store one message per thread
 
 # Number of cores sharing a mailbox
-p["LogCoresPerMailbox"] = 1
+p["LogCoresPerMailbox"] = 0
 
 # Number of bits in mailbox mesh X coord
 p["MailboxMeshXBits"] = 3
@@ -173,8 +173,10 @@ p["EnableProgRouter"] = True
 # Box mesh
 p["BoxMeshXLen"] = 1
 p["BoxMeshYLen"] = 1
+import socket
+host = socket.gethostname().lower().split(".")[0] # normalise the local hostname
 p["BoxMesh"] = ('{'
-    '{"certina",},'
+    '{"' + host + '",},'
   '}')
 
 # Enable custom accelerators (experimental feature)
@@ -195,13 +197,13 @@ if True: # simulate
     p["BoxMeshXLen"] = 1
     p["BoxMeshYLen"] = 1
     p["BoxMesh"] = ('{'
-        '{"certina",},'
+        '{"' + host + '",},'
       '}')
 
 if False: # make mailbox type more compatible with the dual port memory
     p["LogMsgsPerMailbox"] = 8
     p["LogCoresPerMailbox"] = 4
-    p["MeshXBits"] = 1
+    p["MeshYBits"] = 1
     p["MeshXBits"] = 1
 
 

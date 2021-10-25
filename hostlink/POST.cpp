@@ -336,7 +336,9 @@ int main(void) {
     HostLinkParams params;
     params.numBoxesX=1; params.numBoxesY=1; params.useExtraSendSlot=false;
     HostLink hl( params );
-    hl.powerOnSelfTest();
+    hl.boot("../apps/hello/code.v", "../apps/hello/data.v");
+    hl.go();
+    hl.dumpStdOut();
   }
 
 
