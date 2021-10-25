@@ -428,7 +428,7 @@ p["POLiteProgRouterLength"] = (p["DRAMGlobalsLength"] -
 # POLite globals
 
 # Number of FPGA boards per box (including bridge board)
-p["BoardsPerBox"] = p["MeshXLenWithinBox"] * p["MeshYLenWithinBox"] + 1
+p["BoardsPerBox"] = p["MeshXLenWithinBox"] * p["MeshYLenWithinBox"] + (1 if p["DeviceFamily"] == quoted("Stratix V") else 0)
 
 # Parameters for programmable routers
 # (and the routing-record fetchers they contain)

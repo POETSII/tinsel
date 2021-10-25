@@ -102,7 +102,7 @@ INLINE uint32_t tinselHostId()
   addr = (addr << 1) | 0; //iskey
   addr = (addr << 2) | 3; //maybehost, ishost
   addr = (addr << TinselMeshYBits) | 0;
-  addr = (addr << TinselMeshXBits) | 1;
+  addr = (addr << TinselMeshXBits) | 0;
   addr = (addr << TinselMailboxMeshYBits) | ((1 << TinselMailboxMeshYBits) - 1);
   addr = (addr << TinselMailboxMeshXBits) | ((1 << TinselMailboxMeshXBits) - 1);
   addr = (addr << TinselLogCoresPerMailbox) | 0;

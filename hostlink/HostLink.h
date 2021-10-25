@@ -7,7 +7,7 @@
 #include <stdint.h>
 #include <sys/time.h>
 #include <config.h>
-#include <DebugLink_de10.h>
+#include <DebugLink.h>
 
 // Max line length for line-buffered UART StdOut capture
 #define MaxLineLen 128
@@ -73,7 +73,7 @@ class HostLink {
   // -----------
 
   // DebugLink (access to FPGAs via their JTAG UARTs)
-  DebugLinkDE10* debugLink;
+  DebugLink* debugLink;
 
   // Send and receive messages over PCIe
   // -----------------------------------

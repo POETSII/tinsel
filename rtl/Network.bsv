@@ -163,13 +163,55 @@ module mkMeshRouter#(MailboxId m) (MeshRouter);
   function Route route(NetAddr a);
          if (a.addr.board != b)   return Down;
     else if (a.addr.isKey)        return Down;
+    `ifdef StratixV
     else if (a.addr.host.valid)   return Down;
+    `endif
+    `ifdef Stratix10
+    else if (a.addr.host.valid && a.addr.mbox.y == m.y && a.addr.mbox.x == m.x)   return Up; // host is on our up port.
+    `endif
     else if (a.addr.mbox.y < m.y) return Down;
     else if (a.addr.mbox.y > m.y) return Up;
     else if (a.addr.mbox.x < m.x) return Left;
     else if (a.addr.mbox.x > m.x) return Right;
     else return Mailbox;
   endfunction
+
+  // rule debug_mbox (fromMailboxPort.canGet);
+  //   Flit flit = fromMailboxPort.value;
+  //   $display($time, " Router b%d:x%d:y%d got msg from mailbox\ndest addr [board %d host %d (valid %b) key %b mboxy %d mboxx %d] flit.payload %h\nroute decision %d",
+  //                            b,m.x, m.y,                              flit.dest.addr.board, flit.dest.addr.host, flit.dest.addr.host.valid, flit.dest.addr.isKey, flit.dest.addr.mbox.y,
+  //                                                                                                         flit.dest.addr.mbox.x, flit.payload, route(flit.dest) );
+  // endrule
+  //
+  // rule debug_left (leftInPort.canGet);
+  //   Flit flit = leftInPort.value;
+  //   $display($time, " Router b%d:x%d:y%d got msg from left\ndest addr [board %d host %d (valid %b) key %b mboxy %d mboxx %d] flit.payload %h\nroute decision %d",
+  //                            b,m.x, m.y,                              flit.dest.addr.board, flit.dest.addr.host, flit.dest.addr.host.valid, flit.dest.addr.isKey, flit.dest.addr.mbox.y,
+  //                                                                                                         flit.dest.addr.mbox.x, flit.payload, route(flit.dest) );
+  // endrule
+  //
+  // rule debug_right (rightInPort.canGet);
+  //   Flit flit = rightInPort.value;
+  //   $display($time, " Router b%d:x%d:y%d got msg from right\ndest addr [board %d host %d (valid %b) key %b mboxy %d mboxx %d] flit.payload %h\nroute decision %d",
+  //                            b,m.x, m.y,                              flit.dest.addr.board, flit.dest.addr.host, flit.dest.addr.host.valid, flit.dest.addr.isKey, flit.dest.addr.mbox.y,
+  //                                                                                                         flit.dest.addr.mbox.x, flit.payload, route(flit.dest) );
+  // endrule
+  //
+  // rule debug_top (topInPort.canGet);
+  //   Flit flit = topInPort.value;
+  //   $display($time, " Router b%d:x%d:y%d got msg from top\ndest addr [board %d host %d (valid %b) key %b mboxy %d mboxx %d] flit.payload %h\nroute decision %d",
+  //                            b,m.x, m.y,                              flit.dest.addr.board, flit.dest.addr.host, flit.dest.addr.host.valid, flit.dest.addr.isKey, flit.dest.addr.mbox.y,
+  //                                                                                                         flit.dest.addr.mbox.x, flit.payload, route(flit.dest) );
+  // endrule
+  //
+  // rule debug_bottom (bottomInPort.canGet);
+  //   Flit flit = bottomInPort.value;
+  //   $display($time, " Router b%d:x%d:y%d got msg from bottom\ndest addr [board %d host %d (valid %b) key %b mboxy %d mboxx %d] flit.payload %h\nroute decision %d",
+  //                            b,m.x, m.y,                              flit.dest.addr.board, flit.dest.addr.host, flit.dest.addr.host.valid, flit.dest.addr.isKey, flit.dest.addr.mbox.y,
+  //                                                                                                         flit.dest.addr.mbox.x, flit.payload, route(flit.dest) );
+  // endrule
+
+
 
   // Route to the mailbox
   mkRouterMux(

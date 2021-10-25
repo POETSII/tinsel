@@ -1,7 +1,7 @@
 #include "jtag/UART.h"
 #include "BoardCtrl.h"
 #include "config.h"
-#include "DebugLink_de10.h"
+#include "DebugLink.h"
 #include "HostLink.h"
 #include <unistd.h>
 
@@ -538,6 +538,6 @@ int main(void) {
     params.numBoxesX=1;
     params.numBoxesY=1;
     params.useExtraSendSlot=0;
-    DebugLinkDE10 link(params);
+    DebugLink link(params);
   }
 }

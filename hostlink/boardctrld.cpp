@@ -133,7 +133,9 @@ void server(int conn, int numBoards, UARTBuffer* uartLinks)
         uartLinks[count++].uart->open(boardId);
       }
     // Host board
+    #ifdef TinselStratixV
     uartLinks[count++].uart->open(-1);
+    #endif // S5
   #else
     for (int i = 0; i < numBoards; i++) uartLinks[i].uart->open(i+1);
   #endif

@@ -122,12 +122,12 @@ DebugLink::DebugLink(DebugLinkParams p)
   for (int y = 0; y < boxMeshYLen; y++)
     conn[y] = new int [boxMeshXLen];
 
-  bridge = new int* [boxMeshYLen];
-  for (int y = 0; y < boxMeshYLen; y++) {
-    bridge[y] = new int [boxMeshXLen];
-    for (int x = 0; x < boxMeshXLen; x++)
-      bridge[y][x] = -1;
-  }
+  // bridge = new int* [boxMeshYLen];
+  // for (int y = 0; y < boxMeshYLen; y++) {
+  //   bridge[y] = new int [boxMeshXLen];
+  //   for (int x = 0; x < boxMeshXLen; x++)
+  //     bridge[y][x] = -1;
+  // }
 
   boxX = new int* [meshYLen];
   for (int y = 0; y < meshYLen; y++) {
@@ -173,6 +173,7 @@ DebugLink::DebugLink(DebugLinkParams p)
           if(conn[y][x]==-1){
             conn[y][x] = socketConnectTCP(boxMesh[thisBoxY+y][thisBoxX+x], 10101, true);
             if(conn[y][x]!=-1){
+              printf("connected to %s\n", boxMesh[thisBoxY+y][thisBoxX+x]);
               complete++;
             }
           }
@@ -202,6 +203,7 @@ DebugLink::DebugLink(DebugLinkParams p)
     for (int x = 0; x < boxMeshXLen; x++) {
       getPacket(x, y, &pkt);
       assert(pkt.payload[0] == DEBUGLINK_READY);
+      printf("got ready from %s\n", boxMesh[thisBoxY+y][thisBoxX+x]);
     }
 
   // Send queries
@@ -233,15 +235,18 @@ DebugLink::DebugLink(DebugLinkParams p)
   for (int y = 0; y < boxMeshYLen; y++)
     for (int x = 0; x < boxMeshXLen; x++) {
       for (int b = 0; b < TinselBoardsPerBox; b++) {
+        printf("waiting for DEBUGLINK_QUERY_OUT from %s boxY %i boxX%i board %i\n", boxMesh[thisBoxY+y][thisBoxX+x], y, x, b);
         getPacket(x, y, &pkt);
         assert(pkt.payload[0] == DEBUGLINK_QUERY_OUT);
+        printf("got DEBUGLINK_QUERY_OUT from %s\n", boxMesh[thisBoxY+y][thisBoxX+x]);
         if (pkt.payload[1] == 0) {
-          if (bridge[y][x] != -1) {
-            fprintf(stderr, "Too many bridge boards detected on box %s\n",
-              boxMesh[thisBoxX+y][thisBoxY+x]);
-          }
-          // It's a bridge board, let's remember its link id
-          bridge[y][x] = pkt.linkId;
+          // if (bridge[y][x] != -1) {
+          //   fprintf(stderr, "Too many bridge boards detected on box %s\n",
+          //     boxMesh[thisBoxX+y][thisBoxY+x]);
+          // }
+          // // It's a bridge board, let's remember its link id
+          // bridge[y][x] = pkt.linkId;
+          printf("board %s decalred as a bridge, ignoring as in DE10 mode\n", boxMesh[thisBoxX+y][thisBoxY+x]);
         }
         else {
           // It's a worker board, let's work out its mesh coordinates
@@ -267,13 +272,15 @@ DebugLink::DebugLink(DebugLinkParams p)
   // Query the bridge board on the master box a second time to
   // enable idle-detection (only now do all the boards know their
   // full coordinates in the mesh).
-  pkt.payload[0] = DEBUGLINK_EN_IDLE;
-  pkt.payload[1] = (meshYLen << 4) | meshXLen;
-  pkt.linkId = bridge[0][0];
-  putPacket(0, 0, &pkt);
-  // Get response
-  getPacket(0, 0, &pkt);
-  assert(pkt.payload[0] == DEBUGLINK_QUERY_OUT);
+  // skipped for DE10
+  // pkt.payload[0] = DEBUGLINK_EN_IDLE;
+  // pkt.payload[1] = (meshYLen << 4) | meshXLen;
+  // pkt.linkId = bridge[0][0];
+  // putPacket(0, 0, &pkt);
+  // // Get response
+  // getPacket(0, 0, &pkt);
+  // assert(pkt.payload[0] == DEBUGLINK_QUERY_OUT);
+  printf("Debuglink constructor complete.\n");
 }
 
 // On given board, set destination core and thread
@@ -376,13 +383,14 @@ int32_t DebugLink::getBoardTemp(uint32_t boardX, uint32_t boardY)
 // Read temperature of given bridge
 int32_t DebugLink::getBridgeTemp(uint32_t boxX, uint32_t boxY)
 {
-  BoardCtrlPkt pkt;
-  pkt.linkId = bridge[boxY][boxX];
-  pkt.payload[0] = DEBUGLINK_TEMP_IN;
-  putPacket(boxX, boxY, &pkt);
-  getPacket(boxX, boxY, &pkt);
-  assert(pkt.payload[0] == DEBUGLINK_TEMP_OUT);
-  return ((int32_t) pkt.payload[1]) - 128;
+  // BoardCtrlPkt pkt;
+  // pkt.linkId = bridge[boxY][boxX];
+  // pkt.payload[0] = DEBUGLINK_TEMP_IN;
+  // putPacket(boxX, boxY, &pkt);
+  // getPacket(boxX, boxY, &pkt);
+  // assert(pkt.payload[0] == DEBUGLINK_TEMP_OUT);
+  // return ((int32_t) pkt.payload[1]) - 128;
+  return 0;
 }
 
 // Destructor
@@ -398,9 +406,9 @@ DebugLink::~DebugLink()
     delete [] conn[y];
   delete [] conn;
 
-  for (int y = 0; y < boxMeshYLen; y++)
-    delete [] bridge[y];
-  delete [] bridge;
+  // for (int y = 0; y < boxMeshYLen; y++)
+  //   delete [] bridge[y];
+  // delete [] bridge;
 
   for (int y = 0; y < meshYLen; y++)
     delete [] boxX[y];
