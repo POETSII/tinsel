@@ -453,7 +453,7 @@ def to_cpp_string(convertee):
 if len(sys.argv) > 1:
   mode = sys.argv[1]
 else:
-  print "Usage: config.py <defs|envs|cpp|vpp|print [KEY]>"
+  print("Usage: config.py <defs|envs|cpp|vpp|print [KEY]>")
   sys.exit(-1)
 
 # The BoxMesh parameter is only meant for cpp mode
@@ -476,7 +476,7 @@ elif mode == "vpp":
     print("`define Tinsel" + var + " " + str(p[var]))
 elif mode == "print":
     if len(sys.argv) < 3:
-        print "Usage: config.py <defs|envs|cpp|vpp|print [KEY]>"
+        print("Usage: config.py <defs|envs|cpp|vpp|print [KEY]>")
         sys.exit(-1)
 
     print(p.get(sys.argv[2], ""))

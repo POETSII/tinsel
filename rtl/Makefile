@@ -5,9 +5,9 @@ TINSEL_ROOT = ..
 include $(TINSEL_ROOT)/globals.mk
 
 # Obtain config parameters
-DEFS = $(shell python ../config.py defs)
-STRATIX10 = $(shell python ../config.py print Stratix10)
-STRATIXV = $(shell python ../config.py print StratixV)
+DEFS = $(shell python3 ../config.py defs)
+STRATIX10 = $(shell python3 ../config.py print Stratix10)
+STRATIXV = $(shell python3 ../config.py print StratixV)
 
 # A literal space.
 space :=

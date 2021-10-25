@@ -24,7 +24,7 @@ fi
 # Load config parameters
 while read -r EXPORT; do
   eval $EXPORT
-done <<< `python ../config.py envs`
+done <<< `python3 ../config.py envs`
 
 MESH_MAX_X=$((2 ** $MeshXBitsWithinBox))
 MESH_MAX_Y=$((2 ** $MeshYBitsWithinBox))

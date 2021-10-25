@@ -152,7 +152,7 @@ containing all the Tinsel parameters.  Make sure the generated file is
 in the same directory as any file that includes it.
 
 ```sh
-python config.py vpp > config.v
+python3 config.py vpp > config.v
 ```
 
 **Step 5**.  Build the Quartus project on a box of your choice, but

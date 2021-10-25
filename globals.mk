@@ -4,8 +4,8 @@
 INC = $(realpath $(TINSEL_ROOT)/include)
 LIB = $(realpath $(TINSEL_ROOT)/lib)
 
-STRATIX10 = $(shell python $(TINSEL_ROOT)/config.py print Stratix10)
-STRATIXV = $(shell python $(TINSEL_ROOT)/config.py print StratixV)
+STRATIX10 = $(shell python3 $(TINSEL_ROOT)/config.py print Stratix10)
+STRATIXV = $(shell python3 $(TINSEL_ROOT)/config.py print StratixV)
 
 ifeq ($(STRATIX10),True)
 QP  = $(realpath $(TINSEL_ROOT)/DE10Pro/DE10-reference-project/quartus)

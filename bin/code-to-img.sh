@@ -19,7 +19,7 @@ fi
 # Load config parameters
 while read -r EXPORT; do
   eval $EXPORT
-done <<< `python $CONFIG envs`
+done <<< `python3 $CONFIG envs`
 
 # Convert Intel Hex files to Bluesim hex files
 # (used to initialise BRAM contents in Bluesim)
