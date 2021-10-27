@@ -24,7 +24,8 @@ struct HostLinkParams {
 
   // Used to allow retries when connecting to the socket. When performing rapid sweeps,
   // it is quite common for the first attempt in the next process to fail.
-  int max_connection_attempts = 5;
+  int max_connection_attempts;
+  HostLinkParams(): max_connection_attempts(5){}
 };
 
 class HostLink {
