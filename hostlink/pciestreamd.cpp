@@ -77,7 +77,7 @@ void swap(volatile char** p, volatile char** q)
 // Check if connection is alive
 int alive(int sock)
 {
-  char buf;
+  char buf = 0;
   return send(sock, &buf, 0, 0) == 0;
 }
 
