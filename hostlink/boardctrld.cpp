@@ -234,8 +234,11 @@ int main(int argc, char* argv[])
   UARTBuffer* uartLinks;
 
   // Determine number of boards
-  int numBoards = TinselMeshXLenWithinBox * TinselMeshYLenWithinBox + 1;
-
+  int numBoards = TinselMeshXLenWithinBox * TinselMeshYLenWithinBox;
+  #ifdef TinselStratixV
+  int numBoards = numBoards+1; // bridge board
+  #endif
+  
   while (1) {
     // Listen on TCP port
     int sock = createListener();

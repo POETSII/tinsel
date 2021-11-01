@@ -238,7 +238,7 @@ DebugLink::DebugLink(DebugLinkParams p)
         printf("waiting for DEBUGLINK_QUERY_OUT from %s boxY %i boxX%i board %i\n", boxMesh[thisBoxY+y][thisBoxX+x], y, x, b);
         getPacket(x, y, &pkt);
         assert(pkt.payload[0] == DEBUGLINK_QUERY_OUT);
-        printf("got DEBUGLINK_QUERY_OUT from %s\n", boxMesh[thisBoxY+y][thisBoxX+x]);
+        printf("got DEBUGLINK_QUERY_OUT from %s; board id %i\n", boxMesh[thisBoxY+y][thisBoxX+x], pkt.payload[1]);
         if (pkt.payload[1] == 0) {
           // if (bridge[y][x] != -1) {
           //   fprintf(stderr, "Too many bridge boards detected on box %s\n",

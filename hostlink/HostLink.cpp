@@ -45,7 +45,7 @@ static int connectToPCIeStream(const char* socketPath)
   memset(&addr, 0, sizeof(struct sockaddr_un));
   addr.sun_family = AF_UNIX;
   addr.sun_path[0] = '\0';
-  strncpy(&addr.sun_path[1], socketPath, 12); //sizeof(addr.sun_path) - 2);
+  strncpy(&addr.sun_path[1], socketPath, sizeof(addr.sun_path) - 2);
   printf("connecting to pciestream socket %s\n", socketPath);
   int ret = connect(sock, (const struct sockaddr *) &addr,
                   sizeof(struct sockaddr_un));
@@ -95,6 +95,7 @@ void HostLink::constructor(HostLinkParams p)
     // Connect to pciestreamd
     pcieLink = connectToPCIeStream(PCIESTREAM);
   #endif
+  printf("connected to PCIe stream.\n");
 
   // Create DebugLink
   DebugLinkParams debugLinkParams;
@@ -103,6 +104,7 @@ void HostLink::constructor(HostLinkParams p)
   debugLinkParams.useExtraSendSlot = p.useExtraSendSlot;
   debugLinkParams.max_connection_attempts=p.max_connection_attempts;
   debugLink = new DebugLink(debugLinkParams);
+  printf("connected to DebugLink.\n");
 
   // Set board mesh dimensions
   meshXLen = debugLink->meshXLen;
@@ -444,7 +446,7 @@ void HostLink::boot(const char* codeFilename, const char* dataFilename)
     for (int x = 0; x < meshXLen; x++) {
       for (int y = 0; y < meshYLen; y++) {
         for (int i = 0; i < (1 << TinselLogCoresPerBoard); i++) {
-          uint32_t dest = tinselToAddr(0, 0, x, y, i, 0); // (x, y, i, 0);
+          uint32_t dest = tinselToAddr(1, 0, x, y, i, 0); // (x, y, i, 0);
           if (addr != addrReg) {
             req.cmd = SetAddrCmd;
             req.numArgs = 1;
@@ -475,7 +477,7 @@ void HostLink::boot(const char* codeFilename, const char* dataFilename)
       for (int y = 0; y < meshYLen; y++) {
         for (int i = 0; i < TinselDRAMsPerBoard; i++) {
           // Use one core to initialise each DRAM
-          uint32_t dest = tinselToAddr(0, 0, x, y, coresPerDRAM * i, 0); //toAddr(x, y, coresPerDRAM * i, 0);
+          uint32_t dest = tinselToAddr(1, 0, x, y, coresPerDRAM * i, 0); //toAddr(x, y, coresPerDRAM * i, 0);
           if (addr != addrReg) {
             req.cmd = SetAddrCmd;
             req.numArgs = 1;
@@ -521,7 +523,7 @@ void HostLink::loadInstrsOntoCore(const char* codeFilename,
   BootReq req;
   uint32_t addrReg = 0xffffffff;
   uint32_t addr, word;
-  uint32_t dest = tinselToAddr(0, 0, meshX, meshY, coreId, 0); // toAddr(meshX, meshY, coreId, 0);
+  uint32_t dest = tinselToAddr(1, 0, meshX, meshY, coreId, 0); // toAddr(meshX, meshY, coreId, 0);
   while (code.getWord(&addr, &word)) {
     // Write instruction
     if (addr != addrReg) {
@@ -548,7 +550,7 @@ void HostLink::loadDataViaCore(const char* dataFilename,
   BootReq req;
   uint32_t addrReg = 0xffffffff;
   uint32_t addr, word;
-  uint32_t dest = tinselToAddr(0, 0, meshX, meshY, coreId, 0); // toAddr(meshX, meshY, coreId, 0);
+  uint32_t dest = tinselToAddr(1, 0, meshX, meshY, coreId, 0); // toAddr(meshX, meshY, coreId, 0);
   while (data.getWord(&addr, &word)) {
     // Write data
     if (addr != addrReg) {
@@ -572,7 +574,7 @@ void HostLink::startOne(uint32_t meshX, uint32_t meshY,
   assert(numThreads > 0 && numThreads <= TinselThreadsPerCore);
 
   BootReq req;
-  uint32_t dest = tinselToAddr(0, 0, meshX, meshY, coreId, 0); //toAddr(meshX, meshY, coreId, 0);
+  uint32_t dest = tinselToAddr(1, 0, meshX, meshY, coreId, 0); //toAddr(meshX, meshY, coreId, 0);
 
   // Send start command
   req.cmd = StartCmd;
@@ -601,7 +603,7 @@ void HostLink::startAll()
   for (int x = 0; x < meshXLen; x++) {
     for (int y = 0; y < meshYLen; y++) {
       for (int i = 0; i < (1 << TinselLogCoresPerBoard); i++) {
-        uint32_t dest = tinselToAddr(0, 0, x, y, i, 0); // toAddr(x, y, i, 0);
+        uint32_t dest = tinselToAddr(1, 0, x, y, i, 0); // toAddr(x, y, i, 0);
         req.cmd = StartCmd;
         req.args[0] = (1<<TinselLogThreadsPerCore)-1;
         while (1) {
@@ -701,8 +703,8 @@ bool HostLink::powerOnSelfTest()
           setAddr(x, y, core, addr);
           gettimeofday(&start, NULL);
           while (1) {
-            // bool ok = trySend(toAddr(x, y, core, 0), 1, &req); tinselToAddr(0, 0, x, y, core, 0)
-            uint32_t addr = tinselToAddr(0, 0, x, y, core, 0);
+            // bool ok = trySend(toAddr(x, y, core, 0), 1, &req); tinselToAddr(1, 0, x, y, core, 0)
+            uint32_t addr = tinselToAddr(1, 0, x, y, core, 0);
             // addr = addr | (1<<8);
             bool ok = trySend(addr, 1, &req);
             if (canRecv()) {

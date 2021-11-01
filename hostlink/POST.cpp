@@ -497,18 +497,18 @@ int main(void) {
     uint8_t coreId = 1;
     printf("sending a message to thread 0 core %i\n", coreId);
 
-    // make a stdin write to thread 0
-    query.linkId = 0;
-    query.payload[0] = DEBUGLINK_SET_DEST;
-    // Core-local thread id
-    query.payload[1] = 0;
-    // Board-local core id
-    query.payload[2] = coreId;
-    sendDebugLinkPkt(&card_uart, &query); // set the dest core id
-
-    query.payload[0] = DEBUGLINK_STD_IN;
-    query.payload[1] = 5; // unimportant
-    sendDebugLinkPkt(&card_uart, &query); // send a byte to stdin
+    // // make a stdin write to thread 0
+    // query.linkId = 0;
+    // query.payload[0] = DEBUGLINK_SET_DEST;
+    // // Core-local thread id
+    // query.payload[1] = 0;
+    // // Board-local core id
+    // query.payload[2] = coreId;
+    // sendDebugLinkPkt(&card_uart, &query); // set the dest core id
+    //
+    // query.payload[0] = DEBUGLINK_STD_IN;
+    // query.payload[1] = 5; // unimportant
+    // sendDebugLinkPkt(&card_uart, &query); // send a byte to stdin
 
     while (1) {
       recvDebugLinkPkt(&card_uart, &pkt, DEBUGLINK_STD_OUT); // should get the same pkt back

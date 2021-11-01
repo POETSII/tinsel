@@ -454,16 +454,18 @@ module mkPCIeStream (PCIeStream);
              end
           8: if (write) enabled <= unpack(writedata[0]);
           10: begin
-                Bool inflight = pendingReads.value != 0 ||
-                                  pendingFlushes.canDeq ||
-                                    burstInProgress ||
-                                      hostReqs.notEmpty;
-                ctrlReadData <= zeroExtend(pack(inflight));
+                Bit#(4) inflight =
+                               {pack(pendingReads.value != 0),
+                                  pack(pendingFlushes.canDeq),
+                                    pack(burstInProgress),
+                                      pack(hostReqs.notEmpty)};
+                ctrlReadData <= zeroExtend(inflight);
               end
           11: if (write) begin
                 resetReg <= True;
                 resetWire.send;
               end
+          12: ctrlReadData <= pack(64'hcafecafe);
         endcase
         ctrlReadDataValid <= read;
        end
@@ -531,13 +533,13 @@ module mkPCIeStream (PCIeStream);
 
   // Output queue
   Queue#(Bit#(128)) outQueue <- mkUGQueue;
- 
+
   // Input rule
   rule in (inPort.canGet);
     Bool ok <- socketPut(pcieSocket, unpack(inPort.value));
     if (ok) inPort.get;
   endrule
- 
+
   // Output rule
   rule out (outQueue.notFull);
     Maybe#(Vector#(16, Bit#(8))) m <- socketGet(pcieSocket);
