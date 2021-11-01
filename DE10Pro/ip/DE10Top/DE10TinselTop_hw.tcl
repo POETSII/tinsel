@@ -64,6 +64,12 @@ set_interface_property rst synchronousEdges DEASSERT
 set_interface_property rst ENABLED true
 add_interface_port rst RST_N reset_n Input 1
 
+add_interface rst_req reset start
+set_interface_property rst_req associatedClock clk
+set_interface_property rst_req synchronousEdges DEASSERT
+set_interface_property rst_req ENABLED true
+add_interface_port rst_req resetReq reset_req Output 1
+
 add_interface rst_mgmt reset end
 set_interface_property rst_mgmt associatedClock clk_mgmt
 set_interface_property rst_mgmt synchronousEdges DEASSERT

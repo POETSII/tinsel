@@ -57,6 +57,8 @@ interface DE10Ifc;
 
   (* always_ready, always_enabled *)
   method Action setBoardId(Bit#(4) id);
+  (* always_ready, always_enabled *)
+  method Bool resetReq; // from PCIeStream; but should reset the entire design.
 
   interface MacDataIfc macA;
   interface MacDataIfc macB;
@@ -300,6 +302,7 @@ module mkDE10Top(Clock rx_390_A, Clock tx_390_A,
   interface jtagIfc  = debugLink.jtagAvalon;
   interface controlBAR  = pcie.external.controlBAR;
   interface pcieHostBus  = pcie.external.hostBus;
+  method Bool resetReq = pcie.external.resetReq;
   // interface northMac = noc.north;
   // interface southMac = noc.south;
   // interface eastMac  = noc.east;
