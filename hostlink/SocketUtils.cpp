@@ -22,7 +22,7 @@
 // Check if connection is alive
 bool socketAlive(int conn)
 {
-  char buf;
+  char buf = 0;
   return send(conn, &buf, 0, 0) == 0;
 }
 
