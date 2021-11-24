@@ -49,7 +49,9 @@ module mkQueueArray (QueueArray#(logNumQueues, logQueueSize, elemType))
 
   // Block RAM storing front pointers
   BlockRamOpts ptrOpts = defaultBlockRamOpts;
-  ptrOpts.readDuringWrite = OldData;
+  // FIXME: OldData no longer available
+  //ptrOpts.readDuringWrite = OldData;
+  ptrOpts.readDuringWrite = DontCare;
   ptrOpts.registerDataOut = False;
   BlockRamTrue#(Bit#(logNumQueues), Bit#(logQueueSize))
     ramFront <- mkBlockRamTrueMixedOpts(ptrOpts);

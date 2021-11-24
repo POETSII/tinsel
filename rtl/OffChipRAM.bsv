@@ -21,7 +21,7 @@ interface OffChipRAM;
   interface In#(DRAMReq) reqIn;
   interface BOut#(DRAMResp) respOut;
   interface DRAMExtIfc extDRAM;
-  interface Vector#(2, SRAMExtIfc) extSRAM;
+  //interface Vector#(2, SRAMExtIfc) extSRAM;
 endinterface
 
 module mkOffChipRAM#(RAMId base) (OffChipRAM);
@@ -30,8 +30,8 @@ module mkOffChipRAM#(RAMId base) (OffChipRAM);
   DRAM dram <- mkDRAM(base);
 
   // Create SRAM instances
-  WideSRAM sramA <- mkWideSRAM(base+1);
-  WideSRAM sramB <- mkWideSRAM(base+2);
+  //WideSRAM sramA <- mkWideSRAM(base+1);
+  //WideSRAM sramB <- mkWideSRAM(base+2);
 
   // Incoming request port
   InPort#(DRAMReq) reqInPort <- mkInPort;
@@ -40,23 +40,24 @@ module mkOffChipRAM#(RAMId base) (OffChipRAM);
   Queue#(DRAMResp) respQueue <- mkUGQueue;
 
   // Connections to SRAM
-  OutPort#(DRAMReq) toSRAMA <- mkOutPort;
-  OutPort#(DRAMReq) toSRAMB <- mkOutPort;
+  //OutPort#(DRAMReq) toSRAMA <- mkOutPort;
+  //OutPort#(DRAMReq) toSRAMB <- mkOutPort;
   OutPort#(DRAMReq) toDRAM  <- mkOutPort;
-  connectUsing(mkUGQueue, toSRAMA.out, sramA.reqIn);
-  connectUsing(mkUGQueue, toSRAMB.out, sramB.reqIn);
+  //connectUsing(mkUGQueue, toSRAMA.out, sramA.reqIn);
+  //connectUsing(mkUGQueue, toSRAMB.out, sramB.reqIn);
   connectUsing(mkUGQueue, toDRAM.out, dram.reqIn);
 
-  InPort#(DRAMResp) fromSRAMA <- mkInPort;
-  InPort#(DRAMResp) fromSRAMB <- mkInPort;
+  //InPort#(DRAMResp) fromSRAMA <- mkInPort;
+  //InPort#(DRAMResp) fromSRAMB <- mkInPort;
   InPort#(DRAMResp) fromDRAM  <- mkInPort;
-  connectDirect(sramA.respOut, fromSRAMA.in);
-  connectDirect(sramB.respOut, fromSRAMB.in);
+  //connectDirect(sramA.respOut, fromSRAMA.in);
+  //connectDirect(sramB.respOut, fromSRAMB.in);
   connectDirect(dram.respOut, fromDRAM.in);
 
   // Forward requests
   rule forwardRequests (reqInPort.canGet);
     DRAMReq reqIn = reqInPort.value;
+/*
     // Get the upper bits of the address
     Bit#(TSub#(`LogBeatsPerMem, `LogBeatsPerSRAM)) upperBits =
       truncateLSB(reqIn.addr);
@@ -74,12 +75,13 @@ module mkOffChipRAM#(RAMId base) (OffChipRAM);
         reqInPort.get;
       end
     end else begin
+*/
       // Send to DRAM
       if (toDRAM.canPut) begin
         toDRAM.put(reqInPort.value);
         reqInPort.get;
       end
-    end
+//    end
   endrule
 
   // Only DRAM supports burst access at this point
@@ -94,13 +96,13 @@ module mkOffChipRAM#(RAMId base) (OffChipRAM);
         respQueue.enq(fromDRAM.value);
         fromDRAM.get;
       end
-    end else if (fromSRAMA.canGet) begin
+    end /* else if (fromSRAMA.canGet) begin
       respQueue.enq(fromSRAMA.value);
       fromSRAMA.get;
     end else if (fromSRAMB.canGet) begin
       respQueue.enq(fromSRAMB.value);
       fromSRAMB.get;
-    end
+    end */
   endrule
 
   // Request interface
@@ -115,7 +117,7 @@ module mkOffChipRAM#(RAMId base) (OffChipRAM);
 
   // External interfaces
   interface extDRAM = dram.external;
-  interface extSRAM = 
-    vector(sramA.external, sramB.external);
+  //interface extSRAM = 
+  //  vector(sramA.external, sramB.external);
 
 endmodule

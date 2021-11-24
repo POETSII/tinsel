@@ -8,6 +8,7 @@ clean:
 	make -C rtl clean
 	make -C de5 clean
 	make -C de5/bridge-board clean
+	make -C de10-pro clean
 	make -C hostlink clean
 	make -C include clean
 	make -C lib clean
@@ -21,6 +22,7 @@ clean:
 	make -C apps/multiprog clean
 	make -C apps/sync clean
 	make -C apps/temps clean
+	make -C apps/single-board-test clean
 	make -C apps/POLite/heat-gals clean
 	make -C apps/POLite/heat-sync clean
 	make -C apps/POLite/heat-cube-sync clean

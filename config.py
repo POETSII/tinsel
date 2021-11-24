@@ -34,7 +34,7 @@ p["SharedInstrMem"] = True
 p["LogCoresPerDCache"] = 2
 
 # Log of number of caches per DRAM port
-p["LogDCachesPerDRAM"] = 3
+p["LogDCachesPerDRAM"] = 1
 
 # Log of number of 32-bit words in a single memory transfer
 p["LogWordsPerBeat"] = 3
@@ -73,10 +73,10 @@ p["LogMsgsPerMailbox"] = 9
 p["LogCoresPerMailbox"] = 2
 
 # Number of bits in mailbox mesh X coord
-p["MailboxMeshXBits"] = 2
+p["MailboxMeshXBits"] = 1
 
 # Number of bits in mailbox mesh Y coord
-p["MailboxMeshYBits"] = 2
+p["MailboxMeshYBits"] = 1
 
 # Length of mailbox mesh X dimension
 p["MailboxMeshXLen"] = 2 ** p["MailboxMeshXBits"]
@@ -129,10 +129,10 @@ p["MeshXBitsWithinBox"] = 2
 p["MeshYBitsWithinBox"] = 2
 
 # Mesh X length within a box
-p["MeshXLenWithinBox"] = 3
+p["MeshXLenWithinBox"] = 1
 
 # Mesh Y length within a box
-p["MeshYLenWithinBox"] = 2
+p["MeshYLenWithinBox"] = 1
 
 # Number of cores per FPU
 p["LogCoresPerFPU"] = 2
@@ -148,7 +148,7 @@ p["LogEastWestLinks"] = 0
 # Latencies of arithmetic megafunctions
 p["IntMultLatency"] = 3
 p["FPMultLatency"] = 11
-p["FPAddSubLatency"] = 14
+p["FPAddSubLatency"] = 7
 p["FPDivLatency"] = 14
 p["FPConvertLatency"] = 6
 p["FPCompareLatency"] = 3
@@ -175,13 +175,10 @@ p["FetcherMsgsPerFlitBuffer"] = 2 ** p["FetcherLogMsgsPerFlitBuffer"]
 p["EnablePerfCount"] = True
 
 # Box mesh
-p["BoxMeshXLen"] = 2
-p["BoxMeshYLen"] = 4
+p["BoxMeshXLen"] = 1
+p["BoxMeshYLen"] = 1
 p["BoxMesh"] = ('{'
-    '{"byron",    "coleridge"},'
-    '{"defoe",    "eliot"},'
-    '{"fielding", "goethe"},'
-    '{"heaney",   "ibsen"}'
+    '{"kipling"}'
   '}')
 
 # Enable custom accelerators (experimental feature)
@@ -375,7 +372,8 @@ p["POLiteProgRouterLength"] = (p["DRAMGlobalsLength"] -
 # POLite globals
 
 # Number of FPGA boards per box (including bridge board)
-p["BoardsPerBox"] = p["MeshXLenWithinBox"] * p["MeshYLenWithinBox"] + 1
+#p["BoardsPerBox"] = p["MeshXLenWithinBox"] * p["MeshYLenWithinBox"] + 1
+p["BoardsPerBox"] = p["MeshXLenWithinBox"] * p["MeshYLenWithinBox"]
 
 # Parameters for programmable routers
 # (and the routing-record fetchers they contain)

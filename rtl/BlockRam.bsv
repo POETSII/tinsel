@@ -411,41 +411,19 @@ import "BVI" AlteraBlockRamTrueMixed =
 
 `endif
 
-// ======================================================
-// True dual-port mixed-width block RAM with byte-enables
-// ======================================================
-
-module mkBlockRamTrueMixedBE
-      (BlockRamTrueMixedByteEn#(addrA, dataA, addrB, dataB, dataBBytes))
-    provisos(Bits#(addrA, awidthA), Bits#(dataA, dwidthA),
-             Bits#(addrB, awidthB), Bits#(dataB, dwidthB),
-             Bounded#(addrA), Bounded#(addrB),
-             Add#(awidthA, aExtra, awidthB),
-             Mul#(TExp#(aExtra), dwidthB, dwidthA),
-             Mul#(dataBBytes, 8, dwidthB),
-             Div#(dwidthB, dataBBytes, 8),
-             Mul#(dataABytes, 8, dwidthA),
-             Div#(dwidthA, dataABytes, 8),
-             Mul#(TExp#(aExtra), dataBBytes, dataABytes));
-  let ram <- mkBlockRamTrueMixedBEOpts(defaultBlockRamOpts); return ram;
-endmodule
+// ==========================================
+// True dual-port block RAM with byte-enables
+// ==========================================
 
 `ifdef SIMULATE
 
-// BSV implementation using BRAMCore
+module mkBlockRamTrueBEOpts#(BlockRamOpts opts)
+      (BlockRamTrueMixedByteEn#(addrA, dataA, addrA, dataA, dataABytes))
+    provisos(Bits#(addrA, addrWidthA), Bits#(dataA, dataWidthA),
+             Bounded#(addrA),
+             Mul#(dataABytes, 8, dataWidthA),
+             Div#(dataWidthA, dataABytes, 8));
 
-module mkBlockRamTrueMixedBEOpts#(BlockRamOpts opts)
-         (BlockRamTrueMixedByteEn#(addrA, dataA, addrB, dataB, dataBBytes))
-         provisos(Bits#(addrA, addrWidthA), Bits#(dataA, dataWidthA),
-                  Bits#(addrB, addrWidthB), Bits#(dataB, dataWidthB),
-                  Bounded#(addrA), Bounded#(addrB),
-                  Add#(addrWidthA, aExtra, addrWidthB),
-                  Mul#(TExp#(aExtra), dataWidthB, dataWidthA),
-                  Mul#(dataBBytes, 8, dataWidthB),
-                  Div#(dataWidthB, dataBBytes, 8),
-                  Mul#(dataABytes, 8, dataWidthA),
-                  Div#(dataWidthA, dataABytes, 8),
-                  Mul#(TExp#(aExtra), dataBBytes, dataABytes));
   // For simulation, use a BRAMCore
   BRAM_DUAL_PORT_BE#(addrA, dataA, dataABytes) ram <-
       mkBRAMCore2BELoad(valueOf(TExp#(addrWidthA)), False,
@@ -454,12 +432,9 @@ module mkBlockRamTrueMixedBEOpts#(BlockRamOpts opts)
   // State
   Reg#(dataA) dataAReg <- mkConfigRegU;
   Reg#(dataA) dataBReg <- mkConfigRegU;
-  Reg#(Bit#(aExtra)) offsetB1 <- mkConfigRegU;
-  Reg#(Bit#(aExtra)) offsetB2 <- mkConfigRegU;
 
   // Rules
   rule update;
-    offsetB2 <= offsetB1;
     dataAReg <= ram.a.read;
     dataBReg <= ram.b.read;
   endrule
@@ -472,45 +447,31 @@ module mkBlockRamTrueMixedBEOpts#(BlockRamOpts opts)
   method dataA dataOutA = opts.registerDataOut ? dataAReg : ram.a.read;
 
   // Port B
-  method Action putB(Bool wr, addrB address, dataB val, Bit#(dataBBytes) be);
-    Bit#(aExtra) offset = truncate(pack(address));
-    offsetB1 <= offset;
-    Bit#(addrWidthA) addr = truncateLSB(pack(address));
-    Bit#(dataWidthA) vals = pack(replicate(val));
-    Vector#(TExp#(aExtra), Bit#(dataBBytes)) paddedBE;
-    for (Integer i = 0; i < valueOf(TExp#(aExtra)); i=i+1)
-      paddedBE[i] = (offset == fromInteger(i)) ? be : unpack(0);
-    ram.b.put(wr ? pack(paddedBE) : 0, unpack(addr), unpack(vals));
+  method Action putB(Bool wr, addrA addr, dataA val, Bit#(dataABytes) be);
+    ram.b.put(wr ? be : 0, addr, val);
   endmethod
 
-  method dataB dataOutB;
-    Vector#(TExp#(aExtra), dataB) vec = unpack(pack(
-      opts.registerDataOut ? dataBReg : ram.b.read));
-    return vec[opts.registerDataOut ? offsetB2 : offsetB1];
-  endmethod
+  method dataA dataOutB = opts.registerDataOut ? dataBReg : ram.b.read;
 
 endmodule
 
 `else
 
-// Altera implementation
-
 import "BVI" AlteraBlockRamTrueMixedBE =
-  module mkBlockRamTrueMixedBEOpts#(BlockRamOpts opts)
-         (BlockRamTrueMixedByteEn#(addrA, dataA, addrB, dataB, dataBBytes))
+  module mkBlockRamTrueBEOpts#(BlockRamOpts opts)
+         (BlockRamTrueMixedByteEn#(addrA, dataA, addrA, dataA, dataABytes))
          provisos(Bits#(addrA, addrWidthA), Bits#(dataA, dataWidthA),
-                  Bits#(addrB, addrWidthB), Bits#(dataB, dataWidthB),
-                  Bounded#(addrA), Bounded#(addrB),
-                  Mul#(dataBBytes, 8, dataWidthB),
-                  Div#(dataWidthB, dataBBytes, 8));
+                  Bounded#(addrA),
+                  Mul#(dataABytes, 8, dataWidthA),
+                  Div#(dataWidthA, dataABytes, 8));
 
     parameter ADDR_WIDTH_A = valueOf(addrWidthA);
-    parameter ADDR_WIDTH_B = valueOf(addrWidthB);
+    parameter ADDR_WIDTH_B = valueOf(addrWidthA);
     parameter DATA_WIDTH_A = valueOf(dataWidthA);
-    parameter DATA_WIDTH_B = valueOf(dataWidthB);
+    parameter DATA_WIDTH_B = valueOf(dataWidthA);
     parameter NUM_ELEMS_A  = valueOf(TExp#(addrWidthA));
-    parameter NUM_ELEMS_B  = valueOf(TExp#(addrWidthB));
-    parameter BE_WIDTH     = valueOf(dataBBytes);
+    parameter NUM_ELEMS_B  = valueOf(TExp#(addrWidthA));
+    parameter BE_WIDTH     = valueOf(dataABytes);
     parameter RD_DURING_WR = 
       opts.readDuringWrite == OldData ? "OLD_DATA" : "DONT_CARE";
     parameter DO_REG_A       =
@@ -543,5 +504,87 @@ import "BVI" AlteraBlockRamTrueMixedBE =
   endmodule
 
 `endif
+
+// ======================================================
+// True dual-port mixed-width block RAM with byte-enables
+// ======================================================
+
+// Don't rely on support for mixed-width true dual-port BRAMs, which
+// are no longer available on the Stratix 10.
+
+module mkBlockRamPortableTrueMixedBEOpts#(BlockRamOpts opts)
+         (BlockRamTrueMixedByteEn#(addrA, dataA, addrB, dataB, dataBBytes))
+         provisos(Bits#(addrA, addrWidthA), Bits#(dataA, dataWidthA),
+                  Bits#(addrB, addrWidthB), Bits#(dataB, dataWidthB),
+                  Bounded#(addrA), Bounded#(addrB),
+                  Add#(addrWidthA, aExtra, addrWidthB),
+                  Mul#(TExp#(aExtra), dataWidthB, dataWidthA),
+                  Mul#(dataBBytes, 8, dataWidthB),
+                  Div#(dataWidthB, dataBBytes, 8),
+                  Mul#(dataABytes, 8, dataWidthA),
+                  Div#(dataWidthA, dataABytes, 8),
+                  Mul#(TExp#(aExtra), dataBBytes, dataABytes));
+
+  BlockRamOpts internalOpts = opts;
+  internalOpts.registerDataOut = False;
+
+  BlockRamTrueMixedByteEn#(addrA, dataA, addrA, dataA, dataABytes) ram <-
+    mkBlockRamTrueBEOpts(internalOpts);
+
+  // State
+  Reg#(dataA) dataAReg <- mkConfigRegU;
+  Reg#(dataA) dataBReg <- mkConfigRegU;
+  Reg#(Bit#(aExtra)) offsetB1 <- mkConfigRegU;
+  Reg#(Bit#(aExtra)) offsetB2 <- mkConfigRegU;
+
+  // Rules
+  rule update;
+    offsetB2 <= offsetB1;
+    dataAReg <= ram.dataOutA;
+    dataBReg <= ram.dataOutB;
+  endrule
+
+  // Port A
+  method Action putA(Bool wr, addrA address, dataA x);
+    ram.putA(wr, address, x);
+  endmethod
+
+  method dataA dataOutA = opts.registerDataOut ? dataAReg : ram.dataOutA;
+
+  // Port B
+  method Action putB(Bool wr, addrB address, dataB val, Bit#(dataBBytes) be);
+    Bit#(aExtra) offset = truncate(pack(address));
+    offsetB1 <= offset;
+    Bit#(addrWidthA) addr = truncateLSB(pack(address));
+    Bit#(dataWidthA) vals = pack(replicate(val));
+    Vector#(TExp#(aExtra), Bit#(dataBBytes)) paddedBE;
+    for (Integer i = 0; i < valueOf(TExp#(aExtra)); i=i+1)
+      paddedBE[i] = (offset == fromInteger(i)) ? be : unpack(0);
+    ram.putB(wr, unpack(addr), unpack(vals), pack(paddedBE));
+  endmethod
+
+  method dataB dataOutB;
+    Vector#(TExp#(aExtra), dataB) vec = unpack(pack(
+      opts.registerDataOut ? dataBReg : ram.dataOutB));
+    return vec[opts.registerDataOut ? offsetB2 : offsetB1];
+  endmethod
+
+endmodule
+
+module mkBlockRamPortableTrueMixedBE
+         (BlockRamTrueMixedByteEn#(addrA, dataA, addrB, dataB, dataBBytes))
+         provisos(Bits#(addrA, addrWidthA), Bits#(dataA, dataWidthA),
+                  Bits#(addrB, addrWidthB), Bits#(dataB, dataWidthB),
+                  Bounded#(addrA), Bounded#(addrB),
+                  Add#(addrWidthA, aExtra, addrWidthB),
+                  Mul#(TExp#(aExtra), dataWidthB, dataWidthA),
+                  Mul#(dataBBytes, 8, dataWidthB),
+                  Div#(dataWidthB, dataBBytes, 8),
+                  Mul#(dataABytes, 8, dataWidthA),
+                  Div#(dataWidthA, dataABytes, 8),
+                  Mul#(TExp#(aExtra), dataBBytes, dataABytes));
+  let ram <- mkBlockRamPortableTrueMixedBEOpts(defaultBlockRamOpts);
+  return ram;
+endmodule
 
 endpackage
