@@ -22,91 +22,27 @@ int main()
   tinselSetLen(0);
 
   if (threadId == 0) {
-    // State
-    uint32_t addrReg = 0;  // Address register
-    uint32_t lastDataStoreAddr = 0;
-
     // Get mailbox message slot for sending
     volatile uint32_t* msgOut = tinselSendSlot();
 
     // Command loop
     for (;;) {
-      // Receive message
-      tinselWaitUntil(TINSEL_CAN_RECV);
-      volatile BootReq* msgIn = tinselRecv();
-
-      // Command dispatch
-      // (We avoid using a switch statement here so that the compiler
-      // doesn't generate a data section)
-      uint8_t cmd = msgIn->cmd;
-      if (cmd == WriteInstrCmd) {
-        // Write instructions to instruction memory
-        int n = msgIn->numArgs;
-        for (int i = 0; i < n; i++) {
-          tinselWriteInstr(addrReg, msgIn->args[i]);
-          addrReg += 4;
-        }
-      }
-      else if (cmd == StoreCmd) {
-        // Store words to data memory
-        int n = msgIn->numArgs;
-        for (int i = 0; i < n; i++) {
-          uint32_t* ptr = (uint32_t*) addrReg;
-          *ptr = msgIn->args[i];
-          lastDataStoreAddr = addrReg;
-          addrReg += 4;
-        }
-      }
-      else if (cmd == LoadCmd) {
-        // Load words from data memory
-        int n = msgIn->args[0];
-        while (n > 0) {
-          int m = n > 4 ? 4 : n;
-          tinselWaitUntil(TINSEL_CAN_SEND);
-          for (int i = 0; i < m; i++) {
-            uint32_t* ptr = (uint32_t*) addrReg;
-            msgOut[i] = *ptr;
-            addrReg += 4;
-            n--;
-          }
-          tinselSend(hostId, msgOut);
-        }
-      }
-      else if (cmd == SetAddrCmd) {
-        // Set address register
-        addrReg = msgIn->args[0];
-      }
-      else if (cmd == StartCmd) {
-        // Cache flush
-        tinselCacheFlush();
-        // Wait until lines written back, by issuing a load
-        if (lastDataStoreAddr != 0) {
-          volatile uint32_t* ptr = (uint32_t*) lastDataStoreAddr; ptr[0];
-        }
-        // Send response
+      int c = tinselUartTryGet();
+      if ((c & 0x100) != 0) {
         tinselWaitUntil(TINSEL_CAN_SEND);
-        msgOut[0] = tinselId();
-        tinselSend(hostId, msgOut);
-        // Wait for trigger
-        while ((tinselUartTryGet() & 0x100) == 0);
-        // Start remaining threads
-        int numThreads = msgIn->args[0];
-        for (int i = 0; i < numThreads; i++)
-          tinselCreateThread(i+1);
-        tinselFree(msgIn);
-        break;
+        msgOut[0] = c & 0xff;
+        tinselSend(64, msgOut);
       }
-      tinselFree(msgIn);
+
+      if (tinselCanRecv()) {
+        volatile uint32_t* msgIn = tinselRecv();
+        while (tinselUartTryPut(msgIn[0]) == 0);
+        tinselFree(msgIn);
+      }
     }
   }
 
-  // Call the application's main function
-  int (*appMain)() = (int (*)()) (TinselMaxBootImageBytes);
-  appMain();
-
-  // Restart boot loader
-  if (threadId != 0) tinselKillThread();
-  asm volatile("jr zero");
+  while (1);
 
   // Unreachable
   return 0;

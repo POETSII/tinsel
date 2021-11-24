@@ -38,11 +38,11 @@ import "BDPI" function Bit#(32) getBoardId();
 
 interface DE5Top;
   interface Vector#(`DRAMsPerBoard, DRAMExtIfc) dramIfcs;
-  interface Vector#(`SRAMsPerBoard, SRAMExtIfc) sramIfcs;
-  interface Vector#(`NumNorthSouthLinks, AvalonMac) northMac;
-  interface Vector#(`NumNorthSouthLinks, AvalonMac) southMac;
-  interface Vector#(`NumEastWestLinks, AvalonMac) eastMac;
-  interface Vector#(`NumEastWestLinks, AvalonMac) westMac;
+  //interface Vector#(`SRAMsPerBoard, SRAMExtIfc) sramIfcs;
+  //interface Vector#(`NumNorthSouthLinks, AvalonMac) northMac;
+  //interface Vector#(`NumNorthSouthLinks, AvalonMac) southMac;
+  //interface Vector#(`NumEastWestLinks, AvalonMac) eastMac;
+  //interface Vector#(`NumEastWestLinks, AvalonMac) westMac;
   interface JtagUartAvalon jtagIfc;
   (* always_ready, always_enabled *)
   method Action setBoardId(Bit#(4) id);
@@ -118,7 +118,7 @@ module de5Top (DE5Top);
   // Create FPUs
   Vector#(`FPUsPerBoard, FPU) fpus;
   for (Integer i = 0; i < `FPUsPerBoard; i=i+1)
-    fpus[i] <- mkFPU;
+    fpus[i] <- mkNullFPU;
 
   // Connect cores to FPUs
   let vecOfCores = concat(concat(cores));
@@ -197,6 +197,14 @@ module de5Top (DE5Top);
           cores[i][j][k].setBoardId(debugLink.getBoardId());
   endrule
 
+  // NoC rim unused
+  `ifndef SIMULATE
+  mkNullAvalonMac(noc.north[0]);
+  mkNullAvalonMac(noc.south[0]);
+  mkNullAvalonMac(noc.east[0]);
+  mkNullAvalonMac(noc.west[0]);
+  `endif
+
   // In simulation, display start-up message
   `ifdef SIMULATE
   rule displayStartup;
@@ -209,14 +217,14 @@ module de5Top (DE5Top);
 
   `ifndef SIMULATE
   function DRAMExtIfc getDRAMExtIfc(OffChipRAM ram) = ram.extDRAM;
-  function Vector#(2, SRAMExtIfc) getSRAMExtIfcs(OffChipRAM ram) = ram.extSRAM;
+  //function Vector#(2, SRAMExtIfc) getSRAMExtIfcs(OffChipRAM ram) = ram.extSRAM;
   interface dramIfcs = map(getDRAMExtIfc, rams);
-  interface sramIfcs = concat(map(getSRAMExtIfcs, rams));
+  //interface sramIfcs = concat(map(getSRAMExtIfcs, rams));
   interface jtagIfc  = debugLink.jtagAvalon;
-  interface northMac = noc.north;
-  interface southMac = noc.south;
-  interface eastMac  = noc.east;
-  interface westMac  = noc.west;
+  //interface northMac = noc.north;
+  //interface southMac = noc.south;
+  //interface eastMac  = noc.east;
+  //interface westMac  = noc.west;
   method Action setBoardId(Bit#(4) id);
     localBoardId <= id;
   endmethod
