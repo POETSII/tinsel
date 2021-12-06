@@ -4,34 +4,45 @@
 
 int main(int argc, char *argv[])
 {
-    std::string sourcePath="/dev/stdin";
-    std::string destPath="/dev/stdout";
+    std::string placementPath=argv[1];
+    std::string appGraph=argv[2];
 
-    std::unique_ptr<SystemParameters> params=initSystemParameters("tinsel-0.6", 4,4, 4,4);
-
+    AppPlacement placement;
     { 
-        FILE* fp = fopen(sourcePath.c_str(), "rb"); // non-Windows use "r"
+        FILE* fp = fopen(placementPath.c_str(), "rb"); // non-Windows use "r"
         char readBuffer[65536];
         rapidjson::FileReadStream is(fp, readBuffer, sizeof(readBuffer));
         
         rapidjson::Document d;
         d.ParseStream(is);
 
-        params->load(d);
+        placement.load(d);
         
         fclose(fp);
     }
 
-    auto system=create_system(params.get());
+    AppGraph app;
+    { 
+        FILE* fp = fopen(appGraph.c_str(), "rb"); // non-Windows use "r"
+        char readBuffer[65536];
+        rapidjson::FileReadStream is(fp, readBuffer, sizeof(readBuffer));
+        
+        rapidjson::Document d;
+        d.ParseStream(is);
 
-
-    std::cerr<<"Generating random routes\n";
-    std::mt19937 rng;
-    
-    Routing routes(system.get());
-    for(unsigned i=0; i<params->get_total_threads()*10; i++){
-        routes.add_route( params->pick_random_thread(rng), params->pick_random_thread(rng), 1 );
+        app.load(d);
+        
+        fclose(fp);
     }
+
+    auto system=create_system(&placement.system);
+
+    Routing routes(system.get());
+
+
+    std::cerr<<"Adding routes\n";
+
+    routes.add_graph(placement, app);
 
     auto loads = routes.calculate_link_load();
 
@@ -97,5 +108,5 @@ int main(int argc, char *argv[])
 
     writer.end_group();
 
-    writer.save(destPath.c_str());
+    writer.save("/dev/stdout");
 }

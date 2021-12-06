@@ -83,6 +83,14 @@ Direction reverse(Direction d)
     }
 }
 
+enum LinkType
+{
+    UnknownLink,
+    InterFPGALink,
+    InterMailboxLink,
+    WiringLink
+};
+
 struct thread_id_t
 {
     unsigned value;
@@ -141,6 +149,16 @@ struct SystemParameters
 
     unsigned FPGALinkCost;
     unsigned MailboxLinkCost;
+
+    bool operator==(const SystemParameters &o) const
+    {
+        return topology==o.topology && FPGAMeshXLen==o.FPGAMeshXLen && FPGAMeshYLen==o.FPGAMeshYLen &&
+            FPGAMeshXBits==o.FPGAMeshXBits && FPGAMeshYBits==o.FPGAMeshYBits &&
+            MailboxMeshXLen==o.MailboxMeshXLen && MailboxMeshYLen==o.MailboxMeshYLen && 
+            MailboxMeshXBits==o.MailboxMeshXBits && MailboxMeshYBits==o.MailboxMeshYBits && 
+            LogThreadsPerMailbox==o.LogThreadsPerMailbox &&
+            FPGALinkCost==o.FPGALinkCost && MailboxLinkCost==o.MailboxLinkCost; 
+    }
 
     template<class TAlloc>
     rapidjson::Value save(TAlloc &alloc)
@@ -292,6 +310,17 @@ struct SystemParameters
             rng()%(1u<<TinselLogCoresPerMailbox)
         );
     }
+
+    unsigned get_link_cost(LinkType type) const
+    {
+        switch(type)
+        {
+        case WiringLink: return 0;
+        case InterFPGALink: return FPGALinkCost;
+        case InterMailboxLink: return MailboxLinkCost;
+        default: throw std::runtime_error("Unknown link type.");
+        }
+    }
 };
 
 std::unique_ptr<SystemParameters> initSystemParameters(std::string topology, unsigned FPGAMeshXLen, unsigned FPGAMeshYLen, unsigned MailboxMeshXLen, unsigned MailboxMeshYLen)
@@ -334,8 +363,8 @@ std::unique_ptr<SystemParameters> initSystemParameters(std::string topology, uns
     p->MailboxMeshXLen=MailboxMeshXLen;
     p->MailboxMeshYLen=MailboxMeshYLen;
 
-    p->FPGALinkCost=10;
-    p->MailboxLinkCost=1;
+    p->FPGALinkCost=30;  // 128 bits/cycle at 200 MHz = 25 Gb/sec
+    p->MailboxLinkCost=1;  // 1GBit/sec, realistically 0.8 Gb/sec
 
     return p;
 }
@@ -472,22 +501,24 @@ struct LinkOut
     : Link
 {
 
-    LinkOut(Node *_node, const std::string &_name, unsigned _cost = 1)
+    LinkOut(Node *_node, const std::string &_name)
         : Link(_node, _name)
-        , cost(_cost)
+        , type(UnknownLink)
     {
         _node->linksOut.push_back(this);
     }
 
-    unsigned cost = 1;
+    LinkType type;
     LinkIn *sink = 0;
 
-    void connect(LinkIn *_partner)
+    void connect(LinkIn *_partner, LinkType _type)
     {
+        assert(_type!=UnknownLink);
         assert(node!=0 && _partner && _partner->node!=0);
         assert(sink==0 && _partner->source==0);
         sink=_partner;
         sink->source=this;
+        type=_type;
     }
 };
 
@@ -604,8 +635,8 @@ struct MailboxNode
         , outputs{LinkOut{this,"out[N]"},LinkOut{this,"out[S]"},LinkOut{this,"out[E]"},LinkOut{this,"out[W]"},LinkOut{this,"out[C]"}}
         , cluster{std::make_unique<ClusterNode>(this)}
     {
-        outputs[Here].connect(&cluster->in);
-        cluster->out.connect(&inputs[Here]);
+        outputs[Here].connect(&cluster->in, InterMailboxLink);
+        cluster->out.connect(&inputs[Here], InterMailboxLink);
     }
 
     const MailboxCoord position;
@@ -721,6 +752,7 @@ void validate_node_heirarchy(const Node *root)
             require(n, out->sink!=nullptr, "LinkOut is not connected.");
             require(n, out->sink->source==out, "LinkOut sink is not reflected.");
             require(n, nodes.find(out->sink->node)!=nodes.end(), "LinkIn points at a non-reachable node.");
+            require(n, out->type!=UnknownLink, "LinkOut does not have type.");
             const auto &linksIn=out->sink->node->linksIn;
             require(n, std::find(linksIn.begin(),linksIn.end(),out->sink)!=linksIn.end(),
                 "LinkOut points to LinkIn which is not known by partner node ");
@@ -780,11 +812,13 @@ struct AppGraph
 {
     struct Vertex
     {
-        unsigned index;
+        unsigned index;  // must match the index in the vertices array
         std::string id;
         std::unordered_map<unsigned,unsigned> out;
     };
 
+    std::string name;
+    std::string generator;
     std::vector<Vertex> vertices;
 
     template<class TAlloc>
@@ -792,13 +826,19 @@ struct AppGraph
     {
         rapidjson::Value res;
         res.SetObject();
+        res.AddMember("name", name, alloc);
         res.AddMember("type","app_graph",alloc);
+        res.AddMember("generator", generator, alloc);
 
         rapidjson::Value vs;
         vs.SetArray();
         vs.Reserve(vertices.size(), alloc);
+        unsigned count=0;
         for(const auto &v : vertices){
-            assert(v.index == vs.Size());
+            if(v.index != vs.Size()){
+                fprintf(stderr, "Index=%u, id=%s, got index=%u\n", vs.Size(), v.id.c_str(), v.index);
+                throw std::runtime_error("Indices are not contiguous starting at zero.");
+            }
             vs.PushBack( rapidjson::Value(v.id.c_str(),alloc), alloc);
         }
         res.AddMember("vertices", vs, alloc);
@@ -836,6 +876,9 @@ struct AppGraph
     void load(const rapidjson::Value &v)
     {
         assert(v["type"].GetString()==std::string("app_graph"));
+
+        name=v["name"].GetString();
+        generator=v["generator"].GetString();
 
         const auto &vs=v["vertices"];
         assert(vs.IsArray());
@@ -881,10 +924,51 @@ struct AppGraph
 
 struct AppPlacement
 {
-    const AppGraph &g;
-    const Node *system;
+    std::string graph_id;
+    SystemParameters system;
     std::vector<thread_id_t> placement; // Mapping of vertex to thread
 
+    template<class TAlloc>
+    rapidjson::Value save(TAlloc &alloc)
+    {
+        rapidjson::Value res;
+        res.SetObject();
+        res.AddMember("type","placement",alloc);
+        res.AddMember("graph", graph_id, alloc);
+
+        rapidjson::Value vs;
+        vs.SetArray();
+        vs.Reserve(placement.size(), alloc);
+        unsigned count=0;
+        for(unsigned i=0; i<placement.size(); i++){
+            vs.PushBack( rapidjson::Value((uint64_t)placement[i].value), alloc);
+        }
+        res.AddMember("device_to_thread", vs, alloc);
+
+        rapidjson::Value pp;
+        pp=system.save(alloc);
+        res.AddMember("system", pp, alloc);
+
+        return res;
+    }
+
+    void load(const rapidjson::Value &v)
+    {
+        assert(v["type"].GetString()==std::string("placement"));
+
+        graph_id=v["graph"].GetString();
+
+        const auto &vs=v["device_to_thread"];
+        assert(vs.IsArray());
+        placement.clear();
+        placement.resize(vs.Size());
+
+        for(unsigned i=0; i<vs.Size(); i++){
+            placement[i].value=vs[i].GetUint64();
+        }
+
+        system.load(v["system"]);
+    }
 };
 
 struct Route
@@ -896,8 +980,11 @@ struct Route
     const Node *source_node;
     const Node *sink_node;
     std::vector<const LinkOut*> path;
-    unsigned weight; // Parameter representing intensity of route, e.g. number of repeated edges
+    unsigned weight; // Parameter representing intensity of route, e.g. number of repeated edges or more frequent communication
     uint64_t cost;   // Cost describing the route in terms of hops, independent of the weight
+    unsigned hops; // may be less than path.size()
+    unsigned fpga_hops;
+    unsigned mailbox_hops;
 };
 
 Route create_route(const Node *system, route_id_t id, thread_id_t source, thread_id_t dest, unsigned weight=1, const std::string &foreign_id="")
@@ -909,6 +996,9 @@ Route create_route(const Node *system, route_id_t id, thread_id_t source, thread
         system->get_node_containing(source), system->get_node_containing(dest),
         {},
         weight,
+        0,
+        0,
+        0,
         0
     };
 
@@ -918,9 +1008,18 @@ Route create_route(const Node *system, route_id_t id, thread_id_t source, thread
         auto link=curr->get_link_to(dest);
         //std::cerr<<"  "<<curr->full_name<<":"<<link->name<<" -> "<<link->sink->node->full_name<<":"<<link->sink->name<<"\n";
 
-        res.cost += link->cost;
+        res.cost += system->get_parameters()->get_link_cost(link->type);
         res.path.push_back(link);
         curr=link->sink->node;
+        if(link->type!=WiringLink){
+            res.hops++;
+        }
+        if(link->type==InterFPGALink){
+            res.fpga_hops++;
+        }
+        if(link->type==InterMailboxLink){
+            res.mailbox_hops++;
+        }
     }
 
     return res;
@@ -941,11 +1040,11 @@ struct Routing
         : system(_system)
     {}
 
-    void add_graph(const AppPlacement &p)
+    void add_graph(const AppPlacement &p, const AppGraph &g)
     {
-        assert(p.system==system);
+        assert(p.system==*system->get_parameters());
+        assert(p.graph_id==g.name);
 
-        const AppGraph &g=p.g;
         for(unsigned src=0; src<g.vertices.size(); src++){
             for(const auto &dw : g.vertices[src].out){
                 assert(dw.first < g.vertices.size());
@@ -976,9 +1075,9 @@ struct Routing
         return id;
     }
 
-    std::unordered_map<const LinkOut*,double> calculate_link_load() const
+    std::unordered_map<const LinkOut*,unsigned> calculate_link_load() const
     {
-        std::unordered_map<const LinkOut*,double> res;
+        std::unordered_map<const LinkOut*,unsigned> res;
         res.reserve(links.size());
         for(const auto &kv : links){
             unsigned sumWeight=0;

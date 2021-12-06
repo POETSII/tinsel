@@ -139,22 +139,22 @@ struct FPGANode0p8
                 bool eastEdge = x==meshLengthX-1;
                 bool westEdge = x==0;
 
-                mbox.outputs[North].connect( northEdge ?  &null_sinks_north[x]->in : &mailboxes[x][y+1]->inputs[South] );
-                mbox.outputs[South].connect( southEdge ?  router.mbox_in[x].get() : &mailboxes[x][y-1]->inputs[North] );
-                mbox.outputs[East].connect(  eastEdge  ?  &null_sinks_east[y]->in :  &mailboxes[x+1][y]->inputs[West] );
-                mbox.outputs[West].connect(  westEdge  ?  &null_sinks_west[y]->in :  &mailboxes[x-1][y]->inputs[East] );
+                mbox.outputs[North].connect( northEdge ?  &null_sinks_north[x]->in : &mailboxes[x][y+1]->inputs[South], northEdge ? WiringLink : InterMailboxLink );
+                mbox.outputs[South].connect( southEdge ?  router.mbox_in[x].get() : &mailboxes[x][y-1]->inputs[North], southEdge ? WiringLink : InterMailboxLink  );
+                mbox.outputs[East].connect(  eastEdge  ?  &null_sinks_east[y]->in :  &mailboxes[x+1][y]->inputs[West], eastEdge ? WiringLink : InterMailboxLink  );
+                mbox.outputs[West].connect(  westEdge  ?  &null_sinks_west[y]->in :  &mailboxes[x-1][y]->inputs[East], westEdge ? WiringLink : InterMailboxLink  );
 
                 if(northEdge){
-                    null_sources_north[x]->out.connect( &mbox.inputs[North] );
+                    null_sources_north[x]->out.connect( &mbox.inputs[North], WiringLink );
                 }
                 if(southEdge){
-                    router.mbox_out[x]->connect( &mbox.inputs[South]);
+                    router.mbox_out[x]->connect( &mbox.inputs[South], InterMailboxLink);
                 }
                 if(eastEdge){
-                    null_sources_east[y]->out.connect( &mbox.inputs[East] );
+                    null_sources_east[y]->out.connect( &mbox.inputs[East], WiringLink );
                 }
                 if(westEdge){
-                    null_sources_west[y]->out.connect( &mbox.inputs[West] );
+                    null_sources_west[y]->out.connect( &mbox.inputs[West], WiringLink );
                 }
             }
         }
@@ -232,15 +232,15 @@ struct SystemNode0p8
                 
                 auto &fpga=*fpgas[x][y];
 
-                fpga.router.inter_out[North]->connect( northEdge ? &null_sinks[North][x]->in : fpgas[x][y+1]->router.inter_in[South].get() );
-                fpga.router.inter_out[South]->connect( southEdge ? &null_sinks[South][x]->in : fpgas[x][y-1]->router.inter_in[North].get() );
-                fpga.router.inter_out[East]->connect( eastEdge ? &null_sinks[East][y]->in : fpgas[x+1][y]->router.inter_in[West].get() );
-                fpga.router.inter_out[West]->connect( westEdge ? &null_sinks[West][y]->in : fpgas[x-1][y]->router.inter_in[East].get() );
+                fpga.router.inter_out[North]->connect( northEdge ? &null_sinks[North][x]->in : fpgas[x][y+1]->router.inter_in[South].get(), northEdge ? WiringLink : InterFPGALink );
+                fpga.router.inter_out[South]->connect( southEdge ? &null_sinks[South][x]->in : fpgas[x][y-1]->router.inter_in[North].get(), southEdge ? WiringLink : InterFPGALink  );
+                fpga.router.inter_out[East]->connect( eastEdge ? &null_sinks[East][y]->in : fpgas[x+1][y]->router.inter_in[West].get(), eastEdge ? WiringLink : InterFPGALink  );
+                fpga.router.inter_out[West]->connect( westEdge ? &null_sinks[West][y]->in : fpgas[x-1][y]->router.inter_in[East].get(), westEdge ? WiringLink : InterFPGALink  );
             
-                if(northEdge){ null_sources[North][x]->out.connect( fpga.router.inter_in[North].get()); }
-                if(southEdge){ null_sources[South][x]->out.connect( fpga.router.inter_in[South].get()); }
-                if(eastEdge){  null_sources[East][y]->out.connect( fpga.router.inter_in[East].get()); }
-                if(westEdge){  null_sources[West][y]->out.connect( fpga.router.inter_in[West].get()); }
+                if(northEdge){ null_sources[North][x]->out.connect( fpga.router.inter_in[North].get(), WiringLink); }
+                if(southEdge){ null_sources[South][x]->out.connect( fpga.router.inter_in[South].get(), WiringLink); }
+                if(eastEdge){  null_sources[East][y]->out.connect( fpga.router.inter_in[East].get(), WiringLink); }
+                if(westEdge){  null_sources[West][y]->out.connect( fpga.router.inter_in[West].get(), WiringLink); }
             }
         }
     }

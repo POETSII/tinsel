@@ -39,7 +39,7 @@ template <class T> class Seq
     void setCapacity(int n) {
       maxElems = n;
       T* newElems = new T[maxElems];
-      for (int i = 0; i < numElems-1; i++)
+      for (int i = 0; i < std::min<int>(numElems,n); i++)
         newElems[i] = elems[i];
       delete [] elems;
       elems = newElems;
@@ -48,9 +48,11 @@ template <class T> class Seq
     // Extend size of sequence by N
     void extendBy(int n)
     {
-      numElems += n;
-      if (numElems > maxElems)
-        setCapacity(numElems*2);
+      int newNumElems = numElems + n;
+      if (newNumElems > maxElems){
+        setCapacity(newNumElems);
+      }
+      numElems=newNumElems;
     }
 
     // Extend size of sequence by one

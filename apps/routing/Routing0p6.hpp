@@ -49,15 +49,15 @@ struct FPGANode0p6
                 bool eastEdge = x==meshLengthX-1;
                 bool westEdge = x==0;
 
-                mbox.outputs[North].connect( northEdge ?  reducers[North].inputs[x].get() : &mailboxes[x][y+1]->inputs[South] );
-                mbox.outputs[South].connect( southEdge ?  reducers[South].inputs[x].get() : &mailboxes[x][y-1]->inputs[North] );
-                mbox.outputs[East].connect(  eastEdge  ?  reducers[East].inputs[y].get() :  &mailboxes[x+1][y]->inputs[West] );
-                mbox.outputs[West].connect(  westEdge  ?  reducers[West].inputs[y].get() :  &mailboxes[x-1][y]->inputs[East] );
+                mbox.outputs[North].connect( northEdge ?  reducers[North].inputs[x].get() : &mailboxes[x][y+1]->inputs[South], InterMailboxLink );
+                mbox.outputs[South].connect( southEdge ?  reducers[South].inputs[x].get() : &mailboxes[x][y-1]->inputs[North],InterMailboxLink );
+                mbox.outputs[East].connect(  eastEdge  ?  reducers[East].inputs[y].get() :  &mailboxes[x+1][y]->inputs[West],InterMailboxLink );
+                mbox.outputs[West].connect(  westEdge  ?  reducers[West].inputs[y].get() :  &mailboxes[x-1][y]->inputs[East],InterMailboxLink );
                 
-                if(northEdge){ expanders[North].outputs[x]->connect( &mbox.inputs[North] ); }
-                if(southEdge){ expanders[South].outputs[x]->connect( &mbox.inputs[South] ); }
-                if(eastEdge){  expanders[East].outputs[y]->connect( &mbox.inputs[East] ); }
-                if(westEdge){  expanders[West].outputs[y]->connect( &mbox.inputs[West] ); }
+                if(northEdge){ expanders[North].outputs[x]->connect( &mbox.inputs[North], InterMailboxLink ); }
+                if(southEdge){ expanders[South].outputs[x]->connect( &mbox.inputs[South], InterMailboxLink ); }
+                if(eastEdge){  expanders[East].outputs[y]->connect( &mbox.inputs[East], InterMailboxLink ); }
+                if(westEdge){  expanders[West].outputs[y]->connect( &mbox.inputs[West], InterMailboxLink ); }
             }
         }
     }
@@ -132,15 +132,15 @@ struct SystemNode0p6
                 
                 auto &fpga=*fpgas[x][y];
 
-                fpga.reducers[North].output.connect( northEdge ? &null_sinks[North][x]->in  : &fpgas[x][y+1]->expanders[South].input );
-                fpga.reducers[South].output.connect( southEdge ? &null_sinks[South][x]->in  : &fpgas[x][y-1]->expanders[North].input );
-                fpga.reducers[East].output.connect( eastEdge   ? &null_sinks[East][y]->in   : &fpgas[x+1][y]->expanders[West].input );
-                fpga.reducers[West].output.connect( westEdge   ? &null_sinks[West][y]->in   : &fpgas[x-1][y]->expanders[East].input );
+                fpga.reducers[North].output.connect( northEdge ? &null_sinks[North][x]->in  : &fpgas[x][y+1]->expanders[South].input, northEdge ? WiringLink : InterFPGALink );
+                fpga.reducers[South].output.connect( southEdge ? &null_sinks[South][x]->in  : &fpgas[x][y-1]->expanders[North].input, southEdge ? WiringLink : InterFPGALink );
+                fpga.reducers[East].output.connect( eastEdge   ? &null_sinks[East][y]->in   : &fpgas[x+1][y]->expanders[West].input, eastEdge ? WiringLink : InterFPGALink);
+                fpga.reducers[West].output.connect( westEdge   ? &null_sinks[West][y]->in   : &fpgas[x-1][y]->expanders[East].input, westEdge ? WiringLink : InterFPGALink );
             
-                if(northEdge){ null_sources[North][x]->out.connect( &fpga.expanders[North].input); }
-                if(southEdge){ null_sources[South][x]->out.connect( &fpga.expanders[South].input); }
-                if(eastEdge){  null_sources[East][y]->out.connect( &fpga.expanders[East].input); }
-                if(westEdge){  null_sources[West][y]->out.connect( &fpga.expanders[West].input); }
+                if(northEdge){ null_sources[North][x]->out.connect( &fpga.expanders[North].input, WiringLink); }
+                if(southEdge){ null_sources[South][x]->out.connect( &fpga.expanders[South].input, WiringLink); }
+                if(eastEdge){  null_sources[East][y]->out.connect( &fpga.expanders[East].input, WiringLink); }
+                if(westEdge){  null_sources[West][y]->out.connect( &fpga.expanders[West].input, WiringLink); }
             }
         }
     }
