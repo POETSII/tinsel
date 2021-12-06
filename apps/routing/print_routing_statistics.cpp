@@ -61,6 +61,49 @@ int main(int argc, char *argv[])
         hist.at(x)++;
     };
 
+    auto dump_distribution=[&](const std::string &domain, const std::string &aspect, std::vector<unsigned> &hist)
+    {
+        if(hist.size()==0){
+            hist.resize(1,0);
+        }
+        fprintf(stdout, "%s, %s, max, %u\n", domain.c_str(), aspect.c_str(), hist.size()-1);
+        double sum=0, total_count=0;
+        unsigned off=0;
+        for(auto count : hist){
+            sum += count * off;
+            total_count += count;
+            ++off;
+        }
+        double mean=sum/total_count;
+
+        double oe2=0, oe3=0, oe4=0;
+        off=0;
+        for(auto count : hist){
+            if(count){
+                double vv=(off-mean);
+                oe2 += count*(vv*vv);
+                oe3 += count*(vv*vv*vv);
+                oe4 += count*(vv*vv*vv*vv);
+            }
+            ++off;
+        }
+
+        double stddev=sqrt(oe2/mean);
+        double skewness=(oe3/mean) / std::pow(stddev, 3);
+        double kurtosis=(oe4/mean) / std::pow(stddev, 4) - 3;
+
+        fprintf(stdout, "%s, %s, mean, %g\n", domain.c_str(), aspect.c_str(), sum/total_count);
+        fprintf(stdout, "%s, %s, stddev, %g\n", domain.c_str(), aspect.c_str(), stddev);
+        fprintf(stdout, "%s, %s, skewness, %g\n", domain.c_str(), aspect.c_str(), skewness);
+        fprintf(stdout, "%s, %s, excess_kurtosis, %g\n", domain.c_str(), aspect.c_str(), kurtosis);
+
+        for(unsigned i=0; i<hist.size(); i++){
+            if(hist[i]!=0){
+                fprintf(stdout, "%s, %s, %u, %u\n", domain.c_str(), aspect.c_str(), i, hist[i]);
+            }
+        }
+    };
+
     for(const auto &kv : loads){
         add_histogram(all_links_load_distribution, kv.second);
         if(kv.first->type==InterFPGALink){
@@ -83,43 +126,12 @@ int main(int argc, char *argv[])
     fprintf(stdout, "AppGraph, Generator, -, %s\n", app.generator.c_str());
     fprintf(stdout, "AppGraph, Devices, count, %u\n", app.vertices.size());
 
-    double minEdges=DBL_MAX, maxEdges=0, sumEdges=0, sumEdgesSquare=0;
+    std::vector<unsigned> edist;
     for(unsigned i=0; i<app.vertices.size(); i++){
-        minEdges=std::min<double>(minEdges, app.vertices[i].out.size());
-        maxEdges=std::max<double>(maxEdges, app.vertices[i].out.size());
-        sumEdges+=app.vertices[i].out.size();
-        sumEdgesSquare+=app.vertices[i].out.size()*(double)app.vertices[i].out.size();
+        add_histogram(edist, app.vertices[i].out.size());
     }
-    double meanEdges=sumEdges/app.vertices.size();
-    double stddevEdges=sqrt(sumEdgesSquare/app.vertices.size() - meanEdges*meanEdges);
-    fprintf(stdout, "AppGraph, Edges, count, %g\n", sumEdges);
-    fprintf(stdout, "AppGraph, Degree, min, %g\n", minEdges);
-    fprintf(stdout, "AppGraph, Degree, max, %g\n", maxEdges);
-    fprintf(stdout, "AppGraph, Degree, mean, %g\n", sumEdges/app.vertices.size());
-    fprintf(stdout, "AppGraph, Degree, stddev, %g\n", stddevEdges);
-
-    auto dump_distribution=[&](const std::string &domain, const std::string &aspect, std::vector<unsigned> &hist)
-    {
-        if(hist.size()==0){
-            hist.resize(1,0);
-        }
-        fprintf(stdout, "%s, %s, max, %u\n", domain.c_str(), aspect.c_str(), hist.size()-1);
-        double sum=0, sumSqr=0, total_count=0;
-        unsigned off=0;
-        for(auto count : hist){
-            sum += count * off;
-            sumSqr += off*off*count;
-            total_count += count;
-            ++off;
-        }
-
-        fprintf(stdout, "%s, %s, mean, %g\n", domain.c_str(), aspect.c_str(), sum/total_count);
-        double mean=sum/total_count;
-        fprintf(stdout, "%s, %s, stddev, %g\n", domain.c_str(), aspect.c_str(), sqrt(sumSqr/total_count - mean*mean));
-        for(unsigned i=0; i<hist.size(); i++){
-            fprintf(stdout, "%s, %s, %u, %u\n", domain.c_str(), aspect.c_str(), i, hist[i]);
-        }
-    };
+    fprintf(stdout, "AppGraph, Edges, count, %g\n", std::accumulate(edist.begin(), edist.end(), 0.0));
+    dump_distribution("AppGraph", "Degree", edist);    
 
     dump_distribution("Routing", "RouteCost", route_cost_distribution);
     dump_distribution("Routing", "RouteHops", route_hops_distribution);

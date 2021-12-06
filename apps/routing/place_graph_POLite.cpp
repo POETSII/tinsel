@@ -92,6 +92,9 @@ int main(int argc, char *argv[])
 
     graph.map();
 
+    std::string placer="POLite-default";
+    if(getenv())
+
     AppPlacement placement;
     placement.graph_id=app.name;
     placement.system=*params;

@@ -925,6 +925,7 @@ struct AppGraph
 struct AppPlacement
 {
     std::string graph_id;
+    std::string placer_method;
     SystemParameters system;
     std::vector<thread_id_t> placement; // Mapping of vertex to thread
 
@@ -935,6 +936,7 @@ struct AppPlacement
         res.SetObject();
         res.AddMember("type","placement",alloc);
         res.AddMember("graph", graph_id, alloc);
+        res.AddMember("placer", placer_method, alloc);
 
         rapidjson::Value vs;
         vs.SetArray();
@@ -957,6 +959,7 @@ struct AppPlacement
         assert(v["type"].GetString()==std::string("placement"));
 
         graph_id=v["graph"].GetString();
+        placer_method=v["placer"].GetString();
 
         const auto &vs=v["device_to_thread"];
         assert(vs.IsArray());

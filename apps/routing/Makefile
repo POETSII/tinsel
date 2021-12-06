@@ -9,13 +9,13 @@ CPPFLAGS += -fopenmp
 
 CPPFLAGS += -I $(INC) -g -W -Wall -Wno-unused-but-set-variable --max-errors=1
 #CPPFLAGS += -fsanitize=undefined -fsanitize=address
-CPPFLAGS += -O3
+CPPFLAGS += -O3 -DNDEBUG=1
 
 CPPFLAGS += --std=c++17
 CPPFLAGS += $(shell pkg-config --cflags libxml++-2.6)
 
 LDLIBS += $(shell pkg-config --libs-only-l libxml++-2.6)
-LDLIBS += -lmetis
+LDLIBS += -lmetis -lscotch
 
 obj/%.o : %.cpp
 	mkdir -p obj
