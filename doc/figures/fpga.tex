@@ -351,19 +351,42 @@
   \draw[arrows=-,color=black] (south2b) to (south2c);
 
   \node[rounded corners,fill=myorange,minimum height=0.5cm] (boardrouter)
-   at (4.63cm,-1.8cm) {\footnotesize{board}\\[-1mm]\footnotesize{router}};
+   at (4.63cm,-1.8cm) {\footnotesize{prog.}\\[-1mm]\footnotesize{router}};
 
   \node[rounded corners,fill=gray!20, text=black,minimum width=5.25cm] (links)
     at (4.63cm, -3.2cm) {\footnotesize{inter-FPGA reliable links}};
 
-  \draw[arrows=-,color=black] (links.north) to (boardrouter.south);
+  \draw[arrows=-,color=black] ([xshift=-3mm]links.north) to
+    ([xshift=-3mm]boardrouter.south);
+  \draw[arrows=-,color=black] ([xshift=-1mm]links.north) to
+    ([xshift=-1mm]boardrouter.south);
+  \draw[arrows=-,color=black] ([xshift=1mm]links.north) to
+    ([xshift=1mm]boardrouter.south);
+  \draw[arrows=-,color=black] ([xshift=3mm]links.north) to
+    ([xshift=3mm]boardrouter.south);
 
-  % Is the board router connected to off-chip RAM?
+
+  % Connect board router to off-chip RAM
   \draw[arrows=-,color=mygreen] (ram0.east) to (boardrouter.west);
-  \draw[arrows=-,color=mygreen] (ram1.west) to (boardrouter.east);
+  %\draw[arrows=-,color=mygreen] ([yshift=3mm]ram0.east) to
+  %  ([yshift=3mm]boardrouter.west);
+  %\draw[arrows=-,color=mygreen] ([yshift=1mm]ram0.east) to
+  %  ([yshift=1mm]boardrouter.west);
+  %\draw[arrows=-,color=mygreen] ([yshift=-1mm]ram0.east) to
+  %  ([yshift=-1mm]boardrouter.west);
+  %\draw[arrows=-,color=mygreen] ([yshift=-3mm]ram0.east) to
+  %  ([yshift=-3mm]boardrouter.west);
 
+  \draw[arrows=-,color=mygreen] (ram1.west) to (boardrouter.east);
+  %\draw[arrows=-,color=mygreen] ([yshift=3mm]ram1.west) to
+  %  ([yshift=3mm]boardrouter.east);
+  %\draw[arrows=-,color=mygreen] ([yshift=1mm]ram1.west) to
+  %  ([yshift=1mm]boardrouter.east);
+  %\draw[arrows=-,color=mygreen] ([yshift=-1mm]ram1.west) to
+  %  ([yshift=-1mm]boardrouter.east);
+  %\draw[arrows=-,color=mygreen] ([yshift=-3mm]ram1.west) to
+  %  ([yshift=-3mm]boardrouter.east);
 
 \end{tikzpicture}
-
 
 \end{document}

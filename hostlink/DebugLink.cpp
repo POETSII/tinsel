@@ -125,7 +125,7 @@ DebugLink::DebugLink(DebugLinkParams p)
   bridge = new int* [boxMeshYLen];
   for (int y = 0; y < boxMeshYLen; y++) {
     bridge[y] = new int [boxMeshXLen];
-    for (int x = 0; x < meshXLen; x++)
+    for (int x = 0; x < boxMeshXLen; x++)
       bridge[y][x] = -1;
   }
 
@@ -159,9 +159,42 @@ DebugLink::DebugLink(DebugLinkParams p)
   }
 
   // Connect to boardctrld on each box
-  for (int y = 0; y < boxMeshYLen; y++)
-    for (int x = 0; x < boxMeshXLen; x++)
-      conn[y][x] = socketConnectTCP(boxMesh[thisBoxY+y][thisBoxX+x], 10101);
+  {
+    for (int y = 0; y < boxMeshYLen; y++){
+      for (int x = 0; x < boxMeshXLen; x++){
+        conn[y][x] = -1;
+      }
+    }
+
+    int complete=0, tries=0;
+    while(1){
+      for (int y = 0; y < boxMeshYLen; y++){
+        for (int x = 0; x < boxMeshXLen; x++){
+          if(conn[y][x]==-1){
+            conn[y][x] = socketConnectTCP(boxMesh[thisBoxY+y][thisBoxX+x], 10101, true);
+            if(conn[y][x]!=-1){
+              complete++;
+            }
+          }
+        }
+      }
+      if(complete==(boxMeshXLen*boxMeshYLen)){
+        break;
+      }
+      if(tries < p.max_connection_attempts){
+        fprintf(stderr, "Connected %u out of %u boards. Sleeping 1 second. Tries left=%u.\n", complete, (boxMeshXLen*boxMeshYLen), p.max_connection_attempts-tries );
+        tries++;
+        sleep(1);
+      }else{
+        break;
+      }
+    }
+
+    if(complete!=(boxMeshXLen*boxMeshYLen)){
+      fprintf(stderr, "Connected %u out of %u boards. Couldnt open remaining sockets.\n", complete, (boxMeshXLen*boxMeshYLen));
+      exit(EXIT_FAILURE);
+    }
+  }
 
   // Receive ready packets from each box
   BoardCtrlPkt pkt;

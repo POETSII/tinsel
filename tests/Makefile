@@ -1,10 +1,6 @@
 # SPDX-License-Identifier: BSD-2-Clause
 TINSEL_ROOT = ..
 
-ifndef QUARTUS_ROOTDIR
-  $(error Please set QUARTUS_ROOTDIR)
-endif
-
 include $(TINSEL_ROOT)/globals.mk
 
 # Local compiler flags
@@ -31,14 +27,17 @@ all: $(patsubst %.S,%.code.v,$(wildcard *.S)) \
 link.ld: genld.sh
 	./genld.sh > link.ld
 
-$(HL)/%.o:
-	make -C $(HL)
+$(HL)/hostlink.a :
+	make -C $(HL) hostlink.a
 
-run: run.cpp $(HL)/*.o
-	g++ -O2 -I $(INC) -I $(HL) -o run run.cpp $(HL)/*.o
+run: run.cpp $(HL)/hostlink.a
+	g++ -O2 -I $(INC) -I $(HL) -o run run.cpp $(HL)/hostlink.a
 
-sim: run.cpp $(HL)/sim/*.o
-	g++ -O2 -I $(INC) -I $(HL) -o sim run.cpp $(HL)/sim/*.o
+$(HL)/sim/hostlink.a :
+	make -C $(HL) sim/hostlink.a
+
+sim: run.cpp $(HL)/sim/hostlink.a
+	g++ -O2 -I $(INC) -I $(HL) -o sim run.cpp $(HL)/sim/hostlink.a
 
 .PHONY: clean
 clean:

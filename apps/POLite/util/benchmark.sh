@@ -10,15 +10,15 @@ BENCHMARKS_ROOT=$(pwd)/../
 RESULTS_ROOT=$(pwd)/results/
 
 # Benchmarks to use
-BENCHMARKS="pagerank-sync asp-sync"
+BENCHMARKS="pagerank-sync asp-sync izhikevich-sync"
 
 # Number of boxes to use
-XBOXES=1
-YBOXES=2
+XBOXES=2
+YBOXES=4
 
 # Vary number of boards used
-XBOARDS="3"
-YBOARDS="1 2 3 4"
+XBOARDS="6"
+YBOARDS="8"
 
 if [ "$1" = "" ]; then
   echo "Usage: benchmark.sh graph.txt"
@@ -34,30 +34,24 @@ for B in $BENCHMARKS; do
   # Create results dir, if it doesn't already exist
   mkdir -p $RESULTS_ROOT/$G
   # Clear results file
-  echo -n >> $RESULTS_ROOT/$G/$B.txt
   for Y in $YBOARDS; do
     for X in $XBOARDS; do
       pushd .
+      echo ======== Network $G ========
       # Run application
       cd $BENCHMARKS_ROOT/$B/build/
       rm -f stats.txt
-      R=$(POLITE_BOARDS_X=$X \
-          POLITE_BOARDS_Y=$Y \
-          HOSTLINK_BOXES_X=$XBOXES \
-          HOSTLINK_BOXES_Y=$YBOXES \
-          ./run $1)
+      POLITE_BOARDS_X=$X \
+        POLITE_BOARDS_Y=$Y \
+        HOSTLINK_BOXES_X=$XBOXES \
+        HOSTLINK_BOXES_Y=$YBOXES \
+          ./run $1 > $RESULTS_ROOT/$G/$B-out${X}x${Y}.txt
       popd
       # Compute stats
       cat $BENCHMARKS_ROOT/$B/build/stats.txt | \
         awk -v boardsX=$X -v boardsY=$Y -f sumstats.awk > \
         $RESULTS_ROOT/$G/$B-stats${X}x${Y}.txt
-      # Append time to results
-      TIME=$(cat $RESULTS_ROOT/$G/$B-stats${X}x${Y}.txt \
-               | grep "Time (s)" \
-               | cut -d' ' -f 4)
-      let N="$X*$Y"
-      echo "$N $TIME" >> $RESULTS_ROOT/$G/$B.txt
-      sleep 3
+      sleep 6
     done
   done
 done

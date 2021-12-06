@@ -17,7 +17,7 @@ RV_OBJCOPY  = riscv64-unknown-elf-objcopy
 RV_CFLAGS   = -mabi=ilp32 -march=$(RV_ARCH) -static -mcmodel=medany \
               -fvisibility=hidden -nostdlib -nostartfiles \
               -fsingle-precision-constant -fno-builtin-printf \
-              -ffp-contract=off -fno-builtin
+              -ffp-contract=off -fno-builtin -ffreestanding
 
 # Extend PATH
 export PATH := $(PATH):$(realpath $(BIN))

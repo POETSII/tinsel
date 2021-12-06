@@ -56,7 +56,6 @@ package DebugLink;
 //   detect a tinsel board (distingushing it, for example, from a host
 //   board which returns a 0 payload) and also to discover the board id.
 //
-//
 //   StdOut: tag (1 byte), thread id (1 byte),
 //           core id (1 byte), payload (1 byte)
 //   ------------------------------------------
@@ -67,6 +66,11 @@ package DebugLink;
 //   ---------------------------------------
 //
 //   Actual temperature in celsius is payload - 128.
+//
+//   Overheat: tag (1 byte)
+//   ----------------------
+//
+//   FPGA is overheating.
 
 // =============================================================================
 // Imports
@@ -92,6 +96,19 @@ DebugLinkCmd cmdStdIn    = 2;
 DebugLinkCmd cmdStdOut   = 2;
 DebugLinkCmd cmdTempIn   = 4;
 DebugLinkCmd cmdTempOut  = 4;
+DebugLinkCmd cmdOverheat = 5;
+
+// =============================================================================
+// Temperature parameters
+// =============================================================================
+
+// If the FPGA temperature rises above this threshold we send an
+// overheat message over debug link.  To convert this temperature to
+// Celsuis, subtract 128.
+`define TemperatureThreshold 213
+
+// Average of the temperature over multiple samples
+`define LogTemperatureSamples 10
 
 // =============================================================================
 // Types
@@ -161,6 +178,10 @@ module mkDebugLinkRouter#(Bit#(`LogCoresPerBoard) myId) (DebugLinkRouter);
     toCorePort.put(busInPort.value);
   endrule
 
+  // This fact used to be inferred, but is now needed for the
+  // open-source version of BSC
+  (* mutually_exclusive = "busToBus, coreToBus" *)
+
   // Route flit from bus to bus
   rule busToBus (routeBusToBus || routeBusToCoreAndBus);
     busInPortGet.send;
@@ -178,7 +199,7 @@ module mkDebugLinkRouter#(Bit#(`LogCoresPerBoard) myId) (DebugLinkRouter);
   rule consume (busInPortGet);
     busInPort.get;
   endrule
-  
+
   // Interface
   interface In  busIn    = busInPort.in;
   interface Out busOut   = busOutPort.out;
@@ -278,6 +299,35 @@ module mkDebugLink#(
     boardId <= id;
   endrule
 
+  // Monitor temperature
+  // -------------------
+
+  // Check temperature to avoid overheating?
+  Reg#(Bool) checkTemperature <- mkConfigReg(False);
+
+  // Should we send an emergency overheat message?
+  Reg#(Bool) overheatDetected <- mkConfigReg(False);
+
+  // Have we sent an emergency overheat message?
+  Reg#(Bool) overheatMsgSent <- mkConfigReg(False);
+
+  // Sum of temperature over many samples
+  Reg#(Bit#(TAdd#(`LogTemperatureSamples, 8))) tempSum <- mkConfigReg(0);
+
+  // Number of samples taken
+  Reg#(Bit#(`LogTemperatureSamples)) tempSamples <- mkConfigReg(0);
+
+  rule monitorTemperature (checkTemperature && !overheatDetected);
+    tempSamples <= tempSamples + 1;
+    if (allHigh(tempSamples)) begin
+      if ((tempSum >> `LogTemperatureSamples) > `TemperatureThreshold)
+        overheatDetected <= True;
+      else
+        tempSum <= zeroExtend(temperature);
+    end else
+      tempSum <= tempSum + zeroExtend(temperature);
+  endrule
+
   // Receive commands over UART
   // --------------------------
 
@@ -347,6 +397,8 @@ module mkDebugLink#(
           Option {valid: True, value: fromJtag.value[4] == 1};
         respondFlag <= True;
         respondCmd <= cmdQueryIn;
+        // Start checking temperature after first query command
+        checkTemperature <= True;
         recvState <= 0;
       end else begin
         recvDestCore <= fromJtag.value;
@@ -394,7 +446,10 @@ module mkDebugLink#(
   // Send StdOut command
   rule uartSendStdOut (toJtag.canPut && !respondFlag);
     if (sendState == 0) begin
-      if (fromBusPort.canGet) begin
+      if (overheatDetected && !overheatMsgSent) begin
+        overheatMsgSent <= True;
+        toJtag.put(zeroExtend(cmdOverheat));
+      end else if (fromBusPort.canGet) begin
         fromBusPort.get;
         if (! fromBusPort.value.isBroadcast) begin
           // Send StdOut

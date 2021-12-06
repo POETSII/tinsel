@@ -1,15 +1,12 @@
-# Tinsel 0.8.1
+# Tinsel 0.8.3
 
-Tinsel is a [RISC-V](https://riscv.org/)-based manythread
-message-passing architecture designed for FPGA clusters.  It is being
+Tinsel is a manythread [RISC-V](https://riscv.org/) architecture being
 developed as part of the [POETS
-Project](https://poets-project.org/about) (Partial Ordered Event
-Triggered Systems).  Further background can be found in our FPL 2019
-[paper](doc/fpl-2019-paper.pdf); and our ASAP 2020
-[paper](doc/asap-2020-paper.pdf) and
-[video](https://sms.cam.ac.uk/media/3258486).  If you're a POETS
-Partner, you can access a machine running Tinsel in the [POETS
-Cloud](https://github.com/POETSII/poets-cloud).  
+project](https://poets-project.org/about) (Partial Ordered Event
+Triggered Systems).  Further background can be found in our
+[publications](#j-publications).  If you're a POETS partner, you can
+access Tinsel machines in the [POETS
+cloud](https://github.com/POETSII/poets-cloud).
 
 ## Release Log
 
@@ -28,7 +25,7 @@ Released on 10 Sep 2018 and maintained in the
 * [v0.5](https://github.com/POETSII/tinsel/releases/tag/v0.5):
 Released on 8 Jan 2019 and maintained in the
 [tinsel-0.5.1 branch](https://github.com/POETSII/tinsel/tree/tinsel-0.5.1).
-(Hardware termination-detection.)
+(Termination detection.)
 * [v0.6](https://github.com/POETSII/tinsel/releases/tag/v0.6):
 Released on 11 Apr 2019 and maintained in the
 [tinsel-0.6.3 branch](https://github.com/POETSII/tinsel/tree/tinsel-0.6.3).
@@ -36,15 +33,15 @@ Released on 11 Apr 2019 and maintained in the
 * [v0.7](https://github.com/POETSII/tinsel/releases/tag/v0.7):
 Released on 2 Dec 2019 and maintained in the
 [tinsel-0.7.1 branch](https://github.com/POETSII/tinsel/tree/tinsel-0.7.1).
-(Local hardware multicast.)
+(Local multicasting.)
 * [v0.8](https://github.com/POETSII/tinsel/releases/tag/v0.8):
 Released on 1 Jul 2020 and maintained in the
 [master branch](https://github.com/POETSII/tinsel/).
-(Global hardware multicast.)
+(Distributed multicasting.)
 
 ## Contents
 
-* [1. Overview](#1-tinsel-overview)
+* [1. Overview](#1-overview)
 * [2. High-Level Structure](#2-high-level-structure)
 * [3. Tinsel Core](#3-tinsel-core)
 * [4. Tinsel Cache](#4-tinsel-cache)
@@ -64,12 +61,14 @@ Released on 1 Jul 2020 and maintained in the
 * [F. Tinsel API](#f-tinsel-api)
 * [G. HostLink API](#g-hostlink-api)
 * [H. Limitations on RV32IMF](#h-limitations-on-rv32imf)
+* [I. Testing](#i-testing)
+* [J. Publications](#j-publications)
 
 ## 1. Overview
 
 On the [POETS Project](https://poets-project.org/about), we are
 looking at ways to accelerate applications that are naturally
-expressed as a large number of small processes communicating by
+expressed as large numbers of small processes communicating by
 message-passing.  Our first attempt is based around a manythread
 RISC-V architecture called Tinsel, running on an FPGA cluster.  The
 main features are:
@@ -88,18 +87,18 @@ main features are:
     instructions for sending and receiving messages 
     between any two threads in the cluster.
 
-  * **Hardware termination-detection**.  A global termination event is
-    triggered when every thread indicates termination and no messages
-    are in-flight.  Termination can be interpreted as termination of a
-    time step, or termination of the application, supporting
-    both synchronous and asynchronous event-driven systems.
+  * **Termination detection**.  A global termination event is
+    triggered in hardware when every thread indicates termination and
+    no messages are in-flight.  Termination can be interpreted as
+    termination of a time step, or termination of the application,
+    supporting both synchronous and asynchronous event-driven systems.
 
-  * **Local hardware multicast**.  Threads can send a message to
-    multiple collocated destination threads simultaneously, greatly reducing
+  * **Local multicasting**.  Threads can send a message to
+    multiple colocated destination threads simultaneously, reducing
     the number of inter-thread messages in applications exhibiting good
     locality of communication.
 
-  * **Global hardware multicast**.  Programmable routers
+  * **Distributed multicasting**.  Programmable routers
     automatically propagate messages to any number of destination
     threads distributed throughout the cluster, minimising inter-FPGA
     bandwidth usage for distributed fanouts.
@@ -132,7 +131,7 @@ actual numbers of component parts shown will vary.
 A Tinsel tile typically consists of four Tinsel cores sharing a
 mailbox, an FPU, and a data cache.
  
-<img align="center" src="doc/figures/tile.png">
+<img src="doc/figures/tile.png">
 
 There is also experimental support for [custom
 accelerators](doc/custom) in tiles.
@@ -140,14 +139,13 @@ accelerators](doc/custom) in tiles.
 #### Tinsel FPGA
 
 Each FPGA contains two *Tinsel Slices*, with each slice by default
-comprising eight tiles connected to one 4GB DDR3 DIMM and two 8MB
-QDRII+ SRAMs.  All tiles are connected together via a routers to form
-a 2D NoC.  The NoC is connected to the inter-FPGA links using a
-*per-board programmable router*.  Note that the per-board router also
-has connections to off-chip memory: this is where the programmable
-routing tables are stored.
+comprising eight tiles connected to a 2GB DDR3 DIMM and two 8MB QDRII+
+SRAMs.  All tiles are connected together via a routers to form a 2D
+NoC.  The NoC is connected to the inter-FPGA links using a *per-board
+programmable router*.  The per-board router also has connections to
+off-chip memory; this is where the routing tables are stored.
 
-<img align="center" src="doc/figures/fpga.png">
+<img src="doc/figures/fpga.png">
 
 #### FPGA Triplet
 
@@ -171,34 +169,34 @@ requirements, we have developed a per-FPGA *power module*:
 
 <img align="center" src="doc/figures/powerboard.jpg">
 
-It comprises an ARM-microcontroller-based Cypress PSoC 5, extended
-with a custom power and fan management shield.  We have also extended
-the PSoC with a custom FE1.1s-based USB hub, so that the two USB
+It's an ARM-microcontroller-based Cypress PSoC 5, extended with a
+custom power and fan management shield.  We have also extended the
+PSoC with a custom FE1.1s-based USB hub, so that the two USB
 connections to the ARM (debug and UART), and the one to the FPGA
 (JTAG), are all exposed by a single port on the power module, reducing
 cabling and improving air flow.
 
 #### POETS box
 
-A POETS box comprises a modern PC with a disk, a NIC, a PCIe FPGA
+A POETS box contains a modern PC with a disk, a 10G NIC, a PCIe FPGA
 bridge board connecting the PC to the worker FPGAs via SFP+, and two
-FPGA-triplets.
+FPGA-triplets (six worker FPGAs).
 
-<img align="center" src="doc/figures/box.png">
+<img src="doc/figures/box.png">
+
+The innards of a box are visible in this photo of two boxes:
+
+<img src="doc/figures/twobox.jpg">
 
 #### POETS cluster
 
-A multi-box POETS cluster is collection of POETS boxes, with FPGAs
-from different boxes connected via SFP+.  For example, here is a
-of photo of our first two-box cluster.
-
-<img align="center" src="doc/figures/twobox.jpg">
-
-The complete 8-box DE5-Net POETS cluster has the following 2D
+The POETS cluster is collection of ten POETS boxes in a 40U rack,
+with FPGAs from different boxes connected via SFP+.
+Eight of the boxes are connected together using the following 2D
 structure (it doesn't yet exploit the PCIe backplanes which permit a
 3D structure).
 
-<img align="center" src="doc/figures/box-mesh.png">
+<img src="doc/figures/box-mesh.png">
 
 There are also plans to develop a modern version of the cluster using
 Stratix 10 devices.
@@ -288,7 +286,7 @@ Single-precision floating-point operations are implemented by the
 *Tinsel FPU*, which may be shared by any number of cores, as defined
 by the `LogCoresPerFPU` parameter.  Note that, because the FPU is
 implemented using IP blocks provided by the FPGA vendor, there are
-some [limitations](h-missing-rv32imf-features) with respect to the
+some [limitations](#h-missing-rv32imf-features) with respect to the
 RISC-V spec.  Most FPU operations have a high latency on the
 [DE5-Net](http://de5-net.terasic.com) (up to 14 clock cycles) so
 multithreading is important for efficient implementation.
@@ -657,11 +655,11 @@ purposes, resulting in very little overhead on the wire.
 ## 7. Tinsel Router
 
 Tinsel provides a programmable router on each FPGA board to support
-*global* multicasting.  Programmable routers automatically propagate
-messages to any number of destination threads distributed throughout
-the cluster, minimising inter-FPGA bandwidth usage for distributed
-fanouts, and offloading work from the cores.  Further background can
-be found in [PIP 24](doc/PIP-0024-global-multicast.md).
+*distributed* multicasting.  Programmable routers automatically
+propagate messages to any number of destination threads distributed
+throughout the cluster, minimising inter-FPGA bandwidth usage for
+distributed fanouts, and offloading work from the cores.  Further
+background can be found in [PIP 24](doc/PIP-0024-global-multicast.md).
 
 To support programmable routers, the destination component of a
 message is generalised so that it can be (1) a thread id; or (2) a
@@ -1359,6 +1357,47 @@ to deal with highly non-uniform fanouts (i.e. where some vertices have
 tiny fanouts and others have huge fanouts; this could be alleviated by
 adding fanout as a vertex weight for METIS partitioning).
 
+**Simulation**. There is a simple and partial functional simulation of the
+POLite framework in [apps/util/POLiteSWSim](apps/util/POLiteSWSim). This
+implements most of the common parts of the POLite `PGraph` and `PDevice` class,
+along with just enough `HostLink` to give a run-time API. Assuming you
+are using the default POLite makefile then it will be available for free.
+So if you are currently doing:
+```
+$ make all
+$ (cd build && ./run ARGS)
+```
+to run your application, you should be able to simulate using:
+```
+$ make sim
+$ (cd build && ./sim ARGS)
+```
+All the makefile does is include the `POLiteSW/include` directory
+ahead of the main `include/POLite` directory, so it overrides the
+"real" header files.
+
+Note that the simulator is intended to uncover errors, and so it models
+the fairly worst-case behaviour in terms of message delivery. In particular, it
+inserts exponentially distributed random delays between sends and corresponding
+receives, and so causes many messages to be delivered in a different order to
+the sending order.
+
+There are two environment parameters that will affect the run-time
+behaviour of the simulation:
+
+- `POLITE_SW_SIM_VERBOSITY` : Controls logging of simulation info to stderr. At 0 only
+   fatal errors are printed. For values larger than 0 increasing amounts of info are printed.
+   Default is 1, which prints progress information during simulation. Printing frequency
+   will slow down as the simulation takes longer.
+
+- `POLITE_SW_SIM_DELIVER_OUT_OF_ORDER` : Controls whether messages can be delayed and
+   delivered out of order in the simulation. By default this is "true", but if you set
+   it to "0" or "false" then you might find simulation a bit faster. Note that current
+   (0.8.3) hardware behaviour is somewhat in-between - messages can be delayed arbitrarily,
+   but for any (dst,src) pair the messages will be delivered in order. However, this was
+   not true in previous hardware, and may not be true in future hardware. Actually,
+   it is not true on current hardware for mixed unicast and multicast transmissions.
+
 ## A. DE5-Net Synthesis Report
 
 The default Tinsel configuration on a single DE5-Net board contains:
@@ -1377,7 +1416,7 @@ The default Tinsel configuration on a single DE5-Net board contains:
   * one 8x8 programmable router
   * a JTAG UART
 
-The clock frequency is 215MHz and the resource utilisation is 84% of
+The clock frequency is 210MHz and the resource utilisation is 84% of
 the DE5-Net.
 
 ## B. Tinsel Parameters
@@ -1407,7 +1446,7 @@ the DE5-Net.
   `MeshXLenWithinBox`      |       3 | Boards in X dimension within box
   `MeshYLenWithinBox`      |       2 | Boards in Y dimension within box
   `EnablePerfCount`        |    True | Enable performance counters
-  `ClockFreq`              |     215 | Clock frequency in MHz
+  `ClockFreq`              |     210 | Clock frequency in MHz
 
 A full list of parameters can be found in [config.py](config.py).
 
@@ -1504,6 +1543,80 @@ LSB.
 
 A globally unique mailbox id is exactly the same, except it is missing
 the mailbox-local thread id component.
+
+So a thread address is an integer in the half-open range
+[0 .. 2^(`MeshYBits` + `MeshXBits` + `MailboxMeshYBits` + `MailboxMeshXBits` + `LogThreadsPerMailbox`)),
+with the following structure:
+```
+            +-- LSB (bit 0)
+|Y|X|y|x|c|t|
+ | | | | | +--- Thread index within core
+ | | | | +----- Core index within mailbox
+ | | +-+------- (x,y) coord of mailbox in FPGA
+ +-+----------- (X,Y) coord of FPGA in system
+```
+
+Mapping to and from addresses can be performed in software using the [Hostlink API](#8-tinsel-hostlink)
+functions `HostLink::toAddr` and `HostLink::fromAddr`. Mapping to and from an address in Tinsel
+code can be performed using `tinselToAddr` and `tinselFromAddr` in [tinsel-interface.h](include/tinsel-interface.h).
+These functions automatically take into account the configured parameters, and should be preferred
+to direct manipulation of addresses in most circumstances.
+
+Note that there are a few additional most-significant bits that are
+used to address hardware components that are not threads, e.g. custom
+accelerators, bridge boards, and programmable routers.  Details of
+these can be found in the `MailboxNetAddr`
+[structure](rtl/Globals.bsv).
+
+### Example structure for Tinsel 0.8
+
+You must always rely on the configured parameters for the system you are using, but as an
+example for the Tinsel 0.8 release, these parameters are:
+
+- `MeshYBits` = 3
+- `MeshXBits` = 3
+- `MailboxMeshYBits` = 2
+- `MailboxMeshXBits` = 2
+- `LogThreadsPerMailbox` = `LogCoresPerMailbox` + `LogThreadsPerCore` = 2+4 = 6
+
+_So with these specific parameters_, this leads to a 16 bit thread address in Tinsel 0.8:
+```
+|YYY|XXX|yy|xx|cc|tttt|
+ |   |   |  |  |   +--- 4 bit Thread index within core
+ |   |   |  |  +------- 2 bit Core index within mailbox
+ |   |   +--+---------- 4 bit (x,y) coord of mailbox in FPGA
+ +---+----------------- 6 bit (X,Y) coord of FPGA in system
+```
+
+### Validity of addresses
+
+All components except for the FPGA coordinates are full populated,
+i.e. every possible `|yy|xx|cc|tttt|` bit pattern represents a valid
+thread within each FPGA.
+
+However, the `|YYY|XXX|` FPGA coordinate space may not be completely populated,
+as it is determined by compile-time and run-time parameters:
+
+1. (`BoxMeshXLen`,`BoxMeshYLen`) : how many physical boxes exist in the system at compile-time, given in the local `config.h`; and
+2. (`numBoxesX`,`numBoxesY`) : how many boxes have been requested at run-time when initialising hostlink, where
+   `numBoxesX` <= `BoxMeshXLen` and `numBoxesY` <= `boxMeshYLen`.
+
+Given the run-time values `numBoxesX` and `numBoxesY`, we have the
+following ranges for `XXX` and `YYY`:
+
+- 0 <= `YYY` < `numBoxesX` * `MeshXLenWithinBox`
+- 0 <= `XXX` < `numBoxesY` * `MeshYLenWithinBox`
+
+So this means that:
+
+- If `numBoxesX` < 2^`MeshXBits` then not all `XXX` values will be valid, so there will be "gaps" in the thread addresses range that do not correspond to any valid FPGA or thread.
+  
+- If `numBoxesX` = 2^`MeshXBits` then the thread addresses forms a
+  single unbroken contiguous range, so every value in the range
+[0, `numBoxesY` * 2^(`MeshXBits` + `MailboxMeshYBits` +
+`MailboxMeshXBits` + `LogThreadsPerMailbox`)) is a valid address.
+  
+- If `numBoxesX` = 2^`MeshXBits` and `numBoxesY` = 2^`MeshYBits` then every bit pattern with length (`MeshYBits` + `MeshXBits` + `MailboxMeshYBits` + `MailboxMeshXBits` + `LogThreadsPerMailbox`) is a valid address.
 
 ## F. Tinsel API
 
@@ -1853,3 +1966,44 @@ inerhit a number of limitations:
   * Floating-point division may not be correctly rounded.
     See [Issue #54](https://github.com/POETSII/tinsel/issues/54)
     for more details.
+
+## I. Testing
+
+This repo contains (at least) the following automated self-test
+facilities:
+
+- [Instruction tests](tests/) - These test the basic instruction
+    execution capabiities of the tinsel hardware. To run, do:
+    ```
+    $ make -C tests
+    $ (cd tests && ./run)
+    ```
+    These tests work on any machine with Tinsel hardware, and if a test
+    fails then something is probably quite seriously wrong with configuration
+    or the hardware has been mis-built.  These tests (and indeed any
+    application) can also be run using the cycle-accurate hardware
+    simulator produced by the Bluespec compiler (`make sim` in the
+    `rtl` directory).  However, this simulator is *very* slow (even
+    when `config.py` is modified to use fewer cores per board).
+
+- [POLiteSWSim tests](apps/POLite/util/POLiteSWSim) - These test
+    the POLiteSWSim framework (software simulation of POLite apps),
+    and can be run using:
+    ```
+    $ apps/POLite/util/test_polite_sw_sim.sh
+    ```
+    These tests should work on any machine, regardless of whether there
+    is Tinsel hardware installed.
+
+## J. Publications
+
+* *Tinsel: a manythread overlay for FPGA clusters*, FPL 2019
+  ([paper](https://www.repository.cam.ac.uk/handle/1810/294801))
+* *Termination detection for fine-grained message-passing
+  architectures*, ASAP 2020
+  ([paper](https://www.repository.cam.ac.uk/handle/1810/307470),
+  [video](https://sms.cam.ac.uk/media/3258486))
+* *General hardware multicasting for fine-grained message-passing
+  architectures*, PDP 2021
+  ([paper](https://www.repository.cam.ac.uk/handle/1810/317181),
+   [video](https://sms.cam.ac.uk/media/3426946))
