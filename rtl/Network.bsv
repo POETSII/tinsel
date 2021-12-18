@@ -50,7 +50,7 @@ import ProgRouter   :: *;
 //                                ^  |
 //                                |  |
 //    Bottom flit in    ----------+  +---------> Bottom flit out
-//                                            
+//
 //
 // Care is taken to ensure that messages are atomic, i.e.
 // the flits of a message are not interleaved with other flits.
@@ -158,7 +158,7 @@ module mkMeshRouter#(MailboxId m) (MeshRouter);
   function Route route(NetAddr a);
          if (a.addr.board != b)   return Down;
     else if (a.addr.isKey)        return Down;
-    else if (a.addr.host.valid)   return Down;
+    else if (a.addr.host.valid && a.addr.mbox.y == m.y && a.addr.mbox.x == m.x) return Up;
     else if (a.addr.mbox.y < m.y) return Down;
     else if (a.addr.mbox.y > m.y) return Up;
     else if (a.addr.mbox.x < m.x) return Left;
@@ -248,7 +248,7 @@ endinterface
 // Inter FPGA link with explicit enable line. (Can be useful to
 // disable links for sandboxing in multi-box environments.)
 module mkBoardLink#(Bool en, SocketId id) (BoardLink);
-  
+
   // 64-bit link
   `ifdef SIMULATE
   ReliableLink link <- mkReliableLink(id);
@@ -306,6 +306,7 @@ module mkNoC#(
          Vector#(4, Bool) linkEnable,
          Vector#(`MailboxMeshYLen,
            Vector#(`MailboxMeshXLen, MailboxNet)) mailboxes,
+         MailboxNet hostmbox,
          IdleDetector idle)
        (NoC);
 
@@ -346,7 +347,7 @@ module mkNoC#(
         connectDirect(mailboxes[y][x].flitOut, idle.mboxFlitIn);
         connectUsing(mkUGShiftQueue1(QueueOptFmax),
                        idle.netFlitOut, routers[y][x].fromMailbox);
- 
+
         // Connect router to mailbox via idle-detector
         connectUsing(mkUGShiftQueue1(QueueOptFmax),
                        routers[y][x].toMailbox, idle.netFlitIn);
@@ -380,6 +381,10 @@ module mkNoC#(
       connectUsing(mkUGShiftQueue1(QueueOptFmax),
                      routers[y+1][x].bottomOut, routers[y][x].topIn);
   end
+
+    Out#(Flit) hostlinkOut <- convertBOutToOut(hostmbox.flitOut);
+    connectUsing(mkUGShiftQueue1(QueueOptFmax), routers[`MailboxMeshYLen-1][`MailboxMeshXLen-1].topOut, hostmbox.flitIn);
+    connectUsing(mkUGShiftQueue1(QueueOptFmax), hostlinkOut, routers[`MailboxMeshYLen-1][`MailboxMeshXLen-1].topIn);
 
   // Programmable board router
   // -------------------------

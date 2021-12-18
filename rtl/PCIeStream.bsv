@@ -420,10 +420,22 @@ module mkPCIeStream (PCIeStream);
           Bit#(16) byteenable);
        if (! waitRequest) begin
         case (address[3:0])
-          0: addrRxA <= truncate(writedata);
-          1: addrRxB <= truncate(writedata);
-          2: addrTxA <= truncate(writedata);
-          3: addrTxB <= truncate(writedata);
+          0: begin
+              if (write) addrRxA <= truncate(writedata);
+              ctrlReadData <= zeroExtend(addrRxA);
+            end
+          1: begin
+              if (write) addrRxB <= truncate(writedata);
+              ctrlReadData <= zeroExtend(addrRxB);
+             end
+          2: begin
+              if (write) addrTxA <= truncate(writedata);
+              ctrlReadData <= zeroExtend(addrTxA);
+            end
+          3: begin
+               if (write) addrTxB <= truncate(writedata);
+               ctrlReadData <= zeroExtend(addrTxB);
+             end
           4: begin
                ctrlReadData <= zeroExtend(lenRxA);
                if (write) begin
@@ -452,18 +464,30 @@ module mkPCIeStream (PCIeStream);
                  newLenTx <= truncate(writedata);
                end
              end
-          8: if (write) enabled <= unpack(writedata[0]);
+          8: begin
+               if (write) enabled <= unpack(writedata[0]);
+               ctrlReadData <= zeroExtend({
+                  pack(enabled),
+                  pack(inBufferLen.value), // 4
+                  pack(outBufferLen.value) // 7
+                });
+              end
           10: begin
-                Bool inflight = pendingReads.value != 0 ||
-                                  pendingFlushes.canDeq ||
-                                    burstInProgress ||
-                                      hostReqs.notEmpty;
-                ctrlReadData <= zeroExtend(pack(inflight));
+                Bit#(4) inflight =
+                               {pack(pendingReads.value != 0),
+                                  pack(pendingFlushes.canDeq),
+                                    pack(burstInProgress),
+                                      pack(hostReqs.notEmpty)};
+                ctrlReadData <= zeroExtend(inflight);
               end
-          11: if (write) begin
-                resetReg <= True;
-                resetWire.send;
+          11: begin
+                if (write) begin
+                  resetReg <= True;
+                  resetWire.send;
+                end
+                ctrlReadData <= 0;
               end
+          12: ctrlReadData <= pack(64'hcafecafe);
         endcase
         ctrlReadDataValid <= read;
        end

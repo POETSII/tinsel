@@ -70,7 +70,7 @@
         <ipxact:parameter parameterId="synchronousEdges" type="string">
           <ipxact:name>synchronousEdges</ipxact:name>
           <ipxact:displayName>Synchronous edges</ipxact:displayName>
-          <ipxact:value>DEASSERT</ipxact:value>
+          <ipxact:value>BOTH</ipxact:value>
         </ipxact:parameter>
       </ipxact:parameters>
     </ipxact:busInterface>
@@ -112,7 +112,7 @@
         <ipxact:parameter parameterId="synchronousEdges" type="string">
           <ipxact:name>synchronousEdges</ipxact:name>
           <ipxact:displayName>Synchronous edges</ipxact:displayName>
-          <ipxact:value>DEASSERT</ipxact:value>
+          <ipxact:value>BOTH</ipxact:value>
         </ipxact:parameter>
       </ipxact:parameters>
     </ipxact:busInterface>
@@ -209,7 +209,7 @@
         <ipxact:parameter parameterId="SYNC_RESET" type="int">
           <ipxact:name>SYNC_RESET</ipxact:name>
           <ipxact:displayName>Use synchronous resets</ipxact:displayName>
-          <ipxact:value>0</ipxact:value>
+          <ipxact:value>1</ipxact:value>
         </ipxact:parameter>
         <ipxact:parameter parameterId="AUTO_CLK_CLOCK_RATE" type="longint">
           <ipxact:name>AUTO_CLK_CLOCK_RATE</ipxact:name>
@@ -327,7 +327,7 @@
                     &lt;/entry&gt;
                     &lt;entry&gt;
                         &lt;key&gt;synchronousEdges&lt;/key&gt;
-                        &lt;value&gt;DEASSERT&lt;/value&gt;
+                        &lt;value&gt;BOTH&lt;/value&gt;
                     &lt;/entry&gt;
                 &lt;/parameterValueMap&gt;
             &lt;/parameters&gt;
@@ -365,7 +365,7 @@
                     &lt;/entry&gt;
                     &lt;entry&gt;
                         &lt;key&gt;synchronousEdges&lt;/key&gt;
-                        &lt;value&gt;DEASSERT&lt;/value&gt;
+                        &lt;value&gt;BOTH&lt;/value&gt;
                     &lt;/entry&gt;
                 &lt;/parameterValueMap&gt;
             &lt;/parameters&gt;

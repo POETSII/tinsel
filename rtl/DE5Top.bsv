@@ -23,7 +23,8 @@ import NarrowSRAM   :: *;
 import OffChipRAM   :: *;
 import IdleDetector :: *;
 import Connections  :: *;
-
+import PCIeStream   :: *;
+import HostLink     :: *;
 // ============================================================================
 // Interface
 // ============================================================================
@@ -48,6 +49,16 @@ interface DE5Top;
   method Action setBoardId(Bit#(4) id);
   (* always_ready, always_enabled *)
   method Action setTemperature(Bit#(8) temp);
+
+  // Interface to the PCIe BAR
+  interface PCIeBAR controlBAR;
+  // Interface to host PCIe bus
+  // (Use for DMA to/from host memory)
+  interface PCIeHostBus pcieHostBus;
+  // Reset request
+  (* always_enabled, always_ready *)
+  method Bool resetReq;
+
 endinterface
 
 `endif
@@ -137,6 +148,9 @@ module de5Top (DE5Top);
     mkDebugLink(localBoardId, temperature,
       map(getDebugLinkClient, vecOfCores));
 
+  // Create PCIeStream instance
+  PCIeStream pcie <- mkPCIeStream;
+
   // Create idle-detector
   IdleDetector idle <- mkIdleDetector;
 
@@ -167,12 +181,17 @@ module de5Top (DE5Top);
       connectCoresToMailbox(map(mailboxClient, cs), mailboxes[y][x]);
     end
 
-  // Create network-on-chip
+  HostLinkPCIeAdaptorIfc hostlink <- mkHostLink();
+  connectUsing(mkUGShiftQueue1(QueueOptFmax), hostlink.streamToHost, pcie.streamIn);
+  connectDirect(pcie.streamOut, hostlink.streamFromHost);
+
   function MailboxNet mailboxNet(Mailbox mbox) = mbox.net;
+  // Create network-on-chip
   NoC noc <- mkNoC(
     debugLink.getBoardId(),
     debugLink.linkEnable,
     map(map(mailboxNet), mailboxes),
+    hostlink.mbox,
     idle);
 
   // Connect cores and ProgRouter fetchers to idle-detector
@@ -231,6 +250,10 @@ module de5Top (DE5Top);
   method Action setTemperature(Bit#(8) temp);
     temperature <= temp;
   endmethod
+
+  interface controlBAR  = pcie.external.controlBAR;
+  interface pcieHostBus  = pcie.external.hostBus;
+  method Bool resetReq = !pcie.external.resetReq;
   `endif
 endmodule
 

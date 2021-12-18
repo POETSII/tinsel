@@ -18,6 +18,7 @@ create_clock -period "266.666666 MHz" [get_ports DDR4A_REFCLK_p]
 create_clock -period "166.666666 MHz" [get_ports DDR4B_REFCLK_p]
 create_clock -period "166.666666 MHz" [get_ports DDR4C_REFCLK_p]
 create_clock -period "166.666666 MHz" [get_ports DDR4D_REFCLK_p]
+create_clock -period "100.000000 MHz" [get_ports PCIE_REFCLK_p]
 
 #**************************************************************
 # Create Generated Clock
@@ -96,6 +97,3 @@ set_false_path -from [get_ports BUTTON*] -to *
 #**************************************************************
 # Set Load
 #**************************************************************
-
-
-

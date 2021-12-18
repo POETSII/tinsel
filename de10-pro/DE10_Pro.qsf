@@ -1713,6 +1713,9 @@ set_global_assignment -name ENABLE_ED_CRC_CHECK ON
 set_global_assignment -name MINIMUM_SEU_INTERVAL 0
 set_global_assignment -name ACTIVE_SERIAL_CLOCK AS_FREQ_100MHZ
 set_global_assignment -name ERROR_CHECK_FREQUENCY_DIVISOR 1
+set_global_assignment -name SEED 1
+set_global_assignment -name SEARCH_PATH ../rtl/
+set_global_assignment -name SIGNALTAP_FILE stp1.stp
 set_global_assignment -name IP_FILE reset_release.ip
 set_global_assignment -name MIF_FILE boot.mif
 set_global_assignment -name QSYS_FILE DE10_Pro_QSYS.qsys
@@ -1729,8 +1732,6 @@ set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/DE10_Pro_QSYS_emif_s10_ddr4
 set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/DE10_Pro_QSYS_clock_in.ip
 set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/DE10_Pro_QSYS_jtag_uart_0.ip
 set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/DE10_Pro_QSYS_mm_clockcross_DDR4.ip
-set_global_assignment -name SEED 1
-set_global_assignment -name SEARCH_PATH ../rtl/
 set_global_assignment -name VERILOG_FILE ../rtl/AlteraMult.v
 set_global_assignment -name VERILOG_FILE ../rtl/mkMailbox.v
 set_global_assignment -name VERILOG_FILE ../rtl/mkDebugLinkRouter.v
@@ -1749,3 +1750,12 @@ set_global_assignment -name QIP_FILE megafuns/fp/AlteraFPFromInt.qip
 set_global_assignment -name QIP_FILE megafuns/fp/AlteraFPToInt.qip
 set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/DE10_Pro_QSYS_Tinsel_0.ip
 set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/mm_clockcross_DDR4_0.ip
+set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/DE10_Pro_QSYS_reset_controller_0.ip
+set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/DE10_Pro_QSYS_pcie_s10_hip_avmm_bridge_0.ip
+set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/DE10_Pro_QSYS_mm_bridge_pcie.ip
+set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/DE10_Pro_QSYS_mm_bridge_pcie_bar0.ip
+set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/DE10_Pro_QSYS_mm_bridge_ddrA.ip
+set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/DE10_Pro_QSYS_mm_bridge_ddrB_0.ip
+set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/DE10_Pro_QSYS_onchip_memory2_0.ip
+set_global_assignment -name ENABLE_SIGNALTAP ON
+set_global_assignment -name USE_SIGNALTAP_FILE stp1.stp
