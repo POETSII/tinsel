@@ -21,6 +21,10 @@ int main()
   // Use one flit per message
   tinselSetLen(0);
 
+  while (tinselUartTryPut('h') == 0);
+  while (tinselUartTryPut('i') == 0);
+
+
   if (threadId == 0) {
     // Get mailbox message slot for sending
     volatile uint32_t* msgOut = tinselSendSlot();

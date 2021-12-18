@@ -25,7 +25,7 @@ sim/hostlink.a : sim/DebugLink.o sim/HostLink.o sim/MemFileReader.o sim/SocketUt
 	ar rc $@ $^
 	ranlib $@
 
-pciestreamd: pciestreamd.cpp 
+pciestreamd: pciestreamd.cpp
 	g++ -Wall -I $(HL) -O2 pciestreamd.cpp -o pciestreamd
 
 boardctrld: boardctrld.cpp PowerLink.o JtagAtlantic.h \
@@ -75,3 +75,6 @@ $(INC)/config.h: $(TINSEL_ROOT)/config.py
 clean:
 	rm -f *.o pciestreamd udsock boardctrld fancheck jtag/*.o hostlink.a
 	rm -rf sim
+
+echo: echo.cpp
+	g++ $(CPPFLAGS) -std=c++11 -g -Wall -I $(HL) -O2 echo.cpp -ljtag_atlantic -ljtag_client -L $(QUARTUS_ROOTDIR)/linux64/ -Wl,-rpath,$(QUARTUS_ROOTDIR)/linux64 -o echo
