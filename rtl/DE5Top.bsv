@@ -25,6 +25,8 @@ import IdleDetector :: *;
 import Connections  :: *;
 import PCIeStream   :: *;
 import HostLink     :: *;
+import Clocks       :: *;
+
 // ============================================================================
 // Interface
 // ============================================================================
@@ -67,7 +69,36 @@ endinterface
 // Implementation
 // ============================================================================
 
+// mkDE10Top wrapper ensures the entire design is reset correctly when requested by the host
 module de5Top (DE5Top);
+
+  Clock defaultClock <- exposeCurrentClock();
+  Reset externalReset <- exposeCurrentReset();
+  MakeResetIfc hostReset <- mkReset(1, False, defaultClock);
+  Reset combinedReset <- mkResetEither(externalReset, hostReset.new_rst);
+
+  DE5Top top <- de5Top_inner(reset_by combinedReset);
+
+
+  `ifndef SIMULATE
+  (* fire_when_enabled, no_implicit_conditions *)
+  rule pcieReset;
+    if (top.resetReq) hostReset.assertReset();
+  endrule
+
+  interface dramIfcs = top.dramIfcs;
+  interface jtagIfc  = top.jtagIfc;
+  interface controlBAR  = top.controlBAR;
+  interface pcieHostBus  = top.pcieHostBus;
+  method Bool resetReq = !top.resetReq;
+  method Action setBoardId(Bit#(4) id) = top.setBoardId(id);
+  method Action setTemperature(Bit#(8) temp) = top.setTemperature(temp);
+  `endif
+
+endmodule
+
+
+module de5Top_inner (DE5Top);
   // Board Id
   `ifdef SIMULATE
   Bit#(4) localBoardId = truncate(getBoardId());
@@ -253,7 +284,7 @@ module de5Top (DE5Top);
 
   interface controlBAR  = pcie.external.controlBAR;
   interface pcieHostBus  = pcie.external.hostBus;
-  method Bool resetReq = !pcie.external.resetReq;
+  method Bool resetReq = pcie.external.resetReq;
   `endif
 endmodule
 
