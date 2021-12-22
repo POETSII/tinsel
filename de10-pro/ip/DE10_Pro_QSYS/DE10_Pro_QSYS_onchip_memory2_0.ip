@@ -419,7 +419,7 @@
           <ipxact:vectors>
             <ipxact:vector>
               <ipxact:left>0</ipxact:left>
-              <ipxact:right>9</ipxact:right>
+              <ipxact:right>6</ipxact:right>
             </ipxact:vector>
           </ipxact:vectors>
           <ipxact:wireTypeDefs>
@@ -476,7 +476,7 @@
           <ipxact:vectors>
             <ipxact:vector>
               <ipxact:left>0</ipxact:left>
-              <ipxact:right>31</ipxact:right>
+              <ipxact:right>255</ipxact:right>
             </ipxact:vector>
           </ipxact:vectors>
           <ipxact:wireTypeDefs>
@@ -494,7 +494,7 @@
           <ipxact:vectors>
             <ipxact:vector>
               <ipxact:left>0</ipxact:left>
-              <ipxact:right>31</ipxact:right>
+              <ipxact:right>255</ipxact:right>
             </ipxact:vector>
           </ipxact:vectors>
           <ipxact:wireTypeDefs>
@@ -512,7 +512,7 @@
           <ipxact:vectors>
             <ipxact:vector>
               <ipxact:left>0</ipxact:left>
-              <ipxact:right>3</ipxact:right>
+              <ipxact:right>31</ipxact:right>
             </ipxact:vector>
           </ipxact:vectors>
           <ipxact:wireTypeDefs>
@@ -573,7 +573,7 @@
         <ipxact:parameter parameterId="dataWidth" type="int">
           <ipxact:name>dataWidth</ipxact:name>
           <ipxact:displayName>Slave S1 Data width</ipxact:displayName>
-          <ipxact:value>32</ipxact:value>
+          <ipxact:value>256</ipxact:value>
         </ipxact:parameter>
         <ipxact:parameter parameterId="dataWidth2" type="int">
           <ipxact:name>dataWidth2</ipxact:name>
@@ -703,22 +703,22 @@
         <ipxact:parameter parameterId="derived_set_addr_width" type="int">
           <ipxact:name>derived_set_addr_width</ipxact:name>
           <ipxact:displayName>Slave 1 address width</ipxact:displayName>
-          <ipxact:value>10</ipxact:value>
+          <ipxact:value>7</ipxact:value>
         </ipxact:parameter>
         <ipxact:parameter parameterId="derived_set_addr_width2" type="int">
           <ipxact:name>derived_set_addr_width2</ipxact:name>
           <ipxact:displayName>Slave 2 address width</ipxact:displayName>
-          <ipxact:value>10</ipxact:value>
+          <ipxact:value>7</ipxact:value>
         </ipxact:parameter>
         <ipxact:parameter parameterId="derived_set_data_width" type="int">
           <ipxact:name>derived_set_data_width</ipxact:name>
           <ipxact:displayName>Slave 1 data width</ipxact:displayName>
-          <ipxact:value>32</ipxact:value>
+          <ipxact:value>256</ipxact:value>
         </ipxact:parameter>
         <ipxact:parameter parameterId="derived_set_data_width2" type="int">
           <ipxact:name>derived_set_data_width2</ipxact:name>
           <ipxact:displayName>Slave 2 data width</ipxact:displayName>
-          <ipxact:value>32</ipxact:value>
+          <ipxact:value>256</ipxact:value>
         </ipxact:parameter>
         <ipxact:parameter parameterId="derived_gui_ram_block_type" type="string">
           <ipxact:name>derived_gui_ram_block_type</ipxact:name>
@@ -821,7 +821,7 @@
         </ipxact:parameter>
         <ipxact:parameter parameterId="embeddedsw.memoryInfo.MEM_INIT_DATA_WIDTH" type="string">
           <ipxact:name>embeddedsw.memoryInfo.MEM_INIT_DATA_WIDTH</ipxact:name>
-          <ipxact:value>32</ipxact:value>
+          <ipxact:value>256</ipxact:value>
         </ipxact:parameter>
         <ipxact:parameter parameterId="embeddedsw.memoryInfo.MEM_INIT_FILENAME" type="string">
           <ipxact:name>embeddedsw.memoryInfo.MEM_INIT_FILENAME</ipxact:name>
@@ -930,7 +930,7 @@
                     &lt;name&gt;address&lt;/name&gt;
                     &lt;role&gt;address&lt;/role&gt;
                     &lt;direction&gt;Input&lt;/direction&gt;
-                    &lt;width&gt;10&lt;/width&gt;
+                    &lt;width&gt;7&lt;/width&gt;
                     &lt;lowerBound&gt;0&lt;/lowerBound&gt;
                     &lt;vhdlType&gt;STD_LOGIC_VECTOR&lt;/vhdlType&gt;
                 &lt;/port&gt;
@@ -962,7 +962,7 @@
                     &lt;name&gt;readdata&lt;/name&gt;
                     &lt;role&gt;readdata&lt;/role&gt;
                     &lt;direction&gt;Output&lt;/direction&gt;
-                    &lt;width&gt;32&lt;/width&gt;
+                    &lt;width&gt;256&lt;/width&gt;
                     &lt;lowerBound&gt;0&lt;/lowerBound&gt;
                     &lt;vhdlType&gt;STD_LOGIC_VECTOR&lt;/vhdlType&gt;
                 &lt;/port&gt;
@@ -970,7 +970,7 @@
                     &lt;name&gt;writedata&lt;/name&gt;
                     &lt;role&gt;writedata&lt;/role&gt;
                     &lt;direction&gt;Input&lt;/direction&gt;
-                    &lt;width&gt;32&lt;/width&gt;
+                    &lt;width&gt;256&lt;/width&gt;
                     &lt;lowerBound&gt;0&lt;/lowerBound&gt;
                     &lt;vhdlType&gt;STD_LOGIC_VECTOR&lt;/vhdlType&gt;
                 &lt;/port&gt;
@@ -978,7 +978,7 @@
                     &lt;name&gt;byteenable&lt;/name&gt;
                     &lt;role&gt;byteenable&lt;/role&gt;
                     &lt;direction&gt;Input&lt;/direction&gt;
-                    &lt;width&gt;4&lt;/width&gt;
+                    &lt;width&gt;32&lt;/width&gt;
                     &lt;lowerBound&gt;0&lt;/lowerBound&gt;
                     &lt;vhdlType&gt;STD_LOGIC_VECTOR&lt;/vhdlType&gt;
                 &lt;/port&gt;
@@ -1225,7 +1225,7 @@
                 &lt;consumedSystemInfos&gt;
                     &lt;entry&gt;
                         &lt;key&gt;ADDRESS_MAP&lt;/key&gt;
-                        &lt;value&gt;&amp;lt;address-map&amp;gt;&amp;lt;slave name='s1' start='0x0' end='0x1000' datawidth='32' /&amp;gt;&amp;lt;/address-map&amp;gt;&lt;/value&gt;
+                        &lt;value&gt;&amp;lt;address-map&amp;gt;&amp;lt;slave name='s1' start='0x0' end='0x1000' datawidth='256' /&amp;gt;&amp;lt;/address-map&amp;gt;&lt;/value&gt;
                     &lt;/entry&gt;
                     &lt;entry&gt;
                         &lt;key&gt;ADDRESS_WIDTH&lt;/key&gt;
@@ -1233,7 +1233,7 @@
                     &lt;/entry&gt;
                     &lt;entry&gt;
                         &lt;key&gt;MAX_SLAVE_DATA_WIDTH&lt;/key&gt;
-                        &lt;value&gt;32&lt;/value&gt;
+                        &lt;value&gt;256&lt;/value&gt;
                     &lt;/entry&gt;
                 &lt;/consumedSystemInfos&gt;
             &lt;/value&gt;

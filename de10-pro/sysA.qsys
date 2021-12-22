@@ -6,7 +6,7 @@
    version="1.0"
    description=""
    tags=""
-   categories=""
+   categories="System"
    tool="QsysPro" />
  <parameter name="bonusData"><![CDATA[bonusData 
 {
@@ -75,18 +75,6 @@
  <parameter name="systemInfos"><![CDATA[<systemInfosDefinition>
     <connPtSystemInfos>
         <entry>
-            <key>DE10_Pro_QSYS_mm_bridge_ddrB_m0</key>
-            <value>
-                <connectionPointName>DE10_Pro_QSYS_mm_bridge_ddrB_m0</connectionPointName>
-                <suppliedSystemInfos>
-                    <entry>
-                        <key>ADDRESS_WIDTH</key>
-                    </entry>
-                </suppliedSystemInfos>
-                <consumedSystemInfos/>
-            </value>
-        </entry>
-        <entry>
             <key>DE10_Pro_QSYS_mm_bridge_ddrB_s0</key>
             <value>
                 <connectionPointName>DE10_Pro_QSYS_mm_bridge_ddrB_s0</connectionPointName>
@@ -95,39 +83,6 @@
                     <entry>
                         <key>ADDRESS_MAP</key>
                         <value>&lt;address-map&gt;&lt;slave name='emif_s10_ddr4_b.ctrl_amm_0' start='0x0' end='0x100000000' datawidth='512' /&gt;&lt;/address-map&gt;</value>
-                    </entry>
-                    <entry>
-                        <key>ADDRESS_WIDTH</key>
-                        <value>32</value>
-                    </entry>
-                    <entry>
-                        <key>MAX_SLAVE_DATA_WIDTH</key>
-                        <value>512</value>
-                    </entry>
-                </consumedSystemInfos>
-            </value>
-        </entry>
-        <entry>
-            <key>DE10_Pro_QSYS_mm_bridge_ddrclk_A_m0</key>
-            <value>
-                <connectionPointName>DE10_Pro_QSYS_mm_bridge_ddrclk_A_m0</connectionPointName>
-                <suppliedSystemInfos>
-                    <entry>
-                        <key>ADDRESS_WIDTH</key>
-                    </entry>
-                </suppliedSystemInfos>
-                <consumedSystemInfos/>
-            </value>
-        </entry>
-        <entry>
-            <key>DE10_Pro_QSYS_mm_bridge_ddrclk_A_s0</key>
-            <value>
-                <connectionPointName>DE10_Pro_QSYS_mm_bridge_ddrclk_A_s0</connectionPointName>
-                <suppliedSystemInfos/>
-                <consumedSystemInfos>
-                    <entry>
-                        <key>ADDRESS_MAP</key>
-                        <value>&lt;address-map&gt;&lt;slave name='parent/sysA_0.emif_s10_ddr4_b.ctrl_amm_0' start='0x0' end='0x100000000' datawidth='512' /&gt;&lt;/address-map&gt;</value>
                     </entry>
                     <entry>
                         <key>ADDRESS_WIDTH</key>
@@ -156,94 +111,6 @@
                     <entry>
                         <key>RESET_DOMAIN</key>
                         <value>7</value>
-                    </entry>
-                </suppliedSystemInfos>
-                <consumedSystemInfos/>
-            </value>
-        </entry>
-        <entry>
-            <key>emif_s10_ddr4_b_ctrl_amm_0</key>
-            <value>
-                <connectionPointName>emif_s10_ddr4_b_ctrl_amm_0</connectionPointName>
-                <suppliedSystemInfos/>
-                <consumedSystemInfos>
-                    <entry>
-                        <key>ADDRESS_MAP</key>
-                        <value>&lt;address-map&gt;&lt;slave name='emif_s10_ddr4_b.ctrl_amm_0' start='0x0' end='0x100000000' datawidth='512' /&gt;&lt;/address-map&gt;</value>
-                    </entry>
-                    <entry>
-                        <key>ADDRESS_WIDTH</key>
-                        <value>32</value>
-                    </entry>
-                    <entry>
-                        <key>MAX_SLAVE_DATA_WIDTH</key>
-                        <value>512</value>
-                    </entry>
-                </consumedSystemInfos>
-            </value>
-        </entry>
-        <entry>
-            <key>emif_s10_ddr4_b_emif_usr_clk</key>
-            <value>
-                <connectionPointName>emif_s10_ddr4_b_emif_usr_clk</connectionPointName>
-                <suppliedSystemInfos/>
-                <consumedSystemInfos>
-                    <entry>
-                        <key>CLOCK_RATE</key>
-                        <value>333333333</value>
-                    </entry>
-                </consumedSystemInfos>
-            </value>
-        </entry>
-        <entry>
-            <key>mm_clockcross_DDR4_m0</key>
-            <value>
-                <connectionPointName>mm_clockcross_DDR4_m0</connectionPointName>
-                <suppliedSystemInfos>
-                    <entry>
-                        <key>ADDRESS_WIDTH</key>
-                    </entry>
-                </suppliedSystemInfos>
-                <consumedSystemInfos/>
-            </value>
-        </entry>
-        <entry>
-            <key>mm_clockcross_DDR4_s0</key>
-            <value>
-                <connectionPointName>mm_clockcross_DDR4_s0</connectionPointName>
-                <suppliedSystemInfos/>
-                <consumedSystemInfos>
-                    <entry>
-                        <key>ADDRESS_MAP</key>
-                        <value>&lt;address-map&gt;&lt;slave name='parent/sysA_0.emif_s10_ddr4_b.ctrl_amm_0' start='0x0' end='0x100000000' datawidth='512' /&gt;&lt;/address-map&gt;</value>
-                    </entry>
-                    <entry>
-                        <key>ADDRESS_WIDTH</key>
-                        <value>32</value>
-                    </entry>
-                    <entry>
-                        <key>MAX_SLAVE_DATA_WIDTH</key>
-                        <value>512</value>
-                    </entry>
-                </consumedSystemInfos>
-            </value>
-        </entry>
-        <entry>
-            <key>reset_bridge_0_clk</key>
-            <value>
-                <connectionPointName>reset_bridge_0_clk</connectionPointName>
-                <suppliedSystemInfos>
-                    <entry>
-                        <key>CLOCK_DOMAIN</key>
-                        <value>-1</value>
-                    </entry>
-                    <entry>
-                        <key>CLOCK_RATE</key>
-                        <value>-1</value>
-                    </entry>
-                    <entry>
-                        <key>RESET_DOMAIN</key>
-                        <value>-1</value>
                     </entry>
                 </suppliedSystemInfos>
                 <consumedSystemInfos/>

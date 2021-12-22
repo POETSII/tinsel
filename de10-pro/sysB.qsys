@@ -6,7 +6,7 @@
    version="1.0"
    description=""
    tags=""
-   categories=""
+   categories="System"
    tool="QsysPro" />
  <parameter name="bonusData"><![CDATA[bonusData 
 {
@@ -75,18 +75,6 @@
  <parameter name="systemInfos"><![CDATA[<systemInfosDefinition>
     <connPtSystemInfos>
         <entry>
-            <key>DE10_Pro_QSYS_mm_bridge_ddrB_0_m0</key>
-            <value>
-                <connectionPointName>DE10_Pro_QSYS_mm_bridge_ddrB_0_m0</connectionPointName>
-                <suppliedSystemInfos>
-                    <entry>
-                        <key>ADDRESS_WIDTH</key>
-                    </entry>
-                </suppliedSystemInfos>
-                <consumedSystemInfos/>
-            </value>
-        </entry>
-        <entry>
             <key>DE10_Pro_QSYS_mm_bridge_ddrB_0_s0</key>
             <value>
                 <connectionPointName>DE10_Pro_QSYS_mm_bridge_ddrB_0_s0</connectionPointName>
@@ -98,7 +86,7 @@
                     </entry>
                     <entry>
                         <key>ADDRESS_WIDTH</key>
-                        <value>10</value>
+                        <value>32</value>
                     </entry>
                     <entry>
                         <key>MAX_SLAVE_DATA_WIDTH</key>
@@ -126,73 +114,6 @@
                     </entry>
                 </suppliedSystemInfos>
                 <consumedSystemInfos/>
-            </value>
-        </entry>
-        <entry>
-            <key>emif_s10_ddr4_c_ctrl_amm_0</key>
-            <value>
-                <connectionPointName>emif_s10_ddr4_c_ctrl_amm_0</connectionPointName>
-                <suppliedSystemInfos/>
-                <consumedSystemInfos>
-                    <entry>
-                        <key>ADDRESS_MAP</key>
-                        <value>&lt;address-map&gt;&lt;slave name='emif_s10_ddr4_c.ctrl_amm_0' start='0x0' end='0x100000000' datawidth='512' /&gt;&lt;/address-map&gt;</value>
-                    </entry>
-                    <entry>
-                        <key>ADDRESS_WIDTH</key>
-                        <value>32</value>
-                    </entry>
-                    <entry>
-                        <key>MAX_SLAVE_DATA_WIDTH</key>
-                        <value>512</value>
-                    </entry>
-                </consumedSystemInfos>
-            </value>
-        </entry>
-        <entry>
-            <key>emif_s10_ddr4_c_emif_usr_clk</key>
-            <value>
-                <connectionPointName>emif_s10_ddr4_c_emif_usr_clk</connectionPointName>
-                <suppliedSystemInfos/>
-                <consumedSystemInfos>
-                    <entry>
-                        <key>CLOCK_RATE</key>
-                        <value>333333333</value>
-                    </entry>
-                </consumedSystemInfos>
-            </value>
-        </entry>
-        <entry>
-            <key>mm_clockcross_DDR4_1_m0</key>
-            <value>
-                <connectionPointName>mm_clockcross_DDR4_1_m0</connectionPointName>
-                <suppliedSystemInfos>
-                    <entry>
-                        <key>ADDRESS_WIDTH</key>
-                    </entry>
-                </suppliedSystemInfos>
-                <consumedSystemInfos/>
-            </value>
-        </entry>
-        <entry>
-            <key>mm_clockcross_DDR4_1_s0</key>
-            <value>
-                <connectionPointName>mm_clockcross_DDR4_1_s0</connectionPointName>
-                <suppliedSystemInfos/>
-                <consumedSystemInfos>
-                    <entry>
-                        <key>ADDRESS_MAP</key>
-                        <value>&lt;address-map&gt;&lt;slave name='parent/sysB_0.emif_s10_ddr4_c.ctrl_amm_0' start='0x0' end='0x100000000' datawidth='512' /&gt;&lt;/address-map&gt;</value>
-                    </entry>
-                    <entry>
-                        <key>ADDRESS_WIDTH</key>
-                        <value>32</value>
-                    </entry>
-                    <entry>
-                        <key>MAX_SLAVE_DATA_WIDTH</key>
-                        <value>512</value>
-                    </entry>
-                </consumedSystemInfos>
             </value>
         </entry>
     </connPtSystemInfos>
@@ -372,7 +293,7 @@
                         <name>s0_address</name>
                         <role>address</role>
                         <direction>Input</direction>
-                        <width>8</width>
+                        <width>30</width>
                         <lowerBound>0</lowerBound>
                         <vhdlType>STD_LOGIC_VECTOR</vhdlType>
                     </port>
@@ -441,7 +362,7 @@
                         </entry>
                         <entry>
                             <key>addressSpan</key>
-                            <value>1024</value>
+                            <value>4294967296</value>
                         </entry>
                         <entry>
                             <key>addressUnits</key>
@@ -647,7 +568,7 @@
                         <name>m0_address</name>
                         <role>address</role>
                         <direction>Output</direction>
-                        <width>8</width>
+                        <width>30</width>
                         <lowerBound>0</lowerBound>
                         <vhdlType>STD_LOGIC_VECTOR</vhdlType>
                     </port>
@@ -855,7 +776,7 @@
                     <consumedSystemInfos>
                         <entry>
                             <key>ADDRESS_WIDTH</key>
-                            <value>10</value>
+                            <value>32</value>
                         </entry>
                     </consumedSystemInfos>
                 </value>
@@ -995,7 +916,7 @@
                     <name>s0_address</name>
                     <role>address</role>
                     <direction>Input</direction>
-                    <width>8</width>
+                    <width>30</width>
                     <lowerBound>0</lowerBound>
                     <vhdlType>STD_LOGIC_VECTOR</vhdlType>
                 </port>
@@ -1064,7 +985,7 @@
                     </entry>
                     <entry>
                         <key>addressSpan</key>
-                        <value>1024</value>
+                        <value>4294967296</value>
                     </entry>
                     <entry>
                         <key>addressUnits</key>
@@ -1270,7 +1191,7 @@
                     <name>m0_address</name>
                     <role>address</role>
                     <direction>Output</direction>
-                    <width>8</width>
+                    <width>30</width>
                     <lowerBound>0</lowerBound>
                     <vhdlType>STD_LOGIC_VECTOR</vhdlType>
                 </port>
@@ -4674,7 +4595,7 @@
                         <name>s0_address</name>
                         <role>address</role>
                         <direction>Input</direction>
-                        <width>5</width>
+                        <width>27</width>
                         <lowerBound>0</lowerBound>
                         <vhdlType>STD_LOGIC_VECTOR</vhdlType>
                     </port>
@@ -4743,7 +4664,7 @@
                         </entry>
                         <entry>
                             <key>addressSpan</key>
-                            <value>1024</value>
+                            <value>4294967296</value>
                         </entry>
                         <entry>
                             <key>addressUnits</key>
@@ -4949,7 +4870,7 @@
                         <name>m0_address</name>
                         <role>address</role>
                         <direction>Output</direction>
-                        <width>5</width>
+                        <width>27</width>
                         <lowerBound>0</lowerBound>
                         <vhdlType>STD_LOGIC_VECTOR</vhdlType>
                     </port>
@@ -5360,7 +5281,7 @@
                     <name>s0_address</name>
                     <role>address</role>
                     <direction>Input</direction>
-                    <width>5</width>
+                    <width>27</width>
                     <lowerBound>0</lowerBound>
                     <vhdlType>STD_LOGIC_VECTOR</vhdlType>
                 </port>
@@ -5429,7 +5350,7 @@
                     </entry>
                     <entry>
                         <key>addressSpan</key>
-                        <value>1024</value>
+                        <value>4294967296</value>
                     </entry>
                     <entry>
                         <key>addressUnits</key>
@@ -5635,7 +5556,7 @@
                     <name>m0_address</name>
                     <role>address</role>
                     <direction>Output</direction>
-                    <width>5</width>
+                    <width>27</width>
                     <lowerBound>0</lowerBound>
                     <vhdlType>STD_LOGIC_VECTOR</vhdlType>
                 </port>

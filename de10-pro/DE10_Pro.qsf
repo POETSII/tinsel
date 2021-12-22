@@ -1757,6 +1757,14 @@ set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/DE10_Pro_QSYS_mm_bridge_pci
 set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/DE10_Pro_QSYS_mm_bridge_ddrA.ip
 set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/DE10_Pro_QSYS_mm_bridge_ddrB_0.ip
 set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/DE10_Pro_QSYS_onchip_memory2_0.ip
-set_global_assignment -name ENABLE_SIGNALTAP OFF
+set_global_assignment -name ENABLE_SIGNALTAP ON
 set_global_assignment -name USE_SIGNALTAP_FILE stp1.stp
 set_global_assignment -name OPTIMIZATION_MODE "SUPERIOR PERFORMANCE"
+set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/DE10_Pro_QSYS_mm_bridge_ddrclk_A.ip
+set_global_assignment -name IP_FILE ip/sysA/sysA_reset_bridge_0.ip
+set_global_assignment -name IP_FILE ip/sysA/sysA_clock_bridge_0.ip
+set_global_assignment -name IP_FILE ip/sysB/sysB_clock_bridge_0.ip
+set_global_assignment -name IP_FILE ip/sysB/sysB_reset_bridge_0.ip
+set_global_assignment -name IP_FILE ip/sysB/sysB_mm_bridge_0.ip
+set_global_assignment -name QSYS_FILE sysA.qsys
+set_global_assignment -name QSYS_FILE sysB.qsys

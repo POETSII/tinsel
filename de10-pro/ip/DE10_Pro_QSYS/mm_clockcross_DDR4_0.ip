@@ -248,7 +248,7 @@
         <ipxact:parameter parameterId="addressSpan" type="string">
           <ipxact:name>addressSpan</ipxact:name>
           <ipxact:displayName>Address span</ipxact:displayName>
-          <ipxact:value>1024</ipxact:value>
+          <ipxact:value>4294967296</ipxact:value>
         </ipxact:parameter>
         <ipxact:parameter parameterId="addressUnits" type="string">
           <ipxact:name>addressUnits</ipxact:name>
@@ -887,7 +887,7 @@
           <ipxact:vectors>
             <ipxact:vector>
               <ipxact:left>0</ipxact:left>
-              <ipxact:right>4</ipxact:right>
+              <ipxact:right>26</ipxact:right>
             </ipxact:vector>
           </ipxact:vectors>
           <ipxact:wireTypeDefs>
@@ -1042,7 +1042,7 @@
           <ipxact:vectors>
             <ipxact:vector>
               <ipxact:left>0</ipxact:left>
-              <ipxact:right>4</ipxact:right>
+              <ipxact:right>26</ipxact:right>
             </ipxact:vector>
           </ipxact:vectors>
           <ipxact:wireTypeDefs>
@@ -1139,7 +1139,7 @@
         <ipxact:parameter parameterId="SYSINFO_ADDR_WIDTH" type="int">
           <ipxact:name>SYSINFO_ADDR_WIDTH</ipxact:name>
           <ipxact:displayName>SYSINFO_ADDR_WIDTH</ipxact:displayName>
-          <ipxact:value>10</ipxact:value>
+          <ipxact:value>32</ipxact:value>
         </ipxact:parameter>
         <ipxact:parameter parameterId="USE_AUTO_ADDRESS_WIDTH" type="int">
           <ipxact:name>USE_AUTO_ADDRESS_WIDTH</ipxact:name>
@@ -1149,12 +1149,12 @@
         <ipxact:parameter parameterId="AUTO_ADDRESS_WIDTH" type="int">
           <ipxact:name>AUTO_ADDRESS_WIDTH</ipxact:name>
           <ipxact:displayName>Automatically-determined address width</ipxact:displayName>
-          <ipxact:value>5</ipxact:value>
+          <ipxact:value>27</ipxact:value>
         </ipxact:parameter>
         <ipxact:parameter parameterId="HDL_ADDR_WIDTH" type="int">
           <ipxact:name>HDL_ADDR_WIDTH</ipxact:name>
           <ipxact:displayName>HDL_ADDR_WIDTH</ipxact:displayName>
-          <ipxact:value>5</ipxact:value>
+          <ipxact:value>27</ipxact:value>
         </ipxact:parameter>
         <ipxact:parameter parameterId="ADDRESS_UNITS" type="string">
           <ipxact:name>ADDRESS_UNITS</ipxact:name>
@@ -1424,7 +1424,7 @@
                     &lt;name&gt;s0_address&lt;/name&gt;
                     &lt;role&gt;address&lt;/role&gt;
                     &lt;direction&gt;Input&lt;/direction&gt;
-                    &lt;width&gt;5&lt;/width&gt;
+                    &lt;width&gt;27&lt;/width&gt;
                     &lt;lowerBound&gt;0&lt;/lowerBound&gt;
                     &lt;vhdlType&gt;STD_LOGIC_VECTOR&lt;/vhdlType&gt;
                 &lt;/port&gt;
@@ -1493,7 +1493,7 @@
                     &lt;/entry&gt;
                     &lt;entry&gt;
                         &lt;key&gt;addressSpan&lt;/key&gt;
-                        &lt;value&gt;1024&lt;/value&gt;
+                        &lt;value&gt;4294967296&lt;/value&gt;
                     &lt;/entry&gt;
                     &lt;entry&gt;
                         &lt;key&gt;addressUnits&lt;/key&gt;
@@ -1699,7 +1699,7 @@
                     &lt;name&gt;m0_address&lt;/name&gt;
                     &lt;role&gt;address&lt;/role&gt;
                     &lt;direction&gt;Output&lt;/direction&gt;
-                    &lt;width&gt;5&lt;/width&gt;
+                    &lt;width&gt;27&lt;/width&gt;
                     &lt;lowerBound&gt;0&lt;/lowerBound&gt;
                     &lt;vhdlType&gt;STD_LOGIC_VECTOR&lt;/vhdlType&gt;
                 &lt;/port&gt;
@@ -1894,7 +1894,7 @@
                 &lt;suppliedSystemInfos&gt;
                     &lt;entry&gt;
                         &lt;key&gt;ADDRESS_WIDTH&lt;/key&gt;
-                        &lt;value&gt;10&lt;/value&gt;
+                        &lt;value&gt;32&lt;/value&gt;
                     &lt;/entry&gt;
                 &lt;/suppliedSystemInfos&gt;
                 &lt;consumedSystemInfos/&gt;
