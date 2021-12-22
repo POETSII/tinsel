@@ -1190,20 +1190,16 @@
             <assignments>
                 <assignmentValueMap>
                     <entry>
-                        <key>embeddedsw.configuration.isFlash</key>
-                        <value>0</value>
-                    </entry>
-                    <entry>
                         <key>embeddedsw.configuration.isMemoryDevice</key>
-                        <value>0</value>
+                        <value>false</value>
                     </entry>
                     <entry>
                         <key>embeddedsw.configuration.isNonVolatileStorage</key>
-                        <value>0</value>
+                        <value>false</value>
                     </entry>
                     <entry>
                         <key>embeddedsw.configuration.isPrintableDevice</key>
-                        <value>0</value>
+                        <value>false</value>
                     </entry>
                 </assignmentValueMap>
             </assignments>
@@ -1243,7 +1239,6 @@
                     </entry>
                     <entry>
                         <key>bridgedAddressOffset</key>
-                        <value>0</value>
                     </entry>
                     <entry>
                         <key>bridgesToMaster</key>
@@ -16979,7 +16974,7 @@
                         <name>rxm_bar0_byteenable_o</name>
                         <role>byteenable</role>
                         <direction>Output</direction>
-                        <width>4</width>
+                        <width>32</width>
                         <lowerBound>0</lowerBound>
                         <vhdlType>STD_LOGIC_VECTOR</vhdlType>
                     </port>
@@ -16987,7 +16982,7 @@
                         <name>rxm_bar0_readdata_i</name>
                         <role>readdata</role>
                         <direction>Input</direction>
-                        <width>32</width>
+                        <width>256</width>
                         <lowerBound>0</lowerBound>
                         <vhdlType>STD_LOGIC_VECTOR</vhdlType>
                     </port>
@@ -16995,7 +16990,7 @@
                         <name>rxm_bar0_writedata_o</name>
                         <role>writedata</role>
                         <direction>Output</direction>
-                        <width>32</width>
+                        <width>256</width>
                         <lowerBound>0</lowerBound>
                         <vhdlType>STD_LOGIC_VECTOR</vhdlType>
                     </port>
@@ -17014,6 +17009,14 @@
                         <width>1</width>
                         <lowerBound>0</lowerBound>
                         <vhdlType>STD_LOGIC</vhdlType>
+                    </port>
+                    <port>
+                        <name>rxm_bar0_burstcount_o</name>
+                        <role>burstcount</role>
+                        <direction>Output</direction>
+                        <width>5</width>
+                        <lowerBound>0</lowerBound>
+                        <vhdlType>STD_LOGIC_VECTOR</vhdlType>
                     </port>
                     <port>
                         <name>rxm_bar0_readdatavalid_i</name>
@@ -17192,7 +17195,7 @@
                         <name>rxm_bar2_byteenable_o</name>
                         <role>byteenable</role>
                         <direction>Output</direction>
-                        <width>4</width>
+                        <width>32</width>
                         <lowerBound>0</lowerBound>
                         <vhdlType>STD_LOGIC_VECTOR</vhdlType>
                     </port>
@@ -17200,7 +17203,7 @@
                         <name>rxm_bar2_readdata_i</name>
                         <role>readdata</role>
                         <direction>Input</direction>
-                        <width>32</width>
+                        <width>256</width>
                         <lowerBound>0</lowerBound>
                         <vhdlType>STD_LOGIC_VECTOR</vhdlType>
                     </port>
@@ -17208,7 +17211,7 @@
                         <name>rxm_bar2_writedata_o</name>
                         <role>writedata</role>
                         <direction>Output</direction>
-                        <width>32</width>
+                        <width>256</width>
                         <lowerBound>0</lowerBound>
                         <vhdlType>STD_LOGIC_VECTOR</vhdlType>
                     </port>
@@ -17227,6 +17230,14 @@
                         <width>1</width>
                         <lowerBound>0</lowerBound>
                         <vhdlType>STD_LOGIC</vhdlType>
+                    </port>
+                    <port>
+                        <name>rxm_bar2_burstcount_o</name>
+                        <role>burstcount</role>
+                        <direction>Output</direction>
+                        <width>5</width>
+                        <lowerBound>0</lowerBound>
+                        <vhdlType>STD_LOGIC_VECTOR</vhdlType>
                     </port>
                     <port>
                         <name>rxm_bar2_readdatavalid_i</name>
@@ -18956,7 +18967,7 @@
                     </entry>
                     <entry>
                         <key>associatedResetSinks</key>
-                        <value>none</value>
+                        <value></value>
                     </entry>
                     <entry>
                         <key>synchronousEdges</key>
@@ -19099,7 +19110,6 @@
                     </entry>
                     <entry>
                         <key>bridgedAddressOffset</key>
-                        <value>0</value>
                     </entry>
                     <entry>
                         <key>bridgesToMaster</key>
@@ -19248,7 +19258,7 @@
                     <name>rxm_bar0_byteenable_o</name>
                     <role>byteenable</role>
                     <direction>Output</direction>
-                    <width>4</width>
+                    <width>32</width>
                     <lowerBound>0</lowerBound>
                     <vhdlType>STD_LOGIC_VECTOR</vhdlType>
                 </port>
@@ -19256,7 +19266,7 @@
                     <name>rxm_bar0_readdata_i</name>
                     <role>readdata</role>
                     <direction>Input</direction>
-                    <width>32</width>
+                    <width>256</width>
                     <lowerBound>0</lowerBound>
                     <vhdlType>STD_LOGIC_VECTOR</vhdlType>
                 </port>
@@ -19264,7 +19274,7 @@
                     <name>rxm_bar0_writedata_o</name>
                     <role>writedata</role>
                     <direction>Output</direction>
-                    <width>32</width>
+                    <width>256</width>
                     <lowerBound>0</lowerBound>
                     <vhdlType>STD_LOGIC_VECTOR</vhdlType>
                 </port>
@@ -19283,6 +19293,14 @@
                     <width>1</width>
                     <lowerBound>0</lowerBound>
                     <vhdlType>STD_LOGIC</vhdlType>
+                </port>
+                <port>
+                    <name>rxm_bar0_burstcount_o</name>
+                    <role>burstcount</role>
+                    <direction>Output</direction>
+                    <width>5</width>
+                    <lowerBound>0</lowerBound>
+                    <vhdlType>STD_LOGIC_VECTOR</vhdlType>
                 </port>
                 <port>
                     <name>rxm_bar0_readdatavalid_i</name>
@@ -19461,7 +19479,7 @@
                     <name>rxm_bar2_byteenable_o</name>
                     <role>byteenable</role>
                     <direction>Output</direction>
-                    <width>4</width>
+                    <width>32</width>
                     <lowerBound>0</lowerBound>
                     <vhdlType>STD_LOGIC_VECTOR</vhdlType>
                 </port>
@@ -19469,7 +19487,7 @@
                     <name>rxm_bar2_readdata_i</name>
                     <role>readdata</role>
                     <direction>Input</direction>
-                    <width>32</width>
+                    <width>256</width>
                     <lowerBound>0</lowerBound>
                     <vhdlType>STD_LOGIC_VECTOR</vhdlType>
                 </port>
@@ -19477,7 +19495,7 @@
                     <name>rxm_bar2_writedata_o</name>
                     <role>writedata</role>
                     <direction>Output</direction>
-                    <width>32</width>
+                    <width>256</width>
                     <lowerBound>0</lowerBound>
                     <vhdlType>STD_LOGIC_VECTOR</vhdlType>
                 </port>
@@ -19496,6 +19514,14 @@
                     <width>1</width>
                     <lowerBound>0</lowerBound>
                     <vhdlType>STD_LOGIC</vhdlType>
+                </port>
+                <port>
+                    <name>rxm_bar2_burstcount_o</name>
+                    <role>burstcount</role>
+                    <direction>Output</direction>
+                    <width>5</width>
+                    <lowerBound>0</lowerBound>
+                    <vhdlType>STD_LOGIC_VECTOR</vhdlType>
                 </port>
                 <port>
                     <name>rxm_bar2_readdatavalid_i</name>
@@ -21740,16 +21766,6 @@
    kind="clock"
    version="19.2"
    start="pcie_s10_hip_avmm_bridge_0.coreclkout_hip"
-   end="DE10_Pro_QSYS_mm_bridge_pcie.clk" />
- <connection
-   kind="clock"
-   version="19.2"
-   start="pcie_s10_hip_avmm_bridge_0.coreclkout_hip"
-   end="DE10_Pro_QSYS_mm_bridge_pcie_bar0.clk" />
- <connection
-   kind="clock"
-   version="19.2"
-   start="pcie_s10_hip_avmm_bridge_0.coreclkout_hip"
    end="onchip_memory2_0.clk1" />
  <connection
    kind="clock"
@@ -21771,6 +21787,16 @@
    version="19.2"
    start="iopll_0.outclk0"
    end="jtag_uart_0.clk" />
+ <connection
+   kind="clock"
+   version="19.2"
+   start="iopll_0.outclk0"
+   end="DE10_Pro_QSYS_mm_bridge_pcie_bar0.clk" />
+ <connection
+   kind="clock"
+   version="19.2"
+   start="iopll_0.outclk0"
+   end="DE10_Pro_QSYS_mm_bridge_pcie.clk" />
  <connection
    kind="clock"
    version="19.2"
