@@ -184,7 +184,7 @@
         <ipxact:parameter parameterId="addressUnits" type="string">
           <ipxact:name>addressUnits</ipxact:name>
           <ipxact:displayName>Address units</ipxact:displayName>
-          <ipxact:value>WORDS</ipxact:value>
+          <ipxact:value>SYMBOLS</ipxact:value>
         </ipxact:parameter>
         <ipxact:parameter parameterId="alwaysBurstMaxBurst" type="bit">
           <ipxact:name>alwaysBurstMaxBurst</ipxact:name>
@@ -500,7 +500,7 @@
         <ipxact:parameter parameterId="addressUnits" type="string">
           <ipxact:name>addressUnits</ipxact:name>
           <ipxact:displayName>Address units</ipxact:displayName>
-          <ipxact:value>WORDS</ipxact:value>
+          <ipxact:value>SYMBOLS</ipxact:value>
         </ipxact:parameter>
         <ipxact:parameter parameterId="alwaysBurstMaxBurst" type="bit">
           <ipxact:name>alwaysBurstMaxBurst</ipxact:name>
@@ -725,7 +725,7 @@
           <ipxact:vectors>
             <ipxact:vector>
               <ipxact:left>0</ipxact:left>
-              <ipxact:right>63</ipxact:right>
+              <ipxact:right>255</ipxact:right>
             </ipxact:vector>
           </ipxact:vectors>
           <ipxact:wireTypeDefs>
@@ -769,7 +769,7 @@
           <ipxact:vectors>
             <ipxact:vector>
               <ipxact:left>0</ipxact:left>
-              <ipxact:right>63</ipxact:right>
+              <ipxact:right>255</ipxact:right>
             </ipxact:vector>
           </ipxact:vectors>
           <ipxact:wireTypeDefs>
@@ -787,7 +787,7 @@
           <ipxact:vectors>
             <ipxact:vector>
               <ipxact:left>0</ipxact:left>
-              <ipxact:right>4</ipxact:right>
+              <ipxact:right>7</ipxact:right>
             </ipxact:vector>
           </ipxact:vectors>
           <ipxact:wireTypeDefs>
@@ -831,7 +831,7 @@
           <ipxact:vectors>
             <ipxact:vector>
               <ipxact:left>0</ipxact:left>
-              <ipxact:right>7</ipxact:right>
+              <ipxact:right>31</ipxact:right>
             </ipxact:vector>
           </ipxact:vectors>
           <ipxact:wireTypeDefs>
@@ -875,7 +875,7 @@
           <ipxact:vectors>
             <ipxact:vector>
               <ipxact:left>0</ipxact:left>
-              <ipxact:right>63</ipxact:right>
+              <ipxact:right>255</ipxact:right>
             </ipxact:vector>
           </ipxact:vectors>
           <ipxact:wireTypeDefs>
@@ -919,7 +919,7 @@
           <ipxact:vectors>
             <ipxact:vector>
               <ipxact:left>0</ipxact:left>
-              <ipxact:right>63</ipxact:right>
+              <ipxact:right>255</ipxact:right>
             </ipxact:vector>
           </ipxact:vectors>
           <ipxact:wireTypeDefs>
@@ -937,7 +937,7 @@
           <ipxact:vectors>
             <ipxact:vector>
               <ipxact:left>0</ipxact:left>
-              <ipxact:right>4</ipxact:right>
+              <ipxact:right>7</ipxact:right>
             </ipxact:vector>
           </ipxact:vectors>
           <ipxact:wireTypeDefs>
@@ -981,7 +981,7 @@
           <ipxact:vectors>
             <ipxact:vector>
               <ipxact:left>0</ipxact:left>
-              <ipxact:right>7</ipxact:right>
+              <ipxact:right>31</ipxact:right>
             </ipxact:vector>
           </ipxact:vectors>
           <ipxact:wireTypeDefs>
@@ -1019,7 +1019,7 @@
         <ipxact:parameter parameterId="DATA_WIDTH" type="int">
           <ipxact:name>DATA_WIDTH</ipxact:name>
           <ipxact:displayName>Data width</ipxact:displayName>
-          <ipxact:value>64</ipxact:value>
+          <ipxact:value>256</ipxact:value>
         </ipxact:parameter>
         <ipxact:parameter parameterId="SYMBOL_WIDTH" type="int">
           <ipxact:name>SYMBOL_WIDTH</ipxact:name>
@@ -1044,17 +1044,17 @@
         <ipxact:parameter parameterId="AUTO_ADDRESS_WIDTH" type="int">
           <ipxact:name>AUTO_ADDRESS_WIDTH</ipxact:name>
           <ipxact:displayName>Automatically-determined address width</ipxact:displayName>
-          <ipxact:value>5</ipxact:value>
+          <ipxact:value>8</ipxact:value>
         </ipxact:parameter>
         <ipxact:parameter parameterId="HDL_ADDR_WIDTH" type="int">
           <ipxact:name>HDL_ADDR_WIDTH</ipxact:name>
           <ipxact:displayName>HDL_ADDR_WIDTH</ipxact:displayName>
-          <ipxact:value>5</ipxact:value>
+          <ipxact:value>8</ipxact:value>
         </ipxact:parameter>
         <ipxact:parameter parameterId="ADDRESS_UNITS" type="string">
           <ipxact:name>ADDRESS_UNITS</ipxact:name>
           <ipxact:displayName>Address units</ipxact:displayName>
-          <ipxact:value>WORDS</ipxact:value>
+          <ipxact:value>SYMBOLS</ipxact:value>
         </ipxact:parameter>
         <ipxact:parameter parameterId="BURSTCOUNT_WIDTH" type="int">
           <ipxact:name>BURSTCOUNT_WIDTH</ipxact:name>
@@ -1229,7 +1229,7 @@
                     &lt;name&gt;s0_readdata&lt;/name&gt;
                     &lt;role&gt;readdata&lt;/role&gt;
                     &lt;direction&gt;Output&lt;/direction&gt;
-                    &lt;width&gt;64&lt;/width&gt;
+                    &lt;width&gt;256&lt;/width&gt;
                     &lt;lowerBound&gt;0&lt;/lowerBound&gt;
                     &lt;vhdlType&gt;STD_LOGIC_VECTOR&lt;/vhdlType&gt;
                 &lt;/port&gt;
@@ -1253,7 +1253,7 @@
                     &lt;name&gt;s0_writedata&lt;/name&gt;
                     &lt;role&gt;writedata&lt;/role&gt;
                     &lt;direction&gt;Input&lt;/direction&gt;
-                    &lt;width&gt;64&lt;/width&gt;
+                    &lt;width&gt;256&lt;/width&gt;
                     &lt;lowerBound&gt;0&lt;/lowerBound&gt;
                     &lt;vhdlType&gt;STD_LOGIC_VECTOR&lt;/vhdlType&gt;
                 &lt;/port&gt;
@@ -1261,7 +1261,7 @@
                     &lt;name&gt;s0_address&lt;/name&gt;
                     &lt;role&gt;address&lt;/role&gt;
                     &lt;direction&gt;Input&lt;/direction&gt;
-                    &lt;width&gt;5&lt;/width&gt;
+                    &lt;width&gt;8&lt;/width&gt;
                     &lt;lowerBound&gt;0&lt;/lowerBound&gt;
                     &lt;vhdlType&gt;STD_LOGIC_VECTOR&lt;/vhdlType&gt;
                 &lt;/port&gt;
@@ -1285,7 +1285,7 @@
                     &lt;name&gt;s0_byteenable&lt;/name&gt;
                     &lt;role&gt;byteenable&lt;/role&gt;
                     &lt;direction&gt;Input&lt;/direction&gt;
-                    &lt;width&gt;8&lt;/width&gt;
+                    &lt;width&gt;32&lt;/width&gt;
                     &lt;lowerBound&gt;0&lt;/lowerBound&gt;
                     &lt;vhdlType&gt;STD_LOGIC_VECTOR&lt;/vhdlType&gt;
                 &lt;/port&gt;
@@ -1334,7 +1334,7 @@
                     &lt;/entry&gt;
                     &lt;entry&gt;
                         &lt;key&gt;addressUnits&lt;/key&gt;
-                        &lt;value&gt;WORDS&lt;/value&gt;
+                        &lt;value&gt;SYMBOLS&lt;/value&gt;
                     &lt;/entry&gt;
                     &lt;entry&gt;
                         &lt;key&gt;alwaysBurstMaxBurst&lt;/key&gt;
@@ -1504,7 +1504,7 @@
                     &lt;name&gt;m0_readdata&lt;/name&gt;
                     &lt;role&gt;readdata&lt;/role&gt;
                     &lt;direction&gt;Input&lt;/direction&gt;
-                    &lt;width&gt;64&lt;/width&gt;
+                    &lt;width&gt;256&lt;/width&gt;
                     &lt;lowerBound&gt;0&lt;/lowerBound&gt;
                     &lt;vhdlType&gt;STD_LOGIC_VECTOR&lt;/vhdlType&gt;
                 &lt;/port&gt;
@@ -1528,7 +1528,7 @@
                     &lt;name&gt;m0_writedata&lt;/name&gt;
                     &lt;role&gt;writedata&lt;/role&gt;
                     &lt;direction&gt;Output&lt;/direction&gt;
-                    &lt;width&gt;64&lt;/width&gt;
+                    &lt;width&gt;256&lt;/width&gt;
                     &lt;lowerBound&gt;0&lt;/lowerBound&gt;
                     &lt;vhdlType&gt;STD_LOGIC_VECTOR&lt;/vhdlType&gt;
                 &lt;/port&gt;
@@ -1536,7 +1536,7 @@
                     &lt;name&gt;m0_address&lt;/name&gt;
                     &lt;role&gt;address&lt;/role&gt;
                     &lt;direction&gt;Output&lt;/direction&gt;
-                    &lt;width&gt;5&lt;/width&gt;
+                    &lt;width&gt;8&lt;/width&gt;
                     &lt;lowerBound&gt;0&lt;/lowerBound&gt;
                     &lt;vhdlType&gt;STD_LOGIC_VECTOR&lt;/vhdlType&gt;
                 &lt;/port&gt;
@@ -1560,7 +1560,7 @@
                     &lt;name&gt;m0_byteenable&lt;/name&gt;
                     &lt;role&gt;byteenable&lt;/role&gt;
                     &lt;direction&gt;Output&lt;/direction&gt;
-                    &lt;width&gt;8&lt;/width&gt;
+                    &lt;width&gt;32&lt;/width&gt;
                     &lt;lowerBound&gt;0&lt;/lowerBound&gt;
                     &lt;vhdlType&gt;STD_LOGIC_VECTOR&lt;/vhdlType&gt;
                 &lt;/port&gt;
@@ -1587,7 +1587,7 @@
                     &lt;/entry&gt;
                     &lt;entry&gt;
                         &lt;key&gt;addressUnits&lt;/key&gt;
-                        &lt;value&gt;WORDS&lt;/value&gt;
+                        &lt;value&gt;SYMBOLS&lt;/value&gt;
                     &lt;/entry&gt;
                     &lt;entry&gt;
                         &lt;key&gt;alwaysBurstMaxBurst&lt;/key&gt;

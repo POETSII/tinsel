@@ -79,7 +79,6 @@ module de5Top (DE5Top);
 
   DE5Top top <- de5Top_inner(reset_by combinedReset);
 
-
   `ifndef SIMULATE
   (* fire_when_enabled, no_implicit_conditions *)
   rule pcieReset;
