@@ -24,7 +24,7 @@ typedef enum {
   // Argument: up to 3 x 32-bit instructions to write.
   // The address is taken from the address register.
   WriteInstrCmd,
- 
+
   // Perform a store instruction and increment address register.
   // Argument: up to 3 x 32-bit words to store.
   // The address is taken from the address register.
@@ -41,12 +41,16 @@ typedef enum {
   // to start.
   StartCmd,
 
-  // Ping a thread with an optional thread->thread hop
-  // Argument 0: number of hops (zero or one)
-  // Argument 1: next hop address (when number of hops is one)
-  // When number of hops is zero, the next hop is the host
-  PingCmd
+  // FAKE COMMAND
+  // used to full the pciestream buffer and force a send
+  FlushCmd,
+
+  // Do nothing. Emit nothing in reply.
+  NOPCmd,
+  PingCmd,
+  StartBootloaderCmd,
 
 } BootCmd;
+
 
 #endif
