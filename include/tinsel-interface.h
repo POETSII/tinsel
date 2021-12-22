@@ -86,8 +86,17 @@ INLINE TinselWakeupCond operator|(TinselWakeupCond a, TinselWakeupCond b);
 // (Master host is accessible via mesh origin)
 INLINE uint32_t tinselHostId()
 {
-  return 1 << (1 + TinselMeshYBits + TinselMeshXBits +
-                     TinselLogCoresPerBoard + TinselLogThreadsPerCore);
+  uint32_t addr;
+  addr = 0; // accelerator bit
+  addr = (addr << 1) | 0; //iskey
+  addr = (addr << 2) | 3; //maybehost, ishost
+  addr = (addr << TinselMeshYBits) | 0;
+  addr = (addr << TinselMeshXBits) | 0;
+  addr = (addr << TinselMailboxMeshYBits) | ((1 << TinselMailboxMeshYBits) - 1);
+  addr = (addr << TinselMailboxMeshXBits) | ((1 << TinselMailboxMeshXBits) - 1);
+  addr = (addr << TinselLogCoresPerMailbox) | 0;
+  addr = (addr << TinselLogThreadsPerCore) | 0;
+  return addr;
 }
 
 // Given thread id, return base address of thread's partition in DRAM

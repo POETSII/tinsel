@@ -166,6 +166,9 @@ DE10_Pro_QSYS DE10_Pro_QSYS_inst (
         .emif_s10_ddr4_c_status_local_cal_success(ddr4_c_status_local_cal_success),
         .emif_s10_ddr4_c_status_local_cal_fail(ddr4_c_status_local_cal_fail),
         .pcie_s10_hip_avmm_bridge_0_refclk_clk                         (PCIE_REFCLK_p),                         //   input,   width = 1,     pcie_s10_hip_avmm_bridge_0_refclk.clk
+        // ninit_done -> in_init. According to   Article ID: 000078510 When pin_perst is asserted, npor must be active.
+        // in_init is active at power on, so we should assert npor with ninit_done and arguably 100ms afterwards?
+        // we use a further invert... TODO why.
         .pcie_s10_hip_avmm_bridge_0_npor_npor                          (~ninit_done),                          //   input,   width = 1,       pcie_s10_hip_avmm_bridge_0_npor.npor
         .pcie_s10_hip_avmm_bridge_0_npor_pin_perst                     (PCIE_PERST_n),                     //   input,   width = 1,                                      .pin_perst
         .pcie_s10_hip_avmm_bridge_0_hip_ctrl_test_in                   (hip_ctrl_test_in),                   //   input,  width = 67,                                      .test_in

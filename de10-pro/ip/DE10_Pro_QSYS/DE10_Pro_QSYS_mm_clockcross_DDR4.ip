@@ -343,7 +343,7 @@
         <ipxact:parameter parameterId="maximumPendingReadTransactions" type="int">
           <ipxact:name>maximumPendingReadTransactions</ipxact:name>
           <ipxact:displayName>Maximum pending read transactions</ipxact:displayName>
-          <ipxact:value>64</ipxact:value>
+          <ipxact:value>12</ipxact:value>
         </ipxact:parameter>
         <ipxact:parameter parameterId="maximumPendingWriteTransactions" type="int">
           <ipxact:name>maximumPendingWriteTransactions</ipxact:name>
@@ -1174,12 +1174,12 @@
         <ipxact:parameter parameterId="COMMAND_FIFO_DEPTH" type="int">
           <ipxact:name>COMMAND_FIFO_DEPTH</ipxact:name>
           <ipxact:displayName>Command FIFO depth</ipxact:displayName>
-          <ipxact:value>32</ipxact:value>
+          <ipxact:value>4</ipxact:value>
         </ipxact:parameter>
         <ipxact:parameter parameterId="RESPONSE_FIFO_DEPTH" type="int">
           <ipxact:name>RESPONSE_FIFO_DEPTH</ipxact:name>
           <ipxact:displayName>Response FIFO depth</ipxact:displayName>
-          <ipxact:value>32</ipxact:value>
+          <ipxact:value>8</ipxact:value>
         </ipxact:parameter>
         <ipxact:parameter parameterId="MASTER_SYNC_DEPTH" type="int">
           <ipxact:name>MASTER_SYNC_DEPTH</ipxact:name>
@@ -1569,7 +1569,7 @@
                     &lt;/entry&gt;
                     &lt;entry&gt;
                         &lt;key&gt;maximumPendingReadTransactions&lt;/key&gt;
-                        &lt;value&gt;64&lt;/value&gt;
+                        &lt;value&gt;12&lt;/value&gt;
                     &lt;/entry&gt;
                     &lt;entry&gt;
                         &lt;key&gt;maximumPendingWriteTransactions&lt;/key&gt;
