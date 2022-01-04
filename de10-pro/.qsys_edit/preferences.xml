@@ -1,9 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <preferences>
  <debug showDebugMenu="0" />
- <window width="2574" height="1268" x="206" y="479" />
- <systemtable filter="All Interfaces" />
- <library expandedCategories="Project,Existing IP Variants,Library" />
+ <window width="2408" height="1339" x="457" y="31" />
+ <systemtable
+   filter="Tinsel_0.pcie_host_bus"
+   showAvalonDomains="1"
+   showClockDomains="0"
+   showResetDomains="0" />
+ <library expandedCategories="Library,Project,Existing IP Variants" />
  <generation path="" clear_previous="1" />
  <hdlexample language="VERILOG" />
 </preferences>
