@@ -546,6 +546,14 @@
             </ipxact:portMap>
             <ipxact:portMap>
               <ipxact:logicalPort>
+                <ipxact:name>burstcount</ipxact:name>
+              </ipxact:logicalPort>
+              <ipxact:physicalPort>
+                <ipxact:name>rxm_bar0_burstcount_o</ipxact:name>
+              </ipxact:physicalPort>
+            </ipxact:portMap>
+            <ipxact:portMap>
+              <ipxact:logicalPort>
                 <ipxact:name>readdatavalid</ipxact:name>
               </ipxact:logicalPort>
               <ipxact:physicalPort>
@@ -790,6 +798,14 @@
               </ipxact:logicalPort>
               <ipxact:physicalPort>
                 <ipxact:name>rxm_bar2_write_o</ipxact:name>
+              </ipxact:physicalPort>
+            </ipxact:portMap>
+            <ipxact:portMap>
+              <ipxact:logicalPort>
+                <ipxact:name>burstcount</ipxact:name>
+              </ipxact:logicalPort>
+              <ipxact:physicalPort>
+                <ipxact:name>rxm_bar2_burstcount_o</ipxact:name>
               </ipxact:physicalPort>
             </ipxact:portMap>
             <ipxact:portMap>
@@ -2518,7 +2534,7 @@
           <ipxact:vectors>
             <ipxact:vector>
               <ipxact:left>0</ipxact:left>
-              <ipxact:right>3</ipxact:right>
+              <ipxact:right>31</ipxact:right>
             </ipxact:vector>
           </ipxact:vectors>
           <ipxact:wireTypeDefs>
@@ -2536,7 +2552,7 @@
           <ipxact:vectors>
             <ipxact:vector>
               <ipxact:left>0</ipxact:left>
-              <ipxact:right>31</ipxact:right>
+              <ipxact:right>255</ipxact:right>
             </ipxact:vector>
           </ipxact:vectors>
           <ipxact:wireTypeDefs>
@@ -2554,7 +2570,7 @@
           <ipxact:vectors>
             <ipxact:vector>
               <ipxact:left>0</ipxact:left>
-              <ipxact:right>31</ipxact:right>
+              <ipxact:right>255</ipxact:right>
             </ipxact:vector>
           </ipxact:vectors>
           <ipxact:wireTypeDefs>
@@ -2586,6 +2602,24 @@
           <ipxact:wireTypeDefs>
             <ipxact:wireTypeDef>
               <ipxact:typeName>STD_LOGIC</ipxact:typeName>
+              <ipxact:viewRef>QUARTUS_SYNTH</ipxact:viewRef>
+            </ipxact:wireTypeDef>
+          </ipxact:wireTypeDefs>
+        </ipxact:wire>
+      </ipxact:port>
+      <ipxact:port>
+        <ipxact:name>rxm_bar0_burstcount_o</ipxact:name>
+        <ipxact:wire>
+          <ipxact:direction>out</ipxact:direction>
+          <ipxact:vectors>
+            <ipxact:vector>
+              <ipxact:left>0</ipxact:left>
+              <ipxact:right>4</ipxact:right>
+            </ipxact:vector>
+          </ipxact:vectors>
+          <ipxact:wireTypeDefs>
+            <ipxact:wireTypeDef>
+              <ipxact:typeName>STD_LOGIC_VECTOR</ipxact:typeName>
               <ipxact:viewRef>QUARTUS_SYNTH</ipxact:viewRef>
             </ipxact:wireTypeDef>
           </ipxact:wireTypeDefs>
@@ -2642,7 +2676,7 @@
           <ipxact:vectors>
             <ipxact:vector>
               <ipxact:left>0</ipxact:left>
-              <ipxact:right>3</ipxact:right>
+              <ipxact:right>31</ipxact:right>
             </ipxact:vector>
           </ipxact:vectors>
           <ipxact:wireTypeDefs>
@@ -2660,7 +2694,7 @@
           <ipxact:vectors>
             <ipxact:vector>
               <ipxact:left>0</ipxact:left>
-              <ipxact:right>31</ipxact:right>
+              <ipxact:right>255</ipxact:right>
             </ipxact:vector>
           </ipxact:vectors>
           <ipxact:wireTypeDefs>
@@ -2678,7 +2712,7 @@
           <ipxact:vectors>
             <ipxact:vector>
               <ipxact:left>0</ipxact:left>
-              <ipxact:right>31</ipxact:right>
+              <ipxact:right>255</ipxact:right>
             </ipxact:vector>
           </ipxact:vectors>
           <ipxact:wireTypeDefs>
@@ -2710,6 +2744,24 @@
           <ipxact:wireTypeDefs>
             <ipxact:wireTypeDef>
               <ipxact:typeName>STD_LOGIC</ipxact:typeName>
+              <ipxact:viewRef>QUARTUS_SYNTH</ipxact:viewRef>
+            </ipxact:wireTypeDef>
+          </ipxact:wireTypeDefs>
+        </ipxact:wire>
+      </ipxact:port>
+      <ipxact:port>
+        <ipxact:name>rxm_bar2_burstcount_o</ipxact:name>
+        <ipxact:wire>
+          <ipxact:direction>out</ipxact:direction>
+          <ipxact:vectors>
+            <ipxact:vector>
+              <ipxact:left>0</ipxact:left>
+              <ipxact:right>4</ipxact:right>
+            </ipxact:vector>
+          </ipxact:vectors>
+          <ipxact:wireTypeDefs>
+            <ipxact:wireTypeDef>
+              <ipxact:typeName>STD_LOGIC_VECTOR</ipxact:typeName>
               <ipxact:viewRef>QUARTUS_SYNTH</ipxact:viewRef>
             </ipxact:wireTypeDef>
           </ipxact:wireTypeDefs>
@@ -5056,7 +5108,7 @@
         <ipxact:parameter parameterId="pf0_bar0_enable_rxm_burst_hwtcl" type="int">
           <ipxact:name>pf0_bar0_enable_rxm_burst_hwtcl</ipxact:name>
           <ipxact:displayName>Enable burst capability for Avalon-MM BAR0 Master port</ipxact:displayName>
-          <ipxact:value>0</ipxact:value>
+          <ipxact:value>1</ipxact:value>
         </ipxact:parameter>
         <ipxact:parameter parameterId="pf0_bar1_type_hwtcl" type="string">
           <ipxact:name>pf0_bar1_type_hwtcl</ipxact:name>
@@ -5086,7 +5138,7 @@
         <ipxact:parameter parameterId="pf0_bar2_enable_rxm_burst_hwtcl" type="int">
           <ipxact:name>pf0_bar2_enable_rxm_burst_hwtcl</ipxact:name>
           <ipxact:displayName>Enable burst capability for RXM Avalon-MM BAR2 Master port</ipxact:displayName>
-          <ipxact:value>0</ipxact:value>
+          <ipxact:value>1</ipxact:value>
         </ipxact:parameter>
         <ipxact:parameter parameterId="pf0_bar3_type_hwtcl" type="string">
           <ipxact:name>pf0_bar3_type_hwtcl</ipxact:name>
@@ -5286,12 +5338,12 @@
         <ipxact:parameter parameterId="data_width_integer_rxm0_hwtcl" type="int">
           <ipxact:name>data_width_integer_rxm0_hwtcl</ipxact:name>
           <ipxact:displayName>data_width_integer_rxm0_hwtcl</ipxact:displayName>
-          <ipxact:value>32</ipxact:value>
+          <ipxact:value>256</ipxact:value>
         </ipxact:parameter>
         <ipxact:parameter parameterId="data_byte_width_integer_rxm0_hwtcl" type="int">
           <ipxact:name>data_byte_width_integer_rxm0_hwtcl</ipxact:name>
           <ipxact:displayName>data_byte_width_integer_rxm0_hwtcl</ipxact:displayName>
-          <ipxact:value>4</ipxact:value>
+          <ipxact:value>32</ipxact:value>
         </ipxact:parameter>
         <ipxact:parameter parameterId="data_burstcount_integer_rxm0_hwtcl" type="int">
           <ipxact:name>data_burstcount_integer_rxm0_hwtcl</ipxact:name>
@@ -5316,12 +5368,12 @@
         <ipxact:parameter parameterId="data_width_integer_rxm2_hwtcl" type="int">
           <ipxact:name>data_width_integer_rxm2_hwtcl</ipxact:name>
           <ipxact:displayName>data_width_integer_rxm2_hwtcl</ipxact:displayName>
-          <ipxact:value>32</ipxact:value>
+          <ipxact:value>256</ipxact:value>
         </ipxact:parameter>
         <ipxact:parameter parameterId="data_byte_width_integer_rxm2_hwtcl" type="int">
           <ipxact:name>data_byte_width_integer_rxm2_hwtcl</ipxact:name>
           <ipxact:displayName>data_byte_width_integer_rxm2_hwtcl</ipxact:displayName>
-          <ipxact:value>4</ipxact:value>
+          <ipxact:value>32</ipxact:value>
         </ipxact:parameter>
         <ipxact:parameter parameterId="data_burstcount_integer_rxm2_hwtcl" type="int">
           <ipxact:name>data_burstcount_integer_rxm2_hwtcl</ipxact:name>
@@ -18704,7 +18756,7 @@
                     &lt;name&gt;rxm_bar0_byteenable_o&lt;/name&gt;
                     &lt;role&gt;byteenable&lt;/role&gt;
                     &lt;direction&gt;Output&lt;/direction&gt;
-                    &lt;width&gt;4&lt;/width&gt;
+                    &lt;width&gt;32&lt;/width&gt;
                     &lt;lowerBound&gt;0&lt;/lowerBound&gt;
                     &lt;vhdlType&gt;STD_LOGIC_VECTOR&lt;/vhdlType&gt;
                 &lt;/port&gt;
@@ -18712,7 +18764,7 @@
                     &lt;name&gt;rxm_bar0_readdata_i&lt;/name&gt;
                     &lt;role&gt;readdata&lt;/role&gt;
                     &lt;direction&gt;Input&lt;/direction&gt;
-                    &lt;width&gt;32&lt;/width&gt;
+                    &lt;width&gt;256&lt;/width&gt;
                     &lt;lowerBound&gt;0&lt;/lowerBound&gt;
                     &lt;vhdlType&gt;STD_LOGIC_VECTOR&lt;/vhdlType&gt;
                 &lt;/port&gt;
@@ -18720,7 +18772,7 @@
                     &lt;name&gt;rxm_bar0_writedata_o&lt;/name&gt;
                     &lt;role&gt;writedata&lt;/role&gt;
                     &lt;direction&gt;Output&lt;/direction&gt;
-                    &lt;width&gt;32&lt;/width&gt;
+                    &lt;width&gt;256&lt;/width&gt;
                     &lt;lowerBound&gt;0&lt;/lowerBound&gt;
                     &lt;vhdlType&gt;STD_LOGIC_VECTOR&lt;/vhdlType&gt;
                 &lt;/port&gt;
@@ -18739,6 +18791,14 @@
                     &lt;width&gt;1&lt;/width&gt;
                     &lt;lowerBound&gt;0&lt;/lowerBound&gt;
                     &lt;vhdlType&gt;STD_LOGIC&lt;/vhdlType&gt;
+                &lt;/port&gt;
+                &lt;port&gt;
+                    &lt;name&gt;rxm_bar0_burstcount_o&lt;/name&gt;
+                    &lt;role&gt;burstcount&lt;/role&gt;
+                    &lt;direction&gt;Output&lt;/direction&gt;
+                    &lt;width&gt;5&lt;/width&gt;
+                    &lt;lowerBound&gt;0&lt;/lowerBound&gt;
+                    &lt;vhdlType&gt;STD_LOGIC_VECTOR&lt;/vhdlType&gt;
                 &lt;/port&gt;
                 &lt;port&gt;
                     &lt;name&gt;rxm_bar0_readdatavalid_i&lt;/name&gt;
@@ -18917,7 +18977,7 @@
                     &lt;name&gt;rxm_bar2_byteenable_o&lt;/name&gt;
                     &lt;role&gt;byteenable&lt;/role&gt;
                     &lt;direction&gt;Output&lt;/direction&gt;
-                    &lt;width&gt;4&lt;/width&gt;
+                    &lt;width&gt;32&lt;/width&gt;
                     &lt;lowerBound&gt;0&lt;/lowerBound&gt;
                     &lt;vhdlType&gt;STD_LOGIC_VECTOR&lt;/vhdlType&gt;
                 &lt;/port&gt;
@@ -18925,7 +18985,7 @@
                     &lt;name&gt;rxm_bar2_readdata_i&lt;/name&gt;
                     &lt;role&gt;readdata&lt;/role&gt;
                     &lt;direction&gt;Input&lt;/direction&gt;
-                    &lt;width&gt;32&lt;/width&gt;
+                    &lt;width&gt;256&lt;/width&gt;
                     &lt;lowerBound&gt;0&lt;/lowerBound&gt;
                     &lt;vhdlType&gt;STD_LOGIC_VECTOR&lt;/vhdlType&gt;
                 &lt;/port&gt;
@@ -18933,7 +18993,7 @@
                     &lt;name&gt;rxm_bar2_writedata_o&lt;/name&gt;
                     &lt;role&gt;writedata&lt;/role&gt;
                     &lt;direction&gt;Output&lt;/direction&gt;
-                    &lt;width&gt;32&lt;/width&gt;
+                    &lt;width&gt;256&lt;/width&gt;
                     &lt;lowerBound&gt;0&lt;/lowerBound&gt;
                     &lt;vhdlType&gt;STD_LOGIC_VECTOR&lt;/vhdlType&gt;
                 &lt;/port&gt;
@@ -18952,6 +19012,14 @@
                     &lt;width&gt;1&lt;/width&gt;
                     &lt;lowerBound&gt;0&lt;/lowerBound&gt;
                     &lt;vhdlType&gt;STD_LOGIC&lt;/vhdlType&gt;
+                &lt;/port&gt;
+                &lt;port&gt;
+                    &lt;name&gt;rxm_bar2_burstcount_o&lt;/name&gt;
+                    &lt;role&gt;burstcount&lt;/role&gt;
+                    &lt;direction&gt;Output&lt;/direction&gt;
+                    &lt;width&gt;5&lt;/width&gt;
+                    &lt;lowerBound&gt;0&lt;/lowerBound&gt;
+                    &lt;vhdlType&gt;STD_LOGIC_VECTOR&lt;/vhdlType&gt;
                 &lt;/port&gt;
                 &lt;port&gt;
                     &lt;name&gt;rxm_bar2_readdatavalid_i&lt;/name&gt;
@@ -20621,6 +20689,7 @@
       </altera:interface_mapping>
       <altera:interface_mapping altera:name="rxm_bar0" altera:internal="pcie_s10_hip_avmm_bridge_0.rxm_bar0" altera:type="avalon" altera:dir="start">
         <altera:port_mapping altera:name="rxm_bar0_address_o" altera:internal="rxm_bar0_address_o"></altera:port_mapping>
+        <altera:port_mapping altera:name="rxm_bar0_burstcount_o" altera:internal="rxm_bar0_burstcount_o"></altera:port_mapping>
         <altera:port_mapping altera:name="rxm_bar0_byteenable_o" altera:internal="rxm_bar0_byteenable_o"></altera:port_mapping>
         <altera:port_mapping altera:name="rxm_bar0_read_o" altera:internal="rxm_bar0_read_o"></altera:port_mapping>
         <altera:port_mapping altera:name="rxm_bar0_readdata_i" altera:internal="rxm_bar0_readdata_i"></altera:port_mapping>
@@ -20632,6 +20701,7 @@
       <altera:interface_mapping altera:name="rxm_bar1" altera:internal="pcie_s10_hip_avmm_bridge_0.rxm_bar1"></altera:interface_mapping>
       <altera:interface_mapping altera:name="rxm_bar2" altera:internal="pcie_s10_hip_avmm_bridge_0.rxm_bar2" altera:type="avalon" altera:dir="start">
         <altera:port_mapping altera:name="rxm_bar2_address_o" altera:internal="rxm_bar2_address_o"></altera:port_mapping>
+        <altera:port_mapping altera:name="rxm_bar2_burstcount_o" altera:internal="rxm_bar2_burstcount_o"></altera:port_mapping>
         <altera:port_mapping altera:name="rxm_bar2_byteenable_o" altera:internal="rxm_bar2_byteenable_o"></altera:port_mapping>
         <altera:port_mapping altera:name="rxm_bar2_read_o" altera:internal="rxm_bar2_read_o"></altera:port_mapping>
         <altera:port_mapping altera:name="rxm_bar2_readdata_i" altera:internal="rxm_bar2_readdata_i"></altera:port_mapping>

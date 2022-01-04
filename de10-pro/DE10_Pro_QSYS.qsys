@@ -411,7 +411,7 @@
    name="DE10_Pro_QSYS_mm_bridge_pcie"
    kind="altera_generic_component"
    version="1.0"
-   enabled="1">
+   enabled="0">
   <parameter name="componentDefinition"><![CDATA[<componentDefinition>
     <boundary>
         <interfaces>
@@ -527,7 +527,7 @@
                         <name>s0_address</name>
                         <role>address</role>
                         <direction>Input</direction>
-                        <width>59</width>
+                        <width>5</width>
                         <lowerBound>0</lowerBound>
                         <vhdlType>STD_LOGIC_VECTOR</vhdlType>
                     </port>
@@ -596,7 +596,7 @@
                         </entry>
                         <entry>
                             <key>addressSpan</key>
-                            <value>18446744073709551616</value>
+                            <value>1024</value>
                         </entry>
                         <entry>
                             <key>addressUnits</key>
@@ -802,7 +802,7 @@
                         <name>m0_address</name>
                         <role>address</role>
                         <direction>Output</direction>
-                        <width>59</width>
+                        <width>5</width>
                         <lowerBound>0</lowerBound>
                         <vhdlType>STD_LOGIC_VECTOR</vhdlType>
                     </port>
@@ -1010,7 +1010,7 @@
                     <consumedSystemInfos>
                         <entry>
                             <key>ADDRESS_WIDTH</key>
-                            <value>64</value>
+                            <value>10</value>
                         </entry>
                     </consumedSystemInfos>
                 </value>
@@ -1150,7 +1150,7 @@
                     <name>s0_address</name>
                     <role>address</role>
                     <direction>Input</direction>
-                    <width>59</width>
+                    <width>5</width>
                     <lowerBound>0</lowerBound>
                     <vhdlType>STD_LOGIC_VECTOR</vhdlType>
                 </port>
@@ -1190,16 +1190,20 @@
             <assignments>
                 <assignmentValueMap>
                     <entry>
+                        <key>embeddedsw.configuration.isFlash</key>
+                        <value>0</value>
+                    </entry>
+                    <entry>
                         <key>embeddedsw.configuration.isMemoryDevice</key>
-                        <value>false</value>
+                        <value>0</value>
                     </entry>
                     <entry>
                         <key>embeddedsw.configuration.isNonVolatileStorage</key>
-                        <value>false</value>
+                        <value>0</value>
                     </entry>
                     <entry>
                         <key>embeddedsw.configuration.isPrintableDevice</key>
-                        <value>false</value>
+                        <value>0</value>
                     </entry>
                 </assignmentValueMap>
             </assignments>
@@ -1215,7 +1219,7 @@
                     </entry>
                     <entry>
                         <key>addressSpan</key>
-                        <value>18446744073709551616</value>
+                        <value>1024</value>
                     </entry>
                     <entry>
                         <key>addressUnits</key>
@@ -1239,6 +1243,7 @@
                     </entry>
                     <entry>
                         <key>bridgedAddressOffset</key>
+                        <value>0</value>
                     </entry>
                     <entry>
                         <key>bridgesToMaster</key>
@@ -1420,7 +1425,7 @@
                     <name>m0_address</name>
                     <role>address</role>
                     <direction>Output</direction>
-                    <width>59</width>
+                    <width>5</width>
                     <lowerBound>0</lowerBound>
                     <vhdlType>STD_LOGIC_VECTOR</vhdlType>
                 </port>
@@ -1636,7 +1641,7 @@
    name="DE10_Pro_QSYS_mm_bridge_pcie_bar0"
    kind="altera_generic_component"
    version="1.0"
-   enabled="1">
+   enabled="0">
   <parameter name="componentDefinition"><![CDATA[<componentDefinition>
     <boundary>
         <interfaces>
@@ -1752,7 +1757,7 @@
                         <name>s0_address</name>
                         <role>address</role>
                         <direction>Input</direction>
-                        <width>8</width>
+                        <width>10</width>
                         <lowerBound>0</lowerBound>
                         <vhdlType>STD_LOGIC_VECTOR</vhdlType>
                     </port>
@@ -1821,7 +1826,7 @@
                         </entry>
                         <entry>
                             <key>addressSpan</key>
-                            <value>256</value>
+                            <value>1024</value>
                         </entry>
                         <entry>
                             <key>addressUnits</key>
@@ -2027,7 +2032,7 @@
                         <name>m0_address</name>
                         <role>address</role>
                         <direction>Output</direction>
-                        <width>8</width>
+                        <width>10</width>
                         <lowerBound>0</lowerBound>
                         <vhdlType>STD_LOGIC_VECTOR</vhdlType>
                     </port>
@@ -2235,7 +2240,7 @@
                     <consumedSystemInfos>
                         <entry>
                             <key>ADDRESS_WIDTH</key>
-                            <value>8</value>
+                            <value>10</value>
                         </entry>
                     </consumedSystemInfos>
                 </value>
@@ -2375,7 +2380,7 @@
                     <name>s0_address</name>
                     <role>address</role>
                     <direction>Input</direction>
-                    <width>8</width>
+                    <width>10</width>
                     <lowerBound>0</lowerBound>
                     <vhdlType>STD_LOGIC_VECTOR</vhdlType>
                 </port>
@@ -2415,16 +2420,20 @@
             <assignments>
                 <assignmentValueMap>
                     <entry>
+                        <key>embeddedsw.configuration.isFlash</key>
+                        <value>0</value>
+                    </entry>
+                    <entry>
                         <key>embeddedsw.configuration.isMemoryDevice</key>
-                        <value>false</value>
+                        <value>0</value>
                     </entry>
                     <entry>
                         <key>embeddedsw.configuration.isNonVolatileStorage</key>
-                        <value>false</value>
+                        <value>0</value>
                     </entry>
                     <entry>
                         <key>embeddedsw.configuration.isPrintableDevice</key>
-                        <value>false</value>
+                        <value>0</value>
                     </entry>
                 </assignmentValueMap>
             </assignments>
@@ -2440,7 +2449,7 @@
                     </entry>
                     <entry>
                         <key>addressSpan</key>
-                        <value>256</value>
+                        <value>1024</value>
                     </entry>
                     <entry>
                         <key>addressUnits</key>
@@ -2464,6 +2473,7 @@
                     </entry>
                     <entry>
                         <key>bridgedAddressOffset</key>
+                        <value>0</value>
                     </entry>
                     <entry>
                         <key>bridgesToMaster</key>
@@ -2645,7 +2655,7 @@
                     <name>m0_address</name>
                     <role>address</role>
                     <direction>Output</direction>
-                    <width>8</width>
+                    <width>10</width>
                     <lowerBound>0</lowerBound>
                     <vhdlType>STD_LOGIC_VECTOR</vhdlType>
                 </port>
@@ -21665,27 +21675,7 @@
  <connection
    kind="avalon"
    version="19.2"
-   start="DE10_Pro_QSYS_mm_bridge_pcie_bar0.m0"
-   end="Tinsel_0.controlbar_s">
-  <parameter name="arbitrationPriority" value="1" />
-  <parameter name="baseAddress" value="0x0000" />
-  <parameter name="defaultConnection" value="false" />
-  <parameter name="domainAlias" value="" />
-  <parameter name="qsys_mm.burstAdapterImplementation" value="GENERIC_CONVERTER" />
-  <parameter name="qsys_mm.clockCrossingAdapter" value="HANDSHAKE" />
-  <parameter name="qsys_mm.enableEccProtection" value="FALSE" />
-  <parameter name="qsys_mm.enableInstrumentation" value="FALSE" />
-  <parameter name="qsys_mm.insertDefaultSlave" value="FALSE" />
-  <parameter name="qsys_mm.interconnectResetSource" value="DEFAULT" />
-  <parameter name="qsys_mm.interconnectType" value="STANDARD" />
-  <parameter name="qsys_mm.maxAdditionalLatency" value="1" />
-  <parameter name="qsys_mm.syncResets" value="FALSE" />
-  <parameter name="qsys_mm.widthAdapterImplementation" value="GENERIC_CONVERTER" />
- </connection>
- <connection
-   kind="avalon"
-   version="19.2"
-   start="DE10_Pro_QSYS_mm_bridge_pcie.m0"
+   start="Tinsel_0.pcie_host_bus"
    end="pcie_s10_hip_avmm_bridge_0.hptxs">
   <parameter name="arbitrationPriority" value="1" />
   <parameter name="baseAddress" value="0x0000" />
@@ -21705,28 +21695,8 @@
  <connection
    kind="avalon"
    version="19.2"
-   start="Tinsel_0.pcie_host_bus"
-   end="DE10_Pro_QSYS_mm_bridge_pcie.s0">
-  <parameter name="arbitrationPriority" value="1" />
-  <parameter name="baseAddress" value="0x0000" />
-  <parameter name="defaultConnection" value="false" />
-  <parameter name="domainAlias" value="" />
-  <parameter name="qsys_mm.burstAdapterImplementation" value="GENERIC_CONVERTER" />
-  <parameter name="qsys_mm.clockCrossingAdapter" value="HANDSHAKE" />
-  <parameter name="qsys_mm.enableEccProtection" value="FALSE" />
-  <parameter name="qsys_mm.enableInstrumentation" value="FALSE" />
-  <parameter name="qsys_mm.insertDefaultSlave" value="FALSE" />
-  <parameter name="qsys_mm.interconnectResetSource" value="DEFAULT" />
-  <parameter name="qsys_mm.interconnectType" value="STANDARD" />
-  <parameter name="qsys_mm.maxAdditionalLatency" value="1" />
-  <parameter name="qsys_mm.syncResets" value="FALSE" />
-  <parameter name="qsys_mm.widthAdapterImplementation" value="GENERIC_CONVERTER" />
- </connection>
- <connection
-   kind="avalon"
-   version="19.2"
    start="pcie_s10_hip_avmm_bridge_0.rxm_bar0"
-   end="DE10_Pro_QSYS_mm_bridge_pcie_bar0.s0">
+   end="Tinsel_0.controlbar_s">
   <parameter name="arbitrationPriority" value="1" />
   <parameter name="baseAddress" value="0x0000" />
   <parameter name="defaultConnection" value="false" />
@@ -21791,16 +21761,6 @@
    kind="clock"
    version="19.2"
    start="iopll_0.outclk0"
-   end="DE10_Pro_QSYS_mm_bridge_pcie_bar0.clk" />
- <connection
-   kind="clock"
-   version="19.2"
-   start="iopll_0.outclk0"
-   end="DE10_Pro_QSYS_mm_bridge_pcie.clk" />
- <connection
-   kind="clock"
-   version="19.2"
-   start="iopll_0.outclk0"
    end="mm_clockcross_50Mhz.m0_clk" />
  <connection
    kind="clock"
@@ -21822,16 +21782,6 @@
    version="19.2"
    start="iopll_0.outclk1"
    end="mm_clockcross_50Mhz.s0_clk" />
- <connection
-   kind="reset"
-   version="19.2"
-   start="pcie_s10_hip_avmm_bridge_0.app_nreset_status"
-   end="DE10_Pro_QSYS_mm_bridge_pcie_bar0.reset" />
- <connection
-   kind="reset"
-   version="19.2"
-   start="pcie_s10_hip_avmm_bridge_0.app_nreset_status"
-   end="DE10_Pro_QSYS_mm_bridge_pcie.reset" />
  <connection
    kind="reset"
    version="19.2"
