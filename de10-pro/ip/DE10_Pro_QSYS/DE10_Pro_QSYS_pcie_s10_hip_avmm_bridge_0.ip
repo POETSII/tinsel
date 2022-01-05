@@ -5063,7 +5063,7 @@
         <ipxact:parameter parameterId="pf0_bar0_type_integer_hwtcl" type="int">
           <ipxact:name>pf0_bar0_type_integer_hwtcl</ipxact:name>
           <ipxact:displayName>pf0_bar0_type_integer_hwtcl</ipxact:displayName>
-          <ipxact:value>1</ipxact:value>
+          <ipxact:value>2</ipxact:value>
         </ipxact:parameter>
         <ipxact:parameter parameterId="pf0_bar1_type_integer_hwtcl" type="int">
           <ipxact:name>pf0_bar1_type_integer_hwtcl</ipxact:name>
@@ -5093,12 +5093,12 @@
         <ipxact:parameter parameterId="pf0_bar0_type_gui_hwtcl" type="string">
           <ipxact:name>pf0_bar0_type_gui_hwtcl</ipxact:name>
           <ipxact:displayName>Type</ipxact:displayName>
-          <ipxact:value>64-bit prefetchable memory</ipxact:value>
+          <ipxact:value>32-bit non-prefetchable memory</ipxact:value>
         </ipxact:parameter>
         <ipxact:parameter parameterId="pf0_bar0_type_hwtcl" type="string">
           <ipxact:name>pf0_bar0_type_hwtcl</ipxact:name>
           <ipxact:displayName>pf0_bar0_type_hwtcl</ipxact:displayName>
-          <ipxact:value>64-bit prefetchable memory</ipxact:value>
+          <ipxact:value>32-bit non-prefetchable memory</ipxact:value>
         </ipxact:parameter>
         <ipxact:parameter parameterId="pf0_bar0_address_width_hwtcl" type="int">
           <ipxact:name>pf0_bar0_address_width_hwtcl</ipxact:name>
@@ -6618,7 +6618,7 @@
         <ipxact:parameter parameterId="pf0_bar0_prefetch" type="string">
           <ipxact:name>pf0_bar0_prefetch</ipxact:name>
           <ipxact:displayName>pf0_bar0_prefetch</ipxact:displayName>
-          <ipxact:value>true</ipxact:value>
+          <ipxact:value>false</ipxact:value>
         </ipxact:parameter>
         <ipxact:parameter parameterId="pf0_bar0_start" type="int">
           <ipxact:name>pf0_bar0_start</ipxact:name>
@@ -6628,7 +6628,7 @@
         <ipxact:parameter parameterId="pf0_bar0_type" type="string">
           <ipxact:name>pf0_bar0_type</ipxact:name>
           <ipxact:displayName>pf0_bar0_type</ipxact:displayName>
-          <ipxact:value>pf0_bar0_mem64</ipxact:value>
+          <ipxact:value>pf0_bar0_mem32</ipxact:value>
         </ipxact:parameter>
         <ipxact:parameter parameterId="pf0_bar1_mem_io" type="string">
           <ipxact:name>pf0_bar1_mem_io</ipxact:name>
