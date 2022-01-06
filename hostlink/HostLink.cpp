@@ -24,26 +24,12 @@
 // Send buffer size (in flits)
 #define SEND_BUFFER_SIZE 8192
 
-void debugprintf(DebugLink* debugLink) {
-  bool got = false;
-  usleep(10000);
-  while (debugLink->canGet()) {
-    got = true;
-    // Receive byte
-    uint8_t byte;
-    uint32_t x, y, c, t;
-    debugLink->get(&x, &y, &c, &t, &byte);
-    printf("DBGlink %d:%d:%d:%d: 0x%02X (%c)\n", x, y, c, t, byte, byte);
-  }
-  // if (!got) printf(".\n");
-}
-
 bool HostLink::flushcore(uint32_t dest) {
   // ensure all messages have reached the core
   // we pick a rand int32, and wait until it's echo'd by the core
   // assuming in-order msg delivery, this ensures we've sent eveything.
   usleep(10000);
-  debugprintf(debugLink);
+  // debugprintf(debugLink);
   uint32_t cookie = rand();
   BootReq req;
   uint32_t msg[1 << TinselLogWordsPerMsg];
@@ -53,7 +39,6 @@ bool HostLink::flushcore(uint32_t dest) {
   req.args[0] = cookie;
   printf("sending flush alligner with cookie %i\n", cookie);
   send(dest, 1, &req);
-  debugprintf(debugLink);
   usleep(10000);
 
   int iteration = 0;
@@ -61,7 +46,7 @@ bool HostLink::flushcore(uint32_t dest) {
   do {
 
     // don't block on DebugLink
-    debugprintf(debugLink);
+    // debugprintf(debugLink);
 
     // process flits from the core
     while (canRecv()) {
@@ -76,7 +61,6 @@ bool HostLink::flushcore(uint32_t dest) {
         fromAddr(msg[1], &recv_meshX, &recv_meshY, &recv_coreId, &recv_threadId);
         printf("sync msg from Mx: %i My: %i core: %i thread: %i\n", recv_meshX, recv_meshY, recv_coreId, recv_threadId);
 
-        debugprintf(debugLink);
         return 1; // done.
       } else {
         printf("not cookie, ignoring.\n");
@@ -86,7 +70,6 @@ bool HostLink::flushcore(uint32_t dest) {
     req.cmd = NOPCmd;
     req.numArgs = 0;
     send(dest, 1, &req);
-    debugprintf(debugLink);
     printf(".");
     fflush(0);
     iteration++;
@@ -94,7 +77,6 @@ bool HostLink::flushcore(uint32_t dest) {
   } while (iteration < 3);
   printf("0x%04X NOT synced after %i flits\n", dest, iteration+1);
 
-  debugprintf(debugLink);
   return 0;
 
 }
@@ -423,9 +405,7 @@ bool HostLink::sendHelper(uint32_t dest, uint32_t numFlits, void* payload,
 // Inject a message via PCIe (blocking by default)
 bool HostLink::send(uint32_t dest, uint32_t numFlits, void* msg, bool block)
 {
-  debugprintf(debugLink);
   return sendHelper(dest, numFlits, msg, block, 0);
-  debugprintf(debugLink);
 }
 
 // Flush the send buffer
@@ -441,9 +421,7 @@ void HostLink::flush()
 // Try to send a message (non-blocking, returns true on success)
 bool HostLink::trySend(uint32_t dest, uint32_t numFlits, void* msg)
 {
-  debugprintf(debugLink);
   return sendHelper(dest, numFlits, msg, false, 0);
-  debugprintf(debugLink);
 }
 
 // Send a message using routing key (blocking by default)
@@ -597,7 +575,6 @@ void HostLink::boot(const char* codeFilename, const char* dataFilename)
 // Trigger to start application execution
 void HostLink::go()
 {
-  debugprintf(debugLink);
   for (int x = 0; x < meshXLen; x++) {
     for (int y = 0; y < meshYLen; y++) {
       debugLink->setBroadcastDest(x, y, 0);
@@ -716,19 +693,16 @@ void HostLink::startAll()
 
   // Wait for all start responses
   while (started < numCores) {
-    debugprintf(debugLink);
     if (canRecv()) recv(msg);
     started++;
     usleep(10000);
   }
-  debugprintf(debugLink);
   printf("HostLink::startAll(): all cores waiting on go cmd.\n");
 }
 
 // Trigger application execution on all started threads on given core
 void HostLink::goOne(uint32_t meshX, uint32_t meshY, uint32_t coreId)
 {
-  debugprintf(debugLink);
   debugLink->setDest(meshX, meshY, coreId, 0);
   debugLink->put(meshX, meshY, 0);
 }
@@ -803,7 +777,6 @@ bool HostLink::powerOnSelfTest()
             printf("self-testing addr 0x%04X\n", mailbox_addr);
             bool ok = trySend(mailbox_addr, 1, &req);
             // flushcore(mailbox_addr);
-            usleep(500000);
             if (canRecv()) {
               recv(msg);
               count++;
@@ -814,7 +787,6 @@ bool HostLink::powerOnSelfTest()
             double duration = (double) diff.tv_sec +
                               (double) diff.tv_usec / 1000000.0;
             if (duration > timeout) return false;
-            debugprintf(debugLink);
           }
         }
       }
@@ -837,7 +809,6 @@ bool HostLink::powerOnSelfTest()
     double duration = (double) diff.tv_sec +
                       (double) diff.tv_usec / 1000000.0;
     if (duration > timeout) return false;
-    debugprintf(debugLink);
   }
   printf("self-test passed.\n");
   return true;
@@ -890,7 +861,6 @@ bool HostLink::pollStdOut()
 void HostLink::dumpStdOut(FILE* outFile)
 {
   for (;;) {
-    // debugprintf(debugLink);
     bool ok = pollStdOut(outFile);
     if (!ok){
       fflush(outFile); // Try to ensure output becomes visible to sink process
