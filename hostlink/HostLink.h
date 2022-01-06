@@ -66,9 +66,10 @@ class HostLink {
 
   // Destructor
   ~HostLink();
- 
+
   // Power-on self test
   bool powerOnSelfTest();
+  bool flushcore(uint32_t addr);
 
   // Debug links
   // -----------

@@ -51,6 +51,8 @@ p["DCacheLogNumWays"] = 4
 # Number of DRAMs per FPGA board
 p["LogDRAMsPerBoard"] = 1
 
+# Number of SRAMs per FPGA board (or None if 0)
+p["SRAMsPerBoard"] = None
 # Max number of outstanding DRAM requests permitted
 p["DRAMLogMaxInFlight"] = 5
 
@@ -58,7 +60,7 @@ p["DRAMLogMaxInFlight"] = 5
 p["DRAMLatency"] = 20
 
 # Size of each DRAM
-p["LogBeatsPerDRAM"] = 26
+p["LogBeatsPerDRAM"] = 25
 
 # Size of internal flit payload
 p["LogWordsPerFlit"] = 2
@@ -351,18 +353,30 @@ p["NumNorthSouthLinks"] = 2 ** p["LogNorthSouthLinks"]
 p["NumEastWestLinks"] = 2 ** p["LogEastWestLinks"]
 
 # SRAM parameters
-p["BytesPerSRAMBeat"] = 2 ** p["LogBytesPerSRAMBeat"]
-p["WordsPerSRAMBeat"] = p["BytesPerSRAMBeat"] / 4
-p["SRAMDataWidth"] = 32 * p["WordsPerSRAMBeat"]
-p["SRAMsPerBoard"] = 2 * p["DRAMsPerBoard"]
-p["LogThreadsPerSRAM"] = p["LogThreadsPerDRAM"] - 1
-p["LogBeatsPerSRAM"] = (
-  (p["SRAMAddrWidth"] + p["LogBytesPerSRAMBeat"]) - p["LogBytesPerBeat"])
-p["LogBytesPerSRAM"] = p["LogBeatsPerSRAM"] + p["LogBytesPerBeat"]
-p["LogBytesPerSRAMPartition"] = p["LogBytesPerSRAM"] - p["LogThreadsPerSRAM"]
+if p["SRAMsPerBoard"]:
+    p["BytesPerSRAMBeat"] = 2 ** p["LogBytesPerSRAMBeat"]
+    p["WordsPerSRAMBeat"] = p["BytesPerSRAMBeat"] / 4
+    p["SRAMDataWidth"] = 32 * p["WordsPerSRAMBeat"]
+    p["SRAMsPerBoard"] = 2 * p["DRAMsPerBoard"]
+    p["LogThreadsPerSRAM"] = p["LogThreadsPerDRAM"] - 1
+    p["LogBeatsPerSRAM"] = (
+      (p["SRAMAddrWidth"] + p["LogBytesPerSRAMBeat"]) - p["LogBytesPerBeat"])
+    p["LogBytesPerSRAM"] = p["LogBeatsPerSRAM"] + p["LogBytesPerBeat"]
+    p["LogBytesPerSRAMPartition"] = p["LogBytesPerSRAM"] - p["LogThreadsPerSRAM"]
+else:
+    p["BytesPerSRAMBeat"] = 0
+    p["WordsPerSRAMBeat"] = 0
+    p["SRAMDataWidth"] = 0
+    # p["LogThreadsPerSRAM"] = None
+    # p["LogBeatsPerSRAM"] = None
+    # p["LogBytesPerSRAM"] = None
+    # p["LogBytesPerSRAMPartition"] = None
 
 # DRAM base and length
-p["DRAMBase"] = 3 * (2 ** p["LogBytesPerSRAM"])
+if p["SRAMsPerBoard"]:
+    p["DRAMBase"] = 3 * (2 ** p["LogBytesPerSRAM"])
+else:
+    p["DRAMBase"] = 0
 p["DRAMGlobalsLength"] = 2 ** (p["LogBytesPerDRAM"] - 1) - p["DRAMBase"]
 p["POLiteDRAMGlobalsLength"] = 2 ** 14
 p["POLiteProgRouterBase"] = p["DRAMBase"] + p["POLiteDRAMGlobalsLength"]

@@ -49,14 +49,24 @@ int main()
     for (;;) {
       // Receive message
       tinselWaitUntil(TINSEL_CAN_RECV);
+      sendb('m');
       msgIn = tinselRecv();
+      uint8_t cmd = msgIn->cmd;
+
+      // tinselWaitUntil(TINSEL_CAN_SEND);
+      // tinselSetLen(1);
+      // msgOut[0] = 0xAC80; // acks
+      // msgOut[1] = cmd;
+      // tinselSend(hostId, msgOut);
+      // tinselSetLen(0);
 
       // Command dispatch
       // (We avoid using a switch statement here so that the compiler
       // doesn't generate a data section)
-      uint8_t cmd = msgIn->cmd;
+
       if (cmd == WriteInstrCmd) {
         // Write instructions to instruction memory
+        sendb('i');
         int n = msgIn->numArgs;
         for (int i = 0; i < n; i++) {
           tinselWriteInstr(addrReg, msgIn->args[i]);
@@ -64,6 +74,7 @@ int main()
         }
       }
       else if (cmd == StoreCmd) {
+        sendb('w');
         // Store words to data memory
         int n = msgIn->numArgs;
         for (int i = 0; i < n; i++) {
@@ -75,10 +86,12 @@ int main()
       }
       else if (cmd == LoadCmd) {
         // Load words from data memory
+        sendb('l');
         int n = msgIn->args[0];
         while (n > 0) {
           int m = n > 4 ? 4 : n;
           tinselWaitUntil(TINSEL_CAN_SEND);
+          sendb('s');
           for (int i = 0; i < m; i++) {
             uint32_t* ptr = (uint32_t*) addrReg;
             msgOut[i] = *ptr;
@@ -89,6 +102,7 @@ int main()
         }
       }
       else if (cmd == SetAddrCmd) {
+        sendb('a');
         // Set address register
         addrReg = msgIn->args[0];
       }
@@ -98,6 +112,7 @@ int main()
         tinselSend(hostId, msgOut);
       }
       else if (cmd == StartCmd) {
+        sendb('s');
         // Cache flush
         tinselCacheFlush();
         // Wait until lines written back, by issuing a load
@@ -108,8 +123,10 @@ int main()
         tinselWaitUntil(TINSEL_CAN_SEND);
         msgOut[0] = tinselId();
         tinselSend(hostId, msgOut);
-        // Wait for trigger
+
+        // Wait for triggerstartOne
         while ((tinselUartTryGet() & 0x100) == 0);
+        sendb('g');
         // Start remaining threads
         int numThreads = msgIn->args[0];
         for (int i = 0; i < numThreads; i++) {
@@ -120,11 +137,11 @@ int main()
       }
       tinselFree(msgIn);
     }
-
-    // Call the application's main function
-    int (*appMain)() = (int (*)()) (TinselMaxBootImageBytes);
-    appMain();
   }
+  // Call the application's main function
+  int (*appMain)() = (int (*)()) (TinselMaxBootImageBytes);
+  sendb('c');
+  appMain();
 
   // Restart boot loader
   if (threadId != 0) tinselKillThread();
