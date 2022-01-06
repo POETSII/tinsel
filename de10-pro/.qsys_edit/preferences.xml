@@ -7,7 +7,7 @@
    showAvalonDomains="1"
    showClockDomains="0"
    showResetDomains="0" />
- <library expandedCategories="Library,Project,Existing IP Variants" />
+ <library expandedCategories="Library,Existing IP Variants,Project" />
  <generation path="" clear_previous="1" />
  <hdlexample language="VERILOG" />
 </preferences>
