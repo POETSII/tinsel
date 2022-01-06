@@ -376,7 +376,7 @@ else:
 if p["SRAMsPerBoard"]:
     p["DRAMBase"] = 3 * (2 ** p["LogBytesPerSRAM"])
 else:
-    p["DRAMBase"] = 0
+    p["DRAMBase"] = 512 # TDDO FIXME; first word does not write correctly.
 p["DRAMGlobalsLength"] = 2 ** (p["LogBytesPerDRAM"] - 1) - p["DRAMBase"]
 p["POLiteDRAMGlobalsLength"] = 2 ** 14
 p["POLiteProgRouterBase"] = p["DRAMBase"] + p["POLiteDRAMGlobalsLength"]
