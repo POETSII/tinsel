@@ -222,7 +222,11 @@ void HostLink::constructor(HostLinkParams p)
   sendBufferLen = 0;
 
   // Run the self test
-  if (! powerOnSelfTest()) {
+  int retry=0;
+  for (retry=1; retry>0; retry--) {
+    if (powerOnSelfTest()) break;
+  }
+  if (retry == 0) {
     fprintf(stderr, "Power-on self test failed.  Please try again.\n");
     exit(EXIT_FAILURE);
   } else {
@@ -593,12 +597,11 @@ void HostLink::boot(const char* codeFilename, const char* dataFilename)
 // Trigger to start application execution
 void HostLink::go()
 {
+  debugprintf(debugLink);
   for (int x = 0; x < meshXLen; x++) {
     for (int y = 0; y < meshYLen; y++) {
-      debugprintf(debugLink);
       debugLink->setBroadcastDest(x, y, 0);
       debugLink->put(x, y, 0);
-      debugprintf(debugLink);
     }
   }
   printf("HostLink::go(): sent go stdin msg to all cores.\n");
@@ -887,12 +890,12 @@ bool HostLink::pollStdOut()
 void HostLink::dumpStdOut(FILE* outFile)
 {
   for (;;) {
-    debugprintf(debugLink);
-    // bool ok = pollStdOut(outFile);
-    // if (!ok){
-    //   fflush(outFile); // Try to ensure output becomes visible to sink process
-    //   usleep(10000);
-    // }
+    // debugprintf(debugLink);
+    bool ok = pollStdOut(outFile);
+    if (!ok){
+      fflush(outFile); // Try to ensure output becomes visible to sink process
+      usleep(10000);
+    }
   }
 }
 
