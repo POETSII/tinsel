@@ -67,8 +67,9 @@ function test_run {
 }
 
 test_run "clocktree-async" 5 5
+test_run "clocktree-async" 5 6
+test_run "clocktree-async" 6 5
 test_run "clocktree-async" 6 6
-test_run "clocktree-async" 7 7
 test_run "pressure-sync" 10 10
 test_run "pressure-sync" 4 100
 test_run "pressure-sync" 20 60

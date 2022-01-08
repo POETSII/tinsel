@@ -889,7 +889,7 @@ public:
       for (uint32_t boardX = 0; boardX < numBoardsX; boardX++) {
         // Partition into subgraphs, one per mailbox
         PartitionId b = boards.mapping[boardY][boardX];
-        fprintf(stderr, "   Board %u, %u : %u = \n", boardX, boardY, boards.subgraphs[b].outgoing->numElems);
+        fprintf(stderr, "   Board %u, %u : %u = \n", boardX, boardY, boards.subgraphs[b].outgoing()->numElems);
         Placer boxes(&boards.subgraphs[b],
                  TinselMailboxMeshXLen, TinselMailboxMeshYLen);
         boxes.place(placerEffort);
