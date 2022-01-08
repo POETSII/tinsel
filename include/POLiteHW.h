@@ -60,7 +60,7 @@ struct POLiteHW
     static const unsigned MeshYBits=TinselMeshYBits;
     static const unsigned BoxMeshXLen=TinselBoxMeshXLen;
     static const unsigned BoxMeshYLen=TinselBoxMeshYLen;
-    static const unsigned TinselLogThreadsPerCore=TinselLogThreadsPerCore;
+    static const unsigned LogThreadsPerCore=TinselLogThreadsPerCore;
 
 #ifndef TINSEL
     inline void politeSaveStats(HostLink* hostLink, const char* filename)
