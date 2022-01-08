@@ -58,6 +58,7 @@ int main(int argc, char *argv[])
         throw std::runtime_error("FPGAMeshYLen is not a multiple of TinselMeshYLenWithinBox");
     }
 
+    fprintf(stderr, "     Loading app graph.\n");
     AppGraph app;
     { 
         FILE* fp = fopen(appPath.c_str(), "rb"); // non-Windows use "r"
@@ -75,6 +76,7 @@ int main(int argc, char *argv[])
     unsigned numBoxesX=params->FPGAMeshXLen / TinselMeshXLenWithinBox;
     unsigned numBoxesY=params->FPGAMeshYLen / TinselMeshYLenWithinBox;
 
+    fprintf(stderr, "     Building PGraph.\n");
     PGraph<HeatDevice, HeatState, None, HeatMessage> graph(numBoxesX, numBoxesY);
 
     for(unsigned i=0; i<app.vertices.size(); i++){
@@ -90,11 +92,13 @@ int main(int argc, char *argv[])
         }
     }
 
-    graph.map();
+    fprintf(stderr, "     Mapping using POLite.\n");
+    graph.map(true);
 
     std::string placer="POLite-default";
-    if(getenv())
+    //if(getenv())
 
+    fprintf(stderr, "     Outputting placement.\n");
     AppPlacement placement;
     placement.graph_id=app.name;
     placement.system=*params;

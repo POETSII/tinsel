@@ -11,6 +11,7 @@ int main(int argc, char *argv[])
     std::string placementPath=argv[1];
     std::string appGraph=argv[2];
 
+    std::cerr<<"Loading placement\n";
     AppPlacement placement;
     { 
         FILE* fp = fopen(placementPath.c_str(), "rb"); // non-Windows use "r"
@@ -25,6 +26,7 @@ int main(int argc, char *argv[])
         fclose(fp);
     }
 
+    std::cerr<<"Loading app graph\n";
     AppGraph app;
     { 
         FILE* fp = fopen(appGraph.c_str(), "rb"); // non-Windows use "r"
@@ -48,6 +50,7 @@ int main(int argc, char *argv[])
 
     routes.add_graph(placement, app);
 
+    std::cerr<<"Calculating link loads\n";
     auto loads = routes.calculate_link_load();
 
     std::vector<unsigned> route_cost_distribution, route_hops_distribution, route_fpga_hops_distribution, route_mailbox_hops_distribution;
@@ -88,10 +91,11 @@ int main(int argc, char *argv[])
             ++off;
         }
 
-        double stddev=sqrt(oe2/mean);
-        double skewness=(oe3/mean) / std::pow(stddev, 3);
-        double kurtosis=(oe4/mean) / std::pow(stddev, 4) - 3;
+        double stddev=sqrt(oe2/total_count);
+        double skewness=(oe3/total_count) / std::pow(stddev, 3);
+        double kurtosis=(oe4/total_count) / std::pow(stddev, 4) - 3;
 
+        fprintf(stdout, "%s, %s, count, %g\n", domain.c_str(), aspect.c_str(), total_count);
         fprintf(stdout, "%s, %s, mean, %g\n", domain.c_str(), aspect.c_str(), sum/total_count);
         fprintf(stdout, "%s, %s, stddev, %g\n", domain.c_str(), aspect.c_str(), stddev);
         fprintf(stdout, "%s, %s, skewness, %g\n", domain.c_str(), aspect.c_str(), skewness);
@@ -104,6 +108,7 @@ int main(int argc, char *argv[])
         }
     };
 
+    std::cerr<<"Building histograms\n";
     for(const auto &kv : loads){
         add_histogram(all_links_load_distribution, kv.second);
         if(kv.first->type==InterFPGALink){
@@ -115,10 +120,10 @@ int main(int argc, char *argv[])
     }
     
     for(const auto &kv : routes.routes){
-        add_histogram(route_cost_distribution, kv.second.cost);
-        add_histogram(route_hops_distribution, kv.second.hops);
-        add_histogram(route_fpga_hops_distribution, kv.second.fpga_hops);
-        add_histogram(route_mailbox_hops_distribution, kv.second.mailbox_hops);
+        add_histogram(route_cost_distribution, kv.cost);
+        add_histogram(route_hops_distribution, kv.hops);
+        add_histogram(route_fpga_hops_distribution, kv.fpga_hops);
+        add_histogram(route_mailbox_hops_distribution, kv.mailbox_hops);
     }
 
     fprintf(stdout, "# Domain, Aspect, Index, Value\n");

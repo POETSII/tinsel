@@ -46,39 +46,40 @@ int main(int argc, char *argv[])
 
     auto loads = routes.calculate_link_load();
 
-    double max_load=0;
+    double max_load_fpga=0;
+    double max_load_mailbox=0;
     for(const auto &kv : loads){
-        max_load=std::max<double>(max_load, kv.second);
+        if(kv.first->type==InterFPGALink){
+            max_load_fpga=std::max<double>(max_load_fpga, kv.second);
+        }else{
+            max_load_mailbox=std::max<double>(max_load_mailbox, kv.second);
+        }
     }
-    fprintf(stderr, "Max load = %g, load count = %u\n", max_load, loads.size());
+    fprintf(stderr, "Max load FPGA= %g, Max load mailbox = %g, load count = %u\n", max_load_fpga, max_load_mailbox, loads.size());
 
     std::cerr<<"Rendering\n";
 
     std::unique_ptr<Drawable> drawable=create_drawable(system.get());
     Size s=drawable->size();
 
-    SVGWriter writer(s.w, s.h);
+    double scale=0.2;
+    SVGWriter writer(s.w*scale, s.h*scale);
     writer.begin_group(SVGWriter::make_scale(0.2));
 
     LinkMap map;
     drawable->draw(writer, {0,0}, map);
 
-    /*auto to_colour = [](double v) -> SVGWriter::ColourSpec
-    {
-        assert(0.0<=v && v<=1.0);
-        if(v==0.0){
-            return SVGWriter::Colour{ 0.9,0.9,0.9  };
-        }else if(v<0.5){
-            return SVGWriter::Colour{ v, 1-v, v  };
-        }else{
-            return SVGWriter::Colour{ v, 1-v, 1-v  };
-        };
-    };*/
 
-    auto to_colour = [](double v) -> SVGWriter::ColourSpec
+    auto to_colour_fpga = [](double v) -> SVGWriter::ColourSpec
     {
         assert(0.0<=v && v<=1.0);
         return SVGWriter::Colour{ v, 0, 0  };
+    };
+
+    auto to_colour_mailbox = [](double v) -> SVGWriter::ColourSpec
+    {
+        assert(0.0<=v && v<=1.0);
+        return SVGWriter::Colour{ 0, 0, v  };
     };
 
     SVGWriter::Attributes aa;
@@ -91,7 +92,11 @@ int main(int argc, char *argv[])
             double load=0;
             auto it2=loads.find(lo.first);
             if(it2!=loads.end()){
-                load=it2->second / max_load;
+                if(lo.first->type==InterFPGALink){
+                    load=it2->second / max_load_fpga;
+                }else{
+                    load=it2->second / max_load_mailbox;
+                }
             }
             unsigned numRoutes=0;
             auto it3=routes.links.find((const LinkOut*)lo.first);
@@ -101,7 +106,7 @@ int main(int argc, char *argv[])
             std::string title="routes="+std::to_string(numRoutes)+", load="+std::to_string(load);
 
             aa.title=title;
-            aa.stroke_colour=to_colour(load);
+            aa.stroke_colour=lo.first->type==InterFPGALink ? to_colour_fpga(load) : to_colour_mailbox(load) ;
             writer.arrow(lo.second, it->second, aa);
         }
     }

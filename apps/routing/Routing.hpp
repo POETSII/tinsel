@@ -1032,12 +1032,10 @@ Route create_route(const Node *system, route_id_t id, thread_id_t source, thread
 struct Routing
 {
     const Node *system;
-    std::unordered_map<route_id_t,Route> routes;
+    std::vector<Route> routes; // Indexed by route id (they are contiguous started at zero)
     std::unordered_map<std::string,route_id_t> routes_by_foreign_id;
-    std::unordered_map<const LinkOut*,std::unordered_set<route_id_t>> links;
+    std::unordered_map<const LinkOut*,std::vector<route_id_t>> links;
     uint64_t cost = 0;
-
-    uint64_t next_route_id =0 ;
 
     Routing(const Node *_system)
         : system(_system)
@@ -1058,17 +1056,16 @@ struct Routing
 
     route_id_t add_route(thread_id_t source, thread_id_t dest, int weight, const std::string foreign_id="")
     {
-        route_id_t id{next_route_id++};
+        route_id_t id{routes.size()};
         
-        auto it=routes.insert(std::make_pair(id, create_route(system, id, source, dest, weight)));
-        const Route &r=it.first->second;
+        routes.push_back(create_route(system, id, source, dest, weight));
+        const Route &r=routes.back();
         for(auto l : r.path){
-            links[l].insert(id);
+            links[l].push_back(id);
         }
         if(!foreign_id.empty()){
             auto fit=routes_by_foreign_id.insert(std::make_pair(foreign_id,id));
             if(!fit.second){
-                routes.erase(it.first);
                 throw std::runtime_error("Duplicate foreign ids for route.");
             }
         }
@@ -1084,8 +1081,8 @@ struct Routing
         res.reserve(links.size());
         for(const auto &kv : links){
             unsigned sumWeight=0;
-            for(const auto &rid : kv.second){
-                sumWeight += routes.at(rid).weight;
+            for(auto rid : kv.second){
+                sumWeight += routes.at(rid.value).weight;
             }
             res.insert(std::make_pair(kv.first, sumWeight));
         }
