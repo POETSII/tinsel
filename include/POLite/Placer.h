@@ -7,6 +7,8 @@
 #include <string>
 #include <cmath>
 #include <algorithm>
+#include <thread>
+#include <mutex>
 
 #include <stdint.h>
 #include <string.h>
@@ -25,7 +27,9 @@ struct Placer {
     Default,
     Metis,
     Random,
+    Permutation,
     Direct,
+    Dealer,
     BFS,
 	Scotch
   };
@@ -81,6 +85,10 @@ struct Placer {
         method=Random;
       else if (!strcmp(e, "direct"))
         method=Direct;
+      else if (!strcmp(e, "dealer"))
+        method=Dealer;
+      else if (!strcmp(e, "permutation"))
+        method=Permutation;
       else if (!strcmp(e, "bfs"))
         method=BFS;
       else if (!strcmp(e, "scotch"))
@@ -178,20 +186,28 @@ struct Placer {
     currentCost = cost();
   }
 
-  // Partition the graph randomly
+  // Partition the graph randomly. Note that this results in unequal loads
   void partitionRandom() {
     uint32_t numVertices = graph->incoming->numElems;
     uint32_t numParts = width * height;
 
     std::mt19937_64 urng(getRand());
-    std::uniform_int_distribution<unsigned> udist(0, numParts-1);
     double scale=std::ldexp(numParts, -64);
-
 
     // Populate result array
     for (uint32_t i = 0; i < numVertices; i++) {
       partitions[i] = urng()*scale;
     }
+  }
+
+  // Partition the graph randomly. This should result in equal loads
+  void partitionPermutation() {
+    partitionDealer();
+
+    std::mt19937_64 urng(getRand());
+
+    uint32_t numVertices = graph->incoming->numElems;
+    std::shuffle(partitions, partitions+numVertices, urng);
   }
 
   // Partition the graph using direct mapping
@@ -203,6 +219,17 @@ struct Placer {
     // Populate result array
     for (uint32_t i = 0; i < numVertices; i++) {
       partitions[i] = i / partSize;
+    }
+  }
+
+  // Partition the graph by dealing from deck
+  void partitionDealer() {
+    uint32_t numVertices = graph->incoming->numElems;
+    uint32_t numParts = width * height;
+    
+    // Populate result array
+    for (uint32_t i = 0; i < numVertices; i++) {
+      partitions[i] = i % numParts;
     }
   }
 
@@ -270,14 +297,29 @@ struct Placer {
     case BFS:
       partitionBFS();
       break;
+    case Dealer:
+      partitionDealer();
+      break;
+    case Permutation:
+      partitionPermutation();
+      break;
     case Scotch:
       partitionScotch();
       break;
+    default:
+      throw std::runtime_error("Invalid partition option.");
     }
   }
 
   // Place the graph using Scotch
   void partitionScotch() {
+
+    // I dislike static mutexes as much as they next person, but
+    // there is a problem with libscotch6 for Ubuntu, which does
+    // not appear to be thread safe. There is a parser in there
+    // somewhere which is not re-entrant.
+    static std::mutex scotch_mutex;
+
     idx_t nvtxs = (idx_t) graph->incoming->numElems;
     idx_t nparts = (idx_t) (width * height);
 
@@ -298,14 +340,6 @@ struct Placer {
     //   return;
     // }
 
-    SCOTCH_Arch *archptr=(SCOTCH_Arch *)malloc(sizeof(SCOTCH_Arch));
-    if(SCOTCH_archInit (archptr)){
-      throw std::runtime_error("Couldn't init scotch arch");
-    }
-
-    if(SCOTCH_archMesh2(archptr, width, height)){
-      throw std::runtime_error("Couldn't create 2d mesh in scotch");
-    }
 
     std::vector<SCOTCH_Num> verttab;
     std::vector<SCOTCH_Num> edgetab;
@@ -327,7 +361,22 @@ struct Placer {
     }
     verttab.push_back(edgetab.size());
 
-    SCOTCH_Graph *grafptr=(SCOTCH_Graph *)malloc(sizeof(SCOTCH_Graph));
+    std::vector<SCOTCH_Num> parttab(nvtxs);
+
+    ///////////////////////////////////////////////////
+    // Enter scotch lock
+    std::unique_lock<std::mutex> scotch_lock(scotch_mutex);
+
+    SCOTCH_Arch *archptr=SCOTCH_archAlloc();
+    if(SCOTCH_archInit (archptr)){
+      throw std::runtime_error("Couldn't init scotch arch");
+    }
+
+    if(SCOTCH_archMesh2(archptr, width, height)){
+      throw std::runtime_error("Couldn't create 2d mesh in scotch");
+    }
+
+    SCOTCH_Graph *grafptr=SCOTCH_graphAlloc();
 
     if(SCOTCH_graphBuild (grafptr,
       0, //baseval - where do array indices start
@@ -347,16 +396,18 @@ struct Placer {
       throw std::runtime_error("Scotch does not like the graph we built. Is it consistent?");
     }
 
-    SCOTCH_Strat *stratptr=(SCOTCH_Strat *)malloc(sizeof(SCOTCH_Strat));
+    SCOTCH_Strat *stratptr=SCOTCH_stratAlloc();
     if(SCOTCH_stratInit(stratptr)){
       throw std::runtime_error("Scotch won't make a strategy.");
     }
 
-    std::vector<SCOTCH_Num> parttab(nvtxs);
-
     if(SCOTCH_graphMap (grafptr, archptr, stratptr, &parttab[0])){
       throw std::runtime_error("Scotch couldn't map the graph.");
     }
+
+    scotch_lock.unlock();
+    // Exit scotch lock
+    //////////////////////////////////////////
 
     // Populate result array
     for (uint32_t i = 0; i < graph->incoming->numElems; i++){
@@ -375,12 +426,22 @@ struct Placer {
 
     currentCost = cost();
 
+    ////////////////////////////////////
+    // Enter scotch lock
+    scotch_lock.lock();
+
     SCOTCH_archExit(archptr);
-    free(archptr);
+    SCOTCH_memFree(archptr);
+
     SCOTCH_graphExit(grafptr);
-    free(grafptr);
+    SCOTCH_memFree(grafptr);
+
     SCOTCH_stratInit(stratptr);
-    free(stratptr);
+    SCOTCH_memFree(stratptr);
+
+    scotch_lock.unlock();
+    // Exit scotch lock
+    ///////////////////////////////////////
   }
 
   // Create subgraph for each partition
@@ -691,27 +752,34 @@ struct Placer {
     // Initialise best cost
     savedCost = ~0;
 
-    for (uint32_t n = 0; n < numAttempts; n++) {
+    // If we want no effort at all we want to avoid local refinement
+    if(numAttempts==0){
       randomPlacement();
       currentCost = cost();
+      save();
+    }else{
+      for (uint32_t n = 0; n < numAttempts; n++) {
+        randomPlacement();
+        currentCost = cost();
 
-      bool change;
-      do {
-        change = false;
-        // Loop over mesh
-        for (uint32_t y = 0; y < height-1; y++) {
-          for (uint32_t x = 0; x < width-1; x++) {
-            change = trySwap(x, y, x+1, y) ||
-                       trySwap(x, y, x, y+1) ||
-                         trySwap(x, y, x+1, y+1) ||
-                           change;
+        bool change;
+        do {
+          change = false;
+          // Loop over mesh
+          for (uint32_t y = 0; y < height-1; y++) {
+            for (uint32_t x = 0; x < width-1; x++) {
+              change = trySwap(x, y, x+1, y) ||
+                        trySwap(x, y, x, y+1) ||
+                          trySwap(x, y, x+1, y+1) ||
+                            change;
+            }
           }
-        }
-      } while (change);
-      if (currentCost <= savedCost)
-        save();
-      else
-        restore();
+        } while (change);
+        if (currentCost <= savedCost)
+          save();
+        else
+          restore();
+      }
     }
   }
 

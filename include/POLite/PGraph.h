@@ -715,31 +715,43 @@ template <typename DeviceType,
       free(devices);
       free(toDeviceAddr);
       free(numDevicesOnThread);
-      for (uint32_t t = 0; t < TinselMaxThreads; t++)
-        if (fromDeviceAddr[t] != NULL) free(fromDeviceAddr[t]);
+      if(fromDeviceAddr!=0){
+        for (uint32_t t = 0; t < TinselMaxThreads; t++)
+          if (fromDeviceAddr[t] != NULL) free(fromDeviceAddr[t]);
+      }
       free(fromDeviceAddr);
-      for (uint32_t t = 0; t < TinselMaxThreads; t++)
-        if (vertexMem[t] != NULL) free(vertexMem[t]);
+      if(vertexMem!=0){
+        for (uint32_t t = 0; t < TinselMaxThreads; t++)
+          if (vertexMem[t] != NULL) free(vertexMem[t]);
+      }
       free(vertexMem);
       free(vertexMemSize);
       free(vertexMemBase);
-      for (uint32_t t = 0; t < TinselMaxThreads; t++)
-        if (threadMem[t] != NULL) free(threadMem[t]);
+      if(threadMem!=0){
+        for (uint32_t t = 0; t < TinselMaxThreads; t++)
+          if (threadMem[t] != NULL) free(threadMem[t]);
+      }
       free(threadMem);
       free(threadMemSize);
       free(threadMemBase);
-      for (uint32_t t = 0; t < TinselMaxThreads; t++)
-        if (inEdgeHeaderMem[t] != NULL) free(inEdgeHeaderMem[t]);
+      if(inEdgeHeaderMem!=0){
+        for (uint32_t t = 0; t < TinselMaxThreads; t++)
+          if (inEdgeHeaderMem[t] != NULL) free(inEdgeHeaderMem[t]);
+      }
       free(inEdgeHeaderMem);
       free(inEdgeHeaderMemSize);
       free(inEdgeHeaderMemBase);
-      for (uint32_t t = 0; t < TinselMaxThreads; t++)
-        if (inEdgeRestMem[t] != NULL) free(inEdgeRestMem[t]);
+      if(inEdgeRestMem!=0){
+        for (uint32_t t = 0; t < TinselMaxThreads; t++)
+          if (inEdgeRestMem[t] != NULL) free(inEdgeRestMem[t]);
+      }
       free(inEdgeRestMem);
       free(inEdgeRestMemSize);
       free(inEdgeRestMemBase);
-      for (uint32_t t = 0; t < TinselMaxThreads; t++)
-        if (outEdgeMem[t] != NULL) free(outEdgeMem[t]);
+      if(outEdgeMem!=0){
+        for (uint32_t t = 0; t < TinselMaxThreads; t++)
+          if (outEdgeMem[t] != NULL) free(outEdgeMem[t]);
+      }
       free(outEdgeMem);
       free(outEdgeMemSize);
       free(outEdgeMemBase);
@@ -776,7 +788,10 @@ template <typename DeviceType,
   }
 
   // Implement mapping to tinsel threads
-  void map() {
+  /*! \param mapOnly - Only do the mapping. Don't actually allocated any tables.
+                        If mapOnly is specified you can't load it into hardware...
+  */
+  void map(bool mapOnly=false) {
     // Let's measure some times
     struct timeval placementStart, placementFinish;
     struct timeval routingStart, routingFinish;
@@ -792,8 +807,6 @@ template <typename DeviceType,
     gettimeofday(&placementStart, NULL);
 
   #ifdef SCOTCH
-    fprintf(stderr, "Mapping with SCOTCH\n");
-
     Placer scotch(&graph, numBoardsX*32, numBoardsY*32);
     int32_t threadOfScotch = 0;
     for (uint32_t boardY = 0; boardY < numBoardsY; boardY++) {
@@ -838,24 +851,29 @@ template <typename DeviceType,
       }
     }
   #else
-    fprintf(stderr, "Mapping with METIS\n");
-
     // Partition into subgraphs, one per board
     Placer boards(&graph, numBoardsX, numBoardsY);
 
     // Place subgraphs onto 2D mesh
-    const uint32_t placerEffort = 8;
+    uint32_t placerEffort = 8;
+    if(getenv("POLITE_PLACER_EFFORT")){
+      placerEffort=std::stoi(getenv("POLITE_PLACER_EFFORT"));
+      fprintf(stderr, "   Setting placer effort = %u\n", placerEffort);
+    }
+    
+    fprintf(stderr, "Board place\n");
     boards.place(placerEffort);
 
     // HACK: has side-effects for printing
     // boards.computeInterLinkCounts();
 
     // For each board
-    #pragma omp parallel for collapse(2)
+    //#pragma omp parallel for collapse(2)
     for (uint32_t boardY = 0; boardY < numBoardsY; boardY++) {
       for (uint32_t boardX = 0; boardX < numBoardsX; boardX++) {
         // Partition into subgraphs, one per mailbox
         PartitionId b = boards.mapping[boardY][boardX];
+        fprintf(stderr, "   Board %u, %u : %u = \n", boardX, boardY, boards.subgraphs[b].outgoing->numElems);
         Placer boxes(&boards.subgraphs[b],
                  TinselMailboxMeshXLen, TinselMailboxMeshYLen);
         boxes.place(placerEffort);
@@ -905,6 +923,10 @@ template <typename DeviceType,
     // Stop placement timer and start routing timer
     gettimeofday(&placementFinish, NULL);
     gettimeofday(&routingStart, NULL);
+
+    if(mapOnly){
+      return;
+    }
 
     // Compute send and receive side routing tables
     allocateRoutingTables();

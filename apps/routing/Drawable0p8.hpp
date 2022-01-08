@@ -16,7 +16,7 @@ public:
         : router(node)
         , meshWidth(_meshWidth)
         , width(_meshWidth+linkWidth+pad*2)
-        , height(linkWidth+pad*2)
+        , height(linkWidth*6.0/4+pad*3)
     {
 
     }
@@ -32,24 +32,25 @@ public:
 
     void draw(SVGWriter &dst, Point topLeft, LinkMap &map) const override
     {
-        Size meshBox{meshWidth,height};
-        Size linkSize{linkWidth,height};
-        Size routerSize{linkWidth+meshWidth,height};
+        Size meshSize{meshWidth,linkWidth/4};
+        Size linkSize{linkWidth,linkWidth*6.0/4};
 
         topLeft=topLeft+Size{pad,pad};
 
-        Point meshTopLeft=topLeft+Size{linkWidth, 0};
+        Point meshTopLeft=topLeft+Size{linkWidth, linkWidth*5.0/4};
         Point linkTopLeft=topLeft;
 
-        dst.rectangle(topLeft, topLeft+routerSize);
-        Point mid=topLeft+Size{width*0.5,height*0.5};
+        dst.rectangle(linkTopLeft, linkTopLeft+linkSize);
+        Point mid=linkTopLeft+Size{linkSize.w*0.5,linkSize.h*0.5};
         dst.text(mid, router->name);
+
+        dst.rectangle(meshTopLeft, meshTopLeft+meshSize);
 
         unsigned meshLenX = router->mbox_in.size();
 
         for(unsigned i=0; i<meshLenX; i++){
-            draw_link_in(dst, meshTopLeft, meshBox, South, meshLenX*2, 2*i, router->mbox_in[i].get(), map);
-            draw_link_out(dst, meshTopLeft, meshBox, South, meshLenX*2, 2*i+1, router->mbox_out[i].get(), map);
+            draw_link_in(dst, meshTopLeft, meshSize, South, meshLenX*2, 2*i, router->mbox_in[i].get(), map);
+            draw_link_out(dst, meshTopLeft, meshSize, South, meshLenX*2, 2*i+1, router->mbox_out[i].get(), map);
         }
     
         draw_link_in(dst, linkTopLeft, linkSize, South, 2, 0, router->inter_in[North].get(), map);
@@ -58,11 +59,11 @@ public:
         draw_link_in(dst, linkTopLeft, linkSize, North, 2, 1, router->inter_in[South].get(), map);
         draw_link_out(dst, linkTopLeft, linkSize, North, 2, 0, router->inter_out[South].get(), map);
 
-        draw_link_in(dst, topLeft, routerSize, West, 2, 0, router->inter_in[East].get(), map);
-        draw_link_out(dst, topLeft, routerSize, West, 2, 1, router->inter_out[East].get(), map);
+        draw_link_in(dst, linkTopLeft, linkSize, West, 2, 0, router->inter_in[East].get(), map);
+        draw_link_out(dst, linkTopLeft, linkSize, West, 2, 1, router->inter_out[East].get(), map);
 
-        draw_link_in(dst, topLeft, routerSize, East, 2, 1, router->inter_in[West].get(), map);
-        draw_link_out(dst, topLeft, routerSize, East, 2, 0, router->inter_out[West].get(), map);
+        draw_link_in(dst, linkTopLeft, linkSize, East, 2, 1, router->inter_in[West].get(), map);
+        draw_link_out(dst, linkTopLeft, linkSize, East, 2, 0, router->inter_out[West].get(), map);
 
     }
 
