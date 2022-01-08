@@ -4,6 +4,8 @@
 
 #include <stdint.h>
 #include <type_traits>
+#include <algorithm>
+#include <array>
 
 #ifdef TINSEL
   #include <tinsel.h>

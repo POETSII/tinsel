@@ -39,7 +39,7 @@ template <class T> class Seq
     void setCapacity(int n) {
       maxElems = n;
       T* newElems = new T[maxElems];
-      for (unsigned i = 0; i < std::min<unsigned>(n, numElems); i++)
+      for (int i = 0; i < std::min<int>(numElems,n); i++)
         newElems[i] = elems[i];
       delete [] elems;
       elems = newElems;
@@ -48,10 +48,10 @@ template <class T> class Seq
     // Extend size of sequence by N
     void extendBy(int n)
     {
-      unsigned newNumElems = numElems + n;
-      if (newNumElems > maxElems)
-        setCapacity(newNumElems*2);
-      assert(newNumElems <= maxElems);
+      int newNumElems = numElems + n;
+      if (newNumElems > maxElems){
+        setCapacity(newNumElems);
+      }
       numElems=newNumElems;
     }
 
@@ -98,8 +98,8 @@ template <class T> class Seq
     }
 
     // Is given value already in sequence?
-    bool member(T x) {
-      for (unsigned i = 0; i < numElems; i++)
+    bool member(T x) const {
+      for (int i = 0; i < numElems; i++)
         if (elems[i] == x) return true;
       return false;
     }

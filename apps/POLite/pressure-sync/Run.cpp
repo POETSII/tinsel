@@ -6,27 +6,35 @@
 #include <POLite.h>
 #include <sys/time.h>
 
-// Volume dimensions
-#define D 40
-
 int main(int argc, char *argv[])
 {
   int T=1000;
+  int D=40;
 
   if(argc>1){
     T=atoi(argv[1]);
     fprintf(stderr, "Setting T=%u\n", T);
+  }
+  if(argc>2){
+    D=atoi(argv[2]);
+    fprintf(stderr, "Setting D=%u\n", D);
   }
 
   HostLink hostLink;
   PGraph<PressureDevice, PressureState, Dir, PressureMessage> graph;
   //graph.mapVerticesToDRAM = true;
 
-  int devs[D][D][D];
-  for (int x = 0; x < D; x++)
-    for (int y = 0; y < D; y++)
-      for (int z = 0; z < D; z++)
+  std::vector<std::vector<std::vector<int> > > devs;
+  devs.resize(D);
+  for (int x = 0; x < D; x++){
+    devs[x].resize(D);
+    for (int y = 0; y < D; y++){
+      devs[x][y].resize(D);
+      for (int z = 0; z < D; z++){
         devs[x][y][z] = graph.newDevice();
+      }
+    }
+  }
 
   for (int x = 0; x < D; x++)
     for (int y = 0; y < D; y++)

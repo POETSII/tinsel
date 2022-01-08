@@ -6,7 +6,7 @@ TINSEL_ROOT ?= ../../..
 include $(TINSEL_ROOT)/globals.mk
 
 # Local compiler flags
-CFLAGS = $(RV_CFLAGS) -O2 -I $(INC)
+CFLAGS = $(RV_CFLAGS) -O2 -I $(INC) -std=c++17
 LDFLAGS = -melf32lriscv -G 0 
 
 BUILD=build
@@ -62,13 +62,14 @@ SIM_RELEASE_CPP_OBJ := $(patsubst %.cpp, build/%.sim-release.o, $(RUN_CPP))
 $(BUILD)/%.run.o : %.cpp
 	mkdir -p $(BUILD)
 	g++ -c -std=c++11 -I $(INC) -I $(HL) -o $(BUILD)/$*.run.o $*.cpp \
-	   -std=c++17 -march=native -g -O3 -DNDEBUG=1 -fno-exceptions -fopenmp \
+	   -std=c++17 -march=native -g -O3 -DNDEBUG=1 -fopenmp \
 	   -fno-omit-frame-pointer
 
 $(BUILD)/run: $(RUN_CPP_OBJ) $(RUN_H) $(HL)/hostlink.a
 	g++ -std=c++11 -o $(BUILD)/run $(RUN_CPP_OBJ) $(HL)/hostlink.a \
-	   -std=c++17 -march=native -g -O3 -DNDEBUG=1 -fno-exceptions -fopenmp \
-	   -fno-omit-frame-pointer -ltbb -lmetis
+	   -std=c++17 -march=native -g -O3 -DNDEBUG=1 -fopenmp \
+	   -L/home/dt10/local/lib \
+	   -fno-omit-frame-pointer -ltbb -lmetis -lscotch
 
 
 POLITE_SW_SIM_DIR = $(TINSEL_ROOT)/apps/POLite/util/POLiteSWSim
@@ -92,6 +93,7 @@ $(BUILD)/sim-release: $(SIM_RELEASE_CPP_OBJ) $(RUN_H)
 $(BUILD)/hwsim: $(RUN_CPP) $(RUN_H) $(HL)/sim/hostlink.a
 	mkdir -p $(BUILD)
 	g++ -O2 -I $(INC) -I $(HL) -o $(BUILD)/hwsim $(RUN_CPP) $(HL)/sim/hostlink.a \
+	-L~/local/lib \
     -lmetis -fopenmp
 
 .PHONY: clean

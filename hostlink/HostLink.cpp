@@ -431,7 +431,7 @@ bool HostLink::canRecv()
 }
 
 // Load application code and data onto the mesh
-void HostLink::boot(const char* codeFilename, const char* dataFilename)
+void HostLink::loadAll(const char* codeFilename, const char* dataFilename)
 {
   MemFileReader code(codeFilename);
   MemFileReader data(dataFilename);
@@ -499,15 +499,17 @@ void HostLink::boot(const char* codeFilename, const char* dataFilename)
     }
     addrReg = addr + 4;
   }
+}
 
-  // Step 3: start cores
-  // -------------------
-
+// Load application code and data onto the mesh, and start the cores
+void HostLink::boot(const char* codeFilename, const char* dataFilename)
+{
   // Send start command
-  const uint32_t numCores =
-    (meshXLen*meshYLen) << TinselLogCoresPerBoard;
-  fprintf(stderr, "  starting cores : %u cores, %u threads\n", numCores, numCores*TinselThreadsPerCore);
-  startAll();
+    const uint32_t numCores = (meshXLen*meshYLen) << TinselLogCoresPerBoard;
+    fprintf(stderr, "  starting cores : %u cores, %u threads\n", numCores, numCores*TinselThreadsPerCore);
+
+    loadAll(codeFilename, dataFilename);
+    startAll();
 }
 
 // Trigger to start application execution

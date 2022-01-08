@@ -2,8 +2,17 @@
 #ifndef _PLACER_H_
 #define _PLACER_H_
 
+#include <vector>
+#include <stdexcept>
+#include <string>
+#include <cmath>
+#include <algorithm>
+#include <random>
+
 #include <stdint.h>
+#include <string.h>
 #include <metis.h>
+#include <scotch/scotch.h>
 #include <POLite/Graph.h>
 #include <queue>
 #include <omp.h>
@@ -18,7 +27,8 @@ struct Placer {
     Metis,
     Random,
     Direct,
-    BFS
+    BFS,
+	Scotch
   };
   const Method defaultMethod=Metis;
 
@@ -74,6 +84,8 @@ struct Placer {
         method=Direct;
       else if (!strcmp(e, "bfs"))
         method=BFS;
+      else if (!strcmp(e, "scotch"))
+        method=Scotch;
       else if (!strcmp(e, "default") || *e == '\0')
         method=Default;
       else {
@@ -169,6 +181,13 @@ struct Placer {
     free(adjncy);
     free(parts);
     free(vwgt);
+
+  //   // Perform random placement now, so that others can do their
+  //   // own placement
+  // #ifdef SCOTCH
+  //   randomPlacement();
+  // #endif
+    currentCost = cost();
   }
 
   // Partition the graph randomly
@@ -176,9 +195,14 @@ struct Placer {
     uint32_t numVertices = graph->numVertices();
     uint32_t numParts = width * height;
 
+    std::mt19937_64 urng(getRand());
+    std::uniform_int_distribution<unsigned> udist(0, numParts-1);
+    double scale=std::ldexp(numParts, -64);
+
+
     // Populate result array
     for (uint32_t i = 0; i < numVertices; i++) {
-      partitions[i] = getRand() % numParts;
+      partitions[i] = urng()*scale;
     }
   }
 
@@ -258,7 +282,117 @@ struct Placer {
     case BFS:
       partitionBFS();
       break;
+    case Scotch:
+      partitionScotch();
+      break;
     }
+  }
+
+  // Place the graph using Scotch
+  void partitionScotch() {
+    idx_t nvtxs = (idx_t) graph->incoming()->numElems;
+    idx_t nparts = (idx_t) (width * height);
+
+    // If there are no vertices
+    if (nvtxs == 0) return;
+
+    // // If there are more partitions than vertices
+    // if (nparts >= nvtxs) {
+    //   for (uint32_t i = 0; i < nvtxs; i++)
+    //     partitions[i] = i;
+    //   return;
+    // }
+
+    // // If there is exactly one partition
+    // if (nparts == 1) {
+    //   for (uint32_t i = 0; i < nvtxs; i++)
+    //     partitions[i] = 0;
+    //   return;
+    // }
+
+    SCOTCH_Arch *archptr=(SCOTCH_Arch *)malloc(sizeof(SCOTCH_Arch));
+    if(SCOTCH_archInit (archptr)){
+      throw std::runtime_error("Couldn't init scotch arch");
+    }
+
+    if(SCOTCH_archMesh2(archptr, width, height)){
+      throw std::runtime_error("Couldn't create 2d mesh in scotch");
+    }
+
+    std::vector<SCOTCH_Num> verttab;
+    std::vector<SCOTCH_Num> edgetab;
+
+    for (uint32_t i = 0; i < nvtxs; i++) {
+      verttab.push_back(edgetab.size());
+
+      const Seq<NodeId>* in = graph->incoming()->elems[i];
+      for (uint32_t j = 0; j < in->numElems; j++){
+        edgetab.push_back( in->elems[j] );
+      }
+
+      const Seq<NodeId>* out = graph->outgoing()->elems[i];
+      for (uint32_t j = 0; j < out->numElems; j++){
+        if (! in->member(out->elems[j])){ // TODO: How expensive is this for highly connected graphs?
+          edgetab.push_back( out->elems[j] );
+        }
+      }
+    }
+    verttab.push_back(edgetab.size());
+
+    SCOTCH_Graph *grafptr=(SCOTCH_Graph *)malloc(sizeof(SCOTCH_Graph));
+
+    if(SCOTCH_graphBuild (grafptr,
+      0, //baseval - where do array indices start
+      graph->incoming()->numElems, // vertnbr
+      &verttab[0],
+      &verttab[1], //vendtab. Settings to verttab+1 means it is a compact edge array
+      0, // velotab, Integer load per vertex. Not used here.
+      0, // vlbltab, vertex label tab (?)
+      edgetab.size(), // edgenbr,
+      &edgetab[0],
+      0 // edlotab, load on each arc
+    )){
+      throw std::runtime_error("Scotch didn't want to build a graph.");
+    }
+
+    if(SCOTCH_graphCheck (grafptr)){
+      throw std::runtime_error("Scotch does not like the graph we built. Is it consistent?");
+    }
+
+    SCOTCH_Strat *stratptr=(SCOTCH_Strat *)malloc(sizeof(SCOTCH_Strat));
+    if(SCOTCH_stratInit(stratptr)){
+      throw std::runtime_error("Scotch won't make a strategy.");
+    }
+
+    std::vector<SCOTCH_Num> parttab(nvtxs);
+
+    if(SCOTCH_graphMap (grafptr, archptr, stratptr, &parttab[0])){
+      throw std::runtime_error("Scotch couldn't map the graph.");
+    }
+
+    // Populate result array
+    for (uint32_t i = 0; i < graph->incoming()->numElems; i++){
+      partitions[i] = (uint32_t) parttab[i];
+    }
+
+    // Explicitly set up placement
+    for (uint32_t y = 0; y < height; y++) {
+      for (uint32_t x = 0; x < width; x++) {
+        unsigned p=y*width+x;
+        mapping[y][x] = p;
+        xCoord[p] = x;
+        yCoord[p] = y;
+      }
+    }
+
+    currentCost = cost();
+
+    SCOTCH_archExit(archptr);
+    free(archptr);
+    SCOTCH_graphExit(grafptr);
+    free(grafptr);
+    SCOTCH_stratInit(stratptr);
+    free(stratptr);
   }
 
   // Create subgraph for each partition
@@ -318,6 +452,162 @@ struct Placer {
     }
   }
 
+  // If we are on a width*height mesh, then calculate the
+  // number of channels passing through the intermediate
+  // manhattan routers
+  std::vector<uint64_t> computeInterLinkCounts()
+  {
+    /*
+      Take each * as a node (e.g. board/FPGA), and
+      the lines are the links.
+
+          x
+          0  1  2  3
+      y 0 *--*--*--*   0
+          |  |  |  |
+        1 *--*--*--*   2
+          |  |  |  |
+        2 *--*--*--*   4
+          |  |  |  |
+        3 *--*--*--*   6
+                       7
+          0  2  4  6 7
+
+      Being lazy, the link between
+        (x,y) and (x+1,y) is at  (x+x+1),y*2) = (x*2+1,y*2)
+      and the link between
+        (x,y) and (x,y+1) is at  (x,y+y+1) = (x*2,y*2+1)
+    */
+
+    std::vector<uint64_t> counts((2*width-1)*(2*height-1), 0);
+
+    auto traverse=[&](int x, int y, int dx, int dy, uint64_t weight)
+    {
+      int vx=2*x+dx;
+      int vy=2*y+dy;
+      int index=vy*(2*width-1) + vx;
+      //fprintf(stderr, " (%u,%u)+(%d,%d) -> %u\n", x,y,dx,dy,index);
+      counts.at( index ) += weight;
+    };
+
+    auto trace=[&](int ax,int ay, int bx,int by, uint64_t weight) -> uint64_t
+    {
+      /* From Network.bsv:
+          function Route route(NetAddr addr);
+                  if (addr.board.y < b.y) return Down;
+              else if (addr.board.y > b.y) return Up;
+              else if (addr.host.valid) return addr.host.value == 0 ? Left : Right;
+              else if (addr.board.x < b.x) return Left;
+              else if (addr.board.x > b.x) return Right;
+
+          So route in y first, then x
+      */
+
+     int x=ax, y=ay;
+
+     // Record the route taken through links
+     int hops=0;
+      while(y!=by){
+        int dir=y<by ? +1 : -1;
+        traverse(x, y, 0, dir, weight);
+        y += dir;
+        hops++;
+      }
+      while(x!=bx){
+        int dir=x<bx ? +1 : -1;
+        traverse(x, y, dir, 0, weight);
+        x += dir;
+        hops++;
+      }
+
+      // Self-connections should be removed by now.
+      assert(hops>0);
+
+      // Record the cost of routes begining and ending in the node
+      traverse(ax,ay, 0, 0, hops*weight);
+      traverse(bx,by, 0, 0, hops*weight);
+
+      /*if(ax==0 && bx==0){
+        fprintf(stderr, "a=(0,0), hops=%u, weight=%llu, counts[0,0]=%llu\n", hops, weight, counts[0]);
+      }*/
+    };
+
+    // computeInterPartitionCounts();
+
+    for(int p1=0; p1+1 < width*height; p1++){
+      for(int p2=p1+1; p2 < width*height; p2++){
+        trace(
+          xCoord[p1], yCoord[p1],
+          xCoord[p2], yCoord[p2],
+          connCount[p1][p2]
+        );
+      }
+    }
+
+    fprintf(stderr, "Per-link route cost: count of total routes traversing this link:\n");
+    double sumSquareLinkWeight=0;
+    double sumLinkWeight=0;
+    double maxLinkWeight=0;
+    double numLinks=0;
+    for(int y=0; y<2*height-1; y++){
+      for(int x=0; x<2*width-1; x++){
+        if((x&1)&&(y&1)){
+          fprintf(stderr, " %6s", " ");
+        }else if( (x&1) || (y&1) ){
+          auto w=counts[y*(2*width-1)+x];
+          fprintf(stderr, " %6llu", (unsigned long long)w);
+          sumSquareLinkWeight += pow((double)w,2);
+          sumLinkWeight += w;
+          maxLinkWeight = std::max(maxLinkWeight, (double)w);
+          numLinks++;
+        }else{
+          fprintf(stderr, " %6s", "+");
+        }
+      }
+      fprintf(stderr, "\n");
+    }
+
+    fprintf(stderr, "Per-node route cost: sum(distance*count) for routes beginning and ending in each node:\n");
+    double sumSquareNodeWeight=0;
+    double sumNodeWeight=0;
+    double maxNodeWeight=0;
+    double numNodes=0;
+    for(int y=0; y<2*height-1; y++){
+      for(int x=0; x<2*width-1; x++){
+        if((x&1)&&(y&1)){
+          fprintf(stderr, " %6s", " ");
+        }else if( ! ((x&1) || (y&1)) ){
+          auto w=counts[y*(2*width-1)+x];
+          fprintf(stderr, " %6llu", w);
+          sumSquareNodeWeight += pow((double)w,2);
+          sumNodeWeight += w;
+          maxNodeWeight = std::max(maxNodeWeight, (double)w);
+          numNodes++;
+        }else if(x&1){
+          fprintf(stderr, " %6s", "-");
+        }else{
+          fprintf(stderr, " %6s", "|");
+        }
+      }
+      fprintf(stderr, "\n");
+    }
+
+    double meanLinkWeight=sumLinkWeight/numLinks;
+    double stddevLinkWeight=sqrt( sumSquareLinkWeight/numLinks - meanLinkWeight*meanLinkWeight  );
+    fprintf(stderr, "Per-link: mean=%.1f, stddev=%.1f, max=%.1f\n",
+      meanLinkWeight, stddevLinkWeight, maxLinkWeight
+    );
+
+    double meanNodeWeight=sumNodeWeight/numLinks;
+    double stddevNodeWeight=sqrt( sumSquareNodeWeight/numNodes - meanNodeWeight*meanNodeWeight  );
+    fprintf(stderr, "Per-node: mean=%.1f, stddev=%.1f, max=%.1f\n",
+      meanNodeWeight, stddevNodeWeight, maxNodeWeight
+    );
+
+
+    return counts;
+  }
+
   // Create random mapping between partitions and mesh
   void randomPlacement() {
     uint32_t numPartitions = width*height;
@@ -356,8 +646,9 @@ struct Placer {
   void restore() {
     currentCost = savedCost;
     for (uint32_t y = 0; y < height; y++)
-      for (uint32_t x = 0; x < width; x++)
+      for (uint32_t x = 0; x < width; x++) {
         mapping[y][x] = mappingSaved[y][x];
+      }
     for (uint32_t p = 0; p < width*height; p++) {
       xCoord[p] = xCoordSaved[p];
       yCoord[p] = yCoordSaved[p];
@@ -412,6 +703,8 @@ struct Placer {
   // Very simple local search algorithm for placement
   // Repeatedly swap a mesh node with it's neighbour if it lowers cost
   void place(uint32_t numAttempts) {
+    if (method == Scotch)
+      return;
     // Initialise best cost
     savedCost = ~0;
 
@@ -432,7 +725,6 @@ struct Placer {
           }
         }
       } while (change);
-
       if (currentCost <= savedCost)
         save();
       else

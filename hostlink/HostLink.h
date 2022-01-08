@@ -25,7 +25,8 @@ struct HostLinkParams {
 
   // Used to allow retries when connecting to the socket. When performing rapid sweeps,
   // it is quite common for the first attempt in the next process to fail.
-  int max_connection_attempts = 5;
+  int max_connection_attempts;
+  HostLinkParams(): max_connection_attempts(5){}
 };
 
 class HostLink {
@@ -140,6 +141,9 @@ private:
   // (Only thread 0 on each core is active when the boot loader is running)
 
   // Load application code and data onto the mesh
+  void loadAll(const char* codeFilename, const char* dataFilename);
+
+  // ... and start
   void boot(const char* codeFilename, const char* dataFilename);
 
   // Trigger to start application execution

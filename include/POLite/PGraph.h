@@ -2,6 +2,9 @@
 #ifndef _PGRAPH_H_
 #define _PGRAPH_H_
 
+#include <algorithm>
+#include <numeric>
+
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
@@ -804,6 +807,55 @@ public:
     // Start placement timer
     gettimeofday(&placementStart, NULL);
 
+  #ifdef SCOTCH
+    fprintf(stderr, "Mapping with SCOTCH\n");
+
+    Placer scotch(&graph, numBoardsX*32, numBoardsY*32);
+    int32_t threadOfScotch = 0;
+    for (uint32_t boardY = 0; boardY < numBoardsY; boardY++) {
+      for (uint32_t boardX = 0; boardX < numBoardsX; boardX++) {
+        for (uint32_t boxX = 0; boxX < TinselMailboxMeshXLen; boxX++) {
+          for (uint32_t boxY = 0; boxY < TinselMailboxMeshYLen; boxY++) {
+            // Partition into subgraphs, one per thread
+            uint32_t numThreads = 1<<TinselLogThreadsPerMailbox;
+            // PartitionId t = boxes.mapping[boxY][boxX];
+            // Placer threads(&boxes.subgraphs[t], numThreads, 1);
+
+            // For each thread
+            for (uint32_t threadNum = 0; threadNum < numThreads; threadNum++) {
+              // Determine tinsel thread id
+              uint32_t threadId = boardY;
+              threadId = (threadId << TinselMeshXBits) | boardX;
+              threadId = (threadId << TinselMailboxMeshYBits) | boxY;
+              threadId = (threadId << TinselMailboxMeshXBits) | boxX;
+              threadId = (threadId << (TinselLogCoresPerMailbox +
+                            TinselLogThreadsPerCore)) | threadNum;
+              // Get subgraph
+              Graph* g = &scotch.subgraphs[threadOfScotch];
+              threadOfScotch++;
+
+              // Populate fromDeviceAddr mapping
+              uint32_t numDevs = g->incoming->numElems;
+              numDevicesOnThread[threadId] = numDevs;
+              fromDeviceAddr[threadId] = (PDeviceId*)
+                malloc(sizeof(PDeviceId) * numDevs);
+              for (uint32_t devNum = 0; devNum < numDevs; devNum++)
+                fromDeviceAddr[threadId][devNum] = g->labels->elems[devNum];
+              // Populate toDeviceAddr mapping
+              assert(numDevs < maxLocalDeviceId());
+              for (uint32_t devNum = 0; devNum < numDevs; devNum++) {
+                PDeviceAddr devAddr =
+                  makeDeviceAddr(threadId, devNum);
+                toDeviceAddr[g->labels->elems[devNum]] = devAddr;
+              }
+            }
+          }
+        }
+      }
+    }
+  #else
+    fprintf(stderr, "Mapping with METIS\n");
+
     // Partition into subgraphs, one per board
     Placer boards(&graph, numBoardsX, numBoardsY);
 
@@ -811,13 +863,16 @@ public:
     const uint32_t placerEffort = 8;
     boards.place(placerEffort);
 
+    // HACK: has side-effects for printing
+    // boards.computeInterLinkCounts();
+
     // For each board
     #pragma omp parallel for collapse(2)
     for (uint32_t boardY = 0; boardY < numBoardsY; boardY++) {
       for (uint32_t boardX = 0; boardX < numBoardsX; boardX++) {
         // Partition into subgraphs, one per mailbox
         PartitionId b = boards.mapping[boardY][boardX];
-        Placer boxes(&boards.subgraphs[b], 
+        Placer boxes(&boards.subgraphs[b],
                  TinselMailboxMeshXLen, TinselMailboxMeshYLen);
         boxes.place(placerEffort);
 
@@ -847,9 +902,9 @@ public:
               numDevicesOnThread[threadId] = numDevs;
               fromDeviceAddr[threadId] = (PDeviceId*)
                 malloc(sizeof(PDeviceId) * numDevs);
-              for (uint32_t devNum = 0; devNum < numDevs; devNum++)
+              for (uint32_t devNum = 0; devNum < numDevs; devNum++){
                 fromDeviceAddr[threadId][devNum] = g->getLabel(devNum);
-  
+              }
               // Populate toDeviceAddr mapping
               assert(numDevs < maxLocalDeviceId());
               for (uint32_t devNum = 0; devNum < numDevs; devNum++) {
@@ -862,7 +917,7 @@ public:
         }
       }
     }
-
+    #endif
     // Stop placement timer and start routing timer
     gettimeofday(&placementFinish, NULL);
     gettimeofday(&routingStart, NULL);
@@ -911,7 +966,7 @@ public:
     constructor(x, y);
   }
   PGraph(uint32_t numBoxesX, uint32_t numBoxesY) {
-    int x = numBoxesX * TinselMeshXLenWithinBox; 
+    int x = numBoxesX * TinselMeshXLenWithinBox;
     int y = numBoxesY * TinselMeshYLenWithinBox;
     constructor(x, y);
   }
@@ -987,7 +1042,7 @@ public:
   }
 
   // Write graph to tinsel machine
-  void write(HostLink* hostLink) { 
+  void write(HostLink* hostLink) {
     // Start timer
     struct timeval start, finish;
     gettimeofday(&start, NULL);
