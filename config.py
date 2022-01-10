@@ -60,7 +60,7 @@ p["DRAMLogMaxInFlight"] = 5
 p["DRAMLatency"] = 20
 
 # Size of each DRAM
-p["LogBeatsPerDRAM"] = 25
+p["LogBeatsPerDRAM"] = 26 # need sufficent DRAM capacity for progRouters...
 
 # Size of internal flit payload
 p["LogWordsPerFlit"] = 2
