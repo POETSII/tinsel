@@ -10,8 +10,8 @@
 //                      |
 
 import DRAM       :: *;
-import NarrowSRAM :: *;
-import WideSRAM   :: *;
+// import NarrowSRAM :: *;
+// import WideSRAM   :: *;
 import Interface  :: *;
 import Queue      :: *;
 import Util       :: *;
@@ -117,7 +117,7 @@ module mkOffChipRAM#(RAMId base) (OffChipRAM);
 
   // External interfaces
   interface extDRAM = dram.external;
-  //interface extSRAM = 
+  //interface extSRAM =
   //  vector(sramA.external, sramB.external);
 
 endmodule

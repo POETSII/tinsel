@@ -19,7 +19,7 @@ import JtagUart     :: *;
 import Mac          :: *;
 import FPU          :: *;
 import InstrMem     :: *;
-import NarrowSRAM   :: *;
+// import NarrowSRAM   :: *;
 import OffChipRAM   :: *;
 import IdleDetector :: *;
 import Connections  :: *;
