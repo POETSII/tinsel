@@ -1713,14 +1713,13 @@ set_global_assignment -name ENABLE_ED_CRC_CHECK ON
 set_global_assignment -name MINIMUM_SEU_INTERVAL 0
 set_global_assignment -name ACTIVE_SERIAL_CLOCK AS_FREQ_100MHZ
 set_global_assignment -name ERROR_CHECK_FREQUENCY_DIVISOR 1
-set_global_assignment -name SEED 1
+set_global_assignment -name SEED 2
 set_global_assignment -name SEARCH_PATH ../rtl/
 set_global_assignment -name SIGNALTAP_FILE stp1.stp
 set_global_assignment -name IP_FILE reset_release.ip
 set_global_assignment -name MIF_FILE boot.mif
 set_global_assignment -name QSYS_FILE DE10_Pro_QSYS.qsys
 set_global_assignment -name SDC_FILE DE10_Pro.sdc
-set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/DE10_Pro_QSYS_emif_s10_ddr4.ip
 set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/DE10_Pro_QSYS_iopll_0.ip
 set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/DE10_Pro_QSYS_mm_clock_crossing_bridge_50m.ip
 set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/DE10_Pro_QSYS_pio_0.ip
@@ -1729,6 +1728,7 @@ set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/DE10_Pro_QSYS_ddr4_local_re
 set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/DE10_Pro_QSYS_emif_s10_ddr4_d.ip
 set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/DE10_Pro_QSYS_emif_s10_ddr4_c.ip
 set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/DE10_Pro_QSYS_emif_s10_ddr4_b.ip
+
 set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/DE10_Pro_QSYS_clock_in.ip
 set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/DE10_Pro_QSYS_jtag_uart_0.ip
 set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/DE10_Pro_QSYS_mm_clockcross_DDR4.ip
@@ -1754,7 +1754,6 @@ set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/DE10_Pro_QSYS_reset_control
 set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/DE10_Pro_QSYS_pcie_s10_hip_avmm_bridge_0.ip
 set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/DE10_Pro_QSYS_mm_bridge_pcie.ip
 set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/DE10_Pro_QSYS_mm_bridge_pcie_bar0.ip
-set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/DE10_Pro_QSYS_mm_bridge_ddrA.ip
 set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/DE10_Pro_QSYS_mm_bridge_ddrB_0.ip
 set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/DE10_Pro_QSYS_onchip_memory2_0.ip
 set_global_assignment -name ENABLE_SIGNALTAP OFF
@@ -1771,3 +1770,7 @@ set_global_assignment -name QSYS_FILE sysB.qsys
 set_global_assignment -name OPTIMIZATION_TECHNIQUE SPEED
 set_global_assignment -name ROUTER_TIMING_OPTIMIZATION_LEVEL MAXIMUM
 set_global_assignment -name QII_AUTO_PACKED_REGISTERS NORMAL
+set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/mm_clockcross_DDR4.ip
+set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/DDR_mm_pipeline_bridge.ip
+set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/DE10_Pro_QSYS_emif_s10_ddr4_a.ip
+set_global_assignment -name NUMBER_OF_EXAMPLE_NODES_REPORTED 5
