@@ -3560,12 +3560,12 @@
         <ipxact:parameter parameterId="MEM_READ_LATENCY" type="real">
           <ipxact:name>MEM_READ_LATENCY</ipxact:name>
           <ipxact:displayName>PARAM_MEM_READ_LATENCY_NAME</ipxact:displayName>
-          <ipxact:value>22.0</ipxact:value>
+          <ipxact:value>19.0</ipxact:value>
         </ipxact:parameter>
         <ipxact:parameter parameterId="MEM_WRITE_LATENCY" type="int">
           <ipxact:name>MEM_WRITE_LATENCY</ipxact:name>
           <ipxact:displayName>PARAM_MEM_WRITE_LATENCY_NAME</ipxact:displayName>
-          <ipxact:value>18</ipxact:value>
+          <ipxact:value>14</ipxact:value>
         </ipxact:parameter>
         <ipxact:parameter parameterId="MEM_BURST_LENGTH" type="int">
           <ipxact:name>MEM_BURST_LENGTH</ipxact:name>
@@ -4455,7 +4455,7 @@
         <ipxact:parameter parameterId="MEM_DDR4_HIDE_ADV_MR_SETTINGS" type="bit">
           <ipxact:name>MEM_DDR4_HIDE_ADV_MR_SETTINGS</ipxact:name>
           <ipxact:displayName>Hide advanced mode register settings</ipxact:displayName>
-          <ipxact:value>false</ipxact:value>
+          <ipxact:value>true</ipxact:value>
         </ipxact:parameter>
         <ipxact:parameter parameterId="MEM_DDR4_BL_ENUM" type="string">
           <ipxact:name>MEM_DDR4_BL_ENUM</ipxact:name>
@@ -4470,7 +4470,7 @@
         <ipxact:parameter parameterId="MEM_DDR4_TCL" type="int">
           <ipxact:name>MEM_DDR4_TCL</ipxact:name>
           <ipxact:displayName>Memory CAS latency setting</ipxact:displayName>
-          <ipxact:value>22</ipxact:value>
+          <ipxact:value>19</ipxact:value>
         </ipxact:parameter>
         <ipxact:parameter parameterId="MEM_DDR4_RTT_NOM_ENUM" type="string">
           <ipxact:name>MEM_DDR4_RTT_NOM_ENUM</ipxact:name>
@@ -4505,7 +4505,7 @@
         <ipxact:parameter parameterId="MEM_DDR4_WTCL" type="int">
           <ipxact:name>MEM_DDR4_WTCL</ipxact:name>
           <ipxact:displayName>Memory write CAS latency setting</ipxact:displayName>
-          <ipxact:value>18</ipxact:value>
+          <ipxact:value>14</ipxact:value>
         </ipxact:parameter>
         <ipxact:parameter parameterId="MEM_DDR4_WRITE_CRC" type="bit">
           <ipxact:name>MEM_DDR4_WRITE_CRC</ipxact:name>
@@ -4895,7 +4895,7 @@
         <ipxact:parameter parameterId="MEM_DDR4_MR0" type="int">
           <ipxact:name>MEM_DDR4_MR0</ipxact:name>
           <ipxact:displayName>PARAM_MEM_DDR4_MR0_NAME</ipxact:displayName>
-          <ipxact:value>2640</ipxact:value>
+          <ipxact:value>2672</ipxact:value>
         </ipxact:parameter>
         <ipxact:parameter parameterId="MEM_DDR4_MR1" type="int">
           <ipxact:name>MEM_DDR4_MR1</ipxact:name>
@@ -4905,7 +4905,7 @@
         <ipxact:parameter parameterId="MEM_DDR4_MR2" type="int">
           <ipxact:name>MEM_DDR4_MR2</ipxact:name>
           <ipxact:displayName>PARAM_MEM_DDR4_MR2_NAME</ipxact:displayName>
-          <ipxact:value>131120</ipxact:value>
+          <ipxact:value>131104</ipxact:value>
         </ipxact:parameter>
         <ipxact:parameter parameterId="MEM_DDR4_MR3" type="int">
           <ipxact:name>MEM_DDR4_MR3</ipxact:name>
@@ -4925,7 +4925,7 @@
         <ipxact:parameter parameterId="MEM_DDR4_MR6" type="int">
           <ipxact:name>MEM_DDR4_MR6</ipxact:name>
           <ipxact:displayName>PARAM_MEM_DDR4_MR6_NAME</ipxact:displayName>
-          <ipxact:value>395280</ipxact:value>
+          <ipxact:value>394256</ipxact:value>
         </ipxact:parameter>
         <ipxact:parameter parameterId="MEM_DDR4_RDIMM_CONFIG" type="string">
           <ipxact:name>MEM_DDR4_RDIMM_CONFIG</ipxact:name>
@@ -5295,12 +5295,12 @@
         <ipxact:parameter parameterId="MEM_DDR4_TWTR_L_CYC" type="int">
           <ipxact:name>MEM_DDR4_TWTR_L_CYC</ipxact:name>
           <ipxact:displayName>tWTR_L</ipxact:displayName>
-          <ipxact:value>10</ipxact:value>
+          <ipxact:value>4</ipxact:value>
         </ipxact:parameter>
         <ipxact:parameter parameterId="MEM_DDR4_TWTR_S_CYC" type="int">
           <ipxact:name>MEM_DDR4_TWTR_S_CYC</ipxact:name>
           <ipxact:displayName>tWTR_S</ipxact:displayName>
-          <ipxact:value>3</ipxact:value>
+          <ipxact:value>2</ipxact:value>
         </ipxact:parameter>
         <ipxact:parameter parameterId="MEM_DDR4_TFAW_NS" type="real">
           <ipxact:name>MEM_DDR4_TFAW_NS</ipxact:name>
@@ -5310,7 +5310,7 @@
         <ipxact:parameter parameterId="MEM_DDR4_TRRD_L_CYC" type="int">
           <ipxact:name>MEM_DDR4_TRRD_L_CYC</ipxact:name>
           <ipxact:displayName>tRRD_L</ipxact:displayName>
-          <ipxact:value>6</ipxact:value>
+          <ipxact:value>4</ipxact:value>
         </ipxact:parameter>
         <ipxact:parameter parameterId="MEM_DDR4_TRRD_S_CYC" type="int">
           <ipxact:name>MEM_DDR4_TRRD_S_CYC</ipxact:name>
@@ -5320,7 +5320,7 @@
         <ipxact:parameter parameterId="MEM_DDR4_TCCD_L_CYC" type="int">
           <ipxact:name>MEM_DDR4_TCCD_L_CYC</ipxact:name>
           <ipxact:displayName>tCCD_L</ipxact:displayName>
-          <ipxact:value>6</ipxact:value>
+          <ipxact:value>5</ipxact:value>
         </ipxact:parameter>
         <ipxact:parameter parameterId="MEM_DDR4_TCCD_S_CYC" type="int">
           <ipxact:name>MEM_DDR4_TCCD_S_CYC</ipxact:name>
