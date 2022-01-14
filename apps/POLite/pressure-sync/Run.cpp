@@ -6,14 +6,18 @@
 #include <POLite.h>
 #include <sys/time.h>
 
-// Number of time steps
-#define T 1000
-
 // Volume dimensions
 #define D 40
 
-int main()
+int main(int argc, char *argv[])
 {
+  int T=1000;
+
+  if(argc>1){
+    T=atoi(argv[1]);
+    fprintf(stderr, "Setting T=%u\n", T);
+  }
+
   HostLink hostLink;
   PGraph<PressureDevice, PressureState, Dir, PressureMessage> graph;
   //graph.mapVerticesToDRAM = true;

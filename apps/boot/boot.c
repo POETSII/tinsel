@@ -4,7 +4,10 @@
 #include <tinsel.h>
 #include <boot.h>
 
-// See "boot.h" for further details of the supported boot commands.
+INLINE void sendb(char c) {
+  while (tinselUartTryPut(c) == 0);
+}
+
 
 // Main
 int main()
@@ -12,11 +15,12 @@ int main()
   // Global id of this thread
   uint32_t me = tinselId();
 
-  // Core-local thread id
+  // // Core-local thread id
   uint32_t threadId = me & ((1 << TinselLogThreadsPerCore) - 1);
 
   // Host id
   uint32_t hostId = tinselHostId();
+  volatile BootReq* msgIn;
 
   // Use one flit per message
   tinselSetLen(0);
@@ -33,12 +37,13 @@ int main()
     for (;;) {
       // Receive message
       tinselWaitUntil(TINSEL_CAN_RECV);
-      volatile BootReq* msgIn = tinselRecv();
+      msgIn = tinselRecv();
+      uint8_t cmd = msgIn->cmd;
 
       // Command dispatch
       // (We avoid using a switch statement here so that the compiler
       // doesn't generate a data section)
-      uint8_t cmd = msgIn->cmd;
+
       if (cmd == WriteInstrCmd) {
         // Write instructions to instruction memory
         int n = msgIn->numArgs;
@@ -76,6 +81,11 @@ int main()
         // Set address register
         addrReg = msgIn->args[0];
       }
+      else if (cmd == FlushCmd) {
+        tinselWaitUntil(TINSEL_CAN_SEND);
+        msgOut[0] = msgIn->args[0];
+        tinselSend(hostId, msgOut);
+      }
       else if (cmd == StartCmd) {
         // Cache flush
         tinselCacheFlush();
@@ -87,19 +97,20 @@ int main()
         tinselWaitUntil(TINSEL_CAN_SEND);
         msgOut[0] = tinselId();
         tinselSend(hostId, msgOut);
-        // Wait for trigger
+
+        // Wait for triggerstartOne
         while ((tinselUartTryGet() & 0x100) == 0);
         // Start remaining threads
         int numThreads = msgIn->args[0];
-        for (int i = 0; i < numThreads; i++)
+        for (int i = 0; i < numThreads; i++) {
           tinselCreateThread(i+1);
+        }
         tinselFree(msgIn);
         break;
       }
       tinselFree(msgIn);
     }
   }
-
   // Call the application's main function
   int (*appMain)() = (int (*)()) (TinselMaxBootImageBytes);
   appMain();

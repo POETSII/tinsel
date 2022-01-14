@@ -429,4 +429,17 @@ function AvalonMac macMux(Bool sel, AvalonMac macA, AvalonMac macB) =
     endmethod
   endinterface;
 
+// =============================================================================
+// Null MAC
+// =============================================================================
+
+module mkNullAvalonMac#(AvalonMac mac) (Empty);
+
+  rule nullMac;
+    mac.source(True); // Consume everything
+    mac.sink(?, False, ?, ?, ?, ?); // Generate nothing
+  endrule
+
+endmodule
+
 endpackage

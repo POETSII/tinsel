@@ -8,6 +8,7 @@ package QueueArray;
 // =============================================================================
 
 import BlockRam     :: *;
+import Queue        :: *;
 import Util         :: *;
 import DReg         :: *;
 import ConfigReg    :: *;
@@ -44,6 +45,14 @@ endinterface
 // Implementation
 // =============================================================================
 
+// Structure for holding enqueue requests internally
+typedef struct {
+  // Which Queue to write to?
+  Bit#(logNumQueues) index;
+  // Value to write
+  elemType item;
+} EnqReq#(numeric type logNumQueues, type elemType) deriving (Bits);
+
 module mkQueueArray (QueueArray#(logNumQueues, logQueueSize, elemType))
   provisos (Bits#(elemType, elemTypeSize),
 
@@ -78,14 +87,13 @@ module mkQueueArray (QueueArray#(logNumQueues, logQueueSize, elemType))
   BlockRamTrue#(Bit#(TAdd#(logNumQueues, logQueueSize)), elemType)
     ramData <- mkBlockRamTrueMixedOpts(dataOpts);
 
-  // State
-  PulseWire enqStage1Go <- mkPulseWire;
-  Wire#(Bit#(logNumQueues)) enqIndexWire <- mkDWire(?);
-  Wire#(elemType) enqItemWire <- mkDWire(?);
-  Reg#(Bit#(logNumQueues)) enqIndex2 <- mkConfigRegU;
-  Reg#(elemType) enqItem2 <- mkConfigRegU;
-  Reg#(Bool) enqStage2Go <- mkDReg(False);
+  // State of enqueue state machine
+  Reg#(Bit#(1)) enqState <- mkConfigReg(0);
 
+  // Enqueue requests
+  Queue#(EnqReq#(logNumQueues, elemType)) enqReqs <- mkUGQueue;
+
+  // Dequeue pipeline state
   PulseWire deqStage1Go <- mkPulseWire;
   Wire#(Bit#(logNumQueues)) deqIndexWire <- mkDWire(?);
   Reg#(Bit#(logNumQueues)) deqIndex2 <- mkConfigRegU;
@@ -96,23 +104,29 @@ module mkQueueArray (QueueArray#(logNumQueues, logQueueSize, elemType))
   // Rules
   // =====
 
-  (* mutually_exclusive = "enqStage1, enqStage2" *)
-  rule enqStage1 (enqStage1Go);
-    ramFront.putA(False, enqIndexWire, ?);
-    ramBack.putA(False, enqIndexWire, ?);
-    enqIndex2 <= enqIndexWire;
-    enqItem2 <= enqItemWire;
-    enqStage2Go <= True;
-  endrule
-
-  rule enqStage2 (enqStage2Go);
-    if (ramBack.dataOutA+1 == ramFront.dataOutA) begin
-      ramFront.putA(False, enqIndex2, ?);
-      ramBack.putA(False, enqIndex2, ?);
-      enqStage2Go <= True;
-    end else begin
-      ramData.putA(True, {enqIndex2, ramBack.dataOutA}, enqItem2);
-      ramBack.putA(True, enqIndex2, ramBack.dataOutA+1);
+  rule enqueue (enqReqs.canDeq);
+    let req = enqReqs.dataOut;
+    if (enqState == 0) begin
+      // Avoid ramFront R/W conflict with deqStage2b
+      Bool stall = doDeqWire && req.index == deqIndex2;
+      if (! stall) begin
+        ramFront.putA(False, req.index, ?);
+        ramBack.putA(False, req.index, ?);
+        enqState <= 1;
+      end
+    end else if (enqState == 1) begin
+      // Avoid ramBack R/W conflict with deqStage1
+      Bool stall = deqStage1Go && req.index == deqIndexWire;
+      if (stall)
+        enqState <= 0;
+      else if (ramBack.dataOutA+1 == ramFront.dataOutA)
+        enqState <= 0;
+      else begin
+        ramData.putA(True, {req.index, ramBack.dataOutA}, req.item);
+        ramBack.putA(True, req.index, ramBack.dataOutA+1);
+        enqState <= 0;
+        enqReqs.deq;
+      end
     end
   endrule
 
@@ -141,13 +155,11 @@ module mkQueueArray (QueueArray#(logNumQueues, logQueueSize, elemType))
   // =======
 
   // Guard on the enq method
-  method Bool canEnq = !enqStage2Go;
+  method Bool canEnq = enqReqs.notFull;
 
   // Put an item into a specified queue
   method Action enq(Bit#(logNumQueues) index, elemType item);
-    enqStage1Go.send;
-    enqIndexWire <= index;
-    enqItemWire <= item;
+    enqReqs.enq(EnqReq { index: index, item: item });
   endmethod
 
   // Try to dequeue an item from the specified queue
