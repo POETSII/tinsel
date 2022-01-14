@@ -63,7 +63,7 @@ module AlteraBlockRam (
 
   altsyncram altsyncram_component (
         .address_a (WR_ADDR),
-        .byteena_a (BE),
+        .byteena_a (BE_WIDTH == 1 ? 1'b1 : BE),
         .clock0 (CLK),
         .data_a (DI),
         .wren_a (WE),

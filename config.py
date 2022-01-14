@@ -35,7 +35,7 @@ p["SharedInstrMem"] = True
 p["LogCoresPerDCache"] = 2 # the mailbox calc defines no of cores, but this defines hookup; need to match
 
 # Log of number of caches per DRAM port
-p["LogDCachesPerDRAM"] = 2
+p["LogDCachesPerDRAM"] = 1
 
 # Log of number of 32-bit words in a single memory transfer
 p["LogWordsPerBeat"] = 3
@@ -52,6 +52,8 @@ p["DCacheLogNumWays"] = 4
 # Number of DRAMs per FPGA board
 p["LogDRAMsPerBoard"] = 1
 
+# Number of SRAMs per FPGA board (or None if 0)
+p["SRAMsPerBoard"] = None
 # Max number of outstanding DRAM requests permitted
 p["DRAMLogMaxInFlight"] = 5
 
@@ -59,7 +61,7 @@ p["DRAMLogMaxInFlight"] = 5
 p["DRAMLatency"] = 20
 
 # Size of each DRAM
-p["LogBeatsPerDRAM"] = 9
+p["LogBeatsPerDRAM"] = 26 # need sufficent DRAM capacity for progRouters...
 
 # Size of internal flit payload
 p["LogWordsPerFlit"] = 2
@@ -77,7 +79,7 @@ p["LogCoresPerMailbox"] = 2
 p["MailboxMeshXBits"] = 1
 
 # Number of bits in mailbox mesh Y coord
-p["MailboxMeshYBits"] = 2
+p["MailboxMeshYBits"] = 1
 
 # Size of multicast queues in mailbox
 p["LogMsgPtrQueueSize"] = 6
@@ -86,7 +88,7 @@ p["LogMsgPtrQueueSize"] = 6
 p["LogMulticastBufferSize"] = 9
 
 # Maximum size of boot loader (in bytes)
-p["MaxBootImageBytes"] = 576
+p["MaxBootImageBytes"] = 1024
 
 # Size of transmit buffer in a reliable link
 p["LogTransmitBufferSize"] = 10
@@ -170,7 +172,7 @@ p["EnablePerfCount"] = True
 p["BoxMeshXLen"] = 1
 p["BoxMeshYLen"] = 1
 p["BoxMesh"] = ('{'
-    '{"tparks-optiplex-390",},'
+    '{"asdex"}'
   '}')
 
 # Enable custom accelerators (experimental feature)
@@ -379,18 +381,30 @@ p["NumNorthSouthLinks"] = 2 ** p["LogNorthSouthLinks"]
 p["NumEastWestLinks"] = 2 ** p["LogEastWestLinks"]
 
 # SRAM parameters
-p["BytesPerSRAMBeat"] = 2 ** p["LogBytesPerSRAMBeat"]
-p["WordsPerSRAMBeat"] = p["BytesPerSRAMBeat"] / 4
-p["SRAMDataWidth"] = 32 * p["WordsPerSRAMBeat"]
-p["SRAMsPerBoard"] = 2 * p["DRAMsPerBoard"]
-p["LogThreadsPerSRAM"] = p["LogThreadsPerDRAM"] - 1
-p["LogBeatsPerSRAM"] = (
-  (p["SRAMAddrWidth"] + p["LogBytesPerSRAMBeat"]) - p["LogBytesPerBeat"])
-p["LogBytesPerSRAM"] = p["LogBeatsPerSRAM"] + p["LogBytesPerBeat"]
-p["LogBytesPerSRAMPartition"] = p["LogBytesPerSRAM"] - p["LogThreadsPerSRAM"]
+if p["SRAMsPerBoard"]:
+    p["BytesPerSRAMBeat"] = 2 ** p["LogBytesPerSRAMBeat"]
+    p["WordsPerSRAMBeat"] = p["BytesPerSRAMBeat"] / 4
+    p["SRAMDataWidth"] = 32 * p["WordsPerSRAMBeat"]
+    p["SRAMsPerBoard"] = 2 * p["DRAMsPerBoard"]
+    p["LogThreadsPerSRAM"] = p["LogThreadsPerDRAM"] - 1
+    p["LogBeatsPerSRAM"] = (
+      (p["SRAMAddrWidth"] + p["LogBytesPerSRAMBeat"]) - p["LogBytesPerBeat"])
+    p["LogBytesPerSRAM"] = p["LogBeatsPerSRAM"] + p["LogBytesPerBeat"]
+    p["LogBytesPerSRAMPartition"] = p["LogBytesPerSRAM"] - p["LogThreadsPerSRAM"]
+else:
+    p["BytesPerSRAMBeat"] = 0
+    p["WordsPerSRAMBeat"] = 0
+    p["SRAMDataWidth"] = 0
+    # p["LogThreadsPerSRAM"] = None
+    # p["LogBeatsPerSRAM"] = None
+    # p["LogBytesPerSRAM"] = None
+    # p["LogBytesPerSRAMPartition"] = None
 
 # DRAM base and length
-p["DRAMBase"] = 3 * (2 ** p["LogBytesPerSRAM"])
+if p["SRAMsPerBoard"]:
+    p["DRAMBase"] = 3 * (2 ** p["LogBytesPerSRAM"])
+else:
+    p["DRAMBase"] = 512 # TDDO FIXME; first word does not write correctly.
 p["DRAMGlobalsLength"] = 2 ** (p["LogBytesPerDRAM"] - 1) - p["DRAMBase"]
 p["POLiteDRAMGlobalsLength"] = 2 ** 14
 p["POLiteProgRouterBase"] = p["DRAMBase"] + p["POLiteDRAMGlobalsLength"]
@@ -400,7 +414,8 @@ p["POLiteProgRouterLength"] = (p["DRAMGlobalsLength"] -
 # POLite globals
 
 # Number of FPGA boards per box (including bridge board)
-p["BoardsPerBox"] = p["MeshXLenWithinBox"] * p["MeshYLenWithinBox"] + 1
+#p["BoardsPerBox"] = p["MeshXLenWithinBox"] * p["MeshYLenWithinBox"] + 1
+p["BoardsPerBox"] = p["MeshXLenWithinBox"] * p["MeshYLenWithinBox"]
 
 # Parameters for programmable routers
 # (and the routing-record fetchers they contain)

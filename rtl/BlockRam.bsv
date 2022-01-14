@@ -831,12 +831,9 @@ module mkBlockRamTrueMixedBEOpts_SIMULATE#(BlockRamOpts opts)
   // State
   Reg#(dataA) dataAReg <- mkConfigRegU;
   Reg#(dataA) dataBReg <- mkConfigRegU;
-  Reg#(Bit#(aExtra)) offsetB1 <- mkConfigRegU;
-  Reg#(Bit#(aExtra)) offsetB2 <- mkConfigRegU;
 
   // Rules
   rule update;
-    offsetB2 <= offsetB1;
     dataAReg <= ram.a.read;
     dataBReg <= ram.b.read;
   endrule
@@ -885,9 +882,9 @@ import "BVI" AlteraBlockRamTrueMixedBE =
                  );
 
     parameter ADDR_WIDTH_A = valueOf(addrWidthA);
-    parameter ADDR_WIDTH_B = valueOf(addrWidthB);
+    parameter ADDR_WIDTH_B = valueOf(addrWidthA);
     parameter DATA_WIDTH_A = valueOf(dataWidthA);
-    parameter DATA_WIDTH_B = valueOf(dataWidthB);
+    parameter DATA_WIDTH_B = valueOf(dataWidthA);
     parameter NUM_ELEMS_A  = valueOf(TExp#(addrWidthA));
     parameter NUM_ELEMS_B  = valueOf(TExp#(addrWidthB));
     parameter BE_WIDTH = valueOf(dataBBytes);

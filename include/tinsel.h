@@ -234,13 +234,13 @@ INLINE void* tinselHeapBase()
   return (void*) addr;
 }
 
-// Return pointer to base of thread's SRAM partition
-INLINE void* tinselHeapBaseSRAM()
-{
-  uint32_t me = tinselId();
-  uint32_t addr = tinselHeapBaseSRAMGeneric(me);
-  return (void*) addr;
-}
+// // Return pointer to base of thread's SRAM partition
+// INLINE void* tinselHeapBaseSRAM()
+// {
+//   uint32_t me = tinselId();
+//   uint32_t addr = tinselHeapBaseSRAMGeneric(me);
+//   return (void*) addr;
+// }
 
 // Reset performance counters
 INLINE void tinselPerfCountReset()

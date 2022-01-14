@@ -24,7 +24,7 @@ typedef enum {
   // Argument: up to 3 x 32-bit instructions to write.
   // The address is taken from the address register.
   WriteInstrCmd,
- 
+
   // Perform a store instruction and increment address register.
   // Argument: up to 3 x 32-bit words to store.
   // The address is taken from the address register.
@@ -40,6 +40,15 @@ typedef enum {
   // application code.  The first argument is the number of threads
   // to start.
   StartCmd,
+
+  // FAKE COMMAND
+  // used to full the pciestream buffer and force a send
+  FlushCmd,
+
+  // Do nothing. Emit nothing in reply.
+  NOPCmd,
+  PingCmd,
+  StartBootloaderCmd,
 
 } BootCmd;
 

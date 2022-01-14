@@ -24,6 +24,64 @@
 // Send buffer size (in flits)
 #define SEND_BUFFER_SIZE 8192
 
+bool HostLink::flushcore(uint32_t dest) {
+  // ensure all messages have reached the core
+  // we pick a rand int32, and wait until it's echo'd by the core
+  // assuming in-order msg delivery, this ensures we've sent eveything.
+  usleep(10000);
+  // debugprintf(debugLink);
+  uint32_t cookie = rand();
+  BootReq req;
+  uint32_t msg[1 << TinselLogWordsPerMsg];
+
+  req.cmd = FlushCmd;
+  req.numArgs = 1;
+  req.args[0] = cookie;
+  printf("sending flush alligner with cookie %i\n", cookie);
+  send(dest, 1, &req);
+  usleep(10000);
+
+  int iteration = 0;
+
+  do {
+
+    // don't block on DebugLink
+    // debugprintf(debugLink);
+
+    // process flits from the core
+    while (canRecv()) {
+      recv(msg);
+      printf("0x%04X sent: ", dest);
+      for (int j=0; j<1 << TinselLogWordsPerMsg; j++) printf("msg[%i]=%i ", j, msg[j]);
+      printf("\n");
+      usleep(10000);
+      if (msg[0] == cookie) {
+        printf("0x%04X synced after %i flits\n", dest, iteration+1);
+        uint32_t recv_meshX, recv_meshY, recv_coreId, recv_threadId;
+        fromAddr(msg[1], &recv_meshX, &recv_meshY, &recv_coreId, &recv_threadId);
+        printf("sync msg from Mx: %i My: %i core: %i thread: %i\n", recv_meshX, recv_meshY, recv_coreId, recv_threadId);
+
+        return 1; // done.
+      } else {
+        printf("not cookie, ignoring.\n");
+      }
+    }
+
+    req.cmd = NOPCmd;
+    req.numArgs = 0;
+    send(dest, 1, &req);
+    printf(".");
+    fflush(0);
+    iteration++;
+    usleep(10000);
+  } while (iteration < 3);
+  printf("0x%04X NOT synced after %i flits\n", dest, iteration+1);
+
+  return 0;
+
+}
+
+
 // Function to connect to a PCIeStream UNIX domain socket
 static int connectToPCIeStream(const char* socketPath)
 {
@@ -92,6 +150,7 @@ void HostLink::constructor(HostLinkParams p)
     // Connect to pciestreamd
     pcieLink = connectToPCIeStream(PCIESTREAM);
   #endif
+  printf("connected to PCIe stream.\n");
 
   // Create DebugLink
   DebugLinkParams debugLinkParams;
@@ -100,6 +159,7 @@ void HostLink::constructor(HostLinkParams p)
   debugLinkParams.useExtraSendSlot = p.useExtraSendSlot;
   debugLinkParams.max_connection_attempts=p.max_connection_attempts;
   debugLink = new DebugLink(debugLinkParams);
+  printf("connected to DebugLink.\n");
 
   // Set board mesh dimensions
   meshXLen = debugLink->meshXLen;
@@ -144,9 +204,15 @@ void HostLink::constructor(HostLinkParams p)
   sendBufferLen = 0;
 
   // Run the self test
-  if (! powerOnSelfTest()) {
+  int retry=0;
+  for (retry=1; retry>0; retry--) {
+    if (powerOnSelfTest()) break;
+  }
+  if (retry == 0) {
     fprintf(stderr, "Power-on self test failed.  Please try again.\n");
     exit(EXIT_FAILURE);
+  } else {
+    printf("hostlink POST passed.\n");
   }
 }
 
@@ -214,15 +280,40 @@ HostLink::~HostLink()
   close(lockFile);
 }
 
+
+// Address construction
+uint32_t tinselToAddr(
+         uint32_t boardX, uint32_t boardY,
+           uint32_t tileX, uint32_t tileY,
+             uint32_t coreId, uint32_t threadId)
+{
+  assert(boardX < (1<<TinselMeshXBits));
+  assert(boardY < (1<<TinselMeshYBits));
+  assert(tileY < (1<<TinselMailboxMeshYBits));
+  assert(tileX < (1<<TinselMailboxMeshXBits));
+  assert(coreId < (1<<TinselLogCoresPerMailbox));
+  assert(threadId < (1<<TinselLogThreadsPerCore));
+  uint32_t addr;
+  addr = boardY;
+  addr = (addr << TinselMeshXBits) | boardX;
+  addr = (addr << TinselMailboxMeshYBits) | tileY;
+  addr = (addr << TinselMailboxMeshXBits) | tileX;
+  addr = (addr << TinselLogCoresPerMailbox) | coreId;
+  addr = (addr << TinselLogThreadsPerCore) | threadId;
+  return addr;
+}
+
+
 // Address construction
 uint32_t HostLink::toAddr(uint32_t meshX, uint32_t meshY,
              uint32_t coreId, uint32_t threadId)
 {
   uint32_t addr;
-  addr = meshY;
-  addr = (addr << TinselMeshXBits) | meshX;
-  addr = (addr << TinselLogCoresPerBoard) | coreId;
-  addr = (addr << TinselLogThreadsPerCore) | threadId;
+  addr = tinselToAddr(meshX, meshY,
+                      coreId / (TinselMailboxMeshYLen* 1<<TinselLogCoresPerMailbox),
+                      (coreId / 1<<TinselLogCoresPerMailbox) % TinselMailboxMeshYLen,
+                      coreId % 1<<TinselLogCoresPerMailbox,
+                    threadId);
   return addr;
 }
 
@@ -402,7 +493,7 @@ bool HostLink::canRecv()
 }
 
 // Load application code and data onto the mesh
-void HostLink::boot(const char* codeFilename, const char* dataFilename)
+void HostLink::loadAll(const char* codeFilename, const char* dataFilename)
 {
   MemFileReader code(codeFilename);
   MemFileReader data(dataFilename);
@@ -423,7 +514,7 @@ void HostLink::boot(const char* codeFilename, const char* dataFilename)
       for (int y = 0; y < meshYLen; y++) {
         for (int i = 0; i < (1 << TinselLogCoresPerBoard); i++) {
           uint32_t dest = toAddr(x, y, i, 0);
-          if (addr != addrReg) {
+          if (addr != addrReg || true) {
             req.cmd = SetAddrCmd;
             req.numArgs = 1;
             req.args[0] = addr;
@@ -438,6 +529,7 @@ void HostLink::boot(const char* codeFilename, const char* dataFilename)
     }
     addrReg = addr + 4;
   }
+  printf("hostlink::LoadAll(): written code memory\n");
 
   // Step 2: initialise data memory
   // ------------------------------
@@ -454,7 +546,7 @@ void HostLink::boot(const char* codeFilename, const char* dataFilename)
         for (int i = 0; i < TinselDRAMsPerBoard; i++) {
           // Use one core to initialise each DRAM
           uint32_t dest = toAddr(x, y, coresPerDRAM * i, 0);
-          if (addr != addrReg) {
+          if (addr != addrReg || true) {
             req.cmd = SetAddrCmd;
             req.numArgs = 1;
             req.args[0] = addr;
@@ -469,12 +561,15 @@ void HostLink::boot(const char* codeFilename, const char* dataFilename)
     }
     addrReg = addr + 4;
   }
+  printf("hostlink::LoadAll(): written data memory\n");
+}
 
-  // Step 3: start cores
-  // -------------------
 
-  // Send start command
-  startAll();
+// Load application code and data onto the mesh, and start the cores
+void HostLink::boot(const char* codeFilename, const char* dataFilename)
+{
+    loadAll(codeFilename, dataFilename);
+    startAll();
 }
 
 // Trigger to start application execution
@@ -486,6 +581,7 @@ void HostLink::go()
       debugLink->put(x, y, 0);
     }
   }
+  printf("HostLink::go(): sent go stdin msg to all cores.\n");
 }
 
 // Load instructions into given core's instruction memory
@@ -583,7 +679,7 @@ void HostLink::startAll()
         req.cmd = StartCmd;
         req.args[0] = (1<<TinselLogThreadsPerCore)-1;
         while (1) {
-          bool ok = trySend(dest, 1, &req);
+          bool ok = send(dest, 1, &req);
           if (canRecv()) {
             recv(msg);
             started++;
@@ -593,12 +689,15 @@ void HostLink::startAll()
       }
     }
   }
+  printf("HostLink::startAll(): sent all start messages.\n");
 
   // Wait for all start responses
   while (started < numCores) {
-    recv(msg);
+    if (canRecv()) recv(msg);
     started++;
+    usleep(10000);
   }
+  printf("HostLink::startAll(): all cores waiting on go cmd.\n");
 }
 
 // Trigger application execution on all started threads on given core
@@ -670,11 +769,14 @@ bool HostLink::powerOnSelfTest()
       for (int y = 0; y < meshYLen; y++) {
         for (int x = 0; x < meshXLen; x++) {
           // Request a word from SRAM
-          uint32_t addr = ram << TinselLogBytesPerSRAM;
+          uint32_t addr = 10; // ram << TinselLogBytesPerSRAM;
           setAddr(x, y, core, addr);
           gettimeofday(&start, NULL);
           while (1) {
-            bool ok = trySend(toAddr(x, y, core, 0), 1, &req);
+            uint32_t mailbox_addr = toAddr(x, y, core, 0);
+            printf("self-testing addr 0x%04X\n", mailbox_addr);
+            bool ok = trySend(mailbox_addr, 1, &req);
+            // flushcore(mailbox_addr);
             if (canRecv()) {
               recv(msg);
               count++;
@@ -690,12 +792,15 @@ bool HostLink::powerOnSelfTest()
       }
     }
   }
+  printf("sent all self-test requests count=%i\n", count);
 
   // Consume remaining responses
   gettimeofday(&start, NULL);
   while (count < (4*meshXLen*meshYLen)) {
+    usleep(500000);
     if (canRecv()) {
       recv(msg);
+      printf("count=%i\n", count);
       count++;
       gettimeofday(&start, NULL);
     }
@@ -705,7 +810,7 @@ bool HostLink::powerOnSelfTest()
                       (double) diff.tv_usec / 1000000.0;
     if (duration > timeout) return false;
   }
-
+  printf("self-test passed.\n");
   return true;
 }
 

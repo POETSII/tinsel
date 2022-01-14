@@ -264,6 +264,7 @@ DebugLink::DebugLink(DebugLinkParams p)
       }
   }
 
+/*
   // Query the bridge board on the master box a second time to
   // enable idle-detection (only now do all the boards know their
   // full coordinates in the mesh).
@@ -274,6 +275,7 @@ DebugLink::DebugLink(DebugLinkParams p)
   // Get response
   getPacket(0, 0, &pkt);
   assert(pkt.payload[0] == DEBUGLINK_QUERY_OUT);
+*/
 }
 
 // On given board, set destination core and thread
