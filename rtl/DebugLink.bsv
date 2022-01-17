@@ -235,6 +235,7 @@ interface DebugLink;
 endinterface
 
 module mkDebugLink#(
+    Clock axi_clk, Reset axi_rst,
     Bit#(4) boardIdWithinBox,
     Bit#(8) temperature,
     Vector#(n, DebugLinkClient) cores) (DebugLink);
@@ -263,7 +264,7 @@ module mkDebugLink#(
   OutPort#(DebugLinkFlit) toBusPort <- mkOutPort;
 
   // Create JTAG UART instance
-  JtagUart uart <- mkJtagUart;
+  JtagUart uart <- mkJtagUart(axi_clk, axi_rst);
 
   // Conect ports to UART
   connectUsing(mkUGShiftQueue1(QueueOptFmax), toJtag.out, uart.jtagIn);
@@ -321,7 +322,8 @@ module mkDebugLink#(
     tempSamples <= tempSamples + 1;
     if (allHigh(tempSamples)) begin
       if ((tempSum >> `LogTemperatureSamples) > `TemperatureThreshold)
-        overheatDetected <= True;
+        // overheatDetected <= True; // WARNING; fixthis
+        begin end
       else
         tempSum <= zeroExtend(temperature);
     end else
@@ -349,6 +351,7 @@ module mkDebugLink#(
 
   rule uartRecv (fromJtag.canGet && toBusPort.canPut && !respondFlag);
     fromJtag.get;
+    // $display("debuglink got %x", fromJtag.value, " recvstate ", recvState);
     if (recvState == 0) begin
       DebugLinkCmd cmd = truncate(fromJtag.value);
       if (cmd == cmdTempIn) begin
@@ -360,23 +363,28 @@ module mkDebugLink#(
       end
     end else if (recvState == 1) begin
       if (recvCmd == cmdQueryIn) begin
+        // $display("debuglink command is a cmdQueryIn, board offset ", fromJtag.value);
         boardOffset <= fromJtag.value;
         recvState <= 2;
       end else if (recvCmd == cmdSetDest) begin
+        // $display("debuglink command is a cmdSetDest, recvDestThread ", fromJtag.value);
         recvDestThread <= truncate(fromJtag.value);
         recvState <= 2;
       end else if (recvCmd == cmdStdIn) begin
+        // $display("debuglink command is a cmdStdIn, recvDestThread ", recvDestThread, " core ", recvDestCore, " cmd ", recvCmd, " payload ", fromJtag.value);
         DebugLinkFlit flit;
         flit.coreId = truncate(recvDestCore);
         flit.isBroadcast = False; //unpack(recvDestCore[7]);
         flit.threadId = truncate(recvDestThread);
         flit.cmd = recvCmd;
         flit.payload = truncate(fromJtag.value);
+        // $display("putting flit ", flit, " on the bus.");
         toBusPort.put(flit);
         recvState <= 0;
       end
     end else if (recvState == 2) begin
       if (recvCmd == cmdQueryIn) begin
+        // $display("debuglink command is a cmdQueryIn, edgeEn ", fromJtag.value);
         Bit#(4) edgeEn = truncate(fromJtag.value);
         Vector#(4, Bool) linkEn = replicate(True);
         // Disable north link?
@@ -398,9 +406,10 @@ module mkDebugLink#(
         respondFlag <= True;
         respondCmd <= cmdQueryIn;
         // Start checking temperature after first query command
-        checkTemperature <= True;
+        // checkTemperature <= True; // TODO: reenable
         recvState <= 0;
       end else begin
+        // $display("debuglink command is not a cmdQueryIn, recvDestCore ", fromJtag.value);
         recvDestCore <= truncate(fromJtag.value); // TODO: let us address the higher num cores!
         recvState <= 0;
       end
@@ -421,10 +430,12 @@ module mkDebugLink#(
     if (respondCmd == cmdQueryIn) begin
       if (sendState == 0) begin
         // Send QueryOut
+        // $display("uartSendQueryOut ", cmdQueryOut, " based on respondcmd ", respondCmd, " sendstate ", sendState);
         toJtag.put(zeroExtend(cmdQueryOut));
         sendState <= 1;
       end else begin
         // Send QueryOut payload
+        // $display("sending uartSendQueryOut ", cmdQueryOut, " based on respondcmd ", respondCmd, " sendstate ", sendState);
         toJtag.put(1 + zeroExtend(pack(boardIdWithinBox)));
         sendState <= 0;
         respondFlag <= False;
@@ -432,10 +443,12 @@ module mkDebugLink#(
     end else if (respondCmd == cmdTempIn) begin
       if (sendState == 0) begin
         // Send TempOut
+        // $display("sending cmdTempOut ", cmdTempOut, " based on respondcmd ", respondCmd, " sendstate ", sendState);
         toJtag.put(zeroExtend(cmdTempOut));
         sendState <= 1;
       end else begin
         // Send temperature
+        // $display("sending temperature ", temperature, " based on respondcmd ", respondCmd, " sendstate ", sendState);
         toJtag.put(temperature);
         sendState <= 0;
         respondFlag <= False;
@@ -448,26 +461,31 @@ module mkDebugLink#(
     if (sendState == 0) begin
       if (overheatDetected && !overheatMsgSent) begin
         overheatMsgSent <= True;
+        // $display("sending cmdOverheat ", cmdOverheat, " sendstate ", sendState);
         toJtag.put(zeroExtend(cmdOverheat));
       end else if (fromBusPort.canGet) begin
         fromBusPort.get;
         if (! fromBusPort.value.isBroadcast) begin
           // Send StdOut
           sendFlit <= fromBusPort.value;
+          // $display("sending Broadcast from bus ", cmdStdOut, " sendstate ", sendState);
           toJtag.put(zeroExtend(cmdStdOut));
           sendState <= 1;
         end
       end
     end else if (sendState == 1) begin
       // Send StdOut thread id
+      // $display("StdOut threadId ", sendFlit.threadId, " sendstate ", sendState);
       toJtag.put(zeroExtend(sendFlit.threadId)); // TODO: address bits 8-10 of the core id!
       sendState <= 2;
     end else if (sendState == 2) begin
       // Send StdOut core id
+      // $display("StdOut coreId ", sendFlit.coreId, " sendstate ", sendState);
       toJtag.put(extend(sendFlit.coreId)); // TODO: address bits 8-10 of the core id!
       sendState <= 3;
     end else begin
       // Send StdOut payload
+      // $display("StdOut payload ", sendFlit.payload, " sendstate ", sendState);
       toJtag.put(sendFlit.payload);
       sendState <= 0;
     end

@@ -107,7 +107,7 @@ import Globals      :: *;
 import DReg         :: *;
 import FlitMerger   :: *;
 import QueueArray   :: *;
-
+import Probe :: * ;
 // =============================================================================
 // Types
 // =============================================================================
@@ -1065,6 +1065,20 @@ module connectCoresToMailbox#(
                   mkUGShiftQueue1(QueueOptFmax),
                   map(txReqOut, clients));
   connectUsing(mkUGQueue, txReqs, server.txReqIn);
+
+  // Vector#(`CoresPerMailbox, Probe#(TransmitReq)) debug_sentflits;
+  // for (Integer i = 0; i < `CoresPerMailbox; i=i+1) begin
+  //   debug_sentflits[i] <- mkProbe;
+  // end
+  //
+  // (* fire_when_enabled, no_implicit_conditions *)
+  // rule writeProbes;
+  //   for (Integer i = 0; i < `CoresPerMailbox; i=i+1) begin
+  //     debug_sentflits[i] <= clients[i].txReqOut.value;
+  //   end
+  // endrule
+
+
 
   // Connect receive requests
   for (Integer i = 0; i < `CoresPerMailbox; i=i+1)

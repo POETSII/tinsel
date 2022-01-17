@@ -25,7 +25,12 @@ import IdleDetector :: *;
 import FlitMerger   :: *;
 import OffChipRAM   :: *;
 import DRAM         :: *;
+
+`ifdef DefinedIfProgRouterEnabled
 import ProgRouter   :: *;
+`else
+import Router   :: *;
+`endif
 
 // =============================================================================
 // Mesh Router
@@ -158,13 +163,55 @@ module mkMeshRouter#(MailboxId m) (MeshRouter);
   function Route route(NetAddr a);
          if (a.addr.board != b)   return Down;
     else if (a.addr.isKey)        return Down;
-    else if (a.addr.host.valid && a.addr.mbox.y == m.y && a.addr.mbox.x == m.x) return Up;
+    `ifdef StratixV
+    else if (a.addr.host.valid)   return Down;
+    `endif
+    `ifdef Stratix10
+    else if (a.addr.host.valid && a.addr.mbox.y == m.y && a.addr.mbox.x == m.x)   return Up; // host is on our up port.
+    `endif
     else if (a.addr.mbox.y < m.y) return Down;
     else if (a.addr.mbox.y > m.y) return Up;
     else if (a.addr.mbox.x < m.x) return Left;
     else if (a.addr.mbox.x > m.x) return Right;
     else return Mailbox;
   endfunction
+
+  // rule debug_mbox (fromMailboxPort.canGet);
+  //   Flit flit = fromMailboxPort.value;
+  //   $display($time, " Router b%d:x%d:y%d got msg from mailbox\ndest addr [board %d host %d (valid %b) key %b mboxy %d mboxx %d] flit.payload %h\nroute decision %d",
+  //                            b,m.x, m.y,                              flit.dest.addr.board, flit.dest.addr.host, flit.dest.addr.host.valid, flit.dest.addr.isKey, flit.dest.addr.mbox.y,
+  //                                                                                                         flit.dest.addr.mbox.x, flit.payload, route(flit.dest) );
+  // endrule
+  //
+  // rule debug_left (leftInPort.canGet);
+  //   Flit flit = leftInPort.value;
+  //   $display($time, " Router b%d:x%d:y%d got msg from left\ndest addr [board %d host %d (valid %b) key %b mboxy %d mboxx %d] flit.payload %h\nroute decision %d",
+  //                            b,m.x, m.y,                              flit.dest.addr.board, flit.dest.addr.host, flit.dest.addr.host.valid, flit.dest.addr.isKey, flit.dest.addr.mbox.y,
+  //                                                                                                         flit.dest.addr.mbox.x, flit.payload, route(flit.dest) );
+  // endrule
+  //
+  // rule debug_right (rightInPort.canGet);
+  //   Flit flit = rightInPort.value;
+  //   $display($time, " Router b%d:x%d:y%d got msg from right\ndest addr [board %d host %d (valid %b) key %b mboxy %d mboxx %d] flit.payload %h\nroute decision %d",
+  //                            b,m.x, m.y,                              flit.dest.addr.board, flit.dest.addr.host, flit.dest.addr.host.valid, flit.dest.addr.isKey, flit.dest.addr.mbox.y,
+  //                                                                                                         flit.dest.addr.mbox.x, flit.payload, route(flit.dest) );
+  // endrule
+  //
+  // rule debug_top (topInPort.canGet);
+  //   Flit flit = topInPort.value;
+  //   $display($time, " Router b%d:x%d:y%d got msg from top\ndest addr [board %d host %d (valid %b) key %b mboxy %d mboxx %d] flit.payload %h\nroute decision %d",
+  //                            b,m.x, m.y,                              flit.dest.addr.board, flit.dest.addr.host, flit.dest.addr.host.valid, flit.dest.addr.isKey, flit.dest.addr.mbox.y,
+  //                                                                                                         flit.dest.addr.mbox.x, flit.payload, route(flit.dest) );
+  // endrule
+  //
+  // rule debug_bottom (bottomInPort.canGet);
+  //   Flit flit = bottomInPort.value;
+  //   $display($time, " Router b%d:x%d:y%d got msg from bottom\ndest addr [board %d host %d (valid %b) key %b mboxy %d mboxx %d] flit.payload %h\nroute decision %d",
+  //                            b,m.x, m.y,                              flit.dest.addr.board, flit.dest.addr.host, flit.dest.addr.host.valid, flit.dest.addr.isKey, flit.dest.addr.mbox.y,
+  //                                                                                                         flit.dest.addr.mbox.x, flit.payload, route(flit.dest) );
+  // endrule
+
+
 
   // Route to the mailbox
   mkRouterMux(
@@ -292,16 +339,202 @@ interface NoC;
   interface Vector#(`NumEastWestLinks, AvalonMac) west;
   `endif
   // Connections to off-chip memory (for the programmable router)
+  `ifdef DefinedIfProgRouterEnabled
+
   interface Vector#(`DRAMsPerBoard,
     Vector#(`FetchersPerProgRouter, BOut#(DRAMReq))) dramReqs;
   interface Vector#(`DRAMsPerBoard,
     Vector#(`FetchersPerProgRouter, In#(DRAMResp))) dramResps;
+
+  `endif
   // ProgRouter fetcher activities & performance counters
   interface Vector#(`FetchersPerProgRouter, FetcherActivity) activities;
   interface ProgRouterPerfCounters progRouterPerfCounters;
 endinterface
 
 module mkNoC#(
+         BoardId boardId,
+         Vector#(4, Bool) linkEnable,
+         Vector#(`MailboxMeshYLen,
+           Vector#(`MailboxMeshXLen, MailboxNet)) mailboxes,
+         IdleDetector idle)
+       (NoC);
+
+  // Create off-board links
+  Vector#(`NumNorthSouthLinks, BoardLink) northLink <-
+    mapM(mkBoardLink(linkEnable[0]), northSocket);
+  Vector#(`NumNorthSouthLinks, BoardLink) southLink <-
+    mapM(mkBoardLink(linkEnable[1]), southSocket);
+  Vector#(`NumEastWestLinks, BoardLink) eastLink <-
+    mapM(mkBoardLink(linkEnable[2]), eastSocket);
+  Vector#(`NumEastWestLinks, BoardLink) westLink <-
+    mapM(mkBoardLink(linkEnable[3]), westSocket);
+
+  // Dimension-ordered routers
+  // -------------------------
+
+  // Create mailbox routers
+  Vector#(`MailboxMeshYLen,
+    Vector#(`MailboxMeshXLen, MeshRouter)) routers =
+      Vector::replicate(newVector());
+
+  for (Integer y = 0; y < `MailboxMeshYLen; y=y+1)
+    for (Integer x = 0; x < `MailboxMeshXLen; x=x+1) begin
+      MailboxId mailboxId =
+        MailboxId { x: fromInteger(x), y: fromInteger(y) };
+      routers[y][x] <- mkMeshRouter(mailboxId);
+      rule setBoardId;
+        routers[y][x].setBoardId(boardId);
+      endrule
+    end
+
+  // Connect mailboxes
+  for (Integer y = 0; y < `MailboxMeshYLen; y=y+1)
+    for (Integer x = 0; x < `MailboxMeshXLen; x=x+1) begin
+      // Mailbox (0,0) is special (connects to idle detector)
+      if (x == 0 && y == 0) begin
+        // Connect mailbox to router via idle-detector
+        connectDirect(mailboxes[y][x].flitOut, idle.mboxFlitIn);
+        connectUsing(mkUGShiftQueue1(QueueOptFmax),
+                       idle.netFlitOut, routers[y][x].fromMailbox);
+
+        // Connect router to mailbox via idle-detector
+        connectUsing(mkUGShiftQueue1(QueueOptFmax),
+                       routers[y][x].toMailbox, idle.netFlitIn);
+        connectUsing(mkUGShiftQueue1(QueueOptFmax),
+                       idle.mboxFlitOut, mailboxes[y][x].flitIn);
+      end else begin
+        connectDirect(mailboxes[y][x].flitOut, routers[y][x].fromMailbox);
+        connectUsing(mkUGShiftQueue1(QueueOptFmax),
+                       routers[y][x].toMailbox, mailboxes[y][x].flitIn);
+      end
+    end
+
+  // Connect routers horizontally
+  for (Integer y = 0; y < `MailboxMeshYLen; y=y+1)
+    for (Integer x = 0; x < `MailboxMeshXLen-1; x=x+1) begin
+      // Left to right direction
+      connectUsing(mkUGShiftQueue1(QueueOptFmax),
+                     routers[y][x].rightOut, routers[y][x+1].leftIn);
+      // Right to left direction
+      connectUsing(mkUGShiftQueue1(QueueOptFmax),
+                     routers[y][x+1].leftOut, routers[y][x].rightIn);
+  end
+
+  // Connect routers vertically
+  for (Integer y = 0; y < `MailboxMeshYLen-1; y=y+1)
+    for (Integer x = 0; x < `MailboxMeshXLen; x=x+1) begin
+      // Top to bottom direction
+      connectUsing(mkUGShiftQueue1(QueueOptFmax),
+                     routers[y][x].topOut, routers[y+1][x].bottomIn);
+      // Bottom to top direction
+      connectUsing(mkUGShiftQueue1(QueueOptFmax),
+                     routers[y+1][x].bottomOut, routers[y][x].topIn);
+  end
+
+  // Programmable board router
+  // -------------------------
+
+  // Programmable router
+  `ifdef DefinedIfProgRouterEnabled
+  ProgRouter boardRouter <- mkProgRouter(boardId);
+  `else
+  ProgRouter boardRouter <- mkBypassRouter(boardId);
+  `endif
+
+  // Connect board router to north link
+  connectDirect(boardRouter.flitOut[0], northLink[0].flitIn);
+  connectUsing(mkUGShiftQueue1(QueueOptFmax),
+    northLink[0].flitOut, boardRouter.flitIn[0]);
+
+  // Connect board router to south link
+  connectDirect(boardRouter.flitOut[1], southLink[0].flitIn);
+  connectUsing(mkUGShiftQueue1(QueueOptFmax),
+    southLink[0].flitOut, boardRouter.flitIn[1]);
+
+  // Connect board router to east link
+  connectDirect(boardRouter.flitOut[2], eastLink[0].flitIn);
+  connectUsing(mkUGShiftQueue1(QueueOptFmax),
+    eastLink[0].flitOut, boardRouter.flitIn[2]);
+
+  // Connect board router to west link
+  connectDirect(boardRouter.flitOut[3], westLink[0].flitIn);
+  connectUsing(mkUGShiftQueue1(QueueOptFmax),
+    westLink[0].flitOut, boardRouter.flitIn[3]);
+
+  // Connect mailbox mesh south rim to board router
+  for (Integer i = 0; i < `MailboxMeshXLen; i=i+1)
+    connectUsing(mkUGShiftQueue1(QueueOptFmax),
+      routers[0][i].bottomOut, boardRouter.flitIn[4+i]);
+
+  // Connect board router to mailbox mesh south rim
+  function In#(Flit) getBottomIn(MeshRouter r) = r.bottomIn;
+  Vector#(`MailboxMeshXLen, In#(Flit)) southRimInPorts =
+    map(getBottomIn, routers[0]);
+  for (Integer i = 0; i < `MailboxMeshXLen; i=i+1)
+    connectDirect(boardRouter.flitOut[4+i], southRimInPorts[i]);
+
+  // Detect inter-board activity
+  // ---------------------------
+
+  // Latch to improve timing
+  Reg#(Bool) activityReg <- mkReg(False);
+
+  // Determine when a flit arrives on a link,
+  // provided that flit is not a stage 1 idle token
+  function Bool active(BoardLink link);
+    Flit flit =  link.flitOut.value;
+    IdleToken in = unpack(truncate(flit.payload));
+    return (link.flitOut.valid && (flit.isIdleToken ? !in.stage1 : True));
+  endfunction
+
+  // For barrier release phase
+  rule informIdleDetector;
+    Bool activity = False;
+    for (Integer i = 0; i < `NumNorthSouthLinks; i=i+1)
+     activity = activity || active(southLink[i]);
+    for (Integer i = 0; i < `NumNorthSouthLinks; i=i+1)
+      activity = activity || active(northLink[i]);
+    for (Integer i = 0; i < `NumEastWestLinks; i=i+1)
+      activity = activity || active(westLink[i]);
+    for (Integer i = 0; i < `NumEastWestLinks; i=i+1)
+      activity = activity || active(eastLink[i]);
+    activityReg <= activity;
+    idle.idle.interBoardActivity(activityReg);
+  endrule
+
+  // Interfaces
+  // ----------
+
+  function In#(t) getIn(InPort#(t) p) = p.in;
+
+  `ifndef SIMULATE
+  function AvalonMac getMac(BoardLink link) = link.avalonMac;
+  interface north = Vector::map(getMac, northLink);
+  interface south = Vector::map(getMac, southLink);
+  interface east = Vector::map(getMac, eastLink);
+  interface west = Vector::map(getMac, westLink);
+  `endif
+
+  `ifdef DefinedIfProgRouterEnabled
+  // Requests to off-chip memory
+  interface dramReqs = boardRouter.ramReqs;
+
+  // Responses from off-chip memory
+  interface dramResps = boardRouter.ramResps;
+  `endif
+
+  // Fetcher activities
+  interface activities = boardRouter.activities;
+
+  // Performance counters
+  interface ProgRouterPerfCounters progRouterPerfCounters =
+    boardRouter.perfCounters;
+
+endmodule
+
+
+module mkNoCDE10#(
          BoardId boardId,
          Vector#(4, Bool) linkEnable,
          Vector#(`MailboxMeshYLen,
@@ -382,15 +615,20 @@ module mkNoC#(
                      routers[y+1][x].bottomOut, routers[y][x].topIn);
   end
 
-    Out#(Flit) hostlinkOut <- convertBOutToOut(hostmbox.flitOut);
-    connectUsing(mkUGShiftQueue1(QueueOptFmax), routers[`MailboxMeshYLen-1][`MailboxMeshXLen-1].topOut, hostmbox.flitIn);
-    connectUsing(mkUGShiftQueue1(QueueOptFmax), hostlinkOut, routers[`MailboxMeshYLen-1][`MailboxMeshXLen-1].topIn);
+  // connect hostlink to a mailbox
+  Out#(Flit) hostlinkOut <- convertBOutToOut(hostmbox.flitOut);
+  connectUsing(mkUGShiftQueue1(QueueOptFmax), routers[`MailboxMeshYLen-1][`MailboxMeshXLen-1].topOut, hostmbox.flitIn);
+  connectUsing(mkUGShiftQueue1(QueueOptFmax), hostlinkOut, routers[`MailboxMeshYLen-1][`MailboxMeshXLen-1].topIn);
 
   // Programmable board router
   // -------------------------
 
   // Programmable router
+  `ifdef DefinedIfProgRouterEnabled
   ProgRouter boardRouter <- mkProgRouter(boardId);
+  `else
+  ProgRouter boardRouter <- mkBypassRouter(boardId);
+  `endif
 
   // Connect board router to north link
   connectDirect(boardRouter.flitOut[0], northLink[0].flitIn);
@@ -466,11 +704,13 @@ module mkNoC#(
   interface west = Vector::map(getMac, westLink);
   `endif
 
+  `ifdef DefinedIfProgRouterEnabled
   // Requests to off-chip memory
   interface dramReqs = boardRouter.ramReqs;
 
   // Responses from off-chip memory
   interface dramResps = boardRouter.ramResps;
+  `endif
 
   // Fetcher activities
   interface activities = boardRouter.activities;

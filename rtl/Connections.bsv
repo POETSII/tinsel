@@ -8,7 +8,11 @@ import Queue       :: *;
 import DCache      :: *;
 import DCacheTypes :: *;
 import Util        :: *;
-import ProgRouter  :: *;
+`ifdef DefinedIfProgRouterEnabled
+import ProgRouter :: *;
+`else
+import Router :: *;
+`endif
 import Core        :: *;
 
 // ============================================================================
@@ -61,7 +65,7 @@ module connectClientsToOffChipRAM#(
   Vector#(`FetchersPerProgRouter, BOut#(DRAMReq)) routerReqs,
   Vector#(`FetchersPerProgRouter, In#(DRAMResp)) routerResps,
   // Off-chip memory
-`ifdef STRATIXV
+`ifdef StratixV
   OffChipRAMStratixV ram
 `endif
 `ifdef Stratix10

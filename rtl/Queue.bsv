@@ -18,6 +18,7 @@ import ConfigReg :: *;
 import Util      :: *;
 import DReg      :: *;
 import Vector    :: *;
+import Assert :: *;
 
 // For BlueCheck test benches:
 /*
@@ -57,7 +58,7 @@ typedef SizedQueue#(0, elemType) Queue1#(type elemType);
 //   * full throughput (parallel enq and deq on every cycle)
 //   * no combinatorial path between notFull and deq (a chain of
 //     queues will not result in a huge path)
-// Weaknesses: 
+// Weaknesses:
 //   * there's a mux on the element being enqueued
 
 // Unguarded version
@@ -215,7 +216,13 @@ module mkUGShiftQueueCore#(QueueOpt opt) (SizedQueue#(size, elemType))
     end
     // Insert new element?
     case (doEnq.wget) matches
-      tagged Invalid: if (shift) valids[endIndex] <= False;
+      tagged Invalid: if (shift) begin
+        Bit#(SizeOf#(elemType)) signallingUnknown = 0;
+        for (Integer i=0; i<valueOf(SizeOf#(elemType)); i=i+1)
+          signallingUnknown[i] = pack(i%2 == 0);
+        elems[endIndex] <= unpack(signallingUnknown);
+        valids[endIndex] <= False;
+      end
       tagged Valid .x: begin
         elems[endIndex] <= x;
         valids[endIndex] <= True;
@@ -401,6 +408,8 @@ module mkUGSizedQueueOpts#(QueueOpts init) (SizedQueue#(logSize, elemType))
   Reg#(Bool) full <- mkReg(init.size == maxLength);
   Reg#(Bool) deqEnable <- mkReg(False);
   Reg#(Bool) canPeekReg <- mkReg(False);
+  staticAssert(init.size >= 0, "mkUGSizedQueueOpts has been generated with 0 size");
+
 
   // Wires
   PulseWire doDeq <- mkPulseWire;

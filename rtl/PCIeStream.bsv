@@ -172,6 +172,8 @@ module mkPCIeStream (PCIeStream);
   Reg#(Bit#(64)) addrRxA <- mkConfigReg(0);
   Reg#(Bit#(64)) addrRxB <- mkConfigReg(0);
 
+  Reg#(UInt#(32)) txTotal <- mkConfigReg(0);
+
   // Tx double-buffer
   // ----------------
   //
@@ -468,6 +470,7 @@ module mkPCIeStream (PCIeStream);
                if (write) enabled <= unpack(writedata[0]);
                ctrlReadData <= zeroExtend({
                   pack(enabled),
+                  pack(txTotal), // 32
                   pack(inBufferLen.value), // 4
                   pack(outBufferLen.value) // 7
                 });
@@ -515,6 +518,7 @@ module mkPCIeStream (PCIeStream);
           end else begin
             pendingReads.dec;
             outBuffer.enq(readdata);
+            txTotal <= boundedPlus(txTotal, 16); // 16 bytes per 128b flit
           end
         end
       endmethod
@@ -555,13 +559,13 @@ module mkPCIeStream (PCIeStream);
 
   // Output queue
   Queue#(Bit#(128)) outQueue <- mkUGQueue;
- 
+
   // Input rule
   rule in (inPort.canGet);
     Bool ok <- socketPut(pcieSocket, unpack(inPort.value));
     if (ok) inPort.get;
   endrule
- 
+
   // Output rule
   rule out (outQueue.notFull);
     Maybe#(Vector#(16, Bit#(8))) m <- socketGet(pcieSocket);

@@ -3,21 +3,21 @@
 # DO NOT MODIFY
 
 
-# 
+#
 # Tinsel "Tinsel" v1.0
 #  2021.11.24.14:14:37
-# 
-# 
+#
+#
 
-# 
+#
 # request TCL package from ACDS 19.4
-# 
+#
 package require -exact qsys 19.4
 
 
-# 
+#
 # module Tinsel
-# 
+#
 set_module_property DESCRIPTION ""
 set_module_property NAME Tinsel
 set_module_property VERSION 1.0
@@ -33,29 +33,29 @@ set_module_property REPORT_HIERARCHY false
 set_module_property LOAD_ELABORATION_LIMIT 0
 
 
-# 
+#
 # file sets
-# 
+#
 add_fileset QUARTUS_SYNTH QUARTUS_SYNTH "" ""
-set_fileset_property QUARTUS_SYNTH TOP_LEVEL de5Top
+set_fileset_property QUARTUS_SYNTH TOP_LEVEL mkDE10Top
 set_fileset_property QUARTUS_SYNTH ENABLE_RELATIVE_INCLUDE_PATHS false
 set_fileset_property QUARTUS_SYNTH ENABLE_FILE_OVERWRITE_MODE false
-add_fileset_file de5Top.v VERILOG PATH ../rtl/de5Top.v TOP_LEVEL_FILE
+add_fileset_file de5Top.v VERILOG PATH ../rtl/mkDE10Top.v TOP_LEVEL_FILE
 
 
-# 
+#
 # parameters
-# 
+#
 
 
-# 
+#
 # display items
-# 
+#
 
 
-# 
+#
 # connection point clock
-# 
+#
 add_interface clock clock end
 set_interface_property clock ENABLED true
 set_interface_property clock EXPORT_OF ""
@@ -67,9 +67,9 @@ set_interface_property clock IPXACT_REGISTER_MAP_VARIABLES ""
 add_interface_port clock CLK clk Input 1
 
 
-# 
+#
 # connection point reset_sink
-# 
+#
 add_interface reset_sink reset end
 set_interface_property reset_sink associatedClock clock
 set_interface_property reset_sink synchronousEdges DEASSERT
@@ -83,9 +83,9 @@ set_interface_property reset_sink IPXACT_REGISTER_MAP_VARIABLES ""
 add_interface_port reset_sink RST_N reset_n Input 1
 
 
-# 
+#
 # connection point dram_master_0
-# 
+#
 add_interface dram_master_0 avalon start
 set_interface_property dram_master_0 addressGroup 0
 set_interface_property dram_master_0 addressUnits WORDS
@@ -124,9 +124,9 @@ add_interface_port dram_master_0 dramIfcs_0_m_write write Output 1
 add_interface_port dram_master_0 dramIfcs_0_m_burstcount burstcount Output 3
 
 
-# 
+#
 # connection point dram_master_1
-# 
+#
 add_interface dram_master_1 avalon start
 set_interface_property dram_master_1 addressGroup 0
 set_interface_property dram_master_1 addressUnits WORDS
@@ -164,10 +164,90 @@ add_interface_port dram_master_1 dramIfcs_1_m_read read Output 1
 add_interface_port dram_master_1 dramIfcs_1_m_write write Output 1
 add_interface_port dram_master_1 dramIfcs_1_m_burstcount burstcount Output 3
 
+#
+# connection point dram_master_2
+#
+add_interface dram_master_2 avalon start
+set_interface_property dram_master_2 addressGroup 0
+set_interface_property dram_master_2 addressUnits WORDS
+set_interface_property dram_master_2 associatedClock clock
+set_interface_property dram_master_2 associatedReset reset_sink
+set_interface_property dram_master_2 bitsPerSymbol 8
+set_interface_property dram_master_2 burstOnBurstBoundariesOnly false
+set_interface_property dram_master_2 burstcountUnits WORDS
+set_interface_property dram_master_2 doStreamReads false
+set_interface_property dram_master_2 doStreamWrites false
+set_interface_property dram_master_2 holdTime 0
+set_interface_property dram_master_2 linewrapBursts false
+set_interface_property dram_master_2 maximumPendingReadTransactions 0
+set_interface_property dram_master_2 maximumPendingWriteTransactions 0
+set_interface_property dram_master_2 minimumResponseLatency 1
+set_interface_property dram_master_2 readLatency 0
+set_interface_property dram_master_2 readWaitTime 1
+set_interface_property dram_master_2 setupTime 0
+set_interface_property dram_master_2 timingUnits Cycles
+set_interface_property dram_master_2 waitrequestAllowance 0
+set_interface_property dram_master_2 writeWaitTime 0
+set_interface_property dram_master_2 ENABLED true
+set_interface_property dram_master_2 EXPORT_OF ""
+set_interface_property dram_master_2 PORT_NAME_MAP ""
+set_interface_property dram_master_2 CMSIS_SVD_VARIABLES ""
+set_interface_property dram_master_2 SVD_ADDRESS_GROUP ""
+set_interface_property dram_master_2 IPXACT_REGISTER_MAP_VARIABLES ""
 
-# 
+add_interface_port dram_master_2 dramIfcs_2_m_readdata readdata Input 256
+add_interface_port dram_master_2 dramIfcs_2_m_readdatavalid readdatavalid Input 1
+add_interface_port dram_master_2 dramIfcs_2_m_waitrequest waitrequest Input 1
+add_interface_port dram_master_2 dramIfcs_2_m_writedata writedata Output 256
+add_interface_port dram_master_2 dramIfcs_2_m_address address Output 27
+add_interface_port dram_master_2 dramIfcs_2_m_read read Output 1
+add_interface_port dram_master_2 dramIfcs_2_m_write write Output 1
+add_interface_port dram_master_2 dramIfcs_2_m_burstcount burstcount Output 3
+
+#
+# connection point dram_master_3
+#
+add_interface dram_master_3 avalon start
+set_interface_property dram_master_3 addressGroup 0
+set_interface_property dram_master_3 addressUnits WORDS
+set_interface_property dram_master_3 associatedClock clock
+set_interface_property dram_master_3 associatedReset reset_sink
+set_interface_property dram_master_3 bitsPerSymbol 8
+set_interface_property dram_master_3 burstOnBurstBoundariesOnly false
+set_interface_property dram_master_3 burstcountUnits WORDS
+set_interface_property dram_master_3 doStreamReads false
+set_interface_property dram_master_3 doStreamWrites false
+set_interface_property dram_master_3 holdTime 0
+set_interface_property dram_master_3 linewrapBursts false
+set_interface_property dram_master_3 maximumPendingReadTransactions 0
+set_interface_property dram_master_3 maximumPendingWriteTransactions 0
+set_interface_property dram_master_3 minimumResponseLatency 1
+set_interface_property dram_master_3 readLatency 0
+set_interface_property dram_master_3 readWaitTime 1
+set_interface_property dram_master_3 setupTime 0
+set_interface_property dram_master_3 timingUnits Cycles
+set_interface_property dram_master_3 waitrequestAllowance 0
+set_interface_property dram_master_3 writeWaitTime 0
+set_interface_property dram_master_3 ENABLED true
+set_interface_property dram_master_3 EXPORT_OF ""
+set_interface_property dram_master_3 PORT_NAME_MAP ""
+set_interface_property dram_master_3 CMSIS_SVD_VARIABLES ""
+set_interface_property dram_master_3 SVD_ADDRESS_GROUP ""
+set_interface_property dram_master_3 IPXACT_REGISTER_MAP_VARIABLES ""
+
+add_interface_port dram_master_3 dramIfcs_3_m_readdata readdata Input 256
+add_interface_port dram_master_3 dramIfcs_3_m_readdatavalid readdatavalid Input 1
+add_interface_port dram_master_3 dramIfcs_3_m_waitrequest waitrequest Input 1
+add_interface_port dram_master_3 dramIfcs_3_m_writedata writedata Output 256
+add_interface_port dram_master_3 dramIfcs_3_m_address address Output 27
+add_interface_port dram_master_3 dramIfcs_3_m_read read Output 1
+add_interface_port dram_master_3 dramIfcs_3_m_write write Output 1
+add_interface_port dram_master_3 dramIfcs_3_m_burstcount burstcount Output 3
+
+
+#
 # connection point boardid
-# 
+#
 add_interface boardid conduit end
 set_interface_property boardid associatedClock clock
 set_interface_property boardid associatedReset ""
@@ -181,9 +261,9 @@ set_interface_property boardid IPXACT_REGISTER_MAP_VARIABLES ""
 add_interface_port boardid setBoardId_id val Input 4
 
 
-# 
+#
 # connection point temperature
-# 
+#
 add_interface temperature conduit end
 set_interface_property temperature associatedClock clock
 set_interface_property temperature associatedReset ""
@@ -197,9 +277,9 @@ set_interface_property temperature IPXACT_REGISTER_MAP_VARIABLES ""
 add_interface_port temperature setTemperature_temp val Input 8
 
 
-# 
+#
 # connection point jtag_master
-# 
+#
 add_interface jtag_master avalon start
 set_interface_property jtag_master addressGroup 0
 set_interface_property jtag_master addressUnits SYMBOLS
