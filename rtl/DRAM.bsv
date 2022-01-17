@@ -51,9 +51,9 @@ function Bit#(`LogBeatsPerDRAM)
   Bit#(1) msb = truncateLSB(addr);
   Bit#(TSub#(`LogBeatsPerDRAM, 1)) rest = truncate(addr);
   // The bottom bits address beats within a line
-  Bit#(`LogBeatsPerLine) bottom = truncate(rest);
+  Bit#(`LogBeatsPerLine) bottom = truncate(rest); // length 0
   Bit#(TSub#(TSub#(`LogBeatsPerDRAM, 1), `LogBeatsPerLine)) middle =
-    truncateLSB(rest);
+    truncateLSB(rest); // ==minus top 2 bits of addr on DE10
   // Separate upper half of address space into partition index and offset
   Bit#(`LogThreadsPerDRAM) partIndex = truncateLSB(middle);
   let partOffset = truncate(middle);

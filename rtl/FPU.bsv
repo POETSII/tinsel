@@ -69,7 +69,7 @@ endinterface
 // Implementation
 // =============================================================================
 
-//(* synthesize *)
+(* synthesize *)
 module mkFPU (FPU);
 
   // Request & response ports
@@ -170,22 +170,6 @@ module mkFPU (FPU);
     endmethod
     method Bool valid = respBuffer.canDeq && respBuffer.canPeek;
     method FPUResp value = respBuffer.dataOut;
-  endinterface
-
-endmodule
-
-module mkNullFPU (FPU);
-
-  interface In reqIn;
-    method Action tryPut(t val);
-    endmethod
-    method Bool didPut = False;
-  endinterface
-  interface BOut respOut;
-    method Action get;
-    endmethod
-    method Bool valid = False;
-    method FPUResp value = ?;
   endinterface
 
 endmodule

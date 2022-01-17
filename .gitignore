@@ -2,3 +2,5 @@
 *.o
 *.elf
 *.a
+simcheckout/*
+scratch/*

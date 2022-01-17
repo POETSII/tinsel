@@ -25,7 +25,11 @@ import FPUOps       :: *;
 import InstrMem     :: *;
 import DCacheTypes  :: *;
 import IdleDetector :: *;
-import ProgRouter   :: *;
+`ifdef DefinedIfProgRouterEnabled
+import ProgRouter :: *;
+`else
+import Router :: *;
+`endif
 
 // ============================================================================
 // Control/status registers (CSRs) supported
@@ -102,7 +106,7 @@ typedef struct {
 } ThreadState deriving (Bits);
 
 // Register file index
-// (Register file contains 32 integer registers 
+// (Register file contains 32 integer registers
 // and 32 floating-point registers per thread)
 typedef Bit#(TAdd#(`LogThreadsPerCore, 6)) RegFileIndex;
 
@@ -363,7 +367,7 @@ function Op decodeOp(Bit#(32) instr);
   ret.csr.isFFlag        = ret.isCSR && csrIndex == 'h01;
   ret.csr.isFRM          = ret.isCSR && csrIndex == 'h02;
   ret.csr.isFCSR         = ret.isCSR && csrIndex == 'h03;
-  // Cycle count CSR 
+  // Cycle count CSR
   ret.csr.isCycle        = ret.isCSR && csrIndex == 'h30;
   // Cache line flush CSR
   ret.csr.isFlush        = ret.isCSR && csrIndex == 'h31;
@@ -522,7 +526,7 @@ interface Core;
 endinterface
 
 // ============================================================================
-// Pipeline 
+// Pipeline
 // ============================================================================
 
 // Diagram
@@ -535,7 +539,7 @@ endinterface
 //                             ||          +--------------+  |   |
 //                             \/                            |   |
 //     +-----------+       +=======+                         |   |
-//     | Instr Mem |<----->| Fetch |                         |   | 
+//     | Instr Mem |<----->| Fetch |                         |   |
 //     +-----------+       +=======+                         |   |
 //                             ||                            |   |
 //                             \/                            |   |
@@ -553,9 +557,9 @@ endinterface
 //  |                      +============+   |                |   |
 //  +----------------------| Write Back |--------------------+   |
 //                         |            |------------------------+
-//                         +============+   |        
-//                             /\           |        
-//                             ||           |        
+//                         +============+   |
+//                             /\           |
+//                             ||           |
 //                         +========+       |  +---------------+
 //                         | Resume |       +->| Suspend state |
 //                         |        |<---------| per thread    |
@@ -655,7 +659,7 @@ module mkCore#(CoreId myId) (Core);
   Reg#(PipelineToken) execute3Input      <- mkVReg;
   Reg#(Bool)          writebackFire      <- mkDReg(False);
   Reg#(PipelineToken) writebackInput     <- mkRegU;
- 
+
   // Performance counters
   // --------------------
 
@@ -1081,7 +1085,7 @@ module mkCore#(CoreId myId) (Core);
                            token.accessWidth : wordAccess;
       susp.isUnsignedLoad = isUnsignedLoad(token.instr);
       suspended.write(token.thread.id, susp);
-    end 
+    end
     // Compute next PC
     token.nextPC = token.thread.pc + (retry ? 0 : 4);
     // Compute jump/branch target
@@ -1096,7 +1100,7 @@ module mkCore#(CoreId myId) (Core);
                zeroExtend({pack(stdinValid), fromDebugLinkPort.value.payload}))
       | when(token.op.csr.isToUart,
                zeroExtend(pack(toDebugLinkPort.canPut)))
-      | when(token.op.csr.isFFlag || token.op.csr.isFCSR, 
+      | when(token.op.csr.isFFlag || token.op.csr.isFCSR,
                zeroExtend(token.thread.fpFlags))
       | when(token.op.csr.isFRM, 0)
       | when(token.op.csr.isCycle, cycleCount[31:0]);
@@ -1174,13 +1178,13 @@ module mkCore#(CoreId myId) (Core);
       end
       // Put thread back in the run queue
       runQueue.enq(token.thread);
-    end 
+    end
     // Try to service a request from the writeback queue
     if (writebackQueue.canPeek && writebackQueue.canDeq) begin
       Writeback wb = writebackQueue.dataOut;
       // Can the thread be resumed?
       Bool resume = False;
-      // If register file's write-port is not in use then 
+      // If register file's write-port is not in use then
       // a pending load result can be written back
       if (!writeToRegFile && wb.write) begin
         // Write to register file
@@ -1211,7 +1215,7 @@ module mkCore#(CoreId myId) (Core);
   Reg#(ResumeToken)   resumeThread1Input <- mkConfigRegU;
   Reg#(ResumeToken)   resumeThread2Input <- mkVReg;
   Reg#(ResumeToken)   resumeThread3Input <- mkVReg;
- 
+
   rule resumeThread1 (resumeThread1Fire
                        || dcacheResp.canGet
                        || mailbox.scratchpadResp.canGet

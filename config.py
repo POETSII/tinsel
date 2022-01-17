@@ -32,7 +32,7 @@ p["LogInstrsPerCore"] = 11
 p["SharedInstrMem"] = True
 
 # Log of number of multi-threaded cores sharing a DCache
-p["LogCoresPerDCache"] = 2 # the mailbox calc defines no of cores, but this defines hookup; need to match
+p["LogCoresPerDCache"] = 1 # the mailbox calc defines no of cores, but this defines hookup; need to match
 
 # Log of number of caches per DRAM port
 p["LogDCachesPerDRAM"] = 1
@@ -50,7 +50,7 @@ p["DCacheLogSetsPerThread"] = 2
 p["DCacheLogNumWays"] = 4
 
 # Number of DRAMs per FPGA board
-p["LogDRAMsPerBoard"] = 1
+p["LogDRAMsPerBoard"] = 2
 
 # Number of SRAMs per FPGA board (or None if 0)
 p["SRAMsPerBoard"] = None
@@ -61,7 +61,7 @@ p["DRAMLogMaxInFlight"] = 5
 p["DRAMLatency"] = 20
 
 # Size of each DRAM
-p["LogBeatsPerDRAM"] = 26 # need sufficent DRAM capacity for progRouters...
+p["LogBeatsPerDRAM"] = 25 # need sufficent DRAM capacity for progRouters... 26 is correct for 4, or 8gb per dimm for the passive cooler DE10's)
 
 # Size of internal flit payload
 p["LogWordsPerFlit"] = 2
@@ -440,7 +440,7 @@ def to_cpp_string(convertee):
 if len(sys.argv) > 1:
   mode = sys.argv[1]
 else:
-  print "Usage: config.py <defs|envs|cpp|vpp|print [KEY]>"
+  print("Usage: config.py <defs|envs|cpp|vpp|print [KEY]>")
   sys.exit(-1)
 
 # The BoxMesh parameter is only meant for cpp mode
@@ -463,7 +463,7 @@ elif mode == "vpp":
     print("`define Tinsel" + var + " " + str(p[var]))
 elif mode == "print":
     if len(sys.argv) < 3:
-        print "Usage: config.py <defs|envs|cpp|vpp|print [KEY]>"
+        print("Usage: config.py <defs|envs|cpp|vpp|print [KEY]>")
         sys.exit(-1)
 
     print(p.get(sys.argv[2], ""))

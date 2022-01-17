@@ -93,7 +93,9 @@ module de5BridgeTop (DE5BridgeTop);
   InPort#(Flit) fromDetector <- mkInPort;
 
   // Create JTAG UART instance
-  JtagUart uart <- mkJtagUart;
+  Clock default_clock <- exposeCurrentClock();
+  Reset default_reset <- exposeCurrentReset();
+  JtagUart uart <- mkJtagUart(default_clock, default_reset);
 
   // Conect ports to UART
   connectUsing(mkUGShiftQueue1(QueueOptFmax), toJtag.out, uart.jtagIn);
