@@ -18,6 +18,7 @@
 #include <POLite/Graph.h>
 #include <queue>
 #include <omp.h>
+#include <unordered_set>
 
 typedef uint32_t PartitionId;
 
@@ -337,39 +338,36 @@ struct Placer {
     // If there are no vertices
     if (nvtxs == 0) return;
 
-    // // If there are more partitions than vertices
-    // if (nparts >= nvtxs) {
-    //   for (uint32_t i = 0; i < nvtxs; i++)
-    //     partitions[i] = i;
-    //   return;
-    // }
-
-    // // If there is exactly one partition
-    // if (nparts == 1) {
-    //   for (uint32_t i = 0; i < nvtxs; i++)
-    //     partitions[i] = 0;
-    //   return;
-    // }
-
-
     std::vector<SCOTCH_Num> verttab;
     std::vector<SCOTCH_Num> edgetab;
 
+    // Would be much better as robin hood flat set
+    std::unordered_set<unsigned> seen;
+
+    // TODO  : weights
     for (uint32_t i = 0; i < nvtxs; i++) {
+      seen.clear();
       verttab.push_back(edgetab.size());
 
       const Seq<NodeId>* in = graph->incoming()->elems[i];
       for (uint32_t j = 0; j < in->numElems; j++){
-        edgetab.push_back( in->elems[j] );
+        //edgetab.push_back( in->elems[j] );
+        seen.insert(in->elems[j]);
       }
 
       const Seq<NodeId>* out = graph->outgoing()->elems[i];
       for (uint32_t j = 0; j < out->numElems; j++){
-        if (! in->member(out->elems[j])){ // TODO: How expensive is this for highly connected graphs?
-          edgetab.push_back( out->elems[j] );
+        seen.insert(out->elems[j]);
+      }
+
+      for(auto v : seen){
+        if(v!=i){
+         edgetab.push_back(v);
         }
       }
+      assert(seen.size()!=0);
     }
+    assert(seen.size()!=0);
     verttab.push_back(edgetab.size());
 
     std::vector<SCOTCH_Num> parttab(nvtxs);
@@ -632,8 +630,8 @@ struct Placer {
     double sumNodeWeight=0;
     double maxNodeWeight=0;
     double numNodes=0;
-    for(int y=0; y<2*height-1; y++){
-      for(int x=0; x<2*width-1; x++){
+    for(unsigned y=0; y<2*height-1; y++){
+      for(unsigned x=0; x<2*width-1; x++){
         if((x&1)&&(y&1)){
           fprintf(stderr, " %6s", " ");
         }else if( ! ((x&1) || (y&1)) ){

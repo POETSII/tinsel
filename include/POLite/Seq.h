@@ -46,9 +46,9 @@ template <class T> class Seq
     }
 
     // Extend size of sequence by N
-    void extendBy(int n)
+    void extendBy(unsigned n)
     {
-      int newNumElems = numElems + n;
+      unsigned newNumElems = numElems + n;
       if (newNumElems > maxElems){
         setCapacity(newNumElems);
       }
@@ -99,7 +99,7 @@ template <class T> class Seq
 
     // Is given value already in sequence?
     bool member(T x) const {
-      for (int i = 0; i < numElems; i++)
+      for (unsigned i = 0; i < numElems; i++)
         if (elems[i] == x) return true;
       return false;
     }

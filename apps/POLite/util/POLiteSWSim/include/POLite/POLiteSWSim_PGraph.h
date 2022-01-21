@@ -121,6 +121,8 @@ public:
     virtual ~PGraphBase()
     {}
 
+    virtual PGraphBase *clone() const=0;
+
     virtual void sim_prepare() =0;
 
     virtual bool sim_step(
@@ -132,9 +134,9 @@ public:
 
 // HostLink parameters
 struct HostLinkParams {
-  uint32_t numBoxesX;
-  uint32_t numBoxesY;
-  bool useExtraSendSlot;
+  uint32_t numBoxesX = 1;
+  uint32_t numBoxesY = 1;
+  bool useExtraSendSlot = false;
 
   // Used to indicate when the hostlink moves through different phases, especially in construction
   std::function<void(const char *)> on_phase;
@@ -214,7 +216,7 @@ private:
         while(1){
             if(!m_graph->sim_step(rng, send_cb, recv_cb)){
                 if(verbosity>=2){
-                    fprintf(stderr, "POLiteSWSim::HostLink : Info - Exiting device worker thread due to devices finishing.\n");
+                    fprintf(stderr, "POLiteSWSim::HostLink : Info - Exiting device worker thread due to devices finishing. verbosity=%d\n", verbosity);
                 }
                 break;
             }
@@ -243,7 +245,9 @@ public:
     {}
 
     HostLink(const HostLinkParams)
-    {}
+        : verbosity(POLiteSWSim::get_option_unsigned("POLITE_SW_SIM_VERBOSITY", 1))
+    {
+    }
 
     ~HostLink()
     {
@@ -251,23 +255,15 @@ public:
         if(m_worker.joinable()){
             m_worker.join();
         }
+        if(m_graph){
+            delete m_graph;
+            m_graph=0;
+        }
     }
 
     // Implementation detail
+    // This hostlink owns the graph, and should delete it
     PGraphBase *m_graph=0;
-
-    /* Used to work around destruction order. If the graph is destroyed before the
-        HostLink (which is common), we need to end the processing loop. */
-    void detach_graph(PGraphBase *graph)
-    {
-        if(m_graph){
-            assert(graph==m_graph);
-        }
-        m_worker_interrupt.store(true);
-        std::unique_lock<std::mutex> lk(m_mutex);
-
-        m_cond.wait(lk, [&](){ return m_worker_running.load()==false; });
-    }
 
     void attach_graph(PGraphBase *graph)
     {
@@ -416,6 +412,21 @@ class PGraph
 public:
     static constexpr int NUM_PINS = T_NUM_PINS;
 private:
+    // This structure must be directly exposed to clients
+    struct PState
+    {
+        // Implementation stuff
+        // For outgoing we keep that 0==empty and 1==host
+        std::array<std::vector<std::pair<PDeviceId,unsigned>>,NUM_PINS+2> outgoing;
+        std::vector<E> incoming;
+        unsigned fanOut=0;
+
+        // User visible stuff
+        S state;
+
+        std::mutex lock;
+    };
+
     HostLink *m_hostlink=0;
 
     std::mutex m_lock;
@@ -434,6 +445,39 @@ public:
 
     PlacerMethod placer_method=Default;
 
+    bool mapVerticesToDRAM=false; // Dummy flag
+    bool mapInEdgeHeadersToDRAM=false; // Dummy flag
+    bool mapInEdgeRestToDRAM=false; // Dummy flag
+    bool mapOutEdgesToDRAM=false; // Dummy flag
+
+    // uint32_t i = graph.numDevices;
+    uint32_t numDevices = 0;
+
+    // S &s = graph.devices[i]->state;
+    std::vector<std::shared_ptr<PState>> devices;
+
+    std::vector<DeviceType> device_states;
+
+    virtual PGraphBase *clone() const
+    {
+        if(is_running_copy){
+            throw std::runtime_error("Can't clone running copy.");
+        }
+
+        PGraph *res=new PGraph();
+        res->is_running_copy=true;
+        res->on_fatal_error=on_fatal_error;
+        res->on_phase_hook=on_phase_hook;
+        res->on_export_value=on_export_value;
+        res->on_export_string=on_export_string;
+        res->m_maxFanIn=m_maxFanIn;
+        res->m_maxFanOut=m_maxFanOut;
+        res->devices=devices; // copy
+        res->numDevices=numDevices;
+        res->verbosity=verbosity;
+        return res;
+    }
+
     PGraph()
     {
         deliver_out_of_order=POLiteSWSim::get_option_bool("POLITE_SW_SIM_DELIVER_OUT_OF_ORDER", true);
@@ -447,26 +491,7 @@ public:
 
     ~PGraph()
     {
-        if(m_hostlink){
-            m_hostlink->detach_graph(this);
-            m_hostlink=0;
-        }
     }
-
-    // This structure must be directly exposed to clients
-    struct PState
-    {
-        // Implementation stuff
-        // For outgoing we keep that 0==empty and 1==host
-        std::array<std::vector<std::pair<PDeviceId,unsigned>>,NUM_PINS+2> outgoing;
-        std::vector<E> incoming;
-        unsigned fanOut=0;
-
-        // User visible stuff
-        S state;
-
-        std::mutex lock;
-    };
 
     PDeviceId newDevice()
     {
@@ -545,17 +570,6 @@ public:
         addLabelledEdgeImpl(edge,from, pin, to, true);
     }
 
-    bool mapVerticesToDRAM=false; // Dummy flag
-    bool mapInEdgeHeadersToDRAM=false; // Dummy flag
-    bool mapInEdgeRestToDRAM=false; // Dummy flag
-    bool mapOutEdgesToDRAM=false; // Dummy flag
-
-    // uint32_t i = graph.numDevices;
-    uint32_t numDevices = 0;
-
-    // S &s = graph.devices[i]->state;
-    std::vector<std::shared_ptr<PState>> devices;
-
     // Return total fanout of device, across all pins (I think)
     uint32_t fanOut(PDeviceId id)
     {
@@ -583,17 +597,20 @@ public:
 
     // No-op for sw
     void map()
-    {}
+    {
+        assert(!is_running_copy);
+    }
 
     void write(HostLink *h)
     {
+        assert(!is_running_copy);
         assert(h->m_graph==0);
-        h->attach_graph(this);
+        PGraphBase *copy=clone();
+        h->attach_graph(copy);
         m_hostlink=h;
     }
 
 private:
-    std::vector<DeviceType> device_states;
 
     struct transit_msg
     {
@@ -603,6 +620,8 @@ private:
         unsigned time;
         M msg;
     };
+
+    bool is_running_copy=false;
 
     unsigned time_now=0;
     unsigned max_time_skew=0;
@@ -616,10 +635,11 @@ private:
     std::deque<std::vector<transit_msg>> messages_in_flight;
     std::geometric_distribution<> msg_delay_distribution{0.1};
 
-    bool deliver_out_of_order;
+    bool deliver_out_of_order=true;
 
     void post_message(std::mt19937_64 &rng, unsigned dst, unsigned src, unsigned key, const M &msg)
     {
+        assert(is_running_copy);
         unsigned distance;
         if(deliver_out_of_order){
             distance=msg_delay_distribution(rng);
@@ -638,6 +658,7 @@ public:
 
     virtual void sim_prepare()
     {
+        assert(is_running_copy);
         device_states.resize(numDevices);
         for(unsigned i=0; i<numDevices; i++){
             device_states[i].s = &devices[i]->state;
@@ -654,6 +675,7 @@ public:
         std::function<void (void *, size_t)> send_cb,
         std::function<bool (uint32_t &, size_t &, void *)> recv_cb
     ){
+        assert(is_running_copy);
         if(time_now >= next_print_time){
             if(verbosity >= 1){
                 double avg_in_flight=sum_messages_in_flight_since_last_print / (double)time_since_print;
