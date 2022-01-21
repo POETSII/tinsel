@@ -6,7 +6,7 @@ include $(TINSEL_ROOT)/globals.mk
 
 # Local compiler flags
 CFLAGS = $(RV_CFLAGS) -Os -I $(INC)
-LDFLAGS = -melf32lriscv -G 0 
+LDFLAGS = -melf32lriscv -G 0
 
 .PHONY: all
 all: $(RTL)/InstrMem.hex $(QP)/InstrMem.mif
@@ -17,6 +17,8 @@ $(RTL)/InstrMem.hex: InstrMem.ihex
 $(QP)/InstrMem.mif: InstrMem.ihex
 	code-to-img.sh mif InstrMem.ihex > $(QP)/InstrMem.mif
 	code-to-img.sh mif InstrMem.ihex > ../../de10-pro/InstrMem.mif
+
+mif: $(QP)/InstrMem.mif
 
 InstrMem.ihex: entry.S boot.c link.ld \
                $(INC)/boot.h $(INC)/config.h $(INC)/tinsel.h

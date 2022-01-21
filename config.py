@@ -32,10 +32,10 @@ p["LogInstrsPerCore"] = 11
 p["SharedInstrMem"] = True
 
 # Log of number of multi-threaded cores sharing a DCache
-p["LogCoresPerDCache"] = 1 # the mailbox calc defines no of cores, but this defines hookup; need to match
+p["LogCoresPerDCache"] = 2 # the mailbox calc defines no of cores, but this defines hookup; need to match
 
 # Log of number of caches per DRAM port
-p["LogDCachesPerDRAM"] = 1
+p["LogDCachesPerDRAM"] = 3
 
 # Log of number of 32-bit words in a single memory transfer
 p["LogWordsPerBeat"] = 3
@@ -61,7 +61,7 @@ p["DRAMLogMaxInFlight"] = 5
 p["DRAMLatency"] = 20
 
 # Size of each DRAM
-p["LogBeatsPerDRAM"] = 25 # need sufficent DRAM capacity for progRouters... 26 is correct for 4, or 8gb per dimm for the passive cooler DE10's)
+p["LogBeatsPerDRAM"] = 26 # need sufficent DRAM capacity for progRouters... 26 is correct for 4, or 8gb per dimm for the passive cooler DE10's)
 
 # Size of internal flit payload
 p["LogWordsPerFlit"] = 2
@@ -79,7 +79,7 @@ p["LogCoresPerMailbox"] = 2
 p["MailboxMeshXBits"] = 1
 
 # Number of bits in mailbox mesh Y coord
-p["MailboxMeshYBits"] = 1
+p["MailboxMeshYBits"] = 4
 
 # Size of multicast queues in mailbox
 p["LogMsgPtrQueueSize"] = 6
