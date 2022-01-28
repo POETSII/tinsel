@@ -132,7 +132,7 @@ int main()
   std::vector<uint32_t> threads;
   for(unsigned meshY=0; meshY<hostLink.meshYLen; meshY++){
     for(unsigned meshX=0; meshX<hostLink.meshXLen; meshX++){
-      for(unsigned coreId=0; coreId<TinselCoresPerBoard; coreId++){
+      for(unsigned coreId=0; coreId<TinselCoresPerBoard; coreId+=TinselCoresPerMailbox){
         for(unsigned threadId=0; threadId<TinselThreadsPerCore; threadId+=TinselThreadsPerCore){
           auto tid=hostLink.toAddr(meshX, meshY, coreId, threadId);
           threads.push_back(tid);
@@ -149,7 +149,7 @@ int main()
     fprintf(stderr, "Outer thread index = %u of %u\n", i, (unsigned)threads.size());
     fflush(stdout);
     for(unsigned j=i+1; j<threads.size(); j++){
-      for(unsigned reps=1; reps<=256; reps*=16){
+      for(unsigned reps=256; reps<=256; reps*=16){
         run_spot(hostLink,  threads[i],threads[j], reps);
       }
     }
