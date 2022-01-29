@@ -434,4 +434,202 @@ template <typename DeviceType,
 
 };
 
+
+// WIP
+#if 0
+
+template <typename DeviceType,
+          typename S, typename E, typename M, int T_NUM_PINS=POLITE_NUM_PINS> struct PThreadSingleDevice {
+  static constexpr int NUM_PINS = T_NUM_PINS;
+
+  // Number of devices in graph
+  uint32_t numVertices;
+  // Pointer to array of device states
+  using DevState = PState<S,NUM_PINS>; // work around macro expansion
+  PTR(DevState) devices;
+  // Pointer to base of routing tables
+  PTR(POutEdge) outTableBase;
+  PTR(PInHeader<E>) inTableHeaderBase;
+  PTR(PInEdge<E>) inTableRestBase;
+
+  // Count number of messages sent
+  #ifdef POLITE_COUNT_MSGS
+  // Total messages sent
+  uint32_t msgsSent;
+  // Total messages received
+  uint32_t msgsReceived;
+  // Number of times we wanted to send but couldn't
+  uint32_t blockedSends;
+  #endif
+
+  #ifdef TINSEL
+
+  // Dump performance counter stats over UART
+  void dumpStats() {
+    tinselPerfCountStop();
+    uint32_t me = tinselId();
+    // Per-cache performance counters
+    uint32_t cacheMask = (1 <<
+      (TinselLogThreadsPerCore + TinselLogCoresPerDCache)) - 1;
+    if ((me & cacheMask) == 0) {
+      printf("H:%x,M:%x,W:%x\n",
+        tinselHitCount(),
+        tinselMissCount(),
+        tinselWritebackCount());
+    }
+    // Per-core performance counters
+    uint32_t coreMask = (1 << (TinselLogThreadsPerCore)) - 1;
+    if ((me & coreMask) == 0) {
+      printf("C:%x %x,I:%x %x\n",
+        tinselCycleCountU(), tinselCycleCount(),
+        tinselCPUIdleCountU(), tinselCPUIdleCount());
+    }
+    // Per-thread performance counters
+    #ifdef POLITE_COUNT_MSGS
+    uint32_t intraBoardId = me & ((1<<TinselLogThreadsPerBoard) - 1);
+    uint32_t progRouterSent =
+      intraBoardId == 0 ? tinselProgRouterSent() : 0;
+    uint32_t progRouterSentInter =
+      intraBoardId == 0 ? tinselProgRouterSentInterBoard() : 0;
+    printf("MS:%x,MR:%x,PR:%x,PRI:%x,BL:%x\n",
+      msgsSent, msgsReceived, progRouterSent,
+        progRouterSentInter, blockedSends);
+    #endif
+  }
+
+  // Invoke device handlers
+  void run() {
+    // Current out-going edge in multicast
+    POutEdge* outEdge;
+
+    // Outgoing edge to host
+    POutEdge outHost[2];
+    outHost[0].mbox = tinselHostId() >> TinselLogThreadsPerMailbox;
+    outHost[0].key = 0;
+    outHost[1].key = InvalidKey;
+    // Initialise outEdge to null terminator
+    outEdge = &outHost[1];
+
+    // Did last call to step handler request a new time step?
+    bool active = true;
+
+    // Reset performance counters
+    tinselPerfCountReset();
+
+    DeviceType dev;
+
+    PPin rts_pin;
+    dev.s           = &devices->state;
+    dev.readyToSend = &rts_pin;
+    dev.numVertices = numVertices;
+    dev.time = 0;
+
+    // Invoke the initialiser for each device
+    dev.init();
+
+    // Set number of flits per message
+    static_assert(sizeof(PMessage<M>) <= (1<<TinselLogBytesPerMsg));
+    tinselSetLen((sizeof(PMessage<M>)-1) >> TinselLogBytesPerFlit);
+
+    // Event loop
+    while (1) {
+      // Step 1: try to send
+      if (outEdge->key != InvalidKey) {
+        if (tinselCanSend()) {
+          PMessage<M>* m = (PMessage<M>*) tinselSendSlot();
+          // Send message
+          if(outEdge == outHost){
+            tinselSend(tinselHostId(), m);
+          }else{
+              m->destKey = outEdge->key;
+              tinselMulticast(outEdge->mbox, outEdge->threadMaskHigh,
+                outEdge->threadMaskLow, m);
+          }
+          #ifdef POLITE_COUNT_MSGS
+          msgsSent++;
+          #endif
+          // Move to next neighbour
+          outEdge++;
+        }
+        else {
+          #ifdef POLITE_COUNT_MSGS
+          blockedSends++;
+          #endif
+          tinselWaitUntil(TINSEL_CAN_SEND|TINSEL_CAN_RECV);
+        }
+      }
+      else if (rts_pin!=No) {
+        if (tinselCanSend()) {
+          // Invoke send handler
+          Pin pin=rts_pin;
+          PMessage<M>* m = (PMessage<M>*) tinselSendSlot();
+          dev.send(&m->payload);
+          // Determine out-edge array for sender
+          if (pin == HostPin){
+            outEdge = outHost;
+          }else{
+            outEdge = (POutEdge*) &outTableBase[
+                devices[0].pinBase[pin-2]
+            ];
+          }
+        }
+        else {
+          #ifdef POLITE_COUNT_MSGS
+          blockedSends++;
+          #endif
+          tinselWaitUntil(TINSEL_CAN_SEND|TINSEL_CAN_RECV);
+        }
+      }
+      else {
+        // Idle detection
+        int idle = tinselIdle(!active);
+        if (idle > 1)
+          break;
+        else if (idle) {
+          active = dev.step();
+          dev.time++;
+        }
+      }
+
+      // Step 2: try to receive
+      while (tinselCanRecv()) {
+        PMessage<M>* inMsg = (PMessage<M>*) tinselRecv();
+        if(std::is_same<E,None>::value){
+          dev.recv(&inMsg->payload, nullptr);
+        }else{
+          PInHeader<E>* inHeader = &inTableHeaderBase[inMsg->destKey];
+          PInEdge<E>* inEdge = inHeader->edges;
+          // Invoke receive handler
+          dev.recv(&inMsg->payload, &inEdge->edge);
+        }
+        #ifdef POLITE_COUNT_MSGS
+        msgsReceived++;
+        #endif
+        tinselFree(inMsg);
+      }
+    }
+
+    // Termination
+    #ifdef POLITE_DUMP_STATS
+      dumpStats();
+    #endif
+
+    // Invoke finish handler for each device
+    tinselWaitUntil(TINSEL_CAN_SEND);
+    PMessage<M>* m = (PMessage<M>*) tinselSendSlot();
+    if(dev.finish(&m->payload))){
+      tinselSend(tinselHostId(), m);
+    }
+
+    // Sleep. Next message in will free us up, and then we
+    // will return back into the bootloader.
+    tinselWaitUntil(TINSEL_CAN_RECV);
+  }
+
+  #endif
+
+};
+
+#endif
+
 #endif
