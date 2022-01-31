@@ -8,7 +8,6 @@ INLINE void sendb(char c) {
   while (tinselUartTryPut(c) == 0);
 }
 
-
 // Main
 int main()
 {
@@ -81,21 +80,36 @@ int main()
         // Set address register
         addrReg = msgIn->args[0];
       }
-      else if (cmd == FlushCmd) {
+      else if (cmd == StackCmd) {
         tinselWaitUntil(TINSEL_CAN_SEND);
-        msgOut[0] = msgIn->args[0];
+        uint32_t stackptr;
+        asm volatile("addi %0, sp, 0" : "=r"(stackptr));
+        tinselSetLen(1);
+        msgOut[0] = stackptr;
+        msgOut[1] = me;
         tinselSend(hostId, msgOut);
+        tinselSetLen(0);
       }
+      else if (cmd == RemoteStackCmd) {
+        tinselWaitUntil(TINSEL_CAN_SEND);
+        ((BootReq *)msgOut)->cmd = StackCmd;
+        tinselSend(msgIn->args[0], msgOut);
+      }
+      // else if (cmd == FlushCmd) {
+      //   tinselWaitUntil(TINSEL_CAN_SEND);
+      //   msgOut[0] = msgIn->args[0];
+      //   tinselSend(hostId, msgOut);
+      // }
       else if (cmd == StartCmd) {
         // Cache flush
-        tinselCacheFlush();
+        // tinselCacheFlush();
         // Wait until lines written back, by issuing a load
-        if (lastDataStoreAddr != 0) {
-          volatile uint32_t* ptr = (uint32_t*) lastDataStoreAddr; ptr[0];
-        }
+        //if (lastDataStoreAddr != 0) {
+        //  volatile uint32_t* ptr = (uint32_t*) lastDataStoreAddr; ptr[0];
+        //}
         // Send response
         tinselWaitUntil(TINSEL_CAN_SEND);
-        msgOut[0] = tinselId();
+        // msgOut[0] = me; //tinselId();
         tinselSend(hostId, msgOut);
 
         // Wait for triggerstartOne
@@ -113,6 +127,7 @@ int main()
   }
   // Call the application's main function
   int (*appMain)() = (int (*)()) (TinselMaxBootImageBytes);
+  sendb('g'); sendb('\n');
   appMain();
 
   // Restart boot loader
@@ -122,3 +137,47 @@ int main()
   // Unreachable
   return 0;
 }
+
+// INLINE int puthex_me(unsigned x)
+// {
+//   int count = 0;
+//
+//   for (count = 0; count < 8; count++) {
+//     unsigned nibble = x >> 28;
+//     sendb(nibble > 9 ? ('a'-10)+nibble : '0'+nibble);
+//     x = x << 4;
+//   }
+//
+//   return 8;
+// }
+// //
+// // int main() {
+// //   // // Core-local thread id
+// //   uint32_t me = tinselId();
+// //   uint32_t threadId = me & ((1 << TinselLogThreadsPerCore) - 1);
+// //
+// //   if (threadId == 0) {
+// //     for (volatile uint32_t i=0; i<tinselId()*10000; i++) {}
+// //     sendb('c'); sendb('z'); puthex_me(tinselId()); sendb('z'); sendb('\n');
+// //   }
+// //   while (1);
+// // }
+//
+// int main() {
+//   // // Core-local thread id
+//   uint32_t me = tinselId();
+//   uint32_t threadId = me & ((1 << TinselLogThreadsPerCore) - 1);
+//   char c, oldc;
+//   oldc = '\0';
+//
+//   if (me == 0) {
+//     sendb('c'); sendb('z'); puthex_me(tinselId()); sendb('z'); sendb('\n');
+//   }
+//
+//   while (1) {
+//     uint32_t c = 0;
+//     while ((c & 0x100) == 0) c = tinselUartTryGet();
+//     sendb((char)c);
+//   }
+//   return 0;
+// }
