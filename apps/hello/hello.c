@@ -59,34 +59,47 @@ char*  __attribute__ ((section ("text"))) msg_text = "hello from text thread\n";
 char*  __attribute__ ((section ("bss"))) msg_bss = "hello from bss\n";
 char*  __attribute__ ((section ("rodata"))) msg_rodata = "hello from rodata\n";
 
+void called() {
+  sendb('c'); sendb('a'); sendb('l'); sendb('l'); sendb('\n');
+}
+
 int main()
 {
+  void* sp = 0;
+
   sendb('h');
   sendb('e');
   sendb('l');
   sendb('l');
   sendb('o');
   sendb('\n');
-  puts_me(msg_bss);
-  puts_me(msg_rodata);
-
-  puts_me(msg_text);
-  puts_me("thread id ");
+  puts_me("stack ptr: \n");
+  puthex_me( (uint32_t)(&sp) );
+  sendb('\n');
+  // asm volatile("jr zero");
+  // puts_me(msg_bss);
+  // puts_me(msg_rodata);
+  //
+  // puts_me(msg_text);
+  // puts_me("thread id ");
   unsigned int me = tinselId();
   puthex_me(me);
   sendb('\n');
-  sendb('\n');
-  sendb('\n');
-  sendb('\n');
-
-  unsigned int* dram = (void *)0;
-  if (me == 0) {
-    puts_me("dram dump: \n");
-    for (int i=512/8; i<768; i++) {
-      puthex_me(dram[i]);
-      sendb('\n');
-    }
-  }
+  asm volatile("" : "+r"(me) );
+  tinselCacheFlush();
+  puts_me("flushed cache\n");
+  // sendb('\n');
+  // sendb('\n');
+  // sendb('\n');
+  //
+  // unsigned int* dram = (void *)0;
+  // if (me == 0) {
+  //   puts_me("dram dump: \n");
+  //   for (int i=512/8; i<768; i++) {
+  //     puthex_me(dram[i]);
+  //     sendb('\n');
+  //   }
+  // }
   // uncommenting this prevents any code from producing output.
   // printf("hello from printf thread 0x%x\n", me);
 

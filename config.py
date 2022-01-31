@@ -35,7 +35,7 @@ p["SharedInstrMem"] = True
 p["LogCoresPerDCache"] = 2 # the mailbox calc defines no of cores, but this defines hookup; need to match
 
 # Log of number of caches per DRAM port
-p["LogDCachesPerDRAM"] = 3
+p["LogDCachesPerDRAM"] = 1
 
 # Log of number of 32-bit words in a single memory transfer
 p["LogWordsPerBeat"] = 3
@@ -61,7 +61,7 @@ p["DRAMLogMaxInFlight"] = 5
 p["DRAMLatency"] = 20
 
 # Size of each DRAM
-p["LogBeatsPerDRAM"] = 26 # need sufficent DRAM capacity for progRouters... 26 is correct for 4, or 8gb per dimm for the passive cooler DE10's)
+p["LogBeatsPerDRAM"] = 24
 
 # Size of internal flit payload
 p["LogWordsPerFlit"] = 2
@@ -79,7 +79,7 @@ p["LogCoresPerMailbox"] = 2
 p["MailboxMeshXBits"] = 1
 
 # Number of bits in mailbox mesh Y coord
-p["MailboxMeshYBits"] = 4
+p["MailboxMeshYBits"] = 2
 
 # Size of multicast queues in mailbox
 p["LogMsgPtrQueueSize"] = 6
@@ -329,7 +329,7 @@ p["ThreadsPerDRAM"] = 2 ** p["LogThreadsPerDRAM"]
 
 # Size of DRAM partition on each thread
 p["LogBytesPerDRAMPartition"] = (
-  p["LogBeatsPerDRAM"]-1 + p["LogWordsPerBeat"]+2 - p["LogThreadsPerDRAM"])
+  p["LogBeatsPerDRAM"]-1 + p["LogWordsPerBeat"]+2 - p["LogThreadsPerDRAM"] - 4)
 
 # Number of threads per board
 p["LogThreadsPerBoard"] = p["LogThreadsPerDRAM"] + p["LogDRAMsPerBoard"]
@@ -404,7 +404,7 @@ else:
 if p["SRAMsPerBoard"]:
     p["DRAMBase"] = 3 * (2 ** p["LogBytesPerSRAM"])
 else:
-    p["DRAMBase"] = 512 # TDDO FIXME; first word does not write correctly.
+    p["DRAMBase"] = 512 # 2**p['LogOffChipRAMBaseAddr']
 p["DRAMGlobalsLength"] = 2 ** (p["LogBytesPerDRAM"] - 1) - p["DRAMBase"]
 p["POLiteDRAMGlobalsLength"] = 2 ** 14
 p["POLiteProgRouterBase"] = p["DRAMBase"] + p["POLiteDRAMGlobalsLength"]
