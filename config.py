@@ -35,7 +35,7 @@ p["SharedInstrMem"] = True
 p["LogCoresPerDCache"] = 2 # the mailbox calc defines no of cores, but this defines hookup; need to match
 
 # Log of number of caches per DRAM port
-p["LogDCachesPerDRAM"] = 1
+p["LogDCachesPerDRAM"] = 3
 
 # Log of number of 32-bit words in a single memory transfer
 p["LogWordsPerBeat"] = 3
@@ -79,7 +79,7 @@ p["LogCoresPerMailbox"] = 2
 p["MailboxMeshXBits"] = 1
 
 # Number of bits in mailbox mesh Y coord
-p["MailboxMeshYBits"] = 2
+p["MailboxMeshYBits"] = 4
 
 # Size of multicast queues in mailbox
 p["LogMsgPtrQueueSize"] = 6
