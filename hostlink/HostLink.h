@@ -33,6 +33,9 @@ class HostLink {
 public:
   // This is called with (threadId,Line), and return true if the line should be filtered out
   using stdout_filter_proc_t = std::function<bool(uint32_t,const char *)>;
+
+  static const int LogThreadsPerCore = TinselLogThreadsPerCore;
+  static const int LogCoresPerDCache = TinselLogCoresPerDCache;
 private:
   // Lock file for acquring exclusive access to PCIeStream
   int lockFile;
@@ -112,6 +115,39 @@ private:
 
   // Receive multiple max-sized messages (blocking)
   void recvBulk(int numMsgs, void* msgs);
+
+  // Receive multiple max-sized messages without blocking.
+  /* This function may return partial messages. It is up to the caller to deal with
+     any trailing partial messages and make sure they are at the start of the next
+     message. Example use (not tested):
+
+     std::vector<char> buffer(4096);
+     int buffer_valid=0;
+
+     while(1){
+            hostlink->recvBulkNonBlock(buffer.size(), &buffer_valid, &buffer[0]);
+            int off=0;
+            while(off + TinselMaxBytesPerMsg <= buffer_valid){
+                   process_message( &buffer[off] );
+                   off += TinselMaxBytesPerMsg;
+            }
+            std::move(buffer.begin()+off, buffer.begin()+buffer_valid, buffer.begin());
+            buffer_valid -= off;
+     }
+  */
+  void recvBulkNonBlock(
+         int bufferSize,
+         int *bufferValidBytes, // Number of valid bytes in the buffer, both before and after call
+         void *buffer
+  );
+
+  // Consume messages via buffer. on_message is called for each complete message
+  void recvBulkNonBlock(
+         int bufferSize,
+         int *bufferValidBytes, // Number of valid bytes in the buffer, both before and after call
+         void *buffer,
+         std::function<void(void *)> on_message
+  );
 
   // Receive multiple messages (blocking), given size of each message
   void recvMsgs(int numMsgs, int msgSize, void* msgs);

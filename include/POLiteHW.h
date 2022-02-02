@@ -10,7 +10,7 @@
 
 #include <cstdint>
 
-template<int T_NUM_PINS=POLITE_NUM_PINS>
+template<int T_NUM_PINS>
 struct POLiteHW
 {
     static constexpr int NUM_PINS = T_NUM_PINS;
@@ -61,6 +61,11 @@ struct POLiteHW
     static const unsigned BoxMeshXLen=TinselBoxMeshXLen;
     static const unsigned BoxMeshYLen=TinselBoxMeshYLen;
     static const unsigned LogThreadsPerCore=TinselLogThreadsPerCore;
+    static const unsigned CoresPerBoard=TinselCoresPerBoard;
+    static const unsigned ThreadsPerCore=TinselThreadsPerCore;
+    static const unsigned LogThreadsPerBoard=TinselLogThreadsPerBoard;
+    static const unsigned CoresPerDCache=TinselCoresPerDCache;
+    static const unsigned LogCoresPerDCache=TinselLogCoresPerDCache;
 
 #ifndef TINSEL
     inline void politeSaveStats(HostLink* hostLink, const char* filename)

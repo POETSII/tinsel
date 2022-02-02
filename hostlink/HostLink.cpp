@@ -20,6 +20,7 @@
 #include <limits.h>
 #include <string.h>
 #include <signal.h>
+#include <cassert>
 
 // Send buffer size (in flits)
 #define SEND_BUFFER_SIZE 8192
@@ -411,6 +412,39 @@ void HostLink::recvBulk(int numMsgs, void* msgs)
   int numBytes = numMsgs * (1 << TinselLogBytesPerMsg);
   socketBlockingGet(pcieLink, (char*) msgs, numBytes);
 }
+
+void HostLink::recvBulkNonBlock(
+        int bufferSize,
+        int *bufferValidBytes, // Number of valid bytes in the buffer, both before and after call
+        void *buffer
+) {
+  assert(bufferSize > *bufferValidBytes);
+  int got=0;
+  socketNonBlockingGet(pcieLink, *bufferValidBytes + (char*)buffer, bufferSize - *bufferValidBytes, &got);
+  *bufferValidBytes += got;
+}
+
+void HostLink::recvBulkNonBlock(
+         int bufferSize,
+         int *bufferValidBytes, // Number of valid bytes in the buffer, both before and after call
+         void *buffer,
+         std::function<void(void *)> on_message
+)
+{
+  int buffer_valid=*bufferValidBytes;
+  recvBulkNonBlock(bufferSize, &buffer_valid, buffer);
+  int off=0;
+  while(off + (1<<TinselLogBytesPerMsg) <= buffer_valid){
+    on_message( off + (char*)buffer );
+    off += (1<<TinselLogBytesPerMsg);
+  }
+  buffer_valid -= off;
+  if(buffer_valid){
+    memmove(buffer,  off+(char*)buffer, buffer_valid);
+  }
+  *bufferValidBytes=buffer_valid;
+}
+
 
 // Receive multiple messages (blocking), given size of each message
 void HostLink::recvMsgs(int numMsgs, int msgSize, void* msgs)

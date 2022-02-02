@@ -86,17 +86,25 @@ static constexpr PPin HostPin = PPin{1};
 
 static constexpr PPin Pin(uint8_t n) { return PPin{(uint8_t)(n+2)}; }
 
+// TODO: This is getting unmanageable and they are inconsistent
 static const unsigned  LogWordsPerMsg = 4;
 static const unsigned  LogBytesPerMsg = 6;
 static const unsigned LogBytesPerWord = 2;
 static const unsigned LogBytesPerFlit = 4;
 static const unsigned CoresPerFPU=32;
 static const unsigned LogThreadsPerCore=1;
+static const unsigned ThreadsPerCore  =1<<LogThreadsPerCore;
 static const unsigned LogBytesPerDRAM=27;
 static const unsigned MeshXBits=3;
 static const unsigned MeshYBits=3;
 static const unsigned BoxMeshXLen=4;
 static const unsigned BoxMeshYLen=4;
+static const unsigned LogCoresPerDCache=4;
+static const unsigned LogThreadsPerDCache=LogCoresPerDCache<<LogThreadsPerCore;
+static const unsigned LogThreadsPerBoard=7;
+static const unsigned ThreadsPerBoard=1<<LogThreadsPerBoard;
+static const unsigned CoresPerBoard = ThreadsPerBoard / ThreadsPerCore;
+
 
 
 enum PlacerMethod
@@ -154,6 +162,15 @@ struct PMessage
 
 class HostLink
 {
+public:
+    using Impl = POLiteSWSim<T_NUM_PINS>;
+
+    uint32_t toAddr(uint32_t meshX, uint32_t meshY,
+             uint32_t coreId, uint32_t threadId)
+    {
+        throw std::runtime_error("Not implemented for sim.");
+    }
+
 private:
     std::mutex m_mutex;
     std::condition_variable m_cond;
@@ -363,10 +380,57 @@ public:
         return !m_dev2host.empty();
     }
 
+    void recvBulkNonBlock(
+         int bufferSize,
+         int *bufferValidBytes, // Number of valid bytes in the buffer, both before and after call
+         void *buffer
+    ) {
+        if(bufferSize % (1<<LogBytesPerMsg)){
+            throw std::runtime_error("Buffer is not multiple of message size.");
+        }
+        if( (bufferSize - *bufferValidBytes) % (1<<LogBytesPerMsg)){
+            throw std::runtime_error("Space left is not a multiple of message size.");
+        }
+        if( (bufferSize - *bufferValidBytes) == 0){
+            throw std::runtime_error("No space left in buffer.");
+        }
+        
+        if(canRecv()){
+            recv( *bufferValidBytes + (char*)buffer );
+            *bufferValidBytes += 1<<LogBytesPerMsg;
+        }
+    }
+
+    void recvBulkNonBlock(
+         int bufferSize,
+         int *bufferValidBytes, // Number of valid bytes in the buffer, both before and after call
+         void *buffer,
+         std::function<void(void *)> on_message
+    ){
+
+        int buffer_valid=*bufferValidBytes;
+        recvBulkNonBlock(bufferSize, &buffer_valid, buffer);
+        int off=0;
+        while(off + (1<<LogBytesPerMsg) <= buffer_valid){
+            on_message( off + (char*)buffer );
+            off += (1<<LogBytesPerMsg);
+        }
+        buffer_valid -= off;
+        if(buffer_valid){
+            memmove(buffer,  off+(char*)buffer, buffer_valid);
+        }
+        *bufferValidBytes=buffer_valid;
+    }
+
     bool pollStdOut(FILE* /*outFile*/)
     {
         assert(m_graph);
         return false;
+    }
+
+    void setStdOutFilterProc(std::function<bool(uint32_t,const char *)> filter)
+    {
+        assert(m_graph);
     }
 };
 
@@ -374,10 +438,31 @@ public:
 inline static void politeSaveStats(HostLink* /*hostLink*/, const char* /*filename*/)
 {}
 
+template <typename T, typename = void>
+struct PState_has_device_performance_counters
+{
+  static constexpr bool value = false;
+  static constexpr unsigned count = 0;
+};
 
+template <typename T>
+struct PState_has_device_performance_counters<T, decltype((void)T::device_performance_counters, void())>
+{
+  static constexpr unsigned count_helper()
+  {
+    constexpr int res= sizeof(T::device_performance_counters) / sizeof(uint32_t);
+    return res;
+  }
+
+  static constexpr unsigned count = count_helper();
+  static constexpr bool value = count > 0;
+};
 
 template <typename S, typename E, typename M>
 struct PDevice {
+    static constexpr bool HasDevicePerfCounters = PState_has_device_performance_counters<S>::value;
+    static constexpr unsigned NumDevicePerfCounters = PState_has_device_performance_counters<S>::count;
+
     // Impementation
     PPin _realReadyToSend = No;
 
@@ -402,7 +487,30 @@ template <typename TDeviceType,
           bool TT_ENABLE_THREAD_PERF_COUNTERS=false
           >
 struct PThread {
+    using DeviceType = TDeviceType;
+     using Impl = POLiteSWSim<T_NUM_PINS>;
 
+    static constexpr bool ENABLE_CORE_PERF_COUNTERS = TT_ENABLE_CORE_PERF_COUNTERS;
+    static constexpr bool ENABLE_THREAD_PERF_COUNTERS = TT_ENABLE_THREAD_PERF_COUNTERS;
+
+    enum ThreadPerfCounters {
+    SendHandlerCalls,
+    TotalSendHandlerTime,
+    BlockedSends,
+    MsgsSent,   
+    
+    MsgsRecv,
+    TotalRecvHandlerTime,
+
+    MinBarrierActive,
+    SumBarrierActiveDiv256,
+    MaxBarrierActive,
+
+    Fake_BeginBarrier, // Not an actual perf counter, just used to keep track of things
+    Fake_LastActive, // Not an actual perf counter, just used to keep track of things
+
+    Fake_ThreadPerfCounterSize
+  };
 };
 
 template <typename DeviceType, typename S, typename E, typename M>
@@ -509,6 +617,17 @@ public:
         }
         return id;
     }
+
+    uint32_t getDeviceId(uint32_t threadId, unsigned deviceOffset)
+    {
+        throw std::runtime_error("Not implemented for sim.");
+    }
+
+    int getMeshLenX() const
+    { return 1; }
+
+    int getMeshLenY() const
+    { return 1; }
 
     void setDeviceWeight(unsigned id, unsigned weight)
     {

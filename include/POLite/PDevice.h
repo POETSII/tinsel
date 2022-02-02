@@ -7,6 +7,14 @@
 #include <algorithm>
 #include <array>
 
+// This is a static limit on the number of pins per device
+#ifndef POLITE_NUM_PINS
+#define POLITE_NUM_PINS 1
+#endif
+
+template<int T_NUM_PINS=POLITE_NUM_PINS>
+struct POLiteHW;
+
 #ifdef TINSEL
   #include <tinsel.h>
   #define PTR(t) t*
@@ -17,11 +25,6 @@
 
 // Use this to align on half-cache-line boundary
 #define ALIGNED __attribute__((aligned(1<<(TinselLogBytesPerLine-1))))
-
-// This is a static limit on the number of pins per device
-#ifndef POLITE_NUM_PINS
-#define POLITE_NUM_PINS 1
-#endif
 
 // The local-multicast key points to a list of incoming edges.  Some
 // of those edges are stored in a header, the rest in an array at a
@@ -207,6 +210,7 @@ struct PThread {
 
   using DeviceType = TDeviceType;
 
+  using Impl = POLiteHW<T_NUM_PINS>;
   
   static constexpr bool ENABLE_CORE_PERF_COUNTERS = T_ENABLE_CORE_PERF_COUNTERS;
   static constexpr bool ENABLE_THREAD_PERF_COUNTERS = T_ENABLE_THREAD_PERF_COUNTERS;

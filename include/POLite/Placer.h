@@ -160,6 +160,7 @@ struct Placer {
 
     idx_t *vwgt=nullptr;
     if(graph->hasWeights() && useWeightsIfPresent){
+      fprintf(stderr, "Using weights\n");
       vwgt=(idx_t*)calloc(nvtxs, sizeof(idx_t));
       unsigned minw=10000000, maxw=0;
       for(int i=0; i<nvtxs; i++){
@@ -548,7 +549,7 @@ struct Placer {
       counts.at( index ) += weight;
     };
 
-    auto trace=[&](int ax,int ay, int bx,int by, uint64_t weight) -> uint64_t
+    auto trace=[&](int ax,int ay, int bx,int by, uint64_t weight)
     {
       /* From Network.bsv:
           function Route route(NetAddr addr);

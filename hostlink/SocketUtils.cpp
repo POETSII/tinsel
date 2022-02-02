@@ -150,6 +150,21 @@ void socketBlockingGet(int fd, char* buf, int numBytes)
   return;
 }
 
+// Read up to numBytes from socket, without blocking
+void socketNonBlockingGet(int fd, char* buf, int numBytes, int *pGot)
+{
+  if (!socketCanGet(fd)) {
+    *pGot=0;
+  }else{
+    int got = recv(fd, &buf[0], numBytes, 0);
+    if(got < 0){
+      fprintf(stderr, "Error reading from socket\n");
+      exit(EXIT_FAILURE); 
+    }
+    *pGot=got;
+  }
+}
+
 // Send exactly numBytes to a socket, blocking
 void socketBlockingPut(int fd, char* buf, int numBytes)
 {

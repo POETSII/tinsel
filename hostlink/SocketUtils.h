@@ -26,6 +26,9 @@ int socketPut(int fd, char* buf, int numBytes);
 // Read exactly numBytes from socket, blocking
 void socketBlockingGet(int fd, char* buf, int numBytes);
 
+// Read up to numBytes from socket. Returns if it would block.
+void socketNonBlockingGet(int fd, char* buf, int numBytes, int *pGot);
+
 // Either send exactly numBytes to a socket, blocking
 void socketBlockingPut(int fd, char* buf, int numBytes);
 
