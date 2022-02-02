@@ -1783,3 +1783,5 @@ set_global_assignment -name QSYS_FILE sysB.qsys
 set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/mm_clockcross_DDR4.ip
 set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/DDR_mm_pipeline_bridge.ip
 set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/DE10_Pro_QSYS_emif_s10_ddr4_a.ip
+set_instance_assignment -name PARTITION_COLOUR 4285505023 -to DE10_Pro -entity DE10_Pro
+set_instance_assignment -name PARTITION_COLOUR 4285857726 -to auto_fab_0 -entity DE10_Pro
