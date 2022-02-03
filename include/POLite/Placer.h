@@ -16,16 +16,19 @@
 #include <metis.h>
 #include <scotch/scotch.h>
 #include <POLite/Graph.h>
+#include <POLite/Noise.h>
 #include <queue>
 #include <omp.h>
 #include <unordered_set>
+#include <random>
+#include <algorithm>
+#include "ParallelFor.h"
+
+#define POLITE_NOINLINE __attribute__((noinline))
 
 typedef uint32_t PartitionId;
 
-// Partition and place a graph on a 2D mesh
-struct Placer {
-  // Select between different methods
-  enum Method {
+enum PlacerMethod {
     Default,
     Metis,
     Random,
@@ -33,12 +36,66 @@ struct Placer {
     Direct,
     Dealer,
     BFS,
-	Scotch
+	  Scotch,
+    BFS_then_Metis // Perform BFS at the board level, then switch to metis
   };
-  const Method defaultMethod=Metis;
+
+inline const char *placer_method_to_string(PlacerMethod m)
+{
+  switch(m){
+  case Default: return "default";
+  case Metis: return "metis";
+  case Random: return "random";
+  case Permutation: return "permutation";
+  case Direct: return "direct";
+  case BFS: return "bfs";
+  case Scotch: return "scotch";
+  case BFS_then_Metis: return "bfs_then_metis";
+  default:
+    assert(0);
+    return "UNKNOWN";
+  }
+}
+
+inline PlacerMethod parse_placer_method(::std::string method){
+  std::transform(method.begin(), method.end(), method.begin(), [](char c){ return std::tolower(c); });
+
+  if(method=="metis"){
+      return PlacerMethod::Metis;
+  }else if(method=="bfs"){
+      return PlacerMethod::BFS;
+  }else if(method=="random"){
+      return PlacerMethod::Random;
+  }else if(method=="permutation"){
+      return PlacerMethod::Permutation;
+  }else if(method=="direct"){
+      return PlacerMethod::Direct;
+  }else if(method=="scotch"){
+    return PlacerMethod::Scotch;
+  }else if(method=="default"){
+      return PlacerMethod::Default;
+  }else if(method=="bfs_then_metis"){
+      return PlacerMethod::BFS_then_Metis;
+  }else{
+      fprintf(stderr, "Unknown placement method '%s'\n", method.c_str());
+      exit(1);
+  }
+}
+
+// Partition and place a graph on a 2D mesh
+template<class TEdgeWeight=None>
+struct Placer {
+  // Select between different methods
+  
+  #ifdef HAVE_MT_METIS
+  const PlacerMethod defaultMethod=MTMetis;  
+  #else
+  const PlacerMethod defaultMethod=Metis;
+  #endif
+    ParallelFlag parallel_flag=ParallelFlag::Default;
 
   // The graph being placed
-  Graph* graph;
+  Graph<TEdgeWeight>* graph;
 
   // Dimension of the 2D mesh
   uint32_t width, height;
@@ -47,7 +104,7 @@ struct Placer {
   PartitionId* partitions;
 
   // Mapping from partition id to subgraph
-  Graph* subgraphs;
+  Graph<None>* subgraphs;
 
   // Stores the number of connections between each pair of partitions
   uint64_t** connCount;
@@ -68,39 +125,25 @@ struct Placer {
   uint32_t* yCoordSaved;
   uint64_t savedCost;
 
+  int recursion_level=0; // May be used to intelligently select methods at system vs board vs FPGA levels
+
   // Random numbers
   unsigned int seed;
   void setRand(unsigned int s) { seed = s; };
   int getRand() { return rand_r(&seed); }
 
   // Controls which strategy is used
-  Method method = Default;
+  PlacerMethod method = Default;
+
+  // will be set to the method actually used
+  PlacerMethod method_chosen;
 
   // Select placer method
   void chooseMethod()
   {
     auto e = getenv("POLITE_PLACER");
     if (e) {
-      if (!strcmp(e, "metis"))
-        method=Metis;
-      else if (!strcmp(e, "random"))
-        method=Random;
-      else if (!strcmp(e, "direct"))
-        method=Direct;
-      else if (!strcmp(e, "dealer"))
-        method=Dealer;
-      else if (!strcmp(e, "permutation"))
-        method=Permutation;
-      else if (!strcmp(e, "bfs"))
-        method=BFS;
-      else if (!strcmp(e, "scotch"))
-        method=Scotch;
-      else if (!strcmp(e, "default") || *e == '\0')
-        method=Default;
-      else {
-        fprintf(stderr, "Don't understand placer method : %s\n", e);
-        exit(EXIT_FAILURE);
-      }
+      method = parse_placer_method(e);
     }
     if (method == Default)
       method = defaultMethod;
@@ -108,6 +151,12 @@ struct Placer {
 
   // Partition the graph using Metis
   void partitionMetis(bool useWeightsIfPresent=true) {
+    // TODO : use 64-bit metis
+    if(graph->getEdgeCount() >= (1u<<31)){
+      fprintf(stderr, "This graph has at least 2^31 edges, and will fail in 32-bit metis.\n");
+      exit(1);
+    }
+
     // Compute total number of edges
     uint32_t numEdges = 0;
     for (uint32_t i = 0; i < graph->numVertices(); i++) {
@@ -116,6 +165,7 @@ struct Placer {
 
     // Create Metis parameters
     idx_t nvtxs = (idx_t) graph->numVertices();
+
     idx_t nparts = (idx_t) (width * height);
     idx_t nconn = 1;
     idx_t objval;
@@ -145,13 +195,13 @@ struct Placer {
     uint32_t next = 0;
     for (idx_t i = 0; i < nvtxs; i++) {
       xadj[i] = next;
-      Seq<NodeId>* in = graph->incoming()->elems[i];
-      Seq<NodeId>* out = graph->outgoing()->elems[i];
-      for (uint32_t j = 0; j < in->numElems; j++)
-        adjncy[next++] = (idx_t) in->elems[j];
-      for (uint32_t j = 0; j < out->numElems; j++)
-        if (! in->member(out->elems[j]))
-          adjncy[next++] = (idx_t) out->elems[j];
+     unsigned nIn=graph->fanIn(i);
+     graph->exportIncomingNodeIds(i, nIn, adjncy+next);
+     next += nIn;
+
+     unsigned nOut=graph->fanOut(i);
+     graph->exportOutgoingNodeIds(i, nOut, adjncy+next);
+     next += nOut;
     }
     xadj[nvtxs] = (idx_t) next;
 
@@ -184,7 +234,9 @@ struct Placer {
 
     // Populate result array
     for (uint32_t i = 0; i < graph->numVertices(); i++)
+    for (uint32_t i = 0; i < graph->nodeCount(); i++){
       partitions[i] = (uint32_t) parts[i];
+    }
 
     // Release Metis structures
     free(xadj);
@@ -203,6 +255,8 @@ struct Placer {
   // Partition the graph randomly. Note that this results in unequal loads
   void partitionRandom() {
     uint32_t numVertices = graph->numVertices();
+    method_chosen=Random;
+
     uint32_t numParts = width * height;
 
     std::mt19937_64 urng(getRand());
@@ -220,13 +274,17 @@ struct Placer {
 
     std::mt19937_64 urng(getRand());
 
-    uint32_t numVertices = graph->incoming()->numElems;
+    uint32_t numVertices = graph->nodeCount();
     std::shuffle(partitions, partitions+numVertices, urng);
+
+    method_chosen=Permutation;
   }
 
   // Partition the graph using direct mapping
   void partitionDirect() {
-    uint32_t numVertices = graph->numVertices();
+    method_chosen=Direct;
+
+    uint32_t numVertices = graph->nodeCount();
     uint32_t numParts = width * height;
     uint32_t partSize = (numVertices + numParts) / numParts;
 
@@ -238,7 +296,7 @@ struct Placer {
 
   // Partition the graph by dealing from deck
   void partitionDealer() {
-    uint32_t numVertices = graph->incoming()->numElems;
+    uint32_t numVertices = graph->nodeCount();
     uint32_t numParts = width * height;
     
     // Populate result array
@@ -249,7 +307,9 @@ struct Placer {
 
   // Partition the graph using repeated BFS
   void partitionBFS() {
-    uint32_t numVertices = graph->numVertices();
+    method_chosen=BFS;
+
+    uint32_t numVertices = graph->nodeCount();
     uint32_t numParts = width * height;
     uint32_t partSize = (numVertices + numParts) / numParts;
 
@@ -279,11 +339,11 @@ struct Placer {
             partitions[v] = nextPart;
             count++;
             // Add unvisited neighbours of v to the frontier
-            Seq<uint32_t>* dests = graph->outgoing()->elems[v];
-            for (uint32_t i = 0; i < dests->numElems; i++) {
-              uint32_t w = dests->elems[i];
-              if (!seen[w]) frontier.push(w);
-            }
+            graph->walkOutgoingNodeIds(v, [&](uint32_t id){
+              if(!seen[id]){
+                frontier.push(id);
+              }
+            });
           }
         }
         while (nextUnseen < numVertices && seen[nextUnseen]) nextUnseen++;
@@ -295,11 +355,35 @@ struct Placer {
     delete [] seen;
   }
 
+  PlacerMethod choose_default()
+  {
+    if(graph->getEdgeCount() >= (1u<<30) || graph->nodes.size() >= (1u<<28) ){
+      return BFS;
+    }else{
+      return Metis;
+    }
+  }
+
   void partition()
   {
+    PlacerMethod method_now=method;
+    if(method==Default){
+      method_now=choose_default();
+    }
+
     switch(method){
+    default:
+      fprintf(stderr, "Invalid placement enum value %d\n", method);
+      exit(1);
     case Default:
+      fprintf(stderr, "Expecting explicit method by now\n");
+      exit(1);
     case Metis:
+      if(graph->getEdgeCount() >= (1u<<30)){
+        fprintf(stderr, "Warning: Metis chosen as placement method, but graph has at least 2^31 edges. Falling back on BFS.\n");
+        partitionBFS();
+        break;
+      }
       partitionMetis();
       break;
     case Random:
@@ -320,8 +404,13 @@ struct Placer {
     case Scotch:
       partitionScotch();
       break;
-    default:
-      throw std::runtime_error("Invalid partition option.");
+    case BFS_then_Metis:
+      if(recursion_level==0 || (graph->getEdgeCount() >= (1u<<30))){
+        partitionBFS();
+      }else{
+        partitionMetis();
+      }
+      break;
     }
   }
 
@@ -333,7 +422,7 @@ struct Placer {
     // somewhere which is not re-entrant.
     static std::mutex scotch_mutex;
 
-    idx_t nvtxs = (idx_t) graph->incoming()->numElems;
+    idx_t nvtxs = (idx_t) graph->nodeCount();
     idx_t nparts = (idx_t) (width * height);
 
     // If there are no vertices
@@ -342,24 +431,21 @@ struct Placer {
     std::vector<SCOTCH_Num> verttab;
     std::vector<SCOTCH_Num> edgetab;
 
-    // Would be much better as robin hood flat set
+    // TODO : robin hood
     std::unordered_set<unsigned> seen;
 
     // TODO  : weights
-    for (uint32_t i = 0; i < nvtxs; i++) {
+    for (uint32_t i = 0; i < (uint32_t)nvtxs; i++) {
       seen.clear();
       verttab.push_back(edgetab.size());
 
-      const Seq<NodeId>* in = graph->incoming()->elems[i];
-      for (uint32_t j = 0; j < in->numElems; j++){
-        //edgetab.push_back( in->elems[j] );
-        seen.insert(in->elems[j]);
-      }
+      graph->walkIncomingNodeIds(i, [&](unsigned j){
+        seen.insert(i);
+      });
 
-      const Seq<NodeId>* out = graph->outgoing()->elems[i];
-      for (uint32_t j = 0; j < out->numElems; j++){
-        seen.insert(out->elems[j]);
-      }
+      graph->walkOutgoingNodeIds(i, [&](unsigned j){
+        seen.insert(j);
+      });
 
       for(auto v : seen){
         if(v!=i){
@@ -390,7 +476,7 @@ struct Placer {
 
     if(SCOTCH_graphBuild (grafptr,
       0, //baseval - where do array indices start
-      graph->incoming()->numElems, // vertnbr
+      graph->nodeCount(),
       &verttab[0],
       &verttab[1], //vendtab. Settings to verttab+1 means it is a compact edge array
       0, // velotab, Integer load per vertex. Not used here.
@@ -420,7 +506,7 @@ struct Placer {
     //////////////////////////////////////////
 
     // Populate result array
-    for (uint32_t i = 0; i < graph->incoming()->numElems; i++){
+    for (uint32_t i = 0; i < graph->nodeCount(); i++){
       partitions[i] = (uint32_t) parttab[i];
     }
 
@@ -455,7 +541,7 @@ struct Placer {
   }
 
   // Create subgraph for each partition
-  void computeSubgraphs() {
+  POLITE_NOINLINE void computeSubgraphs() {
     uint32_t numPartitions = width*height;
 
     // Create mapping from node id to subgraph node id
@@ -477,14 +563,18 @@ struct Placer {
 
 
     // Add edges to subgraphs
-    for (uint32_t i = 0; i < graph->numVertices(); i++) {
+    for (uint32_t i = 0; i < graph->nodeCount(); i++) {
       PartitionId p = partitions[i];
-      Seq<NodeId>* out = graph->outgoing()->elems[i];
+      /*Seq<NodeId>* out = graph->outgoing->elems[i];
       for (uint32_t j = 0; j < out->numElems; j++) {
         NodeId neighbour = out->elems[j];
         if (partitions[neighbour] == p)
           subgraphs[p].addEdge(mappedTo[i], mappedTo[neighbour]);
-      }
+      }*/
+      graph->walkOutgoingNodeIds(i, [&](uint32_t neighbour){
+        if (partitions[neighbour] == p)
+          subgraphs[p].addEdge(mappedTo[i], mappedTo[neighbour]);
+      });
     }
 
     // Release mapping
@@ -492,7 +582,7 @@ struct Placer {
   }
 
   // Computes the number of connections between each pair of partitions
-  void computeInterPartitionCounts() {
+  POLITE_NOINLINE  void computeInterPartitionCounts() {
     uint32_t numPartitions = width*height;
 
     // Zero the counts
@@ -501,13 +591,13 @@ struct Placer {
         connCount[i][j] = 0;
 
     // Iterative over graph and count connections
-    for (uint32_t i = 0; i < graph->numVertices(); i++) {
-      Seq<NodeId>* in = graph->incoming()->elems[i];
-      Seq<NodeId>* out = graph->outgoing()->elems[i];
-      for (uint32_t j = 0; j < in->numElems; j++)
-        connCount[partitions[i]][partitions[in->elems[j]]]++;
-      for (uint32_t j = 0; j < out->numElems; j++)
-        connCount[partitions[i]][partitions[out->elems[j]]]++;
+    for (uint32_t i = 0; i < graph->nodeCount(); i++) {
+     graph->walkIncomingNodeIds(i, [&](uint32_t j){
+        connCount[partitions[i]][partitions[j]]++;
+      });
+      graph->walkOutgoingNodeIds(i, [&](uint32_t j){
+        connCount[partitions[i]][partitions[j]]++;
+      });
     }
   }
 
@@ -668,7 +758,7 @@ struct Placer {
   }
 
   // Create random mapping between partitions and mesh
-  void randomPlacement() {
+  POLITE_NOINLINE void randomPlacement() {
     uint32_t numPartitions = width*height;
 
     // Array of partition ids
@@ -799,16 +889,18 @@ struct Placer {
   }
 
   // Constructor
-  Placer(Graph* g, uint32_t w, uint32_t h) {
+  POLITE_NOINLINE Placer(Graph<TEdgeWeight>* g, uint32_t w, uint32_t h, int _recursion_level, PlacerMethod _method=PlacerMethod::Default) {
+    recursion_level = _recursion_level;
     graph = g;
     width = w;
     height = h;
+    method=_method;
     // Random seed
     setRand(1 + omp_get_thread_num());
     // Allocate the partitions array
-    partitions = new PartitionId [g->numVertices()];
+    partitions = new PartitionId [g->nodeCount()];
     // Allocate subgraphs
-    subgraphs = new Graph [width*height];
+    subgraphs = new Graph<None> [width*height];
     // Allocate the connection count matrix
     uint32_t numPartitions = width*height;
     connCount = new uint64_t* [numPartitions];
@@ -837,7 +929,7 @@ struct Placer {
   }
 
   // Deconstructor
-  ~Placer() {
+  POLITE_NOINLINE ~Placer() {
     delete [] partitions;
     delete [] subgraphs;
     uint32_t numPartitions = width*height;

@@ -1,0 +1,8 @@
+code.v
+data.v
+entry.o
+run
+run.o
+*.elf
+*.heap
+massif.out.*

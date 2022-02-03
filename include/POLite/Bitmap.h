@@ -23,6 +23,9 @@ struct Bitmap {
     if (contents) delete contents;
   }
 
+  Bitmap(const Bitmap &o) = delete;
+  Bitmap &operator=(const Bitmap &o) = delete;
+
   // Get value of word at given index, return 0 if out-of-bounds
   inline uint64_t getWord(uint32_t index) {
     return index >= contents->numElems ? 0ul : contents->elems[index];
@@ -53,6 +56,30 @@ struct Bitmap {
     uint32_t result = 64*firstFree + bit;
     setBit(firstFree, bit);
     return result;
+  }
+
+  inline unsigned countSetBits() const
+  {
+    unsigned non_zero=0;
+    for(unsigned i=0; i<contents->numElems; i++){
+      non_zero += __builtin_popcountll(contents->elems[i]);
+    }
+    return non_zero;
+  }
+
+  template<class TCb>
+  inline void enumSetBits(TCb cb) const
+  {
+    for(unsigned i=0; i<contents->numElems; i++){
+      if(contents->elems[i]){
+        auto bits=contents->elems[i];
+        for(unsigned j=0; j<64; j++){
+          if((bits>>j)&1){
+            cb(i*64+j);
+          }
+        }
+      }
+    }
   }
 };
 

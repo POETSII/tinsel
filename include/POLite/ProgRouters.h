@@ -14,7 +14,6 @@
 // =============================
 
 class ProgRouter {
-
   // Number of chunks used so far in current beat
   uint32_t numChunks;
 
@@ -41,7 +40,7 @@ class ProgRouter {
     numChunks = numRecords = 0;
     // Allocate new beat, and check for overflow
     numBeats++;
-    table[currentRAM]->extendBy(32);
+    table[currentRAM]->extendByWithZero(32);
     if (table[currentRAM]->numElems >= (TinselPOLiteProgRouterLength-1024)) {
       printf("ProgRouter out of memory\n");
       exit(EXIT_FAILURE);
@@ -72,10 +71,32 @@ class ProgRouter {
     return &table[currentRAM]->elems[beatBase];
   }
 
+    // Set indirection key
+  void setIND(uint8_t* ind, uint32_t key) {
+    ind[0] = key;
+    ind[1] = key >> 8;
+    ind[2] = key >> 16;
+    ind[3] = key >> 24;
+  }
+
+    // Add an IND record to the table
+  // Return a pointer to the indirection key,
+  // so it can be set later by the caller
+  uint8_t* addIND() {
+    if (numChunks == 5) nextBeat();
+    uint8_t* ptr = currentRecord48();
+    ptr[5] = 4 << 5;
+    numChunks++;
+    numRecords++;
+    return ptr;
+  }
+
  public:
 
   // A table holding encoded routing beats for each RAM
   Seq<uint8_t>** table;
+
+  std::recursive_mutex m_mutex;
 
   // Constructor
   ProgRouter() {
@@ -91,7 +112,7 @@ class ProgRouter {
     for (int i = 0; i < TinselDRAMsPerBoard; i++) {
       table[i] = new Seq<uint8_t> (1 << 15);
       // Allocate first beat
-      table[i]->extendBy(32);
+      table[i]->extendByWithZero(32);
     }
   }
 
@@ -103,6 +124,7 @@ class ProgRouter {
 
   // Generate a new key for the records added
   uint32_t genKey() {
+
     // Determine index of first beat in record sequence
     uint32_t index = table[currentRAM]->numElems - numBeats*32;
     // Determine final key length
@@ -129,26 +151,6 @@ class ProgRouter {
     return key;
   }
 
-  // Add an IND record to the table
-  // Return a pointer to the indirection key,
-  // so it can be set later by the caller
-  uint8_t* addIND() {
-    if (numChunks == 5) nextBeat();
-    uint8_t* ptr = currentRecord48();
-    ptr[5] = 4 << 5;
-    numChunks++;
-    numRecords++;
-    return ptr;
-  }
-
-  // Set indirection key
-  void setIND(uint8_t* ind, uint32_t key) {
-    ind[0] = key;
-    ind[1] = key >> 8;
-    ind[2] = key >> 16;
-    ind[3] = key >> 24;
-  }
-
   // Add an MRM record to the table
   void addMRM(uint32_t mboxX, uint32_t mboxY,
                 uint32_t threadsHigh, uint32_t threadsLow,
@@ -172,6 +174,7 @@ class ProgRouter {
 
   // Add an RR record to the table
   void addRR(uint32_t dir, uint32_t key) {
+
     if (numChunks == 5) nextBeat();
     uint8_t* ptr = currentRecord48();
     ptr[0] = key;
@@ -186,6 +189,7 @@ class ProgRouter {
   // Add a URM1 record to the table
   void addURM1(uint32_t mboxX, uint32_t mboxY,
                  uint32_t threadId, uint32_t key) {
+    
     if (numChunks == 5) nextBeat();
     uint8_t* ptr = currentRecord48();
     ptr[0] = key;
@@ -267,9 +271,12 @@ class ProgRouterMesh {
   uint32_t boardsX;
   uint32_t boardsY;
 
- public:
+  std::recursive_mutex m_mutex;
+
   // 2D array of tables;
   ProgRouter** table;
+
+ public:
 
   // Constructor
   ProgRouterMesh(uint32_t numBoardsX, uint32_t numBoardsY) {
@@ -303,22 +310,31 @@ class ProgRouterMesh {
       else local.append(dest);
     }
 
+    uint64_t keys[4]; // 64-bit -1 is invalid key
+    for(int i=0; i<4; i++){
+      keys[i]=~uint64_t(0);
+    }
+
     // Recurse on non-local groups and add RR records on return
     if (north.numElems > 0) {
-      uint32_t key = addDestsFromBoardXY(senderX, senderY+1, &north);
-      table[senderY][senderX].addRR(0, key);
+      keys[0] = addDestsFromBoardXY(senderX, senderY+1, &north);
     }
     if (south.numElems > 0) {
-      uint32_t key = addDestsFromBoardXY(senderX, senderY-1, &south);
-      table[senderY][senderX].addRR(1, key);
+      keys[1] = addDestsFromBoardXY(senderX, senderY-1, &south);
     }
     if (east.numElems > 0) {
-      uint32_t key = addDestsFromBoardXY(senderX+1, senderY, &east);
-      table[senderY][senderX].addRR(2, key);
+      keys[2] = addDestsFromBoardXY(senderX+1, senderY, &east);
     }
     if (west.numElems > 0) {
-      uint32_t key = addDestsFromBoardXY(senderX-1, senderY, &west);
-      table[senderY][senderX].addRR(3, key);
+      keys[3] = addDestsFromBoardXY(senderX-1, senderY, &west);
+    }
+
+    std::unique_lock<std::recursive_mutex> lk(table[senderY][senderX].m_mutex);
+
+    for(unsigned i=0; i<4; i++){
+      if(keys[i]!=~uint64_t(0)){
+        table[senderY][senderX].addRR(i, (uint32_t)keys[i]);
+      }
     }
 
     // Add local records

@@ -1316,6 +1316,14 @@ and the graph vertices can continue to communicate: any vertex can
 send messages to the host via the `HostPin` or the `finish` handler,
 and the host can send messages to any vertex.
 
+The placement and mapping process is parallelised in various places
+using [`tbb`](https://software.intel.com/content/www/us/en/develop/documentation/onetbb-documentation/top.html),
+and will try to use all cores by default. This can result in substantial
+speed-ups for large graphs over many cores, particularly when during
+mapping and routing tableconstruction. If necessary, you can disable
+thisvat compile-time by defining `POLITE_NO_PARFOR`, or at run-time
+using `PGraph.use_parallel`. 
+
 **Softswitch**. Central to POLite is an event loop running on each
 Tinsel thread, which we call the softswitch as it effectively
 context-switches between vertices mapped to the same thread.  The
@@ -1358,7 +1366,7 @@ tiny fanouts and others have huge fanouts; this could be alleviated by
 adding fanout as a vertex weight for METIS partitioning).
 
 **Simulation**. There is a simple and partial functional simulation of the
-POLite framework in [apps/util/POLiteSWSim](apps/util/POLiteSWSim). This
+POLite framework in [apps/POLite/POLiteSW](apps/POLite/POLiteSW). This
 implements most of the common parts of the POLite `PGraph` and `PDevice` class,
 along with just enough `HostLink` to give a run-time API. Assuming you
 are using the default POLite makefile then it will be available for free.
@@ -2007,3 +2015,54 @@ facilities:
   architectures*, PDP 2021
   ([paper](https://www.repository.cam.ac.uk/handle/1810/317181),
    [video](https://sms.cam.ac.uk/media/3426946))
+
+## J. Testing
+
+There are a number of useful tests which can be useful when developing or
+modifying tinsel hardware and software. These act as a simple check
+that things haven't broken in obvious ways. These tests are captured
+using the [bats](https://github.com/bats-core/bats-core) bash-based
+testing framework, though the tests themselves are written in many
+languages.
+
+Assuming you have [bats installed](https://bats-core.readthedocs.io/en/latest/installation.html)
+you can run these by using bats in recursive mode. So from the project root
+(this directory):
+```
+$ bats -r .
+✓ asp-gals-compile-hw
+ ✓ asp-gals-compile-sim
+ ✓ asp-gals-run-medium-sim
+ ✓ asp-gals-run-large-sim
+ ✓ asp-gals-run-medium-hw
+ <snip>
+ ✓ heat-grid-sync-run-small-sim
+ ✓ heat-grid-sync-run-medium-sim
+ ✓ heat-grid-sync-run-default-hw
+
+46 tests, 0 failures
+```
+If you are running on a machine with no installed hardware, you can skip hardware tests
+by defining `TINSEL_TEST_NO_HARDWARE=1`. For example:
+```
+TINSEL_TEST_NO_HARDWARE=1 bats -r .
+ ✓ asp-gals-compile-hw
+ ✓ asp-gals-compile-sim
+ ✓ asp-gals-run-medium-sim
+ ✓ asp-gals-run-large-sim
+ - asp-gals-run-medium-hw (skipped)
+ <snip>
+ ✓ heat-grid-sync-run-small-sim
+ ✓ heat-grid-sync-run-medium-sim
+ - heat-grid-sync-run-default-hw (skipped)
+
+46 tests, 0 failures, 14 skipped
+```
+Note that it will still try to compile the tinsel code for hardware execution,
+but will just not run it.
+
+*Warning*: test coverage is still relatively shallow, and is very much
+about making sure that compilation, placement, and run-time execution works.
+Only in a few cases does it check the results coming back. The tests also
+include no tests of the synthesis of the bluespec code; currently all tests
+are about the software infrastructure and run-time behaviour of the hardware.

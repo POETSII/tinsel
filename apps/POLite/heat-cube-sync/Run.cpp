@@ -5,12 +5,21 @@
 #include <POLite.h>
 #include <sys/time.h>
 
-int main()
+int main(int argc, char *argv[])
 {
+  const uint32_t MAX_D=40;
+
   // Dimensions of cube
-  const uint32_t D = 40;
+  uint32_t D = 40;
   // Number of time steps to simulate
-  const uint32_t T = 10000;
+  uint32_t T = 10000;
+
+  if(argc>1){
+    D=atoi(argv[1]);
+  }
+  if(argc>2){
+    T=atoi(argv[2]);
+  }
 
   // Connection to tinsel machine
   HostLink hostLink;

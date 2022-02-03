@@ -62,6 +62,8 @@ void DebugLink::putPacket(int x, int y, BoardCtrlPkt* pkt)
 // Constructor
 DebugLink::DebugLink(DebugLinkParams p)
 {
+  if(p.on_phase){ p.on_phase("debug_link_validate"); }
+
   boxMeshXLen = p.numBoxesX;
   boxMeshYLen = p.numBoxesY;
   get_tryNextX = 0;
@@ -117,6 +119,8 @@ DebugLink::DebugLink(DebugLinkParams p)
   meshXLen = TinselMeshXLenWithinBox * boxMeshXLen;
   meshYLen = TinselMeshYLenWithinBox * boxMeshYLen;
 
+  if(p.on_phase){ p.on_phase("debug_link_allocating"); }
+
   // Allocate member structures
   conn = new int* [boxMeshYLen];
   for (int y = 0; y < boxMeshYLen; y++)
@@ -158,6 +162,7 @@ DebugLink::DebugLink(DebugLinkParams p)
       boardY[y][x] = new int [TinselBoardsPerBox];
   }
 
+  if(p.on_phase){ p.on_phase("debug_link_connect_tcp"); }
   // Connect to boardctrld on each box
   {
     for (int y = 0; y < boxMeshYLen; y++){
@@ -196,6 +201,7 @@ DebugLink::DebugLink(DebugLinkParams p)
     }
   }
 
+  if(p.on_phase){ p.on_phase("debug_link_recv_ready_packets"); }
   // Receive ready packets from each box
   BoardCtrlPkt pkt;
   for (int y = 0; y < boxMeshYLen; y++)
@@ -204,6 +210,7 @@ DebugLink::DebugLink(DebugLinkParams p)
       assert(pkt.payload[0] == DEBUGLINK_READY);
     }
 
+  if(p.on_phase){ p.on_phase("debug_link_send_queries"); }
   // Send queries
   pkt.payload[0] = DEBUGLINK_QUERY_IN;
   for (int y = 0; y < boxMeshYLen; y++)
@@ -229,6 +236,7 @@ DebugLink::DebugLink(DebugLinkParams p)
       }
     }
 
+  if(p.on_phase){ p.on_phase("debug_link_recv_responses"); }
   // Receive query responses
   for (int y = 0; y < boxMeshYLen; y++)
     for (int x = 0; x < boxMeshXLen; x++) {
@@ -264,6 +272,7 @@ DebugLink::DebugLink(DebugLinkParams p)
       }
   }
 
+  if(p.on_phase){ p.on_phase("debug_link_enable_idle_detection"); }
   // Query the bridge board on the master box a second time to
   // enable idle-detection (only now do all the boards know their
   // full coordinates in the mesh).
@@ -304,6 +313,7 @@ void DebugLink::setBroadcastDest(
   pkt.payload[1] = threadId;
   // Broadcast address
   pkt.payload[2] = 0x80;
+  std::fill(pkt.payload+3, pkt.payload+sizeof(pkt.payload)/sizeof(pkt.payload[0]), 0); // Avoid un-unit bytes going through syscall (make valgrind happy)
   // Send packet to appropriate box
   putPacket(boxX[boardY][boardX], boxY[boardY][boardX], &pkt);
 }
@@ -315,6 +325,7 @@ void DebugLink::put(uint32_t boardX, uint32_t boardY, uint8_t byte)
   pkt.linkId = linkId[boardY][boardX];
   pkt.payload[0] = DEBUGLINK_STD_IN;
   pkt.payload[1] = byte;
+  std::fill(pkt.payload+2, pkt.payload+sizeof(pkt.payload)/sizeof(pkt.payload[0]), 0);  // Avoid un-unit bytes going through syscall (make valgrind happy)
   putPacket(boxX[boardY][boardX], boxY[boardY][boardX], &pkt);
 }
 

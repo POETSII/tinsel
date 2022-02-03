@@ -35,8 +35,9 @@ $(INC)/config.h: $(TINSEL_ROOT)/config.py
 $(HL)/hostlink.a:
 	make -C $(HL) hostlink.a
 
-run: run.cpp heat.h $(HL)/hostlink.a
-	g++ -O2 -I $(INC) -I $(HL) -o run run.cpp $(HL)/hostlink.a
+run: run.cpp heat.h $(HL)/*.o
+	g++ -O2 -I $(INC) -I $(HL) -c -o run.o run.cpp
+	g++ -O2 -I $(INC) -I $(HL) -o run run.o $(HL)/*.o
 
 sim: run.cpp heat.h $(HL)/sim/hostlink.a
 	g++ -O2 -I $(INC) -I $(HL) -o sim run.cpp $(HL)/sim/hostlink.a

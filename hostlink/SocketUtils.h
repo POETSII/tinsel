@@ -38,5 +38,4 @@ void socketBlockingPut(int fd, char* buf, int numBytes);
 */
 int socketConnectTCP(const char* hostname, int port, bool returnIfCantConnect=false);
 
-
 #endif

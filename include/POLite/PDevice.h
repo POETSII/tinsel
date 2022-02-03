@@ -32,8 +32,17 @@ struct POLiteHW;
 // by the following parameter.  If it's too low, we risk wasting
 // memory bandwidth.  If it's too high, we risk wasting memory.  
 // The minimum value is 0.  For large edge state sizes, use 0.
+// dt10 - making this statically calculated by default, so that it uses 1 cache line
+// for header. This is a situation where there needs to be some knowledge
+// from the placer feeding in, as the edges per header should be sized
+// based on the devices per thread and the average devices within a 
+// thread that receive a particular message. The topology will also
+// affect this a lot. Hrmm, feels like the code should really be compiled
+// _after_ placement has happened, but that is more complex.
 #ifndef POLITE_EDGES_PER_HEADER
-#define POLITE_EDGES_PER_HEADER 6
+static const int POLite_UserSpecifiedEdgesPerHeader=-1;
+#else
+static const int POLite_UserSpecifiedEdgesPerHeader=POLITE_EDGES_PER_HEADER;
 #endif
 
 // Macros for performance stats:
@@ -74,10 +83,26 @@ typedef uint16_t Key;
 //   No      - means 'not ready to send'
 //   HostPin - means 'send to host'
 //   Pin(n)  - means 'send to application pin number n'
-typedef uint8_t PPin;
-constexpr PPin No = 0;
-constexpr PPin HostPin = 1;
-constexpr PPin Pin(uint8_t n){ return ((n)+2); }
+struct PPin{
+  uint8_t index;
+
+  PPin(const PPin &) = default;
+  PPin &operator=(const PPin &o) = default;
+
+  // The tag is to stop me accidentally constructing them,
+  // as I keep doing it...
+  explicit constexpr PPin(unsigned _index, bool /*_tag*/)
+    : index((uint8_t)_index)
+  {}
+
+  constexpr bool operator==(PPin o) const { return index==o.index; }
+  constexpr bool operator!=(PPin o) const { return index!=o.index; }
+};
+static_assert(sizeof(PPin)==1, "Expecting PPin to be 1 byte.");
+
+const constexpr PPin No = (PPin{0,true});
+const constexpr PPin HostPin = (PPin{1,true});
+constexpr PPin Pin(unsigned n) { return PPin{n+2,true}; }
 
 // For template arguments that are not used
 struct None {};
@@ -186,16 +211,27 @@ template <> struct PInEdge<None> {
   };
 };
 
+
 // Header for a list of incoming edges (fixed size structure to
 // support fast construction/packing of local-multicast tables)
 template <typename E> struct PInHeader {
+  static constexpr int ctMax(int a, int b) { return a>b ? a: b;}
+
+  // This reflects the size of numReceives and restIndex
+  static const int HeaderFixedSize=4;
+  
+  static const int EdgesPerHeader =
+    ( POLite_UserSpecifiedEdgesPerHeader != -1)
+      ? POLite_UserSpecifiedEdgesPerHeader
+      : ctMax(1, ((1<<TinselLogBytesPerLine) - HeaderFixedSize) / sizeof(PInEdge<E>));
+
   // Number of receivers
   uint16_t numReceivers;
   // Pointer to remaining edges in inTableRest,
   // if they don't all fit in the header
   uint16_t restIndex;
   // Edges stored in the header, to make good use of cached data
-  PInEdge<E> edges[POLITE_EDGES_PER_HEADER];
+  PInEdge<E> edges[EdgesPerHeader];
 };
 
 // Generic thread structure
@@ -496,7 +532,7 @@ struct PThread {
               outEdge = outHost;
             }else{
               outEdge = (POutEdge*) &outTableBase[
-                devices[src].pinBase[pin-2]
+                devices[src].pinBase[pin.index-2]
               ];
             }
           }
@@ -551,7 +587,7 @@ struct PThread {
         PInEdge<E>* inEdge = inHeader->edges;
         // For each receiver
         for (uint32_t i = 0; i < numReceivers; i++) {
-          if (i == POLITE_EDGES_PER_HEADER)
+          if (i == PInHeader<E>::EdgesPerHeader)
             inEdge = &inTableRestBase[inHeader->restIndex];
           // Lookup destination device
           PLocalDeviceId id = inEdge->devId;

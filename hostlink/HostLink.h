@@ -26,6 +26,10 @@ struct HostLinkParams {
   // Used to allow retries when connecting to the socket. When performing rapid sweeps,
   // it is quite common for the first attempt in the next process to fail.
   int max_connection_attempts;
+
+  // Used to indicate when the hostlink moves through different phases, especially in construction
+  std::function<void(const char *)> on_phase;
+
   HostLinkParams(): max_connection_attempts(5){}
 };
 
@@ -57,6 +61,9 @@ private:
 
   // Request an extra send slot when bringing up Tinsel FPGAs
   bool useExtraSendSlot;
+
+  // Used to indicate to interested parties what the hostlink is doing, for logging and timing purposes
+  std::function<void(const char *)> on_phase;
 
   // Internal constructor
   void constructor(HostLinkParams params);

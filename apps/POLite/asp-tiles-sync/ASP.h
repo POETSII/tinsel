@@ -51,6 +51,7 @@ struct ASPDevice : PDevice<ASPState, None, ASPMessage> {
 
   // Called by POLite on idle event
   inline bool step() {
+    //fprintf(stderr, "Step %u, sum=%u\n", time, s->sum);
     // Fold in new reaching nodes
     bool changed = false;
     for (uint32_t i = 0; i < N; i++) {

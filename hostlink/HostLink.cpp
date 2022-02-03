@@ -75,6 +75,7 @@ void HostLink::constructor(HostLinkParams p)
 
   
   // Open lock file
+  if(p.on_phase){ p.on_phase("open_lock_file"); }
   lockFile = open("/tmp/HostLink.lock", O_CREAT, 0444);
   if (lockFile == -1) {
     perror("Unable to open HostLink lock file");
@@ -102,6 +103,7 @@ full_retry:
     close(pcieLink);
   }
 
+  if(p.on_phase){ p.on_phase("connect_to_pci_stream"); }
   #ifdef SIMULATE
     // Connect to simulator
     pcieLink = connectToPCIeStream(PCIESTREAM_SIM);
@@ -111,10 +113,12 @@ full_retry:
   #endif
 
   // Create DebugLink
+  if(p.on_phase){ p.on_phase("create_debug_link"); }
   DebugLinkParams debugLinkParams;
   debugLinkParams.numBoxesX = p.numBoxesX;
   debugLinkParams.numBoxesY = p.numBoxesY;
   debugLinkParams.useExtraSendSlot = p.useExtraSendSlot;
+  debugLinkParams.on_phase=p.on_phase;
   debugLinkParams.max_connection_attempts=p.max_connection_attempts;
   debugLink = new DebugLink(debugLinkParams);
 
@@ -127,46 +131,55 @@ full_retry:
     // Set board mesh dimensions
     meshXLen = debugLink->meshXLen;
     meshYLen = debugLink->meshYLen;
-
-    // Allocate line buffers
-    lineBuffer = new char**** [meshXLen];
-    for (int x = 0; x < meshXLen; x++) {
-      lineBuffer[x] = new char*** [meshYLen];
-      for (int y = 0; y < meshYLen; y++) {
-        lineBuffer[x][y] = new char** [TinselCoresPerBoard];
-        for (int c = 0; c < TinselCoresPerBoard; c++) {
-          lineBuffer[x][y][c] = new char* [TinselThreadsPerCore];
-          for (int t = 0; t < TinselThreadsPerCore; t++) {
-            lineBuffer[x][y][c][t] = new char [MaxLineLen];
-          }
-        }
-      }
-    }
-
-    // Allocate and initialise line buffer lengths
-    lineBufferLen = new int*** [meshXLen];
-    for (int x = 0; x < meshXLen; x++) {
-      lineBufferLen[x] = new int** [meshYLen];
-      for (int y = 0; y < meshYLen; y++) {
-        lineBufferLen[x][y] = new int* [TinselCoresPerBoard];
-        for (int c = 0; c < TinselCoresPerBoard; c++) {
-          lineBufferLen[x][y][c] = new int [TinselThreadsPerCore];
-          for (int t = 0; t < TinselThreadsPerCore; t++)
-            lineBufferLen[x][y][c][t] = 0;
-        }
-      }
-    }
-
-    // Initialise send buffer
-    sendBuffer = new char [(1<<TinselLogBytesPerFlit) * SEND_BUFFER_SIZE];
-    // avoids (correct) warnings by valgrind about passing un-init memory to syscall. In
-    // cases seen this is fine, as it is un-init padding being passed through to fill in
-    // spaces in tables for alignment purposes.
-    memset(sendBuffer, 0, (1<<TinselLogBytesPerFlit) * SEND_BUFFER_SIZE);
   }
+
+  if(p.on_phase){ p.on_phase("allocating_buffers"); }
+
+  // Allocate line buffers
+  lineBuffer = new char**** [meshXLen];
+  for (int x = 0; x < meshXLen; x++) {
+    lineBuffer[x] = new char*** [meshYLen];
+    for (int y = 0; y < meshYLen; y++) {
+      lineBuffer[x][y] = new char** [TinselCoresPerBoard];
+      for (int c = 0; c < TinselCoresPerBoard; c++) {
+        lineBuffer[x][y][c] = new char* [TinselThreadsPerCore];
+        for (int t = 0; t < TinselThreadsPerCore; t++) {
+          lineBuffer[x][y][c][t] = new char [MaxLineLen];
+        }
+      }
+    }
+  }
+
+  // Allocate and initialise line buffer lengths
+  lineBufferLen = new int*** [meshXLen];
+  for (int x = 0; x < meshXLen; x++) {
+    lineBufferLen[x] = new int** [meshYLen];
+    for (int y = 0; y < meshYLen; y++) {
+      lineBufferLen[x][y] = new int* [TinselCoresPerBoard];
+      for (int c = 0; c < TinselCoresPerBoard; c++) {
+        lineBufferLen[x][y][c] = new int [TinselThreadsPerCore];
+        for (int t = 0; t < TinselThreadsPerCore; t++)
+          lineBufferLen[x][y][c][t] = 0;
+      }
+    }
+  }
+
+  // Initialise send buffer
+  sendBuffer = new char [(1<<TinselLogBytesPerFlit) * SEND_BUFFER_SIZE];
+  // avoids (correct) warnings by valgrind about passing un-init memory to syscall. In
+  // cases seen this is fine, as it is un-init padding being passed through to fill in
+  // spaces in tables for alignment purposes.
+  memset(sendBuffer, 0, (1<<TinselLogBytesPerFlit) * SEND_BUFFER_SIZE);
+  
   useSendBuffer = false;
+  sendBuffer = new char [(1<<TinselLogBytesPerFlit) * SEND_BUFFER_SIZE];
+  // avoids (correct) warnings by valgrind about passing un-init memory to syscall. In
+  // cases seen this is fine, as it is un-init padding being passed through to fill in
+  // spaces in tables for alignment purposes.
+  memset(sendBuffer, 0, (1<<TinselLogBytesPerFlit) * SEND_BUFFER_SIZE);
   sendBufferLen = 0;
 
+  if(p.on_phase){ p.on_phase("power_on_self_test"); }
   // Run the self test
   if (! powerOnSelfTest()) {
     if(trials < 5){
@@ -688,6 +701,7 @@ void HostLink::setAddr(uint32_t meshX, uint32_t meshY,
   req.cmd = SetAddrCmd;
   req.numArgs = 1;
   req.args[0] = addr;
+
   send(toAddr(meshX, meshY, coreId, 0), 1, &req);
 }
 
