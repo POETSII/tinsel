@@ -50,7 +50,7 @@ p["DCacheLogSetsPerThread"] = 2
 p["DCacheLogNumWays"] = 4
 
 # Number of DRAMs per FPGA board
-p["LogDRAMsPerBoard"] = 2
+p["LogDRAMsPerBoard"] = 1
 
 # Number of SRAMs per FPGA board (or None if 0)
 p["SRAMsPerBoard"] = None
@@ -61,7 +61,7 @@ p["DRAMLogMaxInFlight"] = 5
 p["DRAMLatency"] = 20
 
 # Size of each DRAM
-p["LogBeatsPerDRAM"] = 24
+p["LogBeatsPerDRAM"] = 25
 
 # Size of internal flit payload
 p["LogWordsPerFlit"] = 2
@@ -76,10 +76,10 @@ p["LogMsgsPerMailbox"] = 9 # must be at least enough to store one message per th
 p["LogCoresPerMailbox"] = 2
 
 # Number of bits in mailbox mesh X coord
-p["MailboxMeshXBits"] = 1
+p["MailboxMeshXBits"] = 2
 
 # Number of bits in mailbox mesh Y coord
-p["MailboxMeshYBits"] = 4
+p["MailboxMeshYBits"] = 2
 
 # Size of multicast queues in mailbox
 p["LogMsgPtrQueueSize"] = 6

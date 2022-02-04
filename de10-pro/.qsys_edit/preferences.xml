@@ -1,14 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <preferences>
  <debug showDebugMenu="0" />
- <window width="2666" height="1339" x="85" y="33" />
+ <window width="2263" height="1338" x="235" y="27" />
  <systemtable
    filter="Tinsel_0.pcie_host_bus"
    showAvalonDomains="1"
    showClockDomains="0"
    showResetDomains="0" />
- <library
-   expandedCategories="Project,Existing IP Variants/mnt,Existing IP Variants/mnt/Projects/POETS/tinsel-DE5port-pciestream,Existing IP Variants/mnt/Projects/POETS/tinsel-DE5port-pciestream/de10-pro,Existing IP Variants/mnt/Projects/POETS/tinsel-DE5port-pciestream/de10-pro/ip/DE10_Pro_QSYS,Existing IP Variants/mnt/Projects,Library,Library/Basic Functions,Existing IP Variants/mnt/Projects/POETS/tinsel-DE5port-pciestream/de10-pro/ip,Library/Basic Functions/On Chip Memory,Existing IP Variants/mnt/Projects/POETS,Existing IP Variants" />
+ <library expandedCategories="Project,Library,Existing IP Variants" />
  <generation path="" clear_previous="1" />
  <hdlexample language="VERILOG" />
 </preferences>
