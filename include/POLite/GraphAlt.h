@@ -126,7 +126,7 @@ public:
 
   // Set node label
   void setLabel(NodeId id, NodeLabel lab) {
-    assert(id < nodes.numElems);
+    assert(id < (unsigned)nodes.numElems);
     nodes[id].label=lab;
   }
 
@@ -137,7 +137,7 @@ public:
   }
 
   void setWeight(NodeId id, unsigned weight) {
-    assert(id < nodes.numElems);
+    assert(id < (unsigned)nodes.numElems);
     m_has_weights=true;
     nodes[id].weight=weight;
   }

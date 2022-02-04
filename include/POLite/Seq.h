@@ -165,7 +165,7 @@ template <class T> class Seq
       return elems[numElems];
     }
 
-    // Clear the sequence
+    // Clear the sequence, without freeing memory
     void clear()
     {
       numElems = 0;
@@ -210,13 +210,13 @@ template <class T> class Seq
 
     const T &operator[](size_t i) const
     {
-      assert(i<numElems);
+      assert(i<size_t(numElems));
       return elems[i];
     }
 
     T &operator[](size_t i)
     {
-      assert(i<numElems);
+      assert(i<size_t(numElems));
       return elems[i];
     }
 
@@ -227,6 +227,12 @@ template <class T> class Seq
     { return elems; }
 
     const T *end() const
+    { return elems+numElems; }
+
+    T *begin()
+    { return elems; }
+
+    T *end()
     { return elems+numElems; }
 };
 

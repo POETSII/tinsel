@@ -4,6 +4,8 @@
 
 #include <algorithm>
 #include <numeric>
+#include <array>
+#include <random>
 
 #include <stdlib.h>
 #include <stdint.h>
@@ -579,7 +581,7 @@ public:
           for (uint32_t p = 0; p < NUM_PINS; p++) {
             dev->pinBase[p] = nextOutIndex;
             Seq<POutEdge>* edges = outTable[id][p];
-            for (uint32_t i = 0; i < edges->numElems; i++) {
+            for (uint32_t i = 0; i < (uint32_t)edges->numElems; i++) {
               outEdgeArray[nextOutIndex] = edges->elems[i];
               nextOutIndex++;
             }
@@ -591,13 +593,13 @@ public:
           (PInHeader<E>*) inEdgeHeaderMem[threadId];
         Seq<PInHeader<E>>* headers = &tbi->inTableHeaders;
         if (headers)
-          for (uint32_t i = 0; i < headers->numElems; i++) {
+          for (uint32_t i = 0; (unsigned)i < headers->numElems; i++) {
             inEdgeHeaderArray[i] = headers->elems[i];
           }
         PInEdge<E>* inEdgeRestArray = (PInEdge<E>*) inEdgeRestMem[threadId];
         Seq<PInEdge<E>>* edges = &tbi->inTableRest;
         if (edges)
-          for (uint32_t i = 0; i < edges->numElems; i++) {
+          for (uint32_t i = 0; i < (uint32_t)edges->numElems; i++) {
             inEdgeRestArray[i] = edges->elems[i];
           }
         // At this point, check that next pointers line up with heap sizes
@@ -647,7 +649,7 @@ public:
       no other group can take it.
   */
  template<bool DoLock>
-  __attribute__((noinline)) uint32_t findKeyPerThread(uint32_t numGroups, PReceiverGroup<E> *groups) { 
+  __attribute__((noinline)) uint32_t findKeyPerThread(uint32_t numGroups, std::array<PReceiverGroup<E>,TinselThreadsPerMailbox> &groups) { 
     
     /* All threads involved here are in the same mail-box, so we can enforce exclusion
       by locking the mailbox. */
@@ -702,7 +704,7 @@ public:
   }
 
   template<bool DoLock>
-  __attribute__((noinline)) uint32_t findKeyPerMailbox(uint32_t numGroups, PReceiverGroup<E> *groups) { 
+  __attribute__((noinline)) uint32_t findKeyPerMailbox(uint32_t numGroups, std::array<PReceiverGroup<E>,TinselThreadsPerMailbox> &groups) { 
     
     /* All threads involved here are in the same mail-box, so we can enforce exclusion
       by locking the mailbox. */
@@ -799,7 +801,7 @@ public:
   }
 
   template<bool DoLock>
-  __attribute__((noinline)) uint32_t findKey(uint32_t numGroups, PReceiverGroup<E> *groups)
+  __attribute__((noinline)) uint32_t findKey(uint32_t numGroups, std::array<PReceiverGroup<E>,TinselThreadsPerMailbox> &groups)
   {
     // Both methods work, and intuitively the per mailbox one should be faster.
     // But in practise... the the per-thread one is a touch faster. This may
@@ -813,7 +815,7 @@ public:
   // Add entries to the input tables for the given receivers
   // (Only valid after mapper is called)
   template<bool DoLock>
-  __attribute__((noinline)) uint32_t addInTableEntries(uint32_t numGroups, PReceiverGroup<E> *groups, ParallelRunningStats<1> *edgesPerHeaderStats) {
+  __attribute__((noinline)) uint32_t addInTableEntries(uint32_t numGroups, std::array<PReceiverGroup<E>,TinselThreadsPerMailbox> &groups, ParallelRunningStats<1> *edgesPerHeaderStats) {
     uint32_t key = findKey<DoLock>(numGroups, groups);
     if (key >= 0xffff) {
       fatal_error("Routing key exceeds 16 bits\n");
@@ -914,7 +916,7 @@ public:
   */
   template<bool DoLock>
   __attribute__((noinline)) void computeTables(Seq<PEdgeDest>* dests, uint32_t d, uint32_t p,
-         Seq<PRoutingDest>* out, PReceiverGroup<E> *groups, ParallelRunningStats<1> *edgesPerheaderStats) {
+         Seq<PRoutingDest>* out, std::array<PReceiverGroup<E>,TinselThreadsPerMailbox> &groups, ParallelRunningStats<1> *edgesPerheaderStats) {
     out->clear();
     PRoutingDest dest;
     memset(&dest, 0, sizeof(PRoutingDest));
@@ -989,7 +991,7 @@ public:
     Seq<PEdgeDest> &local,
     Seq<PEdgeDest> &nonLocal,
     Seq<PRoutingDest> &dests,
-    PReceiverGroup<E> *groups,
+    std::array<PReceiverGroup<E>,TinselThreadsPerMailbox> &groups,
     ParallelRunningStats<1> *edgesPerLocalHeaderStats,
     ParallelRunningStats<1> *edgesPerNonLocalHeaderStats
   ){
@@ -999,6 +1001,10 @@ public:
       splitDests(d, p, &local, &nonLocal);
 
       // Deal with board-local connections
+      // TODO : I (dt10) would really like to move local edges after non-local edges in
+      // the edge generation, as it makes sense to get long-distance messages out the
+      // door first). However, if I do that then DPD breaks (though standard polite
+      // tests don't). Not sure if it is a bug in DPD, or something else I'm missing.
       computeTables<DoLock>(&local, d, p, &dests, groups, edgesPerLocalHeaderStats);
       for (uint32_t i = 0; i < (uint32_t)dests.numElems; i++) {
         PRoutingDest dest = dests.elems[i];
@@ -1013,16 +1019,40 @@ public:
 
       // Deal with non-board-local connections
       computeTables<DoLock>(&nonLocal, d, p, &dests, groups, edgesPerNonLocalHeaderStats);
-      uint32_t src = getThreadId(toDeviceAddr[d]) >>
-        TinselLogThreadsPerMailbox;
-      uint32_t key = progRouterTables->addDestsFromBoard(src, &dests);
-      POutEdge edge;
-      edge.mbox = tinselUseRoutingKey();
-      edge.key = 0;
-      edge.threadMaskLow = key;
-      edge.threadMaskHigh = 0; 
-      // This is only writeable by this function
-      outTable[d][p]->append(edge);
+      // We can choose to embed edges on this side, or to do it on the other side.
+      // Threshold of 1 _always_ makes sense, as it cannot be worse. Higher is less clear, and probably bad.
+      const unsigned router_threshold = 1;
+      if(dests.size() <= router_threshold){
+        for(unsigned di=0; di<dests.size(); di++){
+          PRoutingDest dest=dests[di];
+          assert(dest.kind==PRDestKindMRM);
+          POutEdge edge;
+          edge.mbox=dest.mbox;
+          edge.threadMaskHigh=dest.mrm.threadMaskHigh;
+          edge.threadMaskLow=dest.mrm.threadMaskLow;
+          edge.key=dest.mrm.key;
+          // This is only writeable by this function
+          outTable[d][p]->append(edge);
+        } 
+      }else{
+        uint32_t src = getThreadId(toDeviceAddr[d]) >> TinselLogThreadsPerMailbox;
+        uint32_t key = progRouterTables->addDestsFromBoard(src, &dests);
+        POutEdge edge;
+        edge.mbox = tinselUseRoutingKey();
+        edge.key = 0;
+        edge.threadMaskLow = key;
+        edge.threadMaskHigh = 0; 
+        // This is only writeable by this function
+        outTable[d][p]->append(edge);
+      }
+
+      // TODO : This is related to the earlier TODO about non-local before local.
+      // Apps should be invariant to permutations of this list, but DPD is
+      // not, and I (dt10) don't know why.
+      //std::reverse(outTable[d][p]->begin(), outTable[d][p]->end());
+      //std::mt19937_64 rng(rand()); //sigh
+      //std::shuffle(outTable[d][p]->begin(), outTable[d][p]->end(), rng);
+
       // Add output list terminator
       POutEdge term;
       term.key = InvalidKey;
@@ -1059,7 +1089,7 @@ public:
 
         // Routing destinations
         Seq<PRoutingDest> dests;
-        PReceiverGroup<E> groups[TinselThreadsPerMailbox];
+        std::array<PReceiverGroup<E>,TinselThreadsPerMailbox> groups;
 
         for(unsigned d=dBegin; d<dEnd; d++){
           // Note: the various tables (local,nonLocal,dests,group) will get cleared within functions
@@ -1085,7 +1115,7 @@ public:
 
       // Routing destinations
       Seq<PRoutingDest> dests;
-      PReceiverGroup<E> groups[TinselThreadsPerMailbox];
+      std::array<PReceiverGroup<E>,TinselThreadsPerMailbox> groups;
       for (uint32_t d = 0; d < numDevices; d++) {
         computeRoutingTablesForDevice<false>(d, local, nonLocal, dests, groups,    pEdgesPerHeaderLocalStats, pEdgesPerHeaderNonLocalStats );
       }

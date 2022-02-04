@@ -177,7 +177,13 @@ template <typename S, int T_NUM_PINS=POLITE_NUM_PINS> struct ALIGNED PState {
 // Message structure
 template <typename M> struct PMessage {
   // Destination key
-  uint16_t destKey;
+  /* DT10 : previously this was uint16_t, which makes sense from a table point of view
+    and when using MRM only. However, if you want to use URM1, then the entire first word
+    of the message gets written, rather than just 16-bits. Default compiler alignment
+    usually made this safe, as long as type M has word or dword alignment.
+    Ideally we would have a URM? which only does the 16 bits.
+  */
+  uint32_t destKey;
   // Application message
   M payload;
 };
@@ -424,6 +430,11 @@ struct PThread {
     }
   }
 
+  // If we burst, then we stay in the send loop as long as there is another
+  // edge for the current message, and tinselCanSend is still true.
+  // So far this doesn't seem to have positive performance.
+  const bool ENABLE_BURST_SEND = false;
+
   // Invoke device handlers
   void run() {
     // Current out-going edge in multicast
@@ -472,6 +483,7 @@ struct PThread {
         if (tinselCanSend()) {
           PMessage<M>* m = (PMessage<M>*) tinselSendSlot();
           // Send message
+      send_again:
           if(outEdge == outHost){
             tinselSend(tinselHostId(), m);
           }else{
@@ -487,6 +499,9 @@ struct PThread {
           }
           // Move to next neighbour
           outEdge++;
+          if(ENABLE_BURST_SEND && tinselCanSend() && outEdge->key != InvalidKey){
+            goto send_again;
+          }
         }
         else {
           #ifdef POLITE_COUNT_MSGS

@@ -295,18 +295,15 @@ class ProgRouterMesh {
 
     // Categorise dests into local, N, S, E, and W groups
     Seq<PRoutingDest> local(dests->numElems);
-    Seq<PRoutingDest> north(dests->numElems);
-    Seq<PRoutingDest> south(dests->numElems);
-    Seq<PRoutingDest> east(dests->numElems);
-    Seq<PRoutingDest> west(dests->numElems);
+    Seq<PRoutingDest> non_local[4];
     for (unsigned i = 0; i < dests->numElems; i++) {
       PRoutingDest dest = dests->elems[i];
       uint32_t receiverX = destX(dest.mbox);
       uint32_t receiverY = destY(dest.mbox);
-      if (receiverX < senderX) west.append(dest);
-      else if (receiverX > senderX) east.append(dest);
-      else if (receiverY < senderY) south.append(dest);
-      else if (receiverY > senderY) north.append(dest);
+      if (receiverX < senderX) non_local[3].append(dest);
+      else if (receiverX > senderX) non_local[2].append(dest);
+      else if (receiverY < senderY) non_local[1].append(dest);
+      else if (receiverY > senderY) non_local[0].append(dest);
       else local.append(dest);
     }
 
@@ -315,20 +312,24 @@ class ProgRouterMesh {
       keys[i]=~uint64_t(0);
     }
 
-    // Recurse on non-local groups and add RR records on return
-    if (north.numElems > 0) {
-      keys[0] = addDestsFromBoardXY(senderX, senderY+1, &north);
-    }
-    if (south.numElems > 0) {
-      keys[1] = addDestsFromBoardXY(senderX, senderY-1, &south);
-    }
-    if (east.numElems > 0) {
-      keys[2] = addDestsFromBoardXY(senderX+1, senderY, &east);
-    }
-    if (west.numElems > 0) {
-      keys[3] = addDestsFromBoardXY(senderX-1, senderY, &west);
-    }
+    auto recurse_non_local = [&](int dstX, int dstY, Seq<PRoutingDest> *dd) -> uint64_t
+    {
+      uint64_t res;
+      if(dd->numElems>0){
+        // Only recurse if there is at least one element
+        res= addDestsFromBoardXY(dstX, dstY, dd);
+      }else{
+        res= ~uint64_t(0);
+      }
+      return res;
+    };
 
+    // Recurse on non-local groups and add RR records on return
+    keys[0] = recurse_non_local(senderX, senderY+1, &non_local[0]);
+    keys[1] = recurse_non_local(senderX, senderY-1, &non_local[1]);
+    keys[2] = recurse_non_local(senderX+1, senderY, &non_local[2]);
+    keys[3] = recurse_non_local(senderX-1, senderY, &non_local[3]);
+    
     std::unique_lock<std::recursive_mutex> lk(table[senderY][senderX].m_mutex);
 
     for(unsigned i=0; i<4; i++){
@@ -341,9 +342,20 @@ class ProgRouterMesh {
     for (unsigned i = 0; i < local.numElems; i++) {
       PRoutingDest dest = local.elems[i];
       if (dest.kind == PRDestKindMRM) {
-        table[senderY][senderX].addMRM(destMboxX(dest.mbox),
-          destMboxY(dest.mbox), dest.mrm.threadMaskHigh,
-          dest.mrm.threadMaskLow, dest.mrm.key);
+        uint64_t mask=(uint64_t(dest.mrm.threadMaskHigh)<<32) | dest.mrm.threadMaskLow;
+        unsigned numThreads=__builtin_popcountl(mask);
+        if(numThreads==1){
+          // If there is only one thread, we can use a smaller 48-bit entry entry. May result in
+          // the overall router table dropping from n to n-1 beats.
+          uint32_t thread_offset = __builtin_ctzl(mask);
+          table[senderY][senderX].addURM1(destMboxX(dest.mbox),
+            destMboxY(dest.mbox), thread_offset, dest.mrm.key);
+        }else{
+          // At least two threads, just use 96-bit entry
+          table[senderY][senderX].addMRM(destMboxX(dest.mbox),
+            destMboxY(dest.mbox), dest.mrm.threadMaskHigh,
+            dest.mrm.threadMaskLow, dest.mrm.key);
+        }
       }
       else if (dest.kind == PRDestKindURM1) {
         table[senderY][senderX].addURM1(destMboxX(dest.mbox),
@@ -399,7 +411,7 @@ class ProgRouterMesh {
         for (unsigned x = 0; x < boardsX; x++) {
           for (unsigned i = 0; i < TinselDRAMsPerBoard; i++) {
             Seq<uint8_t>* seq = table[y][x].table[i];
-            if (offset < seq->numElems) {
+            if (offset < (uint32_t)seq->numElems) {
               uint32_t dest = hostLink->toAddr(x, y, coresPerDRAM * i, 0);
               uint8_t* base = &seq->elems[offset];
               allDone = false;

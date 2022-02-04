@@ -119,12 +119,11 @@ int socketConnectTCP(const char* hostname, int port, bool returnCantConnect)
 
   // Connect to host
   if (connect(sock, (sockaddr*) &sockAddr, sizeof(sockAddr))) {
-    fprintf(stderr, "Can't connect to host '%s' on port '%d'\n",
-      hostname, port);
-    fprintf(stderr, "Box '%s' already in use?\n", hostname);
     if(returnCantConnect){
       return -1;
     }else{
+      fprintf(stderr, "Can't connect to host '%s' on port '%d'\n", hostname, port);
+      fprintf(stderr, "Box '%s' already in use?\n", hostname);
       exit(EXIT_FAILURE);
     }
   }
