@@ -23,6 +23,14 @@
          type = "boolean";
       }
    }
+   element Tinsel_0.controlbar_s
+   {
+      datum baseAddress
+      {
+         value = "0";
+         type = "String";
+      }
+   }
    element clock_in
    {
       datum _sortIndex
@@ -39,12 +47,28 @@
          type = "int";
       }
    }
+   element ddr_A.ctrl_amm_0
+   {
+      datum baseAddress
+      {
+         value = "0";
+         type = "String";
+      }
+   }
    element ddr_B
    {
       datum _sortIndex
       {
          value = "16";
          type = "int";
+      }
+   }
+   element ddr_B.ctrl_amm_0
+   {
+      datum baseAddress
+      {
+         value = "0";
+         type = "String";
       }
    }
    element ddr_C
@@ -55,12 +79,28 @@
          type = "int";
       }
    }
+   element ddr_C.ctrl_amm_0
+   {
+      datum baseAddress
+      {
+         value = "0";
+         type = "String";
+      }
+   }
    element ddr_D
    {
       datum _sortIndex
       {
          value = "26";
          type = "int";
+      }
+   }
+   element ddr_D.ctrl_amm_0
+   {
+      datum baseAddress
+      {
+         value = "0";
+         type = "String";
       }
    }
    element emif_s10_ddr4_a
@@ -116,12 +156,28 @@
          type = "int";
       }
    }
+   element mm_bridge_ddrA_0.s0
+   {
+      datum baseAddress
+      {
+         value = "0";
+         type = "String";
+      }
+   }
    element mm_bridge_ddrA_1
    {
       datum _sortIndex
       {
          value = "9";
          type = "int";
+      }
+   }
+   element mm_bridge_ddrA_1.s0
+   {
+      datum baseAddress
+      {
+         value = "0";
+         type = "String";
       }
    }
    element mm_bridge_ddrB_0
@@ -132,12 +188,28 @@
          type = "int";
       }
    }
+   element mm_bridge_ddrB_0.s0
+   {
+      datum baseAddress
+      {
+         value = "4294967296";
+         type = "String";
+      }
+   }
    element mm_bridge_ddrB_1
    {
       datum _sortIndex
       {
          value = "13";
          type = "int";
+      }
+   }
+   element mm_bridge_ddrB_1.s0
+   {
+      datum baseAddress
+      {
+         value = "0";
+         type = "String";
       }
    }
    element mm_bridge_ddrB_2
@@ -148,12 +220,28 @@
          type = "int";
       }
    }
+   element mm_bridge_ddrB_2.s0
+   {
+      datum baseAddress
+      {
+         value = "0";
+         type = "String";
+      }
+   }
    element mm_bridge_ddrC_0
    {
       datum _sortIndex
       {
          value = "17";
          type = "int";
+      }
+   }
+   element mm_bridge_ddrC_0.s0
+   {
+      datum baseAddress
+      {
+         value = "4294967296";
+         type = "String";
       }
    }
    element mm_bridge_ddrC_1
@@ -164,12 +252,28 @@
          type = "int";
       }
    }
+   element mm_bridge_ddrC_1.s0
+   {
+      datum baseAddress
+      {
+         value = "0";
+         type = "String";
+      }
+   }
    element mm_bridge_ddrC_2
    {
       datum _sortIndex
       {
          value = "20";
          type = "int";
+      }
+   }
+   element mm_bridge_ddrC_2.s0
+   {
+      datum baseAddress
+      {
+         value = "0";
+         type = "String";
       }
    }
    element mm_bridge_ddrD_0
@@ -180,6 +284,14 @@
          type = "int";
       }
    }
+   element mm_bridge_ddrD_0.s0
+   {
+      datum baseAddress
+      {
+         value = "0";
+         type = "String";
+      }
+   }
    element mm_bridge_ddrD_1
    {
       datum _sortIndex
@@ -188,12 +300,28 @@
          type = "int";
       }
    }
+   element mm_bridge_ddrD_1.s0
+   {
+      datum baseAddress
+      {
+         value = "0";
+         type = "String";
+      }
+   }
    element mm_bridge_ddrD_2
    {
       datum _sortIndex
       {
          value = "25";
          type = "int";
+      }
+   }
+   element mm_bridge_ddrD_2.s0
+   {
+      datum baseAddress
+      {
+         value = "0";
+         type = "String";
       }
    }
    element mm_clockcross_50Mhz
@@ -243,6 +371,11 @@
          value = "0";
          type = "boolean";
       }
+      datum baseAddress
+      {
+         value = "0";
+         type = "String";
+      }
    }
    element mm_clockcross_DDR4_A.s0_clk
    {
@@ -268,12 +401,28 @@
          type = "int";
       }
    }
+   element mm_clockcross_DDR4_B.s0
+   {
+      datum baseAddress
+      {
+         value = "0";
+         type = "String";
+      }
+   }
    element mm_clockcross_DDR4_C
    {
       datum _sortIndex
       {
          value = "19";
          type = "int";
+      }
+   }
+   element mm_clockcross_DDR4_C.s0
+   {
+      datum baseAddress
+      {
+         value = "0";
+         type = "String";
       }
    }
    element mm_clockcross_DDR4_D
@@ -284,12 +433,28 @@
          type = "int";
       }
    }
+   element mm_clockcross_DDR4_D.s0
+   {
+      datum baseAddress
+      {
+         value = "0";
+         type = "String";
+      }
+   }
    element onchip_memory2_0
    {
       datum _sortIndex
       {
          value = "28";
          type = "int";
+      }
+   }
+   element onchip_memory2_0.s1
+   {
+      datum baseAddress
+      {
+         value = "0";
+         type = "String";
       }
    }
    element pcie_s10_hip_avmm_bridge_0
@@ -589,7 +754,7 @@
                         <name>dramIfcs_0_m_address</name>
                         <role>address</role>
                         <direction>Output</direction>
-                        <width>27</width>
+                        <width>28</width>
                         <lowerBound>0</lowerBound>
                         <vhdlType>STD_LOGIC_VECTOR</vhdlType>
                     </port>
@@ -802,7 +967,7 @@
                         <name>dramIfcs_1_m_address</name>
                         <role>address</role>
                         <direction>Output</direction>
-                        <width>27</width>
+                        <width>28</width>
                         <lowerBound>0</lowerBound>
                         <vhdlType>STD_LOGIC_VECTOR</vhdlType>
                     </port>
@@ -824,432 +989,6 @@
                     </port>
                     <port>
                         <name>dramIfcs_1_m_burstcount</name>
-                        <role>burstcount</role>
-                        <direction>Output</direction>
-                        <width>3</width>
-                        <lowerBound>0</lowerBound>
-                        <vhdlType>STD_LOGIC_VECTOR</vhdlType>
-                    </port>
-                </ports>
-                <assignments>
-                    <assignmentValueMap/>
-                </assignments>
-                <parameters>
-                    <parameterValueMap>
-                        <entry>
-                            <key>adaptsTo</key>
-                        </entry>
-                        <entry>
-                            <key>addressGroup</key>
-                            <value>0</value>
-                        </entry>
-                        <entry>
-                            <key>addressUnits</key>
-                            <value>WORDS</value>
-                        </entry>
-                        <entry>
-                            <key>alwaysBurstMaxBurst</key>
-                            <value>false</value>
-                        </entry>
-                        <entry>
-                            <key>associatedClock</key>
-                            <value>clock</value>
-                        </entry>
-                        <entry>
-                            <key>associatedReset</key>
-                            <value>reset_sink</value>
-                        </entry>
-                        <entry>
-                            <key>bitsPerSymbol</key>
-                            <value>8</value>
-                        </entry>
-                        <entry>
-                            <key>burstOnBurstBoundariesOnly</key>
-                            <value>false</value>
-                        </entry>
-                        <entry>
-                            <key>burstcountUnits</key>
-                            <value>WORDS</value>
-                        </entry>
-                        <entry>
-                            <key>constantBurstBehavior</key>
-                            <value>false</value>
-                        </entry>
-                        <entry>
-                            <key>dBSBigEndian</key>
-                            <value>false</value>
-                        </entry>
-                        <entry>
-                            <key>doStreamReads</key>
-                            <value>false</value>
-                        </entry>
-                        <entry>
-                            <key>doStreamWrites</key>
-                            <value>false</value>
-                        </entry>
-                        <entry>
-                            <key>holdTime</key>
-                            <value>0</value>
-                        </entry>
-                        <entry>
-                            <key>interleaveBursts</key>
-                            <value>false</value>
-                        </entry>
-                        <entry>
-                            <key>isAsynchronous</key>
-                            <value>false</value>
-                        </entry>
-                        <entry>
-                            <key>isBigEndian</key>
-                            <value>false</value>
-                        </entry>
-                        <entry>
-                            <key>isReadable</key>
-                            <value>false</value>
-                        </entry>
-                        <entry>
-                            <key>isWriteable</key>
-                            <value>false</value>
-                        </entry>
-                        <entry>
-                            <key>linewrapBursts</key>
-                            <value>false</value>
-                        </entry>
-                        <entry>
-                            <key>maxAddressWidth</key>
-                            <value>32</value>
-                        </entry>
-                        <entry>
-                            <key>maximumPendingReadTransactions</key>
-                            <value>0</value>
-                        </entry>
-                        <entry>
-                            <key>maximumPendingWriteTransactions</key>
-                            <value>0</value>
-                        </entry>
-                        <entry>
-                            <key>minimumReadLatency</key>
-                            <value>1</value>
-                        </entry>
-                        <entry>
-                            <key>minimumResponseLatency</key>
-                            <value>1</value>
-                        </entry>
-                        <entry>
-                            <key>prSafe</key>
-                            <value>false</value>
-                        </entry>
-                        <entry>
-                            <key>readLatency</key>
-                            <value>0</value>
-                        </entry>
-                        <entry>
-                            <key>readWaitTime</key>
-                            <value>1</value>
-                        </entry>
-                        <entry>
-                            <key>registerIncomingSignals</key>
-                            <value>false</value>
-                        </entry>
-                        <entry>
-                            <key>registerOutgoingSignals</key>
-                            <value>false</value>
-                        </entry>
-                        <entry>
-                            <key>setupTime</key>
-                            <value>0</value>
-                        </entry>
-                        <entry>
-                            <key>timingUnits</key>
-                            <value>Cycles</value>
-                        </entry>
-                        <entry>
-                            <key>waitrequestAllowance</key>
-                            <value>0</value>
-                        </entry>
-                        <entry>
-                            <key>writeWaitTime</key>
-                            <value>0</value>
-                        </entry>
-                    </parameterValueMap>
-                </parameters>
-            </interface>
-            <interface>
-                <name>dram_master_2</name>
-                <type>avalon</type>
-                <isStart>true</isStart>
-                <ports>
-                    <port>
-                        <name>dramIfcs_2_m_readdata</name>
-                        <role>readdata</role>
-                        <direction>Input</direction>
-                        <width>256</width>
-                        <lowerBound>0</lowerBound>
-                        <vhdlType>STD_LOGIC_VECTOR</vhdlType>
-                    </port>
-                    <port>
-                        <name>dramIfcs_2_m_readdatavalid</name>
-                        <role>readdatavalid</role>
-                        <direction>Input</direction>
-                        <width>1</width>
-                        <lowerBound>0</lowerBound>
-                        <vhdlType>STD_LOGIC</vhdlType>
-                    </port>
-                    <port>
-                        <name>dramIfcs_2_m_waitrequest</name>
-                        <role>waitrequest</role>
-                        <direction>Input</direction>
-                        <width>1</width>
-                        <lowerBound>0</lowerBound>
-                        <vhdlType>STD_LOGIC</vhdlType>
-                    </port>
-                    <port>
-                        <name>dramIfcs_2_m_writedata</name>
-                        <role>writedata</role>
-                        <direction>Output</direction>
-                        <width>256</width>
-                        <lowerBound>0</lowerBound>
-                        <vhdlType>STD_LOGIC_VECTOR</vhdlType>
-                    </port>
-                    <port>
-                        <name>dramIfcs_2_m_address</name>
-                        <role>address</role>
-                        <direction>Output</direction>
-                        <width>27</width>
-                        <lowerBound>0</lowerBound>
-                        <vhdlType>STD_LOGIC_VECTOR</vhdlType>
-                    </port>
-                    <port>
-                        <name>dramIfcs_2_m_read</name>
-                        <role>read</role>
-                        <direction>Output</direction>
-                        <width>1</width>
-                        <lowerBound>0</lowerBound>
-                        <vhdlType>STD_LOGIC</vhdlType>
-                    </port>
-                    <port>
-                        <name>dramIfcs_2_m_write</name>
-                        <role>write</role>
-                        <direction>Output</direction>
-                        <width>1</width>
-                        <lowerBound>0</lowerBound>
-                        <vhdlType>STD_LOGIC</vhdlType>
-                    </port>
-                    <port>
-                        <name>dramIfcs_2_m_burstcount</name>
-                        <role>burstcount</role>
-                        <direction>Output</direction>
-                        <width>3</width>
-                        <lowerBound>0</lowerBound>
-                        <vhdlType>STD_LOGIC_VECTOR</vhdlType>
-                    </port>
-                </ports>
-                <assignments>
-                    <assignmentValueMap/>
-                </assignments>
-                <parameters>
-                    <parameterValueMap>
-                        <entry>
-                            <key>adaptsTo</key>
-                        </entry>
-                        <entry>
-                            <key>addressGroup</key>
-                            <value>0</value>
-                        </entry>
-                        <entry>
-                            <key>addressUnits</key>
-                            <value>WORDS</value>
-                        </entry>
-                        <entry>
-                            <key>alwaysBurstMaxBurst</key>
-                            <value>false</value>
-                        </entry>
-                        <entry>
-                            <key>associatedClock</key>
-                            <value>clock</value>
-                        </entry>
-                        <entry>
-                            <key>associatedReset</key>
-                            <value>reset_sink</value>
-                        </entry>
-                        <entry>
-                            <key>bitsPerSymbol</key>
-                            <value>8</value>
-                        </entry>
-                        <entry>
-                            <key>burstOnBurstBoundariesOnly</key>
-                            <value>false</value>
-                        </entry>
-                        <entry>
-                            <key>burstcountUnits</key>
-                            <value>WORDS</value>
-                        </entry>
-                        <entry>
-                            <key>constantBurstBehavior</key>
-                            <value>false</value>
-                        </entry>
-                        <entry>
-                            <key>dBSBigEndian</key>
-                            <value>false</value>
-                        </entry>
-                        <entry>
-                            <key>doStreamReads</key>
-                            <value>false</value>
-                        </entry>
-                        <entry>
-                            <key>doStreamWrites</key>
-                            <value>false</value>
-                        </entry>
-                        <entry>
-                            <key>holdTime</key>
-                            <value>0</value>
-                        </entry>
-                        <entry>
-                            <key>interleaveBursts</key>
-                            <value>false</value>
-                        </entry>
-                        <entry>
-                            <key>isAsynchronous</key>
-                            <value>false</value>
-                        </entry>
-                        <entry>
-                            <key>isBigEndian</key>
-                            <value>false</value>
-                        </entry>
-                        <entry>
-                            <key>isReadable</key>
-                            <value>false</value>
-                        </entry>
-                        <entry>
-                            <key>isWriteable</key>
-                            <value>false</value>
-                        </entry>
-                        <entry>
-                            <key>linewrapBursts</key>
-                            <value>false</value>
-                        </entry>
-                        <entry>
-                            <key>maxAddressWidth</key>
-                            <value>32</value>
-                        </entry>
-                        <entry>
-                            <key>maximumPendingReadTransactions</key>
-                            <value>0</value>
-                        </entry>
-                        <entry>
-                            <key>maximumPendingWriteTransactions</key>
-                            <value>0</value>
-                        </entry>
-                        <entry>
-                            <key>minimumReadLatency</key>
-                            <value>1</value>
-                        </entry>
-                        <entry>
-                            <key>minimumResponseLatency</key>
-                            <value>1</value>
-                        </entry>
-                        <entry>
-                            <key>prSafe</key>
-                            <value>false</value>
-                        </entry>
-                        <entry>
-                            <key>readLatency</key>
-                            <value>0</value>
-                        </entry>
-                        <entry>
-                            <key>readWaitTime</key>
-                            <value>1</value>
-                        </entry>
-                        <entry>
-                            <key>registerIncomingSignals</key>
-                            <value>false</value>
-                        </entry>
-                        <entry>
-                            <key>registerOutgoingSignals</key>
-                            <value>false</value>
-                        </entry>
-                        <entry>
-                            <key>setupTime</key>
-                            <value>0</value>
-                        </entry>
-                        <entry>
-                            <key>timingUnits</key>
-                            <value>Cycles</value>
-                        </entry>
-                        <entry>
-                            <key>waitrequestAllowance</key>
-                            <value>0</value>
-                        </entry>
-                        <entry>
-                            <key>writeWaitTime</key>
-                            <value>0</value>
-                        </entry>
-                    </parameterValueMap>
-                </parameters>
-            </interface>
-            <interface>
-                <name>dram_master_3</name>
-                <type>avalon</type>
-                <isStart>true</isStart>
-                <ports>
-                    <port>
-                        <name>dramIfcs_3_m_readdata</name>
-                        <role>readdata</role>
-                        <direction>Input</direction>
-                        <width>256</width>
-                        <lowerBound>0</lowerBound>
-                        <vhdlType>STD_LOGIC_VECTOR</vhdlType>
-                    </port>
-                    <port>
-                        <name>dramIfcs_3_m_readdatavalid</name>
-                        <role>readdatavalid</role>
-                        <direction>Input</direction>
-                        <width>1</width>
-                        <lowerBound>0</lowerBound>
-                        <vhdlType>STD_LOGIC</vhdlType>
-                    </port>
-                    <port>
-                        <name>dramIfcs_3_m_waitrequest</name>
-                        <role>waitrequest</role>
-                        <direction>Input</direction>
-                        <width>1</width>
-                        <lowerBound>0</lowerBound>
-                        <vhdlType>STD_LOGIC</vhdlType>
-                    </port>
-                    <port>
-                        <name>dramIfcs_3_m_writedata</name>
-                        <role>writedata</role>
-                        <direction>Output</direction>
-                        <width>256</width>
-                        <lowerBound>0</lowerBound>
-                        <vhdlType>STD_LOGIC_VECTOR</vhdlType>
-                    </port>
-                    <port>
-                        <name>dramIfcs_3_m_address</name>
-                        <role>address</role>
-                        <direction>Output</direction>
-                        <width>27</width>
-                        <lowerBound>0</lowerBound>
-                        <vhdlType>STD_LOGIC_VECTOR</vhdlType>
-                    </port>
-                    <port>
-                        <name>dramIfcs_3_m_read</name>
-                        <role>read</role>
-                        <direction>Output</direction>
-                        <width>1</width>
-                        <lowerBound>0</lowerBound>
-                        <vhdlType>STD_LOGIC</vhdlType>
-                    </port>
-                    <port>
-                        <name>dramIfcs_3_m_write</name>
-                        <role>write</role>
-                        <direction>Output</direction>
-                        <width>1</width>
-                        <lowerBound>0</lowerBound>
-                        <vhdlType>STD_LOGIC</vhdlType>
-                    </port>
-                    <port>
-                        <name>dramIfcs_3_m_burstcount</name>
                         <role>burstcount</role>
                         <direction>Output</direction>
                         <width>3</width>
@@ -2321,7 +2060,7 @@
                     <name>dramIfcs_0_m_address</name>
                     <role>address</role>
                     <direction>Output</direction>
-                    <width>27</width>
+                    <width>28</width>
                     <lowerBound>0</lowerBound>
                     <vhdlType>STD_LOGIC_VECTOR</vhdlType>
                 </port>
@@ -2534,7 +2273,7 @@
                     <name>dramIfcs_1_m_address</name>
                     <role>address</role>
                     <direction>Output</direction>
-                    <width>27</width>
+                    <width>28</width>
                     <lowerBound>0</lowerBound>
                     <vhdlType>STD_LOGIC_VECTOR</vhdlType>
                 </port>
@@ -2556,432 +2295,6 @@
                 </port>
                 <port>
                     <name>dramIfcs_1_m_burstcount</name>
-                    <role>burstcount</role>
-                    <direction>Output</direction>
-                    <width>3</width>
-                    <lowerBound>0</lowerBound>
-                    <vhdlType>STD_LOGIC_VECTOR</vhdlType>
-                </port>
-            </ports>
-            <assignments>
-                <assignmentValueMap/>
-            </assignments>
-            <parameters>
-                <parameterValueMap>
-                    <entry>
-                        <key>adaptsTo</key>
-                    </entry>
-                    <entry>
-                        <key>addressGroup</key>
-                        <value>0</value>
-                    </entry>
-                    <entry>
-                        <key>addressUnits</key>
-                        <value>WORDS</value>
-                    </entry>
-                    <entry>
-                        <key>alwaysBurstMaxBurst</key>
-                        <value>false</value>
-                    </entry>
-                    <entry>
-                        <key>associatedClock</key>
-                        <value>clock</value>
-                    </entry>
-                    <entry>
-                        <key>associatedReset</key>
-                        <value>reset_sink</value>
-                    </entry>
-                    <entry>
-                        <key>bitsPerSymbol</key>
-                        <value>8</value>
-                    </entry>
-                    <entry>
-                        <key>burstOnBurstBoundariesOnly</key>
-                        <value>false</value>
-                    </entry>
-                    <entry>
-                        <key>burstcountUnits</key>
-                        <value>WORDS</value>
-                    </entry>
-                    <entry>
-                        <key>constantBurstBehavior</key>
-                        <value>false</value>
-                    </entry>
-                    <entry>
-                        <key>dBSBigEndian</key>
-                        <value>false</value>
-                    </entry>
-                    <entry>
-                        <key>doStreamReads</key>
-                        <value>false</value>
-                    </entry>
-                    <entry>
-                        <key>doStreamWrites</key>
-                        <value>false</value>
-                    </entry>
-                    <entry>
-                        <key>holdTime</key>
-                        <value>0</value>
-                    </entry>
-                    <entry>
-                        <key>interleaveBursts</key>
-                        <value>false</value>
-                    </entry>
-                    <entry>
-                        <key>isAsynchronous</key>
-                        <value>false</value>
-                    </entry>
-                    <entry>
-                        <key>isBigEndian</key>
-                        <value>false</value>
-                    </entry>
-                    <entry>
-                        <key>isReadable</key>
-                        <value>false</value>
-                    </entry>
-                    <entry>
-                        <key>isWriteable</key>
-                        <value>false</value>
-                    </entry>
-                    <entry>
-                        <key>linewrapBursts</key>
-                        <value>false</value>
-                    </entry>
-                    <entry>
-                        <key>maxAddressWidth</key>
-                        <value>32</value>
-                    </entry>
-                    <entry>
-                        <key>maximumPendingReadTransactions</key>
-                        <value>0</value>
-                    </entry>
-                    <entry>
-                        <key>maximumPendingWriteTransactions</key>
-                        <value>0</value>
-                    </entry>
-                    <entry>
-                        <key>minimumReadLatency</key>
-                        <value>1</value>
-                    </entry>
-                    <entry>
-                        <key>minimumResponseLatency</key>
-                        <value>1</value>
-                    </entry>
-                    <entry>
-                        <key>prSafe</key>
-                        <value>false</value>
-                    </entry>
-                    <entry>
-                        <key>readLatency</key>
-                        <value>0</value>
-                    </entry>
-                    <entry>
-                        <key>readWaitTime</key>
-                        <value>1</value>
-                    </entry>
-                    <entry>
-                        <key>registerIncomingSignals</key>
-                        <value>false</value>
-                    </entry>
-                    <entry>
-                        <key>registerOutgoingSignals</key>
-                        <value>false</value>
-                    </entry>
-                    <entry>
-                        <key>setupTime</key>
-                        <value>0</value>
-                    </entry>
-                    <entry>
-                        <key>timingUnits</key>
-                        <value>Cycles</value>
-                    </entry>
-                    <entry>
-                        <key>waitrequestAllowance</key>
-                        <value>0</value>
-                    </entry>
-                    <entry>
-                        <key>writeWaitTime</key>
-                        <value>0</value>
-                    </entry>
-                </parameterValueMap>
-            </parameters>
-        </interface>
-        <interface>
-            <name>dram_master_2</name>
-            <type>avalon</type>
-            <isStart>true</isStart>
-            <ports>
-                <port>
-                    <name>dramIfcs_2_m_readdata</name>
-                    <role>readdata</role>
-                    <direction>Input</direction>
-                    <width>256</width>
-                    <lowerBound>0</lowerBound>
-                    <vhdlType>STD_LOGIC_VECTOR</vhdlType>
-                </port>
-                <port>
-                    <name>dramIfcs_2_m_readdatavalid</name>
-                    <role>readdatavalid</role>
-                    <direction>Input</direction>
-                    <width>1</width>
-                    <lowerBound>0</lowerBound>
-                    <vhdlType>STD_LOGIC</vhdlType>
-                </port>
-                <port>
-                    <name>dramIfcs_2_m_waitrequest</name>
-                    <role>waitrequest</role>
-                    <direction>Input</direction>
-                    <width>1</width>
-                    <lowerBound>0</lowerBound>
-                    <vhdlType>STD_LOGIC</vhdlType>
-                </port>
-                <port>
-                    <name>dramIfcs_2_m_writedata</name>
-                    <role>writedata</role>
-                    <direction>Output</direction>
-                    <width>256</width>
-                    <lowerBound>0</lowerBound>
-                    <vhdlType>STD_LOGIC_VECTOR</vhdlType>
-                </port>
-                <port>
-                    <name>dramIfcs_2_m_address</name>
-                    <role>address</role>
-                    <direction>Output</direction>
-                    <width>27</width>
-                    <lowerBound>0</lowerBound>
-                    <vhdlType>STD_LOGIC_VECTOR</vhdlType>
-                </port>
-                <port>
-                    <name>dramIfcs_2_m_read</name>
-                    <role>read</role>
-                    <direction>Output</direction>
-                    <width>1</width>
-                    <lowerBound>0</lowerBound>
-                    <vhdlType>STD_LOGIC</vhdlType>
-                </port>
-                <port>
-                    <name>dramIfcs_2_m_write</name>
-                    <role>write</role>
-                    <direction>Output</direction>
-                    <width>1</width>
-                    <lowerBound>0</lowerBound>
-                    <vhdlType>STD_LOGIC</vhdlType>
-                </port>
-                <port>
-                    <name>dramIfcs_2_m_burstcount</name>
-                    <role>burstcount</role>
-                    <direction>Output</direction>
-                    <width>3</width>
-                    <lowerBound>0</lowerBound>
-                    <vhdlType>STD_LOGIC_VECTOR</vhdlType>
-                </port>
-            </ports>
-            <assignments>
-                <assignmentValueMap/>
-            </assignments>
-            <parameters>
-                <parameterValueMap>
-                    <entry>
-                        <key>adaptsTo</key>
-                    </entry>
-                    <entry>
-                        <key>addressGroup</key>
-                        <value>0</value>
-                    </entry>
-                    <entry>
-                        <key>addressUnits</key>
-                        <value>WORDS</value>
-                    </entry>
-                    <entry>
-                        <key>alwaysBurstMaxBurst</key>
-                        <value>false</value>
-                    </entry>
-                    <entry>
-                        <key>associatedClock</key>
-                        <value>clock</value>
-                    </entry>
-                    <entry>
-                        <key>associatedReset</key>
-                        <value>reset_sink</value>
-                    </entry>
-                    <entry>
-                        <key>bitsPerSymbol</key>
-                        <value>8</value>
-                    </entry>
-                    <entry>
-                        <key>burstOnBurstBoundariesOnly</key>
-                        <value>false</value>
-                    </entry>
-                    <entry>
-                        <key>burstcountUnits</key>
-                        <value>WORDS</value>
-                    </entry>
-                    <entry>
-                        <key>constantBurstBehavior</key>
-                        <value>false</value>
-                    </entry>
-                    <entry>
-                        <key>dBSBigEndian</key>
-                        <value>false</value>
-                    </entry>
-                    <entry>
-                        <key>doStreamReads</key>
-                        <value>false</value>
-                    </entry>
-                    <entry>
-                        <key>doStreamWrites</key>
-                        <value>false</value>
-                    </entry>
-                    <entry>
-                        <key>holdTime</key>
-                        <value>0</value>
-                    </entry>
-                    <entry>
-                        <key>interleaveBursts</key>
-                        <value>false</value>
-                    </entry>
-                    <entry>
-                        <key>isAsynchronous</key>
-                        <value>false</value>
-                    </entry>
-                    <entry>
-                        <key>isBigEndian</key>
-                        <value>false</value>
-                    </entry>
-                    <entry>
-                        <key>isReadable</key>
-                        <value>false</value>
-                    </entry>
-                    <entry>
-                        <key>isWriteable</key>
-                        <value>false</value>
-                    </entry>
-                    <entry>
-                        <key>linewrapBursts</key>
-                        <value>false</value>
-                    </entry>
-                    <entry>
-                        <key>maxAddressWidth</key>
-                        <value>32</value>
-                    </entry>
-                    <entry>
-                        <key>maximumPendingReadTransactions</key>
-                        <value>0</value>
-                    </entry>
-                    <entry>
-                        <key>maximumPendingWriteTransactions</key>
-                        <value>0</value>
-                    </entry>
-                    <entry>
-                        <key>minimumReadLatency</key>
-                        <value>1</value>
-                    </entry>
-                    <entry>
-                        <key>minimumResponseLatency</key>
-                        <value>1</value>
-                    </entry>
-                    <entry>
-                        <key>prSafe</key>
-                        <value>false</value>
-                    </entry>
-                    <entry>
-                        <key>readLatency</key>
-                        <value>0</value>
-                    </entry>
-                    <entry>
-                        <key>readWaitTime</key>
-                        <value>1</value>
-                    </entry>
-                    <entry>
-                        <key>registerIncomingSignals</key>
-                        <value>false</value>
-                    </entry>
-                    <entry>
-                        <key>registerOutgoingSignals</key>
-                        <value>false</value>
-                    </entry>
-                    <entry>
-                        <key>setupTime</key>
-                        <value>0</value>
-                    </entry>
-                    <entry>
-                        <key>timingUnits</key>
-                        <value>Cycles</value>
-                    </entry>
-                    <entry>
-                        <key>waitrequestAllowance</key>
-                        <value>0</value>
-                    </entry>
-                    <entry>
-                        <key>writeWaitTime</key>
-                        <value>0</value>
-                    </entry>
-                </parameterValueMap>
-            </parameters>
-        </interface>
-        <interface>
-            <name>dram_master_3</name>
-            <type>avalon</type>
-            <isStart>true</isStart>
-            <ports>
-                <port>
-                    <name>dramIfcs_3_m_readdata</name>
-                    <role>readdata</role>
-                    <direction>Input</direction>
-                    <width>256</width>
-                    <lowerBound>0</lowerBound>
-                    <vhdlType>STD_LOGIC_VECTOR</vhdlType>
-                </port>
-                <port>
-                    <name>dramIfcs_3_m_readdatavalid</name>
-                    <role>readdatavalid</role>
-                    <direction>Input</direction>
-                    <width>1</width>
-                    <lowerBound>0</lowerBound>
-                    <vhdlType>STD_LOGIC</vhdlType>
-                </port>
-                <port>
-                    <name>dramIfcs_3_m_waitrequest</name>
-                    <role>waitrequest</role>
-                    <direction>Input</direction>
-                    <width>1</width>
-                    <lowerBound>0</lowerBound>
-                    <vhdlType>STD_LOGIC</vhdlType>
-                </port>
-                <port>
-                    <name>dramIfcs_3_m_writedata</name>
-                    <role>writedata</role>
-                    <direction>Output</direction>
-                    <width>256</width>
-                    <lowerBound>0</lowerBound>
-                    <vhdlType>STD_LOGIC_VECTOR</vhdlType>
-                </port>
-                <port>
-                    <name>dramIfcs_3_m_address</name>
-                    <role>address</role>
-                    <direction>Output</direction>
-                    <width>27</width>
-                    <lowerBound>0</lowerBound>
-                    <vhdlType>STD_LOGIC_VECTOR</vhdlType>
-                </port>
-                <port>
-                    <name>dramIfcs_3_m_read</name>
-                    <role>read</role>
-                    <direction>Output</direction>
-                    <width>1</width>
-                    <lowerBound>0</lowerBound>
-                    <vhdlType>STD_LOGIC</vhdlType>
-                </port>
-                <port>
-                    <name>dramIfcs_3_m_write</name>
-                    <role>write</role>
-                    <direction>Output</direction>
-                    <width>1</width>
-                    <lowerBound>0</lowerBound>
-                    <vhdlType>STD_LOGIC</vhdlType>
-                </port>
-                <port>
-                    <name>dramIfcs_3_m_burstcount</name>
                     <role>burstcount</role>
                     <direction>Output</direction>
                     <width>3</width>
@@ -13818,7 +13131,7 @@
                         </entry>
                         <entry>
                             <key>maximumPendingReadTransactions</key>
-                            <value>4</value>
+                            <value>1</value>
                         </entry>
                         <entry>
                             <key>maximumPendingWriteTransactions</key>
@@ -14441,7 +13754,7 @@
                     </entry>
                     <entry>
                         <key>maximumPendingReadTransactions</key>
-                        <value>4</value>
+                        <value>1</value>
                     </entry>
                     <entry>
                         <key>maximumPendingWriteTransactions</key>
@@ -15048,7 +14361,7 @@
                         </entry>
                         <entry>
                             <key>maximumPendingReadTransactions</key>
-                            <value>4</value>
+                            <value>1</value>
                         </entry>
                         <entry>
                             <key>maximumPendingWriteTransactions</key>
@@ -15671,7 +14984,7 @@
                     </entry>
                     <entry>
                         <key>maximumPendingReadTransactions</key>
-                        <value>4</value>
+                        <value>1</value>
                     </entry>
                     <entry>
                         <key>maximumPendingWriteTransactions</key>
@@ -16278,7 +15591,7 @@
                         </entry>
                         <entry>
                             <key>maximumPendingReadTransactions</key>
-                            <value>4</value>
+                            <value>1</value>
                         </entry>
                         <entry>
                             <key>maximumPendingWriteTransactions</key>
@@ -16901,7 +16214,7 @@
                     </entry>
                     <entry>
                         <key>maximumPendingReadTransactions</key>
-                        <value>4</value>
+                        <value>1</value>
                     </entry>
                     <entry>
                         <key>maximumPendingWriteTransactions</key>
@@ -17508,7 +16821,7 @@
                         </entry>
                         <entry>
                             <key>maximumPendingReadTransactions</key>
-                            <value>4</value>
+                            <value>1</value>
                         </entry>
                         <entry>
                             <key>maximumPendingWriteTransactions</key>
@@ -18131,7 +17444,7 @@
                     </entry>
                     <entry>
                         <key>maximumPendingReadTransactions</key>
-                        <value>4</value>
+                        <value>1</value>
                     </entry>
                     <entry>
                         <key>maximumPendingWriteTransactions</key>
@@ -18738,7 +18051,7 @@
                         </entry>
                         <entry>
                             <key>maximumPendingReadTransactions</key>
-                            <value>4</value>
+                            <value>1</value>
                         </entry>
                         <entry>
                             <key>maximumPendingWriteTransactions</key>
@@ -19076,7 +18389,7 @@
                     <consumedSystemInfos>
                         <entry>
                             <key>ADDRESS_WIDTH</key>
-                            <value>10</value>
+                            <value>32</value>
                         </entry>
                     </consumedSystemInfos>
                 </value>
@@ -19256,16 +18569,20 @@
             <assignments>
                 <assignmentValueMap>
                     <entry>
+                        <key>embeddedsw.configuration.isFlash</key>
+                        <value>0</value>
+                    </entry>
+                    <entry>
                         <key>embeddedsw.configuration.isMemoryDevice</key>
-                        <value>false</value>
+                        <value>0</value>
                     </entry>
                     <entry>
                         <key>embeddedsw.configuration.isNonVolatileStorage</key>
-                        <value>false</value>
+                        <value>0</value>
                     </entry>
                     <entry>
                         <key>embeddedsw.configuration.isPrintableDevice</key>
-                        <value>false</value>
+                        <value>0</value>
                     </entry>
                 </assignmentValueMap>
             </assignments>
@@ -19305,10 +18622,11 @@
                     </entry>
                     <entry>
                         <key>bridgedAddressOffset</key>
+                        <value>0</value>
                     </entry>
                     <entry>
                         <key>bridgesToMaster</key>
-                        <value>DE10_Pro_QSYS_mm_bridge_ddrA.m0</value>
+                        <value>mm_bridge_ddrB_2.m0</value>
                     </entry>
                     <entry>
                         <key>burstOnBurstBoundariesOnly</key>
@@ -19356,7 +18674,7 @@
                     </entry>
                     <entry>
                         <key>maximumPendingReadTransactions</key>
-                        <value>4</value>
+                        <value>1</value>
                     </entry>
                     <entry>
                         <key>maximumPendingWriteTransactions</key>
@@ -19963,7 +19281,7 @@
                         </entry>
                         <entry>
                             <key>maximumPendingReadTransactions</key>
-                            <value>4</value>
+                            <value>1</value>
                         </entry>
                         <entry>
                             <key>maximumPendingWriteTransactions</key>
@@ -20586,7 +19904,7 @@
                     </entry>
                     <entry>
                         <key>maximumPendingReadTransactions</key>
-                        <value>4</value>
+                        <value>1</value>
                     </entry>
                     <entry>
                         <key>maximumPendingWriteTransactions</key>
@@ -21193,7 +20511,7 @@
                         </entry>
                         <entry>
                             <key>maximumPendingReadTransactions</key>
-                            <value>4</value>
+                            <value>1</value>
                         </entry>
                         <entry>
                             <key>maximumPendingWriteTransactions</key>
@@ -21816,7 +21134,7 @@
                     </entry>
                     <entry>
                         <key>maximumPendingReadTransactions</key>
-                        <value>4</value>
+                        <value>1</value>
                     </entry>
                     <entry>
                         <key>maximumPendingWriteTransactions</key>
@@ -22423,7 +21741,7 @@
                         </entry>
                         <entry>
                             <key>maximumPendingReadTransactions</key>
-                            <value>4</value>
+                            <value>1</value>
                         </entry>
                         <entry>
                             <key>maximumPendingWriteTransactions</key>
@@ -22998,7 +22316,7 @@
                     </entry>
                     <entry>
                         <key>bridgesToMaster</key>
-                        <value>mm_bridge_ddrC_1.m0</value>
+                        <value>mm_bridge_ddrC_2.m0</value>
                     </entry>
                     <entry>
                         <key>burstOnBurstBoundariesOnly</key>
@@ -23046,7 +22364,7 @@
                     </entry>
                     <entry>
                         <key>maximumPendingReadTransactions</key>
-                        <value>4</value>
+                        <value>1</value>
                     </entry>
                     <entry>
                         <key>maximumPendingWriteTransactions</key>
@@ -23653,7 +22971,7 @@
                         </entry>
                         <entry>
                             <key>maximumPendingReadTransactions</key>
-                            <value>4</value>
+                            <value>1</value>
                         </entry>
                         <entry>
                             <key>maximumPendingWriteTransactions</key>
@@ -24276,7 +23594,7 @@
                     </entry>
                     <entry>
                         <key>maximumPendingReadTransactions</key>
-                        <value>4</value>
+                        <value>1</value>
                     </entry>
                     <entry>
                         <key>maximumPendingWriteTransactions</key>
@@ -24883,7 +24201,7 @@
                         </entry>
                         <entry>
                             <key>maximumPendingReadTransactions</key>
-                            <value>4</value>
+                            <value>1</value>
                         </entry>
                         <entry>
                             <key>maximumPendingWriteTransactions</key>
@@ -25506,7 +24824,7 @@
                     </entry>
                     <entry>
                         <key>maximumPendingReadTransactions</key>
-                        <value>4</value>
+                        <value>1</value>
                     </entry>
                     <entry>
                         <key>maximumPendingWriteTransactions</key>
@@ -26113,7 +25431,7 @@
                         </entry>
                         <entry>
                             <key>maximumPendingReadTransactions</key>
-                            <value>4</value>
+                            <value>1</value>
                         </entry>
                         <entry>
                             <key>maximumPendingWriteTransactions</key>
@@ -26688,7 +26006,7 @@
                     </entry>
                     <entry>
                         <key>bridgesToMaster</key>
-                        <value>mm_bridge_ddrD_1.m0</value>
+                        <value>mm_bridge_ddrD_2.m0</value>
                     </entry>
                     <entry>
                         <key>burstOnBurstBoundariesOnly</key>
@@ -26736,7 +26054,7 @@
                     </entry>
                     <entry>
                         <key>maximumPendingReadTransactions</key>
-                        <value>4</value>
+                        <value>1</value>
                     </entry>
                     <entry>
                         <key>maximumPendingWriteTransactions</key>
@@ -39745,6 +39063,26 @@
    start="Tinsel_0.dram_master_0"
    end="mm_bridge_ddrC_0.s0">
   <parameter name="arbitrationPriority" value="1" />
+  <parameter name="baseAddress" value="0x0000000100000000" />
+  <parameter name="defaultConnection" value="false" />
+  <parameter name="domainAlias" value="" />
+  <parameter name="qsys_mm.burstAdapterImplementation" value="GENERIC_CONVERTER" />
+  <parameter name="qsys_mm.clockCrossingAdapter" value="HANDSHAKE" />
+  <parameter name="qsys_mm.enableEccProtection" value="FALSE" />
+  <parameter name="qsys_mm.enableInstrumentation" value="FALSE" />
+  <parameter name="qsys_mm.insertDefaultSlave" value="FALSE" />
+  <parameter name="qsys_mm.interconnectResetSource" value="DEFAULT" />
+  <parameter name="qsys_mm.interconnectType" value="STANDARD" />
+  <parameter name="qsys_mm.maxAdditionalLatency" value="1" />
+  <parameter name="qsys_mm.syncResets" value="FALSE" />
+  <parameter name="qsys_mm.widthAdapterImplementation" value="GENERIC_CONVERTER" />
+ </connection>
+ <connection
+   kind="avalon"
+   version="19.2"
+   start="Tinsel_0.dram_master_0"
+   end="mm_bridge_ddrA_0.s0">
+  <parameter name="arbitrationPriority" value="1" />
   <parameter name="baseAddress" value="0x0000" />
   <parameter name="defaultConnection" value="false" />
   <parameter name="domainAlias" value="" />
@@ -39765,7 +39103,7 @@
    start="Tinsel_0.dram_master_1"
    end="mm_bridge_ddrB_0.s0">
   <parameter name="arbitrationPriority" value="1" />
-  <parameter name="baseAddress" value="0x0000" />
+  <parameter name="baseAddress" value="0x0000000100000000" />
   <parameter name="defaultConnection" value="false" />
   <parameter name="domainAlias" value="" />
   <parameter name="qsys_mm.burstAdapterImplementation" value="GENERIC_CONVERTER" />
@@ -39782,27 +39120,7 @@
  <connection
    kind="avalon"
    version="19.2"
-   start="Tinsel_0.dram_master_2"
-   end="mm_bridge_ddrA_0.s0">
-  <parameter name="arbitrationPriority" value="1" />
-  <parameter name="baseAddress" value="0x0000" />
-  <parameter name="defaultConnection" value="false" />
-  <parameter name="domainAlias" value="" />
-  <parameter name="qsys_mm.burstAdapterImplementation" value="GENERIC_CONVERTER" />
-  <parameter name="qsys_mm.clockCrossingAdapter" value="HANDSHAKE" />
-  <parameter name="qsys_mm.enableEccProtection" value="FALSE" />
-  <parameter name="qsys_mm.enableInstrumentation" value="FALSE" />
-  <parameter name="qsys_mm.insertDefaultSlave" value="FALSE" />
-  <parameter name="qsys_mm.interconnectResetSource" value="DEFAULT" />
-  <parameter name="qsys_mm.interconnectType" value="STANDARD" />
-  <parameter name="qsys_mm.maxAdditionalLatency" value="1" />
-  <parameter name="qsys_mm.syncResets" value="FALSE" />
-  <parameter name="qsys_mm.widthAdapterImplementation" value="GENERIC_CONVERTER" />
- </connection>
- <connection
-   kind="avalon"
-   version="19.2"
-   start="Tinsel_0.dram_master_3"
+   start="Tinsel_0.dram_master_1"
    end="mm_bridge_ddrD_0.s0">
   <parameter name="arbitrationPriority" value="1" />
   <parameter name="baseAddress" value="0x0000" />
