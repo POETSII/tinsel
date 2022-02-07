@@ -176,7 +176,7 @@
    {
       datum baseAddress
       {
-         value = "0";
+         value = "4294967296";
          type = "String";
       }
    }
@@ -208,7 +208,7 @@
    {
       datum baseAddress
       {
-         value = "0";
+         value = "4294967296";
          type = "String";
       }
    }
@@ -12870,7 +12870,7 @@
    name="mm_bridge_ddrA_0"
    kind="altera_generic_component"
    version="1.0"
-   enabled="1">
+   enabled="0">
   <parameter name="componentDefinition"><![CDATA[<componentDefinition>
     <boundary>
         <interfaces>
@@ -13469,7 +13469,7 @@
                     <consumedSystemInfos>
                         <entry>
                             <key>ADDRESS_WIDTH</key>
-                            <value>32</value>
+                            <value>10</value>
                         </entry>
                     </consumedSystemInfos>
                 </value>
@@ -15330,7 +15330,7 @@
    name="mm_bridge_ddrB_0"
    kind="altera_generic_component"
    version="1.0"
-   enabled="1">
+   enabled="0">
   <parameter name="componentDefinition"><![CDATA[<componentDefinition>
     <boundary>
         <interfaces>
@@ -15929,7 +15929,7 @@
                     <consumedSystemInfos>
                         <entry>
                             <key>ADDRESS_WIDTH</key>
-                            <value>32</value>
+                            <value>10</value>
                         </entry>
                     </consumedSystemInfos>
                 </value>
@@ -19020,7 +19020,7 @@
    name="mm_bridge_ddrC_0"
    kind="altera_generic_component"
    version="1.0"
-   enabled="1">
+   enabled="0">
   <parameter name="componentDefinition"><![CDATA[<componentDefinition>
     <boundary>
         <interfaces>
@@ -19619,7 +19619,7 @@
                     <consumedSystemInfos>
                         <entry>
                             <key>ADDRESS_WIDTH</key>
-                            <value>32</value>
+                            <value>10</value>
                         </entry>
                     </consumedSystemInfos>
                 </value>
@@ -22259,20 +22259,16 @@
             <assignments>
                 <assignmentValueMap>
                     <entry>
-                        <key>embeddedsw.configuration.isFlash</key>
-                        <value>0</value>
-                    </entry>
-                    <entry>
                         <key>embeddedsw.configuration.isMemoryDevice</key>
-                        <value>0</value>
+                        <value>false</value>
                     </entry>
                     <entry>
                         <key>embeddedsw.configuration.isNonVolatileStorage</key>
-                        <value>0</value>
+                        <value>false</value>
                     </entry>
                     <entry>
                         <key>embeddedsw.configuration.isPrintableDevice</key>
-                        <value>0</value>
+                        <value>false</value>
                     </entry>
                 </assignmentValueMap>
             </assignments>
@@ -22312,11 +22308,10 @@
                     </entry>
                     <entry>
                         <key>bridgedAddressOffset</key>
-                        <value>0</value>
                     </entry>
                     <entry>
                         <key>bridgesToMaster</key>
-                        <value>mm_bridge_ddrC_2.m0</value>
+                        <value>DE10_Pro_QSYS_mm_bridge_ddrA.m0</value>
                     </entry>
                     <entry>
                         <key>burstOnBurstBoundariesOnly</key>
@@ -22710,7 +22705,7 @@
    name="mm_bridge_ddrD_0"
    kind="altera_generic_component"
    version="1.0"
-   enabled="1">
+   enabled="0">
   <parameter name="componentDefinition"><![CDATA[<componentDefinition>
     <boundary>
         <interfaces>
@@ -23309,7 +23304,7 @@
                     <consumedSystemInfos>
                         <entry>
                             <key>ADDRESS_WIDTH</key>
-                            <value>32</value>
+                            <value>10</value>
                         </entry>
                     </consumedSystemInfos>
                 </value>
@@ -23489,20 +23484,16 @@
             <assignments>
                 <assignmentValueMap>
                     <entry>
-                        <key>embeddedsw.configuration.isFlash</key>
-                        <value>0</value>
-                    </entry>
-                    <entry>
                         <key>embeddedsw.configuration.isMemoryDevice</key>
-                        <value>0</value>
+                        <value>false</value>
                     </entry>
                     <entry>
                         <key>embeddedsw.configuration.isNonVolatileStorage</key>
-                        <value>0</value>
+                        <value>false</value>
                     </entry>
                     <entry>
                         <key>embeddedsw.configuration.isPrintableDevice</key>
-                        <value>0</value>
+                        <value>false</value>
                     </entry>
                 </assignmentValueMap>
             </assignments>
@@ -23542,11 +23533,10 @@
                     </entry>
                     <entry>
                         <key>bridgedAddressOffset</key>
-                        <value>0</value>
                     </entry>
                     <entry>
                         <key>bridgesToMaster</key>
-                        <value>mm_bridge_ddrD_0.m0</value>
+                        <value>DE10_Pro_QSYS_mm_bridge_ddrA.m0</value>
                     </entry>
                     <entry>
                         <key>burstOnBurstBoundariesOnly</key>
@@ -39061,7 +39051,7 @@
    kind="avalon"
    version="19.2"
    start="Tinsel_0.dram_master_0"
-   end="mm_bridge_ddrC_0.s0">
+   end="mm_bridge_ddrA_1.s0">
   <parameter name="arbitrationPriority" value="1" />
   <parameter name="baseAddress" value="0x0000000100000000" />
   <parameter name="defaultConnection" value="false" />
@@ -39081,7 +39071,7 @@
    kind="avalon"
    version="19.2"
    start="Tinsel_0.dram_master_0"
-   end="mm_bridge_ddrA_0.s0">
+   end="mm_bridge_ddrC_1.s0">
   <parameter name="arbitrationPriority" value="1" />
   <parameter name="baseAddress" value="0x0000" />
   <parameter name="defaultConnection" value="false" />
@@ -39101,7 +39091,7 @@
    kind="avalon"
    version="19.2"
    start="Tinsel_0.dram_master_1"
-   end="mm_bridge_ddrB_0.s0">
+   end="mm_bridge_ddrB_1.s0">
   <parameter name="arbitrationPriority" value="1" />
   <parameter name="baseAddress" value="0x0000000100000000" />
   <parameter name="defaultConnection" value="false" />
@@ -39121,7 +39111,7 @@
    kind="avalon"
    version="19.2"
    start="Tinsel_0.dram_master_1"
-   end="mm_bridge_ddrD_0.s0">
+   end="mm_bridge_ddrD_1.s0">
   <parameter name="arbitrationPriority" value="1" />
   <parameter name="baseAddress" value="0x0000" />
   <parameter name="defaultConnection" value="false" />
@@ -39240,26 +39230,6 @@
  <connection
    kind="avalon"
    version="19.2"
-   start="mm_bridge_ddrA_0.m0"
-   end="mm_bridge_ddrA_1.s0">
-  <parameter name="arbitrationPriority" value="1" />
-  <parameter name="baseAddress" value="0x0000" />
-  <parameter name="defaultConnection" value="false" />
-  <parameter name="domainAlias" value="" />
-  <parameter name="qsys_mm.burstAdapterImplementation" value="GENERIC_CONVERTER" />
-  <parameter name="qsys_mm.clockCrossingAdapter" value="HANDSHAKE" />
-  <parameter name="qsys_mm.enableEccProtection" value="FALSE" />
-  <parameter name="qsys_mm.enableInstrumentation" value="FALSE" />
-  <parameter name="qsys_mm.insertDefaultSlave" value="FALSE" />
-  <parameter name="qsys_mm.interconnectResetSource" value="DEFAULT" />
-  <parameter name="qsys_mm.interconnectType" value="STANDARD" />
-  <parameter name="qsys_mm.maxAdditionalLatency" value="1" />
-  <parameter name="qsys_mm.syncResets" value="FALSE" />
-  <parameter name="qsys_mm.widthAdapterImplementation" value="GENERIC_CONVERTER" />
- </connection>
- <connection
-   kind="avalon"
-   version="19.2"
    start="mm_bridge_ddrA_1.m0"
    end="mm_clockcross_DDR4_A.s0">
   <parameter name="arbitrationPriority" value="1" />
@@ -39280,48 +39250,8 @@
  <connection
    kind="avalon"
    version="19.2"
-   start="mm_bridge_ddrB_0.m0"
-   end="mm_bridge_ddrB_1.s0">
-  <parameter name="arbitrationPriority" value="1" />
-  <parameter name="baseAddress" value="0x0000" />
-  <parameter name="defaultConnection" value="false" />
-  <parameter name="domainAlias" value="" />
-  <parameter name="qsys_mm.burstAdapterImplementation" value="GENERIC_CONVERTER" />
-  <parameter name="qsys_mm.clockCrossingAdapter" value="HANDSHAKE" />
-  <parameter name="qsys_mm.enableEccProtection" value="FALSE" />
-  <parameter name="qsys_mm.enableInstrumentation" value="FALSE" />
-  <parameter name="qsys_mm.insertDefaultSlave" value="FALSE" />
-  <parameter name="qsys_mm.interconnectResetSource" value="DEFAULT" />
-  <parameter name="qsys_mm.interconnectType" value="STANDARD" />
-  <parameter name="qsys_mm.maxAdditionalLatency" value="1" />
-  <parameter name="qsys_mm.syncResets" value="FALSE" />
-  <parameter name="qsys_mm.widthAdapterImplementation" value="GENERIC_CONVERTER" />
- </connection>
- <connection
-   kind="avalon"
-   version="19.2"
    start="mm_bridge_ddrB_1.m0"
    end="mm_clockcross_DDR4_B.s0">
-  <parameter name="arbitrationPriority" value="1" />
-  <parameter name="baseAddress" value="0x0000" />
-  <parameter name="defaultConnection" value="false" />
-  <parameter name="domainAlias" value="" />
-  <parameter name="qsys_mm.burstAdapterImplementation" value="GENERIC_CONVERTER" />
-  <parameter name="qsys_mm.clockCrossingAdapter" value="HANDSHAKE" />
-  <parameter name="qsys_mm.enableEccProtection" value="FALSE" />
-  <parameter name="qsys_mm.enableInstrumentation" value="FALSE" />
-  <parameter name="qsys_mm.insertDefaultSlave" value="FALSE" />
-  <parameter name="qsys_mm.interconnectResetSource" value="DEFAULT" />
-  <parameter name="qsys_mm.interconnectType" value="STANDARD" />
-  <parameter name="qsys_mm.maxAdditionalLatency" value="1" />
-  <parameter name="qsys_mm.syncResets" value="FALSE" />
-  <parameter name="qsys_mm.widthAdapterImplementation" value="GENERIC_CONVERTER" />
- </connection>
- <connection
-   kind="avalon"
-   version="19.2"
-   start="mm_bridge_ddrC_0.m0"
-   end="mm_bridge_ddrC_1.s0">
   <parameter name="arbitrationPriority" value="1" />
   <parameter name="baseAddress" value="0x0000" />
   <parameter name="defaultConnection" value="false" />
@@ -39362,26 +39292,6 @@
    version="19.2"
    start="mm_bridge_ddrD_1.m0"
    end="mm_clockcross_DDR4_D.s0">
-  <parameter name="arbitrationPriority" value="1" />
-  <parameter name="baseAddress" value="0x0000" />
-  <parameter name="defaultConnection" value="false" />
-  <parameter name="domainAlias" value="" />
-  <parameter name="qsys_mm.burstAdapterImplementation" value="GENERIC_CONVERTER" />
-  <parameter name="qsys_mm.clockCrossingAdapter" value="HANDSHAKE" />
-  <parameter name="qsys_mm.enableEccProtection" value="FALSE" />
-  <parameter name="qsys_mm.enableInstrumentation" value="FALSE" />
-  <parameter name="qsys_mm.insertDefaultSlave" value="FALSE" />
-  <parameter name="qsys_mm.interconnectResetSource" value="DEFAULT" />
-  <parameter name="qsys_mm.interconnectType" value="STANDARD" />
-  <parameter name="qsys_mm.maxAdditionalLatency" value="1" />
-  <parameter name="qsys_mm.syncResets" value="FALSE" />
-  <parameter name="qsys_mm.widthAdapterImplementation" value="GENERIC_CONVERTER" />
- </connection>
- <connection
-   kind="avalon"
-   version="19.2"
-   start="mm_bridge_ddrD_0.m0"
-   end="mm_bridge_ddrD_1.s0">
   <parameter name="arbitrationPriority" value="1" />
   <parameter name="baseAddress" value="0x0000" />
   <parameter name="defaultConnection" value="false" />
@@ -39581,27 +39491,12 @@
    kind="clock"
    version="19.2"
    start="iopll_0.outclk1"
-   end="mm_bridge_ddrA_0.clk" />
- <connection
-   kind="clock"
-   version="19.2"
-   start="iopll_0.outclk1"
    end="mm_bridge_ddrA_1.clk" />
  <connection
    kind="clock"
    version="19.2"
    start="iopll_0.outclk1"
-   end="mm_bridge_ddrB_0.clk" />
- <connection
-   kind="clock"
-   version="19.2"
-   start="iopll_0.outclk1"
    end="mm_bridge_ddrB_1.clk" />
- <connection
-   kind="clock"
-   version="19.2"
-   start="iopll_0.outclk1"
-   end="mm_bridge_ddrC_0.clk" />
  <connection
    kind="clock"
    version="19.2"
@@ -39632,11 +39527,6 @@
    version="19.2"
    start="iopll_0.outclk2"
    end="mm_bridge_ddrD_1.clk" />
- <connection
-   kind="clock"
-   version="19.2"
-   start="iopll_0.outclk2"
-   end="mm_bridge_ddrD_0.clk" />
  <connection
    kind="clock"
    version="19.2"
@@ -39672,11 +39562,6 @@
    version="19.2"
    start="ddr_A.emif_usr_reset_n"
    end="mm_bridge_ddrA_1.reset" />
- <connection
-   kind="reset"
-   version="19.2"
-   start="ddr_A.emif_usr_reset_n"
-   end="mm_bridge_ddrA_0.reset" />
  <connection
    kind="reset"
    version="19.2"
@@ -39716,17 +39601,7 @@
    kind="reset"
    version="19.2"
    start="reset_controller_0.reset_out"
-   end="mm_bridge_ddrA_0.reset" />
- <connection
-   kind="reset"
-   version="19.2"
-   start="reset_controller_0.reset_out"
    end="mm_bridge_ddrB_1.reset" />
- <connection
-   kind="reset"
-   version="19.2"
-   start="reset_controller_0.reset_out"
-   end="mm_bridge_ddrB_0.reset" />
  <connection
    kind="reset"
    version="19.2"
@@ -39736,17 +39611,7 @@
    kind="reset"
    version="19.2"
    start="reset_controller_0.reset_out"
-   end="mm_bridge_ddrC_0.reset" />
- <connection
-   kind="reset"
-   version="19.2"
-   start="reset_controller_0.reset_out"
    end="mm_bridge_ddrD_1.reset" />
- <connection
-   kind="reset"
-   version="19.2"
-   start="reset_controller_0.reset_out"
-   end="mm_bridge_ddrD_0.reset" />
  <connection
    kind="reset"
    version="19.2"
