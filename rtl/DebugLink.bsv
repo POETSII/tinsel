@@ -235,7 +235,6 @@ interface DebugLink;
 endinterface
 
 module mkDebugLink#(
-    Clock axi_clk, Reset axi_rst,
     Bit#(4) boardIdWithinBox,
     Bit#(8) temperature,
     Vector#(n, DebugLinkClient) cores) (DebugLink);
@@ -264,7 +263,7 @@ module mkDebugLink#(
   OutPort#(DebugLinkFlit) toBusPort <- mkOutPort;
 
   // Create JTAG UART instance
-  JtagUart uart <- mkJtagUart(axi_clk, axi_rst);
+  JtagUart uart <- mkJtagUart;
 
   // Conect ports to UART
   connectUsing(mkUGShiftQueue1(QueueOptFmax), toJtag.out, uart.jtagIn);
@@ -322,8 +321,7 @@ module mkDebugLink#(
     tempSamples <= tempSamples + 1;
     if (allHigh(tempSamples)) begin
       if ((tempSum >> `LogTemperatureSamples) > `TemperatureThreshold)
-        // overheatDetected <= True; // WARNING; fixthis
-        begin end
+        overheatDetected <= True;
       else
         tempSum <= zeroExtend(temperature);
     end else
@@ -337,10 +335,10 @@ module mkDebugLink#(
   Reg#(Bit#(2)) recvState <- mkConfigReg(0);
 
   // Destination core id
-  Reg#(Bit#(`LogCoresPerBoard)) recvDestCore <- mkConfigReg(0);
+  Reg#(Bit#(8)) recvDestCore <- mkConfigReg(0);
 
   // Destination thread id
-  Reg#(Bit#(`LogThreadsPerCore)) recvDestThread <- mkConfigReg(0);
+  Reg#(Bit#(8)) recvDestThread <- mkConfigReg(0);
 
   // Command
   Reg#(DebugLinkCmd) recvCmd <- mkConfigReg(0);
@@ -367,14 +365,13 @@ module mkDebugLink#(
         boardOffset <= fromJtag.value;
         recvState <= 2;
       end else if (recvCmd == cmdSetDest) begin
-        // $display("debuglink command is a cmdSetDest, recvDestThread ", fromJtag.value);
-        recvDestThread <= truncate(fromJtag.value);
+        recvDestThread <= fromJtag.value;
         recvState <= 2;
       end else if (recvCmd == cmdStdIn) begin
         // $display("debuglink command is a cmdStdIn, recvDestThread ", recvDestThread, " core ", recvDestCore, " cmd ", recvCmd, " payload ", fromJtag.value);
         DebugLinkFlit flit;
         flit.coreId = truncate(recvDestCore);
-        flit.isBroadcast = False; //unpack(recvDestCore[7]);
+        flit.isBroadcast = unpack(recvDestCore[7]);
         flit.threadId = truncate(recvDestThread);
         flit.cmd = recvCmd;
         flit.payload = truncate(fromJtag.value);
@@ -406,11 +403,10 @@ module mkDebugLink#(
         respondFlag <= True;
         respondCmd <= cmdQueryIn;
         // Start checking temperature after first query command
-        // checkTemperature <= True; // TODO: reenable
+        checkTemperature <= True;
         recvState <= 0;
       end else begin
-        // $display("debuglink command is not a cmdQueryIn, recvDestCore ", fromJtag.value);
-        recvDestCore <= truncate(fromJtag.value); // TODO: let us address the higher num cores!
+        recvDestCore <= fromJtag.value;
         recvState <= 0;
       end
     end
@@ -475,13 +471,11 @@ module mkDebugLink#(
       end
     end else if (sendState == 1) begin
       // Send StdOut thread id
-      // $display("StdOut threadId ", sendFlit.threadId, " sendstate ", sendState);
-      toJtag.put(zeroExtend(sendFlit.threadId)); // TODO: address bits 8-10 of the core id!
+      toJtag.put(zeroExtend(sendFlit.threadId));
       sendState <= 2;
     end else if (sendState == 2) begin
       // Send StdOut core id
-      // $display("StdOut coreId ", sendFlit.coreId, " sendstate ", sendState);
-      toJtag.put(extend(sendFlit.coreId)); // TODO: address bits 8-10 of the core id!
+      toJtag.put(zeroExtend(sendFlit.coreId));
       sendState <= 3;
     end else begin
       // Send StdOut payload

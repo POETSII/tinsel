@@ -104,9 +104,9 @@ int main()
         // Cache flush
         // tinselCacheFlush();
         // Wait until lines written back, by issuing a load
-        //if (lastDataStoreAddr != 0) {
-        //  volatile uint32_t* ptr = (uint32_t*) lastDataStoreAddr; ptr[0];
-        //}
+        if (lastDataStoreAddr != 0) {
+          volatile uint32_t* ptr = (uint32_t*) lastDataStoreAddr; ptr[0];
+        }
         // Send response
         tinselWaitUntil(TINSEL_CAN_SEND);
         // msgOut[0] = me; //tinselId();

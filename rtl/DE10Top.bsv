@@ -1,14 +1,14 @@
-import NOCInterfaces::*;
-import MacSyncroniser::*;
+// import NOCInterfaces::*;
+// import MacSyncroniser::*;
 
-import Avalon2ServerSingleMaster::*;
-import Avalon2ClientServer::*;
+// import Avalon2ServerSingleMaster::*;
+// import Avalon2ClientServer::*;
 import ClientServer::*;
 import GetPut::*;
 
 import ReliableLink::*;
-import AXI4 :: *;
-import AXI4Lite :: *;
+// import AXI4 :: *;
+// import AXI4Lite :: *;
 
 
 // ============================================================================
@@ -47,152 +47,64 @@ import "BDPI" function Bit#(32) getBoardId();
 
 interface DE10Ifc;
   interface Vector#(`DRAMsPerBoard, DRAMExtIfc) dramIfcs;
+  interface JtagUartAvalon jtagIfc;
+  (* always_ready, always_enabled *)
+  method Action setBoardId(Bit#(4) id);
+  (* always_ready, always_enabled *)
+  method Action setTemperature(Bit#(8) temp);
 
   // Interface to the PCIe BAR
   interface PCIeBAR controlBAR;
   // Interface to host PCIe bus
   // (Use for DMA to/from host memory)
   interface PCIeHostBus pcieHostBus;
-
-  interface AvalonSlaveSingleMasterIfc#(4) tester; // AvalonSlave physical interface
-  interface JtagUartAvalon jtagIfc;
-
-  (* always_ready, always_enabled *)
-  method Action setBoardId(Bit#(4) id);
-  (* always_ready, always_enabled *)
-  method Bool resetReq; // from PCIeStream; but should reset the entire design.
-
-  interface MacDataIfc macA;
-  interface MacDataIfc macB;
-  (* always_ready, always_enabled *)
-  method Action setTemperature(Bit#(8) temp);
+  // Reset request
+  (* always_enabled, always_ready *)
+  method Bool resetReq;
 
 endinterface
 
 
 `endif
 
-interface LinkTestIfc;
-  interface AvalonSlaveSingleMasterIfc#(4) av_peripheral; // AvalonSlave physical interface
-  interface AvalonMacIfc toMac;
-endinterface
 
 
-module mkID(LinkTestIfc);
-
-  Bit#(512) testval = 512'hCAFECAFECAFECAFECAFECAFECAFECAFECAFECAFECAFECAFECAFECAFECAFECAFECAFECAFECAFECAFECAFECAFECAFECAFECAFECAFECAFECAFECAFECAFECAFECAFE;
-
-  AvalonSlave2ClientSingleMasterIfc#(4) avalon <- mkAvalonSlave2ClientSingleMaster;
-
-  rule handle_avalon_requests;
-    let req <- avalon.client.request.get();
-    ReturnedDataT rtn = tagged Invalid;
-    case(tuple2(req.addr, req.rw))
-      tuple2(0, MemRead) : rtn = tagged Valid 32'hDE100001; // DE10 top level v1
-    endcase
-    avalon.client.response.put(rtn);
-  endrule
-
-  interface av_peripheral = avalon.avs;
-  interface AvalonMacIfc toMac;
-
-    method ActionValue#(AvalonSTFlit) send() if (False);
-      let testflit = AvalonSTFlit{data: testval,
-                                    startofPacket:False,
-                                    endofPacket:False,
-                                    empty:0};
-      return testflit;
-    endmethod
-
-    method Action recv(AvalonSTFlit beat);
-    endmethod
-
-  endinterface
-endmodule
+// ============================================================================
+// Implementation
+// ============================================================================
 
 // mkDE10Top wrapper ensures the entire design is reset correctly when requested by the host
-module mkDE10Top(Clock rx_390_A, Clock tx_390_A,
-                  Reset rx_rst_A, Reset tx_rst_A,
-                  Clock rx_390_B, Clock tx_390_B,
-                  Reset rx_rst_B, Reset tx_rst_B,
-                  Clock mgmt, Reset mgmt_reset,
-                  DE10Ifc ifc);
+module mkDE10Top(DE10Ifc ifc);
 
   Clock defaultClock <- exposeCurrentClock();
   Reset externalReset <- exposeCurrentReset();
   MakeResetIfc hostReset <- mkReset(1, False, defaultClock);
   Reset combinedReset <- mkResetEither(externalReset, hostReset.new_rst);
 
-  DE10Ifc de10Top <- mkDE10Top_inner(rx_390_A, tx_390_A, rx_rst_A, tx_rst_A,
-                                     rx_390_B, tx_390_B, rx_rst_B, tx_rst_B,
-                                     mgmt, mgmt_reset,
-                                     reset_by combinedReset);
+  DE10Ifc top <- mkDE10Top_inner(reset_by combinedReset);
 
 
   `ifndef SIMULATE
   (* fire_when_enabled, no_implicit_conditions *)
   rule pcieReset;
-    if (de10Top.resetReq) hostReset.assertReset();
+    if (top.resetReq) hostReset.assertReset();
   endrule
 
-  interface dramIfcs = de10Top.dramIfcs;
-  interface jtagIfc  = de10Top.jtagIfc;
-  interface controlBAR  = de10Top.controlBAR;
-  interface pcieHostBus  = de10Top.pcieHostBus;
-  method Bool resetReq = de10Top.resetReq;
-  // interface northMac = noc.north;
-  // interface southMac = noc.south;
-  // interface eastMac  = noc.east;
-  // interface westMac  = noc.west;
-  method Action setBoardId(Bit#(4) id) = de10Top.setBoardId(id);
-  // method Action setTemperature = de10Top.setTemperature;
+  interface dramIfcs = top.dramIfcs;
+  interface jtagIfc  = top.jtagIfc;
+  interface controlBAR  = top.controlBAR;
+  interface pcieHostBus  = top.pcieHostBus;
+  method Bool resetReq = !top.resetReq;
+  method Action setBoardId(Bit#(4) id) = top.setBoardId(id);
+  method Action setTemperature(Bit#(8) temp) = top.setTemperature(temp);
   `endif
 
 endmodule
 
-module mkDE10Top_pcietest(Clock rx_390_A, Clock tx_390_A,
-                  Reset rx_rst_A, Reset tx_rst_A,
-                  Clock rx_390_B, Clock tx_390_B,
-                  Reset rx_rst_B, Reset tx_rst_B,
-                  Clock mgmt, Reset mgmt_reset,
-                  DE10Ifc ifc);
 
-    PCIeStream pcie <- mkPCIeStream();
+module mkDE10Top_inner(DE10Ifc ifc);
 
-    connectUsing(mkUGShiftQueue1(QueueOptFmax), fromBOut(pcie.streamOut), pcie.streamIn);
-    // connectDirect(pcie.streamOut, hostlink.streamFromHost);
-
-    interface controlBAR  = pcie.external.controlBAR;
-    interface pcieHostBus  = pcie.external.hostBus;
-    method Bool resetReq = pcie.external.resetReq;
-
-endmodule
-
-//
-module mkDE10Top_inner(Clock rx_390_A, Clock tx_390_A,
-                  Reset rx_rst_A, Reset tx_rst_A,
-                  Clock rx_390_B, Clock tx_390_B,
-                  Reset rx_rst_B, Reset tx_rst_B,
-                  Clock mgmt, Reset mgmt_reset,
-                  DE10Ifc ifc);
-
-
-
-  // LinkTestIfc idmod <- mkID();
-
-  // MacSyncIfc syncA <- mkMacSyncroniser(default_clock, rx_390_A, tx_390_A, default_reset, rx_rst_A, tx_rst_A);
-  // MacSyncIfc syncB <- mkMacSyncroniser(default_clock, rx_390_B, tx_390_B, default_reset, rx_rst_B, tx_rst_B);
-  //
-  // rule out;
-  //   let flit <- idmod.toMac.send();
-  //   syncA.nocToSync.recv(flit);
-  // endrule
-  //
-  // rule in;
-  //   let flit <- syncA.nocToSync.send();
-  //   idmod.toMac.recv(flit);
-  // endrule
-
+  // Board Id
   `ifdef SIMULATE
   Bit#(4) localBoardId = truncate(getBoardId());
   `else
@@ -206,14 +118,14 @@ module mkDE10Top_inner(Clock rx_390_A, Clock tx_390_A,
   Vector#(`DRAMsPerBoard, OffChipRAMStratix10) rams;
   for (Integer i = 0; i < `DRAMsPerBoard; i=i+1)
     rams[i] <- mkOffChipRAMStratix10(fromInteger(i*3));
-    // rams[i] <- mkFakeRAM(fromInteger(i*3));
+
 
   // Create data caches
   Vector#(`DRAMsPerBoard,
     Vector#(`DCachesPerDRAM, DCache)) dcaches = newVector;
   for (Integer i = 0; i < `DRAMsPerBoard; i=i+1)
     for (Integer j = 0; j < `DCachesPerDRAM; j=j+1)
-      dcaches[i][j] <- mkDCache(fromInteger(j)); // (* synthesize *)
+      dcaches[i][j] <- mkDCache(fromInteger(j));
 
   // Create cores
   Integer coreCount = 0;
@@ -223,7 +135,7 @@ module mkDE10Top_inner(Clock rx_390_A, Clock tx_390_A,
   for (Integer i = 0; i < `DRAMsPerBoard; i=i+1)
     for (Integer j = 0; j < `DCachesPerDRAM; j=j+1)
       for (Integer k = 0; k < `CoresPerDCache; k=k+1) begin
-        cores[i][j][k] <- mkCore(fromInteger(coreCount)); // (* synthesize *)
+        cores[i][j][k] <- mkCore(fromInteger(coreCount));
         coreCount = coreCount+1;
       end
 
@@ -254,7 +166,7 @@ module mkDE10Top_inner(Clock rx_390_A, Clock tx_390_A,
   // Create FPUs
   Vector#(`FPUsPerBoard, FPU) fpus;
   for (Integer i = 0; i < `FPUsPerBoard; i=i+1)
-    fpus[i] <- mkFPU; // (* synthesize *)
+    fpus[i] <- mkFPU;
 
   // Connect cores to FPUs
   let vecOfCores = concat(concat(cores));
@@ -270,9 +182,11 @@ module mkDE10Top_inner(Clock rx_390_A, Clock tx_390_A,
   // Create DebugLink interface
   function DebugLinkClient getDebugLinkClient(Core core) = core.debugLinkClient;
   DebugLink debugLink <-
-    mkDebugLink(mgmt, mgmt_reset,
-      localBoardId, temperature,
+    mkDebugLink(localBoardId, temperature,
       map(getDebugLinkClient, vecOfCores));
+
+  // Create PCIeStream instance
+  PCIeStream pcie <- mkPCIeStream();
 
   // Create idle-detector
   IdleDetector idle <- mkIdleDetector;
@@ -283,7 +197,7 @@ module mkDE10Top_inner(Clock rx_390_A, Clock tx_390_A,
       Vector::replicate(newVector());
   for (Integer y = 0; y < `MailboxMeshYLen; y=y+1)
     for (Integer x = 0; x < `MailboxMeshXLen; x=x+1)
-      mailboxes[y][x] <- mkMailboxAcc(debugLink.getBoardId(), x, y); // (* synthesize *)
+      mailboxes[y][x] <- mkMailboxAcc(debugLink.getBoardId(), x, y);
 
   // Initialise mailbox send slots
   rule initSendSlots;
@@ -304,7 +218,10 @@ module mkDE10Top_inner(Clock rx_390_A, Clock tx_390_A,
       connectCoresToMailbox(map(mailboxClient, cs), mailboxes[y][x]);
     end
 
+  // HostLink
   HostLinkPCIeAdaptorIfc hostlink <- mkHostLink();
+  connectUsing(mkUGShiftQueue1(QueueOptFmax), hostlink.streamToHost, pcie.streamIn);
+  connectDirect(pcie.streamOut, hostlink.streamFromHost);
 
   // Create network-on-chip
   function MailboxNet mailboxNet(Mailbox mbox) = mbox.net;
@@ -332,13 +249,11 @@ module mkDE10Top_inner(Clock rx_390_A, Clock tx_390_A,
           cores[i][j][k].setBoardId(debugLink.getBoardId());
   endrule
 
-  // HostLink
 
-  // Create PCIeStream instance
-  PCIeStream pcie <- mkPCIeStream();
 
-  connectUsing(mkUGShiftQueue1(QueueOptFmax), hostlink.streamToHost, pcie.streamIn);
-  connectDirect(pcie.streamOut, hostlink.streamFromHost);
+
+
+
 
   // In simulation, display start-up message
   `ifdef SIMULATE
@@ -355,9 +270,7 @@ module mkDE10Top_inner(Clock rx_390_A, Clock tx_390_A,
   function DRAMExtIfc getDRAMExtIfc(OffChipRAMStratix10 ram) = ram.extDRAM;
   interface dramIfcs = map(getDRAMExtIfc, rams);
   interface jtagIfc  = debugLink.jtagAvalon;
-  interface controlBAR  = pcie.external.controlBAR;
-  interface pcieHostBus  = pcie.external.hostBus;
-  method Bool resetReq = pcie.external.resetReq;
+
   // interface northMac = noc.north;
   // interface southMac = noc.south;
   // interface eastMac  = noc.east;
@@ -365,15 +278,15 @@ module mkDE10Top_inner(Clock rx_390_A, Clock tx_390_A,
   method Action setBoardId(Bit#(4) id);
     localBoardId <= id;
   endmethod
-  // method Action setTemperature(Bit#(8) temp);
-  //   temperature <= temp;
-  // endmethod
+  method Action setTemperature(Bit#(8) temp);
+    temperature <= temp;
+  endmethod
+
+  interface controlBAR  = pcie.external.controlBAR;
+  interface pcieHostBus  = pcie.external.hostBus;
+  method Bool resetReq = pcie.external.resetReq;
   `endif
 
 
-  // interface tester = idmod.av_peripheral;
-
-  // interface MacDataIfc macA = syncA.syncToMac;
-  // interface MacDataIfc macB = syncB.syncToMac;
 
 endmodule

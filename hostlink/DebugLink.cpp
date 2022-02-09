@@ -36,6 +36,7 @@ void DebugLink::getPacket(int x, int y, BoardCtrlPkt* pkt)
       numBytes -= ret;
     }
   }
+  // printf("[DebugLink::getPacket] got %i bytes from x %i y %i\n", sizeof(BoardCtrlPkt)-numBytes, x, y);
 }
 
 // Helper: blocking send of a BoardCtrlPkt
@@ -112,6 +113,7 @@ DebugLink::DebugLink(DebugLinkParams p)
                     p.numBoxesX, p.numBoxesY, hostname);
     exit(EXIT_FAILURE);
   }
+  printf("[DbgLink::constructor] debuglink running on box %s\n", hostname);
 
   // Dimensions of the global board mesh
   meshXLen = TinselMeshXLenWithinBox * boxMeshXLen;
@@ -233,7 +235,16 @@ DebugLink::DebugLink(DebugLinkParams p)
   for (int y = 0; y < boxMeshYLen; y++)
     for (int x = 0; x < boxMeshXLen; x++) {
       for (int b = 0; b < TinselBoardsPerBox; b++) {
-        getPacket(x, y, &pkt);
+
+        while (1) {
+          getPacket(x, y, &pkt);
+          if (pkt.payload[0] == DEBUGLINK_QUERY_OUT) {
+            break;
+          } else {
+            printf("%d:%d sent packet type %x byte %c\n", x, y, pkt.payload[0], pkt.payload[3]);
+          }
+        }
+
         assert(pkt.payload[0] == DEBUGLINK_QUERY_OUT);
         if (pkt.payload[1] == 0) {
           if (bridge[y][x] != -1) {

@@ -17,7 +17,7 @@ many: checkenv ip
 .PHONY: ip
 ip: checkenv
 	make -C $(TINSEL_ROOT)/apps/boot
-	make -C $(TINSEL_ROOT)/rtl verilog
+	make -C $(TINSEL_ROOT)/rtl mkDE10Top.v
 
 .PHONY: report
 report: checkenv

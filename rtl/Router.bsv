@@ -29,28 +29,28 @@ import Reserved   :: *;
 // key contains the number of contiguous DRAM beats holding all
 // records for the key.
 
-// 256-bit routing beat
-typedef struct {
-  // Number of records present
-  Bit#(16) size;
-  // The 48-bit record chunks
-  Vector#(5, Bit#(48)) chunks;
-} RoutingBeat deriving (Bits, FShow);
-
-// 32-bit routing key
-typedef struct {
-  // Which off-chip RAM?
-  Bit#(`LogDRAMsPerBoard) ram;
-  // Pointer to array of routing beats containing routing records
-  Bit#(`LogBeatsPerDRAM) ptr;
-  // Number of beats in the array
-  Bit#(`LogRoutingEntryLen) numBeats;
-  Reserved#(TSub#(32, TAdd#(TAdd#(`LogDRAMsPerBoard, `LogBeatsPerDRAM), `LogRoutingEntryLen))) unused;
-} RoutingKey deriving (Bits, FShow);
-
-// Extract routing key from an address
-function RoutingKey getRoutingKey(NetAddr addr) =
-  unpack(getRoutingKeyRaw(addr));
+// // 256-bit routing beat
+// typedef struct {
+//   // Number of records present
+//   Bit#(16) size;
+//   // The 48-bit record chunks
+//   Vector#(5, Bit#(48)) chunks;
+// } RoutingBeat deriving (Bits, FShow);
+//
+// // 32-bit routing key
+// typedef struct {
+//   // Which off-chip RAM?
+//   Bit#(`LogDRAMsPerBoard) ram;
+//   // Pointer to array of routing beats containing routing records
+//   Bit#(`LogBeatsPerDRAM) ptr;
+//   // Number of beats in the array
+//   Bit#(`LogRoutingEntryLen) numBeats;
+//   Reserved#(TSub#(32, TAdd#(TAdd#(`LogDRAMsPerBoard, `LogBeatsPerDRAM), `LogRoutingEntryLen))) unused;
+// } RoutingKey deriving (Bits, FShow);
+//
+// // Extract routing key from an address
+// function RoutingKey getRoutingKey(NetAddr addr) =
+//   unpack(getRoutingKeyRaw(addr));
 
 // =============================================================================
 // Types of routing record
@@ -95,13 +95,13 @@ typedef enum {
   RouteNoC
 } RoutingDecision deriving (Bits, Eq, FShow);
 
-// Elements of the indirection queue inside each fetcher
-typedef struct {
-  // The indirection
-  RoutingKey key;
-  // The location of the message in the flit buffer
-  FetcherFlitBufferMsgAddr addr;
-} IndQueueEntry deriving (Bits, FShow);
+// // Elements of the indirection queue inside each fetcher
+// typedef struct {
+//   // The indirection
+//   RoutingKey key;
+//   // The location of the message in the flit buffer
+//   FetcherFlitBufferMsgAddr addr;
+// } IndQueueEntry deriving (Bits, FShow);
 
 
 // =============================================================================
@@ -166,26 +166,26 @@ typedef Bit#(`FetcherLogMsgsPerFlitBuffer) FetcherFlitBufferMsgAddr;
 // Maintaining info about an inflight request inside the request
 // itself provides an easy way to handle out-of-order responses from
 // memory.
-typedef struct {
-  // Message address in the fetcher's flit buffer
-  FetcherFlitBufferMsgAddr msgAddr;
-  // How many beats in the burst?
-  Bit#(`BeatBurstWidth) burst;
-  // Is this the final burst of routing records for the current key?
-  Bool finalBurst;
-  // Are we processing a max-sized key (which must contain an IND record)?
-  Bool isMaxSizedKey;
-} InflightFetcherReqInfo deriving (Bits, FShow);
+// typedef struct {
+//   // Message address in the fetcher's flit buffer
+//   FetcherFlitBufferMsgAddr msgAddr;
+//   // How many beats in the burst?
+//   Bit#(`BeatBurstWidth) burst;
+//   // Is this the final burst of routing records for the current key?
+//   Bool finalBurst;
+//   // Are we processing a max-sized key (which must contain an IND record)?
+//   Bool isMaxSizedKey;
+// } InflightFetcherReqInfo deriving (Bits, FShow);
 
 // Routing beat, tagged with the beat number in the DRAM burst
-typedef struct {
-  // Beat
-  RoutingBeat beat;
-  // Beat number
-  Bit#(`BeatBurstWidth) beatNum;
-  // Inflight request info
-  InflightFetcherReqInfo info;
-} NumberedRoutingBeat deriving (Bits, FShow);
+// typedef struct {
+//   // Beat
+//   RoutingBeat beat;
+//   // Beat number
+//   Bit#(`BeatBurstWidth) beatNum;
+//   // Inflight request info
+//   InflightFetcherReqInfo info;
+// } NumberedRoutingBeat deriving (Bits, FShow);
 
 // Fetcher interface
 interface Fetcher;
@@ -231,8 +231,8 @@ module mkPassthroughFetcher#(BoardId boardId, Integer fetcherId) (Fetcher);
     mkBlockRamOpts(flitBufferOpts);
 
   // Beat buffer
-  SizedQueue#(`FetcherLogBeatBufferSize, NumberedRoutingBeat)
-    beatBuffer <- mkUGSizedQueue;
+  // SizedQueue#(`FetcherLogBeatBufferSize, NumberedRoutingBeat)
+  //   beatBuffer <- mkUGSizedQueue;
 
   // Track length of beat buffer, so that we don't overfetch
   Count#(TAdd#(`FetcherLogBeatBufferSize, 1)) beatBufferLen <-
@@ -248,10 +248,10 @@ module mkPassthroughFetcher#(BoardId boardId, Integer fetcherId) (Fetcher);
   Queue1#(RoutedFlit) flitOutQueue <- mkUGShiftQueue(QueueOptFmax);
 
   // Indirection queue and size
-  SizedQueue#(`FetcherLogIndQueueSize, IndQueueEntry) indQueue <-
-    mkUGShiftQueue(QueueOptFmax);
-  Count#(TAdd#(`FetcherLogIndQueueSize, 1)) indQueueLen <-
-      mkCount(2 ** `FetcherLogIndQueueSize);
+  // SizedQueue#(`FetcherLogIndQueueSize, IndQueueEntry) indQueue <-
+  //   mkUGShiftQueue(QueueOptFmax);
+  // Count#(TAdd#(`FetcherLogIndQueueSize, 1)) indQueueLen <-
+  //     mkCount(2 ** `FetcherLogIndQueueSize);
 
   // Activity
   Reg#(Bit#(1)) incSentReg <- mkDReg(0);
@@ -278,7 +278,7 @@ module mkPassthroughFetcher#(BoardId boardId, Integer fetcherId) (Fetcher);
   Reg#(FetcherFlitBufferMsgAddr) chosenReg <- mkRegU;
 
   // Routing key of message consumed
-  Reg#(RoutingKey) consumeKey <- mkRegU;
+  // Reg#(RoutingKey) consumeKey <- mkRegU;
 
   // Maintain count of routing beats fetched so far
   Reg#(Bit#(`LogRoutingEntryLen)) fetchBeatCount <- mkReg(0);

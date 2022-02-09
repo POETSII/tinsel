@@ -49,6 +49,8 @@ typedef enum {
   NOPCmd,
   PingCmd,
   StartBootloaderCmd,
+  StackCmd,
+  RemoteStackCmd,
 
 } BootCmd;
 

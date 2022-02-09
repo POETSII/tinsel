@@ -3,7 +3,7 @@
 #include <HostLink.h>
 
 const char* tests[] = {
-  "fldst",    "fadd",   "fdiv",    "fcmp",
+  "fldst",    "fldst", "fadd",   "fdiv",    "fcmp",
   "fcvt_w",   "fcvt",   "fmove",
   "addi",     "beq",    "bne",     "lh",
   "mulhsu",   "sb",     "slti",    "sra",
@@ -18,7 +18,7 @@ const char* tests[] = {
   "srai",     "sw",     NULL
 };
 
-int runOne(HostLink* hostLink, const char* test)
+int runOne(HostLink* hostLink, const char* test, uint32_t core)
 {
   // Compute code filename
   char codeFilename[1024];
@@ -29,10 +29,10 @@ int runOne(HostLink* hostLink, const char* test)
   snprintf(dataFilename, sizeof(dataFilename), "%s.data.v", test);
 
   // Boot and run test on thread 0 only
-  hostLink->loadInstrsOntoCore(codeFilename, 0, 0, 0);
-  hostLink->loadDataViaCore(dataFilename, 0, 0, 0);
-  hostLink->startOne(0, 0, 0, 1);
-  hostLink->goOne(0, 0, 0);
+  hostLink->loadInstrsOntoCore(codeFilename, 0, 0, core);
+  hostLink->loadDataViaCore(dataFilename, 0, 0, core);
+  hostLink->startOne(0, 0, core, 1);
+  hostLink->goOne(0, 0, core);
 
   // Get test result
   uint32_t coreId, threadId, boardX, boardY;
@@ -49,7 +49,7 @@ int main()
   for (int i = 0; ; i++) {
     if (tests[i] == NULL) break;
     printf("%s\t", tests[i]);
-    int result = runOne(&hostLink, tests[i]);
+    int result = runOne(&hostLink, tests[i], i);
     if (result&1)
       printf("PASSED\n");
     else

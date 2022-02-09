@@ -54,10 +54,15 @@ class HostLink {
   // Internal helper for sending messages
   bool sendHelper(uint32_t dest, uint32_t numFlits, void* payload,
          bool block, uint32_t key);
+
  public:
   // Dimensions of board mesh
   int meshXLen;
   int meshYLen;
+
+  void printStack(uint32_t meshX, uint32_t meshY,
+         uint32_t coreId);
+  void printStackRawAddr(uint32_t addr);
 
   // Constructors
   HostLink();

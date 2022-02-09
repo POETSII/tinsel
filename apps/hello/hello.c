@@ -75,6 +75,7 @@ int main()
   sendb('\n');
   puts_me("stack ptr: \n");
   puthex_me( (uint32_t)(&sp) );
+  asm volatile("" : "+r"(sp) );
   sendb('\n');
   // asm volatile("jr zero");
   // puts_me(msg_bss);
@@ -83,11 +84,32 @@ int main()
   // puts_me(msg_text);
   // puts_me("thread id ");
   unsigned int me = tinselId();
-  puthex_me(me);
-  sendb('\n');
-  asm volatile("" : "+r"(me) );
-  tinselCacheFlush();
-  puts_me("flushed cache\n");
+  //puthex_me(me);
+  //sendb('\n');
+  //asm volatile("" : "+r"(me) );
+
+  //
+    for (uint32_t i = me/16 % (1<<TinselDCacheLogSetsPerThread); i < (1<<TinselDCacheLogSetsPerThread); i++) {
+      for (uint32_t j = me/(16*(1 << TinselDCacheLogSetsPerThread)); j < (1<<TinselDCacheLogNumWays); j++) {
+        // printf_me("flushing set %x way %x \n", i, j);
+        puts_me("core ");
+        puthex_me(me);
+        puts_me(" flushing set ");
+        puthex_me(i);
+        puts_me(" way ");
+        puthex_me(j);
+        sendb('\n');
+        asm volatile("" : "+r"(i) );
+        // seq. point for i
+        tinselFlushLine(i, j);
+      }
+    }
+
+
+
+
+  // tinselCacheFlush();
+  // puts_me("flushed cache\n");
   // sendb('\n');
   // sendb('\n');
   // sendb('\n');
