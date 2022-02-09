@@ -10,8 +10,6 @@ package JtagUart;
 // Imports
 // =============================================================================
 
-import Clocks    :: *;
-import FIFOF    :: *;
 import Interface :: *;
 import ConfigReg :: *;
 import Util      :: *;
@@ -24,7 +22,7 @@ import Socket    :: *;
 // Avalon memory-mapped interface to Altera's JTAG UART.
 (* always_ready, always_enabled *)
 interface JtagUartAvalon;
-  method Bit#(1)  uart_address;
+  method Bit#(3)  uart_address;
   method Bit#(32) uart_writedata;
   method Bool     uart_write;
   method Bool     uart_read;
@@ -55,56 +53,26 @@ typedef enum {
   JTAG_WRITE_DATA   // Write char to UART's data register
 } JtagUartState deriving (Bits, Eq);
 
-module mkJtagUart (Clock axi_clk, Reset axi_rst, JtagUart ifc);
+module mkJtagUart (JtagUart);
 
   // Create input and output ports
-  // clocked by default
   InPort#(Bit#(8)) inPort <- mkInPort;
-  OutPort#(Bit#(8)) outPort <- mkOutPort; // out means out of this module
-
-  SyncFIFOIfc#(Bit#(8)) designToUartFIFO <- mkSyncFIFOFromCC(1, axi_clk);
-  FIFOF#(Bit#(8)) designToUartFIFOUnGuarded <- mkUGFIFOF1(clocked_by axi_clk, reset_by axi_rst);
-  SyncFIFOIfc#(Bit#(8)) uartToDesignFIFO <- mkSyncFIFOToCC(1, axi_clk, axi_rst);
-  FIFOF#(Bit#(8)) uartToDesignFIFOUnGuarded <- mkUGFIFOF1(clocked_by axi_clk, reset_by axi_rst);
-
-  rule uartToDesignTxfr;
-    outPort.put(uartToDesignFIFO.first);
-    uartToDesignFIFO.deq();
-  endrule
-
-  rule designToUartTxfr (inPort.canGet);
-    designToUartFIFO.enq(inPort.value);
-    inPort.get();
-  endrule
-
-  // UGFIFOs for rule scheduling. For the axi address, we, re, and data lines to
-  // be driven in a single rule, we need to allow that rule to fire even if
-  // we don't have the abilty to operate on both CC fifos.
-  rule uartToDesignTxfrGuardCopy (uartToDesignFIFOUnGuarded.notEmpty);
-    uartToDesignFIFOUnGuarded.deq();
-    uartToDesignFIFO.enq(uartToDesignFIFOUnGuarded.first);
-  endrule
-
-  rule designToUartTxfrGuardCopy (designToUartFIFOUnGuarded.notFull);
-    designToUartFIFO.deq();
-    designToUartFIFOUnGuarded.enq(designToUartFIFO.first);
-  endrule
+  OutPort#(Bit#(8)) outPort <- mkOutPort;
 
 
   // This register is used to toggle between reading and writing
-  // accessed by axi, so on the axi_clk domain
-  Reg#(Bool) toggle <- mkConfigReg(False, clocked_by axi_clk, reset_by axi_rst);
+  Reg#(Bool) toggle <- mkConfigReg(False);
 
   // Current state of state machine
-  Reg#(JtagUartState) state <- mkConfigReg(JTAG_IDLE, clocked_by axi_clk, reset_by axi_rst);
+  Reg#(JtagUartState) state <- mkConfigReg(JTAG_IDLE);
 
   // Avalon memory-mapped interface
   interface JtagUartAvalon jtagAvalon;
-    method Bit#(1) uart_address =
-      state == JTAG_READ_DATA || state == JTAG_WRITE_DATA ? 0 : 1; // 32b symbol address
+    method Bit#(3) uart_address =
+      state == JTAG_READ_DATA || state == JTAG_WRITE_DATA ? 0 : 4;
 
     method Bit#(32) uart_writedata =
-      zeroExtend(designToUartFIFOUnGuarded.notEmpty ? designToUartFIFOUnGuarded.first : 0);
+      zeroExtend(inPort.value);
 
     method Bool uart_write =
       state == JTAG_WRITE_DATA;
@@ -118,24 +86,24 @@ module mkJtagUart (Clock axi_clk, Reset axi_rst, JtagUart ifc);
         JTAG_IDLE:
           begin
             toggle <= !toggle;
-            if (designToUartFIFOUnGuarded.notEmpty && toggle)
+            if (inPort.canGet && toggle)
               state <= JTAG_READ_WSPACE;
-            else if (uartToDesignFIFOUnGuarded.notFull)
+            else if (outPort.canPut)
               state <= JTAG_READ_DATA;
           end
         JTAG_READ_DATA:
           if (!uart_waitrequest) begin
             if (uart_readdata[15] == 1) begin
-              uartToDesignFIFOUnGuarded.enq(uart_readdata[7:0]);
+              outPort.put(uart_readdata[7:0]);
             end
             state <= JTAG_IDLE;
           end
         JTAG_READ_WSPACE:
           if (!uart_waitrequest)
-            state <= (uart_readdata[31:16] > 0 && designToUartFIFOUnGuarded.notEmpty) ? JTAG_WRITE_DATA : JTAG_IDLE;
+            state <= uart_readdata[31:16] > 0 ? JTAG_WRITE_DATA : JTAG_IDLE;
         JTAG_WRITE_DATA:
           if (!uart_waitrequest) begin
-            designToUartFIFOUnGuarded.deq;
+            inPort.get;
             state <= JTAG_IDLE;
           end
       endcase
@@ -158,7 +126,7 @@ endmodule
 
 `ifdef SIMULATE
 
-module mkJtagUart (Clock axi_clk, Reset axi_rst, JtagUart ifc);
+module mkJtagUart (JtagUart);
 
   InPort#(Bit#(8))  inPort  <- mkInPort;
   OutPort#(Bit#(8)) outPort <- mkOutPort;
@@ -166,17 +134,11 @@ module mkJtagUart (Clock axi_clk, Reset axi_rst, JtagUart ifc);
   rule connect;
     if (inPort.canGet) begin
       Bool ok <- socketPut8(uartSocket, inPort.value);
-      if (ok) begin
-        // $display("JTAG sending byte %x", inPort.value);
-        inPort.get;
-      end
+      if (ok) inPort.get;
     end
     if (outPort.canPut) begin
       Bit#(32) b <- socketGet8(uartSocket);
-      if (b[31] == 0) begin
-        // $display("JTAG got byte ", b);
-        outPort.put(b[7:0]);
-      end
+      if (b[31] == 0) outPort.put(b[7:0]);
     end
   endrule
 

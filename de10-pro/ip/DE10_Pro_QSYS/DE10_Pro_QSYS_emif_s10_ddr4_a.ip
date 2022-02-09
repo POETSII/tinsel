@@ -8100,7 +8100,7 @@
         <ipxact:parameter parameterId="CTRL_DDR4_ECC_AUTO_CORRECTION_EN" type="bit">
           <ipxact:name>CTRL_DDR4_ECC_AUTO_CORRECTION_EN</ipxact:name>
           <ipxact:displayName>Enable Auto Error Correction to External Memory</ipxact:displayName>
-          <ipxact:value>true</ipxact:value>
+          <ipxact:value>false</ipxact:value>
         </ipxact:parameter>
         <ipxact:parameter parameterId="CTRL_DDR4_ECC_READDATAERROR_EN" type="bit">
           <ipxact:name>CTRL_DDR4_ECC_READDATAERROR_EN</ipxact:name>

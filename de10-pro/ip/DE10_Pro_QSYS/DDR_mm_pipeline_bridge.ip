@@ -274,7 +274,7 @@
         <ipxact:parameter parameterId="maximumPendingReadTransactions" type="int">
           <ipxact:name>maximumPendingReadTransactions</ipxact:name>
           <ipxact:displayName>Maximum pending read transactions</ipxact:displayName>
-          <ipxact:value>4</ipxact:value>
+          <ipxact:value>1</ipxact:value>
         </ipxact:parameter>
         <ipxact:parameter parameterId="maximumPendingWriteTransactions" type="int">
           <ipxact:name>maximumPendingWriteTransactions</ipxact:name>
@@ -1029,7 +1029,7 @@
         <ipxact:parameter parameterId="ADDRESS_WIDTH" type="int">
           <ipxact:name>ADDRESS_WIDTH</ipxact:name>
           <ipxact:displayName>Address width</ipxact:displayName>
-          <ipxact:value>32</ipxact:value>
+          <ipxact:value>27</ipxact:value>
         </ipxact:parameter>
         <ipxact:parameter parameterId="SYSINFO_ADDR_WIDTH" type="int">
           <ipxact:name>SYSINFO_ADDR_WIDTH</ipxact:name>
@@ -1039,7 +1039,7 @@
         <ipxact:parameter parameterId="USE_AUTO_ADDRESS_WIDTH" type="int">
           <ipxact:name>USE_AUTO_ADDRESS_WIDTH</ipxact:name>
           <ipxact:displayName>Use automatically-determined address width</ipxact:displayName>
-          <ipxact:value>1</ipxact:value>
+          <ipxact:value>0</ipxact:value>
         </ipxact:parameter>
         <ipxact:parameter parameterId="AUTO_ADDRESS_WIDTH" type="int">
           <ipxact:name>AUTO_ADDRESS_WIDTH</ipxact:name>
@@ -1069,7 +1069,7 @@
         <ipxact:parameter parameterId="MAX_PENDING_RESPONSES" type="int">
           <ipxact:name>MAX_PENDING_RESPONSES</ipxact:name>
           <ipxact:displayName>Maximum pending read transactions</ipxact:displayName>
-          <ipxact:value>4</ipxact:value>
+          <ipxact:value>1</ipxact:value>
         </ipxact:parameter>
         <ipxact:parameter parameterId="LINEWRAPBURSTS" type="int">
           <ipxact:name>LINEWRAPBURSTS</ipxact:name>
@@ -1406,7 +1406,7 @@
                     &lt;/entry&gt;
                     &lt;entry&gt;
                         &lt;key&gt;maximumPendingReadTransactions&lt;/key&gt;
-                        &lt;value&gt;4&lt;/value&gt;
+                        &lt;value&gt;1&lt;/value&gt;
                     &lt;/entry&gt;
                     &lt;entry&gt;
                         &lt;key&gt;maximumPendingWriteTransactions&lt;/key&gt;

@@ -133,7 +133,9 @@ void server(int conn, int numBoards, UARTBuffer* uartLinks)
         uartLinks[count++].uart->open(boardId);
       }
     // Host board
-    //uartLinks[count++].uart->open(-1);
+    #ifdef TinselStratixV
+    uartLinks[count++].uart->open(-1);
+    #endif // S5
   #else
     for (int i = 0; i < numBoards; i++) uartLinks[i].uart->open(i+1);
   #endif
@@ -232,8 +234,11 @@ int main(int argc, char* argv[])
   UARTBuffer* uartLinks;
 
   // Determine number of boards
-  //int numBoards = TinselMeshXLenWithinBox * TinselMeshYLenWithinBox + 1;
   int numBoards = TinselMeshXLenWithinBox * TinselMeshYLenWithinBox;
+  #ifdef TinselStratixV
+  int numBoards = numBoards+1; // bridge board
+  #endif
+
 
   while (1) {
     // Listen on TCP port
@@ -251,10 +256,12 @@ int main(int argc, char* argv[])
 
     // Power up worker boards
     #ifndef SIMULATE
-    //powerEnable(1);
-    //sleep(1);
-    //waitForFPGAs(numBoards);
-    //sleep(1);
+    #ifdef TinselStratixV
+    powerEnable(1);
+    sleep(1);
+    waitForFPGAs(numBoards);
+    sleep(1);
+    #endif
     #endif
 
     // Fork a process to handle connection
@@ -277,10 +284,12 @@ int main(int argc, char* argv[])
     close(conn);
 
     // Power down worker boards
-    //#ifndef SIMULATE
-    //powerEnable(0);
-    //usleep(1500000);
-    //#endif
+    #ifndef SIMULATE
+    #ifdef TinselStratixV
+    powerEnable(0);
+    usleep(1500000);
+    #endif
+    #endif
   }
 
   return 0;
