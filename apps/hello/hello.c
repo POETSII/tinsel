@@ -89,6 +89,8 @@ int main()
   }
   // uncommenting this prevents any code from producing output.
   // printf("hello from printf thread 0x%x\n", me);
+  tinselCacheFlush();
+  puts_me("flushed cache\n");
 
   // printf_me(msg_text, me);
   return 0;
