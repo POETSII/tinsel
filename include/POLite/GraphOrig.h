@@ -34,7 +34,7 @@ struct GraphOrig {
 
   // Deconstructor
   ~GraphOrig() {
-    for (uint32_t i = 0; i < incoming->numElems; i++) {
+    for (uint32_t i = 0; i < (unsigned)incoming->numElems; i++) {
       delete incoming->elems[i];
       delete outgoing->elems[i];
       delete pins->elems[i];
@@ -57,7 +57,7 @@ struct GraphOrig {
 
   // Set node label
   void setLabel(NodeId id, NodeLabel lab) {
-    assert(id < labels->numElems);
+    assert((int)id < labels->numElems);
     labels->elems[id] = lab;
   }
 
@@ -79,7 +79,7 @@ struct GraphOrig {
   // (Returns -1 if node has no outgoing edges)
   PinId maxPin(NodeId x) {
     int max = -1;
-    for (uint32_t i = 0; i < pins->elems[x]->numElems; i++) {
+    for (uint32_t i = 0; i < (unsigned)pins->elems[x]->numElems; i++) {
       if (pins->elems[x]->elems[i] > max)
         max = pins->elems[x]->elems[i];
     }

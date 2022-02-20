@@ -689,6 +689,11 @@ public:
         addLabelledEdgeImpl(edge,from, pin, to, true);
     }
 
+    void addEdgeLockedDst(PDeviceId from, PinId pin, PDeviceId to)
+    {
+        addLabelledEdgeImpl({},from, pin, to, true);
+    }
+
     // Return total fanout of device, across all pins (I think)
     uint32_t fanOut(PDeviceId id)
     {

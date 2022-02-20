@@ -296,7 +296,7 @@ class ProgRouterMesh {
     // Categorise dests into local, N, S, E, and W groups
     Seq<PRoutingDest> local(dests->numElems);
     Seq<PRoutingDest> non_local[4];
-    for (unsigned i = 0; i < dests->numElems; i++) {
+    for (unsigned i = 0; i < (unsigned)dests->numElems; i++) {
       PRoutingDest dest = dests->elems[i];
       uint32_t receiverX = destX(dest.mbox);
       uint32_t receiverY = destY(dest.mbox);
@@ -339,7 +339,7 @@ class ProgRouterMesh {
     }
 
     // Add local records
-    for (unsigned i = 0; i < local.numElems; i++) {
+    for (unsigned i = 0; i < (unsigned)local.numElems; i++) {
       PRoutingDest dest = local.elems[i];
       if (dest.kind == PRDestKindMRM) {
         uint64_t mask=(uint64_t(dest.mrm.threadMaskHigh)<<32) | dest.mrm.threadMaskLow;

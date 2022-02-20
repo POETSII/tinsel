@@ -345,8 +345,20 @@ public:
       fatal_error("addEdge: pin exceeds NUM_PINS\n");
     }
     graph.addEdgeLockedDst(edge, from, pin, to);
-    //edgeLabels.elems[from]->append(edge);
   }
+
+  /*! Adds an edge, with the constraint that no other thread
+    will try to use the same from edge at the same time. Howver,
+    the destination thread can be used by many threads in parallel.
+  */
+  void addEdgeLockedDst(PDeviceId from, PinId pin, PDeviceId to)
+  {
+    if (pin >= NUM_PINS) {
+      fatal_error("addEdge: pin exceeds NUM_PINS\n");
+    }
+    graph.addEdgeLockedDst({}, from, pin, to);
+  }
+
 
   /*
   dt10 : the random POLITE_NOINLINE attributes are to avoid the
@@ -593,7 +605,7 @@ public:
           (PInHeader<E>*) inEdgeHeaderMem[threadId];
         Seq<PInHeader<E>>* headers = &tbi->inTableHeaders;
         if (headers)
-          for (uint32_t i = 0; (unsigned)i < headers->numElems; i++) {
+          for (uint32_t i = 0; i < (unsigned)headers->numElems; i++) {
             inEdgeHeaderArray[i] = headers->elems[i];
           }
         PInEdge<E>* inEdgeRestArray = (PInEdge<E>*) inEdgeRestMem[threadId];
@@ -1259,6 +1271,7 @@ public:
       }
     }
   #else
+    fprintf(stderr, "Top-level placer\n");
     // Partition into subgraphs, one per board
     Placer<E> boards(&graph, numBoardsX, numBoardsY, 0, placer_method);
 

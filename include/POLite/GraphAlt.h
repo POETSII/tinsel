@@ -132,7 +132,7 @@ public:
 
   // Set node label
   NodeLabel getLabel(NodeId id) {
-    assert(id < nodes.numElems);
+    assert((int)id < (int)nodes.numElems);
     return nodes[id].label;
   }
 
@@ -160,6 +160,7 @@ private:
     unsigned fanIn = nodes[y].incoming.template append_locked<DoLockDst>(x);
     ++m_edgeCount;
 
+    // TODO: not thread-safe?
     m_maxFanOut=std::max<size_t>(m_maxFanOut, fanOut);
     m_maxFanIn=std::max<size_t>(m_maxFanIn, fanIn);
   }

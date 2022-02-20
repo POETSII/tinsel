@@ -157,12 +157,6 @@ struct Placer {
       exit(1);
     }
 
-    // Compute total number of edges
-    uint32_t numEdges = 0;
-    for (uint32_t i = 0; i < graph->numVertices(); i++) {
-      numEdges += graph->fanIn(i) + graph->fanOut(i);
-    }
-
     // Create Metis parameters
     idx_t nvtxs = (idx_t) graph->numVertices();
 
@@ -189,21 +183,27 @@ struct Placer {
 
     // Allocate Metis adjacency matrix
     idx_t* xadj = (idx_t*) calloc(nvtxs+1, sizeof(idx_t));
+    // Compute total number of edges and populate xadx
+    uint32_t numEdges = 0;
+    for (uint32_t i = 0; i < graph->numVertices(); i++) {
+      xadj[i] = numEdges;
+      numEdges += graph->fanIn(i) + graph->fanOut(i);
+    }
+    xadj[nvtxs] = numEdges;
+
     idx_t* adjncy = (idx_t*) calloc(numEdges, sizeof(idx_t));
 
     // Populate undirected adjacency matrix
     uint32_t next = 0;
-    for (idx_t i = 0; i < nvtxs; i++) {
-      xadj[i] = next;
-     unsigned nIn=graph->fanIn(i);
-     graph->exportIncomingNodeIds(i, nIn, adjncy+next);
-     next += nIn;
+    parallel_for_with_grain<unsigned>(0, nvtxs, 256, [&](unsigned i){
+      unsigned base=xadj[i];
+      unsigned nIn=graph->fanIn(i);
+      graph->exportIncomingNodeIds(i, nIn, adjncy+base);
+      base += nIn;
 
-     unsigned nOut=graph->fanOut(i);
-     graph->exportOutgoingNodeIds(i, nOut, adjncy+next);
-     next += nOut;
-    }
-    xadj[nvtxs] = (idx_t) next;
+      unsigned nOut=graph->fanOut(i);
+      graph->exportOutgoingNodeIds(i, nOut, adjncy+base);
+    });
 
     // Allocate Metis result array
     idx_t* parts = (idx_t*) calloc(nvtxs, sizeof(idx_t));

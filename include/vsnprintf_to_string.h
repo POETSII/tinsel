@@ -18,7 +18,7 @@
       fputs("Invalid format string.", stderr);
       assert(0);
       abort();
-    }else if(done >= size){
+    }else if(done >= (int)size){
       size=done+1;
       res=(char*)realloc(res, size);
       if(!res){
@@ -26,7 +26,7 @@
         abort();
       }
       done=vsnprintf(&res[0], size, msg, list);
-      if(done<0 || done>=size){
+      if(done<0 || done>=(int)size){
         //throw std::runtime_error("Couldnt format string");
         fputs("Couldn't format string.", stderr);
         assert(0);

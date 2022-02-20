@@ -28,12 +28,12 @@ struct Bitmap {
 
   // Get value of word at given index, return 0 if out-of-bounds
   inline uint64_t getWord(uint32_t index) {
-    return index >= contents->numElems ? 0ul : contents->elems[index];
+    return (int)index >= contents->numElems ? 0ul : contents->elems[index];
   }
 
   // Find index of next free word in bitmap starting from given word index
   inline uint32_t nextFreeWordFrom(uint32_t start) {
-    for (uint32_t i = start; i < contents->numElems; i++)
+    for (uint32_t i = start; i < (uint32_t)contents->numElems; i++)
       if (~contents->elems[i] != 0ul) return i;
     return contents->numElems;
   }
@@ -61,7 +61,7 @@ struct Bitmap {
   inline unsigned countSetBits() const
   {
     unsigned non_zero=0;
-    for(unsigned i=0; i<contents->numElems; i++){
+    for(unsigned i=0; i<(unsigned)contents->numElems; i++){
       non_zero += __builtin_popcountll(contents->elems[i]);
     }
     return non_zero;
