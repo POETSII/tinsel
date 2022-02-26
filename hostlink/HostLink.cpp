@@ -811,7 +811,7 @@ bool HostLink::pollStdOut(FILE* outFile, uint32_t* lineCount)
       if (lineCount != NULL) (*lineCount)++;
       lineBuffer[x][y][c][t][len] = '\0';
       uint32_t threadId=toAddr(x,y,c,t);
-      if(stdout_filter_proc && !stdout_filter_proc(threadId,lineBuffer[x][y][c][t])){
+      if(!stdout_filter_proc || !stdout_filter_proc(threadId,lineBuffer[x][y][c][t])){
         fprintf(outFile, "BB %d:%d:%d:%d: %s\n", x, y, c, t,
           lineBuffer[x][y][c][t]);
       }
