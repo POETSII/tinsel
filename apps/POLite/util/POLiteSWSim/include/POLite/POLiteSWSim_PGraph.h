@@ -165,7 +165,7 @@ class HostLink
 public:
     using Impl = POLiteSWSim<T_NUM_PINS>;
 
-    uint32_t toAddr(uint32_t meshX, uint32_t meshY,
+    static uint32_t toAddr(uint32_t meshX, uint32_t meshY,
              uint32_t coreId, uint32_t threadId)
     {
         throw std::runtime_error("Not implemented for sim.");
@@ -191,7 +191,9 @@ private:
         std::unique_lock<std::mutex> lk(m_mutex);
 
         std::mt19937_64 rng;
-        rng.seed(time(0));
+        uint32_t seed= time(0)+(uintptr_t)(malloc) +(uintptr_t)(toAddr)+(uintptr_t)(&rng);
+        fprintf(stderr, "POLiteSim : seed = %u\n", seed);
+        rng.seed(seed);
 
         std::function<void (void *,size_t)> send_cb=[&](void *p, size_t n)
         {
@@ -244,9 +246,13 @@ private:
                 }
                 break;
             }
-            if( (m_user_waiting.load() && !m_dev2host.empty()) ){
+            if( m_user_waiting.load() ){
+                lk.unlock();
+
                 m_cond.notify_all();
-                m_cond.wait(lk);
+                
+                lk.lock();
+                m_cond.wait(lk, [&](){ return m_user_waiting.load()==false; });
             }
         }
 
@@ -336,6 +342,9 @@ public:
 
         std::unique_lock<std::mutex> lk(m_mutex);
 
+        m_user_waiting.store(false);
+        m_cond.notify_all();
+
         //fprintf(stderr, "Waitig for host message.");
 
         m_cond.wait(lk, [&](){
@@ -359,10 +368,6 @@ public:
             exit(1);
         }
         memcpy(msg, &front[0], numBytes);
-
-        m_user_waiting.store(false);
-
-        m_cond.notify_all();
     }
 
     // Blocking receive of max size message
@@ -375,9 +380,30 @@ public:
     bool canRecv()
     {
         assert(m_graph);
+
+        m_user_waiting.store(true);
+
         std::unique_lock<std::mutex> lk(m_mutex);
 
+        m_user_waiting.store(false);
+        m_cond.notify_all();
+
         return !m_dev2host.empty();
+    }
+
+    bool isSim() const
+    { return true; }
+
+    bool hasTerminated()
+    {
+        m_user_waiting.store(true);
+
+        std::unique_lock<std::mutex> lk(m_mutex);
+
+        m_user_waiting.store(false);
+        m_cond.notify_all();
+
+        return m_dev2host.empty() && !m_worker_running.load();
     }
 
     void recvBulkNonBlock(
