@@ -251,6 +251,14 @@ private:
   // The filter has the form:  bool filter(uint32_t threadId, const char *line)
   // The filter will never be called in parallel with itself.
   void setStdOutFilterProc(stdout_filter_proc_t filter);
+
+       bool isSim() const
+       { return false; }
+
+       bool hasTerminated() const
+       {
+              throw std::runtime_error("Can only tell if sim has terminated.");
+       }
 };
 
 #endif
