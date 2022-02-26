@@ -1031,31 +1031,33 @@ public:
 
       // Deal with non-board-local connections
       computeTables<DoLock>(&nonLocal, d, p, &dests, groups, edgesPerNonLocalHeaderStats);
-      // We can choose to embed edges on this side, or to do it on the other side.
-      // Threshold of 1 _always_ makes sense, as it cannot be worse. Higher is less clear, and probably bad.
-      const unsigned router_threshold = 1;
-      if(dests.size() <= router_threshold){
-        for(unsigned di=0; di<dests.size(); di++){
-          PRoutingDest dest=dests[di];
-          assert(dest.kind==PRDestKindMRM);
+      if(dests.size()>0){
+        // We can choose to embed edges on this side, or to do it on the other side.
+        // Threshold of 1 _always_ makes sense, as it cannot be worse. Higher is less clear, and probably bad.
+        const unsigned router_threshold = 0;
+        if(dests.size() <= router_threshold){
+          for(unsigned di=0; di<dests.size(); di++){
+            PRoutingDest dest=dests[di];
+            assert(dest.kind==PRDestKindMRM);
+            POutEdge edge;
+            edge.mbox=dest.mbox;
+            edge.threadMaskHigh=dest.mrm.threadMaskHigh;
+            edge.threadMaskLow=dest.mrm.threadMaskLow;
+            edge.key=dest.mrm.key;
+            // This is only writeable by this function
+            outTable[d][p]->append(edge);
+          } 
+        }else{
+          uint32_t src = getThreadId(toDeviceAddr[d]) >> TinselLogThreadsPerMailbox;
+          uint32_t key = progRouterTables->addDestsFromBoard(src, &dests);
           POutEdge edge;
-          edge.mbox=dest.mbox;
-          edge.threadMaskHigh=dest.mrm.threadMaskHigh;
-          edge.threadMaskLow=dest.mrm.threadMaskLow;
-          edge.key=dest.mrm.key;
+          edge.mbox = tinselUseRoutingKey();
+          edge.key = 0;
+          edge.threadMaskLow = key;
+          edge.threadMaskHigh = 0; 
           // This is only writeable by this function
           outTable[d][p]->append(edge);
-        } 
-      }else{
-        uint32_t src = getThreadId(toDeviceAddr[d]) >> TinselLogThreadsPerMailbox;
-        uint32_t key = progRouterTables->addDestsFromBoard(src, &dests);
-        POutEdge edge;
-        edge.mbox = tinselUseRoutingKey();
-        edge.key = 0;
-        edge.threadMaskLow = key;
-        edge.threadMaskHigh = 0; 
-        // This is only writeable by this function
-        outTable[d][p]->append(edge);
+        }
       }
 
       // TODO : This is related to the earlier TODO about non-local before local.
