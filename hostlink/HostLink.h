@@ -14,7 +14,7 @@
 
 // Connections to PCIeStream
 #define PCIESTREAM      "pciestream"
-#define PCIESTREAM_SIM  "tinsel.b-1.1"
+#define PCIESTREAM_SIM  "tinsel.b0.1"
 
 // HostLink parameters
 struct HostLinkParams {
@@ -54,6 +54,8 @@ class HostLink {
   // Internal helper for sending messages
   bool sendHelper(uint32_t dest, uint32_t numFlits, void* payload,
          bool block, uint32_t key);
+  bool test(uint32_t dest);
+  bool test(uint32_t dest, uint32_t addr, uint32_t* value);
 
  public:
   // Dimensions of board mesh

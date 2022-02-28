@@ -41,10 +41,6 @@ VPIINCL=$(dir $(shell which bsc))../lib/VPI/
 ifeq ($(STRATIX10),True)
 TOPFILE = DE10Top.bsv
 TOPMOD = mkDE10Top
-
-# Top level module for bridge board
-HOSTTOPFILE = DE5BridgeTop.bsv
-HOSTTOPMOD = de5BridgeTop
 endif
 
 ifeq ($(STRATIXV),True)
@@ -61,8 +57,16 @@ $(info $$STRATIX10 is [${STRATIX10}])
 $(info $$TOPMOD is [${TOPMOD}])
 $(info $$QP is [${QP}])
 
+ifeq ($(STRATIX10),True)
+.PHONY: sim
+sim: $(TOPMOD)
+endif
+
+ifeq ($(STRATIXV),True)
 .PHONY: sim
 sim: $(TOPMOD) $(HOSTTOPMOD)
+endif
+
 
 .PHONY: verilog
 verilog: $(TOPMOD).v $(HOSTTOPMOD).v

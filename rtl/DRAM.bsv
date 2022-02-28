@@ -6,8 +6,12 @@ package DRAM;
 // ============================================================================
 
 // DRAM client id
+`ifdef StratixV
 typedef Bit#(TLog#(TAdd#(`DCachesPerDRAM,`FetchersPerProgRouter))) DRAMClientId;
-
+`endif
+`ifdef Stratix10
+typedef Bit#(TLog#(`DCachesPerDRAM)) DRAMClientId;
+`endif
 // DRAM request id
 typedef DRAMClientId DRAMReqId;
 

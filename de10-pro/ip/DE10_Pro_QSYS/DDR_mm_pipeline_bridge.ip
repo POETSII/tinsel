@@ -1039,7 +1039,7 @@
         <ipxact:parameter parameterId="USE_AUTO_ADDRESS_WIDTH" type="int">
           <ipxact:name>USE_AUTO_ADDRESS_WIDTH</ipxact:name>
           <ipxact:displayName>Use automatically-determined address width</ipxact:displayName>
-          <ipxact:value>0</ipxact:value>
+          <ipxact:value>1</ipxact:value>
         </ipxact:parameter>
         <ipxact:parameter parameterId="AUTO_ADDRESS_WIDTH" type="int">
           <ipxact:name>AUTO_ADDRESS_WIDTH</ipxact:name>

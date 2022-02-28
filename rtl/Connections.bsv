@@ -57,20 +57,16 @@ endmodule
 // ============================================================================
 // Off-chip RAM connections
 // ============================================================================
+`ifdef StratixV
 
-module connectClientsToOffChipRAM#(
+module connectClientsToOffChipRAMs5#(
   // Data caches
   Vector#(`DCachesPerDRAM, DCache) caches,
+  // Off-chip memory
   // Reqs and resps from ProgRouter's fetchers
   Vector#(`FetchersPerProgRouter, BOut#(DRAMReq)) routerReqs,
   Vector#(`FetchersPerProgRouter, In#(DRAMResp)) routerResps,
-  // Off-chip memory
-`ifdef StratixV
   OffChipRAMStratixV ram
-`endif
-`ifdef Stratix10
-  OffChipRAMStratix10 ram
-`endif
   ) ();
 
   // Count the number of outstanding fetcher requests
@@ -140,7 +136,49 @@ module connectClientsToOffChipRAM#(
   connectDirect(ramRespOutDecCount, ramResps);
 
 endmodule
+`endif
+`ifdef Stratix10
 
+module connectClientsToOffChipRAMs10#(
+  // Data caches
+  Vector#(`DCachesPerDRAM, DCache) caches,
+  // memories
+  OffChipRAMStratix10 ram
+  ) ();
+
+  // Count the number of outstanding fetcher requests
+  // Used to throttle the fetcher requests to avoid starving/blocking
+  // the cache requests
+  Integer throttleCount = 2 ** (`DRAMLogMaxInFlight - 1);
+  Count#(`DRAMLogMaxInFlight) fetcherCount <- mkCount(throttleCount);
+
+  // Merge cache requests
+  function getReqOut(cache) = cache.reqOut;
+  Out#(DRAMReq) cacheReqs <-
+    mkMergeTreeB(Fair,
+      mkUGShiftQueue1(QueueOptFmax),
+      map(getReqOut, caches));
+  Queue#(DRAMReq) cacheReqsQueue <- mkUGQueue;
+  connectToQueue(cacheReqs, cacheReqsQueue);
+  // BOut#(DRAMReq) cacheReqsB = queueToBOut(cacheReqsQueue);
+
+  // // Merge cache and router requests, and connect to off-chip RAM
+  // let reqs <- fromBOut(cacheReqsB);
+  connectUsing(mkUGQueue, fromBOut(queueToBOut(cacheReqsQueue)), ram.reqIn);
+
+  // Connect load responses
+  function DRAMClientId getRespKey(DRAMResp resp) = resp.id;
+  function getRespIn(cache) = cache.respIn;
+  let ramResps <- mkResponseDistributor(
+                    getRespKey,
+                    mkUGShiftQueue2(QueueOptFmax),
+                    map(getRespIn, caches));
+
+  // Connect responses from off-chip RAM
+  connectDirect(ram.respOut, ramResps);
+
+endmodule
+`endif
 // ============================================================================
 // ProgRouter performance counter connections
 // ============================================================================

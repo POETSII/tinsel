@@ -33,6 +33,9 @@ update-mif: checkenv
 download-sof: checkenv
 	quartus_pgm -m jtag -o "p;output_files/DE10_Pro.sof"
 
+InstrMem.mif:
+	make -C $(TINSEL_ROOT)/apps/boot
+
 .PHONY: clean
 clean:
 	rm -rf tmp-clearbox synth_dumps qdb output_files

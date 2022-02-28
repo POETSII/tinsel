@@ -39,7 +39,8 @@ boardctrld: boardctrld.cpp PowerLink.o JtagAtlantic.h \
 
 sim/boardctrld: boardctrld.cpp sim/PowerLink.o JtagAtlantic.h \
                 $(INC)/config.h jtag/UART.h Queue.h jtag/UARTBuffer.h \
-                sim/UART.o sim/SocketUtils.o DebugLinkFormat.h BoardCtrl.h
+                sim/UART.o sim/SocketUtils.o DebugLinkFormat.h BoardCtrl.h \
+								PowerLink.o SocketUtils.o
 	g++ -DSIMULATE -std=c++98 boardctrld.cpp sim/UART.o \
 	  PowerLink.o SocketUtils.o $(CPPFLAGS) -I $(HL) -o sim/boardctrld
 
