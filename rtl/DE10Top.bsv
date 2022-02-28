@@ -81,10 +81,16 @@ module mkDE10Top(DE10Ifc ifc);
   MakeResetIfc hostReset <- mkReset(1, False, defaultClock);
   Reset combinedReset <- mkResetEither(externalReset, hostReset.new_rst);
 
-  DE10Ifc top <- mkDE10Top_inner(reset_by combinedReset);
 
+
+  `ifdef SIMULATE
+  DE10Ifc top <- mkDE10Top_inner();
+
+  `endif
 
   `ifndef SIMULATE
+  DE10Ifc top <- mkDE10Top_inner(reset_by combinedReset);
+
   (* fire_when_enabled, no_implicit_conditions *)
   rule pcieReset;
     if (top.resetReq) hostReset.assertReset();
@@ -116,8 +122,10 @@ module mkDE10Top_inner(DE10Ifc ifc);
 
   // Create off-chip RAMs
   Vector#(`DRAMsPerBoard, OffChipRAMStratix10) rams;
-  for (Integer i = 0; i < `DRAMsPerBoard; i=i+1)
-    rams[i] <- mkOffChipRAMStratix10(fromInteger(i*3));
+  for (Integer i = 0; i < `DRAMsPerBoard; i=i+1) begin
+    let ram = mkOffChipRAMStratix10(fromInteger(i));
+    rams[i] <- ram;
+  end
 
 
   // Create data caches
@@ -236,6 +244,14 @@ module mkDE10Top_inner(DE10Ifc ifc);
   function idleClient(core) = core.idleClient;
   connectClientsToIdleDetector(
     map(idleClient, vecOfCores), noc.activities, idle);
+
+  // Connections to off-chip RAMs
+  for (Integer i = 0; i < `DRAMsPerBoard; i=i+1) begin
+    let dcache = dcaches[i];
+    let dram = rams[i];
+    connectClientsToOffChipRAMs10(dcache, dram);
+  end
+
 
   // Connects ProgRouter performance counters to cores
   connectProgRouterPerfCountersToCores(noc.progRouterPerfCounters,

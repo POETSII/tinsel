@@ -4,7 +4,7 @@
 # Load config parameters
 while read -r EXPORT; do
   eval $EXPORT
-done <<< `python ../../config.py envs`
+done <<< `../../config.py envs`
 
 cat - << EOF
 /* THIS FILE HAS BEEN GENERATED AUTOMATICALLY. */

@@ -952,9 +952,12 @@ module mkCore#(CoreId myId) (Core);
           req.byteEn   = byteEn;
           // Issue scratchpad request
           mailbox.scratchpadReq.put(req);
+          // $display("core %d ", myId, " sent scratchpad store req id ", req.id, " isStore ", req.isStore, " addr ", req.wordAddr);
           suspend = True;
-        end else
+        end else begin
+          // $display("core %d ", myId, " was blocked on scratchpad req. (can NOT put) ");
           retry = True;
+        end
       end else begin
         if (dcacheReq.canPut) begin
           // Line number and way to flush
@@ -973,9 +976,12 @@ module mkCore#(CoreId myId) (Core);
           req.byteEn = byteEn;
           // Issue data cache request
           dcacheReq.put(req);
+          $display("core %d ", myId, " sent dcache load req id ", req.id, " isStore ", req.cmd.isStore, " isload ", req.cmd.isLoad, " addr ", req.addr, " isFlush ", req.cmd.isFlush);
           suspend = True;
-        end else
+        end else begin
+          $display("core %d ", myId, " was blocked on dcache req. (can NOT put) ");
           retry = True;
+        end
       end
     end
     // Mailbox send

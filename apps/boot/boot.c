@@ -8,6 +8,10 @@ INLINE void sendb(char c) {
   while (tinselUartTryPut(c) == 0);
 }
 
+// INLINE void sendb(char c) {
+//   tinselEmit(c);
+// }
+
 // Main
 int main()
 {
@@ -45,6 +49,9 @@ int main()
 
       if (cmd == WriteInstrCmd) {
         // Write instructions to instruction memory
+        // tinselEmit(0x1);
+        // tinselEmit(addrReg);
+
         int n = msgIn->numArgs;
         for (int i = 0; i < n; i++) {
           tinselWriteInstr(addrReg, msgIn->args[i]);
@@ -53,7 +60,12 @@ int main()
       }
       else if (cmd == StoreCmd) {
         // Store words to data memory
+        // tinselEmit(0x2);
+        // tinselEmit(addrReg);
+
         int n = msgIn->numArgs;
+        // tinselEmit(addrReg);
+        // *(uint32_t*)addrReg = 5;
         for (int i = 0; i < n; i++) {
           uint32_t* ptr = (uint32_t*) addrReg;
           *ptr = msgIn->args[i];
@@ -63,6 +75,14 @@ int main()
       }
       else if (cmd == LoadCmd) {
         // Load words from data memory
+        // if (addrReg == 0) {
+        //   tinselCacheFlush();
+        //   // Wait until lines written back, by issuing a load
+        //   volatile uint32_t* ptr = (uint32_t*) lastDataStoreAddr; ptr[0];
+        // }
+        // tinselEmit(0x3);
+        // tinselEmit(addrReg);
+
         int n = msgIn->args[0];
         while (n > 0) {
           int m = n > 4 ? 4 : n;
@@ -102,14 +122,14 @@ int main()
       // }
       else if (cmd == StartCmd) {
         // Cache flush
-        // tinselCacheFlush();
+        tinselCacheFlush();
         // Wait until lines written back, by issuing a load
         if (lastDataStoreAddr != 0) {
           volatile uint32_t* ptr = (uint32_t*) lastDataStoreAddr; ptr[0];
         }
         // Send response
         tinselWaitUntil(TINSEL_CAN_SEND);
-        // msgOut[0] = me; //tinselId();
+        msgOut[0] = me; //tinselId();
         tinselSend(hostId, msgOut);
 
         // Wait for triggerstartOne
@@ -127,7 +147,6 @@ int main()
   }
   // Call the application's main function
   int (*appMain)() = (int (*)()) (TinselMaxBootImageBytes);
-  sendb('g'); sendb('\n');
   appMain();
 
   // Restart boot loader

@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 
 # SPDX-License-Identifier: BSD-2-Clause
 # This file controls the parameters for the circuit generator
@@ -32,10 +32,10 @@ p["LogInstrsPerCore"] = 11
 p["SharedInstrMem"] = True
 
 # Log of number of multi-threaded cores sharing a DCache
-p["LogCoresPerDCache"] = 2 # the mailbox calc defines no of cores, but this defines hookup; need to match
+p["LogCoresPerDCache"] = 1 # 2 # the mailbox calc defines no of cores, but this defines hookup; need to match
 
 # Log of number of caches per DRAM port
-p["LogDCachesPerDRAM"] = 3
+p["LogDCachesPerDRAM"] = 0 # 1
 
 # Log of number of 32-bit words in a single memory transfer
 p["LogWordsPerBeat"] = 3
@@ -50,7 +50,7 @@ p["DCacheLogSetsPerThread"] = 2
 p["DCacheLogNumWays"] = 4
 
 # Number of DRAMs per FPGA board
-p["LogDRAMsPerBoard"] = 1
+p["LogDRAMsPerBoard"] = 2
 
 # Number of SRAMs per FPGA board (or None if 0)
 p["SRAMsPerBoard"] = None
@@ -61,7 +61,7 @@ p["DRAMLogMaxInFlight"] = 5
 p["DRAMLatency"] = 20
 
 # Size of each DRAM
-p["LogBeatsPerDRAM"] = 25
+p["LogBeatsPerDRAM"] = 26
 
 # Size of internal flit payload
 p["LogWordsPerFlit"] = 2
@@ -76,10 +76,10 @@ p["LogMsgsPerMailbox"] = 9 # must be at least enough to store one message per th
 p["LogCoresPerMailbox"] = 2
 
 # Number of bits in mailbox mesh X coord
-p["MailboxMeshXBits"] = 2
+p["MailboxMeshXBits"] = 1 # 1
 
 # Number of bits in mailbox mesh Y coord
-p["MailboxMeshYBits"] = 2
+p["MailboxMeshYBits"] = 0 # 2
 
 # Size of multicast queues in mailbox
 p["LogMsgPtrQueueSize"] = 6
@@ -181,23 +181,31 @@ p["UseCustomAccelerator"] = False
 # Clock frequency (in MHz)
 p["ClockFreq"] = 200
 
-# if True: # simulate
-#     p["MailboxMeshXBits"] = 1
-#     p["MailboxMeshYBits"] = 1
-#     p["LogDCachesPerDRAM"] = 1
-#     p["MeshXLenWithinBox"] = 1
-#     p["MeshYLenWithinBox"] = 1
-#     p["BoxMeshXLen"] = 1
-#     p["BoxMeshYLen"] = 1
-#     p["BoxMesh"] = ('{'
-#         '{"tparks-optiplex-390",},'
-#       '}')
+if "simulate" in sys.argv: # simulate
+    # p["LogCoresPerDCache"] = p["LogCoresPerDCache"]-1
+    # p["MailboxMeshXBits"] = p["MailboxMeshXBits"]-1
+    # p["MailboxMeshYBits"] = p["MailboxMeshYBits"]-1
+    # p["LogDRAMsPerBoard"] = 1
+    # p["MailboxMeshYBits"] = p["MailboxMeshYBits"]-1
+    # p["LogDCachesPerDRAM"] = 1
+    # p["MeshXLenWithinBox"] = 1
+    # p["MeshYLenWithinBox"] = 1
+    # p["BoxMeshXLen"] = 1
+    # p["BoxMeshYLen"] = 1
+    import socket
+    host = socket.gethostname()
+    if "." in host:
+        host = host.split(".")[0]
+    host = host.lower()
+    p["BoxMesh"] = ('{'
+        '{"' + host + '",},'
+      '}')
 
-if False: # make mailbox type more compatible with the dual port memory
-    p["LogMsgsPerMailbox"] = 8
-    p["LogCoresPerMailbox"] = 4
-    p["MeshXBits"] = 1
-    p["MeshXBits"] = 1
+# if False: # make mailbox type more compatible with the dual port memory
+#     p["LogMsgsPerMailbox"] = 8
+#     p["LogCoresPerMailbox"] = 4
+#     p["MeshXBits"] = 1
+#     p["MeshXBits"] = 1
 
 
 #==============================================================================
@@ -213,6 +221,13 @@ elif  p["DeviceFamily"] == quoted("Stratix 10"):
     p["Stratix10"] = True
 else:
     raise RuntimeError("Unsupported device type " + str(p['DeviceFamily']) + ", Stratix V and Stratix 10 currently supported.")
+
+
+
+_dramCores = 2 ** (p["LogCoresPerDCache"] + p["LogDCachesPerDRAM"] + p["LogDRAMsPerBoard"])
+_mailboxCores = 2 ** (p["MailboxMeshXBits"] + p["MailboxMeshYBits"] + p["LogCoresPerMailbox"])
+if _dramCores != _mailboxCores:
+    raise ValueError(f"Tinsel configuration has mismatched mailbox and DRAM core networks.\nexpected {_dramCores} connected to DRAMs, but {_mailboxCores} are connected to the flit network.")
 
 # Number of mailboxes per board
 p["LogMailboxesPerBoard"] = p["MailboxMeshXBits"] + p["MailboxMeshYBits"]
