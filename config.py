@@ -41,7 +41,7 @@ p["LogDCachesPerDRAM"] = 0 # 1
 p["LogWordsPerBeat"] = 3
 
 # Log of number of beats in a cache line
-p["LogBeatsPerLine"] = 0
+p["LogBeatsPerLine"] = 1
 
 # Log of number of sets per thread in set-associative data cache
 p["DCacheLogSetsPerThread"] = 2
@@ -61,7 +61,7 @@ p["DRAMLogMaxInFlight"] = 5
 p["DRAMLatency"] = 20
 
 # Size of each DRAM
-p["LogBeatsPerDRAM"] = 26
+p["LogBeatsPerDRAM"] = 25
 
 # Size of internal flit payload
 p["LogWordsPerFlit"] = 2
@@ -367,9 +367,14 @@ p["MaxThreads"] = (2**p["MeshXBits"] *
 # Twice the size of DRAM
 # Top half and bottom half map to the same DRAM memory
 # But the top half has the partition-interlaving translation applied
-p["LogBeatsPerMem"] = p["LogBeatsPerDRAM"] + 1
-p["LogBytesPerMem"] = p["LogBytesPerDRAM"] + 1
-p["LogLinesPerMem"] = p["LogLinesPerDRAM"] + 1
+if p["DeviceFamily"] == quoted("Stratix 10"):
+    p["LogBeatsPerMem"] = p["LogBeatsPerDRAM"]
+    p["LogBytesPerMem"] = p["LogBytesPerDRAM"]
+    p["LogLinesPerMem"] = p["LogLinesPerDRAM"]
+else:
+    p["LogBeatsPerMem"] = p["LogBeatsPerDRAM"] + 1
+    p["LogBytesPerMem"] = p["LogBytesPerDRAM"] + 1
+    p["LogLinesPerMem"] = p["LogLinesPerDRAM"] + 1
 
 # Cores per FPU
 p["CoresPerFPU"] = 2 ** p["LogCoresPerFPU"]

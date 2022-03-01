@@ -490,10 +490,10 @@ module mkDCache#(DCacheId myId) (DCache);
     // Send a load request?
     Bool isLoad = !miss.evictDirty || writebackDone;
     // Determine line address
-    let writeLineAddr =
+    Bit#(`LogLinesPerMem) writeLineAddr =
       reconstructLineAddr(miss.evictTag.key, miss.req.addr);
-    let readLineAddr =
-      miss.req.addr[`LogBytesPerDRAM:`LogBytesPerLine];
+    Bit#(`LogLinesPerMem) readLineAddr =
+      miss.req.addr[`LogBytesPerDRAM-1:`LogBytesPerLine]; // 28b
     // Create inflight request info
     InflightDCacheReqInfo info;
     info.req = miss.req;

@@ -7945,7 +7945,7 @@
         <ipxact:parameter parameterId="CTRL_REORDER_EN" type="bit">
           <ipxact:name>CTRL_REORDER_EN</ipxact:name>
           <ipxact:displayName>PARAM_CTRL_REORDER_EN_NAME</ipxact:displayName>
-          <ipxact:value>true</ipxact:value>
+          <ipxact:value>false</ipxact:value>
         </ipxact:parameter>
         <ipxact:parameter parameterId="CTRL_ECC_READDATAERROR_EN" type="bit">
           <ipxact:name>CTRL_ECC_READDATAERROR_EN</ipxact:name>
@@ -8110,7 +8110,7 @@
         <ipxact:parameter parameterId="CTRL_DDR4_REORDER_EN" type="bit">
           <ipxact:name>CTRL_DDR4_REORDER_EN</ipxact:name>
           <ipxact:displayName>Enable Reordering</ipxact:displayName>
-          <ipxact:value>true</ipxact:value>
+          <ipxact:value>false</ipxact:value>
         </ipxact:parameter>
         <ipxact:parameter parameterId="CTRL_DDR4_STARVE_LIMIT" type="int">
           <ipxact:name>CTRL_DDR4_STARVE_LIMIT</ipxact:name>
