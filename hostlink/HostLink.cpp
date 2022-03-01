@@ -509,7 +509,7 @@ bool HostLink::canRecv()
 
 bool HostLink::test(uint32_t dest) {
   // clobbers core ADDR reg!
-  return 1; // skip for simulation
+  // return 1; // skip for simulation
 
   uint32_t load_reply_buf[1 << TinselLogWordsPerMsg];
   BootReq req;
@@ -539,7 +539,7 @@ bool HostLink::test(uint32_t dest) {
 
 bool HostLink::test(uint32_t dest, uint32_t addr, uint32_t* value) {
   // clobbers core ADDR reg!
-  return 1; // skip for simulation
+  // return 1; // skip for simulation
 
   uint32_t load_reply_buf[1 << TinselLogWordsPerMsg];
   BootReq req;
@@ -633,7 +633,7 @@ void HostLink::loadAll(const char* codeFilename, const char* dataFilename)
       }
     }
     addrReg = addr + 4;
-    printf("[hostlink::LoadAll::instrs] %i\n", addr);
+    // printf("[hostlink::LoadAll::instrs] %i\n", addr);
   }
   printf("[hostlink::LoadAll] written code memory\n");
 

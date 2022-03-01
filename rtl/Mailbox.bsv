@@ -107,7 +107,7 @@ import Globals      :: *;
 import DReg         :: *;
 import FlitMerger   :: *;
 import QueueArray   :: *;
-import Probe :: * ;
+
 // =============================================================================
 // Types
 // =============================================================================
@@ -284,12 +284,10 @@ endinterface
 module mkMailbox (Mailbox);
   // True dual-port mixed-width scratchpad
   // (One flit-sized port and one word-sized port)
-  // BlockRamTrueMixedBE#(MailboxFlitAddr, FlitPayload, MailboxWordAddr, Bit#(32))
-  //   scratchpad <- mkBlockRamTrueMixedBEOpts_S10(defaultBlockRamOpts);
 
-  BlockRamTrueMixedByteEnPadded#(MailboxFlitAddr, FlitPayload, MailboxWordAddr, Bit#(32), TDiv#(32, 8), SizeOf#(FlitPayload), 32)
-    scratchpad <- mkBlockRamTrueMixedBEOptsPadded_S10(defaultBlockRamOpts);
-
+  BlockRamTrueMixedBE#(MailboxFlitAddr, FlitPayload, MailboxWordAddr, Bit#(32))
+    //scratchpad <- mkBlockRamTrueMixedBE;
+    scratchpad <- mkBlockRamPortableTrueMixedBE;
 
   // Request & response ports
   InPort#(ScratchpadReq) spadReqPort  <- mkInPort;
@@ -374,7 +372,7 @@ module mkMailbox (Mailbox);
   // RAM containing reference count for every message slot
   BlockRamOpts refCountOpts = defaultBlockRamOpts;
   refCountOpts.registerDataOut = False;
-  BlockRamTrueMixed#(MailboxMsgAddr, RefCount, MailboxMsgAddr, RefCount)
+  BlockRamTrue#(MailboxMsgAddr, RefCount)
     refCount <- mkBlockRamTrueMixedOpts(refCountOpts);
 
   // Signals for triggering a ref count update
@@ -1065,20 +1063,6 @@ module connectCoresToMailbox#(
                   mkUGShiftQueue1(QueueOptFmax),
                   map(txReqOut, clients));
   connectUsing(mkUGQueue, txReqs, server.txReqIn);
-
-  // Vector#(`CoresPerMailbox, Probe#(TransmitReq)) debug_sentflits;
-  // for (Integer i = 0; i < `CoresPerMailbox; i=i+1) begin
-  //   debug_sentflits[i] <- mkProbe;
-  // end
-  //
-  // (* fire_when_enabled, no_implicit_conditions *)
-  // rule writeProbes;
-  //   for (Integer i = 0; i < `CoresPerMailbox; i=i+1) begin
-  //     debug_sentflits[i] <= clients[i].txReqOut.value;
-  //   end
-  // endrule
-
-
 
   // Connect receive requests
   for (Integer i = 0; i < `CoresPerMailbox; i=i+1)
