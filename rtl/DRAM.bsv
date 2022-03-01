@@ -50,20 +50,21 @@ typedef Bit#(3) RAMId;
 // But the interleaving translation is applied to the upper half of memory.
 function Bit#(`LogBeatsPerDRAM)
     toDRAMAddr(Bit#(`LogBeatsPerMem) memAddr);
-  Bit#(`LogBeatsPerDRAM) addr = truncate(memAddr);
-  // Separate address into MSB and rest
-  Bit#(1) msb = truncateLSB(addr);
-  Bit#(TSub#(`LogBeatsPerDRAM, 1)) rest = truncate(addr);
-  // The bottom bits address beats within a line
-  Bit#(`LogBeatsPerLine) bottom = truncate(rest); // length 0
-  Bit#(TSub#(TSub#(`LogBeatsPerDRAM, 1), `LogBeatsPerLine)) middle =
-    truncateLSB(rest); // ==minus top 2 bits of addr on DE10
-  // Separate upper half of address space into partition index and offset
-  Bit#(`LogThreadsPerDRAM) partIndex = truncateLSB(middle);
-  let partOffset = truncate(middle);
-  // Produce DRAM address
-  return memAddr[`LogBeatsPerDRAM] == 0 ? addr :
-           (msb == 0 ? addr : {msb, partOffset, partIndex, bottom});
+  // Bit#(`LogBeatsPerDRAM) addr = truncate(memAddr);
+  // // Separate address into MSB and rest
+  // Bit#(1) msb = truncateLSB(addr);
+  // Bit#(TSub#(`LogBeatsPerDRAM, 1)) rest = truncate(addr);
+  // // The bottom bits address beats within a line
+  // Bit#(`LogBeatsPerLine) bottom = truncate(rest); // length 0
+  // Bit#(TSub#(TSub#(`LogBeatsPerDRAM, 1), `LogBeatsPerLine)) middle =
+  //   truncateLSB(rest); // ==minus top 2 bits of addr on DE10
+  // // Separate upper half of address space into partition index and offset
+  // Bit#(`LogThreadsPerDRAM) partIndex = truncateLSB(middle);
+  // let partOffset = truncate(middle);
+  // // Produce DRAM address
+  // return memAddr[`LogBeatsPerDRAM] == 0 ? addr :
+  //          (msb == 0 ? addr : {msb, partOffset, partIndex, bottom});
+  return memAddr;
 endfunction
 
 // ============================================================================
