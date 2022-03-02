@@ -1725,6 +1725,10 @@ set_global_assignment -name QII_AUTO_PACKED_REGISTERS NORMAL
 set_global_assignment -name NUMBER_OF_EXAMPLE_NODES_REPORTED 5
 set_instance_assignment -name PARTITION_COLOUR 4285505023 -to DE10_Pro -entity DE10_Pro
 set_instance_assignment -name PARTITION_COLOUR 4285857726 -to auto_fab_0 -entity DE10_Pro
+set_global_assignment -name FINAL_PLACEMENT_OPTIMIZATION ALWAYS
+set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/atx_pll_s10_100g.ip
+set_global_assignment -name TCL_SCRIPT_FILE ip/atx_pll_100g_clkgen/atx_pll_100g_clkgen_hw.tcl
+set_global_assignment -name VERILOG_FILE ip/atx_pll_100g_clkgen/atx_pll_100g_clkgen.v
 set_global_assignment -name VERILOG_FILE /local/ecad/bsc/inst/lib/Verilog/main.v
 set_global_assignment -name VERILOG_FILE /local/ecad/bsc/inst/lib/Verilog/UngatedClockSelect.v
 set_global_assignment -name VERILOG_FILE /local/ecad/bsc/inst/lib/Verilog/UngatedClockMux.v
@@ -1887,4 +1891,10 @@ set_global_assignment -name QSYS_FILE sysB.qsys
 set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/mm_clockcross_DDR4.ip
 set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/DDR_mm_pipeline_bridge.ip
 set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/DE10_Pro_QSYS_emif_s10_ddr4_a.ip
-set_global_assignment -name FINAL_PLACEMENT_OPTIMIZATION ALWAYS
+set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/soc_alt_e100s10.ip
+set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/S10_100GMAC.ip
+set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/DE10_Pro_QSYS_clock_bridge_MAC.ip
+set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/DE10_Pro_QSYS_network_CC.ip
+set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/network_CC_A_rx_0.ip
+set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/network_CC_A_rx_1.ip
+set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/DE10_Pro_QSYS_atx_pll_dualclk_A.ip

@@ -100,12 +100,12 @@ DebugLink::DebugLink(DebugLinkParams p)
     fprintf(stderr, "Box '%s' not recognised as a POETS box\n", hostname);
     exit(EXIT_FAILURE);
   }
-  if (thisBoxX > 0) {
-    fprintf(stderr, "This machine (the origin of the box sub-mesh) "
-                    "must have a box X coordinate of 0\n"
-                    "But is has a box X coordinate of %i\n", thisBoxX);
-    exit(EXIT_FAILURE);
-  }
+  // if (thisBoxX > 0) {
+  //   fprintf(stderr, "This machine (the origin of the box sub-mesh) "
+  //                   "must have a box X coordinate of 0\n"
+  //                   "But is has a box X coordinate of %i\n", thisBoxX);
+  //   exit(EXIT_FAILURE);
+  // }
   if ((thisBoxX+p.numBoxesX-1) >= TinselBoxMeshXLen ||
       (thisBoxY+p.numBoxesY-1) >= TinselBoxMeshYLen) {
     fprintf(stderr, "Requested box sub-mesh of size %ix%i "
@@ -256,6 +256,7 @@ DebugLink::DebugLink(DebugLinkParams p)
         }
         else {
           // It's a worker board, let's work out its mesh coordinates
+
           int id = pkt.payload[1] - 1;
           int subX = id & ((1 << TinselMeshXBitsWithinBox) - 1);
           int subY = id >> TinselMeshXBitsWithinBox;
@@ -264,6 +265,7 @@ DebugLink::DebugLink(DebugLinkParams p)
           // Full X and Y coordinates on the global board mesh
           int fullX = x*TinselMeshXLenWithinBox + subX;
           int fullY = y*TinselMeshYLenWithinBox + subY;
+          printf("[DbgLink::Ctor] got box with subx %i suby % X %i Y %i\n", subX, subY, fullX, fullY);
           assert(boxX[fullY][fullX] == -1);
           // Populate bidirectional mappings
           boardX[y][x][pkt.linkId] = fullX;

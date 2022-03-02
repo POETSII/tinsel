@@ -258,10 +258,10 @@ int main(int argc, char* argv[])
     #ifndef SIMULATE
     #ifdef TinselStratixV
     powerEnable(1);
+    #endif
     sleep(1);
     waitForFPGAs(numBoards);
     sleep(1);
-    #endif
     #endif
 
     // Fork a process to handle connection

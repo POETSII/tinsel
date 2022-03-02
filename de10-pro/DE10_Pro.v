@@ -130,6 +130,27 @@ module DE10_Pro(
   input              PCIE_PERST_n,
   output             PCIE_WAKE_n,
 
+  input              QSFP28A_REFCLK_p,
+  output   [ 3: 0]   QSFP28A_TX_p,
+  input    [ 3: 0]   QSFP28A_RX_p,
+  input              QSFP28A_INTERRUPT_n,
+  output             QSFP28A_LP_MODE,
+  input              QSFP28A_MOD_PRS_n,
+  output             QSFP28A_MOD_SEL_n,
+  output             QSFP28A_RST_n,
+  inout              QSFP28A_SCL,
+  inout              QSFP28A_SDA,
+
+  input              QSFP28B_REFCLK_p,
+  output   [ 3: 0]   QSFP28B_TX_p,
+  input    [ 3: 0]   QSFP28B_RX_p,
+  input              QSFP28B_INTERRUPT_n,
+  output             QSFP28B_LP_MODE,
+  input              QSFP28B_MOD_PRS_n,
+  output             QSFP28B_MOD_SEL_n,
+  output             QSFP28B_RST_n,
+  inout              QSFP28B_SCL,
+  inout              QSFP28B_SDA,
 
   input EXP_EN,
 

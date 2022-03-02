@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <preferences>
  <debug showDebugMenu="0" />
- <window width="2263" height="1338" x="868" y="38" />
+ <window width="3188" height="1901" x="4170" y="63" />
  <systemtable
    filter="Tinsel_0.pcie_host_bus"
    showAvalonDomains="1"

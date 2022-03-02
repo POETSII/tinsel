@@ -30,13 +30,13 @@
 #define TinselTransmitBound 20
 #define TinselLinkTimeout 1024
 #define TinselMacLatency 100
-#define TinselMeshXBits 1
-#define TinselMeshXBits1 2
+#define TinselMeshXBits 2
+#define TinselMeshXBits1 3
 #define TinselMeshYBits 1
 #define TinselMeshYBits1 2
-#define TinselMeshXBitsWithinBox 1
+#define TinselMeshXBitsWithinBox 2
 #define TinselMeshYBitsWithinBox 1
-#define TinselMeshXLenWithinBox 1
+#define TinselMeshXLenWithinBox 2
 #define TinselMeshYLenWithinBox 1
 #define TinselLogCoresPerFPU 2
 #define TinselLogNorthSouthLinks 0
@@ -63,7 +63,7 @@
 #define TinselEnablePerfCount true
 #define TinselBoxMeshXLen 1
 #define TinselBoxMeshYLen 1
-#define TinselBoxMesh {{"asdex"}}
+#define TinselBoxMesh {{"betsy"}}
 #define TinselUseCustomAccelerator false
 #define TinselClockFreq 200
 #define TinselStratix10 true
@@ -113,7 +113,7 @@
 #define TinselLogCoresPerBoard1 4
 #define TinselCoresPerBoard 8
 #define TinselThreadsPerCore 16
-#define TinselMaxThreads 512
+#define TinselMaxThreads 1024
 #define TinselLogBeatsPerMem 25
 #define TinselLogBytesPerMem 30
 #define TinselLogLinesPerMem 24
@@ -132,7 +132,7 @@
 #define TinselPOLiteDRAMGlobalsLength 16384
 #define TinselPOLiteProgRouterBase 16896
 #define TinselPOLiteProgRouterLength 536854016
-#define TinselBoardsPerBox 1
+#define TinselBoardsPerBox 2
 #define TinselFetchersPerProgRouter 6
 #define TinselLogFetcherFlitBufferSize 5
 #endif

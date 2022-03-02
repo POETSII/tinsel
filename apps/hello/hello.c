@@ -65,66 +65,82 @@ void called() {
 
 int main()
 {
-  void* sp = 0;
-
-  sendb('h');
-  sendb('e');
-  sendb('l');
-  sendb('l');
-  sendb('o');
-  sendb('\n');
-  puts_me("stack ptr: \n");
-  puthex_me( (uint32_t)(&sp) );
-  asm volatile("" : "+r"(sp) );
-  sendb('\n');
-  // asm volatile("jr zero");
-  // puts_me(msg_bss);
-  // puts_me(msg_rodata);
+  // void* sp = 0;
+  // asm volatile("" : "+r"(sp) );
   //
-  // puts_me(msg_text);
-  // puts_me("thread id ");
+  // unsigned int me = tinselId();
+  //
+  // asm volatile("" : "+r"(sp) );
+  // printf("hello from printf thread 0x%x\n", me);
+  // return 0;
+  //
+  //
+  // sendb('h');
+  // asm volatile("" : "+r"(sp) );
+  // sendb('e');
+  // asm volatile("" : "+r"(sp) );
+  // sendb('l');
+  // asm volatile("" : "+r"(sp) );
+  // sendb('l');
+  // asm volatile("" : "+r"(sp) );
+  // sendb('o');
+  // asm volatile("" : "+r"(sp) );
+  // sendb('\n');
   unsigned int me = tinselId();
-  //puthex_me(me);
-  //sendb('\n');
-  //asm volatile("" : "+r"(me) );
+  printf("hello from printf thread 0x%x\n", me);
+  return 0;
 
+  // asm volatile("" : "+r"(sp) );
+  // puts_me("stack ptr: \n");
+  // asm volatile("" : "+r"(sp) );
+  // puthex_me( (uint32_t)(&sp) );
+  // sendb('\n');
+  // // asm volatile("jr zero");
+  // // puts_me(msg_bss);
+  // // puts_me(msg_rodata);
+  // //
+  // // puts_me(msg_text);
+  // // puts_me("thread id ");
+  // //puthex_me(me);
+  // //sendb('\n');
+  // //asm volatile("" : "+r"(me) );
   //
-    for (uint32_t i = me/16 % (1<<TinselDCacheLogSetsPerThread); i < (1<<TinselDCacheLogSetsPerThread); i++) {
-      for (uint32_t j = me/(16*(1 << TinselDCacheLogSetsPerThread)); j < (1<<TinselDCacheLogNumWays); j++) {
-        // printf_me("flushing set %x way %x \n", i, j);
-        puts_me("core ");
-        puthex_me(me);
-        puts_me(" flushing set ");
-        puthex_me(i);
-        puts_me(" way ");
-        puthex_me(j);
-        sendb('\n');
-        asm volatile("" : "+r"(i) );
-        // seq. point for i
-        tinselFlushLine(i, j);
-      }
-    }
-
-
-
-
+  // //
+  //   // for (uint32_t i = me/16 % (1<<TinselDCacheLogSetsPerThread); i < (1<<TinselDCacheLogSetsPerThread); i++) {
+  //   //   for (uint32_t j = me/(16*(1 << TinselDCacheLogSetsPerThread)); j < (1<<TinselDCacheLogNumWays); j++) {
+  //   //     // printf_me("flushing set %x way %x \n", i, j);
+  //   //     puts_me("core ");
+  //   //     puthex_me(me);
+  //   //     puts_me(" flushing set ");
+  //   //     puthex_me(i);
+  //   //     puts_me(" way ");
+  //   //     puthex_me(j);
+  //   //     sendb('\n');
+  //   //     asm volatile("" : "+r"(i) );
+  //   //     // seq. point for i
+  //   //     tinselFlushLine(i, j);
+  //   //   }
+  //   // }
+  //
+  //
+  //
+  //
   // tinselCacheFlush();
   // puts_me("flushed cache\n");
-  // sendb('\n');
-  // sendb('\n');
-  // sendb('\n');
+  // // sendb('\n');
+  // // sendb('\n');
+  // // sendb('\n');
+  // //
+  // // unsigned int* dram = (void *)0;
+  // // if (me == 0) {
+  // //   puts_me("dram dump: \n");
+  // //   for (int i=512/8; i<768; i++) {
+  // //     puthex_me(dram[i]);
+  // //     sendb('\n');
+  // //   }
+  // // }
+  // // uncommenting this prevents any code from producing output.
   //
-  // unsigned int* dram = (void *)0;
-  // if (me == 0) {
-  //   puts_me("dram dump: \n");
-  //   for (int i=512/8; i<768; i++) {
-  //     puthex_me(dram[i]);
-  //     sendb('\n');
-  //   }
-  // }
-  // uncommenting this prevents any code from producing output.
-  // printf("hello from printf thread 0x%x\n", me);
-
-  // printf_me(msg_text, me);
-  return 0;
+  // // printf_me(msg_text, me);
+  // return 0;
 }

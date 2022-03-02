@@ -109,7 +109,7 @@ p["LinkTimeout"] = 1024
 p["MacLatency"] = 100
 
 # Number of bits in mesh X coord (board id)
-p["MeshXBits"] = 1
+p["MeshXBits"] = 2
 p["MeshXBits1"] = p["MeshXBits"] + 1
 
 # Number of bits in mesh Y coord (board id)
@@ -117,13 +117,13 @@ p["MeshYBits"] = 1
 p["MeshYBits1"] = p["MeshYBits"] + 1
 
 # Number of bits in mesh X coord within a box (DIP switches)
-p["MeshXBitsWithinBox"] = 1
+p["MeshXBitsWithinBox"] = 2
 
 # Number of bits in mesh Y coord within a box (DIP switches)
 p["MeshYBitsWithinBox"] = 1
 
 # Mesh X length within a box
-p["MeshXLenWithinBox"] = 1
+p["MeshXLenWithinBox"] = 2
 
 # Mesh Y length within a box
 p["MeshYLenWithinBox"] = 1
@@ -172,7 +172,7 @@ p["EnablePerfCount"] = True
 p["BoxMeshXLen"] = 1
 p["BoxMeshYLen"] = 1
 p["BoxMesh"] = ('{'
-    '{"asdex"}'
+    '{"betsy"}'
   '}')
 
 # Enable custom accelerators (experimental feature)

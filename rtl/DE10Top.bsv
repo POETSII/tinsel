@@ -47,6 +47,9 @@ import "BDPI" function Bit#(32) getBoardId();
 
 interface DE10Ifc;
   interface Vector#(`DRAMsPerBoard, DRAMExtIfc) dramIfcs;
+  interface Vector#(`NumNorthSouthLinks, AvalonMac) northMac;
+  interface Vector#(`NumNorthSouthLinks, AvalonMac) southMac;
+
   interface JtagUartAvalon jtagIfc;
   (* always_ready, always_enabled *)
   method Action setBoardId(Bit#(4) id);
@@ -266,29 +269,28 @@ module mkDE10Top_inner(DE10Ifc ifc);
   endrule
 
 
-
-
-
-
-
   // In simulation, display start-up message
-  `ifdef SIMULATE
+  // `ifdef SIMULATE
+
+  Reg#(Bool) started <- mkReg(False);
   rule displayStartup;
     let t <- $time;
-    if (t == 0) begin
-      $display("\nSimulator for board %d started", localBoardId);
-      $dumpvars();
+    if (!started) begin
+      $display("\nSimulator for board %d started at time ", localBoardId, t);
+      // $dumpvars();
+      temperature <= 0;
+      started <= True;
     end
   endrule
-  `endif
+  // `endif
 
   `ifndef SIMULATE
   function DRAMExtIfc getDRAMExtIfc(OffChipRAMStratix10 ram) = ram.extDRAM;
   interface dramIfcs = map(getDRAMExtIfc, rams);
   interface jtagIfc  = debugLink.jtagAvalon;
 
-  // interface northMac = noc.north;
-  // interface southMac = noc.south;
+  interface northMac = noc.north;
+  interface southMac = noc.south;
   // interface eastMac  = noc.east;
   // interface westMac  = noc.west;
   method Action setBoardId(Bit#(4) id);
