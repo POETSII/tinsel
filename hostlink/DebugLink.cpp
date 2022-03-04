@@ -265,14 +265,14 @@ DebugLink::DebugLink(DebugLinkParams p)
           // Full X and Y coordinates on the global board mesh
           int fullX = x*TinselMeshXLenWithinBox + subX;
           int fullY = y*TinselMeshYLenWithinBox + subY;
-          printf("[DbgLink::Ctor] got box with subx %i suby % X %i Y %i\n", subX, subY, fullX, fullY);
-          assert(boxX[fullY][fullX] == -1);
+          printf("[DbgLink::Ctor] got box with subx %i suby % X %i Y %i. WARN: assuming this is board %i\n", subX, subY, fullX, fullY, b);
+          // assert(boxX[fullY][fullX] == -1);
           // Populate bidirectional mappings
-          boardX[y][x][pkt.linkId] = fullX;
-          boardY[y][x][pkt.linkId] = fullY;
+          boardX[y][x][b] = fullX;
+          boardY[y][x][b] = fullY;
           boxX[fullY][fullX] = x;
           boxY[fullY][fullX] = y;
-          linkId[fullY][fullX] = pkt.linkId;
+          linkId[fullY][fullX] = b;
         }
       }
   }
