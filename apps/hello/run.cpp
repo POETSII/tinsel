@@ -4,7 +4,13 @@
 int main()
 {
 
-  HostLink hostLink;
+  HostLinkParams params;
+  params.numBoxesX=1;
+  params.numBoxesY=1;
+  params.useExtraSendSlot=false;
+  // HostLink hl( params );
+
+  HostLink hostLink(params);
   printf("[hello/run::main] starting to load cores.\n");
 
   // hostLink.boot("code.v", "data.v");

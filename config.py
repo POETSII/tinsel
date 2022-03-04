@@ -123,10 +123,10 @@ p["MeshXBitsWithinBox"] = 2
 p["MeshYBitsWithinBox"] = 1
 
 # Mesh X length within a box
-p["MeshXLenWithinBox"] = 2
+p["MeshXLenWithinBox"] = 1
 
 # Mesh Y length within a box
-p["MeshYLenWithinBox"] = 1
+p["MeshYLenWithinBox"] = 2
 
 # Number of cores per FPU
 p["LogCoresPerFPU"] = 2

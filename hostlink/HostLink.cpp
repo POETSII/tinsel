@@ -1033,15 +1033,15 @@ bool HostLink::powerOnSelfTest()
           printf("[HostLink::powerOnSelfTest] self-testing core %i:%i:%i addr 0x%04X\n", x, y, core, mailbox_addr);
           bool ok = trySend(mailbox_addr, 1, &req);
           // flushcore(mailbox_addr);
-          // for (int retry=0; retry<1000; retry++) {
-          //   usleep(50);
-          //   if (canRecv()) {
-          //     recv(msg);
-          //     count++;
-          //     printf("[HostLink::powerOnSelfTest] count=%i from core %i:%i:%i \n", count, x, y, core);
-          //     if (ok) break;
-          //   }
-          // }
+          for (int retry=0; retry<1000; retry++) {
+            usleep(500);
+            if (canRecv()) {
+              recv(msg);
+              count++;
+              printf("[HostLink::powerOnSelfTest] count=%i from core %i:%i:%i \n", count, x, y, core);
+              if (ok) break;
+            }
+          }
           if (ok) break;
           gettimeofday(&finish, NULL);
           timersub(&finish, &start, &diff);

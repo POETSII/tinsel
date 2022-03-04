@@ -15,7 +15,7 @@ fi
 if [ $HOST = "betsy" ]; then
   TINSELPATH=`pwd`
   SSH="ssh -K"
-  envs="QUARTUS_ROOTDIR=/usr/groups/ecad/altera/19.2pro/quartus PATH=\$QUARTUS_ROOTDIR/bin:\$QUARTUS_ROOTDIR/../qsys/bin:\$QUARTUS_ROOTDIR/../nios2eds/bin:\$QUARTUS_ROOTDIR/../nios2eds/sdk2/bin:\$QUARTUS_ROOTDIR/../nios2eds/bin/gnu/H-x86_64-pc-linux-gnu/bin:\$PATH LD_LIBRARY_PATH=/usr/groups/ecad/altera/19.2pro/quartus/dspba/backend/linux64/syscon"
+  envs="QUARTUS_ROOTDIR=/usr/groups/ecad/altera/19.2pro/quartus PATH=\$QUARTUS_ROOTDIR/bin:\$QUARTUS_ROOTDIR/../qsys/bin:\$QUARTUS_ROOTDIR/../nios2eds/bin:\$QUARTUS_ROOTDIR/../nios2eds/sdk2/bin:\$QUARTUS_ROOTDIR/../nios2eds/bin/gnu/H-x86_64-pc-linux-gnu/bin:\$PATH LD_LIBRARY_PATH=/usr/groups/ecad/altera/19.2pro/quartus/dspba/backend/linux64/syscon:/usr/groups/ecad/altera/19.2pro/quartus/linux64/"
   ADDR=f7001000
 fi
 
@@ -93,10 +93,12 @@ $SSH $HOST sudo -S insmod $TINSELPATH/hostlink/driver/dmabuffer.ko || true
 $SSH $HOST sudo -S devmem2 0x$MAGIC_ADDR
 # ssh $HOST "sudo $TINSELPATH/hostlink/echo"
 
-$SSH $HOST "sudo -S $TINSELPATH/hostlink/pciestreamd $ADDR" &
-$SSH $HOST sudo -S $TINSELPATH/hostlink/boardctrld &
+$SSH $HOST "sudo -S $TINSELPATH/hostlink/pciestreamd $ADDR > pcielog.txt" &
+$SSH $HOST $envs $TINSELPATH/hostlink/boardctrld &
+# # sleep 5
+ssh -X $HOST "cd $TINSELPATH/apps/hello && ./run"
 # # sleep 5
 # ssh -X $HOST "cd $TINSELPATH/apps/hello && ./run"
-$SSH -X $HOST "cd $TINSELPATH/apps/hello && urxvt"
+# $SSH -X $HOST "cd $TINSELPATH/apps/hello && urxvt"
 #  -e bash -c \"./run | tee log.txt && bash\""
 # ssh $HOST "sudo $TINSELPATH/hostlink/echo"
