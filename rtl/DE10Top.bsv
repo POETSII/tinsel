@@ -49,6 +49,8 @@ interface DE10Ifc;
   interface Vector#(`DRAMsPerBoard, DRAMExtIfc) dramIfcs;
   interface Vector#(`NumNorthSouthLinks, AvalonMac) northMac;
   interface Vector#(`NumNorthSouthLinks, AvalonMac) southMac;
+  interface Vector#(`NumNorthSouthLinks, AvalonMac) eastMac;
+  interface Vector#(`NumNorthSouthLinks, AvalonMac) westMac;
 
   interface JtagUartAvalon jtagIfc;
   (* always_ready, always_enabled *)
@@ -106,6 +108,11 @@ module mkDE10Top(DE10Ifc ifc);
   method Bool resetReq = !top.resetReq;
   method Action setBoardId(Bit#(4) id) = top.setBoardId(id);
   method Action setTemperature(Bit#(8) temp) = top.setTemperature(temp);
+  interface northMac = top.north;
+  interface southMac = top.south;
+  interface eastMac  = top.east;
+  interface westMac  = top.west;
+
   `endif
 
 endmodule
@@ -291,8 +298,8 @@ module mkDE10Top_inner(DE10Ifc ifc);
 
   interface northMac = noc.north;
   interface southMac = noc.south;
-  // interface eastMac  = noc.east;
-  // interface westMac  = noc.west;
+  interface eastMac  = noc.east;
+  interface westMac  = noc.west;
   method Action setBoardId(Bit#(4) id);
     localBoardId <= id;
   endmethod

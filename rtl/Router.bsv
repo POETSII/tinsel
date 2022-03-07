@@ -299,8 +299,9 @@ module mkPassthroughFetcher#(BoardId boardId, Integer fetcherId) (Fetcher);
         MailboxNetAddr addr = flit.dest.addr;
         if (addr.board.y < boardId.y) decision = RouteSouth;
         else if (addr.board.y > boardId.y) decision = RouteNorth;
-        else if (addr.host.valid)
-          decision = addr.host.value == 0 ? RouteWest : RouteEast;
+        else if (addr.host.valid && boardId.x == 0 && boardId.y == 0) decision = RouteNoC;
+        else if (addr.host.valid && boardId.y != 0) decision = RouteSouth;
+        else if (addr.host.valid && boardId.x != 0) decision = RouteWest;
         else if (addr.board.x < boardId.x) decision = RouteWest;
         else if (addr.board.x > boardId.x) decision = RouteEast;
         // Insert into bypass queue

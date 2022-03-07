@@ -25,6 +25,7 @@ fi
 while read -r EXPORT; do
   eval $EXPORT
 done <<< `python3 ../config.py envs`
+echo "rtl/sim-singleboard.sh"
 
 MESH_MAX_X=$((2 ** $MeshXBitsWithinBox))
 MESH_MAX_Y=$((2 ** $MeshYBitsWithinBox))
@@ -94,12 +95,17 @@ for Y in $(seq 0 $LAST_Y); do
       for I in $(seq 1 $NumEastWestLinks); do
         E=$(($EAST_ID_BASE + $I - 1))
         W=$(($WEST_ID_BASE + $I - 1))
-        $UDSOCK join "@tinsel.b$A.$E" "@tinsel.b$B.$W" &
+        echo "Joining $E to $W"
+        ID=$(fromCoords $X $Y)
+        BOARD_ID=$ID $UDSOCK join "@tinsel.b$A.$E" "@tinsel.b$B.$W" &
         PIDS="$PIDS $!"
       done
     fi
   done
 done
+
+ID=$(fromCoords $X $Y)
+BOARD_ID=$ID
 
 # Create vertical links
 for X in $(seq 0 $LAST_X); do
@@ -110,7 +116,9 @@ for X in $(seq 0 $LAST_X); do
       for I in $(seq 1 $NumNorthSouthLinks); do
         N=$(($NORTH_ID_BASE + $I - 1))
         S=$(($SOUTH_ID_BASE + $I - 1))
-        $UDSOCK join "@tinsel.b$A.$N" "@tinsel.b$B.$S" &
+        echo "Joining $N to $S - northsouth"
+        ID=$(fromCoords $X $Y)
+        BOARD_ID=$ID $UDSOCK join "@tinsel.b$A.$N" "@tinsel.b$B.$S" &
         PIDS="$PIDS $!"
       done
     fi
