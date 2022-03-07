@@ -167,7 +167,8 @@ module mkMeshRouter#(MailboxId m) (MeshRouter);
     else if (a.addr.host.valid)   return Down;
     `endif
     `ifdef Stratix10
-    else if (a.addr.host.valid && a.addr.mbox.y == m.y && a.addr.mbox.x == m.x)   return Up; // host is on our up port.
+    else if (a.addr.host.valid && a.addr.mbox.y == m.y && a.addr.mbox.x == m.x && b == unpack(0) )  return Up; // host is on our up port.
+    else if (a.addr.host.valid)  return Down; // host is on our up port.
     `endif
     else if (a.addr.mbox.y < m.y) return Down;
     else if (a.addr.mbox.y > m.y) return Up;
