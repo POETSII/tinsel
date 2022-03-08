@@ -51,6 +51,7 @@ static int openSocket(int instId)
     perror("fcntl");
     return -1;
   }
+  printf("[DbgLink::UART::openSocket (sim)] connected to tinsel.b%i.0\n", instId);
   return sock;
 }
 

@@ -36,8 +36,8 @@
 #define TinselMeshYBits1 2
 #define TinselMeshXBitsWithinBox 2
 #define TinselMeshYBitsWithinBox 1
-#define TinselMeshXLenWithinBox 1
-#define TinselMeshYLenWithinBox 2
+#define TinselMeshXLenWithinBox 2
+#define TinselMeshYLenWithinBox 1
 #define TinselLogCoresPerFPU 2
 #define TinselLogNorthSouthLinks 0
 #define TinselLogEastWestLinks 0

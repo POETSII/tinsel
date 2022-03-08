@@ -509,7 +509,7 @@ bool HostLink::canRecv()
 
 bool HostLink::test(uint32_t dest) {
   // clobbers core ADDR reg!
-  // return 1; // skip for simulation
+  return 1; // skip for simulation
 
   uint32_t load_reply_buf[1 << TinselLogWordsPerMsg];
   BootReq req;
@@ -526,7 +526,7 @@ bool HostLink::test(uint32_t dest) {
   send(dest, 1, &req, true);
 
   bool got = 0;
-  for (int rpt=0; rpt<1000; rpt++) {
+  for (int rpt=0; rpt<10000; rpt++) {
     if (!canRecv()) {
       got = 1;
       break;
@@ -534,6 +534,7 @@ bool HostLink::test(uint32_t dest) {
     usleep(100);
   }
   if (got) recv(load_reply_buf); // discard the single flit we generated
+  if (!got) printf("[HostLink::test] failed to get reply for datamem read req addr %i\n", 16);
   return got;
 }
 
@@ -556,7 +557,7 @@ bool HostLink::test(uint32_t dest, uint32_t addr, uint32_t* value) {
   send(dest, 1, &req, true);
 
   bool got = 0;
-  for (int rpt=0; rpt<1000; rpt++) {
+  for (int rpt=0; rpt<10000; rpt++) {
     if (!canRecv()) {
       got = 1;
       break;
@@ -566,13 +567,13 @@ bool HostLink::test(uint32_t dest, uint32_t addr, uint32_t* value) {
 
 
   if (!got) {
-    // printf("[hostlink::LoadAll] failed to get reply for datamem read req addr %i core %i:%i:%i\n", addr, x, y, i);
+    printf("[HostLink::test] failed to get reply for datamem read req addr %i\n", addr);
     return false;
   }
 
   recv(load_reply_buf);
   if (load_reply_buf[0] != *value) {
-     // printf("[hostlink::LoadAll] data mismatch at addr %i core %i:%i:%i: expected %04X, got %04X\n", addr, x, y, i, word, load_reply_buf[0]);
+     printf("[HostLink::test] data mismatch at addr %i: expected %04X, got %04X\n", addr, value, load_reply_buf[0]);
      *value = load_reply_buf[0];
      return false;
   }
@@ -680,62 +681,70 @@ void HostLink::loadAll(const char* codeFilename, const char* dataFilename)
   }
   printf("[hostlink::LoadAll] written data memory\n");
 
-  printf("[hostlink::LoadAll] checking data mem.\n");
-  MemFileReader data_verify(dataFilename);
-  addrReg = 0xffffffff;
-  long int correct_count = 0;
-  long int total_count = 0;
-
-  while (data_verify.getWord(&addr, &word)) {
-    for (int x = 0; x < meshXLen; x++) {
-      for (int y = 0; y < meshYLen; y++) {
-        // for (int i = 0; i < TinselDRAMsPerBoard; i++) {
-        for (int core =0; core < TinselCoresPerBoard; core++) {
-          // Use one core to initialise each DRAM
-          //uint32_t dest = toAddr(x, y, coresPerDRAM * i, 0);
-          uint32_t dest = toAddr(x, y, core, 0);
-          total_count++;
-
-          req.cmd = SetAddrCmd;
-          req.numArgs = 1;
-          req.args[0] = addr;
-          send(dest, 1, &req, true);
-          printf(".");
-          fflush(stdout);
-
-          req.cmd = LoadCmd;
-          req.numArgs = 1;
-          req.args[0] = 4;
-          send(dest, 1, &req, true);
-
-          bool got = 0;
-          for (int rpt=0; rpt<100; rpt++) {
-            if (!canRecv()) {
-              got = 1;
-              break;
-            }
-            usleep(1000);
-          }
-          printf("\b \b");
-          fflush(stdout);
-
-          if (!got) {
-            printf("[hostlink::LoadAll] failed to get reply for datamem read req addr %i core %i:%i:%i\n", addr, x, y, core);
-            continue;
-          }
-
-          recv(load_reply_buf);
-          if (load_reply_buf[0] != word) {
-             printf("[hostlink::LoadAll] data mismatch at addr %i core %i:%i:%i: expected %04X, got %04X\n", addr, x, y, core, word, load_reply_buf[0]);
-          } else {
-            correct_count++;
-          }
-          addrReg = addr + 4;
-        }
-      }
-    }
-  }
-  printf("[hostlink::LoadAll] datamem check completed with %li words correct out of %li over all cores.\n", correct_count, total_count);
+//   printf("[hostlink::LoadAll] checking data mem.\n");
+//   MemFileReader data_verify(dataFilename);
+//   addrReg = 0xffffffff;
+//   long int correct_count = 0;
+//   long int total_count = 0;
+//
+//   while (data_verify.getWord(&addr, &word)) {
+//     for (int x = 0; x < meshXLen; x++) {
+//       for (int y = 0; y < meshYLen; y++) {
+//         // for (int i = 0; i < TinselDRAMsPerBoard; i++) {
+//         for (int core =0; core < TinselCoresPerBoard; core++) {
+//           // Use one core to initialise each DRAM
+//           //uint32_t dest = toAddr(x, y, coresPerDRAM * i, 0);
+//           uint32_t dest = toAddr(x, y, core, 0);
+//           total_count++;
+//
+//           req.cmd = SetAddrCmd;
+//           req.numArgs = 1;
+//           req.args[0] = addr;
+//           send(dest, 1, &req, true);
+//           printf(".");
+//           fflush(stdout);
+//
+//           req.cmd = LoadCmd;
+//           req.numArgs = 1;
+//           req.args[0] = 4;
+//           send(dest, 1, &req, true);
+//
+//           bool got = 0;
+//           for (int rpt=0; rpt<100; rpt++) {
+//             if (!canRecv()) {
+//               got = 1;
+//               break;
+//             }
+//             usleep(1000);
+//           }
+//           printf("\b \b");
+//           fflush(stdout);
+//
+//           uint32_t word_test = word;
+//           if (!test(dest, addr, &word_test)) {
+//             printf("[hostlink::LoadAll] failed to verify for datamem read during data loading %i core %i:%i:%i during data verify. correct %x recv %x\n", addr, x, y, core, word, word_test);
+//           } else {
+//             correct_count++;
+//           }
+//
+//
+//           // if (!got) {
+//           //   printf("[hostlink::LoadAll] failed to get reply for datamem read req addr %i core %i:%i:%i\n", addr, x, y, core);
+//           //   continue;
+//           // }
+//           //
+//           // recv(load_reply_buf);
+//           // if (load_reply_buf[0] != word) {
+//           //    printf("[hostlink::LoadAll] data mismatch at addr %i core %i:%i:%i: expected %04X, got %04X\n", addr, x, y, core, word, load_reply_buf[0]);
+//           // } else {
+//           //   correct_count++;
+//           // }
+//           // addrReg = addr + 4;
+//         }
+//       }
+//     }
+//   }
+//   printf("[hostlink::LoadAll] datamem check completed with %li words correct out of %li over all cores.\n", correct_count, total_count);
 }
 
 

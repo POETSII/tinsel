@@ -50,7 +50,7 @@ fi
 
 # Convert coords to board id
 function fromCoords {
-  echo $(($2 * $MESH_MAX_X + $1))
+  echo $(($2 * $MESH_MAX_X + $1 + 1))
 }
 
 LAST_X=$(($MESH_X - 1))
@@ -73,17 +73,12 @@ PIDS="$PIDS $!"
 for X in $(seq 0 $LAST_X); do
   for Y in $(seq 0 $LAST_Y); do
     ID=$(fromCoords $X $Y)
+    ID=1
     echo "Lauching simulator at position ($X, $Y) with board id $ID"
-    BOARD_ID=$ID LD_PRELOAD="/home/tparks/upstream/bsc/inst/lib/VPI/libbdpi.so /home/tparks/Projects/POETS/tinsel/rtl/mkDE10Top.so" ./mkDE10Top | grep -v Warning &
+    BOARD_ID=$ID ./mkDE10Top | grep -v Warning &
     PIDS="$PIDS $!"
   done
 done
-
-# Run bridge board
-HOST_ID=-1
-echo "Lauching bridge board simulator with board id $HOST_ID"
-BOARD_ID=$HOST_ID LD_PRELOAD="/home/tparks/upstream/bsc/inst/lib/VPI/libbdpi.so /home/tparks/Projects/POETS/tinsel/rtl/de5BridgeTop.so" ./de5BridgeTop &
-PIDS="$PIDS $!"
 
 # Create horizontal links
 for Y in $(seq 0 $LAST_Y); do
@@ -116,16 +111,6 @@ for X in $(seq 0 $LAST_X); do
     fi
   done
 done
-
-# Connect bridge board to mesh
-ENTRY1_ID=$(fromCoords $HOST1_X $HOST1_Y)
-$UDSOCK join "@tinsel.b$ENTRY1_ID.$WEST_ID_BASE" \
-             "@tinsel.b$HOST_ID.$NORTH_ID_BASE" &
-PIDS="$PIDS $!"
-ENTRY0_ID=$(fromCoords $HOST0_X $HOST0_Y)
-$UDSOCK join "@tinsel.b$ENTRY0_ID.$WEST_ID_BASE" \
-             "@tinsel.b$HOST_ID.$SOUTH_ID_BASE" &
-PIDS="$PIDS $!"
 
 # On CTRL-C, call quit()
 trap quit INT

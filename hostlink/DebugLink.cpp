@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: BSD-2-Clause
 #include <stdio.h>
+#include <iostream>
+
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
@@ -215,17 +217,18 @@ DebugLink::DebugLink(DebugLinkParams p)
       int offsetY = y * TinselMeshYLenWithinBox;
       assert(offsetX < 16);
       assert(offsetY < 16);
-      pkt.payload[1] = (offsetY << 4) | offsetX;
+      pkt.payload[2] = (offsetY << 4) | offsetX;
       // Sandbox this application from others running on the cluster
-      pkt.payload[2] = 0;
-      if (y == boxMeshYLen-1) pkt.payload[2] |= 1;
-      if (y == 0) pkt.payload[2] |= 2;
-      if (thisBoxX == 0 && boxMeshXLen == 1) pkt.payload[2] |= 4;
-      if (thisBoxX == 1 && boxMeshXLen == 1) pkt.payload[2] |= 8;
+      pkt.payload[3] = 0;
+      if (y == boxMeshYLen-1) pkt.payload[3] |= 1;
+      if (y == 0) pkt.payload[3] |= 2;
+      if (thisBoxX == 0 && boxMeshXLen == 1) pkt.payload[3] |= 4;
+      if (thisBoxX == 1 && boxMeshXLen == 1) pkt.payload[3] |= 8;
       // Reserve extra send slot?
-      pkt.payload[2] |= p.useExtraSendSlot ? 0x10 : 0;
+      pkt.payload[3] |= p.useExtraSendSlot ? 0x10 : 0;
       // Send commands to each board
       for (int b = 0; b < TinselBoardsPerBox; b++) {
+        pkt.payload[1] = b;
         pkt.linkId = b;
         putPacket(x, y, &pkt);
       }
@@ -258,6 +261,8 @@ DebugLink::DebugLink(DebugLinkParams p)
           // It's a worker board, let's work out its mesh coordinates
 
           int id = pkt.payload[1] - 1;
+          uint64_t fpga_id = *(reinterpret_cast<uint64_t *>(pkt.payload+2));
+          std::cout << "board " << b << " has FPGA id " << fpga_id << std::endl;
           int subX = id & ((1 << TinselMeshXBitsWithinBox) - 1);
           int subY = id >> TinselMeshXBitsWithinBox;
           assert(subX < TinselMeshXLenWithinBox);
@@ -265,14 +270,14 @@ DebugLink::DebugLink(DebugLinkParams p)
           // Full X and Y coordinates on the global board mesh
           int fullX = x*TinselMeshXLenWithinBox + subX;
           int fullY = y*TinselMeshYLenWithinBox + subY;
-          printf("[DbgLink::Ctor] got box with subx %i suby % X %i Y %i. WARN: assuming this is board %i\n", subX, subY, fullX, fullY, b);
-          // assert(boxX[fullY][fullX] == -1);
+          printf("[DbgLink::Ctor] got box with subx %i suby %i X %i Y %i. WARN: assuming this is board %i (declared id %i)\n", subX, subY, fullX, fullY, b, id);
+          assert(boxX[fullY][fullX] == -1);
           // Populate bidirectional mappings
-          boardX[y][x][b] = fullX;
-          boardY[y][x][b] = fullY;
+          boardX[y][x][pkt.linkId] = fullX;
+          boardY[y][x][pkt.linkId] = fullY;
           boxX[fullY][fullX] = x;
           boxY[fullY][fullX] = y;
-          linkId[fullY][fullX] = b;
+          linkId[fullY][fullX] = pkt.linkId;
         }
       }
   }

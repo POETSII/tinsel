@@ -1846,6 +1846,7 @@ set_global_assignment -name MIF_FILE boot.mif
 set_global_assignment -name QSYS_FILE DE10_Pro_QSYS.qsys
 set_global_assignment -name SDC_FILE DE10_Pro.sdc
 set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/DE10_Pro_QSYS_iopll_0.ip
+set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/chipid.ip
 set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/DE10_Pro_QSYS_mm_clock_crossing_bridge_50m.ip
 set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/DE10_Pro_QSYS_pio_0.ip
 set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/DE10_Pro_QSYS_reset_in.ip
@@ -1898,3 +1899,6 @@ set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/DE10_Pro_QSYS_network_CC.ip
 set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/network_CC_A_rx_0.ip
 set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/network_CC_A_rx_1.ip
 set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/DE10_Pro_QSYS_atx_pll_dualclk_A.ip
+set_global_assignment -name IP_FILE ip/NIC/NIC_usrclk.ip
+set_global_assignment -name IP_FILE ip/NIC/NIC_reset_bridge.ip
+set_global_assignment -name QSYS_FILE NIC.qsys

@@ -92,6 +92,7 @@ int main()
 
   // Start application
   hostLink.go();
+  hostLink.startAll();
 
   // 2D grid
   int NX = X_LEN*8;
@@ -135,7 +136,7 @@ int main()
 
   // Stop timer
   gettimeofday(&finish, NULL);
- 
+
   // Display time
   timersub(&finish, &start, &diff);
   double duration = (double) diff.tv_sec + (double) diff.tv_usec / 1000000.0;

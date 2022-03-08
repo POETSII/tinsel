@@ -244,23 +244,6 @@ add_interface_port dram_master_3 dramIfcs_3_m_read read Output 1
 add_interface_port dram_master_3 dramIfcs_3_m_write write Output 1
 add_interface_port dram_master_3 dramIfcs_3_m_burstcount burstcount Output 3
 
-
-#
-# connection point boardid
-#
-add_interface boardid conduit end
-set_interface_property boardid associatedClock clock
-set_interface_property boardid associatedReset ""
-set_interface_property boardid ENABLED true
-set_interface_property boardid EXPORT_OF ""
-set_interface_property boardid PORT_NAME_MAP ""
-set_interface_property boardid CMSIS_SVD_VARIABLES ""
-set_interface_property boardid SVD_ADDRESS_GROUP ""
-set_interface_property boardid IPXACT_REGISTER_MAP_VARIABLES ""
-
-add_interface_port boardid setBoardId_id val Input 4
-
-
 #
 # connection point temperature
 #
