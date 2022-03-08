@@ -452,9 +452,9 @@ struct Placer {
          edgetab.push_back(v);
         }
       }
-      assert(seen.size()!=0);
+      //assert(seen.size()!=0);
     }
-    assert(seen.size()!=0);
+    //assert(seen.size()!=0);
     verttab.push_back(edgetab.size());
 
     std::vector<SCOTCH_Num> parttab(nvtxs);

@@ -142,9 +142,11 @@ private:
                 fprintf(stderr, "Exiting worker thread due to interrupt\n");
                 break;
             }
-            if( (m_user_waiting.load() && !m_dev2host.empty()) ){
+            if( m_user_waiting.load() ){
                 m_cond.notify_all();
-                m_cond.wait(lk);
+                m_cond.wait(lk, [&](){
+                    return !m_user_waiting.load();
+                });
             }
         }
 
@@ -203,8 +205,6 @@ public:
 
         std::unique_lock<std::mutex> lk(m_mutex);
 
-        //fprintf(stderr, "Waitig for host message.");
-
         m_cond.wait(lk, [&](){
             return !m_dev2host.empty() || !m_worker_running.load();
         });
@@ -214,8 +214,6 @@ public:
             exit(1);
         }
 
-       // fprintf(stderr, "Got host message.");
-        
         auto front=m_dev2host.front();
         m_dev2host.pop_front();
 

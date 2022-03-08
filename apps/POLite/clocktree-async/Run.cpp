@@ -92,7 +92,7 @@ int main(int argc, char** argv)
     PMessage<ClockTreeMessage> msg;
     hostLink.recvMsg(&msg, sizeof(msg));
     gettimeofday(&finish, NULL);
-
+    
     // Display leaf count
     printf("Vertex count = %u\n", msg.payload.vertexCount);
 

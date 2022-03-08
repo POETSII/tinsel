@@ -15,9 +15,14 @@ APPNAME=clocktree-async
     (cd $BATS_TEST_DIRNAME/build && ./sim 4 4)
 }
 
-@test "clocktree-async-run-large-sim" {
-    (cd $BATS_TEST_DIRNAME && make sim)
-    (cd $BATS_TEST_DIRNAME/build && ./sim 7 7)
+@test "clocktree-async-run-large-sim1" {
+    (cd $BATS_TEST_DIRNAME && make sim-release)
+    (cd $BATS_TEST_DIRNAME/build && ./sim-release 7 6)
+}
+
+@test "clocktree-async-run-large-sim2" {
+    (cd $BATS_TEST_DIRNAME && make sim-release)
+    (cd $BATS_TEST_DIRNAME/build && ./sim-release 6 7)
 }
 
 @test "clocktree-async-run-medium-hw" {

@@ -143,8 +143,6 @@ template <typename S, typename E, typename M> struct PDevice {
   // State
   S* s;
   PPin* readyToSend;
-  uint32_t numVertices;
-  uint16_t time;
 
   // Handlers
   void init();
@@ -279,10 +277,6 @@ struct PThread {
 
   // Number of devices handled by thread
   PLocalDeviceId numDevices;
-  // Number of times step handler has been called
-  uint16_t time;
-  // Number of devices in graph
-  uint32_t numVertices;
   // Pointer to array of device states
   using DevState = PState<S,NUM_PINS>; // work around macro expansion
   PTR(DevState) devices;
@@ -294,6 +288,8 @@ struct PThread {
   PTR(PLocalDeviceId) senders;
   // This array is accessed in a LIFO manner
   PTR(PLocalDeviceId) sendersTop;
+
+  uint32_t senders_bits;
 
   // Count number of messages sent
   #ifdef POLITE_COUNT_MSGS
@@ -311,6 +307,13 @@ struct PThread {
   uint32_t paddddd[32];
 
   #ifdef TINSEL
+
+#if 1
+
+  INLINE void senders_queue_init()
+  {
+    sendersTop = senders;
+  }
 
   INLINE bool senders_queue_empty() const
   { return senders==sendersTop; }
@@ -330,14 +333,39 @@ struct PThread {
       devices[id].isMarkedRTS=true;
     }
   }
+#else
+  INLINE void senders_queue_init()
+  {
+    senders_bits=0;
+  }
+
+  INLINE bool senders_queue_empty() const
+  { return senders_bits==0; }
+
+  //! \pre: !senders_queue_empty()
+  PLocalDeviceId senders_queue_pop()
+  {
+    uint32_t bit=1;
+    PLocalDeviceId id=0;
+    while(!(bit&senders_bits)){
+      bit=bit<<1;
+      id++;
+    }
+    senders_bits ^= bit;
+    return id;
+  }
+
+  void senders_queue_add(PLocalDeviceId id)
+  {
+    senders_bits |= 1u<<id;
+  }
+#endif
 
   // Helper function to construct a device
   INLINE DeviceType getDevice(uint32_t id) {
     DeviceType dev;
     dev.s           = &devices[id].state;
     dev.readyToSend = &devices[id].readyToSend;
-    dev.numVertices = numVertices;
-    dev.time        = time;
     return dev;
   }
 
@@ -430,6 +458,44 @@ struct PThread {
     }
   }
 
+  INLINE static void tinselSetAmbientSendMessage(
+    volatile void* addr
+  ){
+    asm volatile("csrrw zero, " CSR_SEND_PTR ", %0" : : "r"(addr) : "memory");
+  }
+
+  // Send ambient message to multiple threads on the given mailbox
+  INLINE static void tinselMulticastAmbientMessage(
+    uint32_t mboxDest,      // Destination mailbox
+    uint32_t destMaskHigh,  // Destination bit mask (high bits)
+    uint32_t destMaskLow   // Destination bit mask (low bits)
+  ){
+    asm volatile("csrrw zero, " CSR_SEND_DEST ", %0" : : "r"(mboxDest));
+    // Opcode: 0000000 rs2 rs1 000 rd 0001000, with rd=0, rs1=x10, rs2=x11
+    asm volatile(
+      "mv x10, %0\n"
+      "mv x11, %1\n"
+      ".word 0x00b50008\n" : : "r"(destMaskHigh), "r"(destMaskLow)
+                            : "x10", "x11");
+  }
+
+  // Send ambient message to multiple threads on the given mailbox
+  //This works, and saves maybe two instructions... Whether it is worth the complexity/maintainability is
+  // a bit different.
+  static INLINE void tinselMulticastAmbientMessageEdge(
+    const POutEdge *edge
+  ){
+    // Opcode: 0000000 rs2 rs1 000 rd 0001000, with rd=0, rs1=x10, rs2=x11
+    asm volatile(
+      "lhu x11, 0(%0)\n"
+      "csrrw zero, " CSR_SEND_DEST ", x11\n"
+      "lw x10, 8(%0)\n"
+      "lw x11, 4(%0)\n"
+      ".word 0x00b50008\n" : : "r"(edge)
+                            : "x10", "x11");
+  }
+  
+
   // If we burst, then we stay in the send loop as long as there is another
   // edge for the current message, and tinselCanSend is still true.
   // So far this doesn't seem to have positive performance.
@@ -438,13 +504,17 @@ struct PThread {
   // Invoke device handlers
   void run() {
     // Current out-going edge in multicast
-    POutEdge* outEdge;
+    const POutEdge* outEdge;
 
     // Outgoing edge to host
-    POutEdge outHost[2];
-    outHost[0].mbox = tinselHostId() >> TinselLogThreadsPerMailbox;
+    const POutEdge outHost[2] = {
+       { tinselHostId() >> TinselLogThreadsPerMailbox, 0, 1, 0},
+       { 0, InvalidKey, 0, 0}
+    };
+    /*outHost[0].mbox = tinselHostId() >> TinselLogThreadsPerMailbox;
+    outHost[0].
     outHost[0].key = 0;
-    outHost[1].key = InvalidKey;
+    outHost[1].key = InvalidKey;*/
     // Initialise outEdge to null terminator
     outEdge = &outHost[1];
 
@@ -459,8 +529,10 @@ struct PThread {
       }
     }
 
+    tinselSetAmbientSendMessage(tinselSendSlot());
+
     // Initialisation
-    sendersTop = senders;
+    senders_queue_init();
     for (uint32_t i = 0; i < numDevices; i++) {
       DeviceType dev = getDevice(i);
       // Invoke the initialiser for each device
@@ -481,16 +553,13 @@ struct PThread {
       // Step 1: try to send
       if (outEdge->key != InvalidKey) {
         if (tinselCanSend()) {
-          PMessage<M>* m = (PMessage<M>*) tinselSendSlot();
           // Send message
       send_again:
-          if(outEdge == outHost){
-            tinselSend(tinselHostId(), m);
-          }else{
-              m->destKey = outEdge->key;
-              tinselMulticast(outEdge->mbox, outEdge->threadMaskHigh,
-                outEdge->threadMaskLow, m);
-          }
+            PMessage<M>* m = (PMessage<M>*) tinselSendSlot();
+            m->destKey = outEdge->key;
+            tinselMulticastAmbientMessage(outEdge->mbox, outEdge->threadMaskHigh, outEdge->threadMaskLow);
+            //tinselMulticastAmbientMessageEdge(outEdge);
+            
           #ifdef POLITE_COUNT_MSGS
           msgsSent++;
           #endif
@@ -589,12 +658,11 @@ struct PThread {
               senders_queue_add(i);
             }
           }
-          time++;
         }
       }
 
       // Step 2: try to receive
-      while (tinselCanRecv()) {
+      if (tinselCanRecv()) {
         PMessage<M>* inMsg = (PMessage<M>*) tinselRecv();
         PInHeader<E>* inHeader = &inTableHeaderBase[inMsg->destKey];
         // Determine number and location of edges/receivers

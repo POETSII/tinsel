@@ -22,6 +22,8 @@ struct ASPMessage {
 };
 
 struct ASPState {
+  // Numberof barriers
+  uint32_t time;
   // Sum of lengths of all paths reaching this device
   uint32_t sum;
   // Bit vector of nodes reaching this device
@@ -60,11 +62,14 @@ struct ASPDevice : PDevice<ASPState, None, ASPMessage> {
       uint32_t bits = nrs & ~rs;
       changed = changed || bits != 0;
       while (bits != 0) {
-        s->sum += time+1;
+        s->sum += s->time+1;
         bits = bits & (bits-1);
       }
       s->newReaching[i] = 0;
     }
+
+    s->time += 1;
+
     // Start new time step?
     if (changed) {
       *readyToSend = Pin(0);

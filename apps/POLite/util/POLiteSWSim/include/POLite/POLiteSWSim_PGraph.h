@@ -15,6 +15,7 @@
 #include <random>
 #include <atomic>
 #include <algorithm>
+#include <unistd.h>
 
 #ifndef POLITE_NUM_PINS
 #define POLITE_NUM_PINS 1
@@ -247,12 +248,11 @@ private:
                 break;
             }
             if( m_user_waiting.load() ){
-                lk.unlock();
-
                 m_cond.notify_all();
-                
+
+                lk.unlock();
+                std::this_thread::yield();
                 lk.lock();
-                m_cond.wait(lk, [&](){ return m_user_waiting.load()==false; });
             }
         }
 
@@ -338,36 +338,45 @@ public:
             exit(1);
         }
 
-        m_user_waiting.store(true);
+        while(1){
+            /* This threading is _incredibly_ bad. It is inefficient,
+            probably relies on undefined behaviour, and is almost surely
+            not correct. */
 
-        std::unique_lock<std::mutex> lk(m_mutex);
+            m_user_waiting.store(true);
 
-        m_user_waiting.store(false);
-        m_cond.notify_all();
+            std::unique_lock<std::mutex> lk(m_mutex);
 
-        //fprintf(stderr, "Waitig for host message.");
+            m_user_waiting.store(false);
+            m_cond.notify_all();
 
-        m_cond.wait(lk, [&](){
-            return !m_dev2host.empty() || !m_worker_running.load();
-        });
+            if(m_dev2host.empty()){
+                if(!m_worker_running.load()){
+                    fprintf(stderr, "POLiteSWSim::HostLink::recvMsg : Error - HostLink::recvMsg was called, but devices have all finished and there are no pending messages - app will block.");
+                    exit(1);
+                }else{
+                    lk.unlock();
+                    std::this_thread::yield();
+                    usleep(1000);
+                    continue; // Release lock, then reaquires
+                }
+            }
 
-        if(m_dev2host.empty()){
-            fprintf(stderr, "POLiteSWSim::HostLink::recvMsg : Error - HostLink::recvMsg was called, but devices have all finished and there are no pending messages - app will block.");
-            exit(1);
+            auto front=m_dev2host.front();
+            m_dev2host.pop_front();
+
+            const int MaxMessageSize=1<<LogBytesPerMsg;
+
+            if(MaxMessageSize!=front.size()){
+                fprintf(stderr, "POLiteSWSim::HostLink::recvMsg : Error - (internal POLiteSWSim error) host received non max sized message from device : expected = %u, got=%u.\n",
+                    MaxMessageSize, (unsigned)front.size()
+                );
+                exit(1);
+            }
+            memcpy(msg, &front[0], numBytes);
+
+            return;
         }
-
-        auto front=m_dev2host.front();
-        m_dev2host.pop_front();
-
-        const int MaxMessageSize=1<<LogBytesPerMsg;
-
-        if(MaxMessageSize!=front.size()){
-            fprintf(stderr, "POLiteSWSim::HostLink::recvMsg : Error - (internal POLiteSWSim error) host received non max sized message from device : expected = %u, got=%u.\n",
-                MaxMessageSize, (unsigned)front.size()
-            );
-            exit(1);
-        }
-        memcpy(msg, &front[0], numBytes);
     }
 
     // Blocking receive of max size message

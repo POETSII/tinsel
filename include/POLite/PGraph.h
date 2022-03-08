@@ -567,8 +567,6 @@ public:
           (PThread<DeviceType, S, E, M, NUM_PINS>*) &threadMem[threadId][0];
         // Set number of devices on thread
         thread->numDevices = numDevicesOnThread[threadId];
-        // Set number of devices in graph
-        thread->numVertices = numDevices;
         // Set tinsel address of array of device states
         thread->devices = vertexMemBase[threadId];
         // Set tinsel address of base of edge tables
@@ -1012,23 +1010,6 @@ public:
       // Split edge lists into local/non-local and sort by target thread id
       splitDests(d, p, &local, &nonLocal);
 
-      // Deal with board-local connections
-      // TODO : I (dt10) would really like to move local edges after non-local edges in
-      // the edge generation, as it makes sense to get long-distance messages out the
-      // door first). However, if I do that then DPD breaks (though standard polite
-      // tests don't). Not sure if it is a bug in DPD, or something else I'm missing.
-      computeTables<DoLock>(&local, d, p, &dests, groups, edgesPerLocalHeaderStats);
-      for (uint32_t i = 0; i < (uint32_t)dests.numElems; i++) {
-        PRoutingDest dest = dests.elems[i];
-        POutEdge edge;
-        edge.mbox = dest.mbox;
-        edge.key = dest.mrm.key;
-        edge.threadMaskLow = dest.mrm.threadMaskLow;
-        edge.threadMaskHigh = dest.mrm.threadMaskHigh;
-        // This is only writeable by this function
-        outTable[d][p]->append(edge);
-      }
-
       // Deal with non-board-local connections
       computeTables<DoLock>(&nonLocal, d, p, &dests, groups, edgesPerNonLocalHeaderStats);
       if(dests.size()>0){
@@ -1060,12 +1041,21 @@ public:
         }
       }
 
-      // TODO : This is related to the earlier TODO about non-local before local.
-      // Apps should be invariant to permutations of this list, but DPD is
-      // not, and I (dt10) don't know why.
-      //std::reverse(outTable[d][p]->begin(), outTable[d][p]->end());
-      //std::mt19937_64 rng(rand()); //sigh
-      //std::shuffle(outTable[d][p]->begin(), outTable[d][p]->end(), rng);
+      // Deal with board-local connections
+      // Board-local is after non-local, to try to get the messages travelling
+      // longer distances out the door first.
+      computeTables<DoLock>(&local, d, p, &dests, groups, edgesPerLocalHeaderStats);
+      for (uint32_t i = 0; i < (uint32_t)dests.numElems; i++) {
+        PRoutingDest dest = dests.elems[i];
+        POutEdge edge;
+        edge.mbox = dest.mbox;
+        edge.key = dest.mrm.key;
+        edge.threadMaskLow = dest.mrm.threadMaskLow;
+        edge.threadMaskHigh = dest.mrm.threadMaskHigh;
+        // This is only writeable by this function
+        outTable[d][p]->append(edge);
+      }
+
 
       // Add output list terminator
       POutEdge term;
