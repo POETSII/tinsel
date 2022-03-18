@@ -19,11 +19,20 @@ int main()
   //   hostLink.printStackRawAddr(id);
   // }
 
-  hostLink.go();
-  // hostLink.goOne(0, 0, 1);
+  // hostLink.go();
+  // // hostLink.goOne(0, 0, 1);
+  //
+  // // hostLink.startOne(0, 0, 1, 1);
+  // hostLink.startAll();
 
-  // hostLink.startOne(0, 0, 1, 1);
-  hostLink.startAll();
+  // hostLink.go();
+  for (int i=0; i<8; i++) {
+    hostLink.goOne(0, 0, i);
+  }
+  for (int i=0; i<8; i++) {
+    hostLink.startOne(0, 0, i, 1);
+  }
+
   //for (int ci=0; ci<256; ci++) { hostLink.goOne(0, 0, ci); }
   printf("[run.cpp]: dumping stdout.\n");
   hostLink.dumpStdOut();
