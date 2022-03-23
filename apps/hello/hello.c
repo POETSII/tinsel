@@ -65,66 +65,34 @@ void called() {
 
 int main()
 {
-  void* sp = 0;
 
-  sendb('h');
-  sendb('e');
-  sendb('l');
-  sendb('l');
-  sendb('o');
-  sendb('\n');
-  puts_me("stack ptr: \n");
-  puthex_me( (uint32_t)(&sp) );
-  asm volatile("" : "+r"(sp) );
-  sendb('\n');
-  // asm volatile("jr zero");
-  // puts_me(msg_bss);
-  // puts_me(msg_rodata);
-  //
-  // puts_me(msg_text);
-  // puts_me("thread id ");
   unsigned int me = tinselId();
+  printf("hello from printf thread 0x%x\n", me);
+
+
+  float five = (float)(5);
+  float six = 6.0f;
+  float fivebysix = five * six;
+  float invfivebysix = 1.0/fivebysix;
+  uint32_t *invfivebysix_i = (void *)(&invfivebysix);
+
+  printf("1/(5*6): %x\n",  *invfivebysix_i);
+
+  if (me == 0x00000700 || me == 0x00000710) {
+
+    for (uint32_t* addr=512; addr<768; addr=&addr[4]) {
+      printf("%x: %x %x %x %x\n", addr, addr[0], addr[1], addr[2], addr[3]);
+    }
+
+  }
+
   //puthex_me(me);
   //sendb('\n');
   //asm volatile("" : "+r"(me) );
 
   //
-    for (uint32_t i = me/16 % (1<<TinselDCacheLogSetsPerThread); i < (1<<TinselDCacheLogSetsPerThread); i++) {
-      for (uint32_t j = me/(16*(1 << TinselDCacheLogSetsPerThread)); j < (1<<TinselDCacheLogNumWays); j++) {
-        // printf_me("flushing set %x way %x \n", i, j);
-        puts_me("core ");
-        puthex_me(me);
-        puts_me(" flushing set ");
-        puthex_me(i);
-        puts_me(" way ");
-        puthex_me(j);
-        sendb('\n');
-        asm volatile("" : "+r"(i) );
-        // seq. point for i
-        tinselFlushLine(i, j);
-      }
-    }
 
 
 
-
-  // tinselCacheFlush();
-  // puts_me("flushed cache\n");
-  // sendb('\n');
-  // sendb('\n');
-  // sendb('\n');
-  //
-  // unsigned int* dram = (void *)0;
-  // if (me == 0) {
-  //   puts_me("dram dump: \n");
-  //   for (int i=512/8; i<768; i++) {
-  //     puthex_me(dram[i]);
-  //     sendb('\n');
-  //   }
-  // }
-  // uncommenting this prevents any code from producing output.
-  // printf("hello from printf thread 0x%x\n", me);
-
-  // printf_me(msg_text, me);
   return 0;
 }

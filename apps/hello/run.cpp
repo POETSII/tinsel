@@ -9,7 +9,7 @@ int main()
 
   // hostLink.boot("code.v", "data.v");
   hostLink.loadAll("code.v", "data.v");
-  printf("run.cpp: boot done, reporting stacks.\n");
+  // printf("run.cpp: boot done, reporting stacks.\n");
   // for (int c=0; c<32; c++) {
   //   hostLink.printStack(0, 0, c);
   // }
@@ -26,12 +26,21 @@ int main()
   // hostLink.startAll();
 
   // hostLink.go();
-  for (int i=0; i<8; i++) {
+  // for (int i=0; i<128; i++) {
+  //   hostLink.goOne(0, 0, i);
+  // }
+  // for (int i=0; i<128; i++) {
+  //   hostLink.startOne(0, 0, i, 1);
+  // }
+
+  // hostLink.startAll();
+  for (int i=0; i<64; i++) {
     hostLink.goOne(0, 0, i);
   }
-  for (int i=0; i<8; i++) {
+  for (int i=0; i<64; i++) {
     hostLink.startOne(0, 0, i, 1);
   }
+
 
   //for (int ci=0; ci<256; ci++) { hostLink.goOne(0, 0, ci); }
   printf("[run.cpp]: dumping stdout.\n");

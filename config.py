@@ -32,10 +32,10 @@ p["LogInstrsPerCore"] = 11
 p["SharedInstrMem"] = True
 
 # Log of number of multi-threaded cores sharing a DCache
-p["LogCoresPerDCache"] = 1 # 2 # the mailbox calc defines no of cores, but this defines hookup; need to match
+p["LogCoresPerDCache"] = 2 # 2 # the mailbox calc defines no of cores, but this defines hookup; need to match
 
 # Log of number of caches per DRAM port
-p["LogDCachesPerDRAM"] = 0 # 1
+p["LogDCachesPerDRAM"] = 2 # 1
 
 # Log of number of 32-bit words in a single memory transfer
 p["LogWordsPerBeat"] = 3
@@ -76,10 +76,10 @@ p["LogMsgsPerMailbox"] = 9 # must be at least enough to store one message per th
 p["LogCoresPerMailbox"] = 2
 
 # Number of bits in mailbox mesh X coord
-p["MailboxMeshXBits"] = 1 # 1
+p["MailboxMeshXBits"] = 2 # 1
 
 # Number of bits in mailbox mesh Y coord
-p["MailboxMeshYBits"] = 0 # 2
+p["MailboxMeshYBits"] = 2 # 2
 
 # Size of multicast queues in mailbox
 p["LogMsgPtrQueueSize"] = 6
@@ -129,7 +129,7 @@ p["MeshXLenWithinBox"] = 1
 p["MeshYLenWithinBox"] = 1
 
 # Number of cores per FPU
-p["LogCoresPerFPU"] = 2
+p["LogCoresPerFPU"] = 0
 
 # Number of inter-FPGA links on north edge
 # Number of inter-FPGA links on south edge
