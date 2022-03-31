@@ -751,15 +751,15 @@ void HostLink::go()
 {
   for (int x = 0; x < meshXLen; x++) {
     for (int y = 0; y < meshYLen; y++) {
-      for (int core=0; core<TinselCoresPerBoard; core++) {
-        debugLink->setDest(x, y, core, 0);
-        debugLink->put(x, y, 0);
-      }
-      // debugLink->setBroadcastDest(x, y, 0);
-      // debugLink->put(x, y, 0);
+      // for (int core=0; core<TinselCoresPerBoard; core++) {
+      //  debugLink->setDest(x, y, core, 0);
+      //  debugLink->put(x, y, 0);
+      // }
+      debugLink->setBroadcastDest(x, y, 0);
+      debugLink->put(x, y, 0);
     }
   }
-  printf("[HostLink::go] sent go stdin msg to all cores.\n");
+  printf("[HostLink::go] sent go stdin msg (bcast) to all cores.\n");
 }
 
 // Load instructions into given core's instruction memory
@@ -919,12 +919,13 @@ void HostLink::startAll()
         req.args[0] = (1<<TinselLogThreadsPerCore)-1;
         while (1) {
           bool ok = send(dest, 1, &req);
+          usleep(1000);
           if (canRecv()) {
             recv(msg);
             started++;
             started_cores.insert(msg[0]);
           } else {
-            printf("[HostLink::startAll] waiting for core %i\n", i);
+            printf("[HostLink::startAll] waiting for core %i to declare ready for go cmd\n", i);
           }
           if (ok) break;
         }
