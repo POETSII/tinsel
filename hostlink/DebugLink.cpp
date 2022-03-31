@@ -210,6 +210,7 @@ DebugLink::DebugLink(DebugLinkParams p)
   pkt.payload[0] = DEBUGLINK_QUERY_IN;
   for (int y = 0; y < boxMeshYLen; y++)
     for (int x = 0; x < boxMeshXLen; x++) {
+      usleep(1000);
       // Determine offset for each board in box
       int offsetX = x * TinselMeshXLenWithinBox;
       int offsetY = y * TinselMeshYLenWithinBox;

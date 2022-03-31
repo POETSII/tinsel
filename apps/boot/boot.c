@@ -74,14 +74,11 @@ int main()
         }
       }
       else if (cmd == LoadCmd) {
-        // Load words from data memory
-        // if (addrReg == 0) {
-        //   tinselCacheFlush();
-        //   // Wait until lines written back, by issuing a load
-        //   volatile uint32_t* ptr = (uint32_t*) lastDataStoreAddr; ptr[0];
-        // }
-        // tinselEmit(0x3);
-        // tinselEmit(addrReg);
+        tinselCacheFlush();
+        // Wait until lines written back, by issuing a load
+        if (lastDataStoreAddr != 0) {
+          volatile uint32_t* ptr = (uint32_t*) lastDataStoreAddr; ptr[0];
+        }
 
         int n = msgIn->args[0];
         while (n > 0) {

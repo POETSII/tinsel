@@ -751,12 +751,12 @@ void HostLink::go()
 {
   for (int x = 0; x < meshXLen; x++) {
     for (int y = 0; y < meshYLen; y++) {
-      // for (int core=0; core<TinselCoresPerBoard; core++) {
-      //   debugLink->setDest(x, y, core, 0);
-      //   debugLink->put(x, y, 0);
-      // }
-      debugLink->setBroadcastDest(x, y, 0);
-      debugLink->put(x, y, 0);
+      for (int core=0; core<TinselCoresPerBoard; core++) {
+        debugLink->setDest(x, y, core, 0);
+        debugLink->put(x, y, 0);
+      }
+      // debugLink->setBroadcastDest(x, y, 0);
+      // debugLink->put(x, y, 0);
     }
   }
   printf("[HostLink::go] sent go stdin msg to all cores.\n");
@@ -906,6 +906,8 @@ void HostLink::startAll()
     (meshXLen*meshYLen) << TinselLogCoresPerBoard;
 
   // Send start command
+  std::set<uint32_t> started_cores;
+
   uint32_t started = 0;
   uint32_t msg[1 << TinselLogWordsPerMsg];
   for (int x = 0; x < meshXLen; x++) {
@@ -914,21 +916,23 @@ void HostLink::startAll()
         uint32_t dest = toAddr(x, y, i, 0);
         printf("[HostLink::startAll] starting core %i dest %i.\n", i, dest);
         req.cmd = StartCmd;
-        req.args[0] = 1; //(1<<TinselLogThreadsPerCore)-1;
+        req.args[0] = (1<<TinselLogThreadsPerCore)-1;
         while (1) {
           bool ok = send(dest, 1, &req);
           if (canRecv()) {
             recv(msg);
             started++;
+            started_cores.insert(msg[0]);
+          } else {
+            printf("[HostLink::startAll] waiting for core %i\n", i);
           }
           if (ok) break;
         }
+        usleep(1000);
       }
     }
   }
   printf("[HostLink::startAll] sent all start messages.\n");
-  //
-  std::set<uint32_t> started_cores;
   bool missing = true;
   // Wait for all start responses
   do {
@@ -938,11 +942,15 @@ void HostLink::startAll()
       started_cores.insert(msg[0]);
       started++;
     }
-    usleep(10000);
+    usleep(50000);
     missing=false;
     for (int coreid=0; coreid<numCores*16; coreid=coreid+16) {
-      if (!started_cores.count(coreid)) missing = true;
+      if (!started_cores.count(coreid)) {
+        missing = true;
+        printf("%i ", coreid);
+      }
     }
+    if (missing) printf(" still waiting\n");
   } while (missing);
 
   // while (started < numCores) {
@@ -996,7 +1004,7 @@ void HostLink::store(uint32_t meshX, uint32_t meshY,
 // Power-on self test
 bool HostLink::powerOnSelfTest()
 {
-  const double timeout = 300.0;
+  const double timeout = 30.0;
 
   // Need to check that we get a response within a given time
   struct timeval start, finish, diff;
@@ -1026,23 +1034,26 @@ bool HostLink::powerOnSelfTest()
         sent++;
         // Request a word from SRAM
         uint32_t addr = 10; // ram << TinselLogBytesPerSRAM;
-        setAddr(x, y, core, addr);
         gettimeofday(&start, NULL);
         while (1) {
+          setAddr(x, y, core, addr);
           uint32_t mailbox_addr = toAddr(x, y, core, 0);
           printf("[HostLink::powerOnSelfTest] self-testing core %i:%i:%i addr 0x%04X\n", x, y, core, mailbox_addr);
           bool ok = trySend(mailbox_addr, 1, &req);
           // flushcore(mailbox_addr);
-          // for (int retry=0; retry<1000; retry++) {
-          //   usleep(50);
-          //   if (canRecv()) {
-          //     recv(msg);
-          //     count++;
-          //     printf("[HostLink::powerOnSelfTest] count=%i from core %i:%i:%i \n", count, x, y, core);
-          //     if (ok) break;
-          //   }
-          // }
-          if (ok) break;
+          bool got = 0;
+          for (int retry=0; retry<1000; retry++) {
+            usleep(500);
+            if (canRecv()) {
+              got = 1;
+              recv(msg);
+              count++;
+              printf("[HostLink::powerOnSelfTest] count=%i from core %i:%i:%i \n", count, x, y, core);
+              break;
+            }
+          }
+          if (ok && got) break;
+
           gettimeofday(&finish, NULL);
           timersub(&finish, &start, &diff);
           double duration = (double) diff.tv_sec +

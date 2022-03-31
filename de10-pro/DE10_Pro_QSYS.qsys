@@ -12238,52 +12238,7 @@
                         </entry>
                         <entry>
                             <key>clockRate</key>
-                            <value>100000000</value>
-                        </entry>
-                        <entry>
-                            <key>clockRateKnown</key>
-                            <value>true</value>
-                        </entry>
-                        <entry>
-                            <key>externallyDriven</key>
-                            <value>false</value>
-                        </entry>
-                        <entry>
-                            <key>ptfSchematicName</key>
-                        </entry>
-                    </parameterValueMap>
-                </parameters>
-            </interface>
-            <interface>
-                <name>outclk2</name>
-                <type>clock</type>
-                <isStart>true</isStart>
-                <ports>
-                    <port>
-                        <name>outclk_2</name>
-                        <role>clk</role>
-                        <direction>Output</direction>
-                        <width>1</width>
-                        <lowerBound>0</lowerBound>
-                        <vhdlType>STD_LOGIC</vhdlType>
-                    </port>
-                </ports>
-                <assignments>
-                    <assignmentValueMap>
-                        <entry>
-                            <key>ui.blockdiagram.direction</key>
-                            <value>output</value>
-                        </entry>
-                    </assignmentValueMap>
-                </assignments>
-                <parameters>
-                    <parameterValueMap>
-                        <entry>
-                            <key>associatedDirectClock</key>
-                        </entry>
-                        <entry>
-                            <key>clockRate</key>
-                            <value>200000000</value>
+                            <value>220000000</value>
                         </entry>
                         <entry>
                             <key>clockRateKnown</key>
@@ -12357,20 +12312,7 @@
                     <suppliedSystemInfos>
                         <entry>
                             <key>CLOCK_RATE</key>
-                            <value>100000000</value>
-                        </entry>
-                    </suppliedSystemInfos>
-                    <consumedSystemInfos/>
-                </value>
-            </entry>
-            <entry>
-                <key>outclk2</key>
-                <value>
-                    <connectionPointName>outclk2</connectionPointName>
-                    <suppliedSystemInfos>
-                        <entry>
-                            <key>CLOCK_RATE</key>
-                            <value>200000000</value>
+                            <value>220000000</value>
                         </entry>
                     </suppliedSystemInfos>
                     <consumedSystemInfos/>
@@ -12564,52 +12506,7 @@
                     </entry>
                     <entry>
                         <key>clockRate</key>
-                        <value>100000000</value>
-                    </entry>
-                    <entry>
-                        <key>clockRateKnown</key>
-                        <value>true</value>
-                    </entry>
-                    <entry>
-                        <key>externallyDriven</key>
-                        <value>false</value>
-                    </entry>
-                    <entry>
-                        <key>ptfSchematicName</key>
-                    </entry>
-                </parameterValueMap>
-            </parameters>
-        </interface>
-        <interface>
-            <name>outclk2</name>
-            <type>clock</type>
-            <isStart>true</isStart>
-            <ports>
-                <port>
-                    <name>outclk_2</name>
-                    <role>clk</role>
-                    <direction>Output</direction>
-                    <width>1</width>
-                    <lowerBound>0</lowerBound>
-                    <vhdlType>STD_LOGIC</vhdlType>
-                </port>
-            </ports>
-            <assignments>
-                <assignmentValueMap>
-                    <entry>
-                        <key>ui.blockdiagram.direction</key>
-                        <value>output</value>
-                    </entry>
-                </assignmentValueMap>
-            </assignments>
-            <parameters>
-                <parameterValueMap>
-                    <entry>
-                        <key>associatedDirectClock</key>
-                    </entry>
-                    <entry>
-                        <key>clockRate</key>
-                        <value>200000000</value>
+                        <value>220000000</value>
                     </entry>
                     <entry>
                         <key>clockRateKnown</key>
@@ -40363,6 +40260,11 @@
    kind="clock"
    version="19.2"
    start="iopll_0.outclk1"
+   end="mm_bridge_ddrD_1.clk" />
+ <connection
+   kind="clock"
+   version="19.2"
+   start="iopll_0.outclk1"
    end="Tinsel_0.clock" />
  <connection
    kind="clock"
@@ -40382,12 +40284,7 @@
  <connection
    kind="clock"
    version="19.2"
-   start="iopll_0.outclk2"
-   end="mm_bridge_ddrD_1.clk" />
- <connection
-   kind="clock"
-   version="19.2"
-   start="iopll_0.outclk2"
+   start="iopll_0.outclk1"
    end="mm_clockcross_DDR4_D.s0_clk" />
  <connection
    kind="reset"

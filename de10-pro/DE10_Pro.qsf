@@ -1720,7 +1720,7 @@ set_global_assignment -name ENABLE_SIGNALTAP OFF
 set_global_assignment -name USE_SIGNALTAP_FILE stp1.stp
 set_global_assignment -name OPTIMIZATION_MODE "SUPERIOR PERFORMANCE WITH MAXIMUM PLACEMENT EFFORT"
 set_global_assignment -name OPTIMIZATION_TECHNIQUE SPEED
-set_global_assignment -name ROUTER_TIMING_OPTIMIZATION_LEVEL MAXIMUM
+set_global_assignment -name ROUTER_TIMING_OPTIMIZATION_LEVEL MINIMUM
 set_global_assignment -name QII_AUTO_PACKED_REGISTERS NORMAL
 set_global_assignment -name NUMBER_OF_EXAMPLE_NODES_REPORTED 5
 set_instance_assignment -name PARTITION_COLOUR 4285505023 -to DE10_Pro -entity DE10_Pro
@@ -1888,3 +1888,4 @@ set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/mm_clockcross_DDR4.ip
 set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/DDR_mm_pipeline_bridge.ip
 set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/DE10_Pro_QSYS_emif_s10_ddr4_a.ip
 set_global_assignment -name FINAL_PLACEMENT_OPTIMIZATION ALWAYS
+set_global_assignment -name ALM_REGISTER_PACKING_EFFORT LOW
