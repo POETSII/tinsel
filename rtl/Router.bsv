@@ -13,6 +13,7 @@ import Assert     :: *;
 import Util       :: *;
 import DReg       :: *;
 import Reserved   :: *;
+import ConfigReg    :: *;
 // import ProgRouter :: *;
 
 // =============================================================================
@@ -158,35 +159,6 @@ typedef Bit#(`FetcherLogFlitBufferSize) FetcherFlitBufferAddr;
 // Message address in a fetcher's flit buffer
 typedef Bit#(`FetcherLogMsgsPerFlitBuffer) FetcherFlitBufferMsgAddr;
 
-// This structure contains information about an in-flight memory
-// request from a fetcher.  When a fetcher issues a memory load
-// request, this info is packed into the unused data field of the
-// request.  When the memory subsystem responds, it passes back the
-// same info in an extra field inside the memory response structure.
-// Maintaining info about an inflight request inside the request
-// itself provides an easy way to handle out-of-order responses from
-// memory.
-// typedef struct {
-//   // Message address in the fetcher's flit buffer
-//   FetcherFlitBufferMsgAddr msgAddr;
-//   // How many beats in the burst?
-//   Bit#(`BeatBurstWidth) burst;
-//   // Is this the final burst of routing records for the current key?
-//   Bool finalBurst;
-//   // Are we processing a max-sized key (which must contain an IND record)?
-//   Bool isMaxSizedKey;
-// } InflightFetcherReqInfo deriving (Bits, FShow);
-
-// Routing beat, tagged with the beat number in the DRAM burst
-// typedef struct {
-//   // Beat
-//   RoutingBeat beat;
-//   // Beat number
-//   Bit#(`BeatBurstWidth) beatNum;
-//   // Inflight request info
-//   InflightFetcherReqInfo info;
-// } NumberedRoutingBeat deriving (Bits, FShow);
-
 // Fetcher interface
 interface Fetcher;
   // Incoming and outgoing flits
@@ -194,6 +166,7 @@ interface Fetcher;
   interface BOut#(RoutedFlit) flitOut;
   // Activity
   interface FetcherActivity activity;
+  method Action updateBoardId(BoardId id);
 endinterface
 
 // Fetcher activity for performance counters and termination detection
@@ -210,10 +183,11 @@ interface FetcherActivity;
 endinterface
 
 // Fetcher module
-module mkPassthroughFetcher#(BoardId boardId, Integer fetcherId) (Fetcher);
+module mkPassthroughFetcher#(Integer fetcherId) (Fetcher);
 
   // Flit input port
   InPort#(Flit) flitInPort <- mkInPort;
+  Reg#(BoardId) boardId <- mkConfigReg(?);
 
   // RAM request queues
   Vector#(`DRAMsPerBoard, Queue1#(DRAMReq)) ramReqQueue <-
@@ -286,6 +260,42 @@ module mkPassthroughFetcher#(BoardId boardId, Integer fetcherId) (Fetcher);
   // Track when messages are bypassing fetcher, to keep the bypass atomic
   Reg#(Bool) bypassInProgress <- mkReg(False);
 
+  function RoutingDecision route(MailboxNetAddr addr, BoardId localBoardId);
+    RoutingDecision decision = RouteNoC;
+    if (localBoardId.x == 0) begin
+      if (addr.board.x == 0) decision = RouteNoC;
+      if (addr.board.x == 1) decision = RouteNorth;
+      if (addr.board.x == 2) decision = RouteSouth;
+      if (addr.board.x == 3) decision = RouteEast;
+    end
+
+    if (localBoardId.x == 1) begin
+      if (addr.board.x == 0) decision = RouteNorth;
+      if (addr.board.x == 1) decision = RouteNoC;
+      if (addr.board.x == 2) decision = RouteEast;
+      if (addr.board.x == 3) decision = RouteSouth;
+    end
+
+    if (localBoardId.x == 2) begin
+      if (addr.board.x == 0) decision = RouteSouth;
+      if (addr.board.x == 1) decision = RouteEast;
+      if (addr.board.x == 2) decision = RouteNoC;
+      if (addr.board.x == 3) decision = RouteNorth;
+    end
+
+    if (localBoardId.x == 3) begin
+      if (addr.board.x == 0) decision = RouteEast;
+      if (addr.board.x == 1) decision = RouteSouth;
+      if (addr.board.x == 2) decision = RouteNorth;
+      if (addr.board.x == 3) decision = RouteNoC;
+    end
+
+    if (addr.board.x == localBoardId.x) decision = RouteNoC;
+
+    return decision;
+  endfunction
+
+
   // State 0: pass through flits that don't contain routing keys
   rule consumeMessage0 (consumeState == 0);
     Flit flit = flitInPort.value;
@@ -295,15 +305,8 @@ module mkPassthroughFetcher#(BoardId boardId, Integer fetcherId) (Fetcher);
         flitInPort.get;
         bypassInProgress <= flit.notFinalFlit;
         // Make routing decision
-        RoutingDecision decision = RouteNoC;
-        MailboxNetAddr addr = flit.dest.addr;
-        if (addr.board.y < boardId.y) decision = RouteSouth;
-        else if (addr.board.y > boardId.y) decision = RouteNorth;
-        else if (addr.host.valid && boardId.x == 0 && boardId.y == 0) decision = RouteNoC;
-        else if (addr.host.valid && boardId.y != 0) decision = RouteSouth;
-        else if (addr.host.valid && boardId.x != 0) decision = RouteWest;
-        else if (addr.board.x < boardId.x) decision = RouteWest;
-        else if (addr.board.x > boardId.x) decision = RouteEast;
+        RoutingDecision decision = route(flit.dest.addr, boardId);
+        // $display("routing pkt from x:", boardId.x, " y:", boardId.y, " to x:", flit.dest.addr.board, " y:", flit.dest.addr.board.y, " via ", decision);
         // Insert into bypass queue
         flitOutQueue.enq(RoutedFlit { decision: decision, flit: flit});
       end
@@ -311,24 +314,6 @@ module mkPassthroughFetcher#(BoardId boardId, Integer fetcherId) (Fetcher);
 
   endrule
 
-
-  // Stage 3: merge output queues
-  // ----------------------------
-
-  // We want to merge messages, not flits
-  // Are we in the middle of consuming a message?
-  // Reg#(Bool) mergeInProgress <- mkReg(False);
-  // Reg#(Bool) prevFromBypass <- mkReg(False);
-  //
-  // rule merge (flitOutQueue.notFull);
-  //   // We only have the bypass queue
-  //   if (flitBypassQueue.canDeq) begin
-  //     flitBypassQueue.deq;
-  //     flitOutQueue.enq(flitBypassQueue.dataOut);
-  //     mergeInProgress <= flitBypassQueue.dataOut.flit.notFinalFlit;
-  //     prevFromBypass <= True;
-  //   end
-  // endrule
 
   // Interfaces
   // -----------
@@ -343,6 +328,12 @@ module mkPassthroughFetcher#(BoardId boardId, Integer fetcherId) (Fetcher);
     method Bool active =
       beatBufferLen.value != 0 || consumeState != 0;
   endinterface
+
+  method Action updateBoardId(BoardId newid);
+    if (newid != boardId) $display("[mkBypassRouter::fetcher ", fetcherId, "] setting boardId to x ", newid.x, " y ", newid.y);
+    boardId <= newid;
+  endmethod
+
 
 endmodule
 
@@ -453,25 +444,27 @@ interface ProgRouter;
   interface Vector#(`FetchersPerProgRouter, In#(Flit)) flitIn;
   interface Vector#(`FetchersPerProgRouter, BOut#(Flit)) flitOut;
 
-  // // Interface to off-chip memory
-  // interface Vector#(`DRAMsPerBoard,
-  //   Vector#(`FetchersPerProgRouter, BOut#(DRAMReq))) ramReqs;
-  // interface Vector#(`DRAMsPerBoard,
-  //   Vector#(`FetchersPerProgRouter, In#(DRAMResp))) ramResps;
-
   // Activities & performance counters
   interface Vector#(`FetchersPerProgRouter, FetcherActivity) activities;
   interface ProgRouterPerfCounters perfCounters;
+  method Action setBoardId(BoardId id);
 endinterface
 
 
 // (* synthesize *)
-module mkBypassRouter#(BoardId boardId) (ProgRouter);
+module mkBypassRouter (ProgRouter);
+
+  Reg#(BoardId) boardId <- mkConfigReg(?);
 
   // Fetchers
   Vector#(`FetchersPerProgRouter, Fetcher) fetchers = newVector;
-  for (Integer i = 0; i < `FetchersPerProgRouter; i=i+1)
-    fetchers[i] <- mkPassthroughFetcher(boardId, i);
+  for (Integer i = 0; i < `FetchersPerProgRouter; i=i+1) begin
+    fetchers[i] <- mkPassthroughFetcher(i);
+    rule updateFetcherBoardId;
+      fetchers[i].updateBoardId(boardId);
+    endrule
+  end
+
 
   // Crossbar routing functions
   function Bit#(`MailboxMeshXBits) xcoord(RoutedFlit rf) =
@@ -527,8 +520,14 @@ module mkBypassRouter#(BoardId boardId) (ProgRouter);
     method incSent = numSent;
     method incSentInterBoard = numSentInterBoard;
   endinterface
+  method Action setBoardId(BoardId newBoardid);
+    if (boardId != newBoardid) $display($time, "[mkBypassRouter] setting boardId to x ", newBoardid.x, " y ", newBoardid.y);
+    boardId <= newBoardid;
+  endmethod
+
 
 endmodule
+
 
 // For core(s) to access ProgRouter's performance counters
 (* always_ready, always_enabled *)

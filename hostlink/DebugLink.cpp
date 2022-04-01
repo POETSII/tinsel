@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: BSD-2-Clause
 #include <stdio.h>
+#include <iostream>
+
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
@@ -36,8 +38,34 @@ void DebugLink::getPacket(int x, int y, BoardCtrlPkt* pkt)
       numBytes -= ret;
     }
   }
-  // printf("[DebugLink::getPacket] got %i bytes from x %i y %i\n", sizeof(BoardCtrlPkt)-numBytes, x, y);
 }
+
+// Helper: blocking receive of a BoardCtrlPkt
+void DebugLink::getPacket(int x, int y, char type, BoardCtrlPkt* pkt)
+{
+  int got = 0;
+  char* buf = (char*) pkt;
+  int numBytes = sizeof(BoardCtrlPkt);
+  while (numBytes > 0) {
+    int ret = recv(conn[y][x], &buf[got], numBytes, 0);
+    if (ret < 0) {
+      fprintf(stderr, "Connection to box '%s' failed ",
+        boxMesh[thisBoxY+y][thisBoxX+x]);
+      fprintf(stderr, "(box may already be in use)\n");
+      exit(EXIT_FAILURE);
+    }
+    else {
+      got += ret;
+      numBytes -= ret;
+    }
+  }
+  if ((char)pkt->payload[0] == type) {
+    printf("[DebugLink::getPacket] have correct header %i=%i for pkt\n", type, (char)pkt->payload[0]);
+  } else {
+    printf("[DebugLink::getPacket] expecting type %i, got %i.\n", type, (char)pkt->payload[0]);
+  }
+}
+
 
 // Helper: blocking send of a BoardCtrlPkt
 void DebugLink::putPacket(int x, int y, BoardCtrlPkt* pkt)
@@ -172,6 +200,7 @@ DebugLink::DebugLink(DebugLinkParams p)
     while(1){
       for (int y = 0; y < boxMeshYLen; y++){
         for (int x = 0; x < boxMeshXLen; x++){
+          printf("[DbgLink::constructor] connecting to %i %i\n", x, y);
           if(conn[y][x]==-1){
             conn[y][x] = socketConnectTCP(boxMesh[thisBoxY+y][thisBoxX+x], 10101, true);
             if(conn[y][x]!=-1){
@@ -181,10 +210,11 @@ DebugLink::DebugLink(DebugLinkParams p)
         }
       }
       if(complete==(boxMeshXLen*boxMeshYLen)){
+        printf("[DbgLink::constructor] connected to all %i boxes\n", boxMeshXLen*boxMeshYLen);
         break;
       }
       if(tries < p.max_connection_attempts){
-        fprintf(stderr, "Connected %u out of %u boards. Sleeping 1 second. Tries left=%u.\n", complete, (boxMeshXLen*boxMeshYLen), p.max_connection_attempts-tries );
+        fprintf(stderr, "[DbgLink::constructor] Connected %u out of %u boards. Sleeping 1 second. Tries left=%u.\n", complete, (boxMeshXLen*boxMeshYLen), p.max_connection_attempts-tries );
         tries++;
         sleep(1);
       }else{
@@ -258,6 +288,8 @@ DebugLink::DebugLink(DebugLinkParams p)
           // It's a worker board, let's work out its mesh coordinates
 
           int id = pkt.payload[1] - 1;
+          uint64_t fpga_id = *(reinterpret_cast<uint64_t *>(pkt.payload+2));
+          std::cout << "[DbgLink::constructor] board " << b << " with id " << id << " has FPGA id " << fpga_id << std::endl;
           int subX = id & ((1 << TinselMeshXBitsWithinBox) - 1);
           int subY = id >> TinselMeshXBitsWithinBox;
           assert(subX < TinselMeshXLenWithinBox);
@@ -265,14 +297,14 @@ DebugLink::DebugLink(DebugLinkParams p)
           // Full X and Y coordinates on the global board mesh
           int fullX = x*TinselMeshXLenWithinBox + subX;
           int fullY = y*TinselMeshYLenWithinBox + subY;
-          printf("[DbgLink::Ctor] got box with subx %i suby % X %i Y %i. WARN: assuming this is board %i\n", subX, subY, fullX, fullY, b);
-          // assert(boxX[fullY][fullX] == -1);
+          printf("[DbgLink::Ctor] got box with subx %i suby %i X %i Y %i. WARN: assuming this is board %i (declared id %i)\n", subX, subY, fullX, fullY, b, id);
+          assert(boxX[fullY][fullX] == -1);
           // Populate bidirectional mappings
-          boardX[y][x][b] = fullX;
-          boardY[y][x][b] = fullY;
+          boardX[y][x][pkt.linkId] = fullX;
+          boardY[y][x][pkt.linkId] = fullY;
           boxX[fullY][fullX] = x;
           boxY[fullY][fullX] = y;
-          linkId[fullY][fullX] = b;
+          linkId[fullY][fullX] = pkt.linkId;
         }
       }
   }
@@ -344,7 +376,7 @@ void DebugLink::get(uint32_t* brdX, uint32_t* brdY,
   while (!done) {
     // Consider boxes fairly between calls to get()
     if (socketCanGet(conn[y][x])) {
-      getPacket(x, y, &pkt);
+      getPacket(x, y, DEBUGLINK_STD_OUT, &pkt);
       if (pkt.payload[0] != DEBUGLINK_STD_OUT) {
         fprintf(stderr, "DebugLink: unexpected response (not StdOut)\n");
         exit(EXIT_FAILURE);
@@ -383,7 +415,7 @@ int32_t DebugLink::getBoardTemp(uint32_t boardX, uint32_t boardY)
   pkt.linkId = linkId[boardY][boardX];
   pkt.payload[0] = DEBUGLINK_TEMP_IN;
   putPacket(boxX[boardY][boardX], boxY[boardY][boardX], &pkt);
-  getPacket(boxX[boardY][boardX], boxY[boardY][boardX], &pkt);
+  getPacket(boxX[boardY][boardX], boxY[boardY][boardX], DEBUGLINK_TEMP_OUT, &pkt);
   assert(pkt.payload[0] == DEBUGLINK_TEMP_OUT);
   return ((int32_t) pkt.payload[1]) - 128;
 }
@@ -395,7 +427,7 @@ int32_t DebugLink::getBridgeTemp(uint32_t boxX, uint32_t boxY)
   pkt.linkId = bridge[boxY][boxX];
   pkt.payload[0] = DEBUGLINK_TEMP_IN;
   putPacket(boxX, boxY, &pkt);
-  getPacket(boxX, boxY, &pkt);
+  getPacket(boxX, boxY, DEBUGLINK_TEMP_OUT, &pkt);
   assert(pkt.payload[0] == DEBUGLINK_TEMP_OUT);
   return ((int32_t) pkt.payload[1]) - 128;
 }

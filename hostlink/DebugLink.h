@@ -33,20 +33,21 @@ class DebugLink {
   int** boxX;
   int** boxY;
   int** linkId;
- 
+
   // Mapping from (box Y, box X, link id) to global (board X, board Y)
   int*** boardX;
   int*** boardY;
 
   // Mapping from (box Y, box X) to link id of the bridge board
   int** bridge;
- 
+
   // For fairness between boxes in reading bytes from DebugLink
   int get_tryNextX;
   int get_tryNextY;
 
   // Helper: blocking send/receive of a BoardCtrlPkt
   void getPacket(int x, int y, BoardCtrlPkt* pkt);
+  void getPacket(int x, int y, char type, BoardCtrlPkt* pkt);
   void putPacket(int x, int y, BoardCtrlPkt* pkt);
  public:
   // Length of box mesh in X and Y dimension

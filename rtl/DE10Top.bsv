@@ -54,8 +54,6 @@ interface DE10Ifc;
 
   interface JtagUartAvalon jtagIfc;
   (* always_ready, always_enabled *)
-  method Action setBoardId(Bit#(4) id);
-  (* always_ready, always_enabled *)
   method Action setTemperature(Bit#(8) temp);
 
   // Interface to the PCIe BAR
@@ -106,12 +104,11 @@ module mkDE10Top(DE10Ifc ifc);
   interface controlBAR  = top.controlBAR;
   interface pcieHostBus  = top.pcieHostBus;
   method Bool resetReq = !top.resetReq;
-  method Action setBoardId(Bit#(4) id) = top.setBoardId(id);
   method Action setTemperature(Bit#(8) temp) = top.setTemperature(temp);
-  interface northMac = top.north;
-  interface southMac = top.south;
-  interface eastMac  = top.east;
-  interface westMac  = top.west;
+  interface northMac = top.northMac;
+  interface southMac = top.southMac;
+  interface eastMac  = top.eastMac;
+  interface westMac  = top.westMac;
 
   `endif
 
@@ -244,7 +241,6 @@ module mkDE10Top_inner(DE10Ifc ifc);
   // Create network-on-chip
   function MailboxNet mailboxNet(Mailbox mbox) = mbox.net;
   NoC noc <- mkNoCDE10(
-    debugLink.getBoardId(),
     debugLink.linkEnable,
     map(map(mailboxNet), mailboxes),
     hostlink.mbox,
@@ -273,11 +269,12 @@ module mkDE10Top_inner(DE10Ifc ifc);
       for (Integer j = 0; j < `DCachesPerDRAM; j=j+1)
         for (Integer k = 0; k < `CoresPerDCache; k=k+1)
           cores[i][j][k].setBoardId(debugLink.getBoardId());
+    noc.setBoardId(debugLink.getBoardId());
   endrule
 
 
   // In simulation, display start-up message
-  // `ifdef SIMULATE
+  `ifdef SIMULATE
 
   Reg#(Bool) started <- mkReg(False);
   rule displayStartup;
@@ -289,7 +286,7 @@ module mkDE10Top_inner(DE10Ifc ifc);
       started <= True;
     end
   endrule
-  // `endif
+  `endif
 
   `ifndef SIMULATE
   function DRAMExtIfc getDRAMExtIfc(OffChipRAMStratix10 ram) = ram.extDRAM;
@@ -300,9 +297,6 @@ module mkDE10Top_inner(DE10Ifc ifc);
   interface southMac = noc.south;
   interface eastMac  = noc.east;
   interface westMac  = noc.west;
-  method Action setBoardId(Bit#(4) id);
-    localBoardId <= id;
-  endmethod
   method Action setTemperature(Bit#(8) temp);
     temperature <= temp;
   endmethod

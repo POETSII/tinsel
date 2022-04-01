@@ -92,6 +92,7 @@ int main()
 
   // Start application
   hostLink.go();
+  hostLink.startAll();
 
   // 2D grid
   int NX = X_LEN*8;

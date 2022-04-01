@@ -317,6 +317,11 @@ module mkBoardLink#(Bool en, SocketId id) (BoardLink);
   let unpaddedFlitIn  <- onIn(padFlit, ser.parallelIn);
   let unpaddedFlitOut <- onOut(unpadFlit, des.parallelOut);
 
+  // rule unpaddedFlitOutPrint (unpaddedFlitOut.valid);
+  //   $display($time, " [mkBoardLink socketId ", id, "] got flit with dest ", unpaddedFlitOut.value.dest);
+  // endrule
+
+
 `ifndef SIMULATE
   interface AvalonMac avalonMac = link.avalonMac;
 `endif
@@ -351,15 +356,17 @@ interface NoC;
   // ProgRouter fetcher activities & performance counters
   interface Vector#(`FetchersPerProgRouter, FetcherActivity) activities;
   interface ProgRouterPerfCounters progRouterPerfCounters;
+  method Action setBoardId(BoardId id);
 endinterface
 
 module mkNoC#(
-         BoardId boardId,
          Vector#(4, Bool) linkEnable,
          Vector#(`MailboxMeshYLen,
            Vector#(`MailboxMeshXLen, MailboxNet)) mailboxes,
          IdleDetector idle)
        (NoC);
+
+  Reg#(BoardId) boardId <- mkConfigReg(?);
 
   // Create off-board links
   Vector#(`NumNorthSouthLinks, BoardLink) northLink <-
@@ -384,7 +391,7 @@ module mkNoC#(
       MailboxId mailboxId =
         MailboxId { x: fromInteger(x), y: fromInteger(y) };
       routers[y][x] <- mkMeshRouter(mailboxId);
-      rule setBoardId;
+      rule setBoardIdforRouter;
         routers[y][x].setBoardId(boardId);
       endrule
     end
@@ -440,8 +447,12 @@ module mkNoC#(
   `ifdef DefinedIfProgRouterEnabled
   ProgRouter boardRouter <- mkProgRouter(boardId);
   `else
-  ProgRouter boardRouter <- mkBypassRouter(boardId);
+  ProgRouter boardRouter <- mkBypassRouter();
   `endif
+
+  rule updateBoardId;
+    boardRouter.setBoardId(boardId);
+  endrule
 
   // Connect board router to north link
   connectDirect(boardRouter.flitOut[0], northLink[0].flitIn);
@@ -532,17 +543,24 @@ module mkNoC#(
   interface ProgRouterPerfCounters progRouterPerfCounters =
     boardRouter.perfCounters;
 
+  method Action setBoardId(BoardId id);
+    $display("[Network::mkNoC] set board id to ", id);
+    boardId <= id;
+  endmethod
+
+
 endmodule
 
 
 module mkNoCDE10#(
-         BoardId boardId,
          Vector#(4, Bool) linkEnable,
          Vector#(`MailboxMeshYLen,
            Vector#(`MailboxMeshXLen, MailboxNet)) mailboxes,
          MailboxNet hostmbox,
          IdleDetector idle)
        (NoC);
+
+  Reg#(BoardId) boardId <- mkConfigReg(?);
 
   // Create off-board links
   Vector#(`NumNorthSouthLinks, BoardLink) northLink <-
@@ -567,7 +585,7 @@ module mkNoCDE10#(
       MailboxId mailboxId =
         MailboxId { x: fromInteger(x), y: fromInteger(y) };
       routers[y][x] <- mkMeshRouter(mailboxId);
-      rule setBoardId;
+      rule setBoardIdforRouter;
         routers[y][x].setBoardId(boardId);
       endrule
     end
@@ -628,8 +646,12 @@ module mkNoCDE10#(
   `ifdef DefinedIfProgRouterEnabled
   ProgRouter boardRouter <- mkProgRouter(boardId);
   `else
-  ProgRouter boardRouter <- mkBypassRouter(boardId);
+  ProgRouter boardRouter <- mkBypassRouter();
   `endif
+
+  rule updateBoardId;
+    boardRouter.setBoardId(boardId);
+  endrule
 
   // Connect board router to north link
   connectDirect(boardRouter.flitOut[0], northLink[0].flitIn);
@@ -719,6 +741,12 @@ module mkNoCDE10#(
   // Performance counters
   interface ProgRouterPerfCounters progRouterPerfCounters =
     boardRouter.perfCounters;
+
+  method Action setBoardId(BoardId id);
+    if (id != boardId) $display("[Network::mkNoCDE10] set board id to ", id);
+    boardId <= id;
+  endmethod
+
 
 endmodule
 

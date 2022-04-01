@@ -139,6 +139,7 @@ void server(int conn, int numBoards, UARTBuffer* uartLinks)
   #else
     for (int i = 0; i < numBoards; i++) uartLinks[i].uart->open(i+1);
   #endif
+  printf("[boardctrld::server] opened all JTAG UARTs.\n");
 
   // Packet buffer for sending and receiving
   BoardCtrlPkt pkt;
@@ -151,6 +152,7 @@ void server(int conn, int numBoards, UARTBuffer* uartLinks)
     if (n < 0) return;
     if (n > 0) break;
   }
+  printf("[boardctrld::server] sent ready packet.\n");
 
   // Serve UARTs every 'serveCount' iterations of event loop
   int serveMax = 32;
@@ -172,8 +174,10 @@ void server(int conn, int numBoards, UARTBuffer* uartLinks)
       if (ok < 0) return;
       if (ok > 0) {
         int numBytes = toDebugLinkSize(pkt.payload[0]);
+        printf("[boardctrld::server] waiting for %i bytes for packet type %i.\n", numBytes, pkt.payload[0]);
         for (int i = 0; i < numBytes; i++)
           uartLinks[pkt.linkId].put(pkt.payload[i]);
+        printf("[boardctrld::server] put %i bytes\n", numBytes);
         didPut = true;
       }
     }
@@ -190,6 +194,7 @@ void server(int conn, int numBoards, UARTBuffer* uartLinks)
           uartLinks[i].get(); didGet = true; // Carry on
         }
         else {
+          printf("[boardctrld::server] got cmd %i\n", cmd);
           uint8_t numBytes = fromDebugLinkSize(cmd);
           if (uartLinks[i].canGet(numBytes)) {
             for (int j = 0; j < numBytes; j++)

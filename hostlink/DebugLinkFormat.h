@@ -17,13 +17,13 @@
 #define DEBUGLINK_READY     255
 
 // Maximum size of a DebugLink packet
-#define DEBUGLINK_MAX_PKT_BYTES 4
+#define DEBUGLINK_MAX_PKT_BYTES 10
 
 // Size of a packet to DebugLink
 inline int toDebugLinkSize(uint8_t cmd)
 {
   switch (cmd) {
-    case DEBUGLINK_QUERY_IN: return 3;
+    case DEBUGLINK_QUERY_IN: return 4;
     case DEBUGLINK_EN_IDLE: return 3;
     case DEBUGLINK_SET_DEST: return 3;
     case DEBUGLINK_STD_IN: return 2;
@@ -38,7 +38,7 @@ inline int toDebugLinkSize(uint8_t cmd)
 inline int fromDebugLinkSize(uint8_t cmd)
 {
   switch (cmd) {
-    case DEBUGLINK_QUERY_OUT: return 2;
+    case DEBUGLINK_QUERY_OUT: return 10;
     case DEBUGLINK_STD_OUT: return 4;
     case DEBUGLINK_TEMP_OUT: return 2;
     case DEBUGLINK_OVERHEAT: return 1;

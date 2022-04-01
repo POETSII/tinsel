@@ -13,11 +13,12 @@ package DebugLink;
 // Commands sent from the host PC to DebugLink typically consist of a
 // few bytes over the JTAG UART.
 //
-//   QueryIn: tag (1 byte), board offset (1 byte), config (1 byte)
+//   QueryIn: tag (1 byte), board id (1 byte), board offset (1 byte), config (1 byte)
 //   -------------------------------------------------------------
 //
 //   Sets the X offset (offset[3:0]) and the Y offset (offset[7:4])
 //   of the board id (to support multiple boxes).
+//   also set (DE10) the local board ID out of the 8 in the server (lower 4 bits)
 //   Disable the specified inter-FPGA links:
 //     * config[0]: disable links on north side of box
 //     * config[1]: disable links on south side of box
@@ -48,7 +49,7 @@ package DebugLink;
 // Commands sent from DebugLink to the host PC over the JTAG UART are
 // as follows.
 //
-//   QueryOut: tag (1 byte), payload (1 byte)
+//   QueryOut: tag (1 byte), payload (1 byte), FPGA ID (8 bytes)
 //   ----------------------------------------
 //
 //   Response to QueryIn command. Payload contains 1 + Board Id.  By
@@ -71,6 +72,7 @@ package DebugLink;
 //   ----------------------
 //
 //   FPGA is overheating.
+//
 
 // =============================================================================
 // Imports
@@ -83,6 +85,7 @@ import Queue     :: *;
 import Util      :: *;
 import Globals   :: *;
 import ConfigReg :: *;
+import ChipID    :: *;
 
 // =============================================================================
 // DebugLink commands
@@ -247,6 +250,19 @@ module mkDebugLink#(
   // an overall board id.
   Reg#(BoardId) boardId <- mkReg(unpack(0));
 
+  // Reg#(Bool) gotChipID <- mkReg(False);
+  // Stratix10ChipID chipID <- mkStratix10ChipID();
+  Reg#(Bit#(64)) chipIDReg <- mkConfigReg(?);
+  // rule getchipid (!gotChipID);
+  //   chipID.start();
+  //   gotChipID <= True;
+  // endrule
+
+  rule copyChipID;
+    // chipIDReg <= chipID.chip_id();
+    chipIDReg <= 5;
+  endrule
+
   // An enable line for each inter-FPGA link on the board
   // (Initially, all disabled)
   Reg#(Vector#(4, Bool)) linkEnableReg <- mkConfigReg(replicate(False));
@@ -289,16 +305,6 @@ module mkDebugLink#(
   // Connect DebugLink to bus
   connectUsing(mkUGShiftQueue1(QueueOptFmax), toBusPort.out, bus[0].busIn);
 
-  // Board id shift register
-  // -----------------------
-
-  rule setBoardId;
-    BoardId id;
-    id.y = truncate(boardOffset[7:4] + zeroExtend(boardIdWithinBox[3:2]));
-    id.x = truncate(boardOffset[3:0] + zeroExtend(boardIdWithinBox[1:0]));
-    boardId <= id;
-  endrule
-
   // Monitor temperature
   // -------------------
 
@@ -332,7 +338,7 @@ module mkDebugLink#(
   // --------------------------
 
   // State
-  Reg#(Bit#(2)) recvState <- mkConfigReg(0);
+  Reg#(Bit#(3)) recvState <- mkConfigReg(0);
 
   // Destination core id
   Reg#(Bit#(8)) recvDestCore <- mkConfigReg(0);
@@ -360,7 +366,8 @@ module mkDebugLink#(
       end
     end else if (recvState == 1) begin
       if (recvCmd == cmdQueryIn) begin
-        boardOffset <= fromJtag.value;
+        $display("set board id to %i", fromJtag.value);
+        boardId <= unpack(truncate(fromJtag.value));
         recvState <= 2;
       end else if (recvCmd == cmdSetDest) begin
         recvDestThread <= fromJtag.value;
@@ -377,8 +384,20 @@ module mkDebugLink#(
       end
     end else if (recvState == 2) begin
       if (recvCmd == cmdQueryIn) begin
+        $display("set boardOffset to %i", fromJtag.value);
+        boardOffset <= fromJtag.value;
+        recvState <= 3;
+      end else begin
+        recvDestCore <= fromJtag.value;
+        recvState <= 0;
+      end
+    end else if (recvState == 3) begin
+      if (recvCmd == cmdQueryIn) begin
         Bit#(4) edgeEn = truncate(fromJtag.value);
         Vector#(4, Bool) linkEn = replicate(True);
+        $display("setting link enable regs to %i and setting respondFlag", fromJtag.value);
+
+        // WARN: ignoring link disable regs
         // Disable north link?
         Bit#(2) y = boardIdWithinBox[3:2];
         Bit#(2) x = boardIdWithinBox[1:0];
@@ -391,6 +410,7 @@ module mkDebugLink#(
               edgeEn[2] == 1) linkEn[2] = False;
         // Disable west link?
         if (x == 0 && edgeEn[3] == 1) linkEn[3] = False;
+
         linkEnableReg <= linkEn;
         // Reserve extra send slot?
         useExtraSendSlotReg[2] <=
@@ -401,8 +421,7 @@ module mkDebugLink#(
         checkTemperature <= True;
         recvState <= 0;
       end else begin
-        recvDestCore <= fromJtag.value;
-        recvState <= 0;
+        $display("WARNING: debglink recv in state 3, but not processing a queryin pkt!");
       end
     end
   endrule
@@ -411,23 +430,33 @@ module mkDebugLink#(
   // -----------------------
 
   // State
-  Reg#(Bit#(2)) sendState <- mkConfigReg(0);
+  Reg#(Bit#(4)) sendState <- mkConfigReg(0);
 
   // Flit being forwarded
   Reg#(DebugLinkFlit) sendFlit <- mkConfigRegU;
 
   // Send QueryOut command
+  (* no_implicit_conditions, fire_when_enabled *)
   rule uartSendQueryOut (toJtag.canPut && respondFlag);
     if (respondCmd == cmdQueryIn) begin
       if (sendState == 0) begin
         // Send QueryOut
         toJtag.put(zeroExtend(cmdQueryOut));
         sendState <= 1;
-      end else begin
+      end else if (sendState == 1) begin
         // Send QueryOut payload
         toJtag.put(1 + zeroExtend(pack(boardIdWithinBox)));
-        sendState <= 0;
-        respondFlag <= False;
+        sendState <= 2;
+      end else if (sendState > 1) begin
+        // send the FPGA ID. 8 bytes
+        Vector#(8, Bit#(8)) chipvec = unpack(chipIDReg);
+        toJtag.put(chipvec[sendState-2]);
+        if (sendState == 9) begin
+          sendState <= 0;
+          respondFlag <= False;
+        end else begin
+          sendState <= sendState+1;
+        end
       end
     end else if (respondCmd == cmdTempIn) begin
       if (sendState == 0) begin
