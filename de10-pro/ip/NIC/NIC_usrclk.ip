@@ -70,12 +70,12 @@
         <ipxact:parameter parameterId="clockRate" type="longint">
           <ipxact:name>clockRate</ipxact:name>
           <ipxact:displayName>Clock rate</ipxact:displayName>
-          <ipxact:value>0</ipxact:value>
+          <ipxact:value>100000000</ipxact:value>
         </ipxact:parameter>
         <ipxact:parameter parameterId="clockRateKnown" type="bit">
           <ipxact:name>clockRateKnown</ipxact:name>
           <ipxact:displayName>Clock rate known</ipxact:displayName>
-          <ipxact:value>false</ipxact:value>
+          <ipxact:value>true</ipxact:value>
         </ipxact:parameter>
         <ipxact:parameter parameterId="externallyDriven" type="bit">
           <ipxact:name>externallyDriven</ipxact:name>
@@ -105,6 +105,7 @@
         <ipxact:fileSetRef>
           <ipxact:localName>QUARTUS_SYNTH</ipxact:localName>
         </ipxact:fileSetRef>
+        <ipxact:parameters></ipxact:parameters>
       </ipxact:componentInstantiation>
     </ipxact:instantiations>
     <ipxact:ports>
@@ -112,6 +113,7 @@
         <ipxact:name>in_clk</ipxact:name>
         <ipxact:wire>
           <ipxact:direction>in</ipxact:direction>
+          <ipxact:vectors></ipxact:vectors>
           <ipxact:wireTypeDefs>
             <ipxact:wireTypeDef>
               <ipxact:typeName>STD_LOGIC</ipxact:typeName>
@@ -124,6 +126,7 @@
         <ipxact:name>out_clk</ipxact:name>
         <ipxact:wire>
           <ipxact:direction>out</ipxact:direction>
+          <ipxact:vectors></ipxact:vectors>
           <ipxact:wireTypeDefs>
             <ipxact:wireTypeDef>
               <ipxact:typeName>STD_LOGIC</ipxact:typeName>
@@ -146,7 +149,7 @@
         <ipxact:parameter parameterId="DERIVED_CLOCK_RATE" type="longint">
           <ipxact:name>DERIVED_CLOCK_RATE</ipxact:name>
           <ipxact:displayName>Derived clock rate</ipxact:displayName>
-          <ipxact:value>0</ipxact:value>
+          <ipxact:value>100000000</ipxact:value>
         </ipxact:parameter>
         <ipxact:parameter parameterId="EXPLICIT_CLOCK_RATE" type="longint">
           <ipxact:name>EXPLICIT_CLOCK_RATE</ipxact:name>
@@ -187,6 +190,17 @@
           <ipxact:displayName>bonusData</ipxact:displayName>
           <ipxact:value>bonusData 
 {
+   element $system
+   {
+      datum _originalDeviceFamily
+      {
+         value = "Stratix 10";
+         type = "String";
+      }
+   }
+   element NIC_usrclk
+   {
+   }
 }
 </ipxact:value>
         </ipxact:parameter>
@@ -258,11 +272,11 @@
                     &lt;/entry&gt;
                     &lt;entry&gt;
                         &lt;key&gt;clockRate&lt;/key&gt;
-                        &lt;value&gt;0&lt;/value&gt;
+                        &lt;value&gt;100000000&lt;/value&gt;
                     &lt;/entry&gt;
                     &lt;entry&gt;
                         &lt;key&gt;clockRateKnown&lt;/key&gt;
-                        &lt;value&gt;false&lt;/value&gt;
+                        &lt;value&gt;true&lt;/value&gt;
                     &lt;/entry&gt;
                     &lt;entry&gt;
                         &lt;key&gt;externallyDriven&lt;/key&gt;
@@ -289,7 +303,7 @@
                 &lt;suppliedSystemInfos&gt;
                     &lt;entry&gt;
                         &lt;key&gt;CLOCK_RATE&lt;/key&gt;
-                        &lt;value&gt;0&lt;/value&gt;
+                        &lt;value&gt;100000000&lt;/value&gt;
                     &lt;/entry&gt;
                 &lt;/suppliedSystemInfos&gt;
                 &lt;consumedSystemInfos/&gt;
@@ -303,7 +317,7 @@
                 &lt;consumedSystemInfos&gt;
                     &lt;entry&gt;
                         &lt;key&gt;CLOCK_RATE&lt;/key&gt;
-                        &lt;value&gt;0&lt;/value&gt;
+                        &lt;value&gt;100000000&lt;/value&gt;
                     &lt;/entry&gt;
                 &lt;/consumedSystemInfos&gt;
             &lt;/value&gt;

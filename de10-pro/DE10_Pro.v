@@ -311,7 +311,6 @@ DE10_Pro_QSYS DE10_Pro_QSYS_inst (
         .pcie_s10_hip_avmm_bridge_0_hip_serial_rx_in3                  (PCIE_RX_p[3]),                  //   input,   width = 1, pcie_s10_hip_avmm_bridge_0_hip_serial.rx_in0
         .pcie_s10_hip_avmm_bridge_0_hip_serial_tx_out3                 (PCIE_TX_p[3]),                 //  output,   width = 1,                                      .tx_out0
 
-        .tinsel_0_boardid_val(0),
         .tinsel_0_temperature_val(178),
         .iopll_0_locked_export()
     );

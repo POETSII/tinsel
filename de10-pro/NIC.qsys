@@ -698,7 +698,7 @@
                     <consumedSystemInfos>
                         <entry>
                             <key>CLOCK_RATE</key>
-                            <value>-1</value>
+                            <value>100000000</value>
                         </entry>
                     </consumedSystemInfos>
                 </value>
@@ -907,11 +907,11 @@
                         </entry>
                         <entry>
                             <key>clockRate</key>
-                            <value>0</value>
+                            <value>100000000</value>
                         </entry>
                         <entry>
                             <key>clockRateKnown</key>
-                            <value>false</value>
+                            <value>true</value>
                         </entry>
                         <entry>
                             <key>externallyDriven</key>
@@ -963,7 +963,7 @@
                     <suppliedSystemInfos>
                         <entry>
                             <key>CLOCK_RATE</key>
-                            <value>0</value>
+                            <value>100000000</value>
                         </entry>
                     </suppliedSystemInfos>
                     <consumedSystemInfos/>
@@ -1032,11 +1032,11 @@
                     </entry>
                     <entry>
                         <key>clockRate</key>
-                        <value>0</value>
+                        <value>100000000</value>
                     </entry>
                     <entry>
                         <key>clockRateKnown</key>
-                        <value>false</value>
+                        <value>true</value>
                     </entry>
                     <entry>
                         <key>externallyDriven</key>
