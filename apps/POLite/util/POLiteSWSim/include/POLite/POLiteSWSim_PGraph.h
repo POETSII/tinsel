@@ -76,7 +76,6 @@ typedef int32_t PinId;
 struct PPin{
   uint8_t index;
 
-
   constexpr bool operator==(PPin o) const { return index==o.index; }
   constexpr bool operator!=(PPin o) const { return index!=o.index; }
 };
@@ -193,7 +192,7 @@ private:
 
         std::mt19937_64 rng;
         uint32_t seed= time(0)+(uintptr_t)(malloc) +(uintptr_t)(toAddr)+(uintptr_t)(&rng);
-        fprintf(stderr, "POLiteSim : seed = %u\n", seed);
+        //fprintf(stderr, "POLiteSim : seed = %u\n", seed);
         rng.seed(seed);
 
         std::function<void (void *,size_t)> send_cb=[&](void *p, size_t n)
@@ -522,6 +521,8 @@ template <typename TDeviceType,
           bool TT_ENABLE_THREAD_PERF_COUNTERS=false
           >
 struct PThread {
+    static_assert(TT_NUM_PINS==T_NUM_PINS); // Well this was stupid.
+
     using DeviceType = TDeviceType;
      using Impl = POLiteSWSim<T_NUM_PINS>;
 

@@ -576,7 +576,7 @@ public:
         // Add space for each device on thread
         uint32_t numDevs = numDevicesOnThread[threadId];
         for (uint32_t devNum = 0; devNum < numDevs; devNum++) {
-          PState<S>* dev = (PState<S>*) &vertexMem[threadId][nextVMem];
+          PState<S,NUM_PINS>* dev = (PState<S,NUM_PINS>*) &vertexMem[threadId][nextVMem];
           PDeviceId id = fromDeviceAddr[threadId][devNum];
           devices[id] = dev;
           // Add space for device
@@ -585,7 +585,7 @@ public:
         // Initialise each device and the thread's out edges
         for (uint32_t devNum = 0; devNum < numDevs; devNum++) {
           PDeviceId id = fromDeviceAddr[threadId][devNum];
-          PState<S>* dev = devices[id];
+          PState<S,NUM_PINS>* dev = devices[id];
           // Initialise
           POutEdge* outEdgeArray = (POutEdge*) outEdgeMem[threadId];
           for (uint32_t p = 0; p < NUM_PINS; p++) {
