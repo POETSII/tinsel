@@ -563,7 +563,10 @@ module mkPCIeStream (PCIeStream);
   // Input rule
   rule in (inPort.canGet);
     Bool ok <- socketPut(pcieSocket, unpack(inPort.value));
-    if (ok) inPort.get;
+    if (ok) begin
+      inPort.get;
+      // $display($time, " got pcie bytes.");
+    end
   endrule
 
   // Output rule

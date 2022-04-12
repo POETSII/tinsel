@@ -306,7 +306,7 @@ module mkPassthroughFetcher#(Integer fetcherId) (Fetcher);
         bypassInProgress <= flit.notFinalFlit;
         // Make routing decision
         RoutingDecision decision = route(flit.dest.addr, boardId);
-        // $display("routing pkt from x:", boardId.x, " y:", boardId.y, " to x:", flit.dest.addr.board, " y:", flit.dest.addr.board.y, " via ", decision);
+        // $display("routing pkt from x:", boardId.x, " y:", boardId.y, " to x:", flit.dest.addr.board.x, " y:", flit.dest.addr.board.y, " via ", decision);
         // Insert into bypass queue
         flitOutQueue.enq(RoutedFlit { decision: decision, flit: flit});
       end

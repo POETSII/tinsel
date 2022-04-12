@@ -587,9 +587,9 @@
             </value>
         </entry>
         <entry>
-            <key>mac_a_refclk_in_clk</key>
+            <key>nic_a_mac_a_refclk_in_clk</key>
             <value>
-                <connectionPointName>mac_a_refclk_in_clk</connectionPointName>
+                <connectionPointName>nic_a_mac_a_refclk_in_clk</connectionPointName>
                 <suppliedSystemInfos>
                     <entry>
                         <key>CLOCK_DOMAIN</key>
@@ -755,20 +755,65 @@
    internal="iopll_0.locked"
    type="conduit"
    dir="end" />
+ <interface name="mac_b_refclk_in_clk" internal="MAC_B_refclk.in_clk" />
  <interface
-   name="mac_a_refclk_in_clk"
+   name="nic_a_mac_a_refclk_in_clk"
    internal="NIC_A.MAC_A_refclk_in_clk"
    type="clock"
    dir="end" />
- <interface name="mac_b_refclk_in_clk" internal="MAC_B_refclk.in_clk" />
+ <interface
+   name="nic_a_s10_100gmac_a_other"
+   internal="NIC_A.S10_100GMAC_A_other"
+   type="conduit"
+   dir="end" />
+ <interface
+   name="nic_a_s10_100gmac_a_reconfig"
+   internal="NIC_A.S10_100GMAC_A_reconfig"
+   type="conduit"
+   dir="end" />
+ <interface
+   name="nic_a_s10_100gmac_a_serial_lanes"
+   internal="NIC_A.S10_100GMAC_A_serial_lanes"
+   type="conduit"
+   dir="end" />
+ <interface
+   name="nic_a_s10_100gmac_a_stats"
+   internal="NIC_A.S10_100GMAC_A_stats"
+   type="conduit"
+   dir="end" />
+ <interface
+   name="nic_a_s10_100gmac_a_status"
+   internal="NIC_A.S10_100GMAC_A_status"
+   type="conduit"
+   dir="end" />
  <interface
    name="nic_b_mac_a_refclk_in_clk"
    internal="NIC_B.MAC_A_refclk_in_clk"
    type="clock"
    dir="end" />
  <interface
+   name="nic_b_s10_100gmac_a_other"
+   internal="NIC_B.S10_100GMAC_A_other"
+   type="conduit"
+   dir="end" />
+ <interface
+   name="nic_b_s10_100gmac_a_reconfig"
+   internal="NIC_B.S10_100GMAC_A_reconfig"
+   type="conduit"
+   dir="end" />
+ <interface
    name="nic_b_s10_100gmac_a_serial_lanes"
    internal="NIC_B.S10_100GMAC_A_serial_lanes"
+   type="conduit"
+   dir="end" />
+ <interface
+   name="nic_b_s10_100gmac_a_stats"
+   internal="NIC_B.S10_100GMAC_A_stats"
+   type="conduit"
+   dir="end" />
+ <interface
+   name="nic_b_s10_100gmac_a_status"
+   internal="NIC_B.S10_100GMAC_A_status"
    type="conduit"
    dir="end" />
  <interface
@@ -777,8 +822,28 @@
    type="clock"
    dir="end" />
  <interface
+   name="nic_c_s10_100gmac_a_other"
+   internal="NIC_C.S10_100GMAC_A_other"
+   type="conduit"
+   dir="end" />
+ <interface
+   name="nic_c_s10_100gmac_a_reconfig"
+   internal="NIC_C.S10_100GMAC_A_reconfig"
+   type="conduit"
+   dir="end" />
+ <interface
    name="nic_c_s10_100gmac_a_serial_lanes"
    internal="NIC_C.S10_100GMAC_A_serial_lanes"
+   type="conduit"
+   dir="end" />
+ <interface
+   name="nic_c_s10_100gmac_a_stats"
+   internal="NIC_C.S10_100GMAC_A_stats"
+   type="conduit"
+   dir="end" />
+ <interface
+   name="nic_c_s10_100gmac_a_status"
+   internal="NIC_C.S10_100GMAC_A_status"
    type="conduit"
    dir="end" />
  <interface
@@ -787,8 +852,28 @@
    type="clock"
    dir="end" />
  <interface
+   name="nic_d_s10_100gmac_a_other"
+   internal="NIC_D.S10_100GMAC_A_other"
+   type="conduit"
+   dir="end" />
+ <interface
+   name="nic_d_s10_100gmac_a_reconfig"
+   internal="NIC_D.S10_100GMAC_A_reconfig"
+   type="conduit"
+   dir="end" />
+ <interface
    name="nic_d_s10_100gmac_a_serial_lanes"
    internal="NIC_D.S10_100GMAC_A_serial_lanes"
+   type="conduit"
+   dir="end" />
+ <interface
+   name="nic_d_s10_100gmac_a_stats"
+   internal="NIC_D.S10_100GMAC_A_stats"
+   type="conduit"
+   dir="end" />
+ <interface
+   name="nic_d_s10_100gmac_a_status"
+   internal="NIC_D.S10_100GMAC_A_status"
    type="conduit"
    dir="end" />
  <interface
@@ -817,11 +902,6 @@
    type="clock"
    dir="end" />
  <interface name="reset" internal="reset_in.in_reset" type="reset" dir="end" />
- <interface
-   name="s10_100gmac_a_serial_lanes"
-   internal="NIC_A.S10_100GMAC_A_serial_lanes"
-   type="conduit"
-   dir="end" />
  <interface
    name="s10_100gmac_b_serial_lanes"
    internal="S10_100GMAC_B.serial_lanes" />
@@ -45837,7 +45917,7 @@
                     </entry>
                     <entry>
                         <key>associatedResetSinks</key>
-                        <value>none</value>
+                        <value></value>
                     </entry>
                     <entry>
                         <key>synchronousEdges</key>
@@ -45980,7 +46060,6 @@
                     </entry>
                     <entry>
                         <key>bridgedAddressOffset</key>
-                        <value>0</value>
                     </entry>
                     <entry>
                         <key>bridgesToMaster</key>

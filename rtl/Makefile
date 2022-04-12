@@ -36,7 +36,7 @@ BSCFLAGS = -suppress-warnings S0015 \
 
 
 VPIINCL=$(dir $(shell which bsc))../lib/VPI/
-
+BOARD_ID=$(shell env BOARD_ID)
 # Top level module
 ifeq ($(STRATIX10),True)
 TOPFILE = DE10Top.bsv
@@ -90,9 +90,11 @@ $(HOSTTOPMOD).v: *.bsv
 	$(BSC) $(BSCFLAGS) -opt-undetermined-vals -unspecified-to X \
          $(DEFS) -u -verilog -g $(HOSTTOPMOD) $(HOSTTOPFILE)
 
+
 .PHONY: runsim
 runsim:
-	LD_PRELOAD=$(VPIINCL)/libbdpi.so:mkDE10Top.so ./mkDE10Top
+	$(if $(value BOARD_ID), , $(error Please set BOARD_ID))
+	LD_PRELOAD=$(VPIINCL)/libbdpi.so:mkDE10Top.so ./mkDE10Top -V ${BOARD_ID}.vcd
 
 testMem: *.bsv *.c
 	$(BSC) $(BSCFLAGS) $(DEFS) -D SIMULATE \

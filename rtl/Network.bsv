@@ -546,6 +546,11 @@ module mkNoC#(
   method Action setBoardId(BoardId id);
     $display("[Network::mkNoC] set board id to ", id);
     boardId <= id;
+
+    `ifndef DefinedIfProgRouterEnabled
+    boardRouter.setBoardId(id);
+    `endif
+
   endmethod
 
 
@@ -745,6 +750,9 @@ module mkNoCDE10#(
   method Action setBoardId(BoardId id);
     if (id != boardId) $display("[Network::mkNoCDE10] set board id to ", id);
     boardId <= id;
+    `ifndef DefinedIfProgRouterEnabled
+    boardRouter.setBoardId(id);
+    `endif
   endmethod
 
 

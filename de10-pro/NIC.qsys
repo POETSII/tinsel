@@ -280,7 +280,7 @@
         </interfaces>
     </boundary>
     <originalModuleInfo>
-        <className>DE10_Pro_QSYS_atx_pll_dualclk_A</className>
+        <className>DE10_Pro_QSYS_atx_pll_dualclk</className>
         <version>1.0</version>
         <displayName>atx_pll_dualclk</displayName>
     </originalModuleInfo>

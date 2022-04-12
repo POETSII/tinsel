@@ -117,12 +117,14 @@ endmodule
 
 module mkDE10Top_inner(DE10Ifc ifc);
 
-  // Board Id
-  `ifdef SIMULATE
-  Bit#(4) localBoardId = truncate(getBoardId());
-  `else
-  Wire#(Bit#(4)) localBoardId <- mkDWire(?);
-  `endif
+  // // Board Id
+  // `ifdef SIMULATE
+  // Wire#(Bit#(4)) localBoardId <- mkDWire(truncate(getBoardId()));
+  // `else
+  //
+  // `endif
+
+  Wire#(Bit#(4)) localBoardId <- mkDWire(0);
 
   // Temperature register
   Reg#(Bit#(8)) temperature <- mkReg(128);
@@ -197,8 +199,13 @@ module mkDE10Top_inner(DE10Ifc ifc);
   // Create DebugLink interface
   function DebugLinkClient getDebugLinkClient(Core core) = core.debugLinkClient;
   DebugLink debugLink <-
-    mkDebugLink(localBoardId, temperature,
+    mkDebugLink(temperature,
       map(getDebugLinkClient, vecOfCores));
+
+  (* no_implicit_conditions, fire_when_enabled *)
+  rule setlocalBoardId;
+    localBoardId <= debugLink.getBoardIdWithinBox();
+  endrule
 
   // Create PCIeStream instance
   PCIeStream pcie <- mkPCIeStream();
@@ -264,6 +271,7 @@ module mkDE10Top_inner(DE10Ifc ifc);
     concat(concat(cores)));
 
   // Set board ids
+  (* no_implicit_conditions, fire_when_enabled *)
   rule setBoardIds;
     for (Integer i = 0; i < `DRAMsPerBoard; i=i+1)
       for (Integer j = 0; j < `DCachesPerDRAM; j=j+1)
@@ -281,7 +289,7 @@ module mkDE10Top_inner(DE10Ifc ifc);
     let t <- $time;
     if (!started) begin
       $display("\nSimulator for board %d started at time ", localBoardId, t);
-      // $dumpvars();
+      // $dumpvars(getBoardId());
       temperature <= 0;
       started <= True;
     end

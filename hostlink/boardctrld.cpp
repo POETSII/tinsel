@@ -137,7 +137,11 @@ void server(int conn, int numBoards, UARTBuffer* uartLinks)
     uartLinks[count++].uart->open(-1);
     #endif // S5
   #else
+  #ifdef SIMULATE
     for (int i = 0; i < numBoards; i++) uartLinks[i].uart->open(i+1);
+  #else
+    for (int i = 0; i < numBoards; i++) uartLinks[i].uart->open((i+1)); // ugly hack to allign UART 0 with board id 0
+  #endif
   #endif
   printf("[boardctrld::server] opened all JTAG UARTs.\n");
 
@@ -194,7 +198,7 @@ void server(int conn, int numBoards, UARTBuffer* uartLinks)
           uartLinks[i].get(); didGet = true; // Carry on
         }
         else {
-          printf("[boardctrld::server] got cmd %i\n", cmd);
+          // printf("[boardctrld::server] got cmd %i\n", cmd);
           uint8_t numBytes = fromDebugLinkSize(cmd);
           if (uartLinks[i].canGet(numBytes)) {
             for (int j = 0; j < numBytes; j++)

@@ -152,6 +152,28 @@ module DE10_Pro(
   inout              QSFP28B_SCL,
   inout              QSFP28B_SDA,
 
+  input              QSFP28C_REFCLK_p,
+  output   [ 3: 0]   QSFP28C_TX_p,
+  input    [ 3: 0]   QSFP28C_RX_p,
+  input              QSFP28C_INTERRUPT_n,
+  output             QSFP28C_LP_MODE,
+  input              QSFP28C_MOD_PRS_n,
+  output             QSFP28C_MOD_SEL_n,
+  output             QSFP28C_RST_n,
+  inout              QSFP28C_SCL,
+  inout              QSFP28C_SDA,
+
+  input              QSFP28D_REFCLK_p,
+  output   [ 3: 0]   QSFP28D_TX_p,
+  input    [ 3: 0]   QSFP28D_RX_p,
+  input              QSFP28D_INTERRUPT_n,
+  output             QSFP28D_LP_MODE,
+  input              QSFP28D_MOD_PRS_n,
+  output             QSFP28D_MOD_SEL_n,
+  output             QSFP28D_RST_n,
+  inout              QSFP28D_SCL,
+  inout              QSFP28D_SDA,
+
   input EXP_EN,
 
   inout UFL_CLKIN_p,
@@ -192,6 +214,9 @@ reset_release reset_release (
         );
 
 // assign reset_n = &{!ninit_done, CPU_RESET_n};
+
+  assign QSFP28A_RST_n = 1;
+  assign QSFP28B_RST_n = 1;
 
 assign ddr4_status =
   {ddr4_b_status_local_cal_fail,
@@ -310,6 +335,19 @@ DE10_Pro_QSYS DE10_Pro_QSYS_inst (
         .pcie_s10_hip_avmm_bridge_0_hip_serial_tx_out2                 (PCIE_TX_p[2]),                 //  output,   width = 1,                                      .tx_out0
         .pcie_s10_hip_avmm_bridge_0_hip_serial_rx_in3                  (PCIE_RX_p[3]),                  //   input,   width = 1, pcie_s10_hip_avmm_bridge_0_hip_serial.rx_in0
         .pcie_s10_hip_avmm_bridge_0_hip_serial_tx_out3                 (PCIE_TX_p[3]),                 //  output,   width = 1,                                      .tx_out0
+
+        .nic_a_mac_a_refclk_in_clk_clk                                 (QSFP28A_REFCLK_p),                                 //   input,   width = 1,             nic_a_mac_a_refclk_in_clk.clk
+        .nic_a_s10_100gmac_a_serial_lanes_tx_serial                    (QSFP28A_TX_p),                    //  output,   width = 4,      nic_a_s10_100gmac_a_serial_lanes.tx_serial
+        .nic_a_s10_100gmac_a_serial_lanes_rx_serial                    (QSFP28A_RX_p),                    //   input,   width = 4,                                      .rx_serial
+        .nic_b_mac_a_refclk_in_clk_clk                                 (QSFP28B_REFCLK_p),                                 //   input,   width = 1,             nic_a_mac_a_refclk_in_clk.clk
+        .nic_b_s10_100gmac_a_serial_lanes_tx_serial                    (QSFP28B_TX_p),                    //  output,   width = 4,      nic_a_s10_100gmac_a_serial_lanes.tx_serial
+        .nic_b_s10_100gmac_a_serial_lanes_rx_serial                    (QSFP28B_RX_p),                    //   input,   width = 4,                                      .rx_serial
+        .nic_c_mac_a_refclk_in_clk_clk                                 (QSFP28C_REFCLK_p),                                 //   input,   width = 1,             nic_a_mac_a_refclk_in_clk.clk
+        .nic_c_s10_100gmac_a_serial_lanes_tx_serial                    (QSFP28C_TX_p),                    //  output,   width = 4,      nic_a_s10_100gmac_a_serial_lanes.tx_serial
+        .nic_c_s10_100gmac_a_serial_lanes_rx_serial                    (QSFP28C_RX_p),                    //   input,   width = 4,                                      .rx_serial
+        .nic_d_mac_a_refclk_in_clk_clk                                 (QSFP28D_REFCLK_p),                                 //   input,   width = 1,             nic_a_mac_a_refclk_in_clk.clk
+        .nic_d_s10_100gmac_a_serial_lanes_tx_serial                    (QSFP28D_TX_p),                    //  output,   width = 4,      nic_a_s10_100gmac_a_serial_lanes.tx_serial
+        .nic_d_s10_100gmac_a_serial_lanes_rx_serial                    (QSFP28D_RX_p),                    //   input,   width = 4,                                      .rx_serial
 
         .tinsel_0_temperature_val(178),
         .iopll_0_locked_export()

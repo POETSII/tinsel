@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BSD-2-Clause
 #include <stdio.h>
 #include <iostream>
+#include <map>
 
 #include <stdlib.h>
 #include <stdint.h>
@@ -60,7 +61,7 @@ void DebugLink::getPacket(int x, int y, char type, BoardCtrlPkt* pkt)
     }
   }
   if ((char)pkt->payload[0] == type) {
-    printf("[DebugLink::getPacket] have correct header %i=%i for pkt\n", type, (char)pkt->payload[0]);
+    // printf("[DebugLink::getPacket] have correct header %i=%i for pkt\n", type, (char)pkt->payload[0]);
   } else {
     printf("[DebugLink::getPacket] expecting type %i, got %i.\n", type, (char)pkt->payload[0]);
   }
@@ -223,43 +224,117 @@ DebugLink::DebugLink(DebugLinkParams p)
     }
 
     if(complete!=(boxMeshXLen*boxMeshYLen)){
-      fprintf(stderr, "Connected %u out of %u boards. Couldnt open remaining sockets.\n", complete, (boxMeshXLen*boxMeshYLen));
+      fprintf(stderr, "[DbgLink::constructor] Connected %u out of %u boards. Couldnt open remaining sockets.\n", complete, (boxMeshXLen*boxMeshYLen));
       exit(EXIT_FAILURE);
     }
   }
 
   // Receive ready packets from each box
   BoardCtrlPkt pkt;
-  for (int y = 0; y < boxMeshYLen; y++)
+  printf("[DbgLink::constructor] waiting for ready packets.\n");
+  for (int y = 0; y < boxMeshYLen; y++) {
     for (int x = 0; x < boxMeshXLen; x++) {
-      getPacket(x, y, &pkt);
+      printf("[debuglink::ctor] looking for ready from box x %i y %i.\n", x, y);
+      getPacket(x, y, DEBUGLINK_READY, &pkt);
       assert(pkt.payload[0] == DEBUGLINK_READY);
+      printf("[debuglink::ctor] box x %i y %i is ready.\n", x, y);
     }
+  }
+  printf("[DbgLink::constructor] got all ready packets.\n");
+  // Send queries.
+  // for the DE10, we need to look up the board ID based on the FPGA ID;
+  // we get this from the first QUERY_OUT.
+  #ifdef SIMULATE
+  std::map<uint64_t, int> fpgaid_to_boardid = { {21845 + 0, 0}, {21845 + 1, 1}, };
+  #else
+  std::map<uint64_t, int> fpgaid_to_boardid = { {177623102814829662, 0}, {177592823420819223, 1}, };
+  #endif
 
-  // Send queries
   pkt.payload[0] = DEBUGLINK_QUERY_IN;
-  for (int y = 0; y < boxMeshYLen; y++)
+  for (int y = 0; y < boxMeshYLen; y++) {
+    for (int x = 0; x < boxMeshXLen; x++) {
+      pkt.payload[2] = 0;
+      // Sandbox this application from others running on the cluster
+      pkt.payload[3] = 0;
+      // Send commands to each board
+      for (int b = 0; b < TinselBoardsPerBox; b++) {
+        pkt.payload[1] = 0; // set to 0 for thie first packet
+        pkt.linkId = b;
+        putPacket(x, y, &pkt);
+      }
+    }
+  }
+  printf("[debuglink::ctor] sent all %i DEBUGLINK_QUERY_IN packets to get FPGA_IDs.\n", TinselBoardsPerBox);
+  std::map<int, int> linkid_to_boardid;
+  // Receive query responses
+  for (int y = 0; y < boxMeshYLen; y++) {
+    for (int x = 0; x < boxMeshXLen; x++) {
+      for (int b = 0; b < TinselBoardsPerBox; b++) {
+
+        while (1) {
+          getPacket(x, y, DEBUGLINK_QUERY_OUT, &pkt);
+          if (pkt.payload[0] == DEBUGLINK_QUERY_OUT) {
+            printf("[DbgLink::constructor] got a query_out; ");
+            for (int idx=0; idx<DEBUGLINK_MAX_PKT_BYTES; idx++) printf("0x%x ", pkt.payload[idx]);
+            printf("\n");
+            break;
+          } else {
+            printf("[DbgLink::constructor] %d:%d sent packet type %i whilst expecting %i\n", x, y, pkt.payload[0], DEBUGLINK_QUERY_OUT);
+            for (int i=0; i<10; i++) printf("%x ", pkt.payload[i]);
+            printf("\n");
+          }
+        }
+
+        assert(pkt.payload[0] == DEBUGLINK_QUERY_OUT);
+        if (pkt.payload[1] == 0) {
+          fprintf(stderr, "Too many bridge boards detected on box %s\n",
+            boxMesh[thisBoxX+y][thisBoxY+x]);
+        }
+        else {
+          // It's a worker board, let's work out its mesh coordinates
+          uint64_t fpga_id = *(reinterpret_cast<uint64_t *>(pkt.payload+2));
+          linkid_to_boardid[pkt.linkId] = fpgaid_to_boardid[fpga_id];
+        }
+      }
+    }
+  }
+  std::cout << "[debuglink::ctor] link to boardid mapping: ";
+  // for (const auto& [key, value] : linkid_to_boardid) {
+  //     std::cout << '[' << key << "] = " << value << "; ";
+  // }
+  for (const auto& n : linkid_to_boardid) {
+    std::cout << '[' << n.first << "]" << " = " << n.second << "; ";
+  }
+  std::cout << std::endl;
+
+  pkt.payload[0] = DEBUGLINK_QUERY_IN;
+  for (int y = 0; y < boxMeshYLen; y++) {
     for (int x = 0; x < boxMeshXLen; x++) {
       // Determine offset for each board in box
       int offsetX = x * TinselMeshXLenWithinBox;
       int offsetY = y * TinselMeshYLenWithinBox;
       assert(offsetX < 16);
       assert(offsetY < 16);
-      pkt.payload[1] = (offsetY << 4) | offsetX;
+      pkt.payload[2] = (offsetY << 4) | offsetX;
       // Sandbox this application from others running on the cluster
-      pkt.payload[2] = 0;
-      if (y == boxMeshYLen-1) pkt.payload[2] |= 1;
-      if (y == 0) pkt.payload[2] |= 2;
-      if (thisBoxX == 0 && boxMeshXLen == 1) pkt.payload[2] |= 4;
-      if (thisBoxX == 1 && boxMeshXLen == 1) pkt.payload[2] |= 8;
+      pkt.payload[3] = 0;
+
+      // if (y == boxMeshYLen-1) pkt.payload[3] |= 1;
+      // if (y == 0) pkt.payload[3] |= 2;
+      // if (thisBoxX == 0 && boxMeshXLen == 1) pkt.payload[3] |= 4;
+      // if (thisBoxX == 1 && boxMeshXLen == 1) pkt.payload[3] |= 8;
+
       // Reserve extra send slot?
-      pkt.payload[2] |= p.useExtraSendSlot ? 0x10 : 0;
+      pkt.payload[3] |= p.useExtraSendSlot ? 0x10 : 0;
       // Send commands to each board
       for (int b = 0; b < TinselBoardsPerBox; b++) {
+        pkt.payload[1] = linkid_to_boardid[b];
         pkt.linkId = b;
         putPacket(x, y, &pkt);
       }
     }
+  }
+  printf("[debuglink::ctor] sent all %i DEBUGLINK_QUERY_IN packets to set true boardIDs.\n", TinselBoardsPerBox);
 
   // Receive query responses
   for (int y = 0; y < boxMeshYLen; y++)
@@ -267,11 +342,16 @@ DebugLink::DebugLink(DebugLinkParams p)
       for (int b = 0; b < TinselBoardsPerBox; b++) {
 
         while (1) {
-          getPacket(x, y, &pkt);
+          getPacket(x, y, DEBUGLINK_QUERY_OUT, &pkt);
           if (pkt.payload[0] == DEBUGLINK_QUERY_OUT) {
+            printf("[DbgLink::constructor] got a query_out; ");
+            for (int idx=0; idx<DEBUGLINK_MAX_PKT_BYTES; idx++) printf("0x%x ", pkt.payload[idx]);
+            printf("\n");
             break;
           } else {
-            printf("%d:%d sent packet type %x byte %c\n", x, y, pkt.payload[0], pkt.payload[3]);
+            printf("[DbgLink::constructor] %d:%d sent packet type %i whilst expecting %i\n", x, y, pkt.payload[0], DEBUGLINK_QUERY_OUT);
+            for (int i=0; i<10; i++) printf("%x ", pkt.payload[i]);
+            printf("\n");
           }
         }
 
@@ -297,17 +377,19 @@ DebugLink::DebugLink(DebugLinkParams p)
           // Full X and Y coordinates on the global board mesh
           int fullX = x*TinselMeshXLenWithinBox + subX;
           int fullY = y*TinselMeshYLenWithinBox + subY;
-          printf("[DbgLink::Ctor] got box with subx %i suby %i X %i Y %i. WARN: assuming this is board %i (declared id %i)\n", subX, subY, fullX, fullY, b, id);
-          assert(boxX[fullY][fullX] == -1);
+          printf("[DbgLink::Ctor] got box with subx %i suby %i X %i Y %i at id (%i)\n", subX, subY, fullX, fullY, id);
+          // assert(boxX[fullY][fullX] == -1);
           // Populate bidirectional mappings
-          boardX[y][x][pkt.linkId] = fullX;
-          boardY[y][x][pkt.linkId] = fullY;
+          int board_id = id; // pkt.linkId; // b if we want to ignore the board
+          boardX[y][x][board_id] = fullX;
+          boardY[y][x][board_id] = fullY;
           boxX[fullY][fullX] = x;
           boxY[fullY][fullX] = y;
-          linkId[fullY][fullX] = pkt.linkId;
+          linkId[fullY][fullX] = board_id;
         }
       }
   }
+  printf("[debuglink::ctor] board IDs set.\n");
 
 /*
   // Query the bridge board on the master box a second time to

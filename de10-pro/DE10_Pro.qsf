@@ -1389,149 +1389,6 @@ set_location_assignment PIN_AN43 -to PCIE_RX_p[15]
 set_location_assignment PIN_AJ34 -to PCIE_PERST_n
 set_location_assignment PIN_BC33 -to PCIE_WAKE_n
 
-#============================================================
-# QSFP28A
-#============================================================
-set_instance_assignment -name IO_STANDARD "LVDS" -to QSFP28A_REFCLK_p
-set_instance_assignment -name IO_STANDARD "HSSI DIFFERENTIAL I/O" -to QSFP28A_TX_p[0]
-set_instance_assignment -name IO_STANDARD "HSSI DIFFERENTIAL I/O" -to QSFP28A_TX_p[1]
-set_instance_assignment -name IO_STANDARD "HSSI DIFFERENTIAL I/O" -to QSFP28A_TX_p[2]
-set_instance_assignment -name IO_STANDARD "HSSI DIFFERENTIAL I/O" -to QSFP28A_TX_p[3]
-set_instance_assignment -name IO_STANDARD "HSSI DIFFERENTIAL I/O" -to QSFP28A_RX_p[0]
-set_instance_assignment -name IO_STANDARD "HSSI DIFFERENTIAL I/O" -to QSFP28A_RX_p[1]
-set_instance_assignment -name IO_STANDARD "HSSI DIFFERENTIAL I/O" -to QSFP28A_RX_p[2]
-set_instance_assignment -name IO_STANDARD "HSSI DIFFERENTIAL I/O" -to QSFP28A_RX_p[3]
-set_instance_assignment -name IO_STANDARD "3.0-V LVTTL" -to QSFP28A_INTERRUPT_n
-set_instance_assignment -name IO_STANDARD "3.0-V LVTTL" -to QSFP28A_LP_MODE
-set_instance_assignment -name IO_STANDARD "3.0-V LVTTL" -to QSFP28A_MOD_PRS_n
-set_instance_assignment -name IO_STANDARD "3.0-V LVTTL" -to QSFP28A_MOD_SEL_n
-set_instance_assignment -name IO_STANDARD "3.0-V LVTTL" -to QSFP28A_RST_n
-set_instance_assignment -name IO_STANDARD "3.0-V LVTTL" -to QSFP28A_SCL
-set_instance_assignment -name IO_STANDARD "3.0-V LVTTL" -to QSFP28A_SDA
-set_location_assignment PIN_T41  -to QSFP28A_REFCLK_p
-set_location_assignment PIN_F49  -to QSFP28A_TX_p[0]
-set_location_assignment PIN_G47  -to QSFP28A_TX_p[1]
-set_location_assignment PIN_E47  -to QSFP28A_TX_p[2]
-set_location_assignment PIN_C47  -to QSFP28A_TX_p[3]
-set_location_assignment PIN_G43  -to QSFP28A_RX_p[0]
-set_location_assignment PIN_D45  -to QSFP28A_RX_p[1]
-set_location_assignment PIN_C43  -to QSFP28A_RX_p[2]
-set_location_assignment PIN_A43  -to QSFP28A_RX_p[3]
-set_location_assignment PIN_AB35 -to QSFP28A_INTERRUPT_n
-set_location_assignment PIN_AB36 -to QSFP28A_LP_MODE
-set_location_assignment PIN_AB34 -to QSFP28A_MOD_PRS_n
-set_location_assignment PIN_AD35 -to QSFP28A_MOD_SEL_n
-set_location_assignment PIN_AC33 -to QSFP28A_RST_n
-set_location_assignment PIN_AC36 -to QSFP28A_SCL
-set_location_assignment PIN_AC35 -to QSFP28A_SDA
-
-#============================================================
-# QSFP28B
-#============================================================
-set_instance_assignment -name IO_STANDARD "LVDS" -to QSFP28B_REFCLK_p
-set_instance_assignment -name IO_STANDARD "HSSI DIFFERENTIAL I/O" -to QSFP28B_TX_p[0]
-set_instance_assignment -name IO_STANDARD "HSSI DIFFERENTIAL I/O" -to QSFP28B_TX_p[1]
-set_instance_assignment -name IO_STANDARD "HSSI DIFFERENTIAL I/O" -to QSFP28B_TX_p[2]
-set_instance_assignment -name IO_STANDARD "HSSI DIFFERENTIAL I/O" -to QSFP28B_TX_p[3]
-set_instance_assignment -name IO_STANDARD "HSSI DIFFERENTIAL I/O" -to QSFP28B_RX_p[0]
-set_instance_assignment -name IO_STANDARD "HSSI DIFFERENTIAL I/O" -to QSFP28B_RX_p[1]
-set_instance_assignment -name IO_STANDARD "HSSI DIFFERENTIAL I/O" -to QSFP28B_RX_p[2]
-set_instance_assignment -name IO_STANDARD "HSSI DIFFERENTIAL I/O" -to QSFP28B_RX_p[3]
-set_instance_assignment -name IO_STANDARD "3.0-V LVTTL" -to QSFP28B_INTERRUPT_n
-set_instance_assignment -name IO_STANDARD "3.0-V LVTTL" -to QSFP28B_LP_MODE
-set_instance_assignment -name IO_STANDARD "3.0-V LVTTL" -to QSFP28B_MOD_PRS_n
-set_instance_assignment -name IO_STANDARD "3.0-V LVTTL" -to QSFP28B_MOD_SEL_n
-set_instance_assignment -name IO_STANDARD "3.0-V LVTTL" -to QSFP28B_RST_n
-set_instance_assignment -name IO_STANDARD "3.0-V LVTTL" -to QSFP28B_SCL
-set_instance_assignment -name IO_STANDARD "3.0-V LVTTL" -to QSFP28B_SDA
-set_location_assignment PIN_AM38 -to QSFP28B_REFCLK_p
-set_location_assignment PIN_AK49 -to QSFP28B_TX_p[0]
-set_location_assignment PIN_AL47 -to QSFP28B_TX_p[1]
-set_location_assignment PIN_AJ47 -to QSFP28B_TX_p[2]
-set_location_assignment PIN_AF49 -to QSFP28B_TX_p[3]
-set_location_assignment PIN_AL43 -to QSFP28B_RX_p[0]
-set_location_assignment PIN_AH45 -to QSFP28B_RX_p[1]
-set_location_assignment PIN_AF45 -to QSFP28B_RX_p[2]
-set_location_assignment PIN_AG43 -to QSFP28B_RX_p[3]
-set_location_assignment PIN_AF17 -to QSFP28B_INTERRUPT_n
-set_location_assignment PIN_AF34 -to QSFP28B_LP_MODE
-set_location_assignment PIN_AH17 -to QSFP28B_MOD_PRS_n
-set_location_assignment PIN_AJ33 -to QSFP28B_MOD_SEL_n
-set_location_assignment PIN_AG34 -to QSFP28B_RST_n
-set_location_assignment PIN_AH32 -to QSFP28B_SCL
-set_location_assignment PIN_AE36 -to QSFP28B_SDA
-
-#============================================================
-# QSFP28C
-#============================================================
-set_instance_assignment -name IO_STANDARD "LVDS" -to QSFP28C_REFCLK_p
-set_instance_assignment -name IO_STANDARD "HSSI DIFFERENTIAL I/O" -to QSFP28C_TX_p[0]
-set_instance_assignment -name IO_STANDARD "HSSI DIFFERENTIAL I/O" -to QSFP28C_TX_p[1]
-set_instance_assignment -name IO_STANDARD "HSSI DIFFERENTIAL I/O" -to QSFP28C_TX_p[2]
-set_instance_assignment -name IO_STANDARD "HSSI DIFFERENTIAL I/O" -to QSFP28C_TX_p[3]
-set_instance_assignment -name IO_STANDARD "HSSI DIFFERENTIAL I/O" -to QSFP28C_RX_p[0]
-set_instance_assignment -name IO_STANDARD "HSSI DIFFERENTIAL I/O" -to QSFP28C_RX_p[1]
-set_instance_assignment -name IO_STANDARD "HSSI DIFFERENTIAL I/O" -to QSFP28C_RX_p[2]
-set_instance_assignment -name IO_STANDARD "HSSI DIFFERENTIAL I/O" -to QSFP28C_RX_p[3]
-set_instance_assignment -name IO_STANDARD "3.0-V LVTTL" -to QSFP28C_INTERRUPT_n
-set_instance_assignment -name IO_STANDARD "3.0-V LVTTL" -to QSFP28C_LP_MODE
-set_instance_assignment -name IO_STANDARD "3.0-V LVTTL" -to QSFP28C_MOD_PRS_n
-set_instance_assignment -name IO_STANDARD "3.0-V LVTTL" -to QSFP28C_MOD_SEL_n
-set_instance_assignment -name IO_STANDARD "3.0-V LVTTL" -to QSFP28C_RST_n
-set_instance_assignment -name IO_STANDARD "3.0-V LVTTL" -to QSFP28C_SCL
-set_instance_assignment -name IO_STANDARD "3.0-V LVTTL" -to QSFP28C_SDA
-set_location_assignment PIN_AM12 -to QSFP28C_REFCLK_p
-set_location_assignment PIN_AK1  -to QSFP28C_TX_p[0]
-set_location_assignment PIN_AL3  -to QSFP28C_TX_p[1]
-set_location_assignment PIN_AJ3  -to QSFP28C_TX_p[2]
-set_location_assignment PIN_AF1  -to QSFP28C_TX_p[3]
-set_location_assignment PIN_AL7  -to QSFP28C_RX_p[0]
-set_location_assignment PIN_AH5  -to QSFP28C_RX_p[1]
-set_location_assignment PIN_AF5  -to QSFP28C_RX_p[2]
-set_location_assignment PIN_AG7  -to QSFP28C_RX_p[3]
-set_location_assignment PIN_AF16 -to QSFP28C_INTERRUPT_n
-set_location_assignment PIN_AE16 -to QSFP28C_LP_MODE
-set_location_assignment PIN_AH16 -to QSFP28C_MOD_PRS_n
-set_location_assignment PIN_AE14 -to QSFP28C_MOD_SEL_n
-set_location_assignment PIN_AD15 -to QSFP28C_RST_n
-set_location_assignment PIN_AD16 -to QSFP28C_SCL
-set_location_assignment PIN_AF15 -to QSFP28C_SDA
-
-#============================================================
-# QSFP28D
-#============================================================
-set_instance_assignment -name IO_STANDARD "LVDS" -to QSFP28D_REFCLK_p
-set_instance_assignment -name IO_STANDARD "HSSI DIFFERENTIAL I/O" -to QSFP28D_TX_p[0]
-set_instance_assignment -name IO_STANDARD "HSSI DIFFERENTIAL I/O" -to QSFP28D_TX_p[1]
-set_instance_assignment -name IO_STANDARD "HSSI DIFFERENTIAL I/O" -to QSFP28D_TX_p[2]
-set_instance_assignment -name IO_STANDARD "HSSI DIFFERENTIAL I/O" -to QSFP28D_TX_p[3]
-set_instance_assignment -name IO_STANDARD "HSSI DIFFERENTIAL I/O" -to QSFP28D_RX_p[0]
-set_instance_assignment -name IO_STANDARD "HSSI DIFFERENTIAL I/O" -to QSFP28D_RX_p[1]
-set_instance_assignment -name IO_STANDARD "HSSI DIFFERENTIAL I/O" -to QSFP28D_RX_p[2]
-set_instance_assignment -name IO_STANDARD "HSSI DIFFERENTIAL I/O" -to QSFP28D_RX_p[3]
-set_instance_assignment -name IO_STANDARD "3.0-V LVTTL" -to QSFP28D_INTERRUPT_n
-set_instance_assignment -name IO_STANDARD "3.0-V LVTTL" -to QSFP28D_LP_MODE
-set_instance_assignment -name IO_STANDARD "3.0-V LVTTL" -to QSFP28D_MOD_PRS_n
-set_instance_assignment -name IO_STANDARD "3.0-V LVTTL" -to QSFP28D_MOD_SEL_n
-set_instance_assignment -name IO_STANDARD "3.0-V LVTTL" -to QSFP28D_RST_n
-set_instance_assignment -name IO_STANDARD "3.0-V LVTTL" -to QSFP28D_SCL
-set_instance_assignment -name IO_STANDARD "3.0-V LVTTL" -to QSFP28D_SDA
-set_location_assignment PIN_T9   -to QSFP28D_REFCLK_p
-set_location_assignment PIN_F1   -to QSFP28D_TX_p[0]
-set_location_assignment PIN_G3   -to QSFP28D_TX_p[1]
-set_location_assignment PIN_E3   -to QSFP28D_TX_p[2]
-set_location_assignment PIN_C3   -to QSFP28D_TX_p[3]
-set_location_assignment PIN_G7   -to QSFP28D_RX_p[0]
-set_location_assignment PIN_D5   -to QSFP28D_RX_p[1]
-set_location_assignment PIN_C7   -to QSFP28D_RX_p[2]
-set_location_assignment PIN_A7   -to QSFP28D_RX_p[3]
-set_location_assignment PIN_AD14 -to QSFP28D_INTERRUPT_n
-set_location_assignment PIN_AB15 -to QSFP28D_LP_MODE
-set_location_assignment PIN_AC15 -to QSFP28D_MOD_PRS_n
-set_location_assignment PIN_AB12 -to QSFP28D_MOD_SEL_n
-set_location_assignment PIN_AB13 -to QSFP28D_RST_n
-set_location_assignment PIN_AB14 -to QSFP28D_SCL
-set_location_assignment PIN_AC14 -to QSFP28D_SDA
 
 #============================================================
 # EXP
@@ -1666,6 +1523,150 @@ set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to HPS_JTAG_TDI
 set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to HPS_CARD_PRSNT_n
 set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to HPS_EMAC0_MDIO
 set_instance_assignment -name AUTO_OPEN_DRAIN_PINS ON -to HPS_EMAC0_MDIO
+
+#============================================================
+# QSFP28A
+#============================================================
+set_instance_assignment -name IO_STANDARD LVDS -to QSFP28A_REFCLK_p -entity DE10_Pro
+set_instance_assignment -name IO_STANDARD "HSSI DIFFERENTIAL I/O" -to QSFP28A_TX_p[0] -entity DE10_Pro
+set_instance_assignment -name IO_STANDARD "HSSI DIFFERENTIAL I/O" -to QSFP28A_TX_p[1] -entity DE10_Pro
+set_instance_assignment -name IO_STANDARD "HSSI DIFFERENTIAL I/O" -to QSFP28A_TX_p[2] -entity DE10_Pro
+set_instance_assignment -name IO_STANDARD "HSSI DIFFERENTIAL I/O" -to QSFP28A_TX_p[3] -entity DE10_Pro
+set_instance_assignment -name IO_STANDARD "HSSI DIFFERENTIAL I/O" -to QSFP28A_RX_p[0] -entity DE10_Pro
+set_instance_assignment -name IO_STANDARD "HSSI DIFFERENTIAL I/O" -to QSFP28A_RX_p[1] -entity DE10_Pro
+set_instance_assignment -name IO_STANDARD "HSSI DIFFERENTIAL I/O" -to QSFP28A_RX_p[2] -entity DE10_Pro
+set_instance_assignment -name IO_STANDARD "HSSI DIFFERENTIAL I/O" -to QSFP28A_RX_p[3] -entity DE10_Pro
+set_instance_assignment -name IO_STANDARD "3.0-V LVTTL" -to QSFP28A_INTERRUPT_n -entity DE10_Pro
+set_instance_assignment -name IO_STANDARD "3.0-V LVTTL" -to QSFP28A_LP_MODE -entity DE10_Pro
+set_instance_assignment -name IO_STANDARD "3.0-V LVTTL" -to QSFP28A_MOD_PRS_n -entity DE10_Pro
+set_instance_assignment -name IO_STANDARD "3.0-V LVTTL" -to QSFP28A_MOD_SEL_n -entity DE10_Pro
+set_instance_assignment -name IO_STANDARD "3.0-V LVTTL" -to QSFP28A_RST_n -entity DE10_Pro
+set_instance_assignment -name IO_STANDARD "3.0-V LVTTL" -to QSFP28A_SCL -entity DE10_Pro
+set_instance_assignment -name IO_STANDARD "3.0-V LVTTL" -to QSFP28A_SDA -entity DE10_Pro
+set_location_assignment PIN_T41 -to QSFP28A_REFCLK_p
+set_location_assignment PIN_F49 -to QSFP28A_TX_p[0]
+set_location_assignment PIN_G47 -to QSFP28A_TX_p[1]
+set_location_assignment PIN_E47 -to QSFP28A_TX_p[2]
+set_location_assignment PIN_C47 -to QSFP28A_TX_p[3]
+set_location_assignment PIN_G43 -to QSFP28A_RX_p[0]
+set_location_assignment PIN_D45 -to QSFP28A_RX_p[1]
+set_location_assignment PIN_C43 -to QSFP28A_RX_p[2]
+set_location_assignment PIN_A43 -to QSFP28A_RX_p[3]
+set_location_assignment PIN_AB35 -to QSFP28A_INTERRUPT_n
+set_location_assignment PIN_AB36 -to QSFP28A_LP_MODE
+set_location_assignment PIN_AB34 -to QSFP28A_MOD_PRS_n
+set_location_assignment PIN_AD35 -to QSFP28A_MOD_SEL_n
+set_location_assignment PIN_AC33 -to QSFP28A_RST_n
+set_location_assignment PIN_AC36 -to QSFP28A_SCL
+set_location_assignment PIN_AC35 -to QSFP28A_SDA
+
+#============================================================
+# QSFP28B
+#============================================================
+set_instance_assignment -name IO_STANDARD LVDS -to QSFP28B_REFCLK_p -entity DE10_Pro
+set_instance_assignment -name IO_STANDARD "HSSI DIFFERENTIAL I/O" -to QSFP28B_TX_p[0] -entity DE10_Pro
+set_instance_assignment -name IO_STANDARD "HSSI DIFFERENTIAL I/O" -to QSFP28B_TX_p[1] -entity DE10_Pro
+set_instance_assignment -name IO_STANDARD "HSSI DIFFERENTIAL I/O" -to QSFP28B_TX_p[2] -entity DE10_Pro
+set_instance_assignment -name IO_STANDARD "HSSI DIFFERENTIAL I/O" -to QSFP28B_TX_p[3] -entity DE10_Pro
+set_instance_assignment -name IO_STANDARD "HSSI DIFFERENTIAL I/O" -to QSFP28B_RX_p[0] -entity DE10_Pro
+set_instance_assignment -name IO_STANDARD "HSSI DIFFERENTIAL I/O" -to QSFP28B_RX_p[1] -entity DE10_Pro
+set_instance_assignment -name IO_STANDARD "HSSI DIFFERENTIAL I/O" -to QSFP28B_RX_p[2] -entity DE10_Pro
+set_instance_assignment -name IO_STANDARD "HSSI DIFFERENTIAL I/O" -to QSFP28B_RX_p[3] -entity DE10_Pro
+set_instance_assignment -name IO_STANDARD "3.0-V LVTTL" -to QSFP28B_INTERRUPT_n -entity DE10_Pro
+set_instance_assignment -name IO_STANDARD "3.0-V LVTTL" -to QSFP28B_LP_MODE -entity DE10_Pro
+set_instance_assignment -name IO_STANDARD "3.0-V LVTTL" -to QSFP28B_MOD_PRS_n -entity DE10_Pro
+set_instance_assignment -name IO_STANDARD "3.0-V LVTTL" -to QSFP28B_MOD_SEL_n -entity DE10_Pro
+set_instance_assignment -name IO_STANDARD "3.0-V LVTTL" -to QSFP28B_RST_n -entity DE10_Pro
+set_instance_assignment -name IO_STANDARD "3.0-V LVTTL" -to QSFP28B_SCL -entity DE10_Pro
+set_instance_assignment -name IO_STANDARD "3.0-V LVTTL" -to QSFP28B_SDA -entity DE10_Pro
+set_location_assignment PIN_AM38 -to QSFP28B_REFCLK_p
+set_location_assignment PIN_AK49 -to QSFP28B_TX_p[0]
+set_location_assignment PIN_AL47 -to QSFP28B_TX_p[1]
+set_location_assignment PIN_AJ47 -to QSFP28B_TX_p[2]
+set_location_assignment PIN_AF49 -to QSFP28B_TX_p[3]
+set_location_assignment PIN_AL43 -to QSFP28B_RX_p[0]
+set_location_assignment PIN_AH45 -to QSFP28B_RX_p[1]
+set_location_assignment PIN_AF45 -to QSFP28B_RX_p[2]
+set_location_assignment PIN_AG43 -to QSFP28B_RX_p[3]
+set_location_assignment PIN_AF17 -to QSFP28B_INTERRUPT_n
+set_location_assignment PIN_AF34 -to QSFP28B_LP_MODE
+set_location_assignment PIN_AH17 -to QSFP28B_MOD_PRS_n
+set_location_assignment PIN_AJ33 -to QSFP28B_MOD_SEL_n
+set_location_assignment PIN_AG34 -to QSFP28B_RST_n
+set_location_assignment PIN_AH32 -to QSFP28B_SCL
+set_location_assignment PIN_AE36 -to QSFP28B_SDA
+
+#============================================================
+# QSFP28C
+#============================================================
+set_instance_assignment -name IO_STANDARD LVDS -to QSFP28C_REFCLK_p -entity DE10_Pro
+set_instance_assignment -name IO_STANDARD "HSSI DIFFERENTIAL I/O" -to QSFP28C_TX_p[0] -entity DE10_Pro
+set_instance_assignment -name IO_STANDARD "HSSI DIFFERENTIAL I/O" -to QSFP28C_TX_p[1] -entity DE10_Pro
+set_instance_assignment -name IO_STANDARD "HSSI DIFFERENTIAL I/O" -to QSFP28C_TX_p[2] -entity DE10_Pro
+set_instance_assignment -name IO_STANDARD "HSSI DIFFERENTIAL I/O" -to QSFP28C_TX_p[3] -entity DE10_Pro
+set_instance_assignment -name IO_STANDARD "HSSI DIFFERENTIAL I/O" -to QSFP28C_RX_p[0] -entity DE10_Pro
+set_instance_assignment -name IO_STANDARD "HSSI DIFFERENTIAL I/O" -to QSFP28C_RX_p[1] -entity DE10_Pro
+set_instance_assignment -name IO_STANDARD "HSSI DIFFERENTIAL I/O" -to QSFP28C_RX_p[2] -entity DE10_Pro
+set_instance_assignment -name IO_STANDARD "HSSI DIFFERENTIAL I/O" -to QSFP28C_RX_p[3] -entity DE10_Pro
+set_instance_assignment -name IO_STANDARD "3.0-V LVTTL" -to QSFP28C_INTERRUPT_n -entity DE10_Pro
+set_instance_assignment -name IO_STANDARD "3.0-V LVTTL" -to QSFP28C_LP_MODE -entity DE10_Pro
+set_instance_assignment -name IO_STANDARD "3.0-V LVTTL" -to QSFP28C_MOD_PRS_n -entity DE10_Pro
+set_instance_assignment -name IO_STANDARD "3.0-V LVTTL" -to QSFP28C_MOD_SEL_n -entity DE10_Pro
+set_instance_assignment -name IO_STANDARD "3.0-V LVTTL" -to QSFP28C_RST_n -entity DE10_Pro
+set_instance_assignment -name IO_STANDARD "3.0-V LVTTL" -to QSFP28C_SCL -entity DE10_Pro
+set_instance_assignment -name IO_STANDARD "3.0-V LVTTL" -to QSFP28C_SDA -entity DE10_Pro
+set_location_assignment PIN_AM12 -to QSFP28C_REFCLK_p
+set_location_assignment PIN_AK1 -to QSFP28C_TX_p[0]
+set_location_assignment PIN_AL3 -to QSFP28C_TX_p[1]
+set_location_assignment PIN_AJ3 -to QSFP28C_TX_p[2]
+set_location_assignment PIN_AF1 -to QSFP28C_TX_p[3]
+set_location_assignment PIN_AL7 -to QSFP28C_RX_p[0]
+set_location_assignment PIN_AH5 -to QSFP28C_RX_p[1]
+set_location_assignment PIN_AF5 -to QSFP28C_RX_p[2]
+set_location_assignment PIN_AG7 -to QSFP28C_RX_p[3]
+set_location_assignment PIN_AF16 -to QSFP28C_INTERRUPT_n
+set_location_assignment PIN_AE16 -to QSFP28C_LP_MODE
+set_location_assignment PIN_AH16 -to QSFP28C_MOD_PRS_n
+set_location_assignment PIN_AE14 -to QSFP28C_MOD_SEL_n
+set_location_assignment PIN_AD15 -to QSFP28C_RST_n
+set_location_assignment PIN_AD16 -to QSFP28C_SCL
+set_location_assignment PIN_AF15 -to QSFP28C_SDA
+
+#============================================================
+# QSFP28D
+#============================================================
+set_instance_assignment -name IO_STANDARD LVDS -to QSFP28D_REFCLK_p -entity DE10_Pro
+set_instance_assignment -name IO_STANDARD "HSSI DIFFERENTIAL I/O" -to QSFP28D_TX_p[0] -entity DE10_Pro
+set_instance_assignment -name IO_STANDARD "HSSI DIFFERENTIAL I/O" -to QSFP28D_TX_p[1] -entity DE10_Pro
+set_instance_assignment -name IO_STANDARD "HSSI DIFFERENTIAL I/O" -to QSFP28D_TX_p[2] -entity DE10_Pro
+set_instance_assignment -name IO_STANDARD "HSSI DIFFERENTIAL I/O" -to QSFP28D_TX_p[3] -entity DE10_Pro
+set_instance_assignment -name IO_STANDARD "HSSI DIFFERENTIAL I/O" -to QSFP28D_RX_p[0] -entity DE10_Pro
+set_instance_assignment -name IO_STANDARD "HSSI DIFFERENTIAL I/O" -to QSFP28D_RX_p[1] -entity DE10_Pro
+set_instance_assignment -name IO_STANDARD "HSSI DIFFERENTIAL I/O" -to QSFP28D_RX_p[2] -entity DE10_Pro
+set_instance_assignment -name IO_STANDARD "HSSI DIFFERENTIAL I/O" -to QSFP28D_RX_p[3] -entity DE10_Pro
+set_instance_assignment -name IO_STANDARD "3.0-V LVTTL" -to QSFP28D_INTERRUPT_n -entity DE10_Pro
+set_instance_assignment -name IO_STANDARD "3.0-V LVTTL" -to QSFP28D_LP_MODE -entity DE10_Pro
+set_instance_assignment -name IO_STANDARD "3.0-V LVTTL" -to QSFP28D_MOD_PRS_n -entity DE10_Pro
+set_instance_assignment -name IO_STANDARD "3.0-V LVTTL" -to QSFP28D_MOD_SEL_n -entity DE10_Pro
+set_instance_assignment -name IO_STANDARD "3.0-V LVTTL" -to QSFP28D_RST_n -entity DE10_Pro
+set_instance_assignment -name IO_STANDARD "3.0-V LVTTL" -to QSFP28D_SCL -entity DE10_Pro
+set_instance_assignment -name IO_STANDARD "3.0-V LVTTL" -to QSFP28D_SDA -entity DE10_Pro
+set_location_assignment PIN_T9 -to QSFP28D_REFCLK_p
+set_location_assignment PIN_F1 -to QSFP28D_TX_p[0]
+set_location_assignment PIN_G3 -to QSFP28D_TX_p[1]
+set_location_assignment PIN_E3 -to QSFP28D_TX_p[2]
+set_location_assignment PIN_C3 -to QSFP28D_TX_p[3]
+set_location_assignment PIN_G7 -to QSFP28D_RX_p[0]
+set_location_assignment PIN_D5 -to QSFP28D_RX_p[1]
+set_location_assignment PIN_C7 -to QSFP28D_RX_p[2]
+set_location_assignment PIN_A7 -to QSFP28D_RX_p[3]
+set_location_assignment PIN_AD14 -to QSFP28D_INTERRUPT_n
+set_location_assignment PIN_AB15 -to QSFP28D_LP_MODE
+set_location_assignment PIN_AC15 -to QSFP28D_MOD_PRS_n
+set_location_assignment PIN_AB12 -to QSFP28D_MOD_SEL_n
+set_location_assignment PIN_AB13 -to QSFP28D_RST_n
+set_location_assignment PIN_AB14 -to QSFP28D_SCL
+set_location_assignment PIN_AC14 -to QSFP28D_SDA
 
 
 #============================================================
@@ -1902,3 +1903,4 @@ set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/DE10_Pro_QSYS_atx_pll_dualc
 set_global_assignment -name IP_FILE ip/NIC/NIC_usrclk.ip
 set_global_assignment -name IP_FILE ip/NIC/NIC_reset_bridge.ip
 set_global_assignment -name QSYS_FILE NIC.qsys
+set_global_assignment -name IP_FILE ip/NIC/NIC_xcvr_atx_pll_s10_htile_0.ip

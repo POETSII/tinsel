@@ -213,7 +213,7 @@ module mkMac#(SocketId id) (Mac);
   // Ports
   OutPort#(MacBeat) outPort <- mkOutPort;
   InPort#(MacBeat) inPort <- mkInPort;
- 
+
   // Count of number of beats received
   Reg#(Bit#(10)) count <- mkReg(0);
 
@@ -232,6 +232,9 @@ module mkMac#(SocketId id) (Mac);
     random <= random*1103515245 + 12345;
   endrule
 
+  Reg#(Bool) linkrecvalive <- mkReg(False);
+
+
   // Consume input stream
   // (Insert padding and drop random packets)
   rule consume;
@@ -249,6 +252,10 @@ module mkMac#(SocketId id) (Mac);
         Bit#(72) tmp = zeroExtend(pack(beat));
         Bool ok <- socketPut(id, unpack(tmp));
         if (ok) begin
+          // if (!linkrecvalive && beat.start && beat.data != 0) begin
+          //   $display($time, "Sending flit on port ", id, " value %x", beat.data);
+          //   // linkrecvalive <= True;
+          // end
           // Receive first beat (start of packet)
           inPort.get;
           myAssert(beat.start, "MAC: missing start-of-packet");
@@ -289,10 +296,18 @@ module mkMac#(SocketId id) (Mac);
     end
   endrule
 
+  Reg#(Bool) linksendalive <- mkReg(False);
+
   // Produce output stream
   rule produce (outPort.canPut);
     Maybe#(Vector#(9, Bit#(8))) m <- socketGet(id);
     if (isValid(m)) begin
+
+      // if (!linksendalive) begin
+      //   $display($time, "Recvd flit from port ", id);
+      //   linksendalive <= True;
+      // end
+
       Bit#(72) tmp = pack(fromMaybe(?, m));
       outPort.put(unpack(truncate(tmp)));
     end
@@ -312,7 +327,7 @@ module mkMacLoopback (Mac);
   OutPort#(MacBeat) outPort <- mkOutPort;
   InPort#(MacBeat) inPort <- mkInPort;
 
-  // Buffer to introduce latency 
+  // Buffer to introduce latency
   SizedQueue#(`MacLatency, MacBeat) buffer <-
     mkUGShiftQueueCore(QueueOptFmax);
 

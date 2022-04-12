@@ -86,6 +86,7 @@ import Util      :: *;
 import Globals   :: *;
 import ConfigReg :: *;
 import ChipID    :: *;
+import GetPut    :: *;
 
 // =============================================================================
 // DebugLink commands
@@ -228,6 +229,9 @@ interface DebugLink;
   // Get board id via DebugLink
   (* always_ready, always_enabled *)
   method BoardId getBoardId();
+
+  (* always_ready, always_enabled *)
+  method Bit#(4) getBoardIdWithinBox();
   // Config option: disable each inter-FPGA link via DebugLink
   // (Allows sanboxing of boxes or groups of boxes)
   (* always_ready, always_enabled *)
@@ -238,20 +242,22 @@ interface DebugLink;
 endinterface
 
 module mkDebugLink#(
-    Bit#(4) boardIdWithinBox,
+    // Bit#(4) boardIdWithinBox,
     Bit#(8) temperature,
     Vector#(n, DebugLinkClient) cores) (DebugLink);
-
-  // The board offset (in a multi-box setup) received via DebugLink
-  Reg#(Bit#(8)) boardOffset <- mkReg(0);
 
   // The board id combines the Y offset, received via DebugLink,
   // with the box-local board id (set via DIP switches) to give
   // an overall board id.
   Reg#(BoardId) boardId <- mkReg(unpack(0));
+  // The board offset (in a multi-box setup) received via DebugLink
+  Reg#(Bit#(8)) boardOffset <- mkConfigReg(0);
+  // Get board id via DebugLink
+  Reg#(Bit#(4)) boardIdWithinBox <- mkConfigReg(0);
+
 
   // Reg#(Bool) gotChipID <- mkReg(False);
-  // Stratix10ChipID chipID <- mkStratix10ChipID();
+  let chipID <- mkChipID();
   Reg#(Bit#(64)) chipIDReg <- mkConfigReg(?);
   // rule getchipid (!gotChipID);
   //   chipID.start();
@@ -259,8 +265,8 @@ module mkDebugLink#(
   // endrule
 
   rule copyChipID;
-    // chipIDReg <= chipID.chip_id();
-    chipIDReg <= 5;
+    let id <- chipID.get;
+    chipIDReg <= id;
   endrule
 
   // An enable line for each inter-FPGA link on the board
@@ -366,8 +372,9 @@ module mkDebugLink#(
       end
     end else if (recvState == 1) begin
       if (recvCmd == cmdQueryIn) begin
-        $display("set board id to %i", fromJtag.value);
-        boardId <= unpack(truncate(fromJtag.value));
+        // TODO FIXME: need more bits (second state) for the board ID reg
+        boardOffset <= extend(fromJtag.value[7:4]);
+        boardIdWithinBox <= fromJtag.value[3:0];
         recvState <= 2;
       end else if (recvCmd == cmdSetDest) begin
         recvDestThread <= fromJtag.value;
@@ -384,7 +391,8 @@ module mkDebugLink#(
       end
     end else if (recvState == 2) begin
       if (recvCmd == cmdQueryIn) begin
-        $display("set boardOffset to %i", fromJtag.value);
+        $display("[mkDebugLink::uartRecv] set board id to ", boardId, " boardIdWithinBox ", boardIdWithinBox);
+        $display("[mkDebugLink::uartRecv] set boardOffset to ", fromJtag.value);
         boardOffset <= fromJtag.value;
         recvState <= 3;
       end else begin
@@ -395,9 +403,8 @@ module mkDebugLink#(
       if (recvCmd == cmdQueryIn) begin
         Bit#(4) edgeEn = truncate(fromJtag.value);
         Vector#(4, Bool) linkEn = replicate(True);
-        $display("setting link enable regs to %i and setting respondFlag", fromJtag.value);
+        $display("[mkDebugLink::uartRecv] setting link enable regs to ", fromJtag.value, " and setting respondFlag");
 
-        // WARN: ignoring link disable regs
         // Disable north link?
         Bit#(2) y = boardIdWithinBox[3:2];
         Bit#(2) x = boardIdWithinBox[1:0];
@@ -410,6 +417,7 @@ module mkDebugLink#(
               edgeEn[2] == 1) linkEn[2] = False;
         // Disable west link?
         if (x == 0 && edgeEn[3] == 1) linkEn[3] = False;
+
 
         linkEnableReg <= linkEn;
         // Reserve extra send slot?
@@ -502,6 +510,14 @@ module mkDebugLink#(
     end
   endrule
 
+  rule setBoardId;
+    BoardId id;
+    id.y = truncate(boardOffset[7:4] + zeroExtend(boardIdWithinBox[3:2]));
+    id.x = truncate(boardOffset[3:0] + zeroExtend(boardIdWithinBox[1:0]));
+    boardId <= id;
+  endrule
+
+
   // Propagate extra send slot option through chain of registers (for timing)
   rule chain;
     for (Integer i = 0; i < 2; i=i+1)
@@ -513,6 +529,7 @@ module mkDebugLink#(
   `endif
 
   method BoardId getBoardId() = boardId;
+  method Bit#(4) getBoardIdWithinBox() = boardIdWithinBox;
   method Vector#(4, Bool) linkEnable = linkEnableReg;
   method Option#(Bool) useExtraSendSlot = useExtraSendSlotReg[0];
 endmodule

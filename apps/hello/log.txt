@@ -1,0 +1,70 @@
+connecting to pciestream socket pciestream
+connected to PCIe stream.
+[DbgLink::constructor] debuglink running on box asdex
+connected to DebugLink.
+[HostLink::powerOnSelfTest] self-testing core 0:0:0 addr 0x0000
+[HostLink::powerOnSelfTest] self-testing core 0:0:1 addr 0x0010
+[HostLink::powerOnSelfTest] self-testing core 0:0:2 addr 0x0020
+[HostLink::powerOnSelfTest] self-testing core 0:0:3 addr 0x0030
+[HostLink::powerOnSelfTest] self-testing core 0:0:4 addr 0x0040
+[HostLink::powerOnSelfTest] self-testing core 0:0:5 addr 0x0050
+[HostLink::powerOnSelfTest] self-testing core 0:0:6 addr 0x0060
+[HostLink::powerOnSelfTest] self-testing core 0:0:7 addr 0x0070
+[HostLink::powerOnSelfTest] sent all self-test requests count=0
+[HostLink::powerOnSelfTest] count=0
+[HostLink::powerOnSelfTest] count=1
+[HostLink::powerOnSelfTest] count=2
+[HostLink::powerOnSelfTest] count=3
+[HostLink::powerOnSelfTest] count=4
+[HostLink::powerOnSelfTest] count=5
+[HostLink::powerOnSelfTest] count=6
+[HostLink::powerOnSelfTest] count=7
+[HostLink::powerOnSelfTest] self-test passed.
+hostlink POST passed.
+[hello/run::main] starting to load cores.
+[hostlink::LoadAll] written code memory
+[hostlink::LoadAll] written data memory
+[hostlink::LoadAll] checking data mem.
+. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . [hostlink::LoadAll] datamem check completed with 208 words correct out of 208 over all cores.
+run.cpp: boot done, reporting stacks.
+hostlink.toAddr for threadid 0: 0
+[HostLink::printStackRawAddr] Core intended: 0:0:0:0 (addr 0) Core replied: 0:0:0:0 stack at 3fffffc0
+hostlink.toAddr for threadid 16: 16
+[HostLink::printStackRawAddr] Core intended: 0:0:1:0 (addr 16) Core replied: 0:0:1:0 stack at 3effffc0
+hostlink.toAddr for threadid 32: 32
+[HostLink::printStackRawAddr] Core intended: 0:0:2:0 (addr 32) Core replied: 0:0:2:0 stack at 3fffffc0
+hostlink.toAddr for threadid 48: 48
+[HostLink::printStackRawAddr] Core intended: 0:0:3:0 (addr 48) Core replied: 0:0:3:0 stack at 3effffc0
+hostlink.toAddr for threadid 64: 64
+[HostLink::printStackRawAddr] Core intended: 0:0:4:0 (addr 64) Core replied: 0:0:4:0 stack at 3fffffc0
+hostlink.toAddr for threadid 80: 80
+[HostLink::printStackRawAddr] Core intended: 0:0:5:0 (addr 80) Core replied: 0:0:5:0 stack at 3effffc0
+hostlink.toAddr for threadid 96: 96
+[HostLink::printStackRawAddr] Core intended: 0:0:6:0 (addr 96) Core replied: 0:0:6:0 stack at 3fffffc0
+hostlink.toAddr for threadid 112: 112
+[HostLink::printStackRawAddr] Core intended: 0:0:7:0 (addr 112) Core replied: 0:0:7:0 stack at 3effffc0
+[HostLink::startOne] starting addr 0
+[HostLink::startOne] Core 0 started
+[HostLink::startOne] starting addr 16
+[HostLink::startOne] Core 16 started
+[HostLink::startOne] starting addr 32
+[HostLink::startOne] Core 32 started
+[HostLink::startOne] starting addr 48
+[HostLink::startOne] Core 48 started
+[HostLink::startOne] starting addr 64
+[HostLink::startOne] Core 64 started
+[HostLink::startOne] starting addr 80
+[HostLink::startOne] Core 80 started
+[HostLink::startOne] starting addr 96
+[HostLink::startOne] Core 96 started
+[HostLink::startOne] starting addr 112
+[HostLink::startOne] Core 112 started
+[run.cpp]: dumping stdout.
+0:0:0:0: hello from printf thread 0x00000000
+0:0:1:0: hello from printf thread 0x00000010
+0:0:2:0: hello from printf thread 0x00000020
+0:0:3:0: hello from printf thread 0x00000030
+0:0:4:0: hello from printf thread 0x00000040
+0:0:5:0: hello from printf thread 0x00000050
+0:0:6:0: hello from printf thread 0x00000060
+0:0:7:0: hello from printf thread 0x00000070

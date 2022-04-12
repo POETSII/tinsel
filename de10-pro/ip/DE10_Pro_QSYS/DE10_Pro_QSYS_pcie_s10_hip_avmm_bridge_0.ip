@@ -5563,7 +5563,7 @@
         <ipxact:parameter parameterId="anlg_voltage" type="string">
           <ipxact:name>anlg_voltage</ipxact:name>
           <ipxact:displayName>VCCR/VCCT supply voltage for the transceiver</ipxact:displayName>
-          <ipxact:value>1_0V</ipxact:value>
+          <ipxact:value>1_1V</ipxact:value>
         </ipxact:parameter>
         <ipxact:parameter parameterId="virtual_phase23_txpreset_hwtcl" type="string">
           <ipxact:name>virtual_phase23_txpreset_hwtcl</ipxact:name>

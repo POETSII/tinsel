@@ -51,6 +51,7 @@ static int openSocket(int instId)
     perror("fcntl");
     return -1;
   }
+  printf("[DbgLink::UART::openSocket (sim)] connected to tinsel.b%i.0\n", instId);
   return sock;
 }
 
@@ -136,18 +137,23 @@ void UART::open(int instId)
     exit(EXIT_FAILURE);
   }
   instanceId = instId;
+  printf("[UART::open] Opened JTAG UART %i\n", instId);
 }
 
 // Send bytes over UART
 int UART::write(char* data, int numBytes)
 {
-  return jtagatlantic_write(jtag, (char*) data, numBytes);
+  int ret = jtagatlantic_write(jtag, (char*) data, numBytes);
+  printf("[UART::write] written %i bytes; retval %i\n", numBytes, ret);
+  return ret;
 }
 
 // Receive bytes over UART
 int UART::read(char* data, int numBytes)
 {
-  return jtagatlantic_read(jtag, (char*) data, numBytes);
+  int ret = jtagatlantic_read(jtag, (char*) data, numBytes);
+  if (ret > 0) printf("[UART::read] tried to read %i bytes; retval %i\n", numBytes, ret);
+  return ret;
 }
 
 // Flush writes

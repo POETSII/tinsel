@@ -75,6 +75,10 @@ module mkHostLink(HostLinkPCIeAdaptorIfc);
   Reg#(Bit#(8))  flitCount     <- mkConfigReg(0);
   Reg#(Bool)     hostInjectInProgress <- mkConfigReg(False);
 
+  // rule printPcie (fromPCIe.canGet);
+  //   $display($time, " got pcie flits.");
+  // endrule
+
   rule toLink0 (toLinkState == 0);
     if (fromPCIe.canGet) begin
       hostInjectInProgress <= True;
@@ -120,6 +124,7 @@ module mkHostLink(HostLinkPCIeAdaptorIfc);
         flitCount <= flitCount+1;
       linkOutBuffer.enq(flit);
       fromPCIe.get;
+      // $display("sending flit from host to ", flit.dest.addr);
       // if (flitCount == 0) detector.incCount;
     end
 
