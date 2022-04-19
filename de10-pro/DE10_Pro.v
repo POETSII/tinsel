@@ -207,23 +207,40 @@ wire ddr4_d_status_local_cal_success;
 
 wire [11:0] ddr4_status;
 
-// Reset release
-wire ninit_done;
-reset_release reset_release (
-        .ninit_done(ninit_done)
-        );
+  // Reset release
+  wire ninit_done;
+  reset_release reset_release (
+          .ninit_done(ninit_done)
+          );
 
-// assign reset_n = &{!ninit_done, CPU_RESET_n};
+  // assign reset_n = &{!ninit_done, CPU_RESET_n};
 
+  assign QSFP28A_LP_MODE = 0;
   assign QSFP28A_RST_n = 1;
+  assign QSFP28A_SCL = 0;
+  assign QSFP28A_SDA = 0;
+
+  assign QSFP28B_LP_MODE = 0;
   assign QSFP28B_RST_n = 1;
+  assign QSFP28B_SCL = 0;
+  assign QSFP28B_SDA = 0;
 
-assign ddr4_status =
-  {ddr4_b_status_local_cal_fail,
-     ddr4_b_status_local_cal_success,
-       ddr4_b_local_reset_done};
+  assign QSFP28C_LP_MODE = 0;
+  assign QSFP28C_RST_n = 1;
+  assign QSFP28C_SCL = 0;
+  assign QSFP28C_SDA = 0;
 
-DE10_Pro_QSYS DE10_Pro_QSYS_inst (
+  assign QSFP28D_LP_MODE = 0;
+  assign QSFP28D_RST_n = 1;
+  assign QSFP28D_SCL = 0;
+  assign QSFP28D_SDA = 0;
+
+  assign ddr4_status =
+    {ddr4_b_status_local_cal_fail,
+       ddr4_b_status_local_cal_success,
+         ddr4_b_local_reset_done};
+
+  DE10_Pro_QSYS DE10_Pro_QSYS_inst (
         .clk_clk(CLK_50_B3I),
         .reset_reset(ninit_done),
 
@@ -353,10 +370,10 @@ DE10_Pro_QSYS DE10_Pro_QSYS_inst (
         .iopll_0_locked_export()
     );
 
-assign SI5340A0_RST_n = 1'b1;
-assign SI5340A1_RST_n = 1'b1;
+  assign SI5340A0_RST_n = 1'b1;
+  assign SI5340A1_RST_n = 1'b1;
 
-assign SI5340A0_OE_n = 1'b0;
-assign SI5340A1_OE_n = 1'b0;
+  assign SI5340A0_OE_n = 1'b0;
+  assign SI5340A1_OE_n = 1'b0;
 
 endmodule

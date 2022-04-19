@@ -487,7 +487,7 @@ module mkBypassRouter (ProgRouter);
     map(getFetcherFlitOut, fetchers);
   Vector#(`FetchersPerProgRouter, BOut#(RoutedFlit))
     crossbarOuts <- mkProgRouterCrossbar(funcs, fetcherOuts);
-  Vector#(`FetchersPerProgRouter, BOut#(Flit)) crossbarOutFlits;
+  Vector#(`FetchersPerProgRouter, BOut#(Flit)) crossbarOutFlits; // north, south, east, west
   function Flit toFlit (RoutedFlit rf) = rf.flit;
   for (Integer i = 0; i < `FetchersPerProgRouter; i=i+1)
     crossbarOutFlits[i] <- onBOut(toFlit, crossbarOuts[i]);

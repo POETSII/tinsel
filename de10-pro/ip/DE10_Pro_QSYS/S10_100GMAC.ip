@@ -1379,7 +1379,7 @@
         <ipxact:parameter parameterId="USE_DEBUG_CPU" type="int">
           <ipxact:name>USE_DEBUG_CPU</ipxact:name>
           <ipxact:displayName>Use debug CPU</ipxact:displayName>
-          <ipxact:value>0</ipxact:value>
+          <ipxact:value>1</ipxact:value>
         </ipxact:parameter>
         <ipxact:parameter parameterId="DEVICE_FAMILY" type="string">
           <ipxact:name>DEVICE_FAMILY</ipxact:name>
@@ -1843,7 +1843,7 @@
         <ipxact:parameter parameterId="bonusData" type="string">
           <ipxact:name>bonusData</ipxact:name>
           <ipxact:displayName>bonusData</ipxact:displayName>
-          <ipxact:value>bonusData 
+          <ipxact:value>bonusData
 {
 }
 </ipxact:value>

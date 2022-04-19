@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <preferences>
  <debug showDebugMenu="0" />
- <window width="3188" height="1901" x="4170" y="63" />
+ <window width="2599" height="1743" x="526" y="109" />
  <systemtable
    filter="Tinsel_0.pcie_host_bus"
    showAvalonDomains="1"
    showClockDomains="0"
    showResetDomains="0" />
- <library expandedCategories="Library,Existing IP Variants,Project" />
+ <library expandedCategories="Existing IP Variants,Project,Library" />
  <generation path="" clear_previous="1" />
  <hdlexample language="VERILOG" />
 </preferences>
