@@ -262,35 +262,36 @@ module mkPassthroughFetcher#(Integer fetcherId) (Fetcher);
 
   function RoutingDecision route(MailboxNetAddr addr, BoardId localBoardId);
     RoutingDecision decision = RouteNoC;
-    if (localBoardId.x == 0) begin
-      if (addr.board.x == 0) decision = RouteNoC;
-      if (addr.board.x == 1) decision = RouteNorth;
-      if (addr.board.x == 2) decision = RouteSouth;
-      if (addr.board.x == 3) decision = RouteEast;
-    end
+    // if (localBoardId.x == 0) begin
+    //   if (addr.board.x == 0) decision = RouteNoC;
+    //   if (addr.board.x == 1) decision = RouteNorth;
+    //   if (addr.board.x == 2) decision = RouteSouth;
+    //   if (addr.board.x == 3) decision = RouteEast;
+    // end
+    //
+    // if (localBoardId.x == 1) begin
+    //   if (addr.board.x == 0) decision = RouteNorth;
+    //   if (addr.board.x == 1) decision = RouteNoC;
+    //   if (addr.board.x == 2) decision = RouteEast;
+    //   if (addr.board.x == 3) decision = RouteSouth;
+    // end
+    //
+    // if (localBoardId.x == 2) begin
+    //   if (addr.board.x == 0) decision = RouteSouth;
+    //   if (addr.board.x == 1) decision = RouteEast;
+    //   if (addr.board.x == 2) decision = RouteNoC;
+    //   if (addr.board.x == 3) decision = RouteNorth;
+    // end
+    //
+    // if (localBoardId.x == 3) begin
+    //   if (addr.board.x == 0) decision = RouteEast;
+    //   if (addr.board.x == 1) decision = RouteSouth;
+    //   if (addr.board.x == 2) decision = RouteNorth;
+    //   if (addr.board.x == 3) decision = RouteNoC;
+    // end
 
-    if (localBoardId.x == 1) begin
-      if (addr.board.x == 0) decision = RouteNorth;
-      if (addr.board.x == 1) decision = RouteNoC;
-      if (addr.board.x == 2) decision = RouteEast;
-      if (addr.board.x == 3) decision = RouteSouth;
-    end
-
-    if (localBoardId.x == 2) begin
-      if (addr.board.x == 0) decision = RouteSouth;
-      if (addr.board.x == 1) decision = RouteEast;
-      if (addr.board.x == 2) decision = RouteNoC;
-      if (addr.board.x == 3) decision = RouteNorth;
-    end
-
-    if (localBoardId.x == 3) begin
-      if (addr.board.x == 0) decision = RouteEast;
-      if (addr.board.x == 1) decision = RouteSouth;
-      if (addr.board.x == 2) decision = RouteNorth;
-      if (addr.board.x == 3) decision = RouteNoC;
-    end
-
-    if (addr.board.x == localBoardId.x) decision = RouteNoC;
+    if (addr.board == localBoardId) decision = RouteNoC;
+    if (addr.board != localBoardId) decision = RouteNorth;
 
     return decision;
   endfunction

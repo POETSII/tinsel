@@ -34,6 +34,7 @@ import Mac          :: *;
 import ConfigReg    :: *;
 import Util         :: *;
 import Socket       :: *;
+import Vector       :: *;
 
 // =============================================================================
 // Transmit Buffer
@@ -251,7 +252,11 @@ module mkReliableLinkCore#(Mac mac) (ReliableLink);
   // State 0: send header
   // State 1: send header
   // State 2: send body
-  Reg#(Bit#(2)) txState <- mkConfigReg(0);
+
+  // for 100G, this is a 2-state machine:
+  // send header+body
+  // send body if needed.
+  Reg#(Bit#(1)) txState <- mkConfigReg(0);
 
   // Number of items to send
   Reg#(Bit#(7)) numItemsToSend <- mkConfigReg(0);
@@ -263,56 +268,80 @@ module mkReliableLinkCore#(Mac mac) (ReliableLink);
   Reg#(Bit#(8)) idlesSinceACKSent <- mkConfigReg(0);
 
   rule transmit0 (txState == 0 && toMACPort.canPut);
+
     // Bound number of items in packet
     // (Must be less than the size of the MAC receive buffer)
     myAssert(`TransmitBound < 2**`LogMacRecvBufferSize,
                "TransmitBound is too large");
-    Bit#(7) toSend = transmitBuffer.unsent > `TransmitBound ?
+    Bit#(7) couldSend = transmitBuffer.unsent > `TransmitBound ?
       `TransmitBound : truncate(transmitBuffer.unsent);
+    Bit#(7) toSend = 0;
+    if (couldSend > 0)
+      toSend = 1;
+    else
+      toSend = 0;
+
+    if (toSend != 0) $display("[transmit0]");
+
     numItemsToSend <= toSend;
+    // fix single flit per 100G frame; huge overhead, but saves building a buffer
+
     // Construct header
     PacketHeader h;
     h.numItems = toSend;
     h.seqNum   = zeroExtend(transmitBuffer.seqNum);
     h.ack      = nextItemToRecv;
     // Construct beat
+    Bit#(64) h1 = zeroExtend(pack(h));
+    // Send the 2nd beat of the header.  This beat contains the
+    // ethernet type/length field, which we set to 0x600.
+    Bit#(64) h2 = 64'h0600_0600_0600_0600;
+
+
+    Bool eop = toSend <= 6;
+
+    Vector#(8, Bit#(64)) data_words;
+    data_words[0] = h1;
+    data_words[1] = h2;
+    data_words[2] = transmitBuffer.dataOut;
+    data_words[3] = 0;
+    data_words[4] = 0;
+    data_words[5] = 0;
+    data_words[6] = 0;
+    data_words[7] = 0;
+
+    Bit#(512) data = pack(data_words);
+
     MacBeat beat;
     beat.start = True;
-    beat.stop  = False;
-    beat.data  = zeroExtend(pack(h));
+    beat.stop  = eop;
+    beat.data  = data;
     // Send beat (only send empty ACK once every 40 idle cycles)
     if (toSend != 0 || idlesSinceACKSent == 40) begin
       toMACPort.put(beat);
       idlesSinceACKSent <= 0;
       // Next state
-      txState <= 1;
     end else begin
       idlesSinceACKSent <= idlesSinceACKSent + 1;
     end
-  endrule
 
-  rule transmit1 (txState == 1 && toMACPort.canPut);
-    // Send the 2nd beat of the header.  This beat contains the
-    // ethernet type/length field, which we set to 0x600.
-    Bit#(64) data = 64'h0600_0600_0600_0600;
-    // End of packet?
-    Bool eop = numItemsToSend == 0;
-    // Send beat
-    toMACPort.put(macBeat(False, eop, data));
-    txState <= eop ? 0 : 2;
+    txState <= eop ? 0 : 1;
     if (eop) transmitBuffer.enableTimeout;
   endrule
 
-  rule transmit2 (txState == 2 && toMACPort.canPut);
+
+  rule transmit1 (txState == 1 && toMACPort.canPut);
+    // $display("[transmit1]");
+    myAssert(False, "Cannot handle multi-stage packets yet!");
     // Construct beat
     MacBeat beat;
     beat.start = False;
     beat.stop  = numItemsToSend == 1;
-    beat.data  = transmitBuffer.dataOut;
+    beat.data  = zeroExtend(transmitBuffer.dataOut);
     // Send beat
     toMACPort.put(beat);
     // Update state
-    txState <= beat.stop ? 0 : 2;
+    txState <= beat.stop ? 0 : 1;
     numItemsToSend <= numItemsToSend-1;
     transmitBuffer.take;
     if (beat.stop) transmitBuffer.enableTimeout;
@@ -326,22 +355,24 @@ module mkReliableLinkCore#(Mac mac) (ReliableLink);
     mkCount(2 ** `LogReliableLinkRecvBufferSize);
 
   // 2-state machine
-  // State 0: receive header
-  // State 1: receive header
-  // State 2: receive body
+  // State 0: receive header+body
+  // State 1: receive body
   Reg#(Bit#(2)) rxState <- mkConfigReg(0);
 
   // Number of items to receive
   Reg#(Bit#(7)) numItemsToRecv <- mkConfigReg(0);
 
   rule receive0 (rxState == 0 && fromMACPort.canGet);
-    fromMACPort.get;
     // Receive beat
     MacBeat beat = fromMACPort.value;
+    Vector#(8, Bit#(64)) data_words = unpack(beat.data);
     // Extract header
-    PacketHeader h = unpack(truncate(beat.data));
+    PacketHeader h = unpack(truncate(data_words[0]));
     // Inform transmit buffer of acknowledgement
     transmitBuffer.ack(h.ack);
+    // if (h.numItems != 0) $display("[receive0]");
+    myAssert(h.numItems <= 1, "Too many items - we cannot enq more than 1 flit per cycle yet - receive0 numItems");
+
     // Is there space in the receive buffer?
     Bool space = receiveCount.available > `TransmitBound;
     // Are the received items in the expected sequence
@@ -349,41 +380,50 @@ module mkReliableLinkCore#(Mac mac) (ReliableLink);
       numItemsToRecv <= h.numItems;
       nextItemToRecv <= nextItemToRecv + zeroExtend(h.numItems);
       receiveCount.incBy(zeroExtend(h.numItems));
+
+      myAssert(receiveBuffer.notFull, "Receive buffer overflow!");
+      fromMACPort.get;
+      receiveBuffer.enq(data_words[3]);
     end else begin
       // Drop packet
+      fromMACPort.get;
       numItemsToRecv <= 0;
     end
     // Next state
-    rxState <= 1;
+    myAssert(beat.stop, "Too many beats - we cannot enq more than 1 flit per cycle yet receive0 beat.stop");
+    rxState <= beat.stop ? 0 : 1;
   endrule
+
+  // rule receive1 (rxState == 1 && fromMACPort.canGet);
+  //   // Ignore second beat of header.
+  //   fromMACPort.get;
+  //   MacBeat beat = fromMACPort.value;
+  //   rxState <= beat.stop ? 0 : 2;
+  // endrule
 
   rule receive1 (rxState == 1 && fromMACPort.canGet);
-    // Ignore second beat of header.
-    fromMACPort.get;
-    MacBeat beat = fromMACPort.value;
-    rxState <= beat.stop ? 0 : 2;
-  endrule
-
-  rule receive2 (rxState == 2 && fromMACPort.canGet);
+    // $display("[receive1]");
+    myAssert(False, "Too many beats - we cannot enq more than 1 flit per cycle yet - receive1");
     // Receive beat
-    MacBeat beat = fromMACPort.value;
-    // Are there any items to receive?
-    if (numItemsToRecv != 0) begin
-      myAssert(receiveBuffer.notFull, "Receive buffer overflow!");
-      // Receive items
-      fromMACPort.get;
-      receiveBuffer.enq(beat.data);
-      numItemsToRecv <= numItemsToRecv - 1;
-      rxState <= beat.stop ? 0 : 2;
-    end else begin
-      // Ignore data
-      fromMACPort.get;
-      rxState <= beat.stop ? 0 : 2;
-    end
+    // MacBeat beat = fromMACPort.value;
+    // // Are there any items to receive?
+    // if (numItemsToRecv != 0) begin
+    //   myAssert(receiveBuffer.notFull, "Receive buffer overflow!");
+    //   // Receive items
+    //   fromMACPort.get;
+    //   receiveBuffer.enq(beat.data);
+    //   numItemsToRecv <= numItemsToRecv - 1;
+    //   rxState <= beat.stop ? 0 : 2;
+    // end else begin
+    //   // Ignore data
+    //   fromMACPort.get;
+    //   rxState <= beat.stop ? 0 : 2;
+    // end
   endrule
 
   // Fill transmit buffer
   rule fillTransmitBuffer (inPort.canGet && transmitBuffer.canEnq);
+    // $display("[fillTransmitBuffer]");
     inPort.get;
     transmitBuffer.enq(inPort.value);
   endrule

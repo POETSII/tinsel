@@ -450,9 +450,9 @@ module mkNoC#(
   ProgRouter boardRouter <- mkBypassRouter();
   `endif
 
-  rule updateBoardId;
-    boardRouter.setBoardId(boardId);
-  endrule
+  // rule updateBoardId;
+  //   boardRouter.setBoardId(boardId);
+  // endrule
 
   // Connect board router to north link
   connectDirect(boardRouter.flitOut[0], northLink[0].flitIn);
@@ -547,9 +547,9 @@ module mkNoC#(
     $display("[Network::mkNoC] set board id to ", id);
     boardId <= id;
 
-    `ifndef DefinedIfProgRouterEnabled
+    // `ifndef DefinedIfProgRouterEnabled
     boardRouter.setBoardId(id);
-    `endif
+    // `endif
 
   endmethod
 
@@ -654,9 +654,9 @@ module mkNoCDE10#(
   ProgRouter boardRouter <- mkBypassRouter();
   `endif
 
-  rule updateBoardId;
-    boardRouter.setBoardId(boardId);
-  endrule
+  // rule updateBoardId;
+  //   boardRouter.setBoardId(boardId);
+  // endrule
 
   // Connect board router to north link
   connectDirect(boardRouter.flitOut[0], northLink[0].flitIn);
@@ -750,9 +750,9 @@ module mkNoCDE10#(
   method Action setBoardId(BoardId id);
     if (id != boardId) $display("[Network::mkNoCDE10] set board id to ", id);
     boardId <= id;
-    `ifndef DefinedIfProgRouterEnabled
+    // `ifndef DefinedIfProgRouterEnabled
     boardRouter.setBoardId(id);
-    `endif
+    // `endif
   endmethod
 
 

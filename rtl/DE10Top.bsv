@@ -270,7 +270,7 @@ module mkDE10Top_inner(DE10Ifc ifc);
   connectProgRouterPerfCountersToCores(noc.progRouterPerfCounters,
     concat(concat(cores)));
 
-  // Set board ids
+  // Set board ids - constantly fire
   (* no_implicit_conditions, fire_when_enabled *)
   rule setBoardIds;
     for (Integer i = 0; i < `DRAMsPerBoard; i=i+1)

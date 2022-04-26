@@ -589,7 +589,7 @@ module mkCore#(CoreId myId) (Core);
   Integer numThreads = 2 ** `LogThreadsPerCore;
 
   // Board id
-  Wire#(BoardId) boardId <- mkDWire(?);
+  Reg#(BoardId) boardId <- mkReg(unpack(0));
 
   // Global state
   // ------------
@@ -898,7 +898,7 @@ module mkCore#(CoreId myId) (Core);
     // Emit char to console (simulation only)
     `ifdef SIMULATE
     if (token.op.csr.isEmit) begin
-      $display("Thread %d: 0x%x @ %d", {myId, token.thread.id},
+      $display("Thread %d (boardId %d): 0x%x @ %d", {myId, token.thread.id}, boardId,
                   token.valA, $time);
     end
     `endif
@@ -1104,6 +1104,10 @@ module mkCore#(CoreId myId) (Core);
                zeroExtend(token.thread.fpFlags))
       | when(token.op.csr.isFRM, 0)
       | when(token.op.csr.isCycle, cycleCount[31:0]);
+
+    if (token.op.csr.isHartId) begin
+      $display("reading Hart CSR; value %d", res.csr);
+    end
     `ifdef EnablePerfCount
     res.csr = res.csr | when(token.op.csr.isReadCount,
                                perfCounters[token.op.csr.perfCountId]);
@@ -1327,6 +1331,7 @@ module mkCore#(CoreId myId) (Core);
   endinterface
 
   method Action setBoardId(BoardId id);
+    if (boardId != id) $display("Core setting board id to ", id.x, " ", id.y);
     boardId <= id;
   endmethod
 

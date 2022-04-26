@@ -510,6 +510,7 @@ module mkDebugLink#(
     end
   endrule
 
+  (* no_implicit_conditions, fire_when_enabled *)
   rule setBoardId;
     BoardId id;
     id.y = truncate(boardOffset[7:4] + zeroExtend(boardIdWithinBox[3:2]));
