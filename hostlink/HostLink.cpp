@@ -27,6 +27,22 @@
 // Send buffer size (in flits)
 #define SEND_BUFFER_SIZE 8192
 
+void debugprintf(DebugLink* debugLink) {
+  bool got = false;
+  for (int rpt=0; rpt<5000; rpt++){
+    usleep(100);
+    while (debugLink->canGet()) {
+      got = true;
+      // Receive byte
+      uint8_t byte;
+      uint32_t x, y, c, t;
+      debugLink->get(&x, &y, &c, &t, &byte);
+      printf("[debugprintf] %d:%d:%d:%d: 0x%02X (%c)\n", x, y, c, t, byte, byte);
+    }
+  }
+  if (!got) printf("[debugprintf] <nothing>\n");
+}
+
 bool HostLink::flushcore(uint32_t dest) {
   // ensure all messages have reached the core
   // we pick a rand int32, and wait until it's echo'd by the core
@@ -124,6 +140,7 @@ static int connectToPCIeStream(const char* socketPath)
 // Internal constructor
 void HostLink::constructor(HostLinkParams p)
 {
+  boards = std::set<std::tuple<int, int>>{{1, 0}, {0, 0}};
   useExtraSendSlot = p.useExtraSendSlot;
 
   if (p.numBoxesX > TinselBoxMeshXLen || p.numBoxesY > TinselBoxMeshYLen) {
@@ -601,36 +618,38 @@ void HostLink::loadAll(const char* codeFilename, const char* dataFilename)
 
   while (code.getWord(&addr, &word)) {
     // Send instruction to each core
-    for (int x = 0; x < meshXLen; x++) {
-      for (int y = 0; y < meshYLen; y++) {
-        for (int i = 0; i < (1 << TinselLogCoresPerBoard); i++) {
-          uint32_t dest = toAddr(x, y, i, 0);
-          if (!test(dest)) {
-            printf("[hostlink::LoadAll] failed to get reply for datamem read BEFORE code load addr %i core %i:%i:%i during code loading\n", addr, x, y, i);
-          }
-
-          if (addr != addrReg || true) {
-            req.cmd = SetAddrCmd;
-            req.numArgs = 1;
-            req.args[0] = addr;
-            send(dest, 1, &req);
-          }
-          if (addr == 0) {
-            printf("[hostlink::LoadAll] set addr to 0\n");
-          }
-
-          req.cmd = WriteInstrCmd;
-          req.numArgs = 1;
-          req.args[0] = word;
-          send(dest, 1, &req);
-          // printf("sent word %d\n", addr);
-
-          // check the core is still responding.
-          if (!test(dest)) {
-            printf("[hostlink::LoadAll] failed to get reply for datamem read AFTER code load addr %i core %i:%i:%i during code loading\n", addr, x, y, i);
-          }
-
+    // for (int x = 0; x < meshXLen; x++) {
+    //   for (int y = 0; y < meshYLen; y++) {
+    for (auto boardid : boards) {
+      int x = std::get<0>(boardid);
+      int y = std::get<1>(boardid);
+      for (int i = 0; i < (1 << TinselLogCoresPerBoard); i++) {
+        uint32_t dest = toAddr(x, y, i, 0);
+        if (!test(dest)) {
+          printf("[hostlink::LoadAll] failed to get reply for datamem read BEFORE code load addr %i core %i:%i:%i during code loading\n", addr, x, y, i);
         }
+
+        if (addr != addrReg || true) {
+          req.cmd = SetAddrCmd;
+          req.numArgs = 1;
+          req.args[0] = addr;
+          send(dest, 1, &req);
+        }
+        if (addr == 0) {
+          printf("[hostlink::LoadAll] set addr to 0\n");
+        }
+
+        req.cmd = WriteInstrCmd;
+        req.numArgs = 1;
+        req.args[0] = word;
+        send(dest, 1, &req);
+        // printf("sent word %d\n", addr);
+
+        // check the core is still responding.
+        if (!test(dest)) {
+          printf("[hostlink::LoadAll] failed to get reply for datamem read AFTER code load addr %i core %i:%i:%i during code loading\n", addr, x, y, i);
+        }
+
       }
     }
     addrReg = addr + 4;
@@ -648,32 +667,31 @@ void HostLink::loadAll(const char* codeFilename, const char* dataFilename)
   // Write data to DRAMs
   addrReg = 0xffffffff;
   while (data.getWord(&addr, &word)) {
-    for (int x = 0; x < meshXLen; x++) {
-      for (int y = 0; y < meshYLen; y++) {
-        // for (int i = 0; i < TinselDRAMsPerBoard; i++) {
-        for (int i = 0; i < TinselCoresPerBoard; i++) {
-          // Use one core to initialise each DRAM
-          // uint32_t dest = toAddr(x, y, coresPerDRAM * i, 0);
-          // just until I understand the core<>dram mapping, write to all cores
-          // data mem.
-          uint32_t dest = toAddr(x, y, i, 0);
-          if (addr != addrReg || true) {
-            req.cmd = SetAddrCmd;
-            req.numArgs = 1;
-            req.args[0] = addr;
-            send(dest, 1, &req);
-          }
-          req.cmd = StoreCmd;
+    for (auto boardid : boards) {
+      int x = std::get<0>(boardid);
+      int y = std::get<1>(boardid);
+      // for (int i = 0; i < TinselDRAMsPerBoard; i++) {
+      for (int i = 0; i < TinselCoresPerBoard; i++) {
+        // Use one core to initialise each DRAM
+        // uint32_t dest = toAddr(x, y, coresPerDRAM * i, 0);
+        // just until I understand the core<>dram mapping, write to all cores
+        // data mem.
+        uint32_t dest = toAddr(x, y, i, 0);
+        if (addr != addrReg || true) {
+          req.cmd = SetAddrCmd;
           req.numArgs = 1;
-          req.args[0] = word;
+          req.args[0] = addr;
           send(dest, 1, &req);
+        }
+        req.cmd = StoreCmd;
+        req.numArgs = 1;
+        req.args[0] = word;
+        send(dest, 1, &req);
 
-          // inline check
-          uint32_t word_test = word;
-          if (!test(dest, addr, &word_test)) {
-            printf("[hostlink::LoadAll] failed to verify for datamem read during data loading %i core %i:%i:%i during code loading. correct %x recv %x\n", addr, x, y, i, word, word_test);
-          }
-
+        // inline check
+        uint32_t word_test = word;
+        if (!test(dest, addr, &word_test)) {
+          printf("[hostlink::LoadAll] failed to verify for datamem read during data loading %i core %i:%i:%i during code loading. correct %x recv %x\n", addr, x, y, i, word, word_test);
         }
       }
     }
@@ -758,15 +776,15 @@ void HostLink::boot(const char* codeFilename, const char* dataFilename)
 // Trigger to start application execution
 void HostLink::go()
 {
-  for (int x = 0; x < meshXLen; x++) {
-    for (int y = 0; y < meshYLen; y++) {
+  for (auto boardid : boards) {
+    int x = std::get<0>(boardid);
+    int y = std::get<1>(boardid);
       // for (int core=0; core<TinselCoresPerBoard; core++) {
       //   debugLink->setDest(x, y, core, 0);
       //   debugLink->put(x, y, 0);
       // }
-      debugLink->setBroadcastDest(x, y, 0);
-      debugLink->put(x, y, 0);
-    }
+    debugLink->setBroadcastDest(x, y, 0);
+    debugLink->put(x, y, 0);
   }
   printf("[HostLink::go] sent go stdin msg to all cores.\n");
 }
@@ -917,21 +935,21 @@ void HostLink::startAll()
   // Send start command
   uint32_t started = 0;
   uint32_t msg[1 << TinselLogWordsPerMsg];
-  for (int x = 0; x < meshXLen; x++) {
-    for (int y = 0; y < meshYLen; y++) {
-      for (int i = 0; i < TinselCoresPerBoard; i++) {
-        uint32_t dest = toAddr(x, y, i, 0);
-        printf("[HostLink::startAll] starting core %i dest %i.\n", i, dest);
-        req.cmd = StartCmd;
-        req.args[0] = 1; //(1<<TinselLogThreadsPerCore)-1;
-        while (1) {
-          bool ok = send(dest, 1, &req);
-          if (canRecv()) {
-            recv(msg);
-            started++;
-          }
-          if (ok) break;
+  for (auto boardid : boards) {
+    int x = std::get<0>(boardid);
+    int y = std::get<1>(boardid);
+    for (int i = 0; i < TinselCoresPerBoard; i++) {
+      uint32_t dest = toAddr(x, y, i, 0);
+      printf("[HostLink::startAll] starting core %i dest %i.\n", i, dest);
+      req.cmd = StartCmd;
+      req.args[0] = 1; //(1<<TinselLogThreadsPerCore)-1;
+      while (1) {
+        bool ok = send(dest, 1, &req);
+        if (canRecv()) {
+          recv(msg);
+          started++;
         }
+        if (ok) break;
       }
     }
   }
@@ -1030,35 +1048,36 @@ bool HostLink::powerOnSelfTest()
   for (int core = 0; core < TinselCoresPerBoard; core++) {
     // int core = slice << (TinselLogCoresPerBoard-1);
     // for (int ram = 1; ram <= TinselDRAMsPerBoard; ram++) {
-    for (int y = 0; y < meshYLen; y++) {
-      for (int x = 0; x < meshXLen; x++) {
-        sent++;
-        // Request a word from SRAM
-        uint32_t addr = 10; // ram << TinselLogBytesPerSRAM;
-        setAddr(x, y, core, addr);
-        gettimeofday(&start, NULL);
-        while (1) {
-          uint32_t mailbox_addr = toAddr(x, y, core, 0);
-          printf("[HostLink::powerOnSelfTest] self-testing core %i:%i:%i addr 0x%04X\n", x, y, core, mailbox_addr);
-          bool ok = trySend(mailbox_addr, 1, &req);
-          // flushcore(mailbox_addr);
-          for (int retry=0; retry<1000; retry++) {
-            usleep(500);
-            if (canRecv()) {
-              recv(msg);
-              count++;
-              printf("[HostLink::powerOnSelfTest] count=%i from core %i:%i:%i \n", count, x, y, core);
-              if (ok) break;
-            }
+    for (auto boardid : boards) {
+      int x = std::get<0>(boardid);
+      int y = std::get<1>(boardid);
+      sent++;
+      // Request a word from SRAM
+      uint32_t addr = 10; // ram << TinselLogBytesPerSRAM;
+      setAddr(x, y, core, addr);
+      gettimeofday(&start, NULL);
+      while (1) {
+        uint32_t mailbox_addr = toAddr(x, y, core, 0);
+        printf("[HostLink::powerOnSelfTest] self-testing core %i:%i:%i addr 0x%04X\n", x, y, core, mailbox_addr);
+        bool ok = trySend(mailbox_addr, 1, &req);
+        // flushcore(mailbox_addr);
+        for (int retry=0; retry<1000; retry++) {
+          usleep(500);
+          if (canRecv()) {
+            recv(msg);
+            count++;
+            printf("[HostLink::powerOnSelfTest] count=%i from core %i:%i:%i \n", count, x, y, core);
+            if (ok) break;
           }
-          if (ok) break;
-          gettimeofday(&finish, NULL);
-          timersub(&finish, &start, &diff);
-          double duration = (double) diff.tv_sec +
-                            (double) diff.tv_usec / 1000000.0;
-          if (duration > timeout) return false;
         }
+        if (ok) break;
+        gettimeofday(&finish, NULL);
+        timersub(&finish, &start, &diff);
+        double duration = (double) diff.tv_sec +
+                          (double) diff.tv_usec / 1000000.0;
+        if (duration > timeout) return false;
       }
+      debugprintf(debugLink);
       // }
     }
   }

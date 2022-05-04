@@ -26,16 +26,38 @@ int main()
   }
 
   // hostLink.go();
+  // for (auto boardid : hostLink.boards) {
+  //   int x = std::get<0>(boardid);
+  //   int y = std::get<1>(boardid);
+  //   for (int i=0; i<8; i++) {
+  //     hostLink.goOne(x, y, i);
+  //   }
+  // }
+
   for (int x=0; x<2; x++) {
     for (int i=0; i<8; i++) {
       hostLink.goOne(x, 0, i);
     }
   }
-  for (int x=0; x<2; x++) {
+
+  for (auto boardid : hostLink.boards) {
+    int x = std::get<0>(boardid);
+    int y = std::get<1>(boardid);
     for (int i=0; i<8; i++) {
-      hostLink.startOne(x, 0, i, 1);
+      hostLink.startOne(x, y, i, 1);
     }
   }
+
+  // for (int x=0; x<2; x++) {
+  //   for (int i=0; i<8; i++) {
+  //     hostLink.goOne(x, 0, i);
+  //   }
+  // }
+  // for (auto boardid : hostLink.boards) {
+  //   int x = std::get<0>(boardid);
+  //   int y = std::get<1>(boardid);
+  //   hostLink.startOne(x, y, i, 1);
+  // }
 
 
   // hostLink.goOne(0, 0, 0);

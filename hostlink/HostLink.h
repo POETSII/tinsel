@@ -8,6 +8,8 @@
 #include <sys/time.h>
 #include <config.h>
 #include <DebugLink.h>
+#include <set>
+#include <tuple>
 
 // Max line length for line-buffered UART StdOut capture
 #define MaxLineLen 128
@@ -61,6 +63,8 @@ class HostLink {
   // Dimensions of board mesh
   int meshXLen;
   int meshYLen;
+
+  std::set<std::tuple<int, int>> boards;
 
   void printStack(uint32_t meshX, uint32_t meshY,
          uint32_t coreId);

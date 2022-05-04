@@ -267,7 +267,14 @@ module mkReliableLinkCore#(Mac mac) (ReliableLink);
   // Count the number of idle cycles since an ACK was last sent
   Reg#(Bit#(8)) idlesSinceACKSent <- mkConfigReg(0);
 
-  rule transmit0 (txState == 0 && toMACPort.canPut);
+  Reg#(Bit#(4)) ratelim <- mkReg(0);
+
+  (* no_implicit_conditions, fire_when_enabled *)
+  rule count;
+    ratelim <= ratelim+1;
+  endrule
+
+  rule transmit0 (txState == 0 && toMACPort.canPut && ratelim == 0);
 
     // Bound number of items in packet
     // (Must be less than the size of the MAC receive buffer)
@@ -281,7 +288,7 @@ module mkReliableLinkCore#(Mac mac) (ReliableLink);
     else
       toSend = 0;
 
-    if (toSend != 0) $display("[transmit0]");
+    // if (toSend != 0) $display("[transmit0] ", transmitBuffer.dataOut);
 
     numItemsToSend <= toSend;
     // fix single flit per 100G frame; huge overhead, but saves building a buffer
@@ -298,12 +305,15 @@ module mkReliableLinkCore#(Mac mac) (ReliableLink);
     Bit#(64) h2 = 64'h0600_0600_0600_0600;
 
 
-    Bool eop = toSend <= 6;
+    Bool eop = True; //toSend <= 6;
 
     Vector#(8, Bit#(64)) data_words;
     data_words[0] = h1;
     data_words[1] = h2;
-    data_words[2] = transmitBuffer.dataOut;
+
+    if (toSend != 0) data_words[2] = transmitBuffer.dataOut;
+    else data_words[2] = 0;
+
     data_words[3] = 0;
     data_words[4] = 0;
     data_words[5] = 0;
@@ -313,20 +323,30 @@ module mkReliableLinkCore#(Mac mac) (ReliableLink);
     Bit#(512) data = pack(data_words);
 
     MacBeat beat;
-    beat.start = True;
-    beat.stop  = eop;
+    beat.start = False;
+    beat.stop  = False;
     beat.data  = data;
     // Send beat (only send empty ACK once every 40 idle cycles)
-    if (toSend != 0 || idlesSinceACKSent == 40) begin
+    if (toSend != 0) begin
+      beat.start = True;
+      beat.stop  = eop;
       toMACPort.put(beat);
       idlesSinceACKSent <= 0;
+      transmitBuffer.take;
       // Next state
+    end else if (idlesSinceACKSent == 40) begin
+      beat.start = True;
+      beat.stop  = True;
+      toMACPort.put(beat);
+      idlesSinceACKSent <= 0;
     end else begin
       idlesSinceACKSent <= idlesSinceACKSent + 1;
+      beat.data = 0;
     end
 
     txState <= eop ? 0 : 1;
     if (eop) transmitBuffer.enableTimeout;
+    myAssert(eop, "Cannot handle multi-stage packets yet!");
   endrule
 
 
@@ -377,13 +397,14 @@ module mkReliableLinkCore#(Mac mac) (ReliableLink);
     Bool space = receiveCount.available > `TransmitBound;
     // Are the received items in the expected sequence
     if (h.numItems != 0 && h.seqNum == nextItemToRecv && space) begin
+      // $display("[receiveBuffer.enq] ", data_words[2]);
       numItemsToRecv <= h.numItems;
       nextItemToRecv <= nextItemToRecv + zeroExtend(h.numItems);
       receiveCount.incBy(zeroExtend(h.numItems));
 
       myAssert(receiveBuffer.notFull, "Receive buffer overflow!");
       fromMACPort.get;
-      receiveBuffer.enq(data_words[3]);
+      receiveBuffer.enq(data_words[2]);
     end else begin
       // Drop packet
       fromMACPort.get;
@@ -392,6 +413,7 @@ module mkReliableLinkCore#(Mac mac) (ReliableLink);
     // Next state
     myAssert(beat.stop, "Too many beats - we cannot enq more than 1 flit per cycle yet receive0 beat.stop");
     rxState <= beat.stop ? 0 : 1;
+    // rxState <= 0;
   endrule
 
   // rule receive1 (rxState == 1 && fromMACPort.canGet);
@@ -402,6 +424,11 @@ module mkReliableLinkCore#(Mac mac) (ReliableLink);
   // endrule
 
   rule receive1 (rxState == 1 && fromMACPort.canGet);
+    // We never send a non-min-sized packet, but that does not stop us getting them.
+    // so in sim, assert, but in hardware, wait until eop and return to normal polling.
+    fromMACPort.get;
+    MacBeat beat = fromMACPort.value;
+    rxState <= beat.stop ? 0 : 1;
     // $display("[receive1]");
     myAssert(False, "Too many beats - we cannot enq more than 1 flit per cycle yet - receive1");
     // Receive beat

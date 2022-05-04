@@ -42,7 +42,7 @@
 INLINE uint32_t tinselId()
 {
   int id;
-  asm ("csrrw %0, " CSR_HART_ID ", zero" : "=r"(id));
+  asm volatile ("csrrw %0, " CSR_HART_ID ", zero" : "=r"(id));
   return id;
 }
 

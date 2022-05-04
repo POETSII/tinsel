@@ -62,6 +62,13 @@ void DebugLink::getPacket(int x, int y, char type, BoardCtrlPkt* pkt)
   }
   if ((char)pkt->payload[0] == type) {
     // printf("[DebugLink::getPacket] have correct header %i=%i for pkt\n", type, (char)pkt->payload[0]);
+  } else if ((char)pkt->payload[0] == 2) {
+    int brdX = boardX[y][x][pkt->linkId];
+    int brdY = boardY[y][x][pkt->linkId];
+    int coreId = (uint32_t)pkt->payload[2];
+    int threadId = (uint32_t)pkt->payload[1];
+    int byte = pkt->payload[3];
+    printf("[DebugLink::getPacket] got unexpected stdout: %d:%d:%d:%d: 0x%02X (%c)\n", brdX, brdY, coreId, threadId, byte, byte);
   } else {
     printf("[DebugLink::getPacket] expecting type %i, got %i.\n", type, (char)pkt->payload[0]);
   }
