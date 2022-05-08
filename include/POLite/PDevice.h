@@ -508,7 +508,7 @@ struct PThread {
 
     // Outgoing edge to host
     const POutEdge outHost[2] = {
-       { tinselHostId() >> TinselLogThreadsPerMailbox, 0, 1, 0},
+       { uint16_t(tinselHostId() >> TinselLogThreadsPerMailbox), 0, 1, 0},
        { 0, InvalidKey, 0, 0}
     };
     /*outHost[0].mbox = tinselHostId() >> TinselLogThreadsPerMailbox;

@@ -282,6 +282,9 @@ public:
       fatal_error("Mapper: %d x %d boards requested, %d x %d available\n",
         numBoardsX, numBoardsY, meshLenX, meshLenY);
     }
+    if(chatty && ((x<meshLenX) || (y<meshLenY))){
+      fprintf(stderr, "  Using board mesh size of %d x %d in total mesh size of %d x %d\n", (int)x, (int)y, (int)meshLenX, (int)meshLenY);
+    }
     numBoardsX = x;
     numBoardsY = y;
   }
@@ -988,7 +991,7 @@ public:
       assert(threadMaskLow | threadMaskHigh);
       out->append(dest);
       if(chatty>1){
-        printf("  routing-entry: source(dev/pin)=%u/%u kind=MRM, mbox=0x%x, key=%u, tMaskLo=0x%x, tMaskHi=0x%x\n", d, p, dest.mbox, key, threadMaskLow, threadMaskHigh);
+        fprintf(stderr, "  routing-entry: source(dev/pin)=%u/%u kind=MRM, mbox=0x%x, key=%u, tMaskLo=0x%x, tMaskHi=0x%x\n", d, p, dest.mbox, key, threadMaskLow, threadMaskHigh);
       }
       // Clear receiver groups, for a new iteration
       for (uint32_t i = 0; i <= nextGroup; i++) groups[i].receivers.clear();
@@ -1405,16 +1408,16 @@ public:
       timersub(&placementFinish, &placementStart, &diff);
       double duration = (double) diff.tv_sec +
         (double) diff.tv_usec / 1000000.0;
-      printf("POLite mapper profile:\n");
-      printf("  Partitioning and placement: %lfs\n", duration);
+      fprintf(stderr, "POLite mapper profile:\n");
+      fprintf(stderr, "  Partitioning and placement: %lfs\n", duration);
 
       timersub(&routingFinish, &routingStart, &diff);
       duration = (double) diff.tv_sec + (double) diff.tv_usec / 1000000.0;
-      printf("  Routing table construction: %lfs\n", duration);
+      fprintf(stderr, "  Routing table construction: %lfs\n", duration);
 
       timersub(&initFinish, &initStart, &diff);
       duration = (double) diff.tv_sec + (double) diff.tv_usec / 1000000.0;
-      printf("  Thread state initialisation: %lfs\n", duration);
+      fprintf(stderr, "  Thread state initialisation: %lfs\n", duration);
     }
 
     end_phase("map");
@@ -1541,7 +1544,7 @@ public:
       timersub(&finish, &start, &diff);
       double duration = (double) diff.tv_sec +
         (double) diff.tv_usec / 1000000.0;
-      printf("POLite graph upload time: %lfs\n", duration);
+      fprintf(stderr, "POLite graph upload time: %lfs\n", duration);
     }
     end_phase("upload");
   }
