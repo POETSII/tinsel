@@ -1,3 +1,6 @@
 [submodule "DE10Pro/DE10-reference-project"]
 	path = DE10Pro/DE10-reference-project
 	url = git@github.com:POETSII/DE10-reference-project.git
+[submodule "upstream/BSVFan"]
+	path = upstream/BSVFan
+	url = git@github.com:POETSII/BSVFan.git

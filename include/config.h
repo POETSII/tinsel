@@ -23,7 +23,7 @@
 #define TinselMailboxMeshYBits 0
 #define TinselLogMsgPtrQueueSize 6
 #define TinselLogMulticastBufferSize 9
-#define TinselMaxBootImageBytes 1024
+#define TinselMaxBootImageBytes 2048
 #define TinselLogTransmitBufferSize 10
 #define TinselLogMacRecvBufferSize 5
 #define TinselLogReliableLinkRecvBufferSize 9

@@ -254,7 +254,8 @@ DebugLink::DebugLink(DebugLinkParams p)
   #ifdef SIMULATE
   std::map<uint64_t, int> fpgaid_to_boardid = { {21845 + 0, 0}, {21845 + 1, 1}, };
   #else
-  std::map<uint64_t, int> fpgaid_to_boardid = { {177623102814829662, 0}, {177592823420819223, 1}, };
+  std::map<uint64_t, int> fpgaid_to_boardid = { {177623102814829662, 0},
+                                                {177592823420819223, 1}, {190255927320856187, 1} };
   #endif
 
   pkt.payload[0] = DEBUGLINK_QUERY_IN;

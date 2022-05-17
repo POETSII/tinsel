@@ -177,7 +177,17 @@ module DE10_Pro(
   input EXP_EN,
 
   inout UFL_CLKIN_p,
-  inout UFL_CLKIN_n
+  inout UFL_CLKIN_n,
+
+  inout FAN_I2C_SCL,
+  inout FAN_I2C_SDA,
+  input FAN_ALERT_n,
+  inout POWER_MONITOR_I2C_SCL,
+  inout POWER_MONITOR_I2C_SDA,
+  input POWER_MONITOR_ALERT_n,
+  inout TEMP_I2C_SCL,
+  inout TEMP_I2C_SDA
+
 );
 
 assign PCIE_WAKE_n = 1'b1;
@@ -234,6 +244,16 @@ wire [11:0] ddr4_status;
   assign QSFP28D_RST_n = 1;
   assign QSFP28D_SCL = 0;
   assign QSFP28D_SDA = 0;
+
+  mkDE10FanControl fancontrol(
+      .CLK(CLK_50_B3I),
+      .RST_N(~ninit_done),
+      .FAN_I2C_SDA(FAN_I2C_SDA),
+      .FAN_I2C_SCL(FAN_I2C_SCL),
+      .TEMP_I2C_SDA(TEMP_I2C_SDA),
+      .TEMP_I2C_SCL(TEMP_I2C_SCL)
+  );
+
 
   assign ddr4_status =
     {ddr4_b_status_local_cal_fail,

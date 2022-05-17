@@ -147,6 +147,7 @@ class HostLink {
 
   // Load application code and data onto the mesh
   void loadAll(const char* codeFilename, const char* dataFilename);
+  void loadOne(const char* codeFilename, const char* dataFilename, int x, int y, int i);
 
   // ... and start
   void boot(const char* codeFilename, const char* dataFilename);
