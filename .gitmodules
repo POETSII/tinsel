@@ -4,3 +4,6 @@
 [submodule "upstream/BSVFan"]
 	path = upstream/BSVFan
 	url = git@github.com:POETSII/BSVFan.git
+[submodule "upstream/bluecheck"]
+	path = upstream/bluecheck
+	url = git@github.com:CTSRD-CHERI/bluecheck.git

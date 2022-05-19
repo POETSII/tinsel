@@ -4,7 +4,8 @@ import BlockRam::*; // for types
 import BlueCheck :: *;
 import StmtFSM::*;
 import Assert::*;
-
+import Vector::*;
+import Clocks    :: *;
 
 // typedef UInt#(2) AddrA;
 // typedef UInt#(4) AddrB;
@@ -18,45 +19,135 @@ import Assert::*;
 // typedef Bit#(16) DataB;
 
 
-typedef UInt#(1) AddrA; // 2 A's
-typedef UInt#(5) AddrB; // 16 B's
-typedef Bit#(128) DataA;
-typedef Bit#(8) DataB;
-
-// Default options
-BlockRamOpts testBlockRamOpts =
-  BlockRamOpts {
-    //readDuringWrite: DontCare,
-    readDuringWrite: OldData,
-    style: "AUTO",
-    registerDataOut: True,
-    initFile: Invalid
-  };
+typedef UInt#(4) AddrA; // 2 A's
+typedef UInt#(6) AddrB; // 16 B's
+typedef Bit#(64) DataA;
+typedef Bit#(16) DataB;
 
 
 //////////////////////////////////////////
 // Tests!
 //////////////////////////////////////////
-module [BlueCheck] checkBRAM ();
+module [BlueCheck] checkBRAMTrueMixedBE#(BlockRamOpts opts) (Empty);
+
   /* Specification instance */
-  BlockRamTrueMixed#(AddrA, DataA, AddrB, DataB) spec <- mkBlockRamTrueMixedOpts_SIMULATE(testBlockRamOpts);
+  BlockRamTrueMixedBE#(AddrA, DataA, AddrB, DataB) spec <- mkBlockRamTrueMixedBEOpts_SIMULATE(opts);
 
   /* Implmentation instance */
-  BlockRamTrueMixed#(AddrA, DataA, AddrB, DataB) imp <- mkBlockRamTrueMixedOpts_S10(testBlockRamOpts);
-  // BlockRamTrueMixedByteEn#(AddrA, DataA, AddrB, DataB, TDiv#(SizeOf#(DataA), 8)) imp <- mkBlockRamTrueMixedBEOpts_SIMULATE(defaultBlockRamOpts);
-  // rule driveB;
-  //   spec.putB(False, 5, 0);
-  //   imp.putB(False, 5, 0);
-  // endrule
-
-  // rule printB;
-  //   $display("%x, %x", spec.dataOutB, imp.dataOutB);
-  // endrule
+  BlockRamTrueMixedBE#(AddrA, DataA, AddrB, DataB) imp <- mkBlockRamTrueMixedBEOpts_S10(opts);
 
   equiv("putA"    , spec.putA    , imp.putA);
   equiv("outA"   , spec.dataOutA   , imp.dataOutA);
   equiv("putB", spec.putB, imp.putB);
   equiv("outB"    , spec.dataOutB    , imp.dataOutB);
+endmodule
+
+module [BlueCheck] checkBRAMTrueMixed#(BlockRamOpts opts) (Empty);
+
+  /* Specification instance */
+  BlockRamTrueMixed#(AddrA, DataA, AddrB, DataB) spec <- mkBlockRamTrueMixedOpts_SIMULATE(opts);
+
+  /* Implmentation instance */
+  BlockRamTrueMixed#(AddrA, DataA, AddrB, DataB) imp <- mkBlockRamTrueMixedOpts_S10(opts);
+
+  equiv("putA"    , spec.putA    , imp.putA);
+  equiv("outA"   , spec.dataOutA   , imp.dataOutA);
+  equiv("putB", spec.putB, imp.putB);
+  equiv("outB"    , spec.dataOutB    , imp.dataOutB);
+endmodule
+
+module [BlueCheck] checkBRAMTrueMixedBEPortable#(BlockRamOpts opts) (Empty);
+
+  /* Specification instance */
+  BlockRamTrueMixedBE#(AddrA, DataA, AddrB, DataB) spec <- mkBlockRamTrueMixedBEOpts_SIMULATE(opts);
+
+  /* Implmentation instance */
+  BlockRamTrueMixedBE#(AddrA, DataA, AddrB, DataB) imp <- mkBlockRamPortableTrueMixedBEOpts(opts);
+
+  equiv("putA"    , spec.putA    , imp.putA);
+  equiv("outA"   , spec.dataOutA   , imp.dataOutA);
+  equiv("putB", spec.putB, imp.putB);
+  equiv("outB"    , spec.dataOutB    , imp.dataOutB);
+endmodule
+
+
+
+module [Module] mkBRAMTest ();
+
+  // Default options
+  BlockRamOpts oldNoReg =
+    BlockRamOpts {
+      readDuringWrite: OldData,
+      style: "AUTO",
+      registerDataOut: False,
+      initFile: Invalid
+    };
+
+  BlockRamOpts oldReg =
+    BlockRamOpts {
+      readDuringWrite: OldData,
+      style: "AUTO",
+      registerDataOut: True,
+      initFile: Invalid
+    };
+
+  BlockRamOpts dontCareNoReg =
+    BlockRamOpts {
+      readDuringWrite: DontCare,
+      style: "AUTO",
+      registerDataOut: False,
+      initFile: Invalid
+    };
+
+  BlockRamOpts dontCareReg =
+    BlockRamOpts {
+      readDuringWrite: DontCare,
+      style: "AUTO",
+      registerDataOut: True,
+      initFile: Invalid
+    };
+
+  Clock clk <- exposeCurrentClock;
+  Reset rst <- exposeCurrentReset;
+  MakeResetIfc r <- mkReset(0, True, clk);
+  Reset brams_reset = rst; //mkResetEither(r.new_rst, rst);
+
+  Vector#(4, BlockRamOpts) opts = newVector();
+  opts[0] = oldNoReg;
+  opts[1] = oldReg;
+  opts[2] = dontCareNoReg;
+  opts[3] = dontCareReg;
+
+  Vector#(12, FSM) testers = newVector();
+
+  for (Integer optctr=0; optctr<4; optctr=optctr+1) begin
+      let tm <- mkModelChecker(checkBRAMTrueMixed(opts[optctr], reset_by brams_reset), bcParams);
+      testers[optctr*3] <- mkFSM(tm);
+      let tmbe <- mkModelChecker(checkBRAMTrueMixedBE(opts[optctr], reset_by brams_reset), bcParams);
+      testers[optctr*3+1] <- mkFSM(tmbe);
+      let tmbeport <- mkModelChecker(checkBRAMTrueMixedBEPortable(opts[optctr], reset_by brams_reset), bcParams);
+      testers[optctr*3+2] <- mkFSM(tmbeport);
+  end
+
+
+
+
+  Reg#(Int#(32)) test_iter <- mkReg(0);
+  Stmt test = seq
+
+    for (test_iter<=0; test_iter<12; test_iter<=test_iter+1) seq
+      $display("starting test ", test_iter, " ######################################## ");
+      testers[test_iter].start();
+      await(testers[test_iter].done());
+      delay(5);
+      // r.assertReset();
+      // r.assertReset();
+      // r.assertReset();
+      // delay(5);
+    endseq
+  endseq;
+
+  mkAutoFSM( test );
 endmodule
 
 // works fine
@@ -89,11 +180,6 @@ endmodule
 //   mkAutoFSM(test);
 // endmodule
 
-
-module [Module] mkBRAMTest ();
-    blueCheck(checkBRAM);
-
-endmodule
 
 // module mkBRAMTest();
 //   BlockRamTrueMixed#(AddrA, DataA, AddrB, DataB) spec <- mkBlockRamTrueMixedOpts_SIMULATE(testBlockRamOpts);
