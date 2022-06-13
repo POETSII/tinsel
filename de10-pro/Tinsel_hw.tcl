@@ -386,8 +386,8 @@ add_interface_port rst_req resetReq reset_req Output 1
 # connection point northmac_source
 #
 add_interface northmac_source avalon_streaming start
-set_interface_property northmac_source associatedClock clock
-set_interface_property northmac_source associatedReset reset_sink
+set_interface_property northmac_source associatedClock northmac_source_clk
+set_interface_property northmac_source associatedReset northmac_source_reset_sink
 set_interface_property northmac_source dataBitsPerSymbol 8
 set_interface_property northmac_source errorDescriptor ""
 set_interface_property northmac_source firstSymbolInHighOrderBits true
@@ -407,13 +407,41 @@ add_interface_port northmac_source northMac_0_source_valid valid Output 1
 add_interface_port northmac_source northMac_0_source_empty empty Output 6
 add_interface_port northmac_source northMac_0_source_error error Output 1
 
+#
+# connection point northmac_source_clk
+#
+add_interface northmac_source_clk clock end
+set_interface_property northmac_source_clk ENABLED true
+set_interface_property northmac_source_clk EXPORT_OF ""
+set_interface_property northmac_source_clk PORT_NAME_MAP ""
+set_interface_property northmac_source_clk CMSIS_SVD_VARIABLES ""
+set_interface_property northmac_source_clk SVD_ADDRESS_GROUP ""
+set_interface_property northmac_source_clk IPXACT_REGISTER_MAP_VARIABLES ""
+
+add_interface_port northmac_source_clk CLK_northTxClk clk Input 1
+
+#
+# connection point northmac_source_reset_sink
+#
+add_interface northmac_source_reset_sink reset end
+set_interface_property northmac_source_reset_sink associatedClock northmac_source_clk
+set_interface_property northmac_source_reset_sink synchronousEdges DEASSERT
+set_interface_property northmac_source_reset_sink ENABLED true
+set_interface_property northmac_source_reset_sink EXPORT_OF ""
+set_interface_property northmac_source_reset_sink PORT_NAME_MAP ""
+set_interface_property northmac_source_reset_sink CMSIS_SVD_VARIABLES ""
+set_interface_property northmac_source_reset_sink SVD_ADDRESS_GROUP ""
+set_interface_property northmac_source_reset_sink IPXACT_REGISTER_MAP_VARIABLES ""
+
+add_interface_port northmac_source_reset_sink RST_N_northTxRst reset_n Input 1
+
 
 #
 # connection point southmac_source
 #
 add_interface southmac_source avalon_streaming start
-set_interface_property southmac_source associatedClock clock
-set_interface_property southmac_source associatedReset reset_sink
+set_interface_property southmac_source associatedClock southmac_source_clk
+set_interface_property southmac_source associatedReset southmac_source_reset_sink
 set_interface_property southmac_source dataBitsPerSymbol 8
 set_interface_property southmac_source errorDescriptor ""
 set_interface_property southmac_source firstSymbolInHighOrderBits true
@@ -432,6 +460,35 @@ add_interface_port southmac_source southMac_0_source_startofpacket startofpacket
 add_interface_port southmac_source southMac_0_source_valid valid Output 1
 add_interface_port southmac_source southMac_0_source_empty empty Output 6
 add_interface_port southmac_source southMac_0_source_error error Output 1
+
+#
+# connection point southmac_source_clk
+#
+add_interface southmac_source_clk clock end
+set_interface_property southmac_source_clk ENABLED true
+set_interface_property southmac_source_clk EXPORT_OF ""
+set_interface_property southmac_source_clk PORT_NAME_MAP ""
+set_interface_property southmac_source_clk CMSIS_SVD_VARIABLES ""
+set_interface_property southmac_source_clk SVD_ADDRESS_GROUP ""
+set_interface_property southmac_source_clk IPXACT_REGISTER_MAP_VARIABLES ""
+
+add_interface_port southmac_source_clk CLK_southTxClk clk Input 1
+
+#
+# connection point southmac_source_reset_sink
+#
+add_interface southmac_source_reset_sink reset end
+set_interface_property southmac_source_reset_sink associatedClock southmac_source_clk
+set_interface_property southmac_source_reset_sink synchronousEdges DEASSERT
+set_interface_property southmac_source_reset_sink ENABLED true
+set_interface_property southmac_source_reset_sink EXPORT_OF ""
+set_interface_property southmac_source_reset_sink PORT_NAME_MAP ""
+set_interface_property southmac_source_reset_sink CMSIS_SVD_VARIABLES ""
+set_interface_property southmac_source_reset_sink SVD_ADDRESS_GROUP ""
+set_interface_property southmac_source_reset_sink IPXACT_REGISTER_MAP_VARIABLES ""
+
+add_interface_port southmac_source_reset_sink RST_N_southTxRst reset_n Input 1
+
 
 #
 # connection point eastmac_source
@@ -488,8 +545,8 @@ add_interface_port westmac_source westMac_0_source_error error Output 1
 # connection point northmac_sink
 #
 add_interface northmac_sink avalon_streaming end
-set_interface_property northmac_sink associatedClock clock
-set_interface_property northmac_sink associatedReset reset_sink
+set_interface_property northmac_sink associatedClock northmac_sink_clk
+set_interface_property northmac_sink associatedReset northmac_sink_reset_sink
 set_interface_property northmac_sink dataBitsPerSymbol 8
 set_interface_property northmac_sink errorDescriptor ""
 set_interface_property northmac_sink firstSymbolInHighOrderBits true
@@ -510,11 +567,40 @@ add_interface_port northmac_sink northMac_0_sink_sink_valid valid Input 1
 add_interface_port northmac_sink northMac_0_sink_sink_empty empty Input 6
 
 #
+# connection point northmac_sink_clk
+#
+add_interface northmac_sink_clk clock end
+set_interface_property northmac_sink_clk ENABLED true
+set_interface_property northmac_sink_clk EXPORT_OF ""
+set_interface_property northmac_sink_clk PORT_NAME_MAP ""
+set_interface_property northmac_sink_clk CMSIS_SVD_VARIABLES ""
+set_interface_property northmac_sink_clk SVD_ADDRESS_GROUP ""
+set_interface_property northmac_sink_clk IPXACT_REGISTER_MAP_VARIABLES ""
+
+add_interface_port northmac_sink_clk CLK_northRxClk clk Input 1
+
+#
+# connection point northmac_sink_reset_sink
+#
+add_interface northmac_sink_reset_sink reset end
+set_interface_property northmac_sink_reset_sink associatedClock northmac_sink_clk
+set_interface_property northmac_sink_reset_sink synchronousEdges DEASSERT
+set_interface_property northmac_sink_reset_sink ENABLED true
+set_interface_property northmac_sink_reset_sink EXPORT_OF ""
+set_interface_property northmac_sink_reset_sink PORT_NAME_MAP ""
+set_interface_property northmac_sink_reset_sink CMSIS_SVD_VARIABLES ""
+set_interface_property northmac_sink_reset_sink SVD_ADDRESS_GROUP ""
+set_interface_property northmac_sink_reset_sink IPXACT_REGISTER_MAP_VARIABLES ""
+
+add_interface_port northmac_sink_reset_sink RST_N_northRxRst reset_n Input 1
+
+
+#
 # connection point southmac_sink
 #
 add_interface southmac_sink avalon_streaming end
-set_interface_property southmac_sink associatedClock clock
-set_interface_property southmac_sink associatedReset reset_sink
+set_interface_property southmac_sink associatedClock southmac_sink_clk
+set_interface_property southmac_sink associatedReset southmac_sink_reset_sink
 set_interface_property southmac_sink dataBitsPerSymbol 8
 set_interface_property southmac_sink errorDescriptor ""
 set_interface_property southmac_sink firstSymbolInHighOrderBits true
@@ -533,6 +619,35 @@ add_interface_port southmac_sink southMac_0_sink_sink_error error Input 6
 add_interface_port southmac_sink southMac_0_sink_sink_startofpacket startofpacket Input 1
 add_interface_port southmac_sink southMac_0_sink_sink_valid valid Input 1
 add_interface_port southmac_sink southMac_0_sink_sink_empty empty Input 6
+
+#
+# connection point southmac_sink_clk
+#
+add_interface southmac_sink_clk clock end
+set_interface_property southmac_sink_clk ENABLED true
+set_interface_property southmac_sink_clk EXPORT_OF ""
+set_interface_property southmac_sink_clk PORT_NAME_MAP ""
+set_interface_property southmac_sink_clk CMSIS_SVD_VARIABLES ""
+set_interface_property southmac_sink_clk SVD_ADDRESS_GROUP ""
+set_interface_property southmac_sink_clk IPXACT_REGISTER_MAP_VARIABLES ""
+
+add_interface_port southmac_sink_clk CLK_southRxClk clk Input 1
+
+#
+# connection point southmac_sink_reset_sink
+#
+add_interface southmac_sink_reset_sink reset end
+set_interface_property southmac_sink_reset_sink associatedClock southmac_sink_clk
+set_interface_property southmac_sink_reset_sink synchronousEdges DEASSERT
+set_interface_property southmac_sink_reset_sink ENABLED true
+set_interface_property southmac_sink_reset_sink EXPORT_OF ""
+set_interface_property southmac_sink_reset_sink PORT_NAME_MAP ""
+set_interface_property southmac_sink_reset_sink CMSIS_SVD_VARIABLES ""
+set_interface_property southmac_sink_reset_sink SVD_ADDRESS_GROUP ""
+set_interface_property southmac_sink_reset_sink IPXACT_REGISTER_MAP_VARIABLES ""
+
+add_interface_port southmac_sink_reset_sink RST_N_southRxRst reset_n Input 1
+
 
 #
 # connection point eastmac_sink

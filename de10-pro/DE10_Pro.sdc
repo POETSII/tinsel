@@ -94,6 +94,14 @@ for {set chNum 0} {$chNum < 4} {incr chNum} {
 set_false_path -from [get_clocks {ALTERA_INSERTED_INTOSC_FOR_TRS|divided_osc_clk}] -to [get_clocks {DE10_Pro_QSYS_inst|*|s10_100gmac|s10_100gmac|xcvr|*|*|*}]
 set_false_path -from [get_clocks {DE10_Pro_QSYS_inst|*|s10_100gmac|s10_100gmac|xcvr|*|*|*}] -to [get_clocks {DE10_Pro_QSYS_inst|*|s10_100gmac|s10_100gmac|xcvr|*|*|*}]
 
+
+set_false_path -to {*alt_ehipc2*|rx_adapt_clr_sync_inst|din*}
+set_false_path -to {*alt_ehipc2*_sync_inst|ack_sync_0|din*}
+set_false_path -from {*alt_ehipc2*_sync_*|din*}
+
+set_false_path -to {*tinsel*|sSyncReg*}
+set_false_path -to {*tinsel*|dSyncReg*}
+
 #**************************************************************
 # Set Multicycle Path
 #**************************************************************

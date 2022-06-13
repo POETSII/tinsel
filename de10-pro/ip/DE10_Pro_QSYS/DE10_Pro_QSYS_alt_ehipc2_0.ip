@@ -3416,7 +3416,7 @@
         <ipxact:parameter parameterId="ready_latency" type="int">
           <ipxact:name>ready_latency</ipxact:name>
           <ipxact:displayName>Ready latency</ipxact:displayName>
-          <ipxact:value>0</ipxact:value>
+          <ipxact:value>1</ipxact:value>
         </ipxact:parameter>
         <ipxact:parameter parameterId="PHY_REFCLK" type="real">
           <ipxact:name>PHY_REFCLK</ipxact:name>
