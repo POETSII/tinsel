@@ -227,6 +227,7 @@ endinterface
 // Implementation
 // --------------
 
+
 module mkReliableLinkCore#(Mac mac) (ReliableLink);
 
   // Ports
@@ -509,6 +510,7 @@ endmodule
 `ifndef SIMULATE
 
 // FPGA version
+(* synthesize *)
 module mkReliableLink (ReliableLink);
   Mac mac <- mkMac;
   ReliableLink link <- mkReliableLinkCore(mac);

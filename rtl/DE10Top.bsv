@@ -74,6 +74,29 @@ endinterface
 `endif
 
 
+interface PrintableStringIfc;
+  method Action show;
+  method Bool done;
+endinterface
+
+module mkPrintStr(String s, OutPort#(Bit#(8)) out, PrintableStringIfc ifc);
+
+  List#(Char) s_l = stringToCharList(s);
+  Reg#(UInt#(32)) s_len <- mkReg(fromInteger(stringLength(s)));
+  Reg#(UInt#(32)) i <- mkReg(0);
+
+  Stmt printStmt = seq
+    i<=0;
+    for (i<=0; i<s_len; i<=i+1) seq
+      await(out.canPut); out.put(fromInteger(charToInteger(s_l[i])));
+    endseq
+  endseq;
+
+  FSM fsm <- mkFSM(printStmt);
+
+  method show = fsm.start;
+  method done = fsm.done;
+endmodule
 
 // ============================================================================
 // Implementation
@@ -208,6 +231,13 @@ module mkDE10Top(Clock northTxClk, Clock northRxClk, Clock southTxClk, Clock sou
   connectUsing(mkUGQueue, toLink.out, linkNorth.streamIn);
   connectDirect(linkSouth.streamOut, fromLink.in);
 
+  AvalonCCIfc northCC <- mkAvalonStreamConverter(linkNorth.avalonMac,
+                                                defaultClock, northTxClk, northRxClk,
+                                                 defaultReset, northTxRst, northRxRst);
+  AvalonCCIfc southCC <- mkAvalonStreamConverter(linkSouth.avalonMac,
+                                                defaultClock, southTxClk, southRxClk,
+                                                defaultReset, southTxRst, southRxRst);
+
 
   `endif
 
@@ -232,13 +262,21 @@ module mkDE10Top(Clock northTxClk, Clock northRxClk, Clock southTxClk, Clock sou
   Reg#(Bit#(64)) lastReceived <- mkRegU;
 
   Reg#(Int#(32)) stdoutCtr <- mkReg(0);
-  String start = "Starting_reliable_link_tester.";
-  String startT = "starting_test.";
+  PrintableStringIfc start_msg <- mkPrintStr("Starting_reliable_link_tester.\n", toJtag);
+  PrintableStringIfc startT_msg <- mkPrintStr("starting_test.\n", toJtag);
+  PrintableStringIfc timer_msg <- mkPrintStr("timer:", toJtag);
+  PrintableStringIfc sent_msg <- mkPrintStr("sent:", toJtag);
+  PrintableStringIfc recv_msg <- mkPrintStr("recv:", toJtag);
+  PrintableStringIfc timeouts_msg <- mkPrintStr("timeouts:", toJtag);
+
+  PrintableStringIfc sent_one_msg <- mkPrintStr("sent the first flit\n", toJtag);
+  PrintableStringIfc recv_one_msg <- mkPrintStr("correctly recv first flit\n", toJtag);
+
+  Reg#(Bool) sent_inital_send_msg <- mkReg(False);
+  Reg#(Bool) sent_inital_recv_msg <- mkReg(False);
+
+
   Reg#(Bit#(8)) inchar <- mkReg(0);
-
-  List#(Char) start_lc = stringToCharList(start);
-
-  // connectUsing(mkQueue, uart.jtagOut, uart.jtagIn);
 
   rule transmit (state == 1 && sendCount <= numVals);
     if (toLink.canPut) begin
@@ -246,6 +284,17 @@ module mkDE10Top(Clock northTxClk, Clock northRxClk, Clock southTxClk, Clock sou
       sendCount <= sendCount+1;
     end
   endrule
+
+  rule send_inital_sent_msg (!sent_inital_send_msg && state == 1 && toJtag.canPut && sendCount > 0);
+    toJtag.put(charToAscii("S"));
+    sent_inital_send_msg <= True;
+  endrule
+
+  rule send_inital_recv_msg (!sent_inital_recv_msg && state == 1 && toJtag.canPut && recvCount > 0);
+    toJtag.put(charToAscii("R"));
+    sent_inital_recv_msg <= True;
+  endrule
+
 
   rule receive (state == 1);
     if (fromLink.canGet && toJtag.canPut) begin
@@ -273,41 +322,8 @@ module mkDE10Top(Clock northTxClk, Clock northRxClk, Clock southTxClk, Clock sou
 
   Stmt tststmt = seq
 
-
-    // for (stdoutCtr<=0; stdoutCtr<fromInteger(stringLength(start))-1; stdoutCtr<=stdoutCtr+1) action
-    //   toJtag.put(charToAscii(start_lc[stdoutCtr]));
-    // endaction
-    await(toJtag.canPut); toJtag.put(charToAscii(stringToCharList(start)[0]));
-    await(toJtag.canPut); toJtag.put(charToAscii(stringToCharList(start)[1]));
-    await(toJtag.canPut); toJtag.put(charToAscii(stringToCharList(start)[2]));
-    await(toJtag.canPut); toJtag.put(charToAscii(stringToCharList(start)[3]));
-    await(toJtag.canPut); toJtag.put(charToAscii(stringToCharList(start)[4]));
-    await(toJtag.canPut); toJtag.put(charToAscii(stringToCharList(start)[5]));
-    await(toJtag.canPut); toJtag.put(charToAscii(stringToCharList(start)[6]));
-    await(toJtag.canPut); toJtag.put(charToAscii(stringToCharList(start)[7]));
-    await(toJtag.canPut); toJtag.put(charToAscii(stringToCharList(start)[8]));
-    await(toJtag.canPut); toJtag.put(charToAscii(stringToCharList(start)[9]));
-    await(toJtag.canPut); toJtag.put(charToAscii(stringToCharList(start)[10]));
-    await(toJtag.canPut); toJtag.put(charToAscii(stringToCharList(start)[11]));
-    await(toJtag.canPut); toJtag.put(charToAscii(stringToCharList(start)[12]));
-    await(toJtag.canPut); toJtag.put(charToAscii(stringToCharList(start)[13]));
-    await(toJtag.canPut); toJtag.put(charToAscii(stringToCharList(start)[14]));
-    await(toJtag.canPut); toJtag.put(charToAscii(stringToCharList(start)[15]));
-    await(toJtag.canPut); toJtag.put(charToAscii(stringToCharList(start)[16]));
-    await(toJtag.canPut); toJtag.put(charToAscii(stringToCharList(start)[17]));
-    await(toJtag.canPut); toJtag.put(charToAscii(stringToCharList(start)[18]));
-    await(toJtag.canPut); toJtag.put(charToAscii(stringToCharList(start)[19]));
-    await(toJtag.canPut); toJtag.put(charToAscii(stringToCharList(start)[20]));
-    await(toJtag.canPut); toJtag.put(charToAscii(stringToCharList(start)[21]));
-    await(toJtag.canPut); toJtag.put(charToAscii(stringToCharList(start)[22]));
-    await(toJtag.canPut); toJtag.put(charToAscii(stringToCharList(start)[23]));
-    await(toJtag.canPut); toJtag.put(charToAscii(stringToCharList(start)[24]));
-    await(toJtag.canPut); toJtag.put(charToAscii(stringToCharList(start)[25]));
-    await(toJtag.canPut); toJtag.put(charToAscii(stringToCharList(start)[26]));
-    await(toJtag.canPut); toJtag.put(charToAscii(stringToCharList(start)[27]));
-    await(toJtag.canPut); toJtag.put(charToAscii(stringToCharList(start)[28]));
-    await(toJtag.canPut); toJtag.put(charToAscii(stringToCharList(start)[29]));
-    await(toJtag.canPut); toJtag.put(10);
+    start_msg.show();
+    await(start_msg.done);
 
     await(fromJtag.canGet);
     action
@@ -319,55 +335,16 @@ module mkDE10Top(Clock northTxClk, Clock northRxClk, Clock southTxClk, Clock sou
       fromJtag.get();
     endseq
 
-
-    await(toJtag.canPut); toJtag.put(charToAscii(stringToCharList(startT)[0]));
-    await(toJtag.canPut); toJtag.put(charToAscii(stringToCharList(startT)[1]));
-    await(toJtag.canPut); toJtag.put(charToAscii(stringToCharList(startT)[2]));
-    await(toJtag.canPut); toJtag.put(charToAscii(stringToCharList(startT)[3]));
-    await(toJtag.canPut); toJtag.put(charToAscii(stringToCharList(startT)[4]));
-    await(toJtag.canPut); toJtag.put(charToAscii(stringToCharList(startT)[5]));
-    await(toJtag.canPut); toJtag.put(charToAscii(stringToCharList(startT)[6]));
-    await(toJtag.canPut); toJtag.put(charToAscii(stringToCharList(startT)[7]));
-    await(toJtag.canPut); toJtag.put(charToAscii(stringToCharList(startT)[8]));
-    await(toJtag.canPut); toJtag.put(charToAscii(stringToCharList(startT)[9]));
-    await(toJtag.canPut); toJtag.put(10);
+    startT_msg.show();
+    await(startT_msg.done);
 
     action
       sendCount <= 0;
       timer <= 0;
       numTimeouts <= 0;
+      sent_inital_send_msg <= False;
+      sent_inital_recv_msg <= False;
     endaction
-
-    // par
-    //   while (sendCount <= numVals) action
-    //     timer <= timer+1;
-    //   endaction
-    //
-    //
-    //   while (sendCount <= numVals) action
-    //     if (toLink.canPut) action
-    //       toLink.put(sendCount);
-    //       sendCount <= sendCount+1;
-    //     endaction
-    //   endaction
-    //
-    //   while (sendCount <= numVals) action
-    //     if (fromLink.canGet && toJtag.canPut) action
-    //       fromLink.get;
-    //       lastReceived <= fromLink.value;
-    //       if (recvCount == fromLink.value) begin
-    //         if (recvCount == numVals)
-    //           state <= 2;
-    //         else
-    //           recvCount <= recvCount+1;
-    //       end else begin
-    //         toJtag.put(88);
-    //         state <= 2;
-    //       end
-    //     endaction
-    //   endaction
-    //
-    // endpar
 
     state <= 1;
 
@@ -379,12 +356,7 @@ module mkDE10Top(Clock northTxClk, Clock northRxClk, Clock southTxClk, Clock sou
 
     toJtag.put(10);
 
-    await(toJtag.canPut); toJtag.put(charToAscii("t"));
-    await(toJtag.canPut); toJtag.put(charToAscii("i"));
-    await(toJtag.canPut); toJtag.put(charToAscii("m"));
-    await(toJtag.canPut); toJtag.put(charToAscii("e"));
-    await(toJtag.canPut); toJtag.put(charToAscii("r"));
-    await(toJtag.canPut); toJtag.put(charToAscii(":"));
+    timer_msg.show; await(timer_msg.done);
 
     displayCount <= 0;
     while (displayCount < 15) action
@@ -397,12 +369,7 @@ module mkDE10Top(Clock northTxClk, Clock northRxClk, Clock southTxClk, Clock sou
     endaction
 
     toJtag.put(10);
-    await(toJtag.canPut); toJtag.put(charToAscii("s"));
-    await(toJtag.canPut); toJtag.put(charToAscii("e"));
-    await(toJtag.canPut); toJtag.put(charToAscii("n"));
-    await(toJtag.canPut); toJtag.put(charToAscii("t"));
-    await(toJtag.canPut); toJtag.put(charToAscii(":"));
-
+    sent_msg.show; await(sent_msg.done);
 
     displayCount <= 0;
     while (displayCount < 15) action
@@ -416,11 +383,7 @@ module mkDE10Top(Clock northTxClk, Clock northRxClk, Clock southTxClk, Clock sou
 
 
     toJtag.put(10);
-    await(toJtag.canPut); toJtag.put(charToAscii("r"));
-    await(toJtag.canPut); toJtag.put(charToAscii("e"));
-    await(toJtag.canPut); toJtag.put(charToAscii("c"));
-    await(toJtag.canPut); toJtag.put(charToAscii("v"));
-    await(toJtag.canPut); toJtag.put(charToAscii(":"));
+    recv_msg.show; await(recv_msg.done);
 
 
 
@@ -436,15 +399,7 @@ module mkDE10Top(Clock northTxClk, Clock northRxClk, Clock southTxClk, Clock sou
 
 
     toJtag.put(10);
-    await(toJtag.canPut); toJtag.put(charToAscii("t"));
-    await(toJtag.canPut); toJtag.put(charToAscii("i"));
-    await(toJtag.canPut); toJtag.put(charToAscii("m"));
-    await(toJtag.canPut); toJtag.put(charToAscii("e"));
-    await(toJtag.canPut); toJtag.put(charToAscii("o"));
-    await(toJtag.canPut); toJtag.put(charToAscii("u"));
-    await(toJtag.canPut); toJtag.put(charToAscii("t"));
-    await(toJtag.canPut); toJtag.put(charToAscii("s"));
-    await(toJtag.canPut); toJtag.put(charToAscii(":"));
+    timeouts_msg.show; await(timeouts_msg.done);
 
 
     numTimeouts <= linkNorth.numTimeouts;
@@ -478,13 +433,6 @@ module mkDE10Top(Clock northTxClk, Clock northRxClk, Clock southTxClk, Clock sou
   endrule
 
   `ifndef SIMULATE
-
-  AvalonCCIfc northCC <- mkAvalonStreamConverter(linkNorth.avalonMac,
-                                                defaultClock, northTxClk, northRxClk,
-                                                 defaultReset, northTxRst, northRxRst);
- AvalonCCIfc southCC <- mkAvalonStreamConverter(linkSouth.avalonMac,
-                                                defaultClock, southTxClk, southRxClk,
-                                                defaultReset, southTxRst, southRxRst);
 
   function DRAMExtIfc getDRAMExtIfc(DRAM dram) = dram.external;
   // interface dramIfcs = map(getDRAMExtIfc, drams);

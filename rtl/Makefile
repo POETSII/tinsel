@@ -25,6 +25,8 @@ BSINCLUDE+=../DE10Pro/DE10-reference-project/src/BlueStuff/BlueBasics
 BSINCLUDE+=../DE10Pro/DE10-reference-project/src/BlueStuff/AXI
 BSINCLUDE+=../DE10Pro/DE10-reference-project/src/BlueStuff/SocketPacketUtils
 BSINCLUDE+=../DE10Pro/DE10-reference-project/src/BlueStuff
+BSINCLUDE+=../upstream/BSVFan
+BSINCLUDE+=../upstream/bluecheck
 
 # BSV compiler flags
 BSC = bsc
@@ -94,7 +96,7 @@ $(HOSTTOPMOD).v: *.bsv
 .PHONY: runsim
 runsim:
 	$(if $(value BOARD_ID), , $(error Please set BOARD_ID))
-	LD_PRELOAD=$(VPIINCL)/libbdpi.so:mkDE10Top.so ./mkDE10Top -V ${BOARD_ID}.vcd
+	LD_PRELOAD=$(VPIINCL)/libbdpi.so:mkDE10Top.so ./mkDE10Top # -V ${BOARD_ID}.vcd
 
 testMem: *.bsv *.c
 	$(BSC) $(BSCFLAGS) $(DEFS) -D SIMULATE \
