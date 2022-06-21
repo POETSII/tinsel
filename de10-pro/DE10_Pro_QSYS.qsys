@@ -7319,11 +7319,11 @@
                     <parameterValueMap>
                         <entry>
                             <key>associatedClock</key>
-                            <value>clock</value>
+                            <value>northmac_source_clk</value>
                         </entry>
                         <entry>
                             <key>associatedReset</key>
-                            <value>reset_sink</value>
+                            <value>northmac_source_reset_sink</value>
                         </entry>
                         <entry>
                             <key>beatsPerCycle</key>
@@ -7376,62 +7376,14 @@
                 </parameters>
             </interface>
             <interface>
-                <name>southmac_source</name>
-                <type>avalon_streaming</type>
-                <isStart>true</isStart>
+                <name>northmac_source_clk</name>
+                <type>clock</type>
+                <isStart>false</isStart>
                 <ports>
                     <port>
-                        <name>southMac_0_source_endofpacket</name>
-                        <role>endofpacket</role>
-                        <direction>Output</direction>
-                        <width>1</width>
-                        <lowerBound>0</lowerBound>
-                        <vhdlType>STD_LOGIC</vhdlType>
-                    </port>
-                    <port>
-                        <name>southMac_0_source_data</name>
-                        <role>data</role>
-                        <direction>Output</direction>
-                        <width>512</width>
-                        <lowerBound>0</lowerBound>
-                        <vhdlType>STD_LOGIC_VECTOR</vhdlType>
-                    </port>
-                    <port>
-                        <name>southMac_0_source_source_ready</name>
-                        <role>ready</role>
+                        <name>CLK_northTxClk</name>
+                        <role>clk</role>
                         <direction>Input</direction>
-                        <width>1</width>
-                        <lowerBound>0</lowerBound>
-                        <vhdlType>STD_LOGIC</vhdlType>
-                    </port>
-                    <port>
-                        <name>southMac_0_source_startofpacket</name>
-                        <role>startofpacket</role>
-                        <direction>Output</direction>
-                        <width>1</width>
-                        <lowerBound>0</lowerBound>
-                        <vhdlType>STD_LOGIC</vhdlType>
-                    </port>
-                    <port>
-                        <name>southMac_0_source_valid</name>
-                        <role>valid</role>
-                        <direction>Output</direction>
-                        <width>1</width>
-                        <lowerBound>0</lowerBound>
-                        <vhdlType>STD_LOGIC</vhdlType>
-                    </port>
-                    <port>
-                        <name>southMac_0_source_empty</name>
-                        <role>empty</role>
-                        <direction>Output</direction>
-                        <width>6</width>
-                        <lowerBound>0</lowerBound>
-                        <vhdlType>STD_LOGIC_VECTOR</vhdlType>
-                    </port>
-                    <port>
-                        <name>southMac_0_source_error</name>
-                        <role>error</role>
-                        <direction>Output</direction>
                         <width>1</width>
                         <lowerBound>0</lowerBound>
                         <vhdlType>STD_LOGIC</vhdlType>
@@ -7443,120 +7395,28 @@
                 <parameters>
                     <parameterValueMap>
                         <entry>
-                            <key>associatedClock</key>
-                            <value>clock</value>
-                        </entry>
-                        <entry>
-                            <key>associatedReset</key>
-                            <value>reset_sink</value>
-                        </entry>
-                        <entry>
-                            <key>beatsPerCycle</key>
-                            <value>1</value>
-                        </entry>
-                        <entry>
-                            <key>dataBitsPerSymbol</key>
-                            <value>8</value>
-                        </entry>
-                        <entry>
-                            <key>emptyWithinPacket</key>
-                            <value>false</value>
-                        </entry>
-                        <entry>
-                            <key>errorDescriptor</key>
-                        </entry>
-                        <entry>
-                            <key>firstSymbolInHighOrderBits</key>
-                            <value>true</value>
-                        </entry>
-                        <entry>
-                            <key>highOrderSymbolAtMSB</key>
-                            <value>false</value>
-                        </entry>
-                        <entry>
-                            <key>maxChannel</key>
+                            <key>clockRate</key>
                             <value>0</value>
                         </entry>
                         <entry>
-                            <key>packetDescription</key>
-                            <value></value>
-                        </entry>
-                        <entry>
-                            <key>prSafe</key>
+                            <key>externallyDriven</key>
                             <value>false</value>
                         </entry>
                         <entry>
-                            <key>readyAllowance</key>
-                            <value>0</value>
-                        </entry>
-                        <entry>
-                            <key>readyLatency</key>
-                            <value>0</value>
-                        </entry>
-                        <entry>
-                            <key>symbolsPerBeat</key>
-                            <value>1</value>
+                            <key>ptfSchematicName</key>
                         </entry>
                     </parameterValueMap>
                 </parameters>
             </interface>
             <interface>
-                <name>eastmac_source</name>
-                <type>avalon_streaming</type>
-                <isStart>true</isStart>
+                <name>northmac_source_reset_sink</name>
+                <type>reset</type>
+                <isStart>false</isStart>
                 <ports>
                     <port>
-                        <name>eastMac_0_source_endofpacket</name>
-                        <role>endofpacket</role>
-                        <direction>Output</direction>
-                        <width>1</width>
-                        <lowerBound>0</lowerBound>
-                        <vhdlType>STD_LOGIC</vhdlType>
-                    </port>
-                    <port>
-                        <name>eastMac_0_source_data</name>
-                        <role>data</role>
-                        <direction>Output</direction>
-                        <width>512</width>
-                        <lowerBound>0</lowerBound>
-                        <vhdlType>STD_LOGIC_VECTOR</vhdlType>
-                    </port>
-                    <port>
-                        <name>eastMac_0_source_source_ready</name>
-                        <role>ready</role>
+                        <name>RST_N_northTxRst</name>
+                        <role>reset_n</role>
                         <direction>Input</direction>
-                        <width>1</width>
-                        <lowerBound>0</lowerBound>
-                        <vhdlType>STD_LOGIC</vhdlType>
-                    </port>
-                    <port>
-                        <name>eastMac_0_source_startofpacket</name>
-                        <role>startofpacket</role>
-                        <direction>Output</direction>
-                        <width>1</width>
-                        <lowerBound>0</lowerBound>
-                        <vhdlType>STD_LOGIC</vhdlType>
-                    </port>
-                    <port>
-                        <name>eastMac_0_source_valid</name>
-                        <role>valid</role>
-                        <direction>Output</direction>
-                        <width>1</width>
-                        <lowerBound>0</lowerBound>
-                        <vhdlType>STD_LOGIC</vhdlType>
-                    </port>
-                    <port>
-                        <name>eastMac_0_source_empty</name>
-                        <role>empty</role>
-                        <direction>Output</direction>
-                        <width>6</width>
-                        <lowerBound>0</lowerBound>
-                        <vhdlType>STD_LOGIC_VECTOR</vhdlType>
-                    </port>
-                    <port>
-                        <name>eastMac_0_source_error</name>
-                        <role>error</role>
-                        <direction>Output</direction>
                         <width>1</width>
                         <lowerBound>0</lowerBound>
                         <vhdlType>STD_LOGIC</vhdlType>
@@ -7569,183 +7429,11 @@
                     <parameterValueMap>
                         <entry>
                             <key>associatedClock</key>
-                            <value>clock</value>
+                            <value>northmac_source_clk</value>
                         </entry>
                         <entry>
-                            <key>associatedReset</key>
-                            <value>reset_sink</value>
-                        </entry>
-                        <entry>
-                            <key>beatsPerCycle</key>
-                            <value>1</value>
-                        </entry>
-                        <entry>
-                            <key>dataBitsPerSymbol</key>
-                            <value>8</value>
-                        </entry>
-                        <entry>
-                            <key>emptyWithinPacket</key>
-                            <value>false</value>
-                        </entry>
-                        <entry>
-                            <key>errorDescriptor</key>
-                        </entry>
-                        <entry>
-                            <key>firstSymbolInHighOrderBits</key>
-                            <value>true</value>
-                        </entry>
-                        <entry>
-                            <key>highOrderSymbolAtMSB</key>
-                            <value>false</value>
-                        </entry>
-                        <entry>
-                            <key>maxChannel</key>
-                            <value>0</value>
-                        </entry>
-                        <entry>
-                            <key>packetDescription</key>
-                            <value></value>
-                        </entry>
-                        <entry>
-                            <key>prSafe</key>
-                            <value>false</value>
-                        </entry>
-                        <entry>
-                            <key>readyAllowance</key>
-                            <value>0</value>
-                        </entry>
-                        <entry>
-                            <key>readyLatency</key>
-                            <value>0</value>
-                        </entry>
-                        <entry>
-                            <key>symbolsPerBeat</key>
-                            <value>1</value>
-                        </entry>
-                    </parameterValueMap>
-                </parameters>
-            </interface>
-            <interface>
-                <name>westmac_source</name>
-                <type>avalon_streaming</type>
-                <isStart>true</isStart>
-                <ports>
-                    <port>
-                        <name>westMac_0_source_endofpacket</name>
-                        <role>endofpacket</role>
-                        <direction>Output</direction>
-                        <width>1</width>
-                        <lowerBound>0</lowerBound>
-                        <vhdlType>STD_LOGIC</vhdlType>
-                    </port>
-                    <port>
-                        <name>westMac_0_source_data</name>
-                        <role>data</role>
-                        <direction>Output</direction>
-                        <width>512</width>
-                        <lowerBound>0</lowerBound>
-                        <vhdlType>STD_LOGIC_VECTOR</vhdlType>
-                    </port>
-                    <port>
-                        <name>westMac_0_source_source_ready</name>
-                        <role>ready</role>
-                        <direction>Input</direction>
-                        <width>1</width>
-                        <lowerBound>0</lowerBound>
-                        <vhdlType>STD_LOGIC</vhdlType>
-                    </port>
-                    <port>
-                        <name>westMac_0_source_startofpacket</name>
-                        <role>startofpacket</role>
-                        <direction>Output</direction>
-                        <width>1</width>
-                        <lowerBound>0</lowerBound>
-                        <vhdlType>STD_LOGIC</vhdlType>
-                    </port>
-                    <port>
-                        <name>westMac_0_source_valid</name>
-                        <role>valid</role>
-                        <direction>Output</direction>
-                        <width>1</width>
-                        <lowerBound>0</lowerBound>
-                        <vhdlType>STD_LOGIC</vhdlType>
-                    </port>
-                    <port>
-                        <name>westMac_0_source_empty</name>
-                        <role>empty</role>
-                        <direction>Output</direction>
-                        <width>6</width>
-                        <lowerBound>0</lowerBound>
-                        <vhdlType>STD_LOGIC_VECTOR</vhdlType>
-                    </port>
-                    <port>
-                        <name>westMac_0_source_error</name>
-                        <role>error</role>
-                        <direction>Output</direction>
-                        <width>1</width>
-                        <lowerBound>0</lowerBound>
-                        <vhdlType>STD_LOGIC</vhdlType>
-                    </port>
-                </ports>
-                <assignments>
-                    <assignmentValueMap/>
-                </assignments>
-                <parameters>
-                    <parameterValueMap>
-                        <entry>
-                            <key>associatedClock</key>
-                            <value>clock</value>
-                        </entry>
-                        <entry>
-                            <key>associatedReset</key>
-                            <value>reset_sink</value>
-                        </entry>
-                        <entry>
-                            <key>beatsPerCycle</key>
-                            <value>1</value>
-                        </entry>
-                        <entry>
-                            <key>dataBitsPerSymbol</key>
-                            <value>8</value>
-                        </entry>
-                        <entry>
-                            <key>emptyWithinPacket</key>
-                            <value>false</value>
-                        </entry>
-                        <entry>
-                            <key>errorDescriptor</key>
-                        </entry>
-                        <entry>
-                            <key>firstSymbolInHighOrderBits</key>
-                            <value>true</value>
-                        </entry>
-                        <entry>
-                            <key>highOrderSymbolAtMSB</key>
-                            <value>false</value>
-                        </entry>
-                        <entry>
-                            <key>maxChannel</key>
-                            <value>0</value>
-                        </entry>
-                        <entry>
-                            <key>packetDescription</key>
-                            <value></value>
-                        </entry>
-                        <entry>
-                            <key>prSafe</key>
-                            <value>false</value>
-                        </entry>
-                        <entry>
-                            <key>readyAllowance</key>
-                            <value>0</value>
-                        </entry>
-                        <entry>
-                            <key>readyLatency</key>
-                            <value>0</value>
-                        </entry>
-                        <entry>
-                            <key>symbolsPerBeat</key>
-                            <value>1</value>
+                            <key>synchronousEdges</key>
+                            <value>DEASSERT</value>
                         </entry>
                     </parameterValueMap>
                 </parameters>
@@ -7819,11 +7507,11 @@
                     <parameterValueMap>
                         <entry>
                             <key>associatedClock</key>
-                            <value>clock</value>
+                            <value>northmac_sink_clk</value>
                         </entry>
                         <entry>
                             <key>associatedReset</key>
-                            <value>reset_sink</value>
+                            <value>northmac_sink_reset_sink</value>
                         </entry>
                         <entry>
                             <key>beatsPerCycle</key>
@@ -7876,65 +7564,17 @@
                 </parameters>
             </interface>
             <interface>
-                <name>southmac_sink</name>
-                <type>avalon_streaming</type>
+                <name>northmac_sink_clk</name>
+                <type>clock</type>
                 <isStart>false</isStart>
                 <ports>
                     <port>
-                        <name>southMac_0_sink_ready</name>
-                        <role>ready</role>
-                        <direction>Output</direction>
-                        <width>1</width>
-                        <lowerBound>0</lowerBound>
-                        <vhdlType>STD_LOGIC</vhdlType>
-                    </port>
-                    <port>
-                        <name>southMac_0_sink_sink_data</name>
-                        <role>data</role>
-                        <direction>Input</direction>
-                        <width>512</width>
-                        <lowerBound>0</lowerBound>
-                        <vhdlType>STD_LOGIC_VECTOR</vhdlType>
-                    </port>
-                    <port>
-                        <name>southMac_0_sink_sink_endofpacket</name>
-                        <role>endofpacket</role>
+                        <name>CLK_northRxClk</name>
+                        <role>clk</role>
                         <direction>Input</direction>
                         <width>1</width>
                         <lowerBound>0</lowerBound>
                         <vhdlType>STD_LOGIC</vhdlType>
-                    </port>
-                    <port>
-                        <name>southMac_0_sink_sink_error</name>
-                        <role>error</role>
-                        <direction>Input</direction>
-                        <width>6</width>
-                        <lowerBound>0</lowerBound>
-                        <vhdlType>STD_LOGIC_VECTOR</vhdlType>
-                    </port>
-                    <port>
-                        <name>southMac_0_sink_sink_startofpacket</name>
-                        <role>startofpacket</role>
-                        <direction>Input</direction>
-                        <width>1</width>
-                        <lowerBound>0</lowerBound>
-                        <vhdlType>STD_LOGIC</vhdlType>
-                    </port>
-                    <port>
-                        <name>southMac_0_sink_sink_valid</name>
-                        <role>valid</role>
-                        <direction>Input</direction>
-                        <width>1</width>
-                        <lowerBound>0</lowerBound>
-                        <vhdlType>STD_LOGIC</vhdlType>
-                    </port>
-                    <port>
-                        <name>southMac_0_sink_sink_empty</name>
-                        <role>empty</role>
-                        <direction>Input</direction>
-                        <width>6</width>
-                        <lowerBound>0</lowerBound>
-                        <vhdlType>STD_LOGIC_VECTOR</vhdlType>
                     </port>
                 </ports>
                 <assignments>
@@ -7943,123 +7583,31 @@
                 <parameters>
                     <parameterValueMap>
                         <entry>
-                            <key>associatedClock</key>
-                            <value>clock</value>
-                        </entry>
-                        <entry>
-                            <key>associatedReset</key>
-                            <value>reset_sink</value>
-                        </entry>
-                        <entry>
-                            <key>beatsPerCycle</key>
-                            <value>1</value>
-                        </entry>
-                        <entry>
-                            <key>dataBitsPerSymbol</key>
-                            <value>8</value>
-                        </entry>
-                        <entry>
-                            <key>emptyWithinPacket</key>
-                            <value>false</value>
-                        </entry>
-                        <entry>
-                            <key>errorDescriptor</key>
-                        </entry>
-                        <entry>
-                            <key>firstSymbolInHighOrderBits</key>
-                            <value>true</value>
-                        </entry>
-                        <entry>
-                            <key>highOrderSymbolAtMSB</key>
-                            <value>false</value>
-                        </entry>
-                        <entry>
-                            <key>maxChannel</key>
+                            <key>clockRate</key>
                             <value>0</value>
                         </entry>
                         <entry>
-                            <key>packetDescription</key>
-                            <value></value>
-                        </entry>
-                        <entry>
-                            <key>prSafe</key>
+                            <key>externallyDriven</key>
                             <value>false</value>
                         </entry>
                         <entry>
-                            <key>readyAllowance</key>
-                            <value>0</value>
-                        </entry>
-                        <entry>
-                            <key>readyLatency</key>
-                            <value>0</value>
-                        </entry>
-                        <entry>
-                            <key>symbolsPerBeat</key>
-                            <value>1</value>
+                            <key>ptfSchematicName</key>
                         </entry>
                     </parameterValueMap>
                 </parameters>
             </interface>
             <interface>
-                <name>eastmac_sink</name>
-                <type>avalon_streaming</type>
+                <name>northmac_sink_reset_sink</name>
+                <type>reset</type>
                 <isStart>false</isStart>
                 <ports>
                     <port>
-                        <name>eastMac_0_sink_ready</name>
-                        <role>ready</role>
-                        <direction>Output</direction>
-                        <width>1</width>
-                        <lowerBound>0</lowerBound>
-                        <vhdlType>STD_LOGIC</vhdlType>
-                    </port>
-                    <port>
-                        <name>eastMac_0_sink_sink_data</name>
-                        <role>data</role>
-                        <direction>Input</direction>
-                        <width>512</width>
-                        <lowerBound>0</lowerBound>
-                        <vhdlType>STD_LOGIC_VECTOR</vhdlType>
-                    </port>
-                    <port>
-                        <name>eastMac_0_sink_sink_endofpacket</name>
-                        <role>endofpacket</role>
+                        <name>RST_N_northRxRst</name>
+                        <role>reset_n</role>
                         <direction>Input</direction>
                         <width>1</width>
                         <lowerBound>0</lowerBound>
                         <vhdlType>STD_LOGIC</vhdlType>
-                    </port>
-                    <port>
-                        <name>eastMac_0_sink_sink_error</name>
-                        <role>error</role>
-                        <direction>Input</direction>
-                        <width>6</width>
-                        <lowerBound>0</lowerBound>
-                        <vhdlType>STD_LOGIC_VECTOR</vhdlType>
-                    </port>
-                    <port>
-                        <name>eastMac_0_sink_sink_startofpacket</name>
-                        <role>startofpacket</role>
-                        <direction>Input</direction>
-                        <width>1</width>
-                        <lowerBound>0</lowerBound>
-                        <vhdlType>STD_LOGIC</vhdlType>
-                    </port>
-                    <port>
-                        <name>eastMac_0_sink_sink_valid</name>
-                        <role>valid</role>
-                        <direction>Input</direction>
-                        <width>1</width>
-                        <lowerBound>0</lowerBound>
-                        <vhdlType>STD_LOGIC</vhdlType>
-                    </port>
-                    <port>
-                        <name>eastMac_0_sink_sink_empty</name>
-                        <role>empty</role>
-                        <direction>Input</direction>
-                        <width>6</width>
-                        <lowerBound>0</lowerBound>
-                        <vhdlType>STD_LOGIC_VECTOR</vhdlType>
                     </port>
                 </ports>
                 <assignments>
@@ -8069,183 +7617,11 @@
                     <parameterValueMap>
                         <entry>
                             <key>associatedClock</key>
-                            <value>clock</value>
+                            <value>northmac_sink_clk</value>
                         </entry>
                         <entry>
-                            <key>associatedReset</key>
-                            <value>reset_sink</value>
-                        </entry>
-                        <entry>
-                            <key>beatsPerCycle</key>
-                            <value>1</value>
-                        </entry>
-                        <entry>
-                            <key>dataBitsPerSymbol</key>
-                            <value>8</value>
-                        </entry>
-                        <entry>
-                            <key>emptyWithinPacket</key>
-                            <value>false</value>
-                        </entry>
-                        <entry>
-                            <key>errorDescriptor</key>
-                        </entry>
-                        <entry>
-                            <key>firstSymbolInHighOrderBits</key>
-                            <value>true</value>
-                        </entry>
-                        <entry>
-                            <key>highOrderSymbolAtMSB</key>
-                            <value>false</value>
-                        </entry>
-                        <entry>
-                            <key>maxChannel</key>
-                            <value>0</value>
-                        </entry>
-                        <entry>
-                            <key>packetDescription</key>
-                            <value></value>
-                        </entry>
-                        <entry>
-                            <key>prSafe</key>
-                            <value>false</value>
-                        </entry>
-                        <entry>
-                            <key>readyAllowance</key>
-                            <value>0</value>
-                        </entry>
-                        <entry>
-                            <key>readyLatency</key>
-                            <value>0</value>
-                        </entry>
-                        <entry>
-                            <key>symbolsPerBeat</key>
-                            <value>1</value>
-                        </entry>
-                    </parameterValueMap>
-                </parameters>
-            </interface>
-            <interface>
-                <name>westmac_sink</name>
-                <type>avalon_streaming</type>
-                <isStart>false</isStart>
-                <ports>
-                    <port>
-                        <name>westMac_0_sink_ready</name>
-                        <role>ready</role>
-                        <direction>Output</direction>
-                        <width>1</width>
-                        <lowerBound>0</lowerBound>
-                        <vhdlType>STD_LOGIC</vhdlType>
-                    </port>
-                    <port>
-                        <name>westMac_0_sink_sink_data</name>
-                        <role>data</role>
-                        <direction>Input</direction>
-                        <width>512</width>
-                        <lowerBound>0</lowerBound>
-                        <vhdlType>STD_LOGIC_VECTOR</vhdlType>
-                    </port>
-                    <port>
-                        <name>westMac_0_sink_sink_endofpacket</name>
-                        <role>endofpacket</role>
-                        <direction>Input</direction>
-                        <width>1</width>
-                        <lowerBound>0</lowerBound>
-                        <vhdlType>STD_LOGIC</vhdlType>
-                    </port>
-                    <port>
-                        <name>westMac_0_sink_sink_error</name>
-                        <role>error</role>
-                        <direction>Input</direction>
-                        <width>6</width>
-                        <lowerBound>0</lowerBound>
-                        <vhdlType>STD_LOGIC_VECTOR</vhdlType>
-                    </port>
-                    <port>
-                        <name>westMac_0_sink_sink_startofpacket</name>
-                        <role>startofpacket</role>
-                        <direction>Input</direction>
-                        <width>1</width>
-                        <lowerBound>0</lowerBound>
-                        <vhdlType>STD_LOGIC</vhdlType>
-                    </port>
-                    <port>
-                        <name>westMac_0_sink_sink_valid</name>
-                        <role>valid</role>
-                        <direction>Input</direction>
-                        <width>1</width>
-                        <lowerBound>0</lowerBound>
-                        <vhdlType>STD_LOGIC</vhdlType>
-                    </port>
-                    <port>
-                        <name>westMac_0_sink_sink_empty</name>
-                        <role>empty</role>
-                        <direction>Input</direction>
-                        <width>6</width>
-                        <lowerBound>0</lowerBound>
-                        <vhdlType>STD_LOGIC_VECTOR</vhdlType>
-                    </port>
-                </ports>
-                <assignments>
-                    <assignmentValueMap/>
-                </assignments>
-                <parameters>
-                    <parameterValueMap>
-                        <entry>
-                            <key>associatedClock</key>
-                            <value>clock</value>
-                        </entry>
-                        <entry>
-                            <key>associatedReset</key>
-                            <value>reset_sink</value>
-                        </entry>
-                        <entry>
-                            <key>beatsPerCycle</key>
-                            <value>1</value>
-                        </entry>
-                        <entry>
-                            <key>dataBitsPerSymbol</key>
-                            <value>8</value>
-                        </entry>
-                        <entry>
-                            <key>emptyWithinPacket</key>
-                            <value>false</value>
-                        </entry>
-                        <entry>
-                            <key>errorDescriptor</key>
-                        </entry>
-                        <entry>
-                            <key>firstSymbolInHighOrderBits</key>
-                            <value>true</value>
-                        </entry>
-                        <entry>
-                            <key>highOrderSymbolAtMSB</key>
-                            <value>false</value>
-                        </entry>
-                        <entry>
-                            <key>maxChannel</key>
-                            <value>0</value>
-                        </entry>
-                        <entry>
-                            <key>packetDescription</key>
-                            <value></value>
-                        </entry>
-                        <entry>
-                            <key>prSafe</key>
-                            <value>false</value>
-                        </entry>
-                        <entry>
-                            <key>readyAllowance</key>
-                            <value>0</value>
-                        </entry>
-                        <entry>
-                            <key>readyLatency</key>
-                            <value>0</value>
-                        </entry>
-                        <entry>
-                            <key>symbolsPerBeat</key>
-                            <value>1</value>
+                            <key>synchronousEdges</key>
+                            <value>DEASSERT</value>
                         </entry>
                     </parameterValueMap>
                 </parameters>
@@ -9780,7 +9156,6 @@
                     </entry>
                     <entry>
                         <key>bridgedAddressOffset</key>
-                        <value>0</value>
                     </entry>
                     <entry>
                         <key>bridgesToMaster</key>
@@ -9940,7 +9315,7 @@
                     </entry>
                     <entry>
                         <key>associatedResetSinks</key>
-                        <value>none</value>
+                        <value></value>
                     </entry>
                     <entry>
                         <key>synchronousEdges</key>
@@ -10018,11 +9393,11 @@
                 <parameterValueMap>
                     <entry>
                         <key>associatedClock</key>
-                        <value>clock</value>
+                        <value>northmac_source_clk</value>
                     </entry>
                     <entry>
                         <key>associatedReset</key>
-                        <value>reset_sink</value>
+                        <value>northmac_source_reset_sink</value>
                     </entry>
                     <entry>
                         <key>beatsPerCycle</key>
@@ -10075,62 +9450,14 @@
             </parameters>
         </interface>
         <interface>
-            <name>southmac_source</name>
-            <type>avalon_streaming</type>
-            <isStart>true</isStart>
+            <name>northmac_source_clk</name>
+            <type>clock</type>
+            <isStart>false</isStart>
             <ports>
                 <port>
-                    <name>southMac_0_source_endofpacket</name>
-                    <role>endofpacket</role>
-                    <direction>Output</direction>
-                    <width>1</width>
-                    <lowerBound>0</lowerBound>
-                    <vhdlType>STD_LOGIC</vhdlType>
-                </port>
-                <port>
-                    <name>southMac_0_source_data</name>
-                    <role>data</role>
-                    <direction>Output</direction>
-                    <width>512</width>
-                    <lowerBound>0</lowerBound>
-                    <vhdlType>STD_LOGIC_VECTOR</vhdlType>
-                </port>
-                <port>
-                    <name>southMac_0_source_source_ready</name>
-                    <role>ready</role>
+                    <name>CLK_northTxClk</name>
+                    <role>clk</role>
                     <direction>Input</direction>
-                    <width>1</width>
-                    <lowerBound>0</lowerBound>
-                    <vhdlType>STD_LOGIC</vhdlType>
-                </port>
-                <port>
-                    <name>southMac_0_source_startofpacket</name>
-                    <role>startofpacket</role>
-                    <direction>Output</direction>
-                    <width>1</width>
-                    <lowerBound>0</lowerBound>
-                    <vhdlType>STD_LOGIC</vhdlType>
-                </port>
-                <port>
-                    <name>southMac_0_source_valid</name>
-                    <role>valid</role>
-                    <direction>Output</direction>
-                    <width>1</width>
-                    <lowerBound>0</lowerBound>
-                    <vhdlType>STD_LOGIC</vhdlType>
-                </port>
-                <port>
-                    <name>southMac_0_source_empty</name>
-                    <role>empty</role>
-                    <direction>Output</direction>
-                    <width>6</width>
-                    <lowerBound>0</lowerBound>
-                    <vhdlType>STD_LOGIC_VECTOR</vhdlType>
-                </port>
-                <port>
-                    <name>southMac_0_source_error</name>
-                    <role>error</role>
-                    <direction>Output</direction>
                     <width>1</width>
                     <lowerBound>0</lowerBound>
                     <vhdlType>STD_LOGIC</vhdlType>
@@ -10142,120 +9469,28 @@
             <parameters>
                 <parameterValueMap>
                     <entry>
-                        <key>associatedClock</key>
-                        <value>clock</value>
-                    </entry>
-                    <entry>
-                        <key>associatedReset</key>
-                        <value>reset_sink</value>
-                    </entry>
-                    <entry>
-                        <key>beatsPerCycle</key>
-                        <value>1</value>
-                    </entry>
-                    <entry>
-                        <key>dataBitsPerSymbol</key>
-                        <value>8</value>
-                    </entry>
-                    <entry>
-                        <key>emptyWithinPacket</key>
-                        <value>false</value>
-                    </entry>
-                    <entry>
-                        <key>errorDescriptor</key>
-                    </entry>
-                    <entry>
-                        <key>firstSymbolInHighOrderBits</key>
-                        <value>true</value>
-                    </entry>
-                    <entry>
-                        <key>highOrderSymbolAtMSB</key>
-                        <value>false</value>
-                    </entry>
-                    <entry>
-                        <key>maxChannel</key>
+                        <key>clockRate</key>
                         <value>0</value>
                     </entry>
                     <entry>
-                        <key>packetDescription</key>
-                        <value></value>
-                    </entry>
-                    <entry>
-                        <key>prSafe</key>
+                        <key>externallyDriven</key>
                         <value>false</value>
                     </entry>
                     <entry>
-                        <key>readyAllowance</key>
-                        <value>0</value>
-                    </entry>
-                    <entry>
-                        <key>readyLatency</key>
-                        <value>0</value>
-                    </entry>
-                    <entry>
-                        <key>symbolsPerBeat</key>
-                        <value>1</value>
+                        <key>ptfSchematicName</key>
                     </entry>
                 </parameterValueMap>
             </parameters>
         </interface>
         <interface>
-            <name>eastmac_source</name>
-            <type>avalon_streaming</type>
-            <isStart>true</isStart>
+            <name>northmac_source_reset_sink</name>
+            <type>reset</type>
+            <isStart>false</isStart>
             <ports>
                 <port>
-                    <name>eastMac_0_source_endofpacket</name>
-                    <role>endofpacket</role>
-                    <direction>Output</direction>
-                    <width>1</width>
-                    <lowerBound>0</lowerBound>
-                    <vhdlType>STD_LOGIC</vhdlType>
-                </port>
-                <port>
-                    <name>eastMac_0_source_data</name>
-                    <role>data</role>
-                    <direction>Output</direction>
-                    <width>512</width>
-                    <lowerBound>0</lowerBound>
-                    <vhdlType>STD_LOGIC_VECTOR</vhdlType>
-                </port>
-                <port>
-                    <name>eastMac_0_source_source_ready</name>
-                    <role>ready</role>
+                    <name>RST_N_northTxRst</name>
+                    <role>reset_n</role>
                     <direction>Input</direction>
-                    <width>1</width>
-                    <lowerBound>0</lowerBound>
-                    <vhdlType>STD_LOGIC</vhdlType>
-                </port>
-                <port>
-                    <name>eastMac_0_source_startofpacket</name>
-                    <role>startofpacket</role>
-                    <direction>Output</direction>
-                    <width>1</width>
-                    <lowerBound>0</lowerBound>
-                    <vhdlType>STD_LOGIC</vhdlType>
-                </port>
-                <port>
-                    <name>eastMac_0_source_valid</name>
-                    <role>valid</role>
-                    <direction>Output</direction>
-                    <width>1</width>
-                    <lowerBound>0</lowerBound>
-                    <vhdlType>STD_LOGIC</vhdlType>
-                </port>
-                <port>
-                    <name>eastMac_0_source_empty</name>
-                    <role>empty</role>
-                    <direction>Output</direction>
-                    <width>6</width>
-                    <lowerBound>0</lowerBound>
-                    <vhdlType>STD_LOGIC_VECTOR</vhdlType>
-                </port>
-                <port>
-                    <name>eastMac_0_source_error</name>
-                    <role>error</role>
-                    <direction>Output</direction>
                     <width>1</width>
                     <lowerBound>0</lowerBound>
                     <vhdlType>STD_LOGIC</vhdlType>
@@ -10268,183 +9503,11 @@
                 <parameterValueMap>
                     <entry>
                         <key>associatedClock</key>
-                        <value>clock</value>
+                        <value>northmac_source_clk</value>
                     </entry>
                     <entry>
-                        <key>associatedReset</key>
-                        <value>reset_sink</value>
-                    </entry>
-                    <entry>
-                        <key>beatsPerCycle</key>
-                        <value>1</value>
-                    </entry>
-                    <entry>
-                        <key>dataBitsPerSymbol</key>
-                        <value>8</value>
-                    </entry>
-                    <entry>
-                        <key>emptyWithinPacket</key>
-                        <value>false</value>
-                    </entry>
-                    <entry>
-                        <key>errorDescriptor</key>
-                    </entry>
-                    <entry>
-                        <key>firstSymbolInHighOrderBits</key>
-                        <value>true</value>
-                    </entry>
-                    <entry>
-                        <key>highOrderSymbolAtMSB</key>
-                        <value>false</value>
-                    </entry>
-                    <entry>
-                        <key>maxChannel</key>
-                        <value>0</value>
-                    </entry>
-                    <entry>
-                        <key>packetDescription</key>
-                        <value></value>
-                    </entry>
-                    <entry>
-                        <key>prSafe</key>
-                        <value>false</value>
-                    </entry>
-                    <entry>
-                        <key>readyAllowance</key>
-                        <value>0</value>
-                    </entry>
-                    <entry>
-                        <key>readyLatency</key>
-                        <value>0</value>
-                    </entry>
-                    <entry>
-                        <key>symbolsPerBeat</key>
-                        <value>1</value>
-                    </entry>
-                </parameterValueMap>
-            </parameters>
-        </interface>
-        <interface>
-            <name>westmac_source</name>
-            <type>avalon_streaming</type>
-            <isStart>true</isStart>
-            <ports>
-                <port>
-                    <name>westMac_0_source_endofpacket</name>
-                    <role>endofpacket</role>
-                    <direction>Output</direction>
-                    <width>1</width>
-                    <lowerBound>0</lowerBound>
-                    <vhdlType>STD_LOGIC</vhdlType>
-                </port>
-                <port>
-                    <name>westMac_0_source_data</name>
-                    <role>data</role>
-                    <direction>Output</direction>
-                    <width>512</width>
-                    <lowerBound>0</lowerBound>
-                    <vhdlType>STD_LOGIC_VECTOR</vhdlType>
-                </port>
-                <port>
-                    <name>westMac_0_source_source_ready</name>
-                    <role>ready</role>
-                    <direction>Input</direction>
-                    <width>1</width>
-                    <lowerBound>0</lowerBound>
-                    <vhdlType>STD_LOGIC</vhdlType>
-                </port>
-                <port>
-                    <name>westMac_0_source_startofpacket</name>
-                    <role>startofpacket</role>
-                    <direction>Output</direction>
-                    <width>1</width>
-                    <lowerBound>0</lowerBound>
-                    <vhdlType>STD_LOGIC</vhdlType>
-                </port>
-                <port>
-                    <name>westMac_0_source_valid</name>
-                    <role>valid</role>
-                    <direction>Output</direction>
-                    <width>1</width>
-                    <lowerBound>0</lowerBound>
-                    <vhdlType>STD_LOGIC</vhdlType>
-                </port>
-                <port>
-                    <name>westMac_0_source_empty</name>
-                    <role>empty</role>
-                    <direction>Output</direction>
-                    <width>6</width>
-                    <lowerBound>0</lowerBound>
-                    <vhdlType>STD_LOGIC_VECTOR</vhdlType>
-                </port>
-                <port>
-                    <name>westMac_0_source_error</name>
-                    <role>error</role>
-                    <direction>Output</direction>
-                    <width>1</width>
-                    <lowerBound>0</lowerBound>
-                    <vhdlType>STD_LOGIC</vhdlType>
-                </port>
-            </ports>
-            <assignments>
-                <assignmentValueMap/>
-            </assignments>
-            <parameters>
-                <parameterValueMap>
-                    <entry>
-                        <key>associatedClock</key>
-                        <value>clock</value>
-                    </entry>
-                    <entry>
-                        <key>associatedReset</key>
-                        <value>reset_sink</value>
-                    </entry>
-                    <entry>
-                        <key>beatsPerCycle</key>
-                        <value>1</value>
-                    </entry>
-                    <entry>
-                        <key>dataBitsPerSymbol</key>
-                        <value>8</value>
-                    </entry>
-                    <entry>
-                        <key>emptyWithinPacket</key>
-                        <value>false</value>
-                    </entry>
-                    <entry>
-                        <key>errorDescriptor</key>
-                    </entry>
-                    <entry>
-                        <key>firstSymbolInHighOrderBits</key>
-                        <value>true</value>
-                    </entry>
-                    <entry>
-                        <key>highOrderSymbolAtMSB</key>
-                        <value>false</value>
-                    </entry>
-                    <entry>
-                        <key>maxChannel</key>
-                        <value>0</value>
-                    </entry>
-                    <entry>
-                        <key>packetDescription</key>
-                        <value></value>
-                    </entry>
-                    <entry>
-                        <key>prSafe</key>
-                        <value>false</value>
-                    </entry>
-                    <entry>
-                        <key>readyAllowance</key>
-                        <value>0</value>
-                    </entry>
-                    <entry>
-                        <key>readyLatency</key>
-                        <value>0</value>
-                    </entry>
-                    <entry>
-                        <key>symbolsPerBeat</key>
-                        <value>1</value>
+                        <key>synchronousEdges</key>
+                        <value>DEASSERT</value>
                     </entry>
                 </parameterValueMap>
             </parameters>
@@ -10518,11 +9581,11 @@
                 <parameterValueMap>
                     <entry>
                         <key>associatedClock</key>
-                        <value>clock</value>
+                        <value>northmac_sink_clk</value>
                     </entry>
                     <entry>
                         <key>associatedReset</key>
-                        <value>reset_sink</value>
+                        <value>northmac_sink_reset_sink</value>
                     </entry>
                     <entry>
                         <key>beatsPerCycle</key>
@@ -10575,65 +9638,17 @@
             </parameters>
         </interface>
         <interface>
-            <name>southmac_sink</name>
-            <type>avalon_streaming</type>
+            <name>northmac_sink_clk</name>
+            <type>clock</type>
             <isStart>false</isStart>
             <ports>
                 <port>
-                    <name>southMac_0_sink_ready</name>
-                    <role>ready</role>
-                    <direction>Output</direction>
-                    <width>1</width>
-                    <lowerBound>0</lowerBound>
-                    <vhdlType>STD_LOGIC</vhdlType>
-                </port>
-                <port>
-                    <name>southMac_0_sink_sink_data</name>
-                    <role>data</role>
-                    <direction>Input</direction>
-                    <width>512</width>
-                    <lowerBound>0</lowerBound>
-                    <vhdlType>STD_LOGIC_VECTOR</vhdlType>
-                </port>
-                <port>
-                    <name>southMac_0_sink_sink_endofpacket</name>
-                    <role>endofpacket</role>
+                    <name>CLK_northRxClk</name>
+                    <role>clk</role>
                     <direction>Input</direction>
                     <width>1</width>
                     <lowerBound>0</lowerBound>
                     <vhdlType>STD_LOGIC</vhdlType>
-                </port>
-                <port>
-                    <name>southMac_0_sink_sink_error</name>
-                    <role>error</role>
-                    <direction>Input</direction>
-                    <width>6</width>
-                    <lowerBound>0</lowerBound>
-                    <vhdlType>STD_LOGIC_VECTOR</vhdlType>
-                </port>
-                <port>
-                    <name>southMac_0_sink_sink_startofpacket</name>
-                    <role>startofpacket</role>
-                    <direction>Input</direction>
-                    <width>1</width>
-                    <lowerBound>0</lowerBound>
-                    <vhdlType>STD_LOGIC</vhdlType>
-                </port>
-                <port>
-                    <name>southMac_0_sink_sink_valid</name>
-                    <role>valid</role>
-                    <direction>Input</direction>
-                    <width>1</width>
-                    <lowerBound>0</lowerBound>
-                    <vhdlType>STD_LOGIC</vhdlType>
-                </port>
-                <port>
-                    <name>southMac_0_sink_sink_empty</name>
-                    <role>empty</role>
-                    <direction>Input</direction>
-                    <width>6</width>
-                    <lowerBound>0</lowerBound>
-                    <vhdlType>STD_LOGIC_VECTOR</vhdlType>
                 </port>
             </ports>
             <assignments>
@@ -10642,123 +9657,31 @@
             <parameters>
                 <parameterValueMap>
                     <entry>
-                        <key>associatedClock</key>
-                        <value>clock</value>
-                    </entry>
-                    <entry>
-                        <key>associatedReset</key>
-                        <value>reset_sink</value>
-                    </entry>
-                    <entry>
-                        <key>beatsPerCycle</key>
-                        <value>1</value>
-                    </entry>
-                    <entry>
-                        <key>dataBitsPerSymbol</key>
-                        <value>8</value>
-                    </entry>
-                    <entry>
-                        <key>emptyWithinPacket</key>
-                        <value>false</value>
-                    </entry>
-                    <entry>
-                        <key>errorDescriptor</key>
-                    </entry>
-                    <entry>
-                        <key>firstSymbolInHighOrderBits</key>
-                        <value>true</value>
-                    </entry>
-                    <entry>
-                        <key>highOrderSymbolAtMSB</key>
-                        <value>false</value>
-                    </entry>
-                    <entry>
-                        <key>maxChannel</key>
+                        <key>clockRate</key>
                         <value>0</value>
                     </entry>
                     <entry>
-                        <key>packetDescription</key>
-                        <value></value>
-                    </entry>
-                    <entry>
-                        <key>prSafe</key>
+                        <key>externallyDriven</key>
                         <value>false</value>
                     </entry>
                     <entry>
-                        <key>readyAllowance</key>
-                        <value>0</value>
-                    </entry>
-                    <entry>
-                        <key>readyLatency</key>
-                        <value>0</value>
-                    </entry>
-                    <entry>
-                        <key>symbolsPerBeat</key>
-                        <value>1</value>
+                        <key>ptfSchematicName</key>
                     </entry>
                 </parameterValueMap>
             </parameters>
         </interface>
         <interface>
-            <name>eastmac_sink</name>
-            <type>avalon_streaming</type>
+            <name>northmac_sink_reset_sink</name>
+            <type>reset</type>
             <isStart>false</isStart>
             <ports>
                 <port>
-                    <name>eastMac_0_sink_ready</name>
-                    <role>ready</role>
-                    <direction>Output</direction>
-                    <width>1</width>
-                    <lowerBound>0</lowerBound>
-                    <vhdlType>STD_LOGIC</vhdlType>
-                </port>
-                <port>
-                    <name>eastMac_0_sink_sink_data</name>
-                    <role>data</role>
-                    <direction>Input</direction>
-                    <width>512</width>
-                    <lowerBound>0</lowerBound>
-                    <vhdlType>STD_LOGIC_VECTOR</vhdlType>
-                </port>
-                <port>
-                    <name>eastMac_0_sink_sink_endofpacket</name>
-                    <role>endofpacket</role>
+                    <name>RST_N_northRxRst</name>
+                    <role>reset_n</role>
                     <direction>Input</direction>
                     <width>1</width>
                     <lowerBound>0</lowerBound>
                     <vhdlType>STD_LOGIC</vhdlType>
-                </port>
-                <port>
-                    <name>eastMac_0_sink_sink_error</name>
-                    <role>error</role>
-                    <direction>Input</direction>
-                    <width>6</width>
-                    <lowerBound>0</lowerBound>
-                    <vhdlType>STD_LOGIC_VECTOR</vhdlType>
-                </port>
-                <port>
-                    <name>eastMac_0_sink_sink_startofpacket</name>
-                    <role>startofpacket</role>
-                    <direction>Input</direction>
-                    <width>1</width>
-                    <lowerBound>0</lowerBound>
-                    <vhdlType>STD_LOGIC</vhdlType>
-                </port>
-                <port>
-                    <name>eastMac_0_sink_sink_valid</name>
-                    <role>valid</role>
-                    <direction>Input</direction>
-                    <width>1</width>
-                    <lowerBound>0</lowerBound>
-                    <vhdlType>STD_LOGIC</vhdlType>
-                </port>
-                <port>
-                    <name>eastMac_0_sink_sink_empty</name>
-                    <role>empty</role>
-                    <direction>Input</direction>
-                    <width>6</width>
-                    <lowerBound>0</lowerBound>
-                    <vhdlType>STD_LOGIC_VECTOR</vhdlType>
                 </port>
             </ports>
             <assignments>
@@ -10768,183 +9691,11 @@
                 <parameterValueMap>
                     <entry>
                         <key>associatedClock</key>
-                        <value>clock</value>
+                        <value>northmac_sink_clk</value>
                     </entry>
                     <entry>
-                        <key>associatedReset</key>
-                        <value>reset_sink</value>
-                    </entry>
-                    <entry>
-                        <key>beatsPerCycle</key>
-                        <value>1</value>
-                    </entry>
-                    <entry>
-                        <key>dataBitsPerSymbol</key>
-                        <value>8</value>
-                    </entry>
-                    <entry>
-                        <key>emptyWithinPacket</key>
-                        <value>false</value>
-                    </entry>
-                    <entry>
-                        <key>errorDescriptor</key>
-                    </entry>
-                    <entry>
-                        <key>firstSymbolInHighOrderBits</key>
-                        <value>true</value>
-                    </entry>
-                    <entry>
-                        <key>highOrderSymbolAtMSB</key>
-                        <value>false</value>
-                    </entry>
-                    <entry>
-                        <key>maxChannel</key>
-                        <value>0</value>
-                    </entry>
-                    <entry>
-                        <key>packetDescription</key>
-                        <value></value>
-                    </entry>
-                    <entry>
-                        <key>prSafe</key>
-                        <value>false</value>
-                    </entry>
-                    <entry>
-                        <key>readyAllowance</key>
-                        <value>0</value>
-                    </entry>
-                    <entry>
-                        <key>readyLatency</key>
-                        <value>0</value>
-                    </entry>
-                    <entry>
-                        <key>symbolsPerBeat</key>
-                        <value>1</value>
-                    </entry>
-                </parameterValueMap>
-            </parameters>
-        </interface>
-        <interface>
-            <name>westmac_sink</name>
-            <type>avalon_streaming</type>
-            <isStart>false</isStart>
-            <ports>
-                <port>
-                    <name>westMac_0_sink_ready</name>
-                    <role>ready</role>
-                    <direction>Output</direction>
-                    <width>1</width>
-                    <lowerBound>0</lowerBound>
-                    <vhdlType>STD_LOGIC</vhdlType>
-                </port>
-                <port>
-                    <name>westMac_0_sink_sink_data</name>
-                    <role>data</role>
-                    <direction>Input</direction>
-                    <width>512</width>
-                    <lowerBound>0</lowerBound>
-                    <vhdlType>STD_LOGIC_VECTOR</vhdlType>
-                </port>
-                <port>
-                    <name>westMac_0_sink_sink_endofpacket</name>
-                    <role>endofpacket</role>
-                    <direction>Input</direction>
-                    <width>1</width>
-                    <lowerBound>0</lowerBound>
-                    <vhdlType>STD_LOGIC</vhdlType>
-                </port>
-                <port>
-                    <name>westMac_0_sink_sink_error</name>
-                    <role>error</role>
-                    <direction>Input</direction>
-                    <width>6</width>
-                    <lowerBound>0</lowerBound>
-                    <vhdlType>STD_LOGIC_VECTOR</vhdlType>
-                </port>
-                <port>
-                    <name>westMac_0_sink_sink_startofpacket</name>
-                    <role>startofpacket</role>
-                    <direction>Input</direction>
-                    <width>1</width>
-                    <lowerBound>0</lowerBound>
-                    <vhdlType>STD_LOGIC</vhdlType>
-                </port>
-                <port>
-                    <name>westMac_0_sink_sink_valid</name>
-                    <role>valid</role>
-                    <direction>Input</direction>
-                    <width>1</width>
-                    <lowerBound>0</lowerBound>
-                    <vhdlType>STD_LOGIC</vhdlType>
-                </port>
-                <port>
-                    <name>westMac_0_sink_sink_empty</name>
-                    <role>empty</role>
-                    <direction>Input</direction>
-                    <width>6</width>
-                    <lowerBound>0</lowerBound>
-                    <vhdlType>STD_LOGIC_VECTOR</vhdlType>
-                </port>
-            </ports>
-            <assignments>
-                <assignmentValueMap/>
-            </assignments>
-            <parameters>
-                <parameterValueMap>
-                    <entry>
-                        <key>associatedClock</key>
-                        <value>clock</value>
-                    </entry>
-                    <entry>
-                        <key>associatedReset</key>
-                        <value>reset_sink</value>
-                    </entry>
-                    <entry>
-                        <key>beatsPerCycle</key>
-                        <value>1</value>
-                    </entry>
-                    <entry>
-                        <key>dataBitsPerSymbol</key>
-                        <value>8</value>
-                    </entry>
-                    <entry>
-                        <key>emptyWithinPacket</key>
-                        <value>false</value>
-                    </entry>
-                    <entry>
-                        <key>errorDescriptor</key>
-                    </entry>
-                    <entry>
-                        <key>firstSymbolInHighOrderBits</key>
-                        <value>true</value>
-                    </entry>
-                    <entry>
-                        <key>highOrderSymbolAtMSB</key>
-                        <value>false</value>
-                    </entry>
-                    <entry>
-                        <key>maxChannel</key>
-                        <value>0</value>
-                    </entry>
-                    <entry>
-                        <key>packetDescription</key>
-                        <value></value>
-                    </entry>
-                    <entry>
-                        <key>prSafe</key>
-                        <value>false</value>
-                    </entry>
-                    <entry>
-                        <key>readyAllowance</key>
-                        <value>0</value>
-                    </entry>
-                    <entry>
-                        <key>readyLatency</key>
-                        <value>0</value>
-                    </entry>
-                    <entry>
-                        <key>symbolsPerBeat</key>
-                        <value>1</value>
+                        <key>synchronousEdges</key>
+                        <value>DEASSERT</value>
                     </entry>
                 </parameterValueMap>
             </parameters>
@@ -46051,7 +44802,7 @@
    name="north_rx_dcfifo"
    kind="altera_generic_component"
    version="1.0"
-   enabled="1">
+   enabled="0">
   <parameter name="componentDefinition"><![CDATA[<componentDefinition>
     <boundary>
         <interfaces>
@@ -46859,7 +45610,7 @@
    name="north_tx_dcfifo"
    kind="altera_generic_component"
    version="1.0"
-   enabled="1">
+   enabled="0">
   <parameter name="componentDefinition"><![CDATA[<componentDefinition>
     <boundary>
         <interfaces>
@@ -53972,6 +52723,11 @@
  <connection
    kind="avalon_streaming"
    version="19.2"
+   start="Tinsel_0.northmac_source"
+   end="alt_ehipc2_0.tx" />
+ <connection
+   kind="avalon_streaming"
+   version="19.2"
    start="network_CC_B_tx.out"
    end="S10_100GMAC_B.avalon_st_tx" />
  <connection
@@ -53989,6 +52745,11 @@
    version="19.2"
    start="alt_ehipc2_0.rx"
    end="north_rx_dcfifo.in" />
+ <connection
+   kind="avalon_streaming"
+   version="19.2"
+   start="alt_ehipc2_0.rx"
+   end="Tinsel_0.northmac_sink" />
  <connection
    kind="avalon_streaming"
    version="19.2"
@@ -54043,6 +52804,11 @@
    kind="clock"
    version="19.2"
    start="alt_ehipc2_0.o_clk_pll_div64"
+   end="Tinsel_0.northmac_source_clk" />
+ <connection
+   kind="clock"
+   version="19.2"
+   start="alt_ehipc2_0.o_clk_pll_div64"
    end="north_tx_dcfifo.out_clk" />
  <connection
    kind="clock"
@@ -54054,6 +52820,11 @@
    version="19.2"
    start="alt_ehipc2_0.o_clk_rec_div64"
    end="north_rx_dcfifo.in_clk" />
+ <connection
+   kind="clock"
+   version="19.2"
+   start="alt_ehipc2_0.o_clk_rec_div64"
+   end="Tinsel_0.northmac_sink_clk" />
  <connection
    kind="clock"
    version="19.2"
@@ -54343,6 +53114,16 @@
    version="19.2"
    start="reset_controller_0.reset_out"
    end="NIC_D.nic_reset_bridge_in_reset" />
+ <connection
+   kind="reset"
+   version="19.2"
+   start="reset_controller_0.reset_out"
+   end="Tinsel_0.northmac_sink_reset_sink" />
+ <connection
+   kind="reset"
+   version="19.2"
+   start="reset_controller_0.reset_out"
+   end="Tinsel_0.northmac_source_reset_sink" />
  <connection
    kind="reset"
    version="19.2"

@@ -50,6 +50,7 @@ import ConfigReg :: *;
 import Util      :: *;
 import Vector    :: *;
 import Socket    :: *;
+import GetPut    :: *;
 
 // =============================================================================
 // Constants
@@ -142,7 +143,7 @@ endinterface
 
 `ifndef SIMULATE
 
-module mkPCIeStream (PCIeStream);
+module mkPCIeStream (Maybe#(Bit#(64)) chipIDReg, PCIeStream ifc);
 
   // Ports
   InPort#(Bit#(128)) inPort <- mkInPort;
@@ -491,6 +492,10 @@ module mkPCIeStream (PCIeStream);
                 ctrlReadData <= 0;
               end
           12: ctrlReadData <= pack(64'hcafecafe);
+
+          // top and bottom words for the
+          13: ctrlReadData <= pack(fromMaybe(0, chipIDReg));
+
         endcase
         ctrlReadDataValid <= read;
        end
@@ -552,7 +557,7 @@ endmodule
 // Implementation (Simulation)
 // =============================================================================
 
-module mkPCIeStream (PCIeStream);
+module mkPCIeStream (Get#(Bit#(64)) chipID, PCIeStream ifc);
 
   // Ports
   InPort#(Bit#(128)) inPort <- mkInPort;

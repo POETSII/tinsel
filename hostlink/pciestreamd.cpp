@@ -48,6 +48,7 @@
 #define CSR_INFLIGHT  10
 #define CSR_RESET     11
 #define CSR_MAGIC     12
+#define CSR_FPGAID    13
 
 // Helper functions
 // ----------------
@@ -217,7 +218,7 @@ Status tx(TxState* s)
   }
 
   if (s->pending != 0 && (s->pending&0xf) != 0) {
-    printf("have pending data, but inhibiting to wait for mul of 16 bytes (have %i).\n", s->pending);
+    // printf("have pending data, but inhibiting to wait for mul of 16 bytes (have %i).\n", s->pending);
   }
 
   // Try to read data from client
@@ -249,7 +250,7 @@ Status tx(TxState* s)
 
   // Send pending data, if requested
   if (doSend) {
-    printf("attempting to send\n");
+    // printf("attempting to send\n");
     // Flush cache
     mfence();
     for (int i = 0; i < s->pending; i += CacheLineBytes) clflush(&s->txA[i]);
@@ -257,12 +258,12 @@ Status tx(TxState* s)
     // Trigger send
     assert(s->bufferReady && s->pending >= 16);
     s->csrs[2*(CSR_LEN_TX_A + s->activeBuffer)] = s->pending/16;
-    printf("set pending (addr 0x%08X) to %u\n", 2*(CSR_LEN_TX_A + s->activeBuffer), s->pending/16);
-    printf("Contents of active buffer\n");
-    for (int i=0; i< (s->pending>64? 64 : s->pending); i++) {
-      printf("%c0x%04X", (i % 16 == 0) ? '\n' : ' ',
-                         s->activeBuffer == 0 ? s->txA[i] : s->txB[i]);
-    }
+    // printf("set pending (addr 0x%08X) to %u\n", 2*(CSR_LEN_TX_A + s->activeBuffer), s->pending/16);
+    // printf("Contents of active buffer\n");
+    // for (int i=0; i< (s->pending>64? 64 : s->pending); i++) {
+    //   printf("%c0x%04X", (i % 16 == 0) ? '\n' : ' ',
+    //                      s->activeBuffer == 0 ? s->txA[i] : s->txB[i]);
+    // }
     // Switch buffers
     swap(&s->txA, &s->txB);
     s->activeBuffer = (s->activeBuffer+1)&1;
@@ -302,19 +303,20 @@ Status rx(RxState* s)
     if (s->available == 0)
       return EMPTY;
     // Cache flush
-    printf("available != 0; time to rx line from device\n");
+    // printf("available != 0; time to rx line from device\n");
     for (int i = 0; i < s->available; i += CacheLineBytes) clflush(&s->rxA[i]);
     mfence();
   }
 
-  printf("data is available to receive.\n");
-  show_csrs(s->csrs);
-  printf("Contents of A\n");
-  for (int i=0; i< (s->available>64? 64 : s->available); i++) { printf("%c0x%04X", (i % 16 == 0) ? '\n' : ' ', s->rxA[i]); }
-  printf("\n");
-  printf("Contents of B\n");
-  for (int i=0; i< (s->available>64? 64 : s->available); i++) { printf("%c0x%04X", (i % 16 == 0) ? '\n' : ' ', s->rxB[i]); }
-  printf("\n");
+  // printf("data is available to receive.\n");
+  // show_csrs(s->csrs);
+  // printf("Contents of A\n");
+  // for (int i=0; i< (s->available>64? 64 : s->available); i++) { printf("%c0x%04X", (i % 16 == 0) ? '\n' : ' ', s->rxA[i]); }
+  // printf("\n");
+  // printf("Contents of B\n");
+  // for (int i=0; i< (s->available>64? 64 : s->available); i++) { printf("%c0x%04X", (i % 16 == 0) ? '\n' : ' ', s->rxB[i]); }
+  // printf("\n");
+
   // Can we send data to the client?
   struct pollfd fd; fd.fd = s->client; fd.events = POLLOUT;
   int ret = poll(&fd, 1, 0);
@@ -326,14 +328,14 @@ Status rx(RxState* s)
     return CLOSED;
   } else {
     // Write data to socket
-    printf("writing to socket\n");
+    // printf("writing to socket\n");
     int n = write(s->client, (void*) &s->rxA[s->written],
               s->available - s->written);
     if (n <= 0) {
       printf("rx failed, client closed\n");
       return CLOSED;
     }
-    printf("rx written %i bytes\n", n);
+    // printf("rx written %i bytes\n", n);
     s->written += n;
 
     // Consume data from FPGA
@@ -342,7 +344,7 @@ Status rx(RxState* s)
       mfence();
       // Finished with this buffer
       s->csrs[2*(CSR_LEN_RX_A + s->activeBuffer)] = 0;
-      printf("finished with buffer (addr 0x%08X) = %lu\n", 2*(CSR_LEN_RX_A + s->activeBuffer), s->csrs[2*(CSR_LEN_RX_A + s->activeBuffer)]);
+      // printf("finished with buffer (addr 0x%08X) = %lu\n", 2*(CSR_LEN_RX_A + s->activeBuffer), s->csrs[2*(CSR_LEN_RX_A + s->activeBuffer)]);
       // Switch buffers
       swap(&s->rxA, &s->rxB);
       s->activeBuffer = (s->activeBuffer+1)&1;
@@ -473,17 +475,19 @@ int main(int argc, char* argv[])
   volatile char* rxB = openDMABuffer("/dev/dmabuffer1", PROT_READ, &addrRxB);
   volatile char* txA = openDMABuffer("/dev/dmabuffer2", PROT_WRITE, &addrTxA);
   volatile char* txB = openDMABuffer("/dev/dmabuffer3", PROT_WRITE, &addrTxB);
-  printf("pciestream opened buffers (RxA 0x%lx RxB 0x%lx TxA 0x%lx TxB 0x%lx)\n", addrRxA, addrRxB, addrTxA, addrTxB);
+  printf("[pciestreamd::main] pciestream opened buffers (RxA 0x%lx RxB 0x%lx TxA 0x%lx TxB 0x%lx)\n", addrRxA, addrRxB, addrTxA, addrTxB);
 
   // Main loop
   // ---------
 
   // Create listener socket
   int sock = createListener();
-  printf("pciestream created listener socket.\n");
+  printf("[pciestreamd::main] pciestream created listener socket.\n");
   uint64_t magic = csrs[2*CSR_MAGIC];
-  printf("pciestream magic = 0x%08lX\n", magic);
+  printf("[pciestreamd::main] pciestream magic = 0x%08lX\n", magic);
   if (magic != 0xCAFECAFE) exit(1);
+
+  uint64_t fpga_id = 0;
 
   // Transmitter and receiver state
   TxState txState;
@@ -493,70 +497,84 @@ int main(int argc, char* argv[])
     uint64_t inflight = csrs[2*CSR_INFLIGHT];
     int count = 0;
     // Reset and disable PCIeStream hardware
-    printf("sending hardware reset\n");
+    printf("[pciestreamd::main] sending hardware reset\n");
     csrs[2*CSR_EN] = 0;
-    printf("waiting for ack\n");
-    while (inflight != 0) { printf("inflight = %lu\n", inflight); inflight = csrs[2*CSR_INFLIGHT]; usleep(500000); count++; if (count > 5) exit(2); } // returns all ff...
+    printf("[pciestreamd::main] waiting for ack\n");
+
+    while (inflight != 0) {
+      printf("[pciestreamd::main] inflight = %lu\n", inflight);
+      inflight = csrs[2*CSR_INFLIGHT];
+      usleep(500000);
+      count++;
+      if (count > 5) exit(2);
+    } // returns all ff...
 
     if (inflight != 0) {
-      printf("inflight = %lu and reset disabled; exiting.\n", inflight);
+      printf("[pciestreamd::main] inflight = %lu and reset disabled; exiting.\n", inflight);
       exit(3);
     }
 
     csrs[2*CSR_ADDR_RX_A] = 0xF00DF00D;
     if (csrs[2*CSR_ADDR_RX_A] != 0xF00DF00D) {
-      printf("PCIeStream hardware did not respond to writes; exiting.\n");
+      printf("[pciestreamd::main] PCIeStream hardware did not respond to writes; exiting.\n");
       show_csrs(csrs);
       exit(1);
     }
 
     uint64_t magic = csrs[2*CSR_MAGIC];
-    printf("pciestream magic = 0x%08lX\n", magic);
+    printf("[pciestreamd::main] pciestream magic = 0x%08lX\n", magic);
     if (magic != 0xCAFECAFE) exit(1);
+
+    while (fpga_id == 0) {
+      fpga_id = csrs[2*CSR_FPGAID];
+      usleep(10000);
+    }
+    printf("[pciestreamd::main] pciestream board 0 fpgaid = 0x%08lX\n", fpga_id);
+
     csrs[2*CSR_RESET] = 1;
-    printf("reset PCIeStream hardware\n");
+    printf("[pciestreamd::main] reset PCIeStream hardware\n");
     inflight = csrs[2*CSR_INFLIGHT];
     if (inflight != 0) {
-      printf("inflight = %lu after attempted reset; exiting.\n", inflight);
+      printf("[pciestreamd::main] inflight = %lu after attempted reset; exiting.\n", inflight);
       exit(3);
     }
 
     magic = csrs[2*CSR_MAGIC];
-    printf("pciestream magic = 0x%08lX\n", magic);
+    printf("[pciestreamd::main] pciestream magic = 0x%08lX\n", magic);
     if (magic != 0xCAFECAFE) exit(1);
     usleep(500000);
 
     // Accept connection
     int conn = accept(sock, NULL, NULL);
     if (conn == -1) {
-      perror("pciestreamd: accept");
+      perror("[pciestreamd::main] pciestreamd: accept");
       exit(EXIT_FAILURE);
     }
-    printf("pciestreamd accepted connection\n");
+    printf("[pciestreamd::main] pciestreamd accepted connection\n");
 
     // Reset and enable PCIeStream hardware
-    printf("sending hardware reset\n");
+    printf("[pciestreamd::main] sending hardware reset\n");
     csrs[2*CSR_EN] = 0;
     inflight = csrs[2*CSR_INFLIGHT];
 
-    while (inflight != 0) { printf("inflight = %lu\n", inflight); inflight = csrs[2*CSR_INFLIGHT]; usleep(500000); count++; if (count > 5) exit(2); } // returns all ff...
+    while (inflight != 0) { printf("[pciestreamd::main] inflight = %lu\n", inflight); inflight = csrs[2*CSR_INFLIGHT]; usleep(500000); count++; if (count > 5) exit(2); } // returns all ff...
 
     inflight = csrs[2*CSR_INFLIGHT];
     if (inflight != 0) {
-      printf("inflight = %lu and reset disabled; exiting.\n", inflight);
+      printf("[pciestreamd::main] inflight = %lu and reset disabled; exiting.\n", inflight);
       exit(3);
     }
 
     // csrs[2*CSR_RESET] = 1;
-    printf("enabled PCIeStream hardware\n");
+    printf("[pciestreamd::main] enabled PCIeStream hardware\n");
     usleep(50000);
 
     magic = csrs[2*CSR_MAGIC];
-    printf("pciestream magic = 0x%08lX\n", magic);
+    printf("[pciestreamd::main] pciestream magic = 0x%08lX\n", magic);
     if (magic != 0xCAFECAFE) exit(1);
 
     // printf("WARNING: inexplicalbly swapped RX/TX A and B buffer addresses.\n");
-    printf("writing buffer addresses.\n");
+    printf("[pciestreamd::main] writing buffer addresses.\n");
     csrs[2*CSR_ADDR_RX_A] = addrRxA;
     csrs[2*CSR_ADDR_RX_B] = addrRxB;
     csrs[2*CSR_ADDR_TX_A] = addrTxA;
@@ -564,7 +582,7 @@ int main(int argc, char* argv[])
     csrs[2*CSR_EN] = 1;
     usleep(50000);
     magic = csrs[2*CSR_MAGIC];
-    printf("pciestream magic = 0x%08lX\n", magic);
+    printf("[pciestreamd::main] pciestream magic = 0x%08lX\n", magic);
     if (magic != 0xCAFECAFE) exit(1);
 
     while ( !((csrs[2*CSR_EN] >> 43) & 1) ) {
@@ -576,7 +594,7 @@ int main(int argc, char* argv[])
     printf("enabled.\n");
     show_csrs(csrs);
     magic = csrs[2*CSR_MAGIC];
-    printf("pciestream magic = 0x%08lX\n", magic);
+    printf("[pciestreamd::main] pciestream magic = 0x%08lX\n", magic);
     if (magic != 0xCAFECAFE) exit(1);
 
     // Reset state
@@ -585,7 +603,7 @@ int main(int argc, char* argv[])
     uint64_t enable = csrs[2*CSR_EN];
     bool enabled = (enable >> 43) & 1;
     if (enabled == 0) {
-      printf("PCIeStream hardware did not respond to reset; exiting.");
+      printf("[pciestreamd::main] PCIeStream hardware did not respond to reset; exiting.");
       show_csrs(csrs);
       exit(1);
     }
@@ -598,21 +616,21 @@ int main(int argc, char* argv[])
     for (;;) {
       txStatus = tx(&txState);
       if (txStatus == PROGRESS) {
-        printf("tx made progress\n");
-        show_csrs(csrs);
-        show_txstate(txState);
+        // printf("[pciestreamd::main] tx made progress\n");
+        // show_csrs(csrs);
+        // show_txstate(txState);
       }
       if (txStatus != txStatus_last) {
-         printf("tx status: %i changed from %i\n", txStatus, txStatus_last);
-         show_csrs(csrs);
-         show_txstate(txState);
+         // printf("[pciestreamd::main] tx status: %i changed from %i\n", txStatus, txStatus_last);
+         // show_csrs(csrs);
+         // show_txstate(txState);
          txStatus_last=txStatus;
       }
       if (txStatus == CLOSED) break;
       rxStatus = rx(&rxState);
 
       if (rxStatus != rxStatus_last) {
-        printf("rx status: %i changed from %i\n", rxStatus, rxStatus_last); rxStatus_last=rxStatus;
+        // printf("[pciestreamd::main] rx status: %i changed from %i\n", rxStatus, rxStatus_last); rxStatus_last=rxStatus;
       }
       if (rxStatus == CLOSED) break;
       if (txStatus != PROGRESS && rxStatus != PROGRESS) {

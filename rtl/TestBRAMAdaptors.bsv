@@ -120,6 +120,22 @@ module [Module] mkBRAMTest ();
 
   Vector#(12, FSM) testers = newVector();
 
+  BlueCheck_Params bcParams =
+    BlueCheck_Params {
+      showNoOp              : False
+    , showTime              : False
+    , wedgeDetect           : False
+    , wedgeTimeout          : 10000
+    , useIterativeDeepening : False
+    , interactive           : False
+    , useShrinking          : False
+    , allowViewing          : False
+    , id                    : ?
+    , numIterations         : 1000
+    , outputFIFO            : Invalid
+    };
+
+
   for (Integer optctr=0; optctr<4; optctr=optctr+1) begin
       let tm <- mkModelChecker(checkBRAMTrueMixed(opts[optctr], reset_by brams_reset), bcParams);
       testers[optctr*3] <- mkFSM(tm);

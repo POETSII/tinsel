@@ -238,9 +238,7 @@ module mkDCache#(DCacheId myId) (DCache);
   // True dual-port mixed-width data block RAM
   // (One bus-sized port and one word-sized port)
   BlockRamTrueMixedBE#(BeatIndex, Bit#(`BeatWidth), WordIndex, Bit#(32))
-  //   dataMem <- mkBlockRamTrueMixedBE;
-
-    dataMem <- mkBlockRamPortableTrueMixedBE;
+    dataMem <- mkBlockRamTrueMixedBE;
 
 
   // Meta data for each set

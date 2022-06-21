@@ -286,8 +286,8 @@ module mkMailbox (Mailbox);
   // (One flit-sized port and one word-sized port)
 
   BlockRamTrueMixedBE#(MailboxFlitAddr, FlitPayload, MailboxWordAddr, Bit#(32))
-    //scratchpad <- mkBlockRamTrueMixedBE;
-    scratchpad <- mkBlockRamPortableTrueMixedBE;
+    // scratchpad <- mkBlockRamTrueMixedBE;
+    scratchpad <- mkBlockRamPortableTrueMixedBEOpts(defaultBlockRamOpts);
 
   // Request & response ports
   InPort#(ScratchpadReq) spadReqPort  <- mkInPort;

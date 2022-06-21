@@ -28,10 +28,11 @@ typedef struct {
   Bool start;    // Mark start of packet
   Bool stop;     // Mark end of packet
   Bit#(512) data; // Payload
+  UInt#(6) empty; // bytes from the LSB that do not contain valid data
 } MacBeat deriving (Bits);
 
-function MacBeat macBeat(Bool start, Bool stop, Bit#(512) data) =
-  MacBeat { start: start, stop: stop, data: data };
+function MacBeat macBeat(Bool start, Bool stop, Bit#(512) data, UInt#(6) empty) =
+  MacBeat { start: start, stop: stop, data: data, empty:empty };
 
 // =============================================================================
 // Interfaces
@@ -174,7 +175,7 @@ module mkMac (Mac);
     method Bool source_startofpacket = inPort.value.start;
     method Bool source_endofpacket = inPort.value.stop;
     method Bit#(1) source_error = 0;
-    method Bit#(6) source_empty = 0;
+    method Bit#(6) source_empty = pack(inPort.value.empty);
     method Action source(Bool source_ready);
       if (source_ready && inPort.canGet) inPort.get;
     endmethod
@@ -188,6 +189,7 @@ module mkMac (Mac);
       beat.data = sink_data;
       beat.start = sink_startofpacket;
       beat.stop = sink_endofpacket;
+      beat.empty = unpack(sink_empty);
       if (sink_valid && buffer.canEnq) buffer.enq(beat, sink_error);
     endmethod
   endinterface
@@ -242,6 +244,7 @@ module mkMac#(SocketId id) (Mac);
         inPort.get;
         if (beat.stop) drop <= False;
       end else if (random[31:28] == 0 && inPort.canGet) begin
+        $display("[mac::consume] dropping packet");
         // Move to drop-packet state
         if (beat.stop) begin
           inPort.get; // 512b packet: start and end can be on the same beat.
@@ -283,20 +286,32 @@ module mkMac#(SocketId id) (Mac);
   endrule
 
   Reg#(Bool) linksendalive <- mkReg(False);
+  Reg#(Bool) split_last_flit <- mkReg(False);
+  Reg#(Bit#(520)) last_flit_partially_sent <- mkReg(0);
 
   // Produce output stream
-  rule produce (outPort.canPut);
+  rule produce (outPort.canPut && !split_last_flit);
     Maybe#(Vector#(65, Bit#(8))) m <- socketGet(id);
     if (isValid(m)) begin
-
-      // if (!linksendalive) begin
-      //   $display($time, "Recvd flit from port ", id);
-      //   linksendalive <= True;
-      // end
-
       Bit#(520) tmp = pack(fromMaybe(?, m));
-      outPort.put(unpack(truncate(tmp)));
+      last_flit_partially_sent <= tmp;
+      MacBeat beat = unpack(truncate(tmp));
+      Bool dosplit = random[30:29] == 2'b11;
+      split_last_flit <= dosplit;
+      if (dosplit) begin
+        beat.empty = 6'd32;
+        // $display("[mac::produce] sending half flit");
+      end
+      outPort.put(beat);
     end
+  endrule
+
+  rule produce_secondhalf (split_last_flit);
+    split_last_flit <= False; // return to normal operation
+    MacBeat beat = unpack(truncate(last_flit_partially_sent));
+    beat.empty = 6'd32;
+    beat.data = beat.data >> 256;
+    outPort.put(beat);
   endrule
 
   // Interfaces
@@ -326,6 +341,11 @@ module mkMacLoopback (Mac);
   // Drop packet while in this state
   Reg#(Bool) drop <- mkReg(False);
 
+  // split into 2 flits in this state
+  Reg#(Bool) split_last_flit <- mkReg(False);
+  Reg#(MacBeat) last_flit_partially_sent <- mkReg(?);
+
+
   // Fill buffer
   rule introduceLatency (inPort.canGet && buffer.notFull);
     inPort.get;
@@ -345,10 +365,21 @@ module mkMacLoopback (Mac);
         // Drop packet
         buffer.deq;
         if (beat.stop) drop <= False;
+      end else if (split_last_flit) begin
+        split_last_flit <= False;
+        beat.empty = 6'd32;
+        beat.data = beat.data >> 256;
+        outPort.put(beat);
+        buffer.deq;
       end else if (random[31:28] == 0 && buffer.canDeq) begin
         // Move to drop-packet state
         if (!beat.stop) drop <= True;
         buffer.deq;
+      end else if (random[31:28] == 4'b1111 && buffer.canDeq) begin
+        // $display("[mkMacLoopback] splitting flit.");
+        split_last_flit <= True;
+        beat.empty = 6'd32;
+        outPort.put(beat);
       end else if (buffer.canDeq && outPort.canPut) begin
         // Receive first beat (start of packet)
         buffer.deq;

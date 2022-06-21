@@ -42,7 +42,7 @@ endinterface
 // =============================================================================
 
 module de5Top (DE5Top);
- 
+
   // Number of values to send in test
   `ifdef SIMULATE
   Bit#(64) numVals = 1000000;
@@ -59,7 +59,7 @@ module de5Top (DE5Top);
   `else
   ReliableLink link <- mkReliableLink;
   `endif
- 
+
   // Ports
   InPort#(Bit#(8)) fromJtag <- mkInPort;
   OutPort#(Bit#(8)) toJtag <- mkOutPort;
@@ -89,6 +89,7 @@ module de5Top (DE5Top);
 
   rule start (state == 0);
     if (fromJtag.canGet) begin
+      $display("starting.")
       fromJtag.get;
       state <= 1;
     end
@@ -140,6 +141,8 @@ module de5Top (DE5Top);
     toJtag.put(digit);
     numTimeouts <= numTimeouts << 4;
     if (displayCount == 7) begin
+      $display(numTimeouts, " ", recvCount, " ", sendCount);
+
       displayCount <= 0;
       state <= 0;
       recvCount <= 0;

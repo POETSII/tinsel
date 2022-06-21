@@ -376,7 +376,6 @@ module mkBlockRamTrueMixed
                   Mul#(TDiv#(dataWidthB, 8), TExp#(aExtra), TDiv#(dataWidthA, 8)),
                   Mul#(TDiv#(dataWidthA, dataWidthB), dataWidthB, dataWidthA),
                   Add#(d__, TDiv#(dataWidthB, 8), TDiv#(dataWidthA, 8))
-
                   `endif // Stratix10
 
                  );
@@ -1196,8 +1195,13 @@ module mkBlockRamPortableTrueMixedBEOpts#(BlockRamOpts opts)
   BlockRamOpts internalOpts = opts;
   internalOpts.registerDataOut = False;
 
+  `ifdef SIMULATE
   BlockRamTrueMixedByteEn#(addrA, dataA, addrA, dataA, dataABytes) ram <-
     mkBlockRamTrueBEOpts(internalOpts);
+  `else
+  BlockRamTrueMixedByteEn#(addrA, dataA, addrA, dataA, dataABytes) ram <-
+    mkBlockRamMaybeTrueMixedBEOpts_ALTERA(internalOpts);
+  `endif
 
   // State
   Reg#(dataA) dataAReg <- mkConfigRegU;

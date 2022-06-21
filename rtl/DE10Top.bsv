@@ -37,6 +37,9 @@ import PCIeStream   :: *;
 import HostLink   :: *;
 import Clocks   :: *;
 import Util   :: *;
+import AvalonStreamCC :: *;
+import ChipID :: *;
+import ConfigReg :: *;
 
 `ifdef SIMULATE
 
@@ -77,7 +80,12 @@ endinterface
 // ============================================================================
 
 // mkDE10Top wrapper ensures the entire design is reset correctly when requested by the host
-module mkDE10Top(DE10Ifc ifc);
+module mkDE10Top(
+`ifndef SIMULATE
+                Clock northTxClk, Clock northRxClk,
+                 Reset northTxRst, Reset northRxRst,
+`endif
+                 DE10Ifc ifc);
 
   Clock defaultClock <- exposeCurrentClock();
   Reset externalReset <- exposeCurrentReset();
@@ -88,11 +96,9 @@ module mkDE10Top(DE10Ifc ifc);
 
   `ifdef SIMULATE
   DE10Ifc top <- mkDE10Top_inner();
-
   `endif
-
   `ifndef SIMULATE
-  DE10Ifc top <- mkDE10Top_inner(reset_by combinedReset);
+  DE10Ifc top <- mkDE10Top_inner(northTxClk, northRxClk, northTxRst, northRxRst, reset_by combinedReset);
 
   (* fire_when_enabled, no_implicit_conditions *)
   rule pcieReset;
@@ -115,7 +121,24 @@ module mkDE10Top(DE10Ifc ifc);
 endmodule
 
 
-module mkDE10Top_inner(DE10Ifc ifc);
+module mkDE10Top_inner(
+`ifndef SIMULATE
+                Clock northTxClk, Clock northRxClk,
+                 Reset northTxRst, Reset northRxRst,
+`endif
+                 DE10Ifc ifc);
+
+   Clock defaultClock <- exposeCurrentClock();
+   Reset defaultReset <- exposeCurrentReset();
+
+
+   Get#(Bit#(64)) chipID <- mkChipID();
+   Reg#(Maybe#(Bit#(64))) chipIDReg <- mkConfigReg(Invalid);
+   rule copyChipID;
+     let id <- chipID.get;
+     chipIDReg <= Valid(id);
+   endrule
+
 
   // // Board Id
   // `ifdef SIMULATE
@@ -200,7 +223,7 @@ module mkDE10Top_inner(DE10Ifc ifc);
   function DebugLinkClient getDebugLinkClient(Core core) = core.debugLinkClient;
   DebugLink debugLink <-
     mkDebugLink(temperature,
-      map(getDebugLinkClient, vecOfCores));
+      map(getDebugLinkClient, vecOfCores), chipIDReg);
 
   (* no_implicit_conditions, fire_when_enabled *)
   rule setlocalBoardId;
@@ -208,7 +231,7 @@ module mkDE10Top_inner(DE10Ifc ifc);
   endrule
 
   // Create PCIeStream instance
-  PCIeStream pcie <- mkPCIeStream();
+  PCIeStream pcie <- mkPCIeStream(chipIDReg);
 
   // Create idle-detector
   IdleDetector idle <- mkIdleDetector;
@@ -270,6 +293,7 @@ module mkDE10Top_inner(DE10Ifc ifc);
   connectProgRouterPerfCountersToCores(noc.progRouterPerfCounters,
     concat(concat(cores)));
 
+
   // Set board ids - constantly fire
   (* no_implicit_conditions, fire_when_enabled *)
   rule setBoardIds;
@@ -280,6 +304,11 @@ module mkDE10Top_inner(DE10Ifc ifc);
     noc.setBoardId(debugLink.getBoardId());
   endrule
 
+  `ifndef SIMULATE
+  AvalonCCIfc northCC <- mkAvalonStreamConverter(noc.north[0],
+                                              defaultClock, northTxClk, northRxClk,
+                                               defaultReset, northTxRst, northRxRst);
+  `endif
 
   // In simulation, display start-up message
   `ifdef SIMULATE
@@ -301,7 +330,8 @@ module mkDE10Top_inner(DE10Ifc ifc);
   interface dramIfcs = map(getDRAMExtIfc, rams);
   interface jtagIfc  = debugLink.jtagAvalon;
 
-  interface northMac = noc.north;
+
+  interface northMac = replicate(northCC.external);
   interface southMac = noc.south;
   interface eastMac  = noc.east;
   interface westMac  = noc.west;
@@ -313,7 +343,5 @@ module mkDE10Top_inner(DE10Ifc ifc);
   interface pcieHostBus  = pcie.external.hostBus;
   method Bool resetReq = pcie.external.resetReq;
   `endif
-
-
 
 endmodule

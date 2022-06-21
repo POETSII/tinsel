@@ -13,7 +13,10 @@ create_clock -period 20 [get_ports CLK_50_B2L]
 create_clock -period 20 [get_ports CLK_50_B3C]
 create_clock -period 20 [get_ports CLK_50_B3I]
 create_clock -period 20 [get_ports CLK_50_B3L]
-set CLK_100 [get_ports CLK_100_B3I]
+
+set CLK_CORE [get_clocks {DE10_Pro_QSYS_inst|iopll_0|iopll_0_outclk1}]
+set CORE_CLK_50 [get_clocks {DE10_Pro_QSYS_inst|iopll_0|iopll_0_outclk0}]
+set CLK_100 [get_clocks {DE10_Pro_QSYS_inst|iopll_0|iopll_0_outclk1}]
 
 create_clock -period "266.666666 MHz" [get_ports DDR4A_REFCLK_p]
 create_clock -period "166.666666 MHz" [get_ports DDR4B_REFCLK_p]
@@ -94,6 +97,11 @@ for {set chNum 0} {$chNum < 4} {incr chNum} {
 set_false_path -from [get_clocks {ALTERA_INSERTED_INTOSC_FOR_TRS|divided_osc_clk}] -to [get_clocks {DE10_Pro_QSYS_inst|*|s10_100gmac|s10_100gmac|xcvr|*|*|*}]
 set_false_path -from [get_clocks {DE10_Pro_QSYS_inst|*|s10_100gmac|s10_100gmac|xcvr|*|*|*}] -to [get_clocks {DE10_Pro_QSYS_inst|*|s10_100gmac|s10_100gmac|xcvr|*|*|*}]
 
+
+# set_false_path -to {*alt_ehipc2*|rx_adapt_clr_sync_inst|din*}
+# set_false_path -to {*alt_ehipc2*_sync_inst|ack_sync_0|din*}
+# set_false_path -from {*alt_ehipc2*_sync_*|din*}
+set_false_path -to {*alt_ehipc2*_sync_*|din*}
 #**************************************************************
 # Set Multicycle Path
 #**************************************************************

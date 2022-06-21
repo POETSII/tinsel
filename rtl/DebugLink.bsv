@@ -244,7 +244,8 @@ endinterface
 module mkDebugLink#(
     // Bit#(4) boardIdWithinBox,
     Bit#(8) temperature,
-    Vector#(n, DebugLinkClient) cores) (DebugLink);
+    Vector#(n, DebugLinkClient) cores,
+    Maybe#(Bit#(64)) chipIDReg) (DebugLink);
 
   // The board id combines the Y offset, received via DebugLink,
   // with the box-local board id (set via DIP switches) to give
@@ -254,20 +255,6 @@ module mkDebugLink#(
   Reg#(Bit#(8)) boardOffset <- mkConfigReg(0);
   // Get board id via DebugLink
   Reg#(Bit#(4)) boardIdWithinBox <- mkConfigReg(0);
-
-
-  // Reg#(Bool) gotChipID <- mkReg(False);
-  let chipID <- mkChipID();
-  Reg#(Bit#(64)) chipIDReg <- mkConfigReg(?);
-  // rule getchipid (!gotChipID);
-  //   chipID.start();
-  //   gotChipID <= True;
-  // endrule
-
-  rule copyChipID;
-    let id <- chipID.get;
-    chipIDReg <= id;
-  endrule
 
   // An enable line for each inter-FPGA link on the board
   // (Initially, all disabled)
@@ -457,7 +444,7 @@ module mkDebugLink#(
         sendState <= 2;
       end else if (sendState > 1) begin
         // send the FPGA ID. 8 bytes
-        Vector#(8, Bit#(8)) chipvec = unpack(chipIDReg);
+        Vector#(8, Bit#(8)) chipvec = unpack(fromMaybe(0, chipIDReg));
         toJtag.put(chipvec[sendState-2]);
         if (sendState == 9) begin
           sendState <= 0;

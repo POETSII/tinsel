@@ -81,6 +81,7 @@ class HostLink {
   // Power-on self test
   bool powerOnSelfTest();
   bool flushcore(uint32_t addr);
+  bool checkbyte(uint32_t dest, char b);
 
   // Debug links
   // -----------

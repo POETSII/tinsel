@@ -1800,3 +1800,4 @@ set_global_assignment -name IP_FILE ip/NIC/NIC_reset_bridge.ip
 set_global_assignment -name QSYS_FILE NIC.qsys
 set_global_assignment -name IP_FILE ip/NIC/NIC_xcvr_atx_pll_s10_htile_0.ip
 set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/DE10_Pro_QSYS_alt_ehipc2_0.ip
+set_global_assignment -name ENABLE_INTERMEDIATE_SNAPSHOTS ON

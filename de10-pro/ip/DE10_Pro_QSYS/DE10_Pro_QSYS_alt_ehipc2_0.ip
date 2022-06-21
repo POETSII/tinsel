@@ -3631,7 +3631,7 @@
         <ipxact:parameter parameterId="GEN_SYNTH" type="int">
           <ipxact:name>GEN_SYNTH</ipxact:name>
           <ipxact:displayName>Synthesis</ipxact:displayName>
-          <ipxact:value>0</ipxact:value>
+          <ipxact:value>1</ipxact:value>
         </ipxact:parameter>
         <ipxact:parameter parameterId="HDL_FORMAT" type="int">
           <ipxact:name>HDL_FORMAT</ipxact:name>

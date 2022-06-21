@@ -35,7 +35,7 @@ import ConfigReg    :: *;
 import Util         :: *;
 import Socket       :: *;
 import Vector       :: *;
-
+import MIMO :: *;
 // =============================================================================
 // Transmit Buffer
 // =============================================================================
@@ -241,6 +241,9 @@ module mkReliableLinkCore#(Mac mac) (ReliableLink);
   // Transmit buffer
   TransmitBuffer transmitBuffer <- mkTransmitBuffer;
 
+  MIMOConfiguration mimocfg = MIMOConfiguration { unguarded:False, bram_based:False };
+  MIMO#(64, 64, 128, Bit#(8)) recvSyncMIMO <- mkMIMO(mimocfg);
+
   // Receive buffer
   SizedQueue#(`LogReliableLinkRecvBufferSize, Bit#(64))
     receiveBuffer <- mkUGSizedQueuePrefetch;
@@ -267,7 +270,7 @@ module mkReliableLinkCore#(Mac mac) (ReliableLink);
   // Count the number of idle cycles since an ACK was last sent
   Reg#(Bit#(8)) idlesSinceACKSent <- mkConfigReg(0);
 
-  Reg#(Bit#(4)) ratelim <- mkReg(0);
+  Reg#(Bit#(2)) ratelim <- mkReg(0);
 
   (* no_implicit_conditions, fire_when_enabled *)
   rule count;
@@ -325,10 +328,12 @@ module mkReliableLinkCore#(Mac mac) (ReliableLink);
     MacBeat beat;
     beat.start = False;
     beat.stop  = False;
+    beat.empty = 0;
     beat.data  = data;
     // Send beat (only send empty ACK once every 40 idle cycles)
     if (toSend != 0) begin
       beat.start = True;
+      beat.empty = 0;
       beat.stop  = eop;
       toMACPort.put(beat);
       idlesSinceACKSent <= 0;
@@ -336,12 +341,14 @@ module mkReliableLinkCore#(Mac mac) (ReliableLink);
       // Next state
     end else if (idlesSinceACKSent == 40) begin
       beat.start = True;
+      beat.empty = 0; // false; we only have 8 bytes of real data. this is understood both sides
       beat.stop  = True;
       toMACPort.put(beat);
       idlesSinceACKSent <= 0;
     end else begin
       idlesSinceACKSent <= idlesSinceACKSent + 1;
       beat.data = 0;
+      beat.empty = 0;
     end
 
     txState <= eop ? 0 : 1;
@@ -358,6 +365,7 @@ module mkReliableLinkCore#(Mac mac) (ReliableLink);
     beat.start = False;
     beat.stop  = numItemsToSend == 1;
     beat.data  = zeroExtend(transmitBuffer.dataOut);
+    beat.empty = 63; // FIXME: cannot bubble here.
     // Send beat
     toMACPort.put(beat);
     // Update state
@@ -382,10 +390,11 @@ module mkReliableLinkCore#(Mac mac) (ReliableLink);
   // Number of items to receive
   Reg#(Bit#(7)) numItemsToRecv <- mkConfigReg(0);
 
-  rule receive0 (rxState == 0 && fromMACPort.canGet);
+  rule receive (recvSyncMIMO.deqReadyN(64));
     // Receive beat
-    MacBeat beat = fromMACPort.value;
-    Vector#(8, Bit#(64)) data_words = unpack(beat.data);
+    // MacBeat beat = fromMACPort.value;
+    Vector#(64, Bit#(8)) beat_data = recvSyncMIMO.first;
+    Vector#(8, Bit#(64)) data_words = unpack(pack(beat_data)); // recast to wider words
     // Extract header
     PacketHeader h = unpack(truncate(data_words[0]));
     // Inform transmit buffer of acknowledgement
@@ -403,17 +412,15 @@ module mkReliableLinkCore#(Mac mac) (ReliableLink);
       receiveCount.incBy(zeroExtend(h.numItems));
 
       myAssert(receiveBuffer.notFull, "Receive buffer overflow!");
-      fromMACPort.get;
+      recvSyncMIMO.deq(64);
       receiveBuffer.enq(data_words[2]);
     end else begin
       // Drop packet
-      fromMACPort.get;
+      recvSyncMIMO.deq(64);
       numItemsToRecv <= 0;
     end
     // Next state
-    myAssert(beat.stop, "Too many beats - we cannot enq more than 1 flit per cycle yet receive0 beat.stop");
-    rxState <= beat.stop ? 0 : 1;
-    // rxState <= 0;
+    rxState <= 0;
   endrule
 
   // rule receive1 (rxState == 1 && fromMACPort.canGet);
@@ -423,30 +430,53 @@ module mkReliableLinkCore#(Mac mac) (ReliableLink);
   //   rxState <= beat.stop ? 0 : 2;
   // endrule
 
-  rule receive1 (rxState == 1 && fromMACPort.canGet);
-    // We never send a non-min-sized packet, but that does not stop us getting them.
-    // so in sim, assert, but in hardware, wait until eop and return to normal polling.
-    fromMACPort.get;
+  rule enqRecv (fromMACPort.canGet);
     MacBeat beat = fromMACPort.value;
-    rxState <= beat.stop ? 0 : 1;
-    // $display("[receive1]");
-    myAssert(False, "Too many beats - we cannot enq more than 1 flit per cycle yet - receive1");
-    // Receive beat
-    // MacBeat beat = fromMACPort.value;
-    // // Are there any items to receive?
-    // if (numItemsToRecv != 0) begin
-    //   myAssert(receiveBuffer.notFull, "Receive buffer overflow!");
-    //   // Receive items
-    //   fromMACPort.get;
-    //   receiveBuffer.enq(beat.data);
-    //   numItemsToRecv <= numItemsToRecv - 1;
-    //   rxState <= beat.stop ? 0 : 2;
-    // end else begin
-    //   // Ignore data
-    //   fromMACPort.get;
-    //   rxState <= beat.stop ? 0 : 2;
-    // end
+    // mac.empty is a UInt; and is the number of empty filts in the packet.
+    // range of UInt(6) is [0..63], this is fine as we cannot have a entirely
+    // empty flit.
+    // LUInt#(64) is a 7 bit integer in [0..64], represneting the number of
+    // elements to enq.
+    UInt#(7) count_uint = 64-zeroExtend(beat.empty);
+    LUInt#(64) count = unpack(pack(count_uint));
+    // if (count != 64) $display("[reliableLink::enqRecv] enq %d (%d) count bytes into rx buffer", count, count_uint);
+    if (recvSyncMIMO.enqReadyN(count)) begin
+      fromMACPort.get;
+      Vector#(64, Bit#(8)) vecData = unpack(beat.data);
+      recvSyncMIMO.enq(count, vecData);
+    end
   endrule
+
+  // rule receive1 (rxState == 1);
+  //   // We never send a non-min-sized packet, but that does not stop us getting them.
+  //   // so in sim, assert, but in hardware, wait until eop and return to normal polling.
+  //   // fromMACPort.get;
+  //   // MacBeat beat = fromMACPort.value;
+  //   beat
+  //   rxState <= beat.stop ? 0 : 1;
+  //   // $display("[receive1]");
+  //   myAssert(False, "Too many beats - we cannot enq more than 1 flit per cycle yet - receive1");
+  //   // Receive beat
+  //   // MacBeat beat = fromMACPort.value;
+  //   // // Are there any items to receive?
+  //   // if (numItemsToRecv != 0) begin
+  //   //   myAssert(receiveBuffer.notFull, "Receive buffer overflow!");
+  //   //   // Receive items
+  //   //   fromMACPort.get;
+  //   //   receiveBuffer.enq(beat.data);
+  //   //   numItemsToRecv <= numItemsToRecv - 1;
+  //   //   rxState <= beat.stop ? 0 : 2;
+  //   // end else begin
+  //   //   // Ignore data
+  //   //   fromMACPort.get;
+  //   //   rxState <= beat.stop ? 0 : 2;
+  //   // end
+  // endrule
+  //
+  // rule receive1_1 (rxState == 1 && !fromMACPort.canGet);
+  //   rxState <= 0; // assume we ended up in state 1 via a transient pkt
+  //   // TODO: how & why.
+  // endrule
 
   // Fill transmit buffer
   rule fillTransmitBuffer (inPort.canGet && transmitBuffer.canEnq);
