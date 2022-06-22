@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<preferences>
+ <debug showDebugMenu="0" />
+ <window width="3724" height="1953" x="337" y="1074" />
+ <systemtable
+   filter="Tinsel_0.pcie_host_bus"
+   showAvalonDomains="1"
+   showClockDomains="0"
+   showResetDomains="0" />
+ <library
+   expandedCategories="Library,IP-XACT Components,Existing IP Variants,Project" />
+ <generation path="" clear_previous="1" />
+ <hdlexample language="VERILOG" />
+</preferences>

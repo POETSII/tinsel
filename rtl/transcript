@@ -1,0 +1,45 @@
+vsim fourteennm.fourteennm_fp_mac(behavior)
+# vsim fourteennm.fourteennm_fp_mac(behavior) 
+# Start time: 16:40:21 on Sep 30,2021
+# Loading std.standard
+# Loading std.textio(body)
+# Loading ieee.std_logic_1164(body)
+# Loading fourteennm.fourteennm_fp_mac(behavior)
+# Loading sv_std.std
+quit -sim
+# End time: 16:40:48 on Sep 30,2021, Elapsed time: 0:00:27
+# Errors: 0, Warnings: 0
+run -all
+# No Design Loaded!
+-c main
+# invalid command name "-c"
+main
+# invalid command name "main"
+vsim work_mkTestFPU.main
+# vsim work_mkTestFPU.main 
+# Start time: 17:03:22 on Sep 30,2021
+# Loading work_mkTestFPU.main
+# Loading work_mkTestFPU.mkTestFPU
+# Loading work_mkTestFPU.fourteennm_fp_mac_wrapper
+# ** Error: (vsim-3033) fp_mac_wrapper.v(98): Instantiation of 'fourteennm_fp_mac_encrypted' failed. The design unit was not found.
+#    Time: 0 ps  Iteration: 0  Instance: /main/top/op_dsp File: fp_mac_wrapper.v
+#         Searched libraries:
+#             /mnt/Projects/POETS/POETS/tinsel/rtl/work_mkTestFPU
+# Loading work_mkTestFPU.ResetInverter
+# Error loading design
+# End time: 17:03:22 on Sep 30,2021, Elapsed time: 0:00:00
+# Errors: 1, Warnings: 0
+vsim work_mkTestFPU.main
+# vsim work_mkTestFPU.main 
+# Start time: 17:03:24 on Sep 30,2021
+# Loading work_mkTestFPU.main
+# Loading work_mkTestFPU.mkTestFPU
+# Loading work_mkTestFPU.fourteennm_fp_mac_wrapper
+# ** Error: (vsim-3033) fp_mac_wrapper.v(98): Instantiation of 'fourteennm_fp_mac_encrypted' failed. The design unit was not found.
+#    Time: 0 ps  Iteration: 0  Instance: /main/top/op_dsp File: fp_mac_wrapper.v
+#         Searched libraries:
+#             /mnt/Projects/POETS/POETS/tinsel/rtl/work_mkTestFPU
+# Loading work_mkTestFPU.ResetInverter
+# Error loading design
+# End time: 17:03:25 on Sep 30,2021, Elapsed time: 0:00:01
+# Errors: 1, Warnings: 0

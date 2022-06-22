@@ -1,0 +1,29 @@
+**/build/*
+*.o
+*.elf
+*.a
+simcheckout/*
+scratch/*
+.*
+*ipynb
+*old
+compiletime/*
+
+# ignore everything in the quartus build dir
+!de10-pro/ip/*/*.ip
+de10-pro/*
+
+# except the following. We want to make sure no generated files end up in git.
+!de10-pro/*.qpf
+!de10-pro/*.qsf
+!de10-pro/*.qsys
+!de10-pro/output_files
+de10-pro/output_files/**
+!de10-pro/output_files/*.sof
+
+# careful sequence to allow top-level IP files only.
+!de10-pro/ip
+!de10-pro/ip/*
+de10-pro/ip/*/**
+!de10-pro/ip/*/*.ip
+de10-pro/ip/*/*BAK.ip
