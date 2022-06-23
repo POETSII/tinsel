@@ -101,7 +101,7 @@
                 <suppliedSystemInfos>
                     <entry>
                         <key>CLOCK_DOMAIN</key>
-                        <value>19</value>
+                        <value>18</value>
                     </entry>
                     <entry>
                         <key>CLOCK_RATE</key>
@@ -109,7 +109,7 @@
                     </entry>
                     <entry>
                         <key>RESET_DOMAIN</key>
-                        <value>19</value>
+                        <value>18</value>
                     </entry>
                 </suppliedSystemInfos>
                 <consumedSystemInfos/>

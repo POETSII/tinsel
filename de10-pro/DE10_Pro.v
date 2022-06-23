@@ -386,11 +386,14 @@ wire [11:0] ddr4_status;
         // .nic_d_s10_100gmac_a_serial_lanes_tx_serial                    (QSFP28D_TX_p),                    //  output,   width = 4,      nic_a_s10_100gmac_a_serial_lanes.tx_serial
         // .nic_d_s10_100gmac_a_serial_lanes_rx_serial                    (QSFP28D_RX_p),                    //   input,   width = 4,                                      .rx_serial
 
-        .alt_ehipc2_0_i_clk_ref_clk                                    (QSFP28A_REFCLK_p),                                    //   input,   width = 1,                alt_ehipc2_0_i_clk_ref.clk
-        .alt_ehipc2_0_o_tx_serial_o_tx_serial                          (QSFP28A_TX_p),                          //  output,   width = 4,              alt_ehipc2_0_o_tx_serial.o_tx_serial
-        .alt_ehipc2_0_i_rx_serial_i_rx_serial                          (QSFP28A_RX_p),                          //   input,   width = 4,              alt_ehipc2_0_i_rx_serial.i_rx_serial
-        .atx_pll_dualclk_0_clock_sink_clk                              (QSFP28A_REFCLK_p),                              //   input,   width = 1,          atx_pll_dualclk_0_clock_sink.clk
-
+        // .alt_ehipc2_0_i_clk_ref_clk                                    (QSFP28A_REFCLK_p),                                    //   input,   width = 1,                alt_ehipc2_0_i_clk_ref.clk
+        // .alt_ehipc2_0_o_tx_serial_o_tx_serial                          (QSFP28A_TX_p),                          //  output,   width = 4,              alt_ehipc2_0_o_tx_serial.o_tx_serial
+        // .alt_ehipc2_0_i_rx_serial_i_rx_serial                          (QSFP28A_RX_p),                          //   input,   width = 4,              alt_ehipc2_0_i_rx_serial.i_rx_serial
+        // .atx_pll_dualclk_0_clock_sink_clk                              (QSFP28A_REFCLK_p),                              //   input,   width = 1,          atx_pll_dualclk_0_clock_sink.clk
+        .alt_e100s10_north_serial_lanes_tx_serial                      (QSFP28A_TX_p),                      //  output,   width = 4,        alt_e100s10_north_serial_lanes.tx_serial
+        .alt_e100s10_north_serial_lanes_rx_serial                      (QSFP28A_RX_p),                      //   input,   width = 4,                                      .rx_serial
+        .alt_e100s10_north_clk_ref_clk                                 (QSFP28A_REFCLK_p),                                 //   input,   width = 1,             alt_e100s10_north_clk_ref.clk
+        .atx_pll_dualclk_0_clock_sink_clk                               (QSFP28A_REFCLK_p),
 
         .tinsel_0_temperature_val(178),
         .iopll_0_locked_export()
