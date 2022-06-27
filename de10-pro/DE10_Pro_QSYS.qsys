@@ -47763,6 +47763,11 @@
    kind="avalon_streaming"
    version="19.2"
    start="alt_e100s10_north.avalon_st_rx"
+   end="Tinsel_0.northmac_sink" />
+ <connection
+   kind="avalon_streaming"
+   version="19.2"
+   start="alt_e100s10_south.avalon_st_rx"
    end="Tinsel_0.southmac_sink" />
  <connection
    kind="avalon_streaming"
@@ -47793,17 +47798,27 @@
    kind="avalon_streaming"
    version="19.2"
    start="Tinsel_0.southmac_source"
-   end="Tinsel_0.northmac_sink" />
+   end="alt_e100s10_south.avalon_st_tx" />
  <connection
    kind="clock"
    version="19.2"
    start="alt_e100s10_north.clk_rxmac"
+   end="Tinsel_0.northmac_sink_clk" />
+ <connection
+   kind="clock"
+   version="19.2"
+   start="alt_e100s10_south.clk_rxmac"
    end="Tinsel_0.southmac_sink_clk" />
  <connection
    kind="clock"
    version="19.2"
    start="alt_e100s10_north.clk_txmac"
    end="Tinsel_0.northmac_source_clk" />
+ <connection
+   kind="clock"
+   version="19.2"
+   start="alt_e100s10_south.clk_txmac"
+   end="Tinsel_0.southmac_source_clk" />
  <connection
    kind="clock"
    version="19.2"
@@ -47899,16 +47914,6 @@
    version="19.2"
    start="iopll_0.outclk0"
    end="Tinsel_0.clock" />
- <connection
-   kind="clock"
-   version="19.2"
-   start="iopll_0.outclk0"
-   end="Tinsel_0.northmac_sink_clk" />
- <connection
-   kind="clock"
-   version="19.2"
-   start="iopll_0.outclk0"
-   end="Tinsel_0.southmac_source_clk" />
  <connection
    kind="clock"
    version="19.2"

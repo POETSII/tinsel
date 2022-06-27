@@ -12,6 +12,11 @@ DEFS += -D LogTransmitBufferSize=10 -D LogMaxFlitsPerMsg=2 -D MaxFlitsPerMsg=4 -
 DEFS += -D NumNorthSouthLinks=1 -D NumEastWestLinks=0 -D Stratix10
 DEFS += -D DRAMsPerBoard=0 -D DeviceFamily='"Stratix 10"'
 
+ifdef SINGLE_BOARD
+DEFS += -D SINGLE_BOARD
+endif
+
+
 STRATIX10 = True
 # STRATIXV = $(shell python3 ../config.py print StratixV)
 #
