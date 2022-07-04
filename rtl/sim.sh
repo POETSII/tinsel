@@ -2,7 +2,7 @@
 #  SIM_BINARY="./de5Top"
 
 make clean
-make SINGLE_BOARD=True sim
+make sim
 
 BOARD_ID=0 make runsim &
 sleep 5

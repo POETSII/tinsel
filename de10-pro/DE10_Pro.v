@@ -130,16 +130,16 @@ module DE10_Pro(
   input              PCIE_PERST_n,
   output             PCIE_WAKE_n,
 
-  input              QSFP28A_REFCLK_p,
-  output   [ 3: 0]   QSFP28A_TX_p,
-  input    [ 3: 0]   QSFP28A_RX_p,
-  input              QSFP28A_INTERRUPT_n,
-  output             QSFP28A_LP_MODE,
-  input              QSFP28A_MOD_PRS_n,
-  output             QSFP28A_MOD_SEL_n,
-  output             QSFP28A_RST_n,
-  inout              QSFP28A_SCL,
-  inout              QSFP28A_SDA,
+  // input              QSFP28A_REFCLK_p,
+  // output   [ 3: 0]   QSFP28A_TX_p,
+  // input    [ 3: 0]   QSFP28A_RX_p,
+  // input              QSFP28A_INTERRUPT_n,
+  // output             QSFP28A_LP_MODE,
+  // input              QSFP28A_MOD_PRS_n,
+  // output             QSFP28A_MOD_SEL_n,
+  // output             QSFP28A_RST_n,
+  // inout              QSFP28A_SCL,
+  // inout              QSFP28A_SDA,
 
   // input              QSFP28B_REFCLK_p,
   // output   [ 3: 0]   QSFP28B_TX_p,
@@ -152,16 +152,16 @@ module DE10_Pro(
   // inout              QSFP28B_SCL,
   // inout              QSFP28B_SDA,
   //
-  input              QSFP28C_REFCLK_p,
-  output   [ 3: 0]   QSFP28C_TX_p,
-  input    [ 3: 0]   QSFP28C_RX_p,
-  input              QSFP28C_INTERRUPT_n,
-  output             QSFP28C_LP_MODE,
-  input              QSFP28C_MOD_PRS_n,
-  output             QSFP28C_MOD_SEL_n,
-  output             QSFP28C_RST_n,
-  inout              QSFP28C_SCL,
-  inout              QSFP28C_SDA,
+  // input              QSFP28C_REFCLK_p,
+  // output   [ 3: 0]   QSFP28C_TX_p,
+  // input    [ 3: 0]   QSFP28C_RX_p,
+  // input              QSFP28C_INTERRUPT_n,
+  // output             QSFP28C_LP_MODE,
+  // input              QSFP28C_MOD_PRS_n,
+  // output             QSFP28C_MOD_SEL_n,
+  // output             QSFP28C_RST_n,
+  // inout              QSFP28C_SCL,
+  // inout              QSFP28C_SDA,
   //
   // input              QSFP28D_REFCLK_p,
   // output   [ 3: 0]   QSFP28D_TX_p,
@@ -263,16 +263,6 @@ wire [11:0] ddr4_status;
   DE10_Pro_QSYS DE10_Pro_QSYS_inst (
         .clk_clk(CLK_50_B3I),
         .reset_reset(ninit_done),
-
-        .atx_pll_dualclk_0_clock_sink_clk                              (QSFP28A_REFCLK_p),                              //   input,   width = 1,          atx_pll_dualclk_0_clock_sink.clk
-        .alt_e100s10_north_clk_ref_clk                                 (QSFP28A_REFCLK_p),                                 //   input,   width = 1,             alt_e100s10_north_clk_ref.clk
-        .alt_e100s10_north_serial_lanes_tx_serial                      (QSFP28A_TX_p),                      //  output,   width = 4,        alt_e100s10_south_serial_lanes.tx_serial
-        .alt_e100s10_north_serial_lanes_rx_serial                      (QSFP28A_RX_p),
-                             //   input,   width = 4,                                      .rx_serial
-        .atx_pll_dualclk_1_clock_sink_clk                              (QSFP28C_REFCLK_p),                              //   input,   width = 1,          atx_pll_dualclk_0_clock_sink.clk
-        .alt_e100s10_south_serial_lanes_tx_serial                      (QSFP28C_TX_p),                      //  output,   width = 4,        alt_e100s10_south_serial_lanes.tx_serial
-        .alt_e100s10_south_serial_lanes_rx_serial                      (QSFP28C_RX_p),                      //   input,   width = 4,                                      .rx_serial
-        .alt_e100s10_south_clk_ref_clk                                 (QSFP28C_REFCLK_p),                                  //   input,   width = 1,             alt_e100s10_south_clk_ref.clk
 
 
         .tinsel_0_temperature_val(178),

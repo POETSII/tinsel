@@ -17,6 +17,7 @@ import ConfigReg :: *;
 // ==========
 
 // Basic dual-port block RAM with a read port and a write port
+(* always_enabled *)
 interface BlockRam#(type addr, type data);
   method Action read(addr a);
   method Action write(addr a, data x);
@@ -24,6 +25,7 @@ interface BlockRam#(type addr, type data);
 endinterface
 
 // This version provides byte-enables
+(* always_enabled *)
 interface BlockRamByteEn#(type addr, type data, numeric type dataBytes);
   method Action read(addr a);
   method Action write(addr a, data x, Bit#(dataBytes) be);
@@ -36,6 +38,7 @@ typedef BlockRamByteEn#(addr, data, TDiv#(SizeOf#(data), 8))
 
 
 // True dual-port mixed-width block RAM
+(* always_enabled *)
 interface BlockRamTrueMixed#
             (type addrA, type dataA,
              type addrB, type dataB);
@@ -48,6 +51,7 @@ interface BlockRamTrueMixed#
 endinterface
 
 // True dual-port mixed-width block RAM
+(* always_enabled *)
 interface BlockRamTrueMixedPadded#
             (type addrA, type dataA,
              type addrB, type dataB,
@@ -67,6 +71,7 @@ typedef BlockRamTrueMixed#(addr, data, addr, data)
 
 // True dual-port mixed-width block RAM with byte-enables
 // (Port B has the byte enables and must be smaller than port A)
+(* always_enabled, always_ready *)
 interface BlockRamTrueMixedByteEn#
             (type addrA, type dataA,
              type addrB, type dataB,
@@ -81,6 +86,7 @@ endinterface
 
 // True dual-port mixed-width block RAM with byte-enables
 // (Port B has the byte enables and must be smaller than port A)
+(* always_enabled *)
 interface BlockRamTrueMixedByteEnPadded#
             (type addrA, type dataA,
              type addrB, type dataB,
@@ -516,6 +522,8 @@ import "BVI" AlteraBlockRamTrueMixed =
     schedule (putB)               C  (putB);
   endmodule
 
+
+
 `else
 
 module mkBlockRamMaybeTrueMixedOpts_ALTERA#(BlockRamOpts opts) (BlockRam#(addr, data));
@@ -921,6 +929,51 @@ import "BVI" AlteraBlockRamTrueMixedBE =
     schedule (putB)               C  (putB);
   endmodule
 
+// define the IP wrappers. s10 has additional conditions relative to sV
+import "BVI" AlteraBlockRamTrueBEInfer =
+  module mkBlockRamMaybeTrueMixedBEOpts_ALTERA_Inferred#(BlockRamOpts opts)
+        (BlockRamTrueMixedByteEn#(addrA, dataA, addrB, dataB, dataBBytes))
+        provisos(Bits#(addrA, addrWidthA), Bits#(dataA, dataWidthA),
+                 Bits#(addrB, addrWidthB), Bits#(dataB, dataWidthB),
+                 Bounded#(addrA), Bounded#(addrB),
+                 Mul#(dataBBytes, 8, dataWidthB),
+                 Div#(dataWidthB, dataBBytes, 8)
+                 `ifdef Stratix10
+                 , Add#(0, dataWidthA, dataWidthB) // s10 requirement; equal sized dual ports!
+                 `endif // Stratix10
+                );
+    staticAssert(opts.readDuringWrite == DontCare, "Inferred dual port RAM does not support defined RdW behaviour.");
+    staticAssert(opts.registerDataOut == False, "Inferred dual port RAM does not support reg data out.");
+    staticAssert(opts.initFile == tagged Invalid, "Inferred dual port RAM does not support init file (yet).");
+    // parameter INIT_FILE      =
+    //   case (opts.initFile) matches
+    //     tagged Invalid: return "UNUSED";
+    //     tagged Valid .x: return (x + ".mif");
+    //   endcase;
+    staticAssert(opts.style == "AUTO", "Inferred dual port RAM does not support defining a style.");
+
+    parameter ADDRESS_WIDTH = valueOf(addrWidthA);
+    parameter BYTES = valueOf(dataWidthA)/8;
+    parameter BYTE_WIDTH = 8; // does not infer if not a mul of 8
+
+    // Port A
+    method putA(we1, addr1, data_in1) enable((* inhigh *) EN_A) clocked_by(clk);
+    method data_out1 dataOutA;
+
+    // Port B
+    method putB(we2, addr2, data_in2, be2) enable((* inhigh *) EN_B) clocked_by(clk);
+    method data_out2 dataOutB;
+
+    default_clock clk(clk, (*unused*) clk_gate);
+    default_reset no_reset;
+
+    schedule (dataOutA, dataOutB) CF (dataOutA, dataOutB, putA, putB);
+    schedule (putA)               CF (putB);
+    schedule (putA)               C  (putA);
+    schedule (putB)               C  (putB);
+  endmodule
+
+
 `else
 
 module mkBlockRamMaybeTrueMixedBEOpts_ALTERA#(BlockRamOpts opts) (BlockRam#(addr, data));
@@ -1026,7 +1079,7 @@ module mkBlockRamTrueMixedBEOptsPadded_S10#(BlockRamOpts opts)
   BlockRamTrueMixedByteEn#(addrA, Bit#(paddedWidthA), // port A
                            addrA, Bit#(paddedWidthA), // port B
                            TDiv#(paddedWidthA, 8) // Port B byte enables width
-                          ) bram <- mkBlockRamMaybeTrueMixedBEOpts_ALTERA(opts);
+                          ) bram <- mkBlockRamMaybeTrueMixedBEOpts_ALTERA_Inferred(opts);
   `endif
 
   Wire#(addrB) baddr_1 <- mkConfigRegU();
@@ -1177,6 +1230,124 @@ endmodule
 
 `endif
 
+(* always_ready, always_enabled *)
+module mkLUTRamTrueMixedBEOpts#(BlockRamOpts opts)
+      (BlockRamTrueMixedByteEn#(addrA, dataA, addrB, dataB, dataBBytes))
+    provisos(Bits#(addrA, addrWidthA), Bits#(dataA, dataWidthA),
+             Bits#(addrB, addrWidthB), Bits#(dataB, dataWidthB),
+             Div#(dataWidthA, 8, dataABytes),
+             Mul#(dataABytes, 8, dataWidthA),
+             Bounded#(addrA), Bounded#(addrB),
+             Add#(addrWidthA, aExtra, addrWidthB),
+             Literal#(addrA), Literal#(addrB),
+             Literal#(dataA), Literal#(dataB),
+             Div#(dataWidthB, 8, dataBBytes),
+             Mul#(dataBBytes, 8, dataWidthB),
+             Add#(addrWidthA, TLog#(dataABytes), backingStoreAddrWidth),
+             Add#(TLog#(dataBBytes), addrWidthB, backingStoreAddrWidth));
+
+  Integer sizeOfDataA_v = valueOf(SizeOf#(dataA));
+  UInt#(backingStoreAddrWidth) dataABytes_v = fromInteger(sizeOfDataA_v)/8;
+
+  Integer sizeOfDataB_v = valueOf(SizeOf#(dataB));
+  UInt#(backingStoreAddrWidth) dataBBytes_v = fromInteger(sizeOfDataB_v)/8;
+
+  Vector#(TExp#(backingStoreAddrWidth), Array#(Reg#(Bit#(8)))) store <- replicateM(mkCRegU(4)); // newVector();
+
+  // data in A
+  // latch the address, so we read from the most recent location on same cycle.
+  // 0: before Put*, 1: write, 2: after/forwarded.
+  Reg#(Bool) dinA_wr[3] <- mkCReg(3, False);
+  Reg#(addrA) dinA_address[3] <- mkCReg(3, 0);
+  Reg#(dataA) dinA_x[3] <- mkCReg(3, 0);
+  PulseWire putA_fired <- mkPulseWire();
+
+  // data in B
+  Reg#(Bool) dinB_wr[3] <- mkCReg(3, False);
+  Reg#(addrB) dinB_address[3] <- mkCReg(3, 0);
+  Reg#(dataB) dinB_x[3] <- mkCReg(3, 0);
+  Reg#(Bit#(dataBBytes)) dinB_be[3] <- mkCReg(3, 0);
+
+  // data out: wire and reg versions
+  // we write to [0]; reading from [1] gives wire (unreg) behaviour, [0] reg.
+  Wire#(dataA) doutA[2] <- mkCReg(2, 0);
+  Wire#(dataB) doutB[2] <- mkCReg(2, 0);
+
+
+  // following behav. rules are ordered by the order of access to the
+  // (* no_implicit_conditions, fire_when_enabled *)
+  rule dataInB_r;
+    Integer sample_order = 2;
+    Integer store_order = 0; // ref model stores to B first.
+    UInt#(backingStoreAddrWidth) backing_address = unpack(extend(pack(dinB_address[sample_order]))) * dataBBytes_v;
+    Vector#(dataBBytes, Bool) be_bools = unpack(pack(dinB_be[sample_order]));
+    if (dinB_wr[sample_order]) begin
+      Vector#(TDiv#(SizeOf#(dataB), 8), Bit#(8)) x_b = unpack(pack(dinB_x[sample_order]));
+      for (UInt#(backingStoreAddrWidth) i=0; i<extend(dataBBytes_v); i=i+1) begin
+        if (be_bools[i]) begin
+          store[backing_address+i][store_order] <= x_b[i];
+        end
+      end
+    end
+  endrule
+
+  rule dataOutB_r;
+    Integer sample_order = 2;
+    Integer store_order = 1;
+    UInt#(backingStoreAddrWidth) backing_address = unpack(extend(pack(dinB_address[sample_order]))) * dataBBytes_v;
+    Vector#(TDiv#(SizeOf#(dataB), 8), Bit#(8)) x_b = newVector();
+    for (UInt#(backingStoreAddrWidth) i=0; i<extend(dataBBytes_v); i=i+1) begin
+       x_b[i] = store[backing_address+i][store_order];
+    end
+    doutB[0] <= unpack(pack(x_b));
+  endrule
+
+  // (* no_implicit_conditions, fire_when_enabled *)
+  rule dataInA_r;
+    Integer sample_order = 2;
+    Integer store_order = 2;
+    UInt#(backingStoreAddrWidth) backing_address = unpack(extend(pack(dinA_address[sample_order]))) * dataABytes_v;
+    if (dinA_wr[sample_order]) begin
+      Vector#(TDiv#(SizeOf#(dataA), 8), Bit#(8)) x_b = unpack(pack(dinA_x[sample_order]));
+      for (UInt#(backingStoreAddrWidth) i=0; i<extend(dataABytes_v); i=i+1) begin
+        store[backing_address+i][store_order] <= x_b[i];
+      end
+    end
+    putA_fired.send();
+  endrule
+
+  // (* no_implicit_conditions, fire_when_enabled *)
+  rule dataOutA_r;
+    Integer sample_order = 2;
+    Integer store_order = 3;
+    UInt#(backingStoreAddrWidth) backing_address = unpack(extend(pack(dinA_address[sample_order]))) * dataABytes_v;
+    Vector#(TDiv#(SizeOf#(dataA), 8), Bit#(8)) x_b = newVector();
+    for (UInt#(backingStoreAddrWidth) i=0; i<extend(dataABytes_v); i=i+1) begin
+       x_b[i] = store[backing_address+i][store_order];
+    end
+    doutA[0] <= unpack(pack(x_b));
+  endrule
+
+  // Port A
+  method Action putA(Bool wr, addrA address, dataA x);
+    $display($time, "[PutA] called");
+    dinA_wr[1] <= wr;
+    dinA_address[1] <= address;
+    dinA_x[1] <= x;
+  endmethod
+
+  method dataA dataOutA = doutA[0];
+
+  method Action putB(Bool wr, addrB address, dataB x, Bit#(dataBBytes) be);
+    dinB_wr[1] <= wr;
+    dinB_address[1] <= address;
+    dinB_x[1] <= x;
+    dinB_be[1] <= be;
+  endmethod
+
+  // if output data is registered, we read from the first loc in the CReg; this is SB the write, so adds a cycle of delay.
+  method dataB dataOutB = doutB[0]; // opts.registerDataOut ? doutB[1] : doutB[1];
+endmodule
 
 
 module mkBlockRamPortableTrueMixedBEOpts#(BlockRamOpts opts)
@@ -1193,6 +1364,7 @@ module mkBlockRamPortableTrueMixedBEOpts#(BlockRamOpts opts)
                   Mul#(TExp#(aExtra), dataBBytes, dataABytes));
 
   BlockRamOpts internalOpts = opts;
+  // staticAssert(opts.registerDataOut, "mkBlockRamPortableTrueMixedBEOpts needs internal reg");
   internalOpts.registerDataOut = False;
 
   `ifdef SIMULATE

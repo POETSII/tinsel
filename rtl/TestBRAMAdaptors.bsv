@@ -70,6 +70,42 @@ module [BlueCheck] checkBRAMTrueMixedBEPortable#(BlockRamOpts opts) (Empty);
   equiv("outB"    , spec.dataOutB    , imp.dataOutB);
 endmodule
 
+module [BlueCheck] checkLUTRamTrueMixedBE#(BlockRamOpts opts) (Empty);
+
+  /* Specification instance */
+  BlockRamTrueMixedBE#(AddrA, DataA, AddrB, DataB) spec <- mkBlockRamTrueMixedBEOpts_SIMULATE(opts);
+
+  /* Implmentation instance */
+  BlockRamTrueMixedBE#(AddrA, DataA, AddrB, DataB) imp <- mkLUTRamTrueMixedBEOpts(opts);
+
+  Reg#(Bit#(TAdd#(SizeOf#(AddrA), 1))) addr_a <- mkReg(0);
+  Stmt zero = seq
+  $display("zeroing");
+
+    for (addr_a<=0; addr_a<16; addr_a<=addr_a+1) seq
+      $display("zeroed %d", addr_a);
+      spec.putA(True, unpack(truncate(addr_a)), 64'h0);
+      imp.putA(True, unpack(truncate(addr_a)), 64'h0);
+    endseq
+
+    $display("zeroed");
+    spec.putB(False, 0, 0, 0);
+    imp.putB(False, 0, 0, 0);
+
+    delay(5);
+
+  endseq;
+
+  pre("Zero", zero);
+
+  equiv("putA"    , spec.putA    , imp.putA);
+  equiv("outA"   , spec.dataOutA   , imp.dataOutA);
+  equiv("putB", spec.putB, imp.putB);
+  equiv("outB"    , spec.dataOutB    , imp.dataOutB);
+endmodule
+
+
+
 
 
 module [Module] mkBRAMTest ();
@@ -120,6 +156,11 @@ module [Module] mkBRAMTest ();
 
   Vector#(12, FSM) testers = newVector();
 
+  let params = bcParams;
+  // params.interactive   = False;
+  // params.outputFIFO    = tagged Valid out;
+
+
   for (Integer optctr=0; optctr<4; optctr=optctr+1) begin
       let tm <- mkModelChecker(checkBRAMTrueMixed(opts[optctr], reset_by brams_reset), bcParams);
       testers[optctr*3] <- mkFSM(tm);
@@ -129,22 +170,24 @@ module [Module] mkBRAMTest ();
       testers[optctr*3+2] <- mkFSM(tmbeport);
   end
 
-
+  Stmt lutRamStmts <- mkModelChecker(checkLUTRamTrueMixedBE(oldNoReg, reset_by brams_reset), bcParams);
+  FSM lutRamTester <- mkFSM(lutRamStmts);
 
 
   Reg#(Int#(32)) test_iter <- mkReg(0);
   Stmt test = seq
 
-    for (test_iter<=0; test_iter<12; test_iter<=test_iter+1) seq
-      $display("starting test ", test_iter, " ######################################## ");
-      testers[test_iter].start();
-      await(testers[test_iter].done());
-      delay(5);
-      // r.assertReset();
-      // r.assertReset();
-      // r.assertReset();
-      // delay(5);
-    endseq
+    // for (test_iter<=0; test_iter<12; test_iter<=test_iter+1) seq
+    //   $display("starting test ", test_iter, " ######################################## ");
+    //   testers[test_iter].start();
+    //   await(testers[test_iter].done());
+    //   delay(5);
+    // endseq
+
+    $display("starting test lutRamTester ######################################## ");
+    lutRamTester.start();
+    await(lutRamTester.done());
+    $display("done test lutRamTester ######################################## ");
   endseq;
 
   mkAutoFSM( test );

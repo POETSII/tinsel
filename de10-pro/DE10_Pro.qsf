@@ -534,6 +534,10 @@ set_global_assignment -name NUMBER_OF_EXAMPLE_NODES_REPORTED 5
 set_instance_assignment -name PARTITION_COLOUR 4285505023 -to DE10_Pro -entity DE10_Pro
 set_instance_assignment -name PARTITION_COLOUR 4285857726 -to auto_fab_0 -entity DE10_Pro
 set_global_assignment -name FINAL_PLACEMENT_OPTIMIZATION ALWAYS
+set_global_assignment -name ENABLE_INTERMEDIATE_SNAPSHOTS ON
+set_global_assignment -name ALLOW_DSP_RETIMING OFF
+set_global_assignment -name ALM_REGISTER_PACKING_EFFORT MEDIUM
+set_global_assignment -name SYSTEMVERILOG_FILE ../rtl/AlteraBlockRam.sv
 set_global_assignment -name VERILOG_FILE ../upstream/BSVFan/mkDE10FanControl.v
 set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/atx_pll_s10_100g.ip
 set_global_assignment -name TCL_SCRIPT_FILE ip/atx_pll_100g_clkgen/atx_pll_100g_clkgen_hw.tcl
@@ -673,7 +677,6 @@ set_global_assignment -name VERILOG_FILE ../rtl/mkMeshRouter.v
 set_global_assignment -name VERILOG_FILE ../rtl/mkCore.v
 set_global_assignment -name VERILOG_FILE ../rtl/mkFPU.v
 set_global_assignment -name VERILOG_FILE ../rtl/mkDCache.v
-set_global_assignment -name VERILOG_FILE ../rtl/AlteraBlockRam.v
 set_global_assignment -name VERILOG_FILE BRAM2BELoad.v
 set_global_assignment -name QIP_FILE megafuns/fp/AlteraFPAddSub.qip
 set_global_assignment -name QIP_FILE megafuns/fp/AlteraFPMult.qip
@@ -699,17 +702,12 @@ set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/mm_clockcross_DDR4.ip
 set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/DDR_mm_pipeline_bridge.ip
 set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/DE10_Pro_QSYS_emif_s10_ddr4_a.ip
 set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/soc_alt_e100s10.ip
-set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/S10_100GMAC.ip
 set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/DE10_Pro_QSYS_clock_bridge_MAC.ip
 set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/DE10_Pro_QSYS_network_CC.ip
 set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/network_CC_A_rx_0.ip
 set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/network_CC_A_rx_1.ip
-set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/DE10_Pro_QSYS_atx_pll_dualclk_A.ip
 set_global_assignment -name IP_FILE ip/NIC/NIC_usrclk.ip
 set_global_assignment -name IP_FILE ip/NIC/NIC_reset_bridge.ip
 set_global_assignment -name QSYS_FILE NIC.qsys
 set_global_assignment -name IP_FILE ip/NIC/NIC_xcvr_atx_pll_s10_htile_0.ip
 set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/DE10_Pro_QSYS_alt_ehipc2_0.ip
-set_global_assignment -name ENABLE_INTERMEDIATE_SNAPSHOTS ON
-set_global_assignment -name ALLOW_DSP_RETIMING OFF
-set_global_assignment -name ALM_REGISTER_PACKING_EFFORT MEDIUM
