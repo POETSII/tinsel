@@ -1,6 +1,35 @@
 // SPDX-License-Identifier: BSD-2-Clause
 // Copyright (c) Matthew Naylor, Jon Woodruff
 
+/*
+ * Copyright (c) 2022 Simon W. Moore
+ * All rights reserved.
+ *
+ * @BERI_LICENSE_HEADER_START@
+ *
+ * Licensed to BERI Open Systems C.I.C. (BERI) under one or more contributor
+ * license agreements.  See the NOTICE file distributed with this work for
+ * additional information regarding copyright ownership.  BERI licenses this
+ * file to you under the BERI Hardware-Software License, Version 1.0 (the
+ * "License"); you may not use this file except in compliance with the
+ * License.  You may obtain a copy of the License at:
+ *
+ *   http://www.beri-open-systems.org/legal/license-1-0.txt
+ *
+ * Unless required by applicable law or agreed to in writing, Work distributed
+ * under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+ * CONDITIONS OF ANY KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations under the License.
+ *
+ * @BERI_LICENSE_HEADER_END@
+ *
+ * ----------------------------------------------------------------------------
+ * Builds on BlockRAM by Matt Naylor, et al.
+ * This "v" version uses pure Verilog to describe basic single and
+ * true dual-port RAMs that can be inferred as BRAMs like M20K on Stratix 10.
+ */
+
+
 package BlockRam;
 
 // =======
@@ -522,7 +551,162 @@ module mkBlockRamMaybeTrueMixedOpts_ALTERA#(BlockRamOpts opts) (BlockRam#(addr, 
   staticAssert(False, "Altera BVI module used in sim enviroment.");
 endmodule
 
-`endif
+`endif // simulate
+
+module mkBlockRamTrueMixedBE_BsvCtrlLogic#(BlockRamOpts opts)
+      (BlockRamTrueMixedByteEn#(addrA, dataA, addrB, dataB, dataBBytes))
+    provisos(Bits#(addrA, awidthA), Bits#(dataA, dwidthA),
+             Bits#(addrB, awidthB), Bits#(dataB, dwidthB),
+             Bounded#(addrA),       Bounded#(addrB),
+             Add#(awidthA, aExtra, awidthB),
+             Log#(expaExtra, aExtra),
+             Mul#(expaExtra, dwidthB, dwidthA),
+             Mul#(dataBBytes, 8, dwidthB),
+             Div#(dwidthB, dataBBytes, 8),
+             Mul#(dataABytes, 8, dwidthA),
+             Div#(dwidthA, dataABytes, 8),
+             Mul#(expaExtra, dataBBytes, dataABytes),
+             Log#(dataABytes, logdataABytes),
+             Log#(dataBBytes, logdataBBytes),
+             Add#(aExtra, logdataBBytes, logdataABytes),
+             Literal#(dataA),
+             Literal#(dataB), Literal#(addrB));
+
+   staticAssert( opts.readDuringWrite == DontCare, "Must have DC RdW behaviour" );
+   staticAssert( opts.initFile == Invalid, "We don't support initFile" );
+
+  // Instatitate byte-wide RAMs to fit the data width of port A since it is the widest port
+  `ifdef SIMULATE
+  BlockRamOpts internal_opts = defaultBlockRamOpts;
+  internal_opts.registerDataOut = False;
+  internal_opts.readDuringWrite = OldData;
+  Vector#(dataABytes, BlockRamTrueMixed#(Bit#(awidthA), Bit#(8), Bit#(awidthA), Bit#(8))) rams <- replicateM(mkBlockRamTrueMixedOpts(internal_opts));
+  `else
+  Vector#(dataABytes, BlockRamTrueMixed#(Bit#(awidthA), Bit#(8), Bit#(awidthA), Bit#(8))) rams <- replicateM(mkBlockRamMaybeTrueMixedOpts_ALTERA);
+  `endif
+
+  // addrB needed during read to select the right word.
+  // save_* are required to get NewData RdW read logic.
+  Reg#(Bool) save_wrA <- mkReg(False);
+  Reg#(dataA) save_dataA <- mkRegU();
+  Wire#(Maybe#(addrA)) check_addrA <- mkDWire(Invalid);
+  Wire#(dataA) doutA_w <- mkWire();
+
+
+  // we save both the current read addr and the list written addr for B.
+  // this allows to reconstruct NewData RdW for partial writes, until a
+  // new location is read.
+  Wire#(Tuple4#(Bool, addrB, dataB, Bit#(dataBBytes))) putB_args <- mkDWire( tuple4(False, 0, 0, 0) );
+  Reg#(Bool) save_wrB <- mkReg(False);
+  Reg#(Vector#(dataBBytes, Bool)) save_enB <- mkReg(unpack(0));
+  Reg#(dataB) save_dataB <- mkRegU();
+  Reg#(addrB) save_addrB <- mkReg(unpack(0));
+  Reg#(addrB) save_lastwr_addrB <- mkReg(unpack(0));
+  Wire#(Maybe#(addrB)) check_addrB <- mkDWire(Invalid);
+  Wire#(dataB) doutB_w <- mkWire();
+
+  // add a optional output reg
+  Reg#(dataA) doutA_r <- mkReg(0);
+  Reg#(dataB) doutB_r <- mkReg(0);
+
+  (* fire_when_enabled, no_implicit_conditions *)
+  rule buffer;
+    doutA_r <= doutA_w;
+    doutB_r <= doutB_w;
+  endrule
+
+
+  // For simulation only. Should be optimised away on FPGA.
+  rule assert_no_write_collision(isValid(check_addrA) && isValid(check_addrB));
+    Bit#(awidthA) addrA = pack(fromMaybe(?, check_addrA));
+    Bit#(awidthA) addrB = truncate(pack(fromMaybe(?, check_addrB))>>valueOf(aExtra));
+    dynamicAssert(addrA != addrB, "ERROR in mkBlockRamTrueMixedBE: address collision on two writes");
+  endrule
+
+  rule doutA_rule;
+    if (save_wrA) begin
+      doutA_w <= save_dataA;
+    end else begin
+      Vector#(dataABytes,Bit#(8)) b;
+      for(Integer n=0; n<valueOf(dataABytes); n=n+1)
+        begin
+          b[n] = rams[n].dataOutA;
+         end
+      doutA_w <= unpack(pack(b));
+    end
+  endrule
+
+  // in order to have the compier check put* and dataout* are always_enabled,
+  // we keep the bodies in dedicated rules.
+  rule dinB_r;
+    let wr = tpl_1(putB_args);
+    let a  = tpl_2(putB_args);
+    let d  = tpl_3(putB_args);
+    let be = tpl_4(putB_args);
+    save_addrB <= a;
+    save_wrB <= wr;
+    if (wr) begin
+      save_dataB <= d;
+      save_enB <= unpack(be);
+      save_lastwr_addrB <= a;
+    end
+    for(Integer n=0; n<valueOf(dataBBytes); n=n+1)
+      if(be[n]==1)
+        begin
+          Bit#(aExtra) bank_select = truncate(pack(a));
+          Bit#(logdataBBytes) byte_select = fromInteger(n);
+          Bit#(logdataABytes) bram_select = {bank_select, byte_select};
+          Bit#(awidthA) addr = truncate(unpack(pack(a) >> valueOf(aExtra)));
+          Bit#(dwidthB) data = pack(d);
+          rams[bram_select].putB(wr, addr, data[n*8+7:n*8]);
+        end
+    if(wr) check_addrB <= tagged Valid a;
+  endrule
+
+
+  // putB needs to be always_enabled, so we stay in sync with the model.
+  // split into a trival method and a rule without preconditions to ensure this.
+  (* fire_when_enabled, no_implicit_conditions *)
+  rule doutB_rule;
+    Vector#(dataBBytes,Bit#(8)) b;
+    Bit#(dwidthB) data = pack(save_dataB);
+    for(Integer n=0; n<valueOf(dataBBytes); n=n+1) begin
+      Bit#(aExtra) bank_select = truncate(pack(save_addrB));
+      Bit#(logdataBBytes) byte_select = fromInteger(n);
+      Bit#(logdataABytes) bram_select = {bank_select, byte_select};
+      if (pack(save_lastwr_addrB) == pack(save_addrB) && save_enB[n]) begin
+        b[n] = data[n*8+7:n*8];
+        // b[n] = 0;
+      end else begin
+        b[n] = rams[bram_select].dataOutA;
+      end
+    end
+    doutB_w <= unpack(pack(b));
+  endrule
+
+  method Action putA(wr, a, d);
+    save_wrA <= wr;
+    save_dataA <= d;
+    Bit#(dwidthA) data = pack(d);
+    for(Integer n=0; n<valueOf(dataABytes); n=n+1)
+        rams[n].putA(wr, pack(a), data[n*8+7:n*8]);
+    if(wr) check_addrA <= tagged Valid a;
+  endmethod
+
+  method dataA dataOutA;
+    return opts.registerDataOut ? doutA_r : doutA_w;
+  endmethod
+
+  method Action putB(wr, a, d, be);
+    putB_args <= tuple4(wr, a, d, be);
+  endmethod
+
+  method dataB dataOutB;
+    return opts.registerDataOut ? doutB_r : doutB_w;
+  endmethod
+
+endmodule
+
 
 // In order to work around the proviso match restrictions, this module calculates the required padding to build a
 // arbitary width bram packed into a byte-alligned store
@@ -1142,7 +1326,8 @@ module mkBlockRamTrueBEOpts#(BlockRamOpts opts)
     provisos(Bits#(addrA, addrWidthA), Bits#(dataA, dataWidthA),
              Bounded#(addrA),
              Mul#(dataABytes, 8, dataWidthA),
-             Div#(dataWidthA, dataABytes, 8));
+             Div#(dataWidthA, dataABytes, 8),
+             Literal#(dataA));
 
   // For simulation, use a BRAMCore
   BRAM_DUAL_PORT_BE#(addrA, dataA, dataABytes) ram <-
@@ -1150,8 +1335,8 @@ module mkBlockRamTrueBEOpts#(BlockRamOpts opts)
                           fromMaybe("Zero", opts.initFile) + ".hex", False);
 
   // State
-  Reg#(dataA) dataAReg <- mkConfigRegU;
-  Reg#(dataA) dataBReg <- mkConfigRegU;
+  Reg#(dataA) dataAReg <- mkConfigReg(0);
+  Reg#(dataA) dataBReg <- mkConfigReg(0);
 
   // Rules
   rule update;
@@ -1179,11 +1364,12 @@ endmodule
 
 
 
-module mkBlockRamPortableTrueMixedBEOpts#(BlockRamOpts opts)
+module mkBlockRamPortableTrueMixedBEOpts_old#(BlockRamOpts opts)
          (BlockRamTrueMixedByteEn#(addrA, dataA, addrB, dataB, dataBBytes))
          provisos(Bits#(addrA, addrWidthA), Bits#(dataA, dataWidthA),
                   Bits#(addrB, addrWidthB), Bits#(dataB, dataWidthB),
                   Bounded#(addrA), Bounded#(addrB),
+                  Literal#(dataA),
                   Add#(addrWidthA, aExtra, addrWidthB),
                   Mul#(TExp#(aExtra), dataWidthB, dataWidthA),
                   Mul#(dataBBytes, 8, dataWidthB),
@@ -1241,6 +1427,31 @@ module mkBlockRamPortableTrueMixedBEOpts#(BlockRamOpts opts)
     return vec[opts.registerDataOut ? offsetB2 : offsetB1];
   endmethod
 
+endmodule
+
+module mkBlockRamPortableTrueMixedBEOpts#(BlockRamOpts opts)
+         (BlockRamTrueMixedByteEn#(addrA, dataA, addrB, dataB, dataBBytes))
+         provisos(Bits#(addrA, addrWidthA), Bits#(dataA, dataWidthA),
+                  Bits#(addrB, addrWidthB), Bits#(dataB, dataWidthB),
+                  Bounded#(addrA), Bounded#(addrB),
+                  Add#(addrWidthA, aExtra, addrWidthB),
+                  Mul#(TExp#(aExtra), dataWidthB, dataWidthA),
+                  Mul#(dataBBytes, 8, dataWidthB),
+                  Div#(dataWidthB, dataBBytes, 8),
+                  Mul#(dataABytes, 8, dataWidthA),
+                  Div#(dataWidthA, dataABytes, 8),
+                  Mul#(TExp#(aExtra), dataBBytes, dataABytes),
+                  Literal#(dataA), Literal#(dataB),
+                  Add#(aExtra, TLog#(dataBBytes), TLog#(dataABytes))
+                  );
+
+  BlockRamTrueMixedByteEn#(addrA, dataA, addrB, dataB, dataBBytes) ram1 <-
+    mkBlockRamPortableTrueMixedBEOpts_old(opts);
+  // BlockRamTrueMixedByteEn#(addrA, dataA, addrB, dataB, dataBBytes) ram2 <-
+  //   mkBlockRamPortableTrueMixedBEOpts_new(opts);
+  //
+  // return opts.registerDataOut ? ram1 : ram2;
+  return ram1;
 endmodule
 
 

@@ -33,7 +33,7 @@ BSC = bsc
 BSCFLAGS = -suppress-warnings S0015 \
            -suppress-warnings G0023 \
            -steps-warn-interval 750000 -check-assert \
-           +RTS -K128M -RTS \
+           +RTS -K128M -RTS -show-schedule -show-method-bvi \
 					 -p $(call join-with,:,$(BSINCLUDE))
 
 

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BSD-2-Clause
 import BlockRam::*; // for types
+// import BlockRAMv :: *;
 
 import BlueCheck :: *;
 import StmtFSM::*;
@@ -70,6 +71,45 @@ module [BlueCheck] checkBRAMTrueMixedBEPortable#(BlockRamOpts opts) (Empty);
   equiv("outB"    , spec.dataOutB    , imp.dataOutB);
 endmodule
 
+module [BlueCheck] checkBRAMTrueMixedBE_BSVLogic#(BlockRamOpts opts) (Empty);
+
+  /* Specification instance */
+  BlockRamTrueMixedBE#(AddrA, DataA, AddrB, DataB) spec <- mkBlockRamTrueMixedBEOpts_SIMULATE(opts);
+
+  /* Implmentation instance */
+  BlockRamTrueMixedByteEn#(AddrA, DataA, AddrB, DataB, 2) imp <- mkBlockRamPortableTrueMixedBEOpts(opts);
+
+  Reg#(Bit#(TAdd#(SizeOf#(AddrA),1))) addr_a <- mkReg(0);
+  Stmt zero = seq
+
+    $display("zeroing");
+    for (addr_a<=0; addr_a<16; addr_a<=addr_a+1) seq
+      $display("zeroed %d", addr_a);
+      spec.putA(True, unpack(truncate(addr_a)), ~64'h0);
+      imp.putA(True, unpack(truncate(addr_a)), ~64'h0);
+    endseq
+    $display("zeroed");
+  //   spec.putB(False, 0, 0, 0);
+  //   imp.putB(False, 0, 0, 0);
+
+    par
+      spec.putA(False, 0, 0);
+      spec.putB(False, 0, 0, 0);
+      imp.putA(False, 0, 0);
+      imp.putB(False, 0, 0, 0);
+    endpar
+
+    delay(2);
+
+  endseq;
+
+  pre("Zero", zero);
+
+  equiv("putA"    , spec.putA    , imp.putA);
+  equiv("outA"   , spec.dataOutA   , imp.dataOutA);
+  equiv("putB", spec.putB, imp.putB);
+  equiv("outB"    , spec.dataOutB    , imp.dataOutB);
+endmodule
 
 
 module [Module] mkBRAMTest ();
@@ -118,7 +158,7 @@ module [Module] mkBRAMTest ();
   opts[2] = dontCareNoReg;
   opts[3] = dontCareReg;
 
-  Vector#(12, FSM) testers = newVector();
+  Vector#(14, FSM) testers = newVector();
 
   BlueCheck_Params bcParams =
     BlueCheck_Params {
@@ -145,13 +185,16 @@ module [Module] mkBRAMTest ();
       testers[optctr*3+2] <- mkFSM(tmbeport);
   end
 
+  let bsvlogic_noreg <- mkModelChecker(checkBRAMTrueMixedBE_BSVLogic(dontCareNoReg, reset_by brams_reset), bcParams);
+  let bsvlogic_reg <- mkModelChecker(checkBRAMTrueMixedBE_BSVLogic(dontCareReg, reset_by brams_reset), bcParams);
 
-
+  testers[12] <- mkFSM(bsvlogic_noreg);
+  testers[13] <- mkFSM(bsvlogic_reg);
 
   Reg#(Int#(32)) test_iter <- mkReg(0);
   Stmt test = seq
 
-    for (test_iter<=0; test_iter<12; test_iter<=test_iter+1) seq
+    for (test_iter<=0; test_iter<14; test_iter<=test_iter+1) seq
       $display("starting test ", test_iter, " ######################################## ");
       testers[test_iter].start();
       await(testers[test_iter].done());
