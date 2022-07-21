@@ -557,7 +557,7 @@ endmodule
 // Implementation (Simulation)
 // =============================================================================
 
-module mkPCIeStream (Get#(Bit#(64)) chipID, PCIeStream ifc);
+module mkPCIeStream (Maybe#(Bit#(64)) chipID, PCIeStream ifc);
 
   // Ports
   InPort#(Bit#(128)) inPort <- mkInPort;

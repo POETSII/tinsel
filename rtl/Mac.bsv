@@ -244,7 +244,7 @@ module mkMac#(SocketId id) (Mac);
         inPort.get;
         if (beat.stop) drop <= False;
       end else if (random[31:28] == 0 && inPort.canGet) begin
-        $display("[mac::consume] dropping packet");
+        // $display("[mac::consume] dropping packet");
         // Move to drop-packet state
         if (beat.stop) begin
           inPort.get; // 512b packet: start and end can be on the same beat.

@@ -65,6 +65,14 @@ module [BlueCheck] checkBRAMTrueMixedBEPortable#(BlockRamOpts opts) (Empty);
   /* Implmentation instance */
   BlockRamTrueMixedBE#(AddrA, DataA, AddrB, DataB) imp <- mkBlockRamPortableTrueMixedBEOpts(opts);
 
+  // rule printa;
+  //   $display($time, " spec.dataOutA = %x", spec.dataOutA);
+  // endrule
+  //
+  // rule printb;
+  //   $display($time, " spec.dataOutB = %x", spec.dataOutB);
+  // endrule
+
   equiv("putA"    , spec.putA    , imp.putA);
   equiv("outA"   , spec.dataOutA   , imp.dataOutA);
   equiv("putB", spec.putB, imp.putB);
@@ -77,7 +85,7 @@ module [BlueCheck] checkBRAMTrueMixedBE_BSVLogic#(BlockRamOpts opts) (Empty);
   BlockRamTrueMixedBE#(AddrA, DataA, AddrB, DataB) spec <- mkBlockRamTrueMixedBEOpts_SIMULATE(opts);
 
   /* Implmentation instance */
-  BlockRamTrueMixedByteEn#(AddrA, DataA, AddrB, DataB, 2) imp <- mkBlockRamPortableTrueMixedBEOpts(opts);
+  BlockRamTrueMixedBE#(AddrA, DataA, AddrB, DataB) imp <- mkBlockRamTrueMixedBE_BsvCtrlLogic(opts);
 
   Reg#(Bit#(TAdd#(SizeOf#(AddrA),1))) addr_a <- mkReg(0);
   Stmt zero = seq
@@ -186,12 +194,15 @@ module [Module] mkBRAMTest ();
   end
 
   let bsvlogic_noreg <- mkModelChecker(checkBRAMTrueMixedBE_BSVLogic(dontCareNoReg, reset_by brams_reset), bcParams);
-  let bsvlogic_reg <- mkModelChecker(checkBRAMTrueMixedBE_BSVLogic(dontCareReg, reset_by brams_reset), bcParams);
-
   testers[12] <- mkFSM(bsvlogic_noreg);
+
+  let bsvlogic_reg <- mkModelChecker(checkBRAMTrueMixedBE_BSVLogic(dontCareReg, reset_by brams_reset), bcParams);
   testers[13] <- mkFSM(bsvlogic_reg);
 
   Reg#(Int#(32)) test_iter <- mkReg(0);
+
+  // let tmdp_portable <- mkModelChecker(checkBRAMTrueMixedBEPortable(dontCareNoReg, reset_by brams_reset), bcParams);
+
   Stmt test = seq
 
     for (test_iter<=0; test_iter<14; test_iter<=test_iter+1) seq
@@ -204,6 +215,7 @@ module [Module] mkBRAMTest ();
       // r.assertReset();
       // delay(5);
     endseq
+
   endseq;
 
   mkAutoFSM( test );
