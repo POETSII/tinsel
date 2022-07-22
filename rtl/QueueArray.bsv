@@ -56,36 +56,26 @@ typedef struct {
 module mkQueueArray (QueueArray#(logNumQueues, logQueueSize, elemType))
   provisos (
 
-  Bits#(elemType, elemTypeSize),
-  Div#(TMul#(TDiv#(elemTypeSize, 8), 8), TDiv#(TMul#(TDiv#(elemTypeSize, 8), 8), 8), 8),
-  Div#(TMul#(TDiv#(elemTypeSize, 8), 8), 8, TDiv#(elemTypeSize, 8)),
-  Div#(TMul#(TDiv#(elemTypeSize, 8), 8), TMul#(TDiv#(elemTypeSize, 8), 8), 1),
-  Add#(a__, elemTypeSize, TMul#(TDiv#(elemTypeSize, 8), 8)),
-  Add#(b__, logQueueSize, TMul#(TDiv#(logQueueSize, 8), 8)),
-  Div#(TMul#(TDiv#(logQueueSize, 8), 8), TMul#(TDiv#(logQueueSize, 8), 8), 1),
-  Div#(TMul#(TDiv#(logQueueSize, 8), 8), TDiv#(TMul#(TDiv#(logQueueSize, 8), 8), 8), 8),
-  Div#(TMul#(TDiv#(logQueueSize, 8), 8), 8, TDiv#(logQueueSize, 8)),
-  Div#(elemTypeSize, elemTypeSize, 1),
-  Div#(logQueueSize, logQueueSize, 1)
-);
+    Bits#(elemType, elemTypeSize)
+  );
 
   // Block RAM storing front pointers
   BlockRamOpts ptrOpts = defaultBlockRamOpts;
   ptrOpts.readDuringWrite = DontCare;
   ptrOpts.registerDataOut = False;
   BlockRamTrue#(Bit#(logNumQueues), Bit#(logQueueSize))
-    ramFront <- mkBlockRamTrueMixedOpts(ptrOpts);
+    ramFront <- mkBlockRamTrueOpts(ptrOpts);
 
   // Block RAM storing back pointers
   BlockRamTrue#(Bit#(logNumQueues), Bit#(logQueueSize))
-    ramBack <- mkBlockRamTrueMixedOpts(ptrOpts);
+    ramBack <- mkBlockRamTrueOpts(ptrOpts);
 
   // Block RAM storing queue data
   BlockRamOpts dataOpts = defaultBlockRamOpts;
   dataOpts.readDuringWrite = DontCare;
   dataOpts.registerDataOut = False;
   BlockRamTrue#(Bit#(TAdd#(logNumQueues, logQueueSize)), elemType)
-    ramData <- mkBlockRamTrueMixedOpts(dataOpts);
+    ramData <- mkBlockRamTrueOpts(dataOpts);
 
   // State of enqueue state machine
   Reg#(Bit#(1)) enqState <- mkConfigReg(0);
