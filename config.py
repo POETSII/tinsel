@@ -123,7 +123,7 @@ p["MeshXBitsWithinBox"] = 2
 p["MeshYBitsWithinBox"] = 1
 
 # Mesh X length within a box
-p["MeshXLenWithinBox"] = 2 # 4
+p["MeshXLenWithinBox"] = 1 # 4
 
 # Mesh Y length within a box
 p["MeshYLenWithinBox"] = 1

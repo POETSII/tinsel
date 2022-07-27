@@ -35,9 +35,9 @@ BOOT_UP_TO_DATE=$( make -C apps/boot all | tee /dev/tty )
 echo $BOOT_UP_TO_DATE
 
 
-if  ! $( grep -c "Nothing to be done for 'all'" < $BOOT_UP_TO_DATE ) ; then
+if  [ $( echo "${BOOT_UP_TO_DATE}" | grep -c "Nothing to be done for 'all'" ) == "0" ] ; then
   echo "updating bootloader in .sof"
-  # make -C de10-pro update-mif
+  make -C de10-pro update-mif
 else
   echo "bootloader up-to-date; not rebuilding mif"
 fi
@@ -95,10 +95,13 @@ $SSH $HOST sudo -S devmem2 0x$MAGIC_ADDR
 
 $SSH $HOST "sudo -S $TINSELPATH/hostlink/pciestreamd $ADDR > pcielog.txt" &
 $SSH $HOST $envs $TINSELPATH/hostlink/boardctrld &
-# # sleep 5
-ssh -X $HOST "cd $TINSELPATH/apps/hello && ./run"
+ssh -X $HOST $envs quartus_stpw $TINSELPATH/DE10Pro/DE10-reference-project/quartus/stp1.stp &
+
 # # sleep 5
 # ssh -X $HOST "cd $TINSELPATH/apps/hello && ./run"
-# $SSH -X $HOST "cd $TINSELPATH/apps/hello && urxvt"
+$SSH -X $HOST "cd $TINSELPATH/apps/hello && urxvt"
+
+# # sleep 5
+# ssh -X $HOST "cd $TINSELPATH/apps/hello && ./run"
 #  -e bash -c \"./run | tee log.txt && bash\""
 # ssh $HOST "sudo $TINSELPATH/hostlink/echo"

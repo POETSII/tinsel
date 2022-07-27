@@ -78,9 +78,7 @@ module mkDualInstrMem#(InstrMemClient clientA, InstrMemClient clientB) (Empty);
   BlockRamOpts instrMemOpts = defaultBlockRamOpts;
   instrMemOpts.initFile = Valid("InstrMem");
   instrMemOpts.registerDataOut = False;
-  BlockRamTrueMixed#(InstrIndex, Bit#(32),
-                     InstrIndex, Bit#(32)) instrMem <- 
-    mkBlockRamTrueMixedOpts(instrMemOpts);
+  BlockRamTrue#(InstrIndex, Bit#(32)) instrMem <- mkBlockRamTrueOpts(instrMemOpts);
 
   // Connect to clients
   rule connectA;

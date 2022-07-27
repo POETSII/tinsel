@@ -5653,7 +5653,7 @@
                         </entry>
                         <entry>
                             <key>synchronousEdges</key>
-                            <value>DEASSERT</value>
+                            <value>BOTH</value>
                         </entry>
                     </parameterValueMap>
                 </parameters>
@@ -7439,7 +7439,7 @@
                         </entry>
                         <entry>
                             <key>synchronousEdges</key>
-                            <value>DEASSERT</value>
+                            <value>BOTH</value>
                         </entry>
                     </parameterValueMap>
                 </parameters>
@@ -7627,7 +7627,7 @@
                         </entry>
                         <entry>
                             <key>synchronousEdges</key>
-                            <value>DEASSERT</value>
+                            <value>BOTH</value>
                         </entry>
                     </parameterValueMap>
                 </parameters>
@@ -7728,7 +7728,7 @@
                     </entry>
                     <entry>
                         <key>synchronousEdges</key>
-                        <value>DEASSERT</value>
+                        <value>BOTH</value>
                     </entry>
                 </parameterValueMap>
             </parameters>
@@ -9513,7 +9513,7 @@
                     </entry>
                     <entry>
                         <key>synchronousEdges</key>
-                        <value>DEASSERT</value>
+                        <value>BOTH</value>
                     </entry>
                 </parameterValueMap>
             </parameters>
@@ -9701,7 +9701,7 @@
                     </entry>
                     <entry>
                         <key>synchronousEdges</key>
-                        <value>DEASSERT</value>
+                        <value>BOTH</value>
                     </entry>
                 </parameterValueMap>
             </parameters>
@@ -51671,7 +51671,7 @@
                     </entry>
                     <entry>
                         <key>associatedResetSinks</key>
-                        <value></value>
+                        <value>none</value>
                     </entry>
                     <entry>
                         <key>synchronousEdges</key>
@@ -51814,6 +51814,7 @@
                     </entry>
                     <entry>
                         <key>bridgedAddressOffset</key>
+                        <value>0</value>
                     </entry>
                     <entry>
                         <key>bridgesToMaster</key>

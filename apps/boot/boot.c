@@ -17,6 +17,9 @@ int main()
 {
   // Global id of this thread
   uint32_t me = tinselId();
+  // this is only correct locally to start.
+  // we need to wait until debuglink has communicated the FPGA ID to host to get
+  // the boardid correct.
 
   // // Core-local thread id
   uint32_t threadId = me & ((1 << TinselLogThreadsPerCore) - 1);
@@ -42,6 +45,13 @@ int main()
       tinselWaitUntil(TINSEL_CAN_RECV);
       msgIn = tinselRecv();
       uint8_t cmd = msgIn->cmd;
+      // all of this depends on the tinselId.
+      me = tinselId();
+      threadId = me & ((1 << TinselLogThreadsPerCore) - 1);
+      // if (threadId == 0) puthex_me(me);
+      hostId = tinselHostId();
+      msgOut = tinselSendSlot();
+
 
       // Command dispatch
       // (We avoid using a switch statement here so that the compiler
@@ -79,6 +89,14 @@ int main()
         //   tinselCacheFlush();
         //   // Wait until lines written back, by issuing a load
         //   volatile uint32_t* ptr = (uint32_t*) lastDataStoreAddr; ptr[0];
+        tinselCacheFlush();
+        // Wait until lines written back, by issuing a load
+        volatile uint32_t* ptr = (uint32_t*) lastDataStoreAddr; ptr[0];
+
+        // add a global memory barrier
+        uint32_t stackptr;
+        asm volatile("addi %0, sp, 0" : "=r"(stackptr));
+
         // }
         // tinselEmit(0x3);
         // tinselEmit(addrReg);
@@ -126,6 +144,8 @@ int main()
         // Wait until lines written back, by issuing a load
         if (lastDataStoreAddr != 0) {
           volatile uint32_t* ptr = (uint32_t*) lastDataStoreAddr; ptr[0];
+        } else {
+          volatile uint32_t* ptr = (uint32_t*)4; ptr[0];
         }
         // Send response
         tinselWaitUntil(TINSEL_CAN_SEND);

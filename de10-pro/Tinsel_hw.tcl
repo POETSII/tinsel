@@ -72,7 +72,7 @@ add_interface_port clock CLK clk Input 1
 #
 add_interface reset_sink reset end
 set_interface_property reset_sink associatedClock clock
-set_interface_property reset_sink synchronousEdges DEASSERT
+set_interface_property reset_sink synchronousEdges BOTH
 set_interface_property reset_sink ENABLED true
 set_interface_property reset_sink EXPORT_OF ""
 set_interface_property reset_sink PORT_NAME_MAP ""
@@ -425,7 +425,7 @@ add_interface_port northmac_source_clk CLK_northTxClk clk Input 1
 #
 add_interface northmac_source_reset_sink reset end
 set_interface_property northmac_source_reset_sink associatedClock northmac_source_clk
-set_interface_property northmac_source_reset_sink synchronousEdges DEASSERT
+set_interface_property northmac_source_reset_sink synchronousEdges BOTH
 set_interface_property northmac_source_reset_sink ENABLED true
 set_interface_property northmac_source_reset_sink EXPORT_OF ""
 set_interface_property northmac_source_reset_sink PORT_NAME_MAP ""
@@ -481,7 +481,7 @@ add_interface_port northmac_sink_clk CLK_northRxClk clk Input 1
 #
 add_interface northmac_sink_reset_sink reset end
 set_interface_property northmac_sink_reset_sink associatedClock northmac_sink_clk
-set_interface_property northmac_sink_reset_sink synchronousEdges DEASSERT
+set_interface_property northmac_sink_reset_sink synchronousEdges BOTH
 set_interface_property northmac_sink_reset_sink ENABLED true
 set_interface_property northmac_sink_reset_sink EXPORT_OF ""
 set_interface_property northmac_sink_reset_sink PORT_NAME_MAP ""
@@ -490,6 +490,3 @@ set_interface_property northmac_sink_reset_sink SVD_ADDRESS_GROUP ""
 set_interface_property northmac_sink_reset_sink IPXACT_REGISTER_MAP_VARIABLES ""
 
 add_interface_port northmac_sink_reset_sink RST_N_northRxRst reset_n Input 1
-
-
-

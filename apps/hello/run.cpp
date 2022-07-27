@@ -11,6 +11,9 @@ int main()
   // HostLink hl( params );
 
   HostLink hostLink(params);
+  printf("[hello:run:main] hostLink created\n");
+  hostLink.powerOnSelfTest();
+
   printf("[hello/run::main] starting to load cores.\n");
 
   // hostLink.boot("code.v", "data.v");
@@ -20,33 +23,32 @@ int main()
   //   hostLink.printStack(0, 0, c);
   // }
 
-  for (uint32_t id=0; id<16*8; id=id+16) {
-    printf("hostlink.toAddr for threadid %i: %i\n", id, hostLink.toAddr(0, 0, id/16, 0));
-    hostLink.printStackRawAddr(id);
-  }
-
-  // hostLink.go();
-  // for (auto boardid : hostLink.boards) {
-  //   int x = std::get<0>(boardid);
-  //   int y = std::get<1>(boardid);
-  //   for (int i=0; i<8; i++) {
-  //     hostLink.goOne(x, y, i);
-  //   }
+  // for (uint32_t id=0; id<16*8; id=id+16) {
+  //   printf("hostlink.toAddr for threadid %i: %i\n", id, hostLink.toAddr(0, 0, id/16, 0));
+  //   hostLink.printStackRawAddr(id);
   // }
 
-  for (int x=0; x<2; x++) {
-    for (int i=0; i<8; i++) {
-      hostLink.goOne(x, 0, i);
-    }
-  }
+  // hostLink.go();
+
 
   for (auto boardid : hostLink.boards) {
     int x = std::get<0>(boardid);
     int y = std::get<1>(boardid);
-    for (int i=0; i<8; i++) {
-      hostLink.startOne(x, y, i, 1);
+    for (int i=0; i<1; i++) {
+      hostLink.startOne(x, y, i, 2);
     }
   }
+  printf("run.cpp: all boards waiting on start\n");
+
+  for (auto boardid : hostLink.boards) {
+    int x = std::get<0>(boardid);
+    int y = std::get<1>(boardid);
+    for (int i=0; i<1; i++) {
+      hostLink.goOne(x, y, i);
+    }
+  }
+  printf("run.cpp: sent go msg to all cores.\n");
+
 
   // for (int x=0; x<2; x++) {
   //   for (int i=0; i<8; i++) {

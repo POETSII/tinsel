@@ -1385,7 +1385,7 @@
         <ipxact:parameter parameterId="ENABLE_ANLT" type="int">
           <ipxact:name>ENABLE_ANLT</ipxact:name>
           <ipxact:displayName>Enable AN/LT</ipxact:displayName>
-          <ipxact:value>1</ipxact:value>
+          <ipxact:value>0</ipxact:value>
         </ipxact:parameter>
         <ipxact:parameter parameterId="SYNTH_LT" type="int">
           <ipxact:name>SYNTH_LT</ipxact:name>
