@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BSD-2-Clause
 #include <DebugLink.h>
 #include <unistd.h>
+#include "config.h"
 
 void debugprintf(DebugLink* debugLink) {
   bool got = false;
@@ -30,10 +31,14 @@ int main()
   DebugLink debugLink = DebugLink(debugLinkParams);
   printf("[apps/boot/run:main] debuglink connected, going to print loop\n");
 
-  // Send char to thread 0
-  debugLink.setDest(0, 0, 0, 0);
-  debugLink.put(0, 0, 'X');
-  printf("put done\n");
+  // Send char to all Threads
+  for (int c=0; c<TinselCoresPerBoard; c++) {
+    for (int i=0; i<16; i++) {
+      debugLink.setDest(0, 0, c, i);
+      debugLink.put(0, 0, 'X');
+      printf("put done\n");
+    }
+  }
 
   while (1) {
     debugprintf(&debugLink);

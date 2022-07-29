@@ -33,38 +33,23 @@ INLINE int puthex(unsigned x)
   return 8;
 }
 
-// INLINE int printf(const char* fmt, ...)
-// {
-//   int count = 0;
-//   va_list args;
-//
-//   va_start(args, fmt);
-//
-//   while (*fmt) {
-//     if (*fmt == '%') {
-//       fmt++;
-//       if (*fmt == '\0') break;
-//       if (*fmt == 's') count += puts(va_arg(args, char*));
-//       if (*fmt == 'x') count += puthex(va_arg(args, unsigned));
-//     }
-//     else { putchar(*fmt); count++; }
-//     fmt++;
-//   }
-//
-//   va_end(args);
-//
-//   return count;
-// }
-//
 
 // Main
 int main()
 {
   // Global id of this thread
+  // Send char to all Threads
+
   uint32_t me = tinselId();
 
   // Core-local thread id
   uint32_t threadId = me & ((1 << TinselLogThreadsPerCore) - 1);
+  if (threadId == 0) {
+    for (int i=1; i<16; i++) {
+      tinselCreateThread(i);
+    }
+  }
+
 
   // Host id
   uint32_t hostId = tinselHostId();
@@ -73,11 +58,7 @@ int main()
   tinselSetLen(0);
 
   while ((tinselUartTryGet() & 0x100) == 0);
-
-  puts("hello from bootloader 0x");
   puthex(me);
-  puts("\n");
-
 
   while (1);
 

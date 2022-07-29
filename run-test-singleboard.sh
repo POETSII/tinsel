@@ -44,7 +44,7 @@ fi
 
 
 if [ $HOST = "ASDEX" ]; then
-  $SSH $HOST sudo mount -t cifs -o user=$USER,uid=1000,gid=1000 //192.168.0.116/culham /mnt || true
+  $SSH $HOST sudo mount -t cifs -o user=$USER,pass=$NFSPW,uid=1000,gid=1000 //192.168.0.116/culham /mnt || true
 fi
 
 if [ $HOST = "sappho" ]; then
@@ -78,7 +78,7 @@ done
 set -e
 
 if [ $HOST = "ASDEX" ]; then
-  $SSH $HOST sudo mount -t cifs -o user=$USER,uid=1000,gid=1000 //192.168.0.116/culham /mnt || true
+  $SSH $HOST sudo mount -t cifs -o user=$USER,pass=$NFSPW,uid=1000,gid=1000 //192.168.0.116/culham /mnt || true
 fi
 
 if [ $HOST = "sappho" ]; then
