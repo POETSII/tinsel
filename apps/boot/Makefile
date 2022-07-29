@@ -11,6 +11,12 @@ LDFLAGS = -melf32lriscv -G 0
 .PHONY: all
 all: $(RTL)/InstrMem.hex $(QP)/InstrMem.mif
 
+writeapp.h: code_v_to_include.py ../hello/code.v
+	make -C ../hello all
+	python3 code_v_to_include.py ../hello > writeapp.h
+
+boot.o: writeapp.h
+
 $(RTL)/InstrMem.hex: InstrMem.ihex
 	code-to-img.sh hex InstrMem.ihex > $(RTL)/InstrMem.hex
 

@@ -31,14 +31,10 @@ int main()
   DebugLink debugLink = DebugLink(debugLinkParams);
   printf("[apps/boot/run:main] debuglink connected, going to print loop\n");
 
-  // Send char to all Threads
-  for (int c=0; c<TinselCoresPerBoard; c++) {
-    for (int i=0; i<16; i++) {
-      debugLink.setDest(0, 0, c, i);
-      debugLink.put(0, 0, 'X');
-      printf("put done\n");
-    }
-  }
+  debugLink.setDest(0, 0, 0, 0);
+  debugLink.put(0, 0, 'X');
+  printf("put done\n");
+
 
   while (1) {
     debugprintf(&debugLink);

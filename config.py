@@ -94,7 +94,7 @@ p["LogMsgPtrQueueSize"] = 6
 p["LogMulticastBufferSize"] = 9
 
 # Maximum size of boot loader (in bytes)
-p["MaxBootImageBytes"] = 576
+p["MaxBootImageBytes"] = 4096
 
 # Size of transmit buffer in a reliable link
 p["LogTransmitBufferSize"] = 10
@@ -178,7 +178,7 @@ p["EnablePerfCount"] = True
 p["BoxMeshXLen"] = 1
 p["BoxMeshYLen"] = 1
 p["BoxMesh"] = ('{'
-    '{"kipling"}'
+    '{"asdex"}'
   '}')
 
 # Enable custom accelerators (experimental feature)
@@ -381,7 +381,7 @@ p["FetchersPerProgRouter"] = 4 + p["MailboxMeshXLen"]
 p["LogFetcherFlitBufferSize"] = 5
 
 #==============================================================================
-# Main 
+# Main
 #==============================================================================
 
 def to_cpp_string(convertee):

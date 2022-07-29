@@ -5,9 +5,11 @@
 #include <boot.h>
 #include <stdarg.h>
 
+#include "writeapp.h"
+
 // See "boot.h" for further details of the supported boot commands.
 
-INLINE int putchar(int c)
+int putchar(int c)
 {
   while (tinselUartTryPut(c) == 0);
   return c;
@@ -20,7 +22,7 @@ INLINE int puts(const char* s)
   return count;
 }
 
-INLINE int puthex(unsigned x)
+int puthex(unsigned x)
 {
   int count = 0;
 
@@ -33,7 +35,6 @@ INLINE int puthex(unsigned x)
   return 8;
 }
 
-
 // Main
 int main()
 {
@@ -44,12 +45,12 @@ int main()
 
   // Core-local thread id
   uint32_t threadId = me & ((1 << TinselLogThreadsPerCore) - 1);
+
   if (threadId == 0) {
-    for (int i=1; i<16; i++) {
-      tinselCreateThread(i);
+    for (int trd=1; trd<TinselThreadsPerCore-1; trd++) {
+      tinselCreateThread(trd);
     }
   }
-
 
   // Host id
   uint32_t hostId = tinselHostId();
@@ -59,6 +60,17 @@ int main()
 
   while ((tinselUartTryGet() & 0x100) == 0);
   puthex(me);
+  putchar('s');
+  writeapp_data();
+  putchar('d');
+  writeapp_code();
+  putchar('c');
+
+  tinselCacheFlush(); // as we are only running this thread, no need to wait for writeback
+  putchar('f');
+  int (*appMain)() = (int (*)()) (TinselMaxBootImageBytes);
+  putchar('g');
+  appMain();
 
   while (1);
 
