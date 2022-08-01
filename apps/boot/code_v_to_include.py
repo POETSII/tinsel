@@ -25,7 +25,7 @@ def fmt_words_in_verilog_memdump(file, fmt):
 
     data = " ".join(map(str.strip, data)).split(" ") # one word (list of 4 bytes) per index
     words = grouper(data, 4, fillvalue="00") # 0-padded 32b words
-    hexwords = map(lambda b: "0x"+"".join(b), words) # as C format literals
+    hexwords = map(lambda b: "0x"+"".join(b[::-1]), words) # as C format literals, in the correct word order
 
     for addr, hexword in zip( count(startaddr, 4), hexwords):
         stmt = fmt.format(addr=addr, wordlit=hexword)

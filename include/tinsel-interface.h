@@ -21,6 +21,8 @@ INLINE void tinselCacheFlush();
 INLINE void tinselFlushLine(uint32_t lineNum, uint32_t way);
 
 // Write a word to instruction memory
+// Precondition: only thread 0 is running. Writing instructions with
+// multiple threads per core running will produce incorrect writes.
 INLINE void tinselWriteInstr(uint32_t addr, uint32_t word);
 
 // Emit word to console (simulation only)
