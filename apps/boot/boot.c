@@ -46,6 +46,8 @@ int main()
   // Core-local thread id
   uint32_t threadId = me & ((1 << TinselLogThreadsPerCore) - 1);
 
+  if (threadId != 0) while (1) {};
+
   // Host id
   uint32_t hostId = tinselHostId();
 
@@ -61,11 +63,6 @@ int main()
   putchar('c');
 
   tinselCacheFlush(); // as we are only running this thread, no need to wait for writeback
-  if (threadId == 0) {
-    for (int trd=1; trd<TinselThreadsPerCore-1; trd++) {
-      tinselCreateThread(trd);
-    }
-  }
 
   putchar('f');
   int (*appMain)() = (int (*)()) (TinselMaxBootImageBytes);
