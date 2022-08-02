@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: BSD-2-Clause
 # This file controls the parameters for the circuit generator
 
-import sys
+import sys, os
 
 #==============================================================================
 # Prelude
@@ -181,7 +181,8 @@ p["UseCustomAccelerator"] = False
 # Clock frequency (in MHz)
 p["ClockFreq"] = 200
 
-if "simulate" in sys.argv: # simulate
+# if "simulate" in sys.argv: # simulate
+if os.environ["TINSEL_SIMULATE"].lower() == "true":
     # p["LogCoresPerDCache"] = p["LogCoresPerDCache"]-1
     # p["MailboxMeshXBits"] = p["MailboxMeshXBits"]-1
     # p["MailboxMeshYBits"] = p["MailboxMeshYBits"]-1
