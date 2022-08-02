@@ -27,3 +27,5 @@ de10-pro/output_files/**
 de10-pro/ip/*/**
 !de10-pro/ip/*/*.ip
 de10-pro/ip/*/*BAK.ip
+
+de5/*
