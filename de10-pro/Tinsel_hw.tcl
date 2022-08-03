@@ -40,7 +40,7 @@ add_fileset QUARTUS_SYNTH QUARTUS_SYNTH "" ""
 set_fileset_property QUARTUS_SYNTH TOP_LEVEL mkDE10Top
 set_fileset_property QUARTUS_SYNTH ENABLE_RELATIVE_INCLUDE_PATHS false
 set_fileset_property QUARTUS_SYNTH ENABLE_FILE_OVERWRITE_MODE false
-add_fileset_file de5Top.v VERILOG PATH ../rtl/mkDE10Top.v TOP_LEVEL_FILE
+add_fileset_file de10Top.v VERILOG PATH ../rtl/mkDE10Top.v TOP_LEVEL_FILE
 
 
 #

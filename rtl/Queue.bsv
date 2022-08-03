@@ -216,13 +216,7 @@ module mkUGShiftQueueCore#(QueueOpt opt) (SizedQueue#(size, elemType))
     end
     // Insert new element?
     case (doEnq.wget) matches
-      tagged Invalid: if (shift) begin
-        Bit#(SizeOf#(elemType)) signallingUnknown = 0;
-        for (Integer i=0; i<valueOf(SizeOf#(elemType)); i=i+1)
-          signallingUnknown[i] = pack(i%2 == 0);
-        elems[endIndex] <= unpack(signallingUnknown);
-        valids[endIndex] <= False;
-      end
+      tagged Invalid: if (shift) valids[endIndex] <= False;
       tagged Valid .x: begin
         elems[endIndex] <= x;
         valids[endIndex] <= True;

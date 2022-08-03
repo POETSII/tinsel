@@ -17,7 +17,7 @@ typedef struct {
   Bool isStore;     // Store
   Bool isFlush;     // Perform cache flush
   Bool isFlushResp; // Flush response (only used internally)
-} DCacheReqCmd deriving (Bits, FShow);
+} DCacheReqCmd deriving (Bits);
 
 // DCache client request structure
 typedef struct {
@@ -26,7 +26,7 @@ typedef struct {
   Bit#(32) addr;
   Bit#(32) data;
   Bit#(4) byteEn;
-} DCacheReq deriving (Bits, FShow);
+} DCacheReq deriving (Bits);
 
 // Details of a flush request: the 'addr' field specifies the
 // line to evict and the 'data' field specifies the way.

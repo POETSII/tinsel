@@ -54,28 +54,25 @@ typedef struct {
 } EnqReq#(numeric type logNumQueues, type elemType) deriving (Bits);
 
 module mkQueueArray (QueueArray#(logNumQueues, logQueueSize, elemType))
-  provisos (
-
-    Bits#(elemType, elemTypeSize)
-  );
+  provisos (Bits#(elemType, elemTypeSize));
 
   // Block RAM storing front pointers
   BlockRamOpts ptrOpts = defaultBlockRamOpts;
   ptrOpts.readDuringWrite = DontCare;
   ptrOpts.registerDataOut = False;
   BlockRamTrue#(Bit#(logNumQueues), Bit#(logQueueSize))
-    ramFront <- mkBlockRamTrueOpts(ptrOpts);
+    ramFront <- mkBlockRamTrueMixedOpts(ptrOpts);
 
   // Block RAM storing back pointers
   BlockRamTrue#(Bit#(logNumQueues), Bit#(logQueueSize))
-    ramBack <- mkBlockRamTrueOpts(ptrOpts);
+    ramBack <- mkBlockRamTrueMixedOpts(ptrOpts);
 
   // Block RAM storing queue data
   BlockRamOpts dataOpts = defaultBlockRamOpts;
   dataOpts.readDuringWrite = DontCare;
   dataOpts.registerDataOut = False;
   BlockRamTrue#(Bit#(TAdd#(logNumQueues, logQueueSize)), elemType)
-    ramData <- mkBlockRamTrueOpts(dataOpts);
+    ramData <- mkBlockRamTrueMixedOpts(dataOpts);
 
   // State of enqueue state machine
   Reg#(Bit#(1)) enqState <- mkConfigReg(0);
@@ -170,83 +167,3 @@ module mkQueueArray (QueueArray#(logNumQueues, logQueueSize, elemType))
 endmodule
 
 endpackage
-// typedef enum { WAIT, PROCESS, REPLY } QueueArrayState deriving (Bits, Eq);
-//
-// module mkQueueArray (QueueArray#(logNumQueues, logQueueSize, elemType))
-//   provisos (
-//     Bits#(elemType, elemBits),
-//     Add#(0, TExp#(logNumQueues), numQueues),
-//     Add#(1, __maybeZero, numQueues)
-//   );
-//
-//   Vector#(numQueues, SizedQueue#(logQueueSize, elemType)) queues;
-//   for (Integer i = 0; i < valueOf(numQueues); i = i+1)
-//     queues[i] <- mkSizedQueue();
-//
-//   Reg#(Bool) valueBufValid <- mkReg(False);
-//   Reg#(UInt#(logNumQueues)) valueBufQIdx <- mkReg(0);
-//   Reg#(QueueArrayState) state <- mkReg(WAIT);
-//
-//   // In WAIT; we get a request. this consists of a queue index. Move to PROCESS
-//   // in PROCESS, we make the request to the required queue
-//   // in REPLY, we drive the result to the consumer _if_ they deq'd
-//
-//   rule sm_1 (state == PROCESS);
-//     state <= REPLY;
-//   endrule
-//
-//   rule sm_2 (state == REPLY);
-//     state <= WAIT;
-//   endrule
-//
-//   // Guard on the enq method
-//   function Bool canEnqFn(SizedQueue#(logQueueSize, elemType) q) = q.notFull;
-//   method Bool canEnq = fold(\&& , map(canEnqFn, queues));
-//
-//   // Put an item into a specified queue
-//   method Action enq(Bit#(logNumQueues) index, elemType item);
-//     queues[index].enq(item);
-//   endmethod
-//
-//   // Try to dequeue an item from the specified queue
-//   method Action tryDeq(Bit#(logNumQueues) index) if (state == WAIT);
-//     // queues[index].deq;
-//     UInt#(logNumQueues) idx_i = unpack(index);
-//     valueBufQIdx <= idx_i;
-//     state <= PROCESS;
-//   endmethod
-//
-//   // The following two methods may be used on cycle after call to tryDeq
-//   // NOTE: must not call tryDeq and doDeq in same cycle
-//   method Bool canDeq if (state == PROCESS);
-//     return queues[valueBufQIdx].canDeq;
-//   endmethod
-//
-//   method Action doDeq() if (state == PROCESS);
-//    queues[valueBufQIdx].deq;
-//   endmethod
-//
-//   // Valid on the 2nd cycle after call to tryDeq
-//   method elemType itemOut if (state == REPLY) = queues[valueBufQIdx].dataOut;
-//
-// endmodule
-//
-//
-//
-// `ifdef StratixV
-// module mkQueueArray(QueueArray#(logNumQueues, logQueueSize, elemType));
-//  QueueArray#(logNumQueues, logQueueSize, elemType) qa <- mkQueueArrays5();
-//  return qa;
-// endmodule
-// `endif
-//
-// `ifdef Stratix10
-// module mkQueueArray(QueueArray#(logNumQueues, logQueueSize, elemType))
-//   provisos ( Bits#(elemType, elemBits), Add#(1, a__, TExp#(logNumQueues)) );
-//   QueueArray#(logNumQueues, logQueueSize, elemType) qa <- mkQueueArrays5();
-//   return qa;
-// endmodule
-// `endif
-//
-//
-// endpackage

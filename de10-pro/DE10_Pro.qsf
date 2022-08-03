@@ -1757,11 +1757,10 @@ set_global_assignment -name VERILOG_FILE ../rtl/AlteraMult.v
 set_global_assignment -name VERILOG_FILE ../rtl/mkMailbox.v
 set_global_assignment -name VERILOG_FILE ../rtl/mkDebugLinkRouter.v
 set_global_assignment -name VERILOG_FILE ../rtl/mkMeshRouter.v
-set_global_assignment -name VERILOG_FILE ../rtl/de5Top.v
 set_global_assignment -name VERILOG_FILE ../rtl/mkCore.v
 set_global_assignment -name VERILOG_FILE ../rtl/mkFPU.v
 set_global_assignment -name VERILOG_FILE ../rtl/mkDCache.v
-set_global_assignment -name VERILOG_FILE ../rtl/AlteraBlockRam.v
+set_global_assignment -name VERILOG_FILE ../rtl/AlteraBlockRam.sv
 set_global_assignment -name VERILOG_FILE BRAM2BELoad.v
 set_global_assignment -name QIP_FILE megafuns/fp/AlteraFPAddSub.qip
 set_global_assignment -name QIP_FILE megafuns/fp/AlteraFPMult.qip

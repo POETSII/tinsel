@@ -127,7 +127,6 @@ interface IdleDetector;
   interface Out#(Flit) mboxFlitOut;
 endinterface
 
-(* synthesize *)
 module mkIdleDetector (IdleDetector);
 
   // Ports

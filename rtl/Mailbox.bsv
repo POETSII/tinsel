@@ -286,7 +286,7 @@ module mkMailbox (Mailbox);
   // (One flit-sized port and one word-sized port)
 
   BlockRamTrueMixedBE#(MailboxFlitAddr, FlitPayload, MailboxWordAddr, Bit#(32))
-    scratchpad <- mkBlockRamTrueMixedBEOpts(defaultBlockRamOpts);
+    scratchpad <- mkBlockRamPortableTrueMixedBE;
 
   // Request & response ports
   InPort#(ScratchpadReq) spadReqPort  <- mkInPort;
@@ -372,7 +372,7 @@ module mkMailbox (Mailbox);
   BlockRamOpts refCountOpts = defaultBlockRamOpts;
   refCountOpts.registerDataOut = False;
   BlockRamTrue#(MailboxMsgAddr, RefCount)
-    refCount <- mkBlockRamTrueOpts(refCountOpts);
+    refCount <- mkBlockRamTrueMixedOpts(refCountOpts);
 
   // Signals for triggering a ref count update
   Reg#(Bool) setRefCount <- mkDReg(False);
