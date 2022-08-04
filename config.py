@@ -23,6 +23,7 @@ p = {}
 p["DeviceFamily"] = quoted("Stratix 10")
 
 # The number of hardware threads per core
+# TODO: crash when running >= 10 tpc; remove the waiting thread pool to avoid RTL issue.
 p["LogThreadsPerCore"] = 4
 
 # The number of 32-bit instructions that fit in a core's instruction memory
@@ -123,7 +124,7 @@ p["MeshXBitsWithinBox"] = 2
 p["MeshYBitsWithinBox"] = 1
 
 # Mesh X length within a box
-p["MeshXLenWithinBox"] = 1 # 4
+p["MeshXLenWithinBox"] = 2 # 4
 
 # Mesh Y length within a box
 p["MeshYLenWithinBox"] = 1

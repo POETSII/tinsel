@@ -68,7 +68,7 @@ int main()
     int x = std::get<0>(boardid);
     int y = std::get<1>(boardid);
     for (int i=0; i<TinselCoresPerBoard; i++) {
-      hostLink.startOne(x, y, i, 10);
+      hostLink.startOne(x, y, i, TinselThreadsPerCore/2);
     }
   }
   printf("run.cpp: all boards waiting on start\n");

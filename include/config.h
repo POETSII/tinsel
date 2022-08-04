@@ -36,7 +36,7 @@
 #define TinselMeshYBits1 2
 #define TinselMeshXBitsWithinBox 2
 #define TinselMeshYBitsWithinBox 1
-#define TinselMeshXLenWithinBox 1
+#define TinselMeshXLenWithinBox 2
 #define TinselMeshYLenWithinBox 1
 #define TinselLogCoresPerFPU 2
 #define TinselLogNorthSouthLinks 0
@@ -132,7 +132,7 @@
 #define TinselPOLiteDRAMGlobalsLength 16384
 #define TinselPOLiteProgRouterBase 16896
 #define TinselPOLiteProgRouterLength 536854016
-#define TinselBoardsPerBox 1
+#define TinselBoardsPerBox 2
 #define TinselFetchersPerProgRouter 6
 #define TinselLogFetcherFlitBufferSize 5
 #endif
