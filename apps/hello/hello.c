@@ -2,7 +2,6 @@
 #include <tinsel.h>
 #include <stdarg.h>
 
-
 int main()
 {
   // tinselCacheFlush();
@@ -10,5 +9,6 @@ int main()
 
   unsigned int me = tinselId();
   printf("hello from printf thread 0x%x\n", me);
+  while (1) {};
   return 0;
 }

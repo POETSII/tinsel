@@ -1,3 +1,4 @@
+
 // SPDX-License-Identifier: BSD-2-Clause
 // Tinsel boot loader
 
@@ -7,6 +8,20 @@
 INLINE void sendb(char c) {
   while (tinselUartTryPut(c) == 0);
 }
+
+INLINE int puthex_me(unsigned x)
+{
+  int count = 0;
+
+  for (count = 0; count < 8; count++) {
+    unsigned nibble = x >> 28;
+    sendb(nibble > 9 ? ('a'-10)+nibble : '0'+nibble);
+    x = x << 4;
+  }
+
+  return 8;
+}
+
 
 // INLINE void sendb(char c) {
 //   tinselEmit(c);
@@ -30,6 +45,7 @@ int main()
 
   // Use one flit per message
   tinselSetLen(0);
+  char postflag = 0;
 
   if (threadId == 0) {
     // State
@@ -45,6 +61,8 @@ int main()
       tinselWaitUntil(TINSEL_CAN_RECV);
       msgIn = tinselRecv();
       uint8_t cmd = msgIn->cmd;
+      // sendb('0'+cmd);
+
       // all of this depends on the tinselId.
       me = tinselId();
       threadId = me & ((1 << TinselLogThreadsPerCore) - 1);
@@ -52,6 +70,8 @@ int main()
       hostId = tinselHostId();
       msgOut = tinselSendSlot();
 
+      // tinselEmit(0x1);
+      // puthex_me(me);
 
       // Command dispatch
       // (We avoid using a switch statement here so that the compiler
@@ -61,17 +81,20 @@ int main()
         // Write instructions to instruction memory
         // tinselEmit(0x1);
         // tinselEmit(addrReg);
+        // puthex_me(addrReg);
 
         int n = msgIn->numArgs;
         for (int i = 0; i < n; i++) {
           tinselWriteInstr(addrReg, msgIn->args[i]);
           addrReg += 4;
         }
+        // sendb('c');
       }
       else if (cmd == StoreCmd) {
         // Store words to data memory
         // tinselEmit(0x2);
         // tinselEmit(addrReg);
+        // puthex_me(addrReg);
 
         int n = msgIn->numArgs;
         // tinselEmit(addrReg);
@@ -82,13 +105,11 @@ int main()
           lastDataStoreAddr = addrReg;
           addrReg += 4;
         }
+        // sendb('d');
       }
       else if (cmd == LoadCmd) {
         // Load words from data memory
         // if (addrReg == 0) {
-        //   tinselCacheFlush();
-        //   // Wait until lines written back, by issuing a load
-        //   volatile uint32_t* ptr = (uint32_t*) lastDataStoreAddr; ptr[0];
         tinselCacheFlush();
         // Wait until lines written back, by issuing a load
         volatile uint32_t* ptr = (uint32_t*) lastDataStoreAddr; ptr[0];
@@ -100,6 +121,13 @@ int main()
         // }
         // tinselEmit(0x3);
         // tinselEmit(addrReg);
+
+        // if (!postflag) {
+        //   sendb('0');
+        //   sendb('x');
+        //   puthex_me(me);
+        //   postflag = 1;
+        // }
 
         int n = msgIn->args[0];
         while (n > 0) {
@@ -117,6 +145,8 @@ int main()
       else if (cmd == SetAddrCmd) {
         // Set address register
         addrReg = msgIn->args[0];
+        // sendb('a');
+
       }
       else if (cmd == StackCmd) {
         tinselWaitUntil(TINSEL_CAN_SEND);
@@ -133,11 +163,15 @@ int main()
         ((BootReq *)msgOut)->cmd = StackCmd;
         tinselSend(msgIn->args[0], msgOut);
       }
-      // else if (cmd == FlushCmd) {
-      //   tinselWaitUntil(TINSEL_CAN_SEND);
-      //   msgOut[0] = msgIn->args[0];
-      //   tinselSend(hostId, msgOut);
-      // }
+      else if (cmd == FlushCmd) {
+        tinselWaitUntil(TINSEL_CAN_SEND);
+        msgOut[0] = msgIn->args[0];
+        tinselSend(hostId, msgOut);
+        tinselWaitUntil(TINSEL_CAN_SEND);
+      }
+      else if (cmd == SendBCmd) {
+        sendb(msgIn->args[0]);
+      }
       else if (cmd == StartCmd) {
         // Cache flush
         tinselCacheFlush();
@@ -166,6 +200,9 @@ int main()
     }
   }
   // Call the application's main function
+
+  // tinselCacheFlush();
+  // volatile uint32_t* ptr = (uint32_t*) lastDataStoreAddr; ptr[0];
   int (*appMain)() = (int (*)()) (TinselMaxBootImageBytes);
   appMain();
 

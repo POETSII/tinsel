@@ -12,7 +12,7 @@ int putchar(int c)
 int puts(const char* s)
 {
   int count = 0;
-  while (*s) { putchar(*s); s++; count++; }
+  while (*s) { putchar(*s); s++; count++; asm volatile("" : "+r"(count) ); }
   return count;
 }
 
