@@ -3,7 +3,7 @@
 # TINSELPATH=/home/cmw97/tinsel
 # ADDR=0x60140f00000
 
-HOST=ASDEX
+HOST=betsy
 
 if [ $HOST = "ASDEX" ]; then
   TINSELPATH=/mnt/Projects/POETS/tinsel-matt-controlflow-debugging
@@ -99,7 +99,7 @@ $SSH $HOST $envs $TINSELPATH/hostlink/boardctrld &
 
 # sleep 5
 # ssh -X $HOST "cd $TINSELPATH/apps/hello && ./run"
-$SSH -X $HOST "cd $TINSELPATH/apps/boot && uvrxt"
+$SSH -X $HOST "cd $TINSELPATH/apps/boot && urxvt"
 
 # # sleep 5
 # ssh -X $HOST "cd $TINSELPATH/apps/hello && ./run"

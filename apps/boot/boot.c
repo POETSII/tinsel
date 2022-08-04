@@ -46,23 +46,27 @@ int main()
   // Core-local thread id
   uint32_t threadId = me & ((1 << TinselLogThreadsPerCore) - 1);
 
-  if (threadId != 0) while (1) {};
-
   // Host id
   uint32_t hostId = tinselHostId();
 
-  // Use one flit per message
-  tinselSetLen(0);
+  if (threadId == 0) {
+    // Use one flit per message
+    tinselSetLen(0);
 
-  while ((tinselUartTryGet() & 0x100) == 0);
-  puthex(me);
-  putchar('s');
-  writeapp_data();
-  putchar('d');
-  writeapp_code();
-  putchar('c');
+    while ((tinselUartTryGet() & 0x100) == 0);
+    puthex(me);
+    putchar('s');
+    writeapp_data();
+    putchar('d');
+    writeapp_code();
+    putchar('c');
 
-  tinselCacheFlush(); // as we are only running this thread, no need to wait for writeback
+    tinselCacheFlush();
+    volatile uint32_t* ptr = (uint32_t*)25165824; ptr[0];
+    for (int t=1; t<TinselThreadsPerCore; t++) {
+      tinselCreateThread(t);
+    }
+  }
 
   putchar('f');
   int (*appMain)() = (int (*)()) (TinselMaxBootImageBytes);
