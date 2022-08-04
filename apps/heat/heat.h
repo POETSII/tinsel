@@ -5,8 +5,9 @@
 #define _HEAT_H_
 
 // Each board uses a X_LOCAL_LEN x Y_LOCAL_LEN grid of threads
-#define X_LOCAL_LEN (1 << ((TinselLogThreadsPerBoard+1) >> 1))
-#define Y_LOCAL_LEN (1 << (TinselLogThreadsPerBoard >> 1))
+// div 2 to only use physical threads
+#define X_LOCAL_LEN (1 << ((TinselLogThreadsPerBoard) >> 1))
+#define Y_LOCAL_LEN (1 << (TinselLogThreadsPerBoard >> 2))
 
 // And there is a 2D mesh of boards
 // Assumption 1: X_BOARDS <= TinselMeshXLenWithinBox

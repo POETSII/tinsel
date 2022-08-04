@@ -200,7 +200,6 @@ int main()
     }
   }
   // Call the application's main function
-
   // tinselCacheFlush();
   // volatile uint32_t* ptr = (uint32_t*) lastDataStoreAddr; ptr[0];
   int (*appMain)() = (int (*)()) (TinselMaxBootImageBytes);

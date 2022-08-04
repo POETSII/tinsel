@@ -29,6 +29,7 @@ set -e
 
 make -C hostlink pciestreamd boardctrld hostlink.a echo
 make -C apps/hello all run
+make -C apps/heat all run
 
 # make -C hostlink-custom pciestreamd boardctrld POST
 BOOT_UP_TO_DATE=$( make -C apps/boot all | tee /dev/tty )

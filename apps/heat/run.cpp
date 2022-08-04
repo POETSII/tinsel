@@ -82,18 +82,40 @@ int heat[] = {
 int main()
 {
   HostLink hostLink;
+  hostLink.powerOnSelfTest();
+  printf("Fnished POST\n");
 
   // Load application
-  hostLink.boot("code.v", "data.v");
+  hostLink.loadAll("code.v", "data.v");
+
+  for (auto boardid : hostLink.boards) {
+    int x = std::get<0>(boardid);
+    int y = std::get<1>(boardid);
+    for (int i=0; i<TinselCoresPerBoard; i++) {
+      hostLink.startOne(x, y, i, TinselThreadsPerCore/2);
+    }
+  }
+
+  printf("all boards waiting on go\n");
+
+  for (auto boardid : hostLink.boards) {
+    int x = std::get<0>(boardid);
+    int y = std::get<1>(boardid);
+    for (int i=0; i<TinselCoresPerBoard; i++) {
+      hostLink.goOne(x, y, i);
+    }
+  }
 
   // Start timer
   struct timeval start, finish, diff;
   gettimeofday(&start, NULL);
 
   // Start application
-  hostLink.go();
-  hostLink.startAll();
+  // hostLink.go();
+  // hostLink.startAll();
 
+
+  printf("app started\n");
   // 2D grid
   int NX = X_LEN*8;
   int NY = Y_LEN*8;
@@ -113,11 +135,13 @@ int main()
       for (int j = 0; j < 8; j++)
         grid[msg.y][msg.x+j] = msg.temps[j];
     }
+    printf("grid filled\n");
 
     FILE* fp = fopen("out.ppm", "w");
     if (fp == NULL) {
       fprintf(stderr, "Failed to open file 'out.ppm'\n");
     }
+    printf("opened %s\n", "out.ppm");
 
     // Emit PPM
     int L = 8 * MAG;
@@ -136,7 +160,7 @@ int main()
 
   // Stop timer
   gettimeofday(&finish, NULL);
- 
+
   // Display time
   timersub(&finish, &start, &diff);
   double duration = (double) diff.tv_sec + (double) diff.tv_usec / 1000000.0;
