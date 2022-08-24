@@ -5,15 +5,9 @@
 
 HOST=betsy
 
-if [ $HOST = "ASDEX" ]; then
-  TINSELPATH=/mnt/Projects/POETS/tinsel
-  ADDR=a2301000
-  SSH=ssh
-  envs="QUARTUS_ROOTDIR=/local/ecad/altera/19.2pro/quartus PATH=\$QUARTUS_ROOTDIR/bin:\$QUARTUS_ROOTDIR/../qsys/bin:\$QUARTUS_ROOTDIR/../nios2eds/bin:\$QUARTUS_ROOTDIR/../nios2eds/sdk2/bin:\$QUARTUS_ROOTDIR/../nios2eds/bin/gnu/H-x86_64-pc-linux-gnu/bin:\$PATH"
-fi
-
 if [ $HOST = "betsy" ]; then
-  TINSELPATH=`pwd`
+  TINSELPATH=/local/scratch/cmw97/benchmark/tinsel
+  # TINSELPATH=`pwd`
   SSH="ssh -K"
   envs="QUARTUS_ROOTDIR=/usr/groups/ecad/altera/19.2pro/quartus PATH=\$QUARTUS_ROOTDIR/bin:\$QUARTUS_ROOTDIR/../qsys/bin:\$QUARTUS_ROOTDIR/../nios2eds/bin:\$QUARTUS_ROOTDIR/../nios2eds/sdk2/bin:\$QUARTUS_ROOTDIR/../nios2eds/bin/gnu/H-x86_64-pc-linux-gnu/bin:\$PATH LD_LIBRARY_PATH=/usr/groups/ecad/altera/19.2pro/quartus/dspba/backend/linux64/syscon:/usr/groups/ecad/altera/19.2pro/quartus/linux64/"
   ADDR=f7001000
@@ -45,12 +39,19 @@ fi
 
 
 if [ $HOST = "ASDEX" ]; then
-  $SSH $HOST sudo mount -t cifs -o user=tparks,pass=2447pass,uid=1000,gid=1000 //192.168.0.116/culham /mnt || true
+  $SSH $HOST sudo mount -t cifs -o user=$USER,pass=$NFSPW,uid=1000,gid=1000 //192.168.0.116/culham /mnt || true
 fi
 
 if [ $HOST = "sappho" ]; then
   unison -batch=true . ssh://sappho//home/cmw97/tinsel
 fi
+
+set +e
+if [ $HOST = "betsy" ]; then
+  $SSH $HOST sshfs -o allow_root $USER@certina:/local/POETS /local/scratch/cmw97/
+fi
+set -e
+
 
 
 $SSH $HOST sudo -S pkill boardctrld || true # make sure we have access to reflash
@@ -66,6 +67,7 @@ if [ $HOST = "sappho" ]; then
 fi
 
 if [ $HOST = "betsy" ]; then
+  sleep 5
   $SSH $HOST $envs /home/cmw97/tools/bin/flashDE10 $TINSELPATH/de10-pro/output_files/DE10_Pro.sof --all
 fi
 
@@ -79,12 +81,17 @@ done
 set -e
 
 if [ $HOST = "ASDEX" ]; then
-  $SSH $HOST sudo mount -t cifs -o user=tparks,pass=2447pass,uid=1000,gid=1000 //192.168.0.116/culham /mnt || true
+  $SSH $HOST sudo mount -t cifs -o user=$USER,pass=$NFSPW,uid=1000,gid=1000 //192.168.0.116/culham /mnt || true
 fi
 
 if [ $HOST = "sappho" ]; then
   unison -auto . ssh://sappho//home/cmw97/tinsel
 fi
+
+if [ $HOST = "betsy" ]; then
+  $SSH $HOST sshfs -o allow_root $USER@certina:/local/POETS /local/scratch/cmw97/
+fi
+
 
 $SSH $HOST sudo -S rmmod altera_cvp || true
 $SSH $HOST sudo -S setpci -v -d 1172:de10 COMMAND=0x06:0x06
@@ -96,11 +103,11 @@ $SSH $HOST sudo -S devmem2 0x$MAGIC_ADDR
 
 $SSH $HOST "sudo -S $TINSELPATH/hostlink/pciestreamd $ADDR > pcielog.txt" &
 $SSH $HOST $envs $TINSELPATH/hostlink/boardctrld &
-ssh -X $HOST $envs quartus_stpw $TINSELPATH/DE10Pro/DE10-reference-project/quartus/stp1.stp &
+# ssh -X $HOST $envs quartus_stpw $TINSELPATH/DE10Pro/DE10-reference-project/quartus/stp1.stp &
 
-# # sleep 5
-# ssh -X $HOST "cd $TINSELPATH/apps/hello && ./run"
-$SSH -X $HOST "cd $TINSELPATH/apps/hello && urxvt"
+sleep 5
+$SSH -X $HOST "cd $TINSELPATH/apps/hello && ./run"
+# $SSH -X $HOST "cd $TINSELPATH/apps/hello && urxvt"
 
 # # sleep 5
 # ssh -X $HOST "cd $TINSELPATH/apps/hello && ./run"

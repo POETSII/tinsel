@@ -489,8 +489,8 @@ module mkDCache#(DCacheId myId) (DCache);
     // Determine line address
     Bit#(`LogLinesPerMem) writeLineAddr =
       reconstructLineAddr(miss.evictTag.key, miss.req.addr);
-    Bit#(`LogLinesPerMem) readLineAddr =
-      miss.req.addr[`LogBytesPerDRAM-1:`LogBytesPerLine]; // 28b
+    Bit#(`LogLinesPerMem) readLineAddr = truncateLSB(miss.req.addr); // 24
+      // miss.req.addr[:`LogBytesPerLine]; // 28b
     // Create inflight request info
     InflightDCacheReqInfo info;
     info.req = miss.req;

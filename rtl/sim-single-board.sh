@@ -20,7 +20,7 @@ fi
 # Load config parameters
 while read -r EXPORT; do
   eval $EXPORT
-done <<< `python ../config.py envs`
+done <<< `python3 ../config.py envs`
 
 PIDS=""
 

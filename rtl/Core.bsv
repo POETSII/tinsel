@@ -617,7 +617,14 @@ module mkCore#(CoreId myId) (Core);
   Queue#(Writeback) writebackQueue <- mkUGShiftQueue(QueueOptFmax);
 
   // Information about suspended threads
-  BlockRam#(ThreadId, SuspendedThreadState) suspended <- mkBlockRam;
+  BlockRamOpts suspendedBlockRamOpts =
+    BlockRamOpts {
+      readDuringWrite: OldData,
+      style: "AUTO",
+      registerDataOut: True,
+      initFile: Invalid
+    };
+  BlockRam#(ThreadId, SuspendedThreadState) suspended <- mkBlockRamOpts(suspendedBlockRamOpts);
 
   // Instruction memory
   // Declared outside core since it may be shared
@@ -898,7 +905,7 @@ module mkCore#(CoreId myId) (Core);
     // Emit char to console (simulation only)
     `ifdef SIMULATE
     if (token.op.csr.isEmit) begin
-      $display("Thread %d (boardId %d): 0x%x @ %d", {myId, token.thread.id}, boardId,
+      $display("Thread %d: 0x%x @ %d", {myId, token.thread.id},
                   token.valA, $time);
     end
     `endif
@@ -1105,9 +1112,6 @@ module mkCore#(CoreId myId) (Core);
       | when(token.op.csr.isFRM, 0)
       | when(token.op.csr.isCycle, cycleCount[31:0]);
 
-    if (token.op.csr.isHartId) begin
-      $display("reading Hart CSR; value %d", res.csr);
-    end
     `ifdef EnablePerfCount
     res.csr = res.csr | when(token.op.csr.isReadCount,
                                perfCounters[token.op.csr.perfCountId]);

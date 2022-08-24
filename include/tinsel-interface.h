@@ -106,7 +106,7 @@ INLINE uint32_t tinselHeapBaseGeneric(uint32_t id)
   uint32_t addr = TinselBytesPerDRAM -
                     ((partId+1) << TinselLogBytesPerDRAMPartition);
   // Use the partition-interleaved translation
-  addr |= 0x80000000;
+  // addr |= 0x80000000;
   return addr;
 }
 

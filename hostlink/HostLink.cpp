@@ -155,7 +155,7 @@ static int connectToPCIeStream(const char* socketPath)
 // Internal constructor
 void HostLink::constructor(HostLinkParams p)
 {
-  boards = std::set<std::tuple<int, int>>{{0, 0}, {1, 0}};
+  boards = std::set<std::tuple<int, int>>{{0, 0}}; // {1, 0}
   useExtraSendSlot = p.useExtraSendSlot;
 
   if (p.numBoxesX > TinselBoxMeshXLen || p.numBoxesY > TinselBoxMeshYLen) {
@@ -558,12 +558,12 @@ bool HostLink::test(uint32_t dest) {
   send(dest, 1, &req, true);
 
   bool got = 0;
-  for (int rpt=0; rpt<250; rpt++) {
+  for (int rpt=0; rpt<25000; rpt++) {
     if (!canRecv()) {
       got = 1;
       break;
     }
-    usleep(10);
+    usleep(100);
   }
   if (got) {
     std::cout << "." << std::flush;
@@ -594,12 +594,12 @@ bool HostLink::test(uint32_t dest, uint32_t addr, uint32_t* value) {
   // debugprintf(debugLink);
 
   bool got = 0;
-  for (int rpt=0; rpt<2500; rpt++) {
+  for (int rpt=0; rpt<25000; rpt++) {
     if (canRecv()) {
       got = 1;
       break;
     }
-    usleep(10);
+    usleep(100);
   }
   // debugprintf(debugLink);
 
@@ -1003,11 +1003,11 @@ void HostLink::printStack(uint32_t meshX, uint32_t meshY,
   uint32_t dest = toAddr(meshX, meshY, coreId, 0);
 
   // Send start command
-  req.cmd = StackCmd;
-  send(dest, 1, &req);
-  // req.cmd = RemoteStackCmd;
-  // req.args[0] = dest;
-  // send(0, 1, &req);
+  // req.cmd = StackCmd;
+  // send(dest, 1, &req);
+  req.cmd = RemoteStackCmd;
+  req.args[0] = dest;
+  send(0, 1, &req);
 
   // Wait for start response
   uint32_t msg[1 << TinselLogWordsPerMsg];
