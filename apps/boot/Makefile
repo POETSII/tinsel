@@ -6,10 +6,10 @@ include $(TINSEL_ROOT)/globals.mk
 
 # Local compiler flags
 CFLAGS = $(RV_CFLAGS) -Os -I $(INC)
-LDFLAGS = -melf32lriscv -G 0 
+LDFLAGS = -melf32lriscv -G 0
 
 .PHONY: all
-all: $(RTL)/InstrMem.hex $(QP)/InstrMem.mif
+all: $(RTL)/InstrMem.hex $(QP)/InstrMem.mif run
 
 $(RTL)/InstrMem.hex: InstrMem.ihex
 	code-to-img.sh hex InstrMem.ihex > $(RTL)/InstrMem.hex
@@ -34,3 +34,6 @@ $(INC)/config.h: $(TINSEL_ROOT)/config.py
 .PHONY: clean
 clean:
 	rm -f *.o *.elf link.ld *.ihex
+
+run: run.cpp $(HL)/hostlink.a
+	g++ -O2 -I $(INC) -I $(HL) -o run run.cpp $(HL)/hostlink.a

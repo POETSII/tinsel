@@ -3,121 +3,77 @@
 
 #include <tinsel.h>
 #include <boot.h>
+#include <stdarg.h>
 
-INLINE void sendb(char c) {
+// #include "writeapp.h"
+
+// See "boot.h" for further details of the supported boot commands.
+
+int putchar(int c)
+{
   while (tinselUartTryPut(c) == 0);
+  return c;
 }
 
+INLINE int puts(const char* s)
+{
+  int count = 0;
+  while (*s) { putchar(*s); s++; count++; }
+  return count;
+}
+
+int puthex(unsigned x)
+{
+  int count = 0;
+
+  for (count = 0; count < 8; count++) {
+    unsigned nibble = x >> 28;
+    putchar(nibble > 9 ? ('a'-10)+nibble : '0'+nibble);
+    x = x << 4;
+  }
+
+  return 8;
+}
 
 // Main
 int main()
 {
   // Global id of this thread
+  // Send char to all Threads
+
   uint32_t me = tinselId();
 
-  // // Core-local thread id
+  // Core-local thread id
   uint32_t threadId = me & ((1 << TinselLogThreadsPerCore) - 1);
 
   // Host id
   uint32_t hostId = tinselHostId();
-  volatile BootReq* msgIn;
-
-  // Use one flit per message
-  tinselSetLen(0);
 
   if (threadId == 0) {
-    // State
-    uint32_t addrReg = 0;  // Address register
-    uint32_t lastDataStoreAddr = 0;
-
-    // Get mailbox message slot for sending
-    volatile uint32_t* msgOut = tinselSendSlot();
-
-    // Command loop
-    for (;;) {
-      // Receive message
-      tinselWaitUntil(TINSEL_CAN_RECV);
-      msgIn = tinselRecv();
-      uint8_t cmd = msgIn->cmd;
-
-      // Command dispatch
-      // (We avoid using a switch statement here so that the compiler
-      // doesn't generate a data section)
-
-      if (cmd == WriteInstrCmd) {
-        // Write instructions to instruction memory
-        int n = msgIn->numArgs;
-        for (int i = 0; i < n; i++) {
-          tinselWriteInstr(addrReg, msgIn->args[i]);
-          addrReg += 4;
-        }
-      }
-      else if (cmd == StoreCmd) {
-        // Store words to data memory
-        int n = msgIn->numArgs;
-        for (int i = 0; i < n; i++) {
-          uint32_t* ptr = (uint32_t*) addrReg;
-          *ptr = msgIn->args[i];
-          lastDataStoreAddr = addrReg;
-          addrReg += 4;
-        }
-      }
-      else if (cmd == LoadCmd) {
-        // Load words from data memory
-        int n = msgIn->args[0];
-        while (n > 0) {
-          int m = n > 4 ? 4 : n;
-          tinselWaitUntil(TINSEL_CAN_SEND);
-          for (int i = 0; i < m; i++) {
-            uint32_t* ptr = (uint32_t*) addrReg;
-            msgOut[i] = *ptr;
-            addrReg += 4;
-            n--;
-          }
-          tinselSend(hostId, msgOut);
-        }
-      }
-      else if (cmd == SetAddrCmd) {
-        // Set address register
-        addrReg = msgIn->args[0];
-      }
-      else if (cmd == FlushCmd) {
-        tinselWaitUntil(TINSEL_CAN_SEND);
-        msgOut[0] = msgIn->args[0];
-        tinselSend(hostId, msgOut);
-      }
-      else if (cmd == StartCmd) {
-        // Cache flush
-        tinselCacheFlush();
-        // Wait until lines written back, by issuing a load
-        if (lastDataStoreAddr != 0) {
-          volatile uint32_t* ptr = (uint32_t*) lastDataStoreAddr; ptr[0];
-        }
-        // Send response
-        tinselWaitUntil(TINSEL_CAN_SEND);
-        msgOut[0] = tinselId();
-        tinselSend(hostId, msgOut);
-
-        // Wait for triggerstartOne
-        while ((tinselUartTryGet() & 0x100) == 0);
-        // Start remaining threads
-        int numThreads = msgIn->args[0];
-        for (int i = 0; i < numThreads; i++) {
-          tinselCreateThread(i+1);
-        }
-        tinselFree(msgIn);
-        break;
-      }
-      tinselFree(msgIn);
+    // Use one flit per message
+    tinselSetLen(0);
+    while ((tinselUartTryGet() & 0x100) == 0);
+    for (int t=1; t<TinselThreadsPerCore; t++) {
+      tinselCreateThread(t);
     }
   }
-  // Call the application's main function
-  int (*appMain)() = (int (*)()) (TinselMaxBootImageBytes);
-  appMain();
 
-  // Restart boot loader
-  if (threadId != 0) tinselKillThread();
-  asm volatile("jr zero");
+  // putchar('f');
+  // int (*appMain)() = (int (*)()) (TinselMaxBootImageBytes);
+  // putchar('g');
+  // appMain();
+
+  putchar('h');
+  putchar('e');
+  putchar('l');
+  putchar('l');
+  putchar('o');
+  putchar(' ');
+  puthex(me);
+  putchar('\n');
+
+
+  while (1);
 
   // Unreachable
   return 0;

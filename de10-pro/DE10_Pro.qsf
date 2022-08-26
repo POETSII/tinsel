@@ -1715,6 +1715,8 @@ set_global_assignment -name ACTIVE_SERIAL_CLOCK AS_FREQ_100MHZ
 set_global_assignment -name ERROR_CHECK_FREQUENCY_DIVISOR 1
 set_global_assignment -name SEED 2
 set_global_assignment -name SEARCH_PATH ../rtl/
+set_global_assignment -name SEARCH_PATH /local/ecad/bsc/inst/lib/Verilog/
+
 set_global_assignment -name SIGNALTAP_FILE stp1.stp
 set_global_assignment -name IP_FILE reset_release.ip
 set_global_assignment -name MIF_FILE boot.mif
