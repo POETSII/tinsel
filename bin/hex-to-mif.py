@@ -9,9 +9,9 @@
 import sys
 
 def usage():
-  print "Usage: hex-to-mif.py <input.hex> <width>"
-  print ""
-  print "  Units of <width> is bits"
+  print("Usage: hex-to-mif.py <input.hex> <width>")
+  print("")
+  print("  Units of <width> is bits")
 
 if len(sys.argv) != 3:
   usage()
@@ -20,7 +20,7 @@ if len(sys.argv) != 3:
 try:
   width = int(sys.argv[2])
 except:
-  print "Invalid parameters"
+  print("Invalid parameters")
   usage()
   sys.exit()
 
@@ -34,17 +34,17 @@ try:
     vals.append(val)
     lineCount = lineCount+1
 except:
-  print "Syntax error on line", lineCount
+  print("Syntax error on line", lineCount)
   sys.exit()
 
-print "DEPTH =", len(vals), ";"
-print "WIDTH =", width, ";"
-print "ADDRESS_RADIX = DEC ;"
-print "DATA_RADIX = DEC ;"
-print "CONTENT"
-print "BEGIN"
+print("DEPTH =", len(vals), ";")
+print("WIDTH =", width, ";")
+print("ADDRESS_RADIX = DEC ;")
+print("DATA_RADIX = DEC ;")
+print("CONTENT")
+print("BEGIN")
 addr = 0
 for val in vals:
-  print addr, ": ", str(val), ";"
+  print(addr, ": ", str(val), ";")
   addr = addr+1
-print "END"
+print("END")

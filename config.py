@@ -180,7 +180,7 @@ p["EnablePerfCount"] = True
 p["BoxMeshXLen"] = 1
 p["BoxMeshYLen"] = 1
 p["BoxMesh"] = ('{'
-    '{"asdex"}'
+    '{"betsy"}'
   '}')
 
 # Enable custom accelerators (experimental feature)
@@ -412,7 +412,7 @@ def to_cpp_string(convertee):
 if len(sys.argv) > 1:
   mode = sys.argv[1]
 else:
-  print "Usage: config.py <defs|envs|cpp|vpp>"
+  print("Usage: config.py <defs|envs|cpp|vpp>")
   sys.exit(-1)
 
 # The BoxMesh parameter is only meant for cpp mode
@@ -421,15 +421,15 @@ if (mode != "cpp"): del p["BoxMesh"]
 if mode == "defs":
   for var in p:
     if isinstance(p[var], bool):
-      if p[var]: print("-D " + var),
+      if p[var]: print(("-D " + var), end=' ')
     else:
-      print("-D " + var + "=" + str(p[var])),
+      print(("-D " + var + "=" + str(p[var])), end=' ')
 elif mode == "envs":
   for var in p:
-    print("export " + var + "=" + str(p[var]))
+    print(("export " + var + "=" + str(p[var])))
 elif mode == "cpp":
   for var in p:
-    print("#define Tinsel" + var + " " + to_cpp_string(p[var]))
+    print(("#define Tinsel" + var + " " + to_cpp_string(p[var])))
 elif mode == "vpp":
   for var in p:
-    print("`define Tinsel" + var + " " + str(p[var]))
+    print(("`define Tinsel" + var + " " + str(p[var])))

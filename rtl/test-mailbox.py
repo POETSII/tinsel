@@ -22,17 +22,17 @@ import subprocess
 
 # Command-line usage
 def usage():
-  print "Usage: test-mailbox.py"
-  print ""
-  print "  Environment variables:"
-  print "    * SEED"
-  print "    * NUM_ITERATIONS"
-  print "    * INIT_DEPTH"
-  print "    * INCR_DEPTH"
-  print "    * TESTS_PER_DEPTH"
-  print "    * NUM_THREADS"
-  print "    * MAX_DELAY"
-  print "    * LOG_DIR"
+  print("Usage: test-mailbox.py")
+  print("")
+  print("  Environment variables:")
+  print("    * SEED")
+  print("    * NUM_ITERATIONS")
+  print("    * INIT_DEPTH")
+  print("    * INCR_DEPTH")
+  print("    * TESTS_PER_DEPTH")
+  print("    * NUM_THREADS")
+  print("    * MAX_DELAY")
+  print("    * LOG_DIR")
 
 # Read options
 try:
@@ -45,7 +45,7 @@ try:
   maxDelay      = int(os.environ.get("MAX_DELAY", "16"))
   logDir        = os.environ.get("LOG_DIR", "test-mailbox-log")
 except:
-  print "Invalid options"
+  print("Invalid options")
   usage()
   sys.exit()
 
@@ -95,7 +95,7 @@ def genTrace():
     #os.system(cmd)
     subprocess.call(cmd, shell=True);
   except:
-    print "Problem invoking 'testMailbox'"
+    print("Problem invoking 'testMailbox'")
     sys.exit()
  
 # Check a trace
@@ -125,7 +125,7 @@ def checkTrace():
           inbox[thread].pop(i)
           break
       if not found:
-        print ("\nBad receive on line " + str(lineNum))
+        print(("\nBad receive on line " + str(lineNum)))
         return False
   return True
  
@@ -135,17 +135,17 @@ def checkTrace():
 
 try:
   for i in range(0, numIterations):
-    print "Depth", numOps
+    print("Depth", numOps)
     for t in range(0, testsPerDepth):
-      print t+1, "\r",
+      print(t+1, "\r", end=' ')
       sys.stdout.flush()
       genTrace()
       ok = checkTrace()
       if not ok:
-        print ("Test failed.  For details, see directory '" + logDir + "/'")
+        print(("Test failed.  For details, see directory '" + logDir + "/'"))
         sys.exit()
-    print "OK, passed", testsPerDepth, "tests"
+    print("OK, passed", testsPerDepth, "tests")
     numOps = numOps+depthIncr
 except:
-  print "Exception. Exiting..."
+  print("Exception. Exiting...")
   sys.exit();
