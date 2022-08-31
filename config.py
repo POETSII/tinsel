@@ -96,7 +96,7 @@ p["LogMsgPtrQueueSize"] = 6
 p["LogMulticastBufferSize"] = 9
 
 # Maximum size of boot loader (in bytes)
-p["MaxBootImageBytes"] = 1024
+p["MaxBootImageBytes"] = 8094
 
 # Size of transmit buffer in a reliable link
 p["LogTransmitBufferSize"] = 10

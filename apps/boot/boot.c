@@ -72,9 +72,25 @@ int main()
   puthex(me);
   putchar('\n');
 
+  float y = 0.0;
+  for (float x=0; x<1024.0f; x=x+1.0) {
+    y = x*x;
+  }
+
+  putchar('d');
+  putchar('\n');
+
 
   while (1);
 
   // Unreachable
   return 0;
 }
+
+
+
+
+
+
+
+// APP
