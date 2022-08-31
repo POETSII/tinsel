@@ -159,7 +159,7 @@ module de5Top_inner (DE5Top);
   // Create FPUs
   Vector#(`FPUsPerBoard, FPU) fpus;
   for (Integer i = 0; i < `FPUsPerBoard; i=i+1)
-    fpus[i] <- mkNullFPU;
+    fpus[i] <- mkFPU;
 
   // Connect cores to FPUs
   let vecOfCores = concat(concat(cores));

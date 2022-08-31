@@ -35,5 +35,8 @@ $(INC)/config.h: $(TINSEL_ROOT)/config.py
 clean:
 	rm -f *.o *.elf link.ld *.ihex
 
+$(HL)/hostlink.a:
+	make -C $(HL) hostlink.a
+
 run: run.cpp $(HL)/hostlink.a
 	g++ -O2 -I $(INC) -I $(HL) -o run run.cpp $(HL)/hostlink.a

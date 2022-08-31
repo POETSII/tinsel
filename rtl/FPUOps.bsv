@@ -17,6 +17,7 @@ import Mult          :: *;
 import Vector        :: *;
 import ConfigReg     :: *;
 import FloatingPoint :: *;
+import Clocks        :: *;
 
 // =============================================================================
 // Interface
@@ -55,13 +56,19 @@ interface FPUOp;
   method FPUOpOutput out;
 endinterface
 
+(* always_ready, always_enabled *)
+interface AlteraS10FPFuncIfc;
+  method Action put(Bit#(32) a, Bit#(32) b);
+  method Bit#(32) res;
+endinterface
+
 // =============================================================================
 // Integer multiplier
 // =============================================================================
 
 // Pipelined 33-bit signed mutlitplier
 // With ability to select upper or lower 32 bits of result
-// Output valid after three cycles 
+// Output valid after three cycles
 module mkIntMult (FPUOp);
   // Combinatorial multiplier
   Mult#(33) mult <- mkSignedMult;
@@ -143,41 +150,61 @@ interface AlteraFPAddSubIfc;
   method Bit#(1) underflow;
 endinterface
 
-import "BVI" AlteraFPAddSub =
-  module mkAlteraFPAddSub (AlteraFPAddSubIfc);
-    default_clock clk(clock, (*unused*) clk_gate);
+interface AlteraS10FPAddSubIfc;
+  method Action put(Bit#(1) s, Bit#(32) a, Bit#(32) b);
+  method Bit#(32) res;
+  // method Action areset(Bit#(1) rst);
+endinterface
+
+
+// de10 version. 14 cycles latency target
+import "BVI" fpS10AddSub =
+  module mkAlteraS10FPAddSub (AlteraS10FPAddSubIfc);
+    Reset rstP <- invertCurrentReset();
+
+    default_clock clk(clk, (*unused*) clk_gate);
     default_reset no_reset;
 
-    method put(add_sub, dataa, datab) enable ((*inhigh*) EN) clocked_by(clk);
-    method result res;
-    method nan nan;
-    method overflow overflow;
-    method underflow underflow;
+    input_reset a_rst (areset) = rstP;
+
+    method put(opSel, a, b) enable ((*inhigh*) EN) clocked_by(clk);
+    // method areset(rst) enable ((*inhigh*) EN_1);
+    method q res reset_by(default_reset);
 
     schedule (put) C (put);
-    schedule (put) CF (res, nan, overflow, underflow);
-    schedule (res, nan, overflow, underflow) CF
-             (res, nan, overflow, underflow);
+    schedule (put) CF (res);
+    schedule (res) CF
+             (res);
+    // schedule (areset) CF (put, res, areset);
+
   endmodule
 
 module mkFPAddSub (FPUOp);
-  AlteraFPAddSubIfc op <- mkAlteraFPAddSub;
+  AlteraS10FPAddSubIfc op <- mkAlteraS10FPAddSub;
+
+  Reg#(FPUOpInput) in_w_or_nothing <- mkReg( FPUOpInput{arg1:0, arg2:0, addOrSub:0, lowerOrUpper:0, cmpEQ:0, cmpLT:0 } );
+
+  (* no_implicit_conditions *)
+  rule send;
+    op.put(in_w_or_nothing.addOrSub, in_w_or_nothing.arg1[31:0], in_w_or_nothing.arg2[31:0]);
+  endrule
 
   method Action put(FPUOpInput in);
-    op.put(~in.addOrSub, in.arg1[31:0], in.arg2[31:0]);
+    in_w_or_nothing <= in;
   endmethod
 
   method FPUOpOutput out =
     FPUOpOutput {
       val: op.res,
       invalid: 0,
-      overflow: op.overflow,
-      underflow: op.underflow,
+      overflow: 0,
+      underflow: 0,
       divByZero: 0,
       inexact: 0
     };
 endmodule
-     
+
+
 `endif
 
 // =============================================================================
@@ -216,45 +243,49 @@ endmodule
 
 `else
 
+
 (* always_ready, always_enabled *)
-interface AlteraFPMultIfc;
-  method Action put(Bit#(32) x, Bit#(32) y);
+interface AlteraS10FPMultIfc;
+  method Action put(Bit#(32) a, Bit#(32) b);
   method Bit#(32) res;
-  method Bit#(1) nan;
-  method Bit#(1) overflow;
-  method Bit#(1) underflow;
 endinterface
 
-import "BVI" AlteraFPMult =
-  module mkAlteraFPMult (AlteraFPMultIfc);
-    default_clock clk(clock, (*unused*) clk_gate);
-    default_reset no_reset;
+import "BVI" fpS10Mult =
+  module mkAlteraS10FPMult (AlteraS10FPFuncIfc);
+    Reset rstP <- invertCurrentReset();
 
-    method put(dataa, datab) enable ((*inhigh*) EN) clocked_by(clk);
-    method result res;
-    method nan nan;
-    method overflow overflow;
-    method underflow underflow;
+    default_clock clk(clk, (*unused*) clk_gate);
+    default_reset no_reset;
+    input_reset a_rst (areset) = rstP;
+
+    method put(a, b) enable ((*inhigh*) EN) clocked_by(clk);
+    method q res;
 
     schedule (put) C (put);
-    schedule (put) CF (res, nan, overflow, underflow);
-    schedule (res, nan, overflow, underflow) CF
-             (res, nan, overflow, underflow);
+    schedule (put) CF (res);
+    schedule (res) CF
+             (res);
   endmodule
 
 module mkFPMult (FPUOp);
-  AlteraFPMultIfc op <- mkAlteraFPMult;
+  AlteraS10FPFuncIfc op <- mkAlteraS10FPMult;
+  Reg#(FPUOpInput) in_w_or_nothing <- mkReg( FPUOpInput{arg1:0, arg2:0, addOrSub:0, lowerOrUpper:0, cmpEQ:0, cmpLT:0 } );
+
+  (* no_implicit_conditions *)
+  rule send;
+    op.put(in_w_or_nothing.arg1[31:0], in_w_or_nothing.arg2[31:0]);
+  endrule
 
   method Action put(FPUOpInput in);
-    op.put(in.arg1[31:0], in.arg2[31:0]);
+    in_w_or_nothing <= in;
   endmethod
 
   method FPUOpOutput out =
     FPUOpOutput {
       val: op.res,
       invalid: 0,
-      overflow: op.overflow,
-      underflow: op.underflow,
+      overflow: 0,
+      underflow: 0,
       divByZero: 0,
       inexact: 0
     };
@@ -301,48 +332,53 @@ endmodule
 
 `else
 
+
 (* always_ready, always_enabled *)
-interface AlteraFPDivIfc;
-  method Action put(Bit#(32) x, Bit#(32) y);
+interface AlteraS10FPDivIfc;
+  method Action put(Bit#(32) a, Bit#(32) b);
   method Bit#(32) res;
-  method Bit#(1) nan;
-  method Bit#(1) overflow;
-  method Bit#(1) underflow;
-  method Bit#(1) divByZero;
 endinterface
 
-import "BVI" AlteraFPDiv =
-  module mkAlteraFPDiv (AlteraFPDivIfc);
-    default_clock clk(clock, (*unused*) clk_gate);
+import "BVI" fpS10Div =
+  module mkAlteraS10FPDiv (AlteraS10FPFuncIfc);
+    Reset rstP <- invertCurrentReset();
+
+    default_clock clk(clk, (*unused*) clk_gate);
     default_reset no_reset;
 
-    method put(dataa, datab) enable ((*inhigh*) EN) clocked_by(clk);
-    method result res;
-    method nan nan;
-    method overflow overflow;
-    method underflow underflow;
-    method division_by_zero divByZero;
+    input_reset a_rst (areset) = rstP;
+
+    method put(a, b) enable ((*inhigh*) EN) clocked_by(clk);
+    method q res;
 
     schedule (put) C (put);
-    schedule (put) CF (res, nan, overflow, underflow, divByZero);
-    schedule (res, nan, overflow, underflow, divByZero) CF
-             (res, nan, overflow, underflow, divByZero);
+    schedule (put) CF (res);
+    schedule (res) CF
+             (res);
   endmodule
 
+
 module mkFPDiv (FPUOp);
-  AlteraFPDivIfc op <- mkAlteraFPDiv;
+  AlteraS10FPFuncIfc op <- mkAlteraS10FPDiv;
+
+  Reg#(FPUOpInput) in_w_or_nothing <- mkReg( FPUOpInput{arg1:0, arg2:0, addOrSub:0, lowerOrUpper:0, cmpEQ:0, cmpLT:0 } );
+
+  (* no_implicit_conditions *)
+  rule send;
+    op.put(in_w_or_nothing.arg1[31:0], in_w_or_nothing.arg2[31:0]);
+  endrule
 
   method Action put(FPUOpInput in);
-    op.put(in.arg1[31:0], in.arg2[31:0]);
+    in_w_or_nothing <= in;
   endmethod
 
   method FPUOpOutput out =
     FPUOpOutput {
       val: op.res,
       invalid: 0,
-      overflow: op.overflow,
-      underflow: op.underflow,
-      divByZero: op.divByZero,
+      overflow: 0,
+      underflow: 0,
+      divByZero: 0,
       inexact: 0
     };
 endmodule
@@ -388,34 +424,68 @@ endmodule
 
 `else
 
-(* always_ready, always_enabled *)
-interface AlteraFPCompareIfc;
-  method Action put(Bit#(32) x, Bit#(32) y);
-  method Bit#(1) eq;
-  method Bit#(1) lt;
-  method Bit#(1) lte;
-endinterface
-
-import "BVI" AlteraFPCompare =
-  module mkAlteraFPCompare (AlteraFPCompareIfc);
-    default_clock clk(clock, (*unused*) clk_gate);
+import "BVI" fpS10LT =
+  module mkAlteraS10FPLT (AlteraS10FPFuncIfc);
+    Reset rstP <- invertCurrentReset();
+    default_clock clk(clk, (*unused*) clk_gate);
     default_reset no_reset;
+    input_reset a_rst (areset) = rstP;
 
-    method put(dataa, datab) enable ((*inhigh*) EN) clocked_by(clk);
-    method aeb eq;
-    method alb lt;
-    method aleb lte;
+    method put(a, b) enable ((*inhigh*) EN) clocked_by(clk);
+    method q res;
 
     schedule (put) C (put);
-    schedule (put) CF (eq, lt, lte);
-    schedule (eq, lt, lte) CF (eq, lt, lte);
+    schedule (put) CF (res);
+    schedule (res) CF
+             (res);
+  endmodule
+
+import "BVI" fpS10EQ =
+  module mkAlteraS10FPEQ (AlteraS10FPFuncIfc);
+    Reset rstP <- invertCurrentReset();
+
+    default_clock clk(clk, (*unused*) clk_gate);
+    default_reset no_reset;
+
+    input_reset a_rst (areset) = rstP;
+
+    method put(a, b) enable ((*inhigh*) EN) clocked_by(clk);
+    method q res;
+
+    schedule (put) C (put);
+    schedule (put) CF (res);
+    schedule (res) CF
+             (res);
+  endmodule
+
+import "BVI" fpS10LTE =
+  module mkAlteraS10FPLTE (AlteraS10FPFuncIfc);
+    Reset rstP <- invertCurrentReset();
+
+    default_clock clk(clk, (*unused*) clk_gate);
+    default_reset no_reset;
+
+    input_reset a_rst (areset) = rstP;
+
+    method put(a, b) enable ((*inhigh*) EN) clocked_by(clk);
+    method q res;
+
+    schedule (put) C (put);
+    schedule (put) CF (res);
+    schedule (res) CF
+             (res);
   endmodule
 
 module mkFPCompare (FPUOp);
-  AlteraFPCompareIfc op <- mkAlteraFPCompare;
+  AlteraS10FPFuncIfc op_lt <- mkAlteraS10FPLT;
+  AlteraS10FPFuncIfc op_eq <- mkAlteraS10FPEQ;
+  AlteraS10FPFuncIfc op_lte <- mkAlteraS10FPLTE;
 
   Vector#(`FPCompareLatency, Reg#(Bit#(1))) cmpEQ <- replicateM(mkConfigRegU);
   Vector#(`FPCompareLatency, Reg#(Bit#(1))) cmpLT <- replicateM(mkConfigRegU);
+
+  Reg#(FPUOpInput) in_w_or_nothing <- mkReg( FPUOpInput{arg1:0, arg2:0, addOrSub:0, lowerOrUpper:0, cmpEQ:0, cmpLT:0 } );
+
 
   rule shift;
     for (Integer i = 0; i < `FPCompareLatency-1; i=i+1) begin
@@ -424,17 +494,25 @@ module mkFPCompare (FPUOp);
     end
   endrule
 
+  (* no_implicit_conditions *)
+  rule send;
+    op_lt.put(in_w_or_nothing.arg1[31:0], in_w_or_nothing.arg2[31:0]);
+    op_eq.put(in_w_or_nothing.arg1[31:0], in_w_or_nothing.arg2[31:0]);
+    op_lte.put(in_w_or_nothing.arg1[31:0], in_w_or_nothing.arg2[31:0]);
+    cmpEQ[`FPCompareLatency-1] <= in_w_or_nothing.cmpEQ;
+    cmpLT[`FPCompareLatency-1] <= in_w_or_nothing.cmpLT;
+  endrule
+
+
 
   method Action put(FPUOpInput in);
-    op.put(in.arg1[31:0], in.arg2[31:0]);
-    cmpEQ[`FPCompareLatency-1] <= in.cmpEQ;
-    cmpLT[`FPCompareLatency-1] <= in.cmpLT;
+    in_w_or_nothing <= in;
   endmethod
 
   method FPUOpOutput out =
     FPUOpOutput {
-      val: zeroExtend(cmpEQ[0] == 1 ? op.eq :
-             (cmpLT[0] == 1 ? op.lt : op.lte)),
+      val: zeroExtend(cmpEQ[0] == 1 ? op_eq.res :
+             (cmpLT[0] == 1 ? op_lt.res : op_lte.res)),
       invalid: 0,
       overflow: 0,
       underflow: 0,
@@ -484,18 +562,22 @@ endmodule
 `else
 
 (* always_ready, always_enabled *)
-interface AlteraFPFromIntIfc;
+interface AlteraS10FPIntConvertIfc;
   method Action put(Bit#(32) x);
   method Bit#(32) res;
 endinterface
 
-import "BVI" AlteraFPFromInt =
-  module mkAlteraFPFromInt (AlteraFPFromIntIfc);
-    default_clock clk(clock, (*unused*) clk_gate);
+import "BVI" fpS10FromInt =
+  module mkAlteraS10FPFromInt (AlteraS10FPIntConvertIfc);
+    Reset rstP <- invertCurrentReset();
+
+    default_clock clk(clk, (*unused*) clk_gate);
     default_reset no_reset;
 
-    method put(dataa) enable ((*inhigh*) EN) clocked_by(clk);
-    method result res;
+    input_reset a_rst (areset) = rstP;
+
+    method put(a) enable ((*inhigh*) EN) clocked_by(clk);
+    method q res;
 
     schedule (put) C (put);
     schedule (put) CF (res);
@@ -503,10 +585,17 @@ import "BVI" AlteraFPFromInt =
   endmodule
 
 module mkFPFromInt (FPUOp);
-  AlteraFPFromIntIfc op <- mkAlteraFPFromInt;
+  AlteraS10FPIntConvertIfc op <- mkAlteraS10FPFromInt;
+  Reg#(FPUOpInput) in_w_or_nothing <- mkReg( FPUOpInput{arg1:0, arg2:0, addOrSub:0, lowerOrUpper:0, cmpEQ:0, cmpLT:0 } );
+
+
+  (* no_implicit_conditions *)
+  rule send;
+    op.put(in_w_or_nothing.arg1[31:0]);
+  endrule
 
   method Action put(FPUOpInput in);
-    op.put(in.arg1[31:0]);
+    in_w_or_nothing <= in;
   endmethod
 
   method FPUOpOutput out =
@@ -547,7 +636,7 @@ module mkFPToInt (FPUOp);
     Bit#(32) out = pack(outUInt);
     pipeline[`FPConvertLatency-1] <=
       FPUOpOutput {
-        val: out >= 32'h80000000 || isNaN(f) || isInfinity(f) ? 
+        val: out >= 32'h80000000 || isNaN(f) || isInfinity(f) ?
           (in.arg1[31] == 0 || isNaN(f) ? 32'h7fffffff : 32'h80000000) :
           (in.arg1[31] == 0 ? out : -out),
         invalid: 0, // pack(exc.invalid_op),
@@ -563,45 +652,43 @@ endmodule
 
 `else
 
-(* always_ready, always_enabled *)
-interface AlteraFPToIntIfc;
-  method Action put(Bit#(32) x);
-  method Bit#(32) res;
-  method Bit#(1) nan;
-  method Bit#(1) overflow;
-  method Bit#(1) underflow;
-endinterface
+import "BVI" fpS10ToInt =
+  module mkAlteraS10FPToInt (AlteraS10FPIntConvertIfc);
+    Reset rstP <- invertCurrentReset();
 
-import "BVI" AlteraFPToInt =
-  module mkAlteraFPToInt (AlteraFPToIntIfc);
-    default_clock clk(clock, (*unused*) clk_gate);
+    default_clock clk(clk, (*unused*) clk_gate);
     default_reset no_reset;
 
-    method put(dataa) enable ((*inhigh*) EN) clocked_by(clk);
-    method result res;
-    method nan nan;
-    method overflow overflow;
-    method underflow underflow;
+    input_reset a_rst (areset) = rstP;
+
+    method put(a) enable ((*inhigh*) EN) clocked_by(clk);
+    method q res;
 
     schedule (put) C (put);
-    schedule (put) CF (res, nan, overflow, underflow);
-    schedule (res, nan, overflow, underflow) CF
-             (res, nan, overflow, underflow);
+    schedule (put) CF (res);
+    schedule (res) CF (res);
   endmodule
 
 module mkFPToInt (FPUOp);
-  AlteraFPToIntIfc op <- mkAlteraFPToInt;
+  AlteraS10FPIntConvertIfc op <- mkAlteraS10FPToInt;
+  Reg#(FPUOpInput) in_w_or_nothing <- mkReg( FPUOpInput{arg1:0, arg2:0, addOrSub:0, lowerOrUpper:0, cmpEQ:0, cmpLT:0 } );
+
+
+  (* no_implicit_conditions *)
+  rule send;
+    op.put(in_w_or_nothing.arg1[31:0]);
+  endrule
 
   method Action put(FPUOpInput in);
-    op.put(in.arg1[31:0]);
+    in_w_or_nothing <= in;
   endmethod
 
   method FPUOpOutput out =
     FPUOpOutput {
       val: op.res,
       invalid: 0,
-      overflow: op.overflow,
-      underflow: op.underflow,
+      overflow: 0, //op.overflow,
+      underflow: 0, //op.underflow,
       divByZero: 0,
       inexact: 0
     };
