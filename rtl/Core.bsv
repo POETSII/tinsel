@@ -25,7 +25,7 @@ import FPUOps       :: *;
 import InstrMem     :: *;
 import DCacheTypes  :: *;
 import IdleDetector :: *;
-import ProgRouter   :: *;
+import Router   :: *;
 
 // ============================================================================
 // Control/status registers (CSRs) supported

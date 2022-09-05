@@ -34,7 +34,7 @@ p["SharedInstrMem"] = True
 p["LogCoresPerDCache"] = 2
 
 # Log of number of caches per DRAM port
-p["LogDCachesPerDRAM"] = 1
+p["LogDCachesPerDRAM"] = 3
 
 # Log of number of 32-bit words in a single memory transfer
 p["LogWordsPerBeat"] = 3
@@ -75,10 +75,10 @@ p["LogMsgsPerMailbox"] = 9
 p["LogCoresPerMailbox"] = 2
 
 # Number of bits in mailbox mesh X coord
-p["MailboxMeshXBits"] = 1
+p["MailboxMeshXBits"] = 2
 
 # Number of bits in mailbox mesh Y coord
-p["MailboxMeshYBits"] = 1
+p["MailboxMeshYBits"] = 2
 
 # Length of mailbox mesh X dimension
 p["MailboxMeshXLen"] = 2 ** p["MailboxMeshXBits"]
@@ -195,6 +195,10 @@ p["ClockFreq"] = 210
 
 # (These should not be modified.)
 
+_dramCores = 2 ** (p["LogCoresPerDCache"] + p["LogDCachesPerDRAM"] + p["LogDRAMsPerBoard"])
+_mailboxCores = 2 ** (p["MailboxMeshXBits"] + p["MailboxMeshYBits"] + p["LogCoresPerMailbox"])
+if _dramCores != _mailboxCores:
+    raise ValueError("Tinsel configuration has mismatched mailbox and DRAM core networks.\nexpected %i connected to DRAMs, but %i are connected to the flit network." % (_dramCores, _mailboxCores))
 # The number of 32-bit instructions that fit in a core's instruction memory
 p["InstrsPerCore"] = 2**p["LogInstrsPerCore"]
 

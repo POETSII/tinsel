@@ -25,7 +25,7 @@ import IdleDetector :: *;
 import FlitMerger   :: *;
 import OffChipRAM   :: *;
 import DRAM         :: *;
-import ProgRouter   :: *;
+import Router   :: *;
 
 // =============================================================================
 // Mesh Router
@@ -292,10 +292,6 @@ interface NoC;
   interface Vector#(`NumEastWestLinks, AvalonMac) west;
   `endif
   // Connections to off-chip memory (for the programmable router)
-  interface Vector#(`DRAMsPerBoard,
-    Vector#(`FetchersPerProgRouter, BOut#(DRAMReq))) dramReqs;
-  interface Vector#(`DRAMsPerBoard,
-    Vector#(`FetchersPerProgRouter, In#(DRAMResp))) dramResps;
   // ProgRouter fetcher activities & performance counters
   interface Vector#(`FetchersPerProgRouter, FetcherActivity) activities;
   interface ProgRouterPerfCounters progRouterPerfCounters;
@@ -390,7 +386,7 @@ module mkNoC#(
   // -------------------------
 
   // Programmable router
-  ProgRouter boardRouter <- mkProgRouter(boardId);
+  ProgRouter boardRouter <- mkBypassRouter();
 
   // Connect board router to north link
   connectDirect(boardRouter.flitOut[0], northLink[0].flitIn);
@@ -466,11 +462,6 @@ module mkNoC#(
   interface west = Vector::map(getMac, westLink);
   `endif
 
-  // Requests to off-chip memory
-  interface dramReqs = boardRouter.ramReqs;
-
-  // Responses from off-chip memory
-  interface dramResps = boardRouter.ramResps;
 
   // Fetcher activities
   interface activities = boardRouter.activities;
