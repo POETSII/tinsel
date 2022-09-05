@@ -38,5 +38,9 @@ clean:
 $(HL)/hostlink.a:
 	make -C $(HL) hostlink.a
 
+$(HL)/sim/hostlink.a :
+	make -C $(HL) sim/hostlink.a
 run: run.cpp $(HL)/hostlink.a
 	g++ -O2 -I $(INC) -I $(HL) -o run run.cpp $(HL)/hostlink.a
+sim: run.cpp $(HL)/sim/hostlink.a
+	g++ -O2 -I $(INC) -I $(HL) -o sim run.cpp $(HL)/sim/hostlink.a

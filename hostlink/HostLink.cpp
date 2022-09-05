@@ -143,14 +143,15 @@ void HostLink::constructor(HostLinkParams p)
   // Ignore SIGPIPE
   signal(SIGPIPE, SIG_IGN);
 
-  #ifdef SIMULATE
-    // Connect to simulator
-    pcieLink = connectToPCIeStream(PCIESTREAM_SIM);
-  #else
-    // Connect to pciestreamd
-    pcieLink = connectToPCIeStream(PCIESTREAM);
-  #endif
-  printf("connected to PCIe stream.\n");
+  // #ifdef SIMULATE
+  //   // Connect to simulator
+  //   pcieLink = connectToPCIeStream(PCIESTREAM_SIM);
+  // #else
+  //   // Connect to pciestreamd
+  //   pcieLink = connectToPCIeStream(PCIESTREAM);
+  // #endif
+  // printf("connected to PCIe stream.\n");
+  pcieLink = NULL;
 
   // Create DebugLink
   DebugLinkParams debugLinkParams;
@@ -271,7 +272,7 @@ HostLink::~HostLink()
   delete debugLink;
 
   // Close connection to the PCIe stream daemon
-  close(pcieLink);
+  if(pcieLink) close(pcieLink);
 
   // Release HostLink lock
   if (flock(lockFile, LOCK_UN) != 0) {
@@ -337,6 +338,7 @@ void HostLink::fromAddr(uint32_t addr, uint32_t* meshX, uint32_t* meshY,
 bool HostLink::sendHelper(uint32_t dest, uint32_t numFlits, void* payload,
        bool block, uint32_t key)
 {
+  if (!pcieLink) exit(1);
   assert(useSendBuffer ? block : true);
 
   // Ensure that MaxFlitsPerMsg is not violated
@@ -411,6 +413,7 @@ bool HostLink::send(uint32_t dest, uint32_t numFlits, void* msg, bool block)
 // Flush the send buffer
 void HostLink::flush()
 {
+  if (!pcieLink) exit(1);
   assert(useSendBuffer);
   if (sendBufferLen > 0) {
     socketBlockingPut(pcieLink, sendBuffer, sendBufferLen * 16);
@@ -448,6 +451,7 @@ bool HostLink::keyTrySend(uint32_t key, uint32_t numFlits, void* msg)
 // Receive a message via PCIe (blocking)
 void HostLink::recv(void* msg)
 {
+  if (!pcieLink) exit(1);
   int numBytes = 1 << TinselLogBytesPerMsg;
   socketBlockingGet(pcieLink, (char*) msg, numBytes);
 }
@@ -455,6 +459,7 @@ void HostLink::recv(void* msg)
 // Receive a message (blocking), given size of message in bytes
 void HostLink::recvMsg(void* msg, uint32_t numBytes)
 {
+  if (!pcieLink) exit(1);
   // Number of padding bytes that need to be received but not stored
   int paddingBytes = (1 << TinselLogBytesPerMsg) - numBytes;
 
@@ -470,6 +475,7 @@ void HostLink::recvMsg(void* msg, uint32_t numBytes)
 // Receive multiple messages (blocking)
 void HostLink::recvBulk(int numMsgs, void* msgs)
 {
+  if (!pcieLink) exit(1);
   int numBytes = numMsgs * (1 << TinselLogBytesPerMsg);
   socketBlockingGet(pcieLink, (char*) msgs, numBytes);
 }
@@ -477,6 +483,7 @@ void HostLink::recvBulk(int numMsgs, void* msgs)
 // Receive multiple messages (blocking), given size of each message
 void HostLink::recvMsgs(int numMsgs, int msgSize, void* msgs)
 {
+  if (!pcieLink) exit(1);
   int numBytes = numMsgs * (1 << TinselLogBytesPerMsg);
   uint8_t* buffer = new uint8_t [numBytes];
   uint8_t* ptr = (uint8_t*) msgs;
@@ -489,6 +496,7 @@ void HostLink::recvMsgs(int numMsgs, int msgSize, void* msgs)
 // Can receive a flit without blocking?
 bool HostLink::canRecv()
 {
+  if (!pcieLink) exit(1);
   return socketCanGet(pcieLink);
 }
 
