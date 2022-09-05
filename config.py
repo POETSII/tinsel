@@ -96,7 +96,7 @@ p["LogMsgPtrQueueSize"] = 6
 p["LogMulticastBufferSize"] = 9
 
 # Maximum size of boot loader (in bytes)
-p["MaxBootImageBytes"] = 8094
+p["MaxBootImageBytes"] = 4096
 
 # Size of transmit buffer in a reliable link
 p["LogTransmitBufferSize"] = 10
@@ -137,7 +137,7 @@ p["MeshXLenWithinBox"] = 1
 p["MeshYLenWithinBox"] = 1
 
 # Number of cores per FPU
-p["LogCoresPerFPU"] = 2
+p["LogCoresPerFPU"] = 0
 
 # Number of inter-FPGA links on north edge
 # Number of inter-FPGA links on south edge

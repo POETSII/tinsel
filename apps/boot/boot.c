@@ -35,6 +35,21 @@ int puthex(unsigned x)
   return 8;
 }
 
+
+
+float compute() {
+  // do a benchmark workload
+  volatile float y = 0.0;
+  for (int i=0; i<10000; i++) {
+    for (float x=0; x<50; x=x+1.0) {
+      x = x+x;
+      y = x*x;
+    }
+  }
+  // y = y + 5.0;
+  return y;
+}
+
 // Main
 int main()
 {
@@ -48,6 +63,7 @@ int main()
 
   // Host id
   uint32_t hostId = tinselHostId();
+  tinselSetLen(0);
 
   if (threadId == 0) {
     // Use one flit per message
@@ -63,30 +79,54 @@ int main()
   // putchar('g');
   // appMain();
 
-  putchar('h');
-  putchar('e');
-  putchar('l');
-  putchar('l');
-  putchar('o');
-  putchar(' ');
-  puthex(me);
-  putchar('\n');
+  // putchar('h');
+  // putchar('e');
+  // putchar('l');
+  // putchar('l');
+  // putchar('o');
+  // putchar(' ');
+  // puthex(me);
+  // putchar('\n');
 
-  float y = 0.0;
-  for (float x=0; x<1024.0f; x=x+1.0) {
-    y = x*x;
+  char* sendbuf = tinselSendSlot();
+  void* recvbuf;
+
+  if (me == 0) {
+    // thread 0: time the entire process.
+    tinselPerfCountReset();
+    tinselPerfCountStart();
+    for (int c=1; c<TinselCoresPerBoard*TinselThreadsPerCore; c++) {
+      tinselWaitUntil(TINSEL_CAN_SEND);
+      tinselSend(c, sendbuf);
+    }
+    compute();
+    for (int c=1; c<TinselCoresPerBoard*TinselThreadsPerCore; c++) {
+      tinselWaitUntil(TINSEL_CAN_RECV);
+      recvbuf = tinselRecv();
+      tinselFree(recvbuf);
+    }
+    tinselPerfCountStop();
+    puthex(me);
+    putchar(':');
+    puthex(tinselCycleCount());
+    putchar('\n');
+  } else {
+    // worker thread; wait to be called, and do compute()
+    tinselWaitUntil(TINSEL_CAN_RECV);
+    recvbuf = tinselRecv();
+    tinselFree(recvbuf);
+    compute();
+    tinselWaitUntil(TINSEL_CAN_SEND);
+    tinselSend(0, sendbuf);
   }
 
-  putchar('d');
-  putchar('\n');
-
-
-  while (1);
+  // Restart boot loader
+  if (threadId != 0) tinselKillThread();
+  asm volatile("jr zero");
 
   // Unreachable
   return 0;
 }
-
 
 
 
