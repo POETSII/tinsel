@@ -3,7 +3,7 @@
 # TINSELPATH=/home/cmw97/tinsel
 # ADDR=0x60140f00000
 
-HOST=ASDEX
+HOST=betsy
 
 if [ $HOST = "ASDEX" ]; then
   TINSELPATH=/mnt/Projects/POETS/POETS/mn416-scratch-sbc-FPUpercore-largemesh
@@ -13,8 +13,8 @@ if [ $HOST = "ASDEX" ]; then
 fi
 
 if [ $HOST = "betsy" ]; then
-  TINSELPATH=/local/scratch/cmw97/benchmark/tinsel
-  # TINSELPATH=`pwd`
+  # TINSELPATH=/mnt/Projects/POETS/POETS/mn416-scratch-sbc-FPUpercore-largemesh
+  TINSELPATH=`pwd`
   SSH="ssh -K"
   envs="QUARTUS_ROOTDIR=/usr/groups/ecad/altera/19.2pro/quartus PATH=\$QUARTUS_ROOTDIR/bin:\$QUARTUS_ROOTDIR/../qsys/bin:\$QUARTUS_ROOTDIR/../nios2eds/bin:\$QUARTUS_ROOTDIR/../nios2eds/sdk2/bin:\$QUARTUS_ROOTDIR/../nios2eds/bin/gnu/H-x86_64-pc-linux-gnu/bin:\$PATH LD_LIBRARY_PATH=/usr/groups/ecad/altera/19.2pro/quartus/dspba/backend/linux64/syscon:/usr/groups/ecad/altera/19.2pro/quartus/linux64/"
   ADDR=f7001000

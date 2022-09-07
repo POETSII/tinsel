@@ -22,19 +22,19 @@ import subprocess
 
 # Command-line usage
 def usage():
-  print "Usage: test-mem.py"
-  print ""
-  print "  Environment variables:"
-  print "    * SEED"
-  print "    * NUM_ITERATIONS"
-  print "    * INIT_DEPTH"
-  print "    * INCR_DEPTH"
-  print "    * TESTS_PER_DEPTH"
-  print "    * NUM_THREADS"
-  print "    * NUM_ADDRS"
-  print "    * MAX_DELAY"
-  print "    * ASSOC"
-  print "    * LOG_DIR"
+  print("Usage: test-mem.py")
+  print("")
+  print("  Environment variables:")
+  print("    * SEED")
+  print("    * NUM_ITERATIONS")
+  print("    * INIT_DEPTH")
+  print("    * INCR_DEPTH")
+  print("    * TESTS_PER_DEPTH")
+  print("    * NUM_THREADS")
+  print("    * NUM_ADDRS")
+  print("    * MAX_DELAY")
+  print("    * ASSOC")
+  print("    * LOG_DIR")
 
 # Read options
 try:
@@ -50,7 +50,7 @@ try:
   insertFlushes = int(os.environ.get("FLUSHES", "1"))
   logDir        = os.environ.get("LOG_DIR", "test-mem-log")
 except:
-  print "Invalid options"
+  print("Invalid options")
   usage()
   sys.exit()
 
@@ -134,7 +134,7 @@ def genTrace():
     #os.system(cmd)
     subprocess.call(cmd, shell=True);
   except:
-    print "Problem invoking 'traceMem'"
+    print("Problem invoking 'traceMem'")
     sys.exit()
   
 # Generate a trace and check it
@@ -148,8 +148,8 @@ def genTraceAndCheck():
     if out == "OK\n": return True
     else: return False
   except:
-    print "Problem invoking 'axe'"
-    print "Ensure that 'axe' is in your PATH"
+    print("Problem invoking 'axe'")
+    print("Ensure that 'axe' is in your PATH")
     sys.exit()
 
 # =============================================================================
@@ -157,13 +157,13 @@ def genTraceAndCheck():
 # =============================================================================
 
 for i in range(0, numIterations):
-  print "Depth", numOps
+  print("Depth", numOps)
   for t in range(0, testsPerDepth):
-    print t+1, "\r",
+    print(t+1, "\r", end=' ')
     sys.stdout.flush()
     ok = genTraceAndCheck()
     if not ok:
-      print ("\nTest failed.  For details, see directory '" + logDir + "/'")
+      print(("\nTest failed.  For details, see directory '" + logDir + "/'"))
       sys.exit()
-  print "OK, passed", testsPerDepth, "tests"
+  print("OK, passed", testsPerDepth, "tests")
   numOps = numOps+depthIncr
