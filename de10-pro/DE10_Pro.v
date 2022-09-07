@@ -143,10 +143,10 @@ assign hip_ctrl_test_in = 32'h000000A8;
 
 
 // wire reset_n;
-wire ddr4_local_reset_req;
-wire ddr4_a_local_reset_done;
-wire ddr4_a_status_local_cal_fail;
-wire ddr4_a_status_local_cal_success;
+// wire ddr4_local_reset_req;
+// wire ddr4_a_local_reset_done;
+// wire ddr4_a_status_local_cal_fail;
+// wire ddr4_a_status_local_cal_success;
 
 // assign ddr4_local_reset_req;
 
