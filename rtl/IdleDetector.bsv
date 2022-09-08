@@ -26,7 +26,7 @@ import Vector     :: *;
 import ConfigReg  :: *;
 import Util       :: *;
 import DReg       :: *;
-import Router :: *;
+import ProgRouter :: *;
 import Assert     :: *;
 
 // The total number of messages sent by all threads on an FPGA minus

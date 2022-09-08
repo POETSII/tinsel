@@ -6,7 +6,7 @@ package DRAM;
 // ============================================================================
 
 // DRAM client id
-typedef Bit#(TLog#(`DCachesPerDRAM)) DRAMClientId;
+typedef Bit#(TLog#(TAdd#(`DCachesPerDRAM,`FetchersPerProgRouter))) DRAMClientId;
 
 // DRAM request id
 typedef DRAMClientId DRAMReqId;

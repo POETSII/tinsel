@@ -231,7 +231,8 @@ module de5Top_inner (DE5Top);
 
   // Connections to off-chip RAMs
   for (Integer i = 0; i < `DRAMsPerBoard; i=i+1)
-    connectClientsToOffChipRAM(dcaches[i], rams[i]);
+    connectClientsToOffChipRAM(dcaches[i],
+      noc.dramReqs[i], noc.dramResps[i], rams[i]);
 
   // Connects ProgRouter performance counters to cores
   connectProgRouterPerfCountersToCores(noc.progRouterPerfCounters,
