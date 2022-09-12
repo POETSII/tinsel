@@ -92,7 +92,7 @@ module mkHostLink(HostLinkPCIeAdaptorIfc);
 
     if (fromPCIe.canGet && linkOutBuffer.notFull) begin
       // Determine flit destination address
-      Bit#(6) destThread = fromPCIeDA[`LogThreadsPerMailbox-1:0];
+      Bit#(`LogThreadsPerMailbox) destThread = fromPCIeDA[`LogThreadsPerMailbox-1:0];
       Vector#(`ThreadsPerMailbox, Bool) destThreads = newVector();
       for (Integer i = 0; i < `ThreadsPerMailbox; i=i+1)
         destThreads[i] = destThread == fromInteger(i);
