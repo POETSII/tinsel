@@ -4,6 +4,7 @@
 # This file controls the parameters for the circuit generator
 
 import sys
+import overrides
 
 #==============================================================================
 # Prelude
@@ -30,11 +31,11 @@ p["LogInstrsPerCore"] = 11
 # Share instruction memory between two cores?
 p["SharedInstrMem"] = True
 
-# Log of number of multi-threaded cores sharing a DCache
-p["LogCoresPerDCache"] = 4
-
-# Log of number of caches per DRAM port
-p["LogDCachesPerDRAM"] = 3
+# # Log of number of multi-threaded cores sharing a DCache
+# p["LogCoresPerDCache"] = 1
+#
+# # Log of number of caches per DRAM port
+# p["LogDCachesPerDRAM"] = 1
 
 # Log of number of 32-bit words in a single memory transfer
 p["LogWordsPerBeat"] = 3
@@ -71,23 +72,15 @@ p["LogMaxFlitsPerMsg"] = 2
 # Space available in mailbox scratchpad
 p["LogMsgsPerMailbox"] = 10
 
-# Number of cores sharing a mailbox
-p["LogCoresPerMailbox"] = 4
+# # Number of cores sharing a mailbox
+# p["LogCoresPerMailbox"] = 1
+#
+# # Number of bits in mailbox mesh X coord
+# p["MailboxMeshXBits"] = 1
+#
+# # Number of bits in mailbox mesh Y coord
+# p["MailboxMeshYBits"] = 1
 
-# Number of bits in mailbox mesh X coord
-p["MailboxMeshXBits"] = 2
-
-# Number of bits in mailbox mesh Y coord
-p["MailboxMeshYBits"] = 2
-
-# Length of mailbox mesh X dimension
-p["MailboxMeshXLen"] = 2 ** p["MailboxMeshXBits"]
-
-# Length of mailbox mesh Y dimension
-p["MailboxMeshYLen"] = 2 ** p["MailboxMeshYBits"]
-
-# Number of mailboxes per board
-p["LogMailboxesPerBoard"] = p["MailboxMeshXBits"] + p["MailboxMeshYBits"]
 
 # Size of multicast queues in mailbox
 p["LogMsgPtrQueueSize"] = 6
@@ -137,7 +130,7 @@ p["MeshXLenWithinBox"] = 1
 p["MeshYLenWithinBox"] = 1
 
 # Number of cores per FPU
-p["LogCoresPerFPU"] = 0
+p["LogCoresPerFPU"] = 1
 
 # Number of inter-FPGA links on north edge
 # Number of inter-FPGA links on south edge
@@ -180,7 +173,7 @@ p["EnablePerfCount"] = True
 p["BoxMeshXLen"] = 1
 p["BoxMeshYLen"] = 1
 p["BoxMesh"] = ('{'
-    '{"asdex"}'
+    '{"certina"}'
   '}')
 
 # Enable custom accelerators (experimental feature)
@@ -189,11 +182,27 @@ p["UseCustomAccelerator"] = False
 # Clock frequency (in MHz)
 p["ClockFreq"] = 210
 
+try:
+    import overrides
+    p.update(overrides.p)
+except ImportError:
+    pass
+
 #==============================================================================
 # Derived Parameters
 #==============================================================================
 
 # (These should not be modified.)
+
+# Length of mailbox mesh X dimension
+p["MailboxMeshXLen"] = 2 ** p["MailboxMeshXBits"]
+
+# Length of mailbox mesh Y dimension
+p["MailboxMeshYLen"] = 2 ** p["MailboxMeshYBits"]
+
+# Number of mailboxes per board
+p["LogMailboxesPerBoard"] = p["MailboxMeshXBits"] + p["MailboxMeshYBits"]
+
 
 _dramCores = 2 ** (p["LogCoresPerDCache"] + p["LogDCachesPerDRAM"] + p["LogDRAMsPerBoard"])
 _mailboxCores = 2 ** (p["MailboxMeshXBits"] + p["MailboxMeshYBits"] + p["LogCoresPerMailbox"])

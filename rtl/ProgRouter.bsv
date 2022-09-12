@@ -43,6 +43,7 @@ typedef struct {
   Bit#(`LogBeatsPerDRAM) ptr;
   // Number of beats in the array
   Bit#(`LogRoutingEntryLen) numBeats;
+  // Bit#(TSub#(32, TAdd#(TAdd#(`LogRoutingEntryLen, `LogBeatsPerDRAM), `LogDRAMsPerBoard))) unused;
 } RoutingKey deriving (Bits, FShow);
 
 // Extract routing key from an address
@@ -123,7 +124,8 @@ typedef struct {
   // of the message is replaced with this
   Bit#(16) localKey;
   // Mailbox-local destination mask
-  Bit#(64) destMask;
+  Bit#(`ThreadsPerMailbox) destMask; // 64 in total
+  Bit#(TSub#(64, `ThreadsPerMailbox)) unused_2;
 } MRMRecord deriving (Bits);
 
 // 48-bit Indirection (IND) record
