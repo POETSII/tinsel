@@ -31,7 +31,7 @@ p["LogInstrsPerCore"] = 11
 p["SharedInstrMem"] = True
 
 # Log of number of multi-threaded cores sharing a DCache
-p["LogCoresPerDCache"] = 2
+p["LogCoresPerDCache"] = 4
 
 # Log of number of caches per DRAM port
 p["LogDCachesPerDRAM"] = 3
@@ -46,7 +46,7 @@ p["LogBeatsPerLine"] = 0
 p["DCacheLogSetsPerThread"] = 2
 
 # Log of number of ways per set in set-associative data cache
-p["DCacheLogNumWays"] = 4
+p["DCacheLogNumWays"] = 3
 
 # Number of DRAMs per FPGA board
 p["LogDRAMsPerBoard"] = 1
@@ -69,10 +69,10 @@ p["LogWordsPerFlit"] = 2
 p["LogMaxFlitsPerMsg"] = 2
 
 # Space available in mailbox scratchpad
-p["LogMsgsPerMailbox"] = 9
+p["LogMsgsPerMailbox"] = 10
 
 # Number of cores sharing a mailbox
-p["LogCoresPerMailbox"] = 2
+p["LogCoresPerMailbox"] = 4
 
 # Number of bits in mailbox mesh X coord
 p["MailboxMeshXBits"] = 2
@@ -180,7 +180,7 @@ p["EnablePerfCount"] = True
 p["BoxMeshXLen"] = 1
 p["BoxMeshYLen"] = 1
 p["BoxMesh"] = ('{'
-    '{"betsy"}'
+    '{"asdex"}'
   '}')
 
 # Enable custom accelerators (experimental feature)

@@ -57,11 +57,11 @@ INLINE volatile void* tinselSendSlot();
 INLINE void tinselSetLen(int n);
 
 // Send message to multiple threads on the given mailbox
-INLINE void tinselMulticast(
-  uint32_t mboxDest,      // Destination mailbox
-  uint32_t destMaskHigh,  // Destination bit mask (high bits)
-  uint32_t destMaskLow,   // Destination bit mask (low bits)
-  volatile void* addr);   // Message pointer
+// INLINE void tinselMulticast(
+//   uint32_t mboxDest,      // Destination mailbox
+//   uint32_t destMaskHigh,  // Destination bit mask (high bits)
+//   uint32_t destMaskLow,   // Destination bit mask (low bits)
+//   volatile void* addr);   // Message pointer
 
 // Send message at addr to dest
 INLINE void tinselSend(int dest, volatile void* addr);
