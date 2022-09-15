@@ -3,10 +3,11 @@
 # TINSELPATH=/home/cmw97/tinsel
 # ADDR=0x60140f00000
 
-HOST=betsy
+HOST=ASDEX
 
 if [ $HOST = "ASDEX" ]; then
-  TINSELPATH=/mnt/Projects/POETS/POETS/mn416-scratch-sbc-FPUpercore-largemesh
+  PWD=`pwd`
+  TINSELPATH=/mnt/Projects/POETS/benchmark/tinsel-bmark-script/build/`basename $PWD`
   ADDR=a2301000
   SSH=ssh
   envs="QUARTUS_ROOTDIR=/local/ecad/altera/19.2pro/quartus PATH=\$QUARTUS_ROOTDIR/bin:\$QUARTUS_ROOTDIR/../qsys/bin:\$QUARTUS_ROOTDIR/../nios2eds/bin:\$QUARTUS_ROOTDIR/../nios2eds/sdk2/bin:\$QUARTUS_ROOTDIR/../nios2eds/bin/gnu/H-x86_64-pc-linux-gnu/bin:\$PATH"

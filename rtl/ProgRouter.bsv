@@ -124,8 +124,8 @@ typedef struct {
   // of the message is replaced with this
   Bit#(16) localKey;
   // Mailbox-local destination mask
-  Bit#(`ThreadsPerMailbox) destMask; // 64 in total
-  Bit#(TSub#(64, `ThreadsPerMailbox)) unused_2;
+  Bit#(64) destMask; // fix at 64; this is clearly incorrect, but maknig more space for 128c designs breaks the bin format
+  // Bit#(TSub#(64, `ThreadsPerMailbox)) unused_2;
 } MRMRecord deriving (Bits);
 
 // 48-bit Indirection (IND) record
@@ -607,7 +607,8 @@ module mkFetcher#(BoardId boardId, Integer fetcherId) (Fetcher);
         flit.dest.addr.isKey = False;
         flit.dest.addr.mbox.x = unpack(truncate(rec.mbox[1:0]));
         flit.dest.addr.mbox.y = unpack(truncate(rec.mbox[3:2]));
-        flit.dest.threads = zeroExtend(rec.destMask); // WARNING: cannot address upper cores with a indirection record!
+        flit.dest.threads = 0; // zeroExtend(rec.destMask); // WARNING: cannot address upper cores with a indirection record!
+        $display("ERROR: used a MRM record (i.e. progrouter) in design supporting >64c.");
         // Replace first half-word of message with local key
         if (firstFlit)
           flit.payload = {truncateLSB(flit.payload), rec.localKey};

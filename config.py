@@ -173,7 +173,7 @@ p["EnablePerfCount"] = True
 p["BoxMeshXLen"] = 1
 p["BoxMeshYLen"] = 1
 p["BoxMesh"] = ('{'
-    '{"certina"}'
+    '{"asdex"}'
   '}')
 
 # Enable custom accelerators (experimental feature)
