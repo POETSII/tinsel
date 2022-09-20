@@ -74,16 +74,16 @@ module de5Top (DE5Top);
 
   Clock defaultClock <- exposeCurrentClock();
   Reset externalReset <- exposeCurrentReset();
-  MakeResetIfc hostReset <- mkReset(1, False, defaultClock);
-  Reset combinedReset <- mkResetEither(externalReset, hostReset.new_rst);
+  // MakeResetIfc hostReset <- mkReset(1, False, defaultClock);
+  // Reset combinedReset <- mkResetEither(externalReset, hostReset.new_rst);
 
-  DE5Top top <- de5Top_inner(reset_by combinedReset);
+  DE5Top top <- de5Top_inner(reset_by externalReset);
 
   `ifndef SIMULATE
-  (* fire_when_enabled, no_implicit_conditions *)
-  rule pcieReset;
-    if (top.resetReq) hostReset.assertReset();
-  endrule
+  // (* fire_when_enabled, no_implicit_conditions *)
+  // rule pcieReset;
+  //   if (top.resetReq) hostReset.assertReset();
+  // endrule
 
   interface dramIfcs = top.dramIfcs;
   interface jtagIfc  = top.jtagIfc;
