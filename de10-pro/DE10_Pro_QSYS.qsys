@@ -6415,52 +6415,7 @@
                         </entry>
                         <entry>
                             <key>clockRate</key>
-                            <value>100000000</value>
-                        </entry>
-                        <entry>
-                            <key>clockRateKnown</key>
-                            <value>true</value>
-                        </entry>
-                        <entry>
-                            <key>externallyDriven</key>
-                            <value>false</value>
-                        </entry>
-                        <entry>
-                            <key>ptfSchematicName</key>
-                        </entry>
-                    </parameterValueMap>
-                </parameters>
-            </interface>
-            <interface>
-                <name>outclk2</name>
-                <type>clock</type>
-                <isStart>true</isStart>
-                <ports>
-                    <port>
-                        <name>outclk_2</name>
-                        <role>clk</role>
-                        <direction>Output</direction>
-                        <width>1</width>
-                        <lowerBound>0</lowerBound>
-                        <vhdlType>STD_LOGIC</vhdlType>
-                    </port>
-                </ports>
-                <assignments>
-                    <assignmentValueMap>
-                        <entry>
-                            <key>ui.blockdiagram.direction</key>
-                            <value>output</value>
-                        </entry>
-                    </assignmentValueMap>
-                </assignments>
-                <parameters>
-                    <parameterValueMap>
-                        <entry>
-                            <key>associatedDirectClock</key>
-                        </entry>
-                        <entry>
-                            <key>clockRate</key>
-                            <value>200000000</value>
+                            <value>300000000</value>
                         </entry>
                         <entry>
                             <key>clockRateKnown</key>
@@ -6534,20 +6489,7 @@
                     <suppliedSystemInfos>
                         <entry>
                             <key>CLOCK_RATE</key>
-                            <value>100000000</value>
-                        </entry>
-                    </suppliedSystemInfos>
-                    <consumedSystemInfos/>
-                </value>
-            </entry>
-            <entry>
-                <key>outclk2</key>
-                <value>
-                    <connectionPointName>outclk2</connectionPointName>
-                    <suppliedSystemInfos>
-                        <entry>
-                            <key>CLOCK_RATE</key>
-                            <value>200000000</value>
+                            <value>300000000</value>
                         </entry>
                     </suppliedSystemInfos>
                     <consumedSystemInfos/>
@@ -6741,52 +6683,7 @@
                     </entry>
                     <entry>
                         <key>clockRate</key>
-                        <value>100000000</value>
-                    </entry>
-                    <entry>
-                        <key>clockRateKnown</key>
-                        <value>true</value>
-                    </entry>
-                    <entry>
-                        <key>externallyDriven</key>
-                        <value>false</value>
-                    </entry>
-                    <entry>
-                        <key>ptfSchematicName</key>
-                    </entry>
-                </parameterValueMap>
-            </parameters>
-        </interface>
-        <interface>
-            <name>outclk2</name>
-            <type>clock</type>
-            <isStart>true</isStart>
-            <ports>
-                <port>
-                    <name>outclk_2</name>
-                    <role>clk</role>
-                    <direction>Output</direction>
-                    <width>1</width>
-                    <lowerBound>0</lowerBound>
-                    <vhdlType>STD_LOGIC</vhdlType>
-                </port>
-            </ports>
-            <assignments>
-                <assignmentValueMap>
-                    <entry>
-                        <key>ui.blockdiagram.direction</key>
-                        <value>output</value>
-                    </entry>
-                </assignmentValueMap>
-            </assignments>
-            <parameters>
-                <parameterValueMap>
-                    <entry>
-                        <key>associatedDirectClock</key>
-                    </entry>
-                    <entry>
-                        <key>clockRate</key>
-                        <value>200000000</value>
+                        <value>300000000</value>
                     </entry>
                     <entry>
                         <key>clockRateKnown</key>
@@ -10956,7 +10853,7 @@
                     <consumedSystemInfos>
                         <entry>
                             <key>ADDRESS_WIDTH</key>
-                            <value>10</value>
+                            <value>32</value>
                         </entry>
                     </consumedSystemInfos>
                 </value>
@@ -24692,7 +24589,7 @@
    name="reset_controller_0"
    kind="altera_generic_component"
    version="1.0"
-   enabled="1">
+   enabled="0">
   <parameter name="componentDefinition"><![CDATA[<componentDefinition>
     <boundary>
         <interfaces>
@@ -25008,7 +24905,7 @@
                         </entry>
                         <entry>
                             <key>synchronousEdges</key>
-                            <value>BOTH</value>
+                            <value>DEASSERT</value>
                         </entry>
                     </parameterValueMap>
                 </parameters>
@@ -25046,7 +24943,7 @@
                         </entry>
                         <entry>
                             <key>synchronousEdges</key>
-                            <value>BOTH</value>
+                            <value>DEASSERT</value>
                         </entry>
                     </parameterValueMap>
                 </parameters>
@@ -25147,7 +25044,7 @@
                     </entry>
                     <entry>
                         <key>synchronousEdges</key>
-                        <value>BOTH</value>
+                        <value>DEASSERT</value>
                     </entry>
                 </parameterValueMap>
             </parameters>
@@ -25185,7 +25082,7 @@
                     </entry>
                     <entry>
                         <key>synchronousEdges</key>
-                        <value>BOTH</value>
+                        <value>DEASSERT</value>
                     </entry>
                 </parameterValueMap>
             </parameters>
@@ -25631,70 +25528,70 @@
    kind="reset"
    version="19.2"
    start="reset_in.out_reset"
-   end="reset_controller_0.reset_in0" />
- <connection
-   kind="reset"
-   version="19.2"
-   start="reset_controller_0.reset_out"
    end="mm_clockcross_50Mhz.m0_reset" />
  <connection
    kind="reset"
    version="19.2"
-   start="reset_controller_0.reset_out"
+   start="reset_in.out_reset"
    end="iopll_0.reset" />
  <connection
    kind="reset"
    version="19.2"
-   start="reset_controller_0.reset_out"
+   start="reset_in.out_reset"
    end="jtag_uart_0.reset" />
  <connection
    kind="reset"
    version="19.2"
-   start="reset_controller_0.reset_out"
-   end="mm_bridge_ddrB_1.reset" />
- <connection
-   kind="reset"
-   version="19.2"
-   start="reset_controller_0.reset_out"
+   start="reset_in.out_reset"
    end="mm_bridge_ddrB_0.reset" />
  <connection
    kind="reset"
    version="19.2"
-   start="reset_controller_0.reset_out"
-   end="mm_bridge_ddrC_1.reset" />
+   start="reset_in.out_reset"
+   end="mm_bridge_ddrB_1.reset" />
  <connection
    kind="reset"
    version="19.2"
-   start="reset_controller_0.reset_out"
-   end="mm_bridge_ddrC_0.reset" />
- <connection
-   kind="reset"
-   version="19.2"
-   start="reset_controller_0.reset_out"
-   end="mm_bridge_ddrC_2.reset" />
- <connection
-   kind="reset"
-   version="19.2"
-   start="reset_controller_0.reset_out"
+   start="reset_in.out_reset"
    end="mm_bridge_ddrB_2.reset" />
  <connection
    kind="reset"
    version="19.2"
-   start="reset_controller_0.reset_out"
+   start="reset_in.out_reset"
+   end="mm_bridge_ddrC_0.reset" />
+ <connection
+   kind="reset"
+   version="19.2"
+   start="reset_in.out_reset"
+   end="mm_bridge_ddrC_1.reset" />
+ <connection
+   kind="reset"
+   version="19.2"
+   start="reset_in.out_reset"
+   end="mm_bridge_ddrC_2.reset" />
+ <connection
+   kind="reset"
+   version="19.2"
+   start="reset_in.out_reset"
+   end="reset_controller_0.reset_in0" />
+ <connection
+   kind="reset"
+   version="19.2"
+   start="reset_in.out_reset"
    end="Tinsel_0.reset_sink" />
  <connection
    kind="reset"
    version="19.2"
-   start="reset_controller_0.reset_out"
+   start="reset_in.out_reset"
    end="mm_clockcross_50Mhz.s0_reset" />
  <connection
    kind="reset"
    version="19.2"
-   start="reset_controller_0.reset_out"
+   start="reset_in.out_reset"
    end="mm_clockcross_DDR4_B.s0_reset" />
  <connection
    kind="reset"
    version="19.2"
-   start="reset_controller_0.reset_out"
+   start="reset_in.out_reset"
    end="mm_clockcross_DDR4_C.s0_reset" />
 </system>
