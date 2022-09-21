@@ -74,10 +74,34 @@ module de5Top (DE5Top);
 
   Clock defaultClock <- exposeCurrentClock();
   Reset externalReset <- exposeCurrentReset();
+  MakeResetIfc bufferedResetMod <- mkReset(1, False, defaultClock);
+  Reset bufferedReset = bufferedResetMod.new_rst;
+
+  Reg#(Bool) rst_0 <- mkReg(True, reset_by externalReset);
+  Reg#(Bool) rst_1 <- mkReg(False, reset_by externalReset);
+  Reg#(Bool) rst_2 <- mkReg(False, reset_by externalReset);
+
+  rule deassert_reset (rst_2);
+    rst_0 <= False;
+    rst_1 <= False;
+    rst_2 <= False;
+  endrule
+
+  rule assert_internal_reset (rst_2);
+    bufferedResetMod.assertReset();
+  endrule
+
+  rule propagate_reset;
+    rst_1 <= rst_0;
+    rst_2 <= rst_1;
+  endrule
+
+
+
   // MakeResetIfc hostReset <- mkReset(1, False, defaultClock);
   // Reset combinedReset <- mkResetEither(externalReset, hostReset.new_rst);
 
-  DE5Top top <- de5Top_inner(reset_by externalReset);
+  DE5Top top <- de5Top_inner(reset_by bufferedReset);
 
   `ifndef SIMULATE
   // (* fire_when_enabled, no_implicit_conditions *)

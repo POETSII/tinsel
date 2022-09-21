@@ -4,7 +4,7 @@
 # This file controls the parameters for the circuit generator
 
 import sys
-import overrides
+# import overrides
 
 #==============================================================================
 # Prelude
@@ -186,7 +186,16 @@ try:
     import overrides
     p.update(overrides.p)
 except ImportError:
-    pass
+    # Log of number of multi-threaded cores sharing a DCache
+    p["LogCoresPerDCache"] = 1 # 2 # the mailbox calc defines no of cores, but this defines hookup; need to match
+    p["LogDCachesPerDRAM"] = 1 # 1
+    p["DCacheLogNumWays"] = 4
+    p["LogMsgsPerMailbox"] = 9 # must be at least enough to store one message per thread
+    p["LogCoresPerMailbox"] = 1
+    p["MailboxMeshXBits"] = 1 # 1
+    p["MailboxMeshYBits"] = 1 # 2
+    p["LogCoresPerFPU"] = 2
+
 
 #==============================================================================
 # Derived Parameters

@@ -68,8 +68,8 @@ set_false_path -from * -to [get_cells {DE10_Pro_QSYS_inst|ddr4_status|pio_0|read
 set_false_path -from [get_ports CPU_RESET_n*] -to *
 set_false_path -from [get_ports BUTTON*] -to *
 
-
-
+set_false_path -from {*rstSync|reset_hold*} -to {*tinsel_0|top_debugLink_boardId*}
+set_false_path -from {DE10_Pro_QSYS_inst|tinsel_0|tinsel_0|top_debugLink_boardId*}
 #**************************************************************
 # Set Multicycle Path
 #**************************************************************
