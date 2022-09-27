@@ -50,6 +50,7 @@ import ConfigReg :: *;
 import Util      :: *;
 import Vector    :: *;
 import Socket    :: *;
+import GetPut    :: *;
 
 // =============================================================================
 // Constants
@@ -142,7 +143,7 @@ endinterface
 
 `ifndef SIMULATE
 
-module mkPCIeStream (PCIeStream);
+module mkPCIeStream (Maybe#(Bit#(64)) chipIDReg, PCIeStream ifc);
 
   // Ports
   InPort#(Bit#(128)) inPort <- mkInPort;
@@ -171,6 +172,7 @@ module mkPCIeStream (PCIeStream);
   // Addresses of buffers in host memory
   Reg#(Bit#(64)) addrRxA <- mkConfigReg(0);
   Reg#(Bit#(64)) addrRxB <- mkConfigReg(0);
+  Reg#(UInt#(32)) txTotal <- mkConfigReg(0);
 
   // Tx double-buffer
   // ----------------
@@ -468,6 +470,7 @@ module mkPCIeStream (PCIeStream);
                if (write) enabled <= unpack(writedata[0]);
                ctrlReadData <= zeroExtend({
                   pack(enabled),
+                  pack(txTotal), // 32
                   pack(inBufferLen.value), // 4
                   pack(outBufferLen.value) // 7
                 });
@@ -488,6 +491,8 @@ module mkPCIeStream (PCIeStream);
                 ctrlReadData <= 0;
               end
           12: ctrlReadData <= pack(64'hcafecafe);
+          // top and bottom words for the
+          13: ctrlReadData <= pack(fromMaybe(0, chipIDReg));
         endcase
         ctrlReadDataValid <= read;
        end
@@ -515,6 +520,7 @@ module mkPCIeStream (PCIeStream);
           end else begin
             pendingReads.dec;
             outBuffer.enq(readdata);
+            txTotal <= boundedPlus(txTotal, 16); // 16 bytes per 128b flit
           end
         end
       endmethod
@@ -548,7 +554,7 @@ endmodule
 // Implementation (Simulation)
 // =============================================================================
 
-module mkPCIeStream (PCIeStream);
+module mkPCIeStream (Maybe#(Bit#(64)) chipID, PCIeStream ifc);
 
   // Ports
   InPort#(Bit#(128)) inPort <- mkInPort;
@@ -559,7 +565,10 @@ module mkPCIeStream (PCIeStream);
   // Input rule
   rule in (inPort.canGet);
     Bool ok <- socketPut(pcieSocket, unpack(inPort.value));
-    if (ok) inPort.get;
+    if (ok) begin
+      inPort.get;
+      // $display($time, " got pcie bytes.");
+    end
   endrule
  
   // Output rule

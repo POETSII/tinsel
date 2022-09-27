@@ -94,13 +94,14 @@ module de5BridgeTop (DE5BridgeTop);
 
   // Create JTAG UART instance
   JtagUart uart <- mkJtagUart;
+  Reg#(Maybe#(Bit#(64))) chipIDReg <- mkConfigReg(Invalid);
 
   // Conect ports to UART
   connectUsing(mkUGShiftQueue1(QueueOptFmax), toJtag.out, uart.jtagIn);
   connectUsing(mkUGShiftQueue1(QueueOptFmax), uart.jtagOut, fromJtag.in);
 
   // Create PCIeStream instance
-  PCIeStream pcie <- mkPCIeStream;
+  PCIeStream pcie <- mkPCIeStream(chipIDReg);
 
   // Create off-board links
   Reg#(Bool) enableLinks <- mkConfigReg(False);

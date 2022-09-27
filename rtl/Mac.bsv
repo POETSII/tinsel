@@ -27,11 +27,12 @@ import Vector       :: *;
 typedef struct {
   Bool start;    // Mark start of packet
   Bool stop;     // Mark end of packet
-  Bit#(64) data; // Payload
+  Bit#(512) data; // Payload
+  UInt#(6) empty; // bytes from the LSB that do not contain valid data
 } MacBeat deriving (Bits);
 
-function MacBeat macBeat(Bool start, Bool stop, Bit#(64) data) =
-  MacBeat { start: start, stop: stop, data: data };
+function MacBeat macBeat(Bool start, Bool stop, Bit#(512) data, UInt#(6) empty) =
+  MacBeat { start: start, stop: stop, data: data, empty:empty };
 
 // =============================================================================
 // Interfaces
@@ -40,18 +41,18 @@ function MacBeat macBeat(Bool start, Bool stop, Bit#(64) data) =
 (* always_ready, always_enabled *)
 interface AvalonMac;
   // TX connection to 10G MAC
-  method Bit#(64) source_data;
+  method Bit#(512) source_data;
   method Bool source_valid;
   method Bool source_startofpacket;
   method Bool source_endofpacket;
   method Bit#(1) source_error;
-  method Bit#(3) source_empty;
+  method Bit#(6) source_empty;
   method Action source(Bool source_ready);
   // RX connection to 10G MAC
   method Bool sink_ready;
-  method Action sink(Bit#(64) sink_data, Bool sink_valid,
+  method Action sink(Bit#(512) sink_data, Bool sink_valid,
                        Bool sink_startofpacket, Bool sink_endofpacket,
-                         Bit#(6) sink_error, Bit#(3) sink_empty);
+                         Bit#(6) sink_error, Bit#(6) sink_empty);
 endinterface
 
 interface Mac;
@@ -169,25 +170,26 @@ module mkMac (Mac);
 
   interface AvalonMac avalonMac;
     // Avalon streaming source interface
-    method Bit#(64) source_data = inPort.value.data;
+    method Bit#(512) source_data = inPort.value.data;
     method Bool source_valid = inPort.canGet;
     method Bool source_startofpacket = inPort.value.start;
     method Bool source_endofpacket = inPort.value.stop;
     method Bit#(1) source_error = 0;
-    method Bit#(3) source_empty = 0;
+    method Bit#(6) source_empty = pack(inPort.value.empty);
     method Action source(Bool source_ready);
       if (source_ready && inPort.canGet) inPort.get;
     endmethod
 
     // Avalon streaming sink interface
     method Bool sink_ready = buffer.canEnq;
-    method Action sink(Bit#(64) sink_data, Bool sink_valid,
+    method Action sink(Bit#(512) sink_data, Bool sink_valid,
                          Bool sink_startofpacket, Bool sink_endofpacket,
-                           Bit#(6) sink_error, Bit#(3) sink_empty);
+                           Bit#(6) sink_error, Bit#(6) sink_empty);
       MacBeat beat;
       beat.data = sink_data;
       beat.start = sink_startofpacket;
       beat.stop = sink_endofpacket;
+      beat.empty = unpack(sink_empty);
       if (sink_valid && buffer.canEnq) buffer.enq(beat, sink_error);
     endmethod
   endinterface
@@ -213,12 +215,9 @@ module mkMac#(SocketId id) (Mac);
   // Ports
   OutPort#(MacBeat) outPort <- mkOutPort;
   InPort#(MacBeat) inPort <- mkInPort;
- 
+
   // Count of number of beats received
   Reg#(Bit#(10)) count <- mkReg(0);
-
-  // In this state, emit padding to comply with min ethernet frame size
-  Reg#(Bool) emitPadding <- mkReg(False);
 
   // Random number, used to drop packets
   Reg#(Bit#(32)) random <- mkReg(0);
@@ -232,6 +231,9 @@ module mkMac#(SocketId id) (Mac);
     random <= random*1103515245 + 12345;
   endrule
 
+  Reg#(Bool) linkrecvalive <- mkReg(False);
+
+
   // Consume input stream
   // (Insert padding and drop random packets)
   rule consume;
@@ -242,44 +244,38 @@ module mkMac#(SocketId id) (Mac);
         inPort.get;
         if (beat.stop) drop <= False;
       end else if (random[31:28] == 0 && inPort.canGet) begin
+        // $display("[mac::consume] dropping packet");
         // Move to drop-packet state
-        drop <= True;
-        inPort.get;
+        if (beat.stop) begin
+          inPort.get; // 512b packet: start and end can be on the same beat.
+        end else begin
+          drop <= True; // if multi-beat, drop the next beats as well.
+          inPort.get;
+        end
       end else if (inPort.canGet) begin
-        Bit#(72) tmp = zeroExtend(pack(beat));
+        Bit#(520) tmp = zeroExtend(pack(beat));
         Bool ok <- socketPut(id, unpack(tmp));
         if (ok) begin
+          // if (!linkrecvalive && beat.start && beat.data != 0) begin
+          //   $display($time, "Sending flit on port ", id, " value %x", beat.data);
+          //   // linkrecvalive <= True;
+          // end
           // Receive first beat (start of packet)
           inPort.get;
           myAssert(beat.start, "MAC: missing start-of-packet");
-          count <= 1;
+          if (!beat.stop) count <= 1;
         end
       end
     end else if (count > 0) begin
-      if (emitPadding) begin
-        // Insert padding
-        MacBeat outBeat = macBeat(False, count == 7, 0);
-        Bit#(72) tmp = zeroExtend(pack(outBeat));
-        Bool ok <- socketPut(id, unpack(tmp));
-        if (ok) begin
-          if (count == 7) begin
-            emitPadding <= False;
-            count <= 0;
-          end else
-            count <= count+1;
-        end
-      end else if (inPort.canGet) begin
+      if (inPort.canGet) begin
         // Receive remaining beats
         MacBeat outBeat = beat;
-        if (beat.stop && count < 7) outBeat.stop = False;
-        Bit#(72) tmp = zeroExtend(pack(outBeat));
+        if (beat.stop) outBeat.stop = False;
+        Bit#(520) tmp = zeroExtend(pack(outBeat)); // pad the 512+sop+eop to a mul of 8
         Bool ok <- socketPut(id, unpack(tmp));
         if (ok) begin
           inPort.get;
-          if (beat.stop && count < 7) begin
-            count <= count+1;
-            emitPadding <= True;
-          end else if (beat.stop) begin
+          if (beat.stop) begin
             count <= 0;
           end else begin
             count <= count+1;
@@ -289,13 +285,33 @@ module mkMac#(SocketId id) (Mac);
     end
   endrule
 
+  Reg#(Bool) linksendalive <- mkReg(False);
+  Reg#(Bool) split_last_flit <- mkReg(False);
+  Reg#(Bit#(520)) last_flit_partially_sent <- mkReg(0);
+
   // Produce output stream
-  rule produce (outPort.canPut);
-    Maybe#(Vector#(9, Bit#(8))) m <- socketGet(id);
+  rule produce (outPort.canPut && !split_last_flit);
+    Maybe#(Vector#(65, Bit#(8))) m <- socketGet(id);
     if (isValid(m)) begin
-      Bit#(72) tmp = pack(fromMaybe(?, m));
-      outPort.put(unpack(truncate(tmp)));
+      Bit#(520) tmp = pack(fromMaybe(?, m));
+      last_flit_partially_sent <= tmp;
+      MacBeat beat = unpack(truncate(tmp));
+      Bool dosplit = random[30:29] == 2'b11;
+      split_last_flit <= dosplit;
+      if (dosplit) begin
+        beat.empty = 6'd32;
+        // $display("[mac::produce] sending half flit");
+      end
+      outPort.put(beat);
     end
+  endrule
+
+  rule produce_secondhalf (split_last_flit);
+    split_last_flit <= False; // return to normal operation
+    MacBeat beat = unpack(truncate(last_flit_partially_sent));
+    beat.empty = 6'd32;
+    beat.data = beat.data >> 256;
+    outPort.put(beat);
   endrule
 
   // Interfaces
@@ -312,21 +328,23 @@ module mkMacLoopback (Mac);
   OutPort#(MacBeat) outPort <- mkOutPort;
   InPort#(MacBeat) inPort <- mkInPort;
 
-  // Buffer to introduce latency 
+  // Buffer to introduce latency
   SizedQueue#(`MacLatency, MacBeat) buffer <-
     mkUGShiftQueueCore(QueueOptFmax);
 
-  // Count of number of 64-bit words received
+  // Count of number of 512-bit words received
   Reg#(Bit#(10)) count <- mkReg(0);
-
-  // In this state, emit padding to comply with min ethernet frame size
-  Reg#(Bool) emitPadding <- mkReg(False);
 
   // Random number, used to drop packets
   Reg#(Bit#(32)) random <- mkReg(0);
 
   // Drop packet while in this state
   Reg#(Bool) drop <- mkReg(False);
+
+  // split into 2 flits in this state
+  Reg#(Bool) split_last_flit <- mkReg(False);
+  Reg#(MacBeat) last_flit_partially_sent <- mkReg(?);
+
 
   // Fill buffer
   rule introduceLatency (inPort.canGet && buffer.notFull);
@@ -347,36 +365,33 @@ module mkMacLoopback (Mac);
         // Drop packet
         buffer.deq;
         if (beat.stop) drop <= False;
+      end else if (split_last_flit) begin
+        split_last_flit <= False;
+        beat.empty = 6'd32;
+        beat.data = beat.data >> 256;
+        outPort.put(beat);
+        buffer.deq;
       end else if (random[31:28] == 0 && buffer.canDeq) begin
         // Move to drop-packet state
-        drop <= True;
+        if (!beat.stop) drop <= True;
         buffer.deq;
+      end else if (random[31:28] == 4'b1111 && buffer.canDeq) begin
+        // $display("[mkMacLoopback] splitting flit.");
+        split_last_flit <= True;
+        beat.empty = 6'd32;
+        outPort.put(beat);
       end else if (buffer.canDeq && outPort.canPut) begin
         // Receive first beat (start of packet)
         buffer.deq;
         myAssert(beat.start, "Loopback MAC: missing start-of-packet");
         outPort.put(beat);
-        count <= 1;
+        if (!beat.stop) count <= 1;
       end
     end else if (count > 0) begin
-      if (emitPadding) begin
-        // Insert padding
-        if (outPort.canPut) begin
-          outPort.put(macBeat(False, count == 7, 0));
-          if (count == 7) begin
-            emitPadding <= False;
-            count <= 0;
-          end else
-            count <= count+1;
-        end
-      end else if (buffer.canDeq && outPort.canPut) begin
+      if (buffer.canDeq && outPort.canPut) begin
         // Receive remaining beats
         buffer.deq;
-        if (beat.stop && count < 7) begin
-          beat.stop = False;
-          count <= count+1;
-          emitPadding <= True;
-        end else if (beat.stop) begin
+        if (beat.stop) begin
           count <= 0;
         end else begin
           count <= count+1;
@@ -409,7 +424,7 @@ function AvalonMac macMux(Bool sel, AvalonMac macA, AvalonMac macB) =
       sel ? macB.source_endofpacket : macA.source_endofpacket;
     method Bit#(1) source_error =
       sel ? macB.source_error : macA.source_error;
-    method Bit#(3) source_empty =
+    method Bit#(6) source_empty =
       sel ? macB.source_empty : macA.source_empty;
     method Action source(Bool source_ready);
       if (sel) macB.source(source_ready);
@@ -417,9 +432,9 @@ function AvalonMac macMux(Bool sel, AvalonMac macA, AvalonMac macB) =
     endmethod
     method Bool sink_ready =
       sel ? macB.sink_ready : macA.sink_ready;
-    method Action sink(Bit#(64) sink_data, Bool sink_valid,
+    method Action sink(Bit#(512) sink_data, Bool sink_valid,
                          Bool sink_startofpacket, Bool sink_endofpacket,
-                           Bit#(6) sink_error, Bit#(3) sink_empty);
+                           Bit#(6) sink_error, Bit#(6) sink_empty);
       if (sel)
         macB.sink(sink_data, sink_valid, sink_startofpacket,
                   sink_endofpacket, sink_error, sink_empty);
@@ -441,5 +456,6 @@ module mkNullAvalonMac#(AvalonMac mac) (Empty);
   endrule
 
 endmodule
+
 
 endpackage

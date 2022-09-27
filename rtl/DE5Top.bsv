@@ -26,7 +26,10 @@ import Connections  :: *;
 import PCIeStream   :: *;
 import HostLink     :: *;
 import Clocks       :: *;
-
+import AvalonStreamCC :: *;
+import ChipID :: *;
+import ConfigReg :: *;
+import GetPut::*;
 // ============================================================================
 // Interface
 // ============================================================================
@@ -42,7 +45,7 @@ import "BDPI" function Bit#(32) getBoardId();
 interface DE5Top;
   interface Vector#(`DRAMsPerBoard, DRAMExtIfc) dramIfcs;
   //interface Vector#(`SRAMsPerBoard, SRAMExtIfc) sramIfcs;
-  //interface Vector#(`NumNorthSouthLinks, AvalonMac) northMac;
+  interface Vector#(`NumNorthSouthLinks, AvalonMac) northMac;
   //interface Vector#(`NumNorthSouthLinks, AvalonMac) southMac;
   //interface Vector#(`NumEastWestLinks, AvalonMac) eastMac;
   //interface Vector#(`NumEastWestLinks, AvalonMac) westMac;
@@ -70,7 +73,12 @@ endinterface
 // ============================================================================
 
 // mkDE10Top wrapper ensures the entire design is reset correctly when requested by the host
-module de5Top (DE5Top);
+module de5Top (
+`ifndef SIMULATE
+                Clock northTxClk, Clock northRxClk,
+                 Reset northTxRst, Reset northRxRst,
+`endif
+	DE5Top ifc);
 
   Clock defaultClock <- exposeCurrentClock();
   Reset externalReset <- exposeCurrentReset();
@@ -101,7 +109,7 @@ module de5Top (DE5Top);
   // MakeResetIfc hostReset <- mkReset(1, False, defaultClock);
   // Reset combinedReset <- mkResetEither(externalReset, hostReset.new_rst);
 
-  DE5Top top <- de5Top_inner(reset_by bufferedReset);
+  DE5Top top <- de5Top_inner(northTxClk, northRxClk, northTxRst, northRxRst, reset_by bufferedReset);
 
   `ifndef SIMULATE
   // (* fire_when_enabled, no_implicit_conditions *)
@@ -121,13 +129,25 @@ module de5Top (DE5Top);
 endmodule
 
 
-module de5Top_inner (DE5Top);
-  // Board Id
-  `ifdef SIMULATE
-  Bit#(4) localBoardId = truncate(getBoardId());
-  `else
-  Wire#(Bit#(4)) localBoardId <- mkDWire(?);
-  `endif
+module de5Top_inner (
+`ifndef SIMULATE
+                Clock northTxClk, Clock northRxClk,
+                 Reset northTxRst, Reset northRxRst,
+`endif
+	DE5Top ifc);
+
+   Clock defaultClock <- exposeCurrentClock();
+   Reset defaultReset <- exposeCurrentReset();
+
+
+   Get#(Bit#(64)) chipID <- mkChipID();
+   Reg#(Maybe#(Bit#(64))) chipIDReg <- mkConfigReg(Invalid);
+   rule copyChipID;
+     let id <- chipID.get;
+     chipIDReg <= Valid(id);
+   endrule
+
+  Wire#(Bit#(4)) localBoardId <- mkDWire(0);
 
   // Temperature register
   Reg#(Bit#(8)) temperature <- mkReg(128);
@@ -199,11 +219,16 @@ module de5Top_inner (DE5Top);
   // Create DebugLink interface
   function DebugLinkClient getDebugLinkClient(Core core) = core.debugLinkClient;
   DebugLink debugLink <-
-    mkDebugLink(localBoardId, temperature,
-      map(getDebugLinkClient, vecOfCores));
+    mkDebugLink(temperature,
+      map(getDebugLinkClient, vecOfCores), chipIDReg);
+
+  (* no_implicit_conditions *)
+  rule setlocalBoardId;
+    localBoardId <= debugLink.getBoardIdWithinBox();
+  endrule
 
   // Create PCIeStream instance
-  PCIeStream pcie <- mkPCIeStream;
+  PCIeStream pcie <- mkPCIeStream(chipIDReg);
 
   // Create idle-detector
   IdleDetector idle <- mkIdleDetector;
@@ -262,17 +287,21 @@ module de5Top_inner (DE5Top);
   connectProgRouterPerfCountersToCores(noc.progRouterPerfCounters,
     concat(concat(cores)));
 
-  // Set board ids
+  // Set board ids - constantly fire
+  (* no_implicit_conditions, fire_when_enabled *)
   rule setBoardIds;
     for (Integer i = 0; i < `DRAMsPerBoard; i=i+1)
       for (Integer j = 0; j < `DCachesPerDRAM; j=j+1)
         for (Integer k = 0; k < `CoresPerDCache; k=k+1)
           cores[i][j][k].setBoardId(debugLink.getBoardId());
+    noc.setBoardId(debugLink.getBoardId());
   endrule
 
-  // NoC rim unused
+
   `ifndef SIMULATE
-  mkNullAvalonMac(noc.north[0]);
+  AvalonCCIfc northCC <- mkAvalonStreamConverter(noc.north[0],
+                                              defaultClock, northTxClk, northRxClk,
+                                               defaultReset, northTxRst, northRxRst);
   mkNullAvalonMac(noc.south[0]);
   mkNullAvalonMac(noc.east[0]);
   mkNullAvalonMac(noc.west[0]);
@@ -294,7 +323,7 @@ module de5Top_inner (DE5Top);
   interface dramIfcs = map(getDRAMExtIfc, rams);
   //interface sramIfcs = concat(map(getSRAMExtIfcs, rams));
   interface jtagIfc  = debugLink.jtagAvalon;
-  //interface northMac = noc.north;
+  interface northMac = replicate(northCC.external);
   //interface southMac = noc.south;
   //interface eastMac  = noc.east;
   //interface westMac  = noc.west;

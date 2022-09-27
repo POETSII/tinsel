@@ -585,7 +585,7 @@ module mkCore#(CoreId myId) (Core);
   Integer numThreads = 2 ** `LogThreadsPerCore;
 
   // Board id
-  Wire#(BoardId) boardId <- mkDWire(?);
+  Reg#(BoardId) boardId <- mkReg(unpack(0));
 
   // Global state
   // ------------
@@ -1324,6 +1324,7 @@ module mkCore#(CoreId myId) (Core);
   endinterface
 
   method Action setBoardId(BoardId id);
+    if (boardId != id) $display("Core setting board id to ", id.x, " ", id.y);
     boardId <= id;
   endmethod
 

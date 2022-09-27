@@ -158,7 +158,8 @@ module mkMeshRouter#(MailboxId m) (MeshRouter);
   function Route route(NetAddr a);
          if (a.addr.board != b)   return Down;
     else if (a.addr.isKey)        return Down;
-    else if (a.addr.host.valid && a.addr.mbox.y == m.y && a.addr.mbox.x == m.x) return Up;
+    else if (a.addr.host.valid && a.addr.mbox.y == m.y && a.addr.mbox.x == m.x && b == unpack(0) )  return Up; // host is on our up port.
+    else if (a.addr.host.valid)  return Down; // host is on our up port.
     else if (a.addr.mbox.y < m.y) return Down;
     else if (a.addr.mbox.y > m.y) return Up;
     else if (a.addr.mbox.x < m.x) return Left;
@@ -299,6 +300,7 @@ interface NoC;
   // ProgRouter fetcher activities & performance counters
   interface Vector#(`FetchersPerProgRouter, FetcherActivity) activities;
   interface ProgRouterPerfCounters progRouterPerfCounters;
+  method Action setBoardId(BoardId id);
 endinterface
 
 module mkNoC#(
@@ -310,6 +312,7 @@ module mkNoC#(
          IdleDetector idle)
        (NoC);
 
+  Reg#(BoardId) boardId <- mkConfigReg(?);
   // Create off-board links
   Vector#(`NumNorthSouthLinks, BoardLink) northLink <-
     mapM(mkBoardLink(linkEnable[0]), northSocket);
@@ -333,7 +336,7 @@ module mkNoC#(
       MailboxId mailboxId =
         MailboxId { x: fromInteger(x), y: fromInteger(y) };
       routers[y][x] <- mkMeshRouter(mailboxId);
-      rule setBoardId;
+      rule setBoardIdforRouter;
         routers[y][x].setBoardId(boardId);
       endrule
     end
@@ -478,6 +481,11 @@ module mkNoC#(
   // Performance counters
   interface ProgRouterPerfCounters progRouterPerfCounters =
     boardRouter.perfCounters;
+  method Action setBoardId(BoardId id);
+    if (id != boardId) $display("[Network::mkNoCDE10] set board id to ", id);
+    boardId <= id;
+    boardRouter.setBoardId(id);
+  endmethod
 
 endmodule
 

@@ -12,7 +12,7 @@ import BlockRam  :: *;
 import Assert    :: *;
 import Util      :: *;
 import DReg      :: *;
-
+import ConfigReg    :: *;
 // =============================================================================
 // Routing keys and beats
 // =============================================================================
@@ -264,6 +264,7 @@ interface Fetcher;
   interface Vector#(`DRAMsPerBoard, In#(DRAMResp)) ramResps;
   // Activity
   interface FetcherActivity activity;
+  method Action updateBoardId(BoardId id);
 endinterface
 
 // Fetcher activity for performance counters and termination detection
@@ -284,6 +285,7 @@ module mkFetcher#(BoardId boardId, Integer fetcherId) (Fetcher);
 
   // Flit input port
   InPort#(Flit) flitInPort <- mkInPort;
+  Reg#(BoardId) boardId <- mkConfigReg(?);
 
   // RAM request queues
   Vector#(`DRAMsPerBoard, Queue1#(DRAMReq)) ramReqQueue <-
@@ -406,12 +408,8 @@ module mkFetcher#(BoardId boardId, Integer fetcherId) (Fetcher);
           // Make routing decision
           RoutingDecision decision = RouteNoC;
           MailboxNetAddr addr = flit.dest.addr;
-          if (addr.board.y < boardId.y) decision = RouteSouth;
-          else if (addr.board.y > boardId.y) decision = RouteNorth;
-          else if (addr.host.valid)
-            decision = addr.host.value == 0 ? RouteWest : RouteEast;
-          else if (addr.board.x < boardId.x) decision = RouteWest;
-          else if (addr.board.x > boardId.x) decision = RouteEast;
+          if (addr.board == boardId) decision = RouteNoC;
+          if (addr.board != boardId) decision = RouteNorth;
           // Insert into bypass queue
           flitBypassQueue.enq(RoutedFlit { decision: decision, flit: flit});
         end
@@ -714,6 +712,10 @@ module mkFetcher#(BoardId boardId, Integer fetcherId) (Fetcher);
       beatBufferLen.value != 0 || consumeState != 0;
   endinterface
 
+  method Action updateBoardId(BoardId newid);
+    if (newid != boardId) $display("[mkBypassRouter::fetcher ", fetcherId, "] setting boardId to x ", newid.x, " y ", newid.y);
+    boardId <= newid;
+  endmethod
 endmodule
 
 // =============================================================================
@@ -862,9 +864,12 @@ interface ProgRouter;
   // Activities & performance counters
   interface Vector#(`FetchersPerProgRouter, FetcherActivity) activities;
   interface ProgRouterPerfCounters perfCounters;
+  method Action setBoardId(BoardId id);
 endinterface
 
 module mkProgRouter#(BoardId boardId) (ProgRouter);
+
+  Reg#(BoardId) boardId <- mkConfigReg(?);
 
   // Fetchers
   Vector#(`FetchersPerProgRouter, Fetcher) fetchers = newVector;
@@ -938,6 +943,10 @@ module mkProgRouter#(BoardId boardId) (ProgRouter);
     method incSent = numSent;
     method incSentInterBoard = numSentInterBoard;
   endinterface
+  method Action setBoardId(BoardId newBoardid);
+    if (boardId != newBoardid) $display($time, "[mkBypassRouter] setting boardId to x ", newBoardid.x, " y ", newBoardid.y);
+    boardId <= newBoardid;
+  endmethod
 
 endmodule
 
