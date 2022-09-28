@@ -1726,6 +1726,7 @@ set_global_assignment -name IP_FILE ip/fp/fpS10LT.ip
 set_global_assignment -name IP_FILE ip/fp/fpS10LTE.ip
 set_global_assignment -name IP_FILE ip/fp/fpS10Mult.ip
 set_global_assignment -name IP_FILE ip/fp/fpS10ToInt.ip
+set_global_assignment -name IP_FILE ip/DE10_Pro_QSYS/chipid.ip
 set_global_assignment -name SIGNALTAP_FILE stp1.stp
 set_global_assignment -name IP_FILE reset_release.ip
 set_global_assignment -name MIF_FILE boot.mif
