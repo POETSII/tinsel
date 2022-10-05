@@ -156,10 +156,10 @@ module mkMeshRouter#(MailboxId m) (MeshRouter);
 
   // Routing function
   function Route route(NetAddr a);
-         if (a.addr.board != b)   return Down;
-    else if (a.addr.isKey)        return Down;
-    else if (a.addr.host.valid && a.addr.mbox.y == m.y && a.addr.mbox.x == m.x && b == unpack(0) )  return Up; // host is on our up port.
-    else if (a.addr.host.valid)  return Down; // host is on our up port.
+         if (a.addr.board != b)   return Down; // to network
+    else if (a.addr.isKey)        return Down; // to progrouter
+    else if (a.addr.host.valid && a.addr.mbox.y == m.y && a.addr.mbox.x == m.x && b == unpack(0) )  return Up; // host is on our up port, if we are the host mbox
+    else if (a.addr.host.valid && a.addr.mbox.y == m.y && a.addr.mbox.x == m.x && b != unpack(0) )  return Down; // host is on a remote board's up port
     else if (a.addr.mbox.y < m.y) return Down;
     else if (a.addr.mbox.y > m.y) return Up;
     else if (a.addr.mbox.x < m.x) return Left;
