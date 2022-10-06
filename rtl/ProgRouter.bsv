@@ -264,7 +264,7 @@ interface Fetcher;
   interface Vector#(`DRAMsPerBoard, In#(DRAMResp)) ramResps;
   // Activity
   interface FetcherActivity activity;
-  method Action updateBoardId(BoardId id);
+  method Action setBoardId(BoardId id);
 endinterface
 
 // Fetcher activity for performance counters and termination detection
@@ -712,7 +712,7 @@ module mkFetcher#(BoardId boardId, Integer fetcherId) (Fetcher);
       beatBufferLen.value != 0 || consumeState != 0;
   endinterface
 
-  method Action updateBoardId(BoardId newid);
+  method Action setBoardId(BoardId newid);
     if (newid != boardId) $display("[mkBypassRouter::fetcher ", fetcherId, "] setting boardId to x ", newid.x, " y ", newid.y);
     boardId <= newid;
   endmethod
@@ -943,9 +943,12 @@ module mkProgRouter#(BoardId boardId) (ProgRouter);
     method incSent = numSent;
     method incSentInterBoard = numSentInterBoard;
   endinterface
+
   method Action setBoardId(BoardId newBoardid);
     if (boardId != newBoardid) $display($time, "[mkBypassRouter] setting boardId to x ", newBoardid.x, " y ", newBoardid.y);
     boardId <= newBoardid;
+    for (Integer i = 0; i < `FetchersPerProgRouter; i=i+1)
+      fetchers[i].setBoardId(newBoardid);
   endmethod
 
 endmodule
