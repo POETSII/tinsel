@@ -400,7 +400,7 @@ def to_cpp_string(convertee):
 if len(sys.argv) > 1:
   mode = sys.argv[1]
 else:
-  print "Usage: config.py <defs|envs|cpp|vpp>"
+  print("Usage: config.py <defs|envs|cpp|vpp>")
   sys.exit(-1)
 
 # The BoxMesh parameter is only meant for cpp mode
