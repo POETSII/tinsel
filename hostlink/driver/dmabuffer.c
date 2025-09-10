@@ -174,7 +174,7 @@ static int __init dmabuffer_module_init(void)
   major = MAJOR(dmabuffer_base_devnum);
 
   //  Create device class
-  dmabuffer_sys_class = class_create(THIS_MODULE, "dmabuffer");
+  dmabuffer_sys_class = class_create("dmabuffer");
   if (IS_ERR_OR_NULL(dmabuffer_sys_class)) {
     printk(KERN_ERR "dmabuffer: couldn't create sys class\n");
     dmabuffer_sys_class = NULL;
