@@ -1,15 +1,18 @@
 // This is a cut-down version of Ichiro Kawazome's udmabuf driver
-// (https://github.com/ikwzm/udmabuf).  It allocates a number of DMA buffers
+// (https://github.com/ikwzm/udmabuf). It allocates a number of DMA buffers
 // using Linux's DMA API and allows these buffers to be mmapped to user space.
-// One device file is created for each buffer.  The physical address of a
+// One device file is created for each buffer. The physical address of a
 // buffer (to be used by a device) can be obtained using an ioctl on the
-// corresponding device file.  The number of buffers, and their sizes, are
+// corresponding device file. The number of buffers, and their sizes, are
 // compile-time options.
+//
+// Modified in 2025 to work with IOMMU enabled on modern Linux OSes.
 
 /******************************************************************************
  *
  * Copyright (C) 2015-2017 Ichiro Kawazome
  * Copyright (C) 2017 Matthew Naylor
+ * Copyright (C) 2025 Graeme Bragg
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -45,6 +48,7 @@
 #include <linux/module.h>
 #include <linux/mutex.h>
 #include <linux/device.h>
+#include <linux/pci.h>
 #include <asm/uaccess.h>
 
 // Constants
@@ -57,11 +61,15 @@
 // Size of each buffer in bytes
 #define SIZE 1048576
 
+// The Vendor and Device IDs for the Tinsel bridge board
+#define TINSEL_VENDOR  0x1172  // Altera/Intel
+#define TINSEL_DEVICE  0x0de5  // Device ID from lspci
+
 // Types
 // =====
-
 struct dmabuffer_state_t {
-  struct device*  device;
+  struct device*  chardev;        // /dev node
+  struct device*  dma_dev;        // Tinsel bridge board
   struct cdev     cdev;
   int             cdev_valid;
   dev_t           device_number;
@@ -71,6 +79,38 @@ struct dmabuffer_state_t {
   dma_addr_t      phys_addr;
   u64             dma_mask;
 };
+
+// PCI discovery for Tinsel bridge board
+// ============
+static char *bdf;
+module_param(bdf, charp, 0444);
+MODULE_PARM_DESC(bdf, "PCI BDF of the DMA device (domain:bus:slot.func), e.g., 0000:b3:00.0");
+
+
+static struct device *resolve_dma_parent_dev(void)
+{
+  struct pci_dev *pdev = NULL;
+
+  if (bdf && *bdf) {
+      int dom = 0, bus = 0, slot = 0, func = 0;
+      if (sscanf(bdf, "%x:%x:%x.%d", &dom, &bus, &slot, &func) == 4 ||
+          sscanf(bdf, "%x:%x.%d",          &bus, &slot, &func) == 3) {
+          pdev = pci_get_domain_bus_and_slot(dom, bus, PCI_DEVFN(slot, func));
+          if (pdev) {
+              pci_set_master(pdev);
+              return &pdev->dev;
+          }
+      }
+      pr_warn("dmabuffer: BDF '%s' not found; falling back to vendor/device scan\n", bdf);
+  }
+
+  // Fallback: first matching vendor/device
+  while ((pdev = pci_get_device(TINSEL_VENDOR, TINSEL_DEVICE, pdev))) {
+      pci_set_master(pdev);
+      return &pdev->dev;
+  }
+  return NULL;
+}
 
 // Global state
 // ============
@@ -114,7 +154,7 @@ static long dmabuffer_file_ioctl(struct file *file,
 static int dmabuffer_file_mmap(struct file *file, struct vm_area_struct* vma)
 {
   struct dmabuffer_state_t* state = file->private_data;
-  return dma_mmap_coherent(state->device, vma, state->virt_addr,
+  return dma_mmap_coherent(state->dma_dev, vma, state->virt_addr,
                              state->phys_addr, state->alloc_size);
 }
 
@@ -129,7 +169,7 @@ static const struct file_operations dmabuffer_fops = {
 // Module init & exit
 // ==================
 
-static void __exit dmabuffer_module_exit(void)
+static void dmabuffer_module_exit(void)
 {
   // Free components for each device
   int d;
@@ -137,10 +177,10 @@ static void __exit dmabuffer_module_exit(void)
     struct dmabuffer_state_t* state = &dmabuffer_state[d];
     // Free buffer
     if (state->virt_addr != NULL)
-      dma_free_coherent(state->device, state->alloc_size,
+      dma_free_coherent(state->dma_dev, state->alloc_size,
                           state->virt_addr, state->phys_addr);
     // Free device
-    if (state->device != NULL)
+    if (state->chardev != NULL)
       device_destroy(dmabuffer_sys_class, state->device_number);
     // Remove char device
     if (state->cdev_valid)
@@ -158,8 +198,7 @@ static void __exit dmabuffer_module_exit(void)
 
 static int __init dmabuffer_module_init(void)
 {
-  int retval, d, dma_mask_bit;
-  dev_t major;
+  int d, retval, major;
 
   // Allocate device numbers
   retval = alloc_chrdev_region(&dmabuffer_base_devnum, 0,
@@ -182,6 +221,22 @@ static int __init dmabuffer_module_init(void)
     return PTR_ERR(dmabuffer_sys_class);
   }
 
+  /* Resolve the real DMA device (PCI) */
+  struct device *parent = resolve_dma_parent_dev();
+  if (!parent) {
+    printk(KERN_ERR "dmabuffer: could not find PCI device (vendor=0x%04x device=0x%04x); pass bdf=domain:bus:slot.func\n",
+            TINSEL_VENDOR, TINSEL_DEVICE);
+    dmabuffer_module_exit();
+    return -ENODEV;
+  }
+  /* Set DMA mask on the PCI device: try 64-bit, then 32-bit */
+  if (dma_set_mask_and_coherent(parent, DMA_BIT_MASK(64)) &&
+      dma_set_mask_and_coherent(parent, DMA_BIT_MASK(32))) {
+    printk(KERN_ERR "dmabuffer: no suitable DMA mask on PCI device\n");
+    dmabuffer_module_exit();
+    return -ENODEV;
+  }
+
   // Initialise each device
   for (d = 0; d < NUM_BUFFERS; d++) {
     struct dmabuffer_state_t* state = &dmabuffer_state[d];
@@ -194,30 +249,21 @@ static int __init dmabuffer_module_init(void)
       ((SIZE + ((1 << PAGE_SHIFT) - 1)) >> PAGE_SHIFT) << PAGE_SHIFT;
 
     // Create device
-    state->device = device_create(dmabuffer_sys_class,
-                                   NULL, state->device_number,
+    state->chardev = device_create(dmabuffer_sys_class,
+                                   parent, state->device_number,
                                      (void*) state, "dmabuffer%d", d);
-    if (IS_ERR_OR_NULL(state->device)) {
-      state->device = NULL;
+    if (IS_ERR_OR_NULL(state->chardev)) {
+      state->chardev = NULL;
       dmabuffer_module_exit();
       return -1;
     }
 
-    // Setup DMA mask
-    dma_mask_bit = 32;
-    state->device->dma_mask = &state->dma_mask;
-    if (dma_set_mask(state->device, DMA_BIT_MASK(dma_mask_bit)) == 0) {
-        dma_set_coherent_mask(state->device, DMA_BIT_MASK(dma_mask_bit));
-    } else {
-        printk(KERN_WARNING "dma_set_mask(DMA_BIT_MASK(%d)) failed\n",
-                 dma_mask_bit);
-        dma_set_mask(state->device, DMA_BIT_MASK(32));
-        dma_set_coherent_mask(state->device, DMA_BIT_MASK(32));
-    }
+    // Use the PCI parent device for DMA API
+    state->dma_dev = parent;
 
     // Allocate buffer
     state->virt_addr =
-      dma_alloc_coherent(state->device, state->alloc_size,
+      dma_alloc_coherent(state->dma_dev, state->alloc_size,
                            &state->phys_addr, GFP_KERNEL);
     if (IS_ERR_OR_NULL(state->virt_addr)) {
       printk(KERN_ERR "dma_alloc_coherent() failed\n");
