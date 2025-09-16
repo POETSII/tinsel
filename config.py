@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
 
 # SPDX-License-Identifier: BSD-2-Clause
 # This file controls the parameters for the circuit generator
